@@ -3,15 +3,26 @@ _ref:
   component: page
   vars:
     id: edit
+    type:
+      _nunjucks:
+        template: |
+          Edit {% if app_title %}{{ app_title }} {% endif %}User
+        on:
+          app_title:
+            _module.var: app_title
     title:
       _nunjucks:
         template: |
-          Edit {% if app_title %}{{ app_title }} {% endif %}User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+          {% if profile %}{{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
         on:
-          _object.assign:
-            - _request: get_user.0
-            - app_title:
-                _module.var: app_title
+          _request: get_user.0
+    status:
+      _request: get_user.0.status
+    status_enum:
+      _ref: enums/user_statuses.yaml
+    loading:
+      _not:
+        _request: get_user
     content_width: 600
     breadcrumbs:
       - home: true
@@ -20,7 +31,7 @@ _ref:
           _build.string.trim:
             _build.string.concat:
               - _module.var: app_title
-              - ' User Admin'
+              - " User Admin"
         pageId:
           _module.pageId: all
       - label: Edit User
@@ -147,18 +158,20 @@ _ref:
           component: floating-actions
           vars:
             actions:
-              - id: save_button
+              - id: cancel_button
                 type: Button
                 layout:
                   flex: 0 1 auto
                 properties:
-                  title: Save
-                  icon: AiOutlineSave
-                  disabled:
-                    _state: disable_save
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
                 events:
                   onClick:
-                    _ref: actions/save_user.yaml
+                    - id: back
+                      type: Link
+                      params:
+                        back: true
               - id: resend_invite_button
                 type: Button
                 visible:
@@ -192,17 +205,15 @@ _ref:
                             _state: email
                       messages:
                         success: Invite sent successfully.
-              - id: cancel_button
+              - id: save_button
                 type: Button
                 layout:
                   flex: 0 1 auto
                 properties:
-                  title: Cancel
-                  icon: AiOutlineCloseCircle
-                  type: default
+                  title: Save
+                  icon: AiOutlineSave
+                  disabled:
+                    _state: disable_save
                 events:
                   onClick:
-                    - id: back
-                      type: Link
-                      params:
-                        back: true
+                    _ref: actions/save_user.yaml

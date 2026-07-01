@@ -6,26 +6,86 @@ Monorepo of reusable Lowdefy modules backed by MongoDB.
 
 Never use client names in design documents, commits, or any content tracked in git. Use generic terms — "an existing app", "existing solutions", "production apps". If a design requires app-specific configuration details (e.g., extracting code from a specific app), add a single anonymous reference at the top of the design file and use that name throughout. Designs that don't need app-specific config (e.g., performance improvements) should not reference specific apps at all.
 
+## Designs
+
+**Designs are the source of truth for code decisions and rationale** — why it was built this way, which alternatives were rejected, constraints that shaped the implementation. Code implements designs; when they disagree, update the design first or flag the mismatch.
+
+**`docs/` is the source of truth for consumer-observable authoring behavior** — how a module behaves, how to configure it, what vars it accepts. When a design and `docs/` disagree about **behavior**, `docs/` wins and the design gets a note. When they disagree about **rationale**, the design wins. Do not "fix" `docs/` to match a stale design — stale designs describe how something was planned, not how it works now.
+
+Designs under `designs/_completed/` are already implemented — treat as read-only history. Add notes documenting deviations if helpful, but handle any changes in a new design/task.
+
+Never move design folders into `_completed/` unless the user explicitly requests it.
+
+**Resolve the open question; don't defer it.** When a design or review surfaces a verifiable factual question ("does this operator behave X or Y?", "what does the SDK do on conflict?", "is this block prop supported?"), answer it now — vendor docs, open-source source, a tiny probe — and bake the verified answer into the design/task. Don't punt with "verify at code time" or "spike during implementation" unless the answer genuinely requires running code in a real environment. Pushing the work down the line means the same question gets re-asked later by someone with less context, or the implementer guesses and the design ships on an unverified assumption.
+
+## Principles
+
+**One correct way.** Prefer APIs, manifests, and shared components that enforce the pattern mechanically over conventions that rely on each caller remembering to follow them. Opt-in correctness drifts; mandatory wrappers don't. Favour this even when it means a bit more scaffolding up front — understanding multiple implementations costs more than writing one.
+
+**Check the docs before spiking.** If a question is "how does this operator behave?" or "what does this block prop do?", search the Lowdefy / AgGrid / MongoDB docs first — it's usually faster and more reliable than a code spike or a live probe. Spikes are for things the docs can't answer (real runtime behaviour, integration quirks).
+
+**Build for concrete needs, not speculation.** A need is _concrete_ when you can point to it — a stated requirement, a design, a real production use. It's _speculative_ when it's a "what if": a `var`, slot, flag, `when:` branch, or "what if this fails?" wrapper added in case it's wanted later. Speculative surface is design surface you owe forever, so don't add it on a guess — wait until a concrete need actually surfaces. And don't generalize ahead of evidence: build for the cases you've seen, not the ones you've imagined — three identical modules beat one module with three variants, and a second variant earns its abstraction only when a second concrete case appears. This is where agent-driven changes go wrong most: "extra checks and features" added to look thorough are the top source of accidental complexity.
+
+**Don't over-restrict.** A restriction — a guard, a validation, a rejected input, a special case — earns its place only when it prevents a _real, harmful_ mistake. Forbidding the unusual-but-harmless is not free: every restriction is more surface a consumer must learn and remember, and it can block a legitimate use case nobody anticipated. Unnecessary restriction is its own form of complexity — cognitive overhead paid by every consumer, in exchange for guarding against nothing. So when a behaviour would be harmless if simply allowed, prefer allowing it _uniformly_ over special-casing it away: consistent behaviour everywhere is easier to reason about, and more intuitive to build against, than a patchwork of bespoke prohibitions. This is the restriction-side mirror of "build for concrete needs" — just as you don't add features on a guess, don't add prohibitions on a guess.
+
+**Absence of a caller is not absence of need.** The trap is concluding a need is _speculative_ just because you can't see it used — turning "I found no evidence for X" into "X isn't needed." It doesn't follow. Above all, don't read the demo as a census: `apps/demo/` exercises the modules; it does not represent production, which lives in other repos. "No caller does X" or "the demo only does Y" proves nothing about what's needed. A demo audit can confirm a pattern is _possible_ or _wired correctly_ — it can never prove a capability is _unneeded_. When you can't point to evidence either way, decide on the API's own merits (correctness, "one correct way", the cost of the surface), never on the demo's coverage.
+
 ## Project Structure
 
 ```
 apps/demo/          — Demo app that imports all modules
 modules/            — Reusable Lowdefy modules
 plugins/            — Custom Lowdefy plugins
-docs/               — Repo-level docs (idioms shared across modules)
+docs/               — Repo-level docs (shared idioms, per-module references)
 ```
+
+## Building & Running the App
+
+Agents almost always want to **verify config compiles**, not run a live server. Reach for the right command:
+
+- **Build check (default):** `pnpm ldf:b` from `apps/demo` (or `pnpm --filter @lowdefy/modules-demo ldf:b` from the root). This is the only command needed to confirm YAML/config compiles. It needs **no secrets, no Infisical, and no network beyond npm** — the script supplies a build-only `NEXTAUTH_SECRET` placeholder (and respects a real `NEXTAUTH_SECRET` if one is exported). Build failures here are real config errors; act on them.
+- **Never run servers in the foreground.** `lowdefy dev` (`pnpm ldf` / `pnpm ldf:d`), `lowdefy start`, and `pnpm e2e` are long-running processes that **never exit** — a plain foreground call blocks until timeout and looks like a hang. If you genuinely need one, start it in the background and poll its health URL (`/api/auth/session`); otherwise don't run it for a build check.
+- **The `:i` (Infisical) variants don't work in the sandbox.** `ldf:b:i` / `ldf:d:i` / `ldf:i` fetch secrets from `app.infisical.com`, which the sandbox network blocks (TLS rejected). Use plain `ldf:b` for build checks.
+- **A build check is not a smoke test.** Running the app (dev server, e2e) needs real secrets (`MONGODB_URI`, etc.) and a reachable MongoDB — that's a human or `/r:dev-test` step, not part of an autonomous build gate.
+- **`pnpm build` at the repo root does _not_ build the demo.** It's `pnpm -r --filter '!@lowdefy/modules-demo' run build` — module/plugin bundles only. To build the app, use `ldf:b`.
 
 ## Documentation
 
-Consumer-facing documentation for this repo follows a fixed layout. When adding or changing a module, plugin, or block, update the relevant doc.
+Consumer-facing documentation lives in `docs/`. Source-side READMEs (`modules/{name}/README.md`, `plugins/modules-mongodb-plugins/README.md`, block READMEs) are stubs that point into `docs/` — do not add content to them.
 
-- `README.md` — Central landing page: module list, dependency graph, "what to use when", consumer basics, and pointers into the rest of the docs.
-- `docs/idioms.md` — Single page covering every cross-cutting idiom (`change_stamp`, `event_display`, `fields`/`components`/`request_stages` slots, `app_name`, `avatar_colors`, secrets). Per-module READMEs link to anchors here instead of repeating explanations. Anchors: `#change-stamps`, `#event-display`, `#slots`, `#app-name`, `#avatar-colors`, `#secrets`.
-- `modules/{name}/README.md` — Per-module reference. Fixed template: Description, Dependencies, How to Use, Exports (Pages / Components / API Endpoints / Connections / Menus), Vars, Secrets, Plugins, Notes.
-- `plugins/modules-mongodb-plugins/README.md` — Plugin package overview (blocks + actions, peer deps, install).
-- `plugins/modules-mongodb-plugins/src/blocks/{Block}/README.md` — Per-block doc (props, events, slots, examples).
+**`docs/` tree layout:**
 
-**Manifest is the source of truth for var schema.** Every var (top-level and nested) in `module.lowdefy.yaml` must carry `description:`, `type:`, and (where applicable) `default:` / `required:` / `enum:`. The README "Vars" section restates the manifest descriptions in narrative form for readers, but if README and manifest disagree the manifest wins. When you add or change a var, update the manifest first, then the README.
+- `docs/index.md` — Root landing page (module list, dependency graph, "what to use when", consumer basics).
+- `docs/{module}/index.md` — Module landing page (required for every module).
+- `docs/{module}/concepts/` — Concept pages (added only where the module needs them).
+- `docs/{module}/how-to/` — Goal-oriented guides (added only where the module needs them).
+- `docs/{module}/reference/` — Reference pages; `vars.md` is always generated (see below).
+- `docs/shared/` — One file per consumer-facing cross-cutting idiom: `change-stamps.md`, `event-display.md`, `slots.md`, `app-name.md`, `avatar-colors.md`, `secrets.md`.
+- `docs/plugins/` — Plugin package overview (`index.md`) and one reference page per block.
+
+Most small modules are just `docs/{module}/index.md` + generated `docs/{module}/reference/vars.md`. Add `concepts/` or `how-to/` subdirectories only when the module genuinely needs them.
+
+**Front-matter schema** — every file in `docs/` must open with a YAML front-matter block:
+
+```yaml
+---
+title: Page Title # required
+module: workflows # required — module name, "root", "shared", or "plugins"
+type: index # required — index | concept | how-to | reference | shared
+concepts: [foo, bar] # optional — key concepts; used by llms.txt
+---
+```
+
+See `docs/CONTRIBUTING.md` for the canonical field definitions.
+
+**Generated files** — do not hand-edit these:
+
+- `docs/{module}/reference/vars.md` — generated by `scripts/gen-var-docs.mjs` from each module's `module.lowdefy.yaml`.
+- `docs/llms.txt` — generated by `scripts/gen-llms-txt.mjs`; also lints front-matter across all docs. Run `pnpm docs:gen` to regenerate both.
+
+Both files are committed. `pnpm docs:check` (`--check` mode for both generators) runs on every PR via `.github/workflows/ci.yaml` and fails if either is out of date or front-matter is invalid.
+
+**Manifest is the source of truth for var schema.** Every var (top-level and nested) in `module.lowdefy.yaml` must carry `description:`, `type:`, and (where applicable) `default:` / `required:` / `enum:`. `docs/{module}/reference/vars.md` is **generated** from the manifest by `scripts/gen-var-docs.mjs` — when you add or change a var, update the manifest first, then run `pnpm docs:gen`. Do not hand-edit `vars.md`. (`pnpm docs:check` enforces no drift.)
 
 ## Lowdefy Module System
 

@@ -1,20 +1,31 @@
-import { useState } from 'react';
-import { type } from '@lowdefy/helpers';
+import { useState } from "react";
+import { type } from "@lowdefy/helpers";
 
 const useFileList = ({ methods }) => {
   const [state, setState] = useState({ file: null, fileList: [] });
 
   const setValue = (stateValue) => {
     const file = type.isObject(stateValue?.file) ? stateValue.file : null;
-    const fileList = type.isArray(stateValue?.fileList) ? stateValue.fileList : [];
+    const fileList = type.isArray(stateValue?.fileList)
+      ? stateValue.fileList
+      : [];
     setState({ file, fileList });
   };
 
   const setFileList = async ({ event, file, percent }) => {
     if (!file) {
-      throw new Error('File is undefined in useFileList');
+      throw new Error("File is undefined in useFileList");
     }
-    const { bucket, key, lastModified, name, size, status, type: fileType, uid } = file;
+    const {
+      bucket,
+      key,
+      lastModified,
+      name,
+      size,
+      status,
+      type: fileType,
+      uid,
+    } = file;
     const fileObj = {
       bucket,
       key,
@@ -27,19 +38,19 @@ const useFileList = ({ methods }) => {
       uid,
     };
     switch (event) {
-      case 'onProgress':
-        fileObj.status = 'uploading';
+      case "onProgress":
+        fileObj.status = "uploading";
         fileObj.percent = percent ?? fileObj.percent;
         break;
-      case 'onSuccess':
-        fileObj.status = 'done';
+      case "onSuccess":
+        fileObj.status = "done";
         fileObj.percent = 100;
         break;
-      case 'onRemove':
-        fileObj.status = 'removed';
+      case "onRemove":
+        fileObj.status = "removed";
         break;
       default:
-        fileObj.status = 'error';
+        fileObj.status = "error";
         break;
     }
     setState((prev) => {

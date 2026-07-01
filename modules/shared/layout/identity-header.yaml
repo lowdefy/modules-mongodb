@@ -5,7 +5,7 @@ class: bg-primary-bg p-4 rounded-lg
 layout:
   gap: 12
   direction: row
-  align: middle
+  selfAlign: middle
 blocks:
   - id: avatar
     type: Avatar

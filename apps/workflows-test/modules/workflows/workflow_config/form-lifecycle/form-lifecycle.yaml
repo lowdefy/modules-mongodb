@@ -1,0 +1,38 @@
+# form-lifecycle — the template cluster (Part 22 task 3).
+#
+# A single-group workflow with two `kind: form` actions. It is the suite's
+# usage exemplar: a reviewer dropping the module into a fresh app can read this
+# config + form-lifecycle.spec.js as a how-to.
+#
+#   reviewed-form — has the `review` verb, so `submit` lands `in-review` and an
+#                   `approve` is needed to reach `done` (the review lifecycle:
+#                   submit → in-review → approve → done, plus request_changes /
+#                   progress / resubmit).
+#   optional-form — no `review` verb and `allow_not_required: true`, so it can be
+#                   marked `not_required` without disturbing reviewed-form.
+#
+# Both actions get per-action pages emitted by makeActionPages
+# (`{type}-{action}-{verb}`), e.g. /workflows/form-lifecycle-reviewed-form-edit.
+type: form-lifecycle
+title: Form lifecycle
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
+
+starting_actions:
+  - type: reviewed-form
+    status: action-required
+  - type: optional-form
+    status: action-required
+
+action_groups:
+  - id: lifecycle
+    title: Lifecycle
+    icon: AiOutlineForm
+
+actions:
+  - _ref: modules/workflows/workflow_config/form-lifecycle/reviewed-form.yaml
+  - _ref: modules/workflows/workflow_config/form-lifecycle/optional-form.yaml

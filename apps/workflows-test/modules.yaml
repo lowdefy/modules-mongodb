@@ -1,0 +1,59 @@
+# Keep workflows after its declared dependencies (layout, events,
+# notifications) — the experimental build's entry-vars resolve is
+# order-sensitive when cross-module _refs are involved.
+
+# user-account is not a workflows dependency, but layout declares a
+# dependency on it (the page component embeds its profile-avatar), so
+# the build requires the entry.
+- id: user-account
+  source: "file:../../modules/user-account"
+  vars:
+    app_name:
+      _ref:
+        path: app_config.yaml
+        key: app_name
+
+- id: layout
+  source: "file:../../modules/layout"
+
+- id: events
+  source: "file:../../modules/events"
+  vars:
+    _ref: modules/events/vars.yaml
+
+- id: notifications
+  source: "file:../../modules/notifications"
+  vars:
+    _ref: modules/notifications/vars.yaml
+
+- id: workflows
+  source: "file:../../modules/workflows"
+  vars:
+    _ref: modules/workflows/vars.yaml
+
+# The workflows module declares a `contacts` dependency (the contact-selector
+# field components). Wiring contacts pulls in companies + files too (contacts ↔
+# companies are mutually dependent; both depend on files). Only the required
+# vars are set — app_name (contacts/companies) and s3_region (files); all other
+# vars use their defaults. These modules are not exercised by the workflows-test
+# specs; they exist solely to satisfy the build-time dependency graph.
+- id: companies
+  source: "file:../../modules/companies"
+  vars:
+    app_name:
+      _ref:
+        path: app_config.yaml
+        key: app_name
+
+- id: contacts
+  source: "file:../../modules/contacts"
+  vars:
+    app_name:
+      _ref:
+        path: app_config.yaml
+        key: app_name
+
+- id: files
+  source: "file:../../modules/files"
+  vars:
+    s3_region: us-east-1

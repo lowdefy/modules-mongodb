@@ -1,0 +1,105 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  singleFile:
+    type: boolean
+    default: false
+  accept:
+    type: string
+    default: null
+  label:
+    type: string
+    default: Click or drag to add files.
+  label_disabled:
+    type: boolean
+    default: true
+  s3PostPolicyRequestId:
+    type: string
+    default: upload_files
+
+config:
+  id:
+    _string.concat:
+      - _var: key
+      - .uploader_validation_label
+  type: Label
+  visible:
+    _var:
+      key: visible
+      default: true
+  validate:
+    _build.if:
+      test:
+        _build.eq:
+          - _var:
+              key: required
+              default: false
+          - true
+      then:
+        _build.if:
+          test:
+            _build.eq:
+              - _var:
+                  key: singleFile
+                  default: false
+              - true
+          then:
+            - message: Please upload a file and wait for it to finish uploading.
+              status: error
+              pass:
+                _eq:
+                  - _state:
+                      _string.concat:
+                        - _var: key
+                        - .file.status
+                  - done
+          else:
+            - message: Please upload at least one file.
+              status: error
+              pass:
+                _gt:
+                  - _array.length:
+                      _state:
+                        _string.concat:
+                          - _var: key
+                          - .fileList
+                  - 0
+      else: []
+  properties:
+    title:
+      _var: title
+    disabled:
+      _var:
+        key: label_disabled
+        default: true
+  blocks:
+    - id:
+        _var: key
+      type: S3UploadDragger
+      properties:
+        singleFile:
+          _var:
+            key: singleFile
+            default: false
+        accept:
+          _var:
+            key: accept
+            default: null
+        title:
+          _var:
+            key: label
+            default: Click or drag to add files.
+        s3PostPolicyRequestId:
+          _var:
+            key: s3PostPolicyRequestId
+            default: upload_files

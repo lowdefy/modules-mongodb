@@ -16,7 +16,6 @@ export default {
     "AiOutlineDelete",
     "AiOutlineEdit",
   ],
-  styles: ["blocks/ContactSelector/style.less"],
   slots: {
     content: "The form shown inside the add/edit contact modal.",
     footer: "Optional footer replacing the default modal OK/Cancel buttons.",

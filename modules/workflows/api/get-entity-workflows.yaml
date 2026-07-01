@@ -1,0 +1,14 @@
+id: get-entity-workflows
+type: Api
+routine:
+  - id: query
+    type: GetEntityWorkflows
+    connectionId:
+      _module.connectionId: workflow-api
+    properties:
+      entity:
+        _payload: entity
+
+  - :return:
+      workflows:
+        _step: query.workflows

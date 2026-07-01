@@ -1,0 +1,29 @@
+# view + edit both gated to [admin]. To a non-admin every verb fails closed, so
+# GetEntityWorkflows drops the action entirely (no row on the entity surface)
+# and GetWorkflowAction returns null (the edit page redirects to view and no
+# action data leaks). To an admin it renders and behaves like any form action.
+type: admin-only
+kind: form
+action_group: gated
+sort_order: 30
+description: A form action only an admin can see or edit.
+access:
+  test:
+    view:
+      - admin
+    edit:
+      - admin
+form:
+  - key: form.note
+    component: text_input
+    title: Note
+status_map:
+  action-required:
+    test:
+      message: Admins only — complete this action.
+  in-progress:
+    test:
+      message: Draft saved.
+  done:
+    test:
+      message: Done by an admin.

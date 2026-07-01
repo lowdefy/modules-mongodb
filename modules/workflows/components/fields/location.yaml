@@ -1,0 +1,232 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: true
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  disabled:
+    type: boolean
+    default: false
+  disableScript:
+    type: boolean
+    default: false
+  events:
+    type: object
+    default: {}
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
+  extra:
+    type: string
+    required: false
+  coordinates_title:
+    type: string
+    default: null
+
+config:
+  id:
+    _string.concat:
+      - _var: key
+      - _places_address
+  type:
+    _build.if:
+      test:
+        _build.eq:
+          - _var:
+              key: disableScript
+              default: false
+          - true
+      then: Box
+      else: GoogleAPIProvider
+  layout:
+    contentGutter: 18
+  visible:
+    _var:
+      key: visible
+      default: true
+  properties:
+    _build.if:
+      test:
+        _build.eq:
+          - _var:
+              key: disableScript
+              default: false
+          - true
+      then: {}
+      else:
+        apiKey:
+          _build.env: GOOGLE_MAPS_API_KEY
+        libraries:
+          - places
+  blocks:
+    _build.array.concat:
+      - - id:
+            _var: key
+          type: PlacesAutocomplete
+          required:
+            _var:
+              key: required
+              default: false
+          events:
+            _build.if:
+              test:
+                _build.ne:
+                  - _var:
+                      key: coordinates_title
+                      default: null
+                  - null
+              then:
+                _build.object.assign:
+                  - _var:
+                      key: events
+                      default: {}
+                  - onClear:
+                      _build.array.concat:
+                        - _var:
+                            key: events.onClear
+                            default: []
+                        - - id: set_coordinates
+                            type: SetState
+                            params:
+                              _object.fromEntries:
+                                - - - _var: key
+                                    - null
+              else:
+                _var:
+                  key: events
+                  default: {}
+          properties:
+            disabled:
+              _var:
+                key: disabled
+                default: false
+            title:
+              _var: title
+            label:
+              _build.object.assign:
+                - inline:
+                    _var:
+                      key: label_inline
+                      default: false
+                  extra:
+                    _var: extra
+                - _build.if:
+                    test:
+                      _build.ne:
+                        - _var:
+                            key: label_span
+                            default: null
+                        - null
+                    then:
+                      span:
+                        _var: label_span
+                      align: right
+                    else: {}
+            fetchFields:
+              - addressComponents
+              - formattedAddress
+              - googleMapsURI
+              - viewport
+              - location
+            resultMapping:
+              addressComponents: address_components
+              formattedAddress: formatted_address
+              googleMapsURI: uri
+              viewport: geometry.viewport
+              location: geometry.location
+            labelField: formatted_address
+      - _build.if:
+          test:
+            _build.ne:
+              - _var:
+                  key: coordinates_title
+                  default: null
+              - null
+          then:
+            - id:
+                _string.concat:
+                  - _var: key
+                  - _label
+              type: Label
+              layout:
+                contentGutter: 8
+              properties:
+                _build.object.assign:
+                  - title:
+                      _var: coordinates_title
+                  - _build.if:
+                      test:
+                        _build.ne:
+                          - _var:
+                              key: label_span
+                              default: null
+                          - null
+                      then:
+                        span:
+                          _var: label_span
+                        align: right
+                      else: {}
+              blocks:
+                - id:
+                    _string.concat:
+                      - _var: key
+                      - .geometry.location.lat
+                  type: NumberInput
+                  required:
+                    _var:
+                      key: required
+                      default: false
+                  layout:
+                    span: 12
+                  properties:
+                    disabled:
+                      _or:
+                        - _var:
+                            key: disabled
+                            default: false
+                        - _ne:
+                            - _state:
+                                _string.concat:
+                                  - _var: key
+                                  - .formatted_address
+                            - null
+                    placeholder: Latitude
+                    label:
+                      disabled: true
+                - id:
+                    _string.concat:
+                      - _var: key
+                      - .geometry.location.lng
+                  type: NumberInput
+                  required:
+                    _var:
+                      key: required
+                      default: false
+                  layout:
+                    span: 12
+                  properties:
+                    disabled:
+                      _or:
+                        - _var:
+                            key: disabled
+                            default: false
+                        - _ne:
+                            - _state:
+                                _string.concat:
+                                  - _var: key
+                                  - .formatted_address
+                            - null
+                    placeholder: Longitude
+                    label:
+                      disabled: true
+          else: []

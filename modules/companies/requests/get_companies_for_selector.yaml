@@ -38,20 +38,20 @@ properties:
             then:
               $concat:
                 - _build.string.concat:
-                    - '$'
+                    - "$"
                     - _module.var: name_field
-                - ' ('
-                - '$_id'
-                - ') (child of this company)'
+                - " ("
+                - "$_id"
+                - ") (child of this company)"
             else:
               $concat:
                 - _build.string.concat:
-                    - '$'
+                    - "$"
                     - _module.var: name_field
-                - ' ('
-                - '$_id'
-                - ')'
-        value: '$_id'
+                - " ("
+                - "$_id"
+                - ")"
+        value: "$_id"
         disabled:
           $cond:
             if:

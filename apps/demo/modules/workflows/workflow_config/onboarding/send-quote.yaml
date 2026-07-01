@@ -1,0 +1,78 @@
+# send-quote (Part 28 showcase) — a kind:custom action.
+#
+# The quote is line items + a live total + notes — richer than a flat form: can
+# express — so its working surface is the app-owned `quote-builder` page rather
+# than the shared check page. The engine routes the `link:` cell below into the
+# per-verb links map: an actor (edit) and the admin reviewer (review) land on
+# quote-builder; an observer (view) falls back to the shared `onboarding-action`
+# page (no view_link is authored — the default observer path).
+type: send-quote
+kind: custom
+action_group: quoting
+blocked_by:
+  - qualify
+description: Build and send the lead a quote; reviewer approves before send.
+access:
+  demo:
+    view: true
+    edit: true
+    review:
+      - admin
+# Advance the lead to `quoted` when the reviewer approves the quote (the
+# milestone for a reviewed action is approval, not submit — submit only lands
+# it in-review). Same idempotent $push pattern as qualify's post-hook.
+hooks:
+  approve:
+    post:
+      routine:
+        - id: advance_lead_status
+          type: MongoDBUpdateOne
+          connectionId: leads-collection
+          properties:
+            filter:
+              _id:
+                _payload: context.workflow.entity.id
+              status.0.stage:
+                $ne: quoted
+            update:
+              $set:
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+              $push:
+                status:
+                  $position: 0
+                  $each:
+                    - stage: quoted
+                      created:
+                        _ref:
+                          module: events
+                          component: change_stamp
+        - :return:
+            lead_id:
+              _payload: context.workflow.entity.id
+status_map:
+  blocked:
+    demo:
+      message: Build and send the quote once the lead is qualified.
+  action-required:
+    demo:
+      message: Build and send the quote.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
+  in-progress:
+    demo:
+      message: Quote in progress.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
+  in-review:
+    demo:
+      message: Quote awaiting approval.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
+  changes-required:
+    demo:
+      message: Reviewer requested changes.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
+  done:
+    demo:
+      message: Quote approved and sent.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }

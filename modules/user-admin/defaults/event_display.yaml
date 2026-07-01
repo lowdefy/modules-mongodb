@@ -1,3 +1,3 @@
 invite-user: "{{ user.profile.name }} invited {{ target.name }}"
-update-user: "{{ user.profile.name }} updated {{ target.name }}"
+update-user: "{{ user.profile.name }} updated user {{ target.name }}"
 resend-user-invite: "{{ user.profile.name }} resent invite to {{ target.name }}"

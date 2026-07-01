@@ -1,0 +1,36 @@
+lowdefy: 0.0.0-experimental-20260611102401
+name: Workflows Test App
+
+config:
+  homePageId: things
+
+plugins:
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: 3.0.0
+  # Required by the contacts/companies modules (Excel export), pulled in to
+  # satisfy the workflows module's contacts dependency chain.
+  - name: "@lowdefy/community-plugin-xlsx"
+    version: 1.1.0
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: workspace:*
+
+modules:
+  _ref: modules.yaml
+
+menus:
+  _ref: menus.yaml
+
+connections:
+  - id: things-collection
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: things
+
+pages:
+  - _ref: pages/router.yaml
+  - _ref: pages/things.yaml
+  - _ref: pages/thing-view.yaml
+  # App-owned working page for the custom-action workflow (Part 28).
+  - _ref: pages/custom-thing-review.yaml

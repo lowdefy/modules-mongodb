@@ -1,0 +1,10 @@
+{
+  "name": "@lowdefy/modules-mongodb-workflows",
+  "version": "0.8.1",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "@lowdefy/modules-mongodb-plugins": "workspace:*",
+    "js-yaml": "^4"
+  }
+}

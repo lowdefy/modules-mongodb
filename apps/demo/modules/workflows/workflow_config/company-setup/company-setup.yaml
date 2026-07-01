@@ -1,0 +1,31 @@
+type: company-setup
+# title omitted — derives to "Company Setup" via humanizeSlug (docs/workflows/reference/authoring-grammar.md#titles).
+entity:
+  connection_id:
+    _module.connectionId: { id: companies-collection, module: companies }
+  ref_key: company_ids
+  page_id: companies/view
+  title: Company
+  # id_query_key omitted — defaults to _id
+  # Entity-list breadcrumb link → the companies module's scoped list page.
+  list_page_id: companies/all
+  list_title: Companies
+display_order: 2
+
+starting_actions:
+  - type: billing-details
+    status: action-required
+  - type: assign-account-manager
+    status: action-required
+  - type: kickoff-call
+    status: blocked
+
+action_groups:
+  # title omitted — derives to "Setup" via humanizeSlug (docs/workflows/reference/authoring-grammar.md#titles).
+  - id: setup
+    icon: AiOutlineSetting
+
+actions:
+  - _ref: modules/workflows/workflow_config/company-setup/billing-details.yaml
+  - _ref: modules/workflows/workflow_config/company-setup/assign-account-manager.yaml
+  - _ref: modules/workflows/workflow_config/company-setup/kickoff-call.yaml

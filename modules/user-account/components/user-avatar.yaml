@@ -1,0 +1,25 @@
+id: user_avatar
+type: Box
+layout:
+  gap: 8
+  contentAlign: center
+blocks:
+  - id: avatar
+    type: Avatar
+    properties:
+      src:
+        _var: user.profile.picture
+      # Empty-picture fallback: the Avatar block's built-in icon. In practice this
+      # rarely fires — any user created through profile/contact creation already has
+      # a generated gradient+initial SVG stored in profile.picture.
+      icon: UserOutlined
+  - id: name
+    type: Title
+    visible:
+      _var:
+        key: show_name
+        default: true
+    properties:
+      level: 5
+      content:
+        _var: user.profile.name

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    The theme CSS in this file is adapted from the Superpowers project
+    (https://github.com/obra/superpowers, the skills/brainstorming companion).
+    The original live-reloaded mockups over a Node.js WebSocket server and read
+    click selections back over it; this version drops the server entirely — the
+    file reloads itself via the meta-refresh tag below, Claude edits its content
+    region in place, and the user reports choices verbally in the terminal.
+
+    MIT License — Copyright (c) 2025 Jesse Vincent
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+  -->
+  <meta charset="utf-8">
+  <!--
+    Auto-reload: the page reloads itself every 2s so edits to this file appear
+    without the user pressing refresh. Bump/lower the interval if you like; set
+    it to a large number (or delete this tag) to require a manual refresh.
+  -->
+  <meta http-equiv="refresh" content="2">
+  <title>Design Companion</title>
+  <style>
+    /*
+     * DESIGN VISUAL COMPANION TEMPLATE (single-file, serverless)
+     * Attribution + MIT license: see the comment at the top of this file.
+     *
+     * - OS-aware light/dark theming
+     * - Fixed header
+     * - Scrollable main content area
+     * - CSS helpers for common UI patterns
+     *
+     * Claude edits only the region between CONTENT:START and CONTENT:END.
+     */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+
+    /* ===== THEME VARIABLES ===== */
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    /* ===== FRAME STRUCTURE ===== */
+    .header {
+      background: var(--bg-secondary);
+      padding: 0.5rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header h1 { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
+    .header .status { font-size: 0.7rem; color: var(--text-tertiary); }
+
+    .main { flex: 1; overflow-y: auto; }
+    #claude-content { padding: 2rem; min-height: 100%; }
+
+    /* ===== TYPOGRAPHY ===== */
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    /* ===== OPTIONS (for A/B/C choices) ===== */
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    /* ===== CARDS (for showing designs/mockups) ===== */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    /* ===== MOCKUP CONTAINER ===== */
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    /* ===== SPLIT VIEW (side-by-side comparison) ===== */
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    /* ===== PROS/CONS ===== */
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    /* ===== PLACEHOLDER (for mockup areas) ===== */
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    /* ===== INLINE MOCKUP ELEMENTS ===== */
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Design Companion <span style="opacity:0.6">— visuals based on <a href="https://github.com/obra/superpowers" style="color: inherit; text-decoration: underline dotted;">Superpowers</a></span></h1>
+    <div class="status">auto-refreshing</div>
+  </div>
+
+  <div class="main">
+    <div id="claude-content">
+      <!-- CONTENT:START -->
+      <style>
+        .mk { --ink:#1b1b22; --ink2:#56565f; --ink3:#8a8a96; --line:#ededf2; --line2:#e1e1e9;
+              --violet:#6c4df6; --violet2:#efeafe; --violet3:#f6f3ff;
+              --review-bg:#fff4e6; --review-fg:#d9730d; --review-bd:#ffd8a8;
+              --r:10px; --rsm:7px; --rpill:999px;
+              --sh:0 8px 22px rgba(20,20,35,.12),0 3px 8px rgba(20,20,35,.08);
+              font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+              color:var(--ink); font-size:13.5px; line-height:1.45; }
+        .mk h3 { margin:30px 0 4px; }
+        .mk .note { color:var(--ink3); font-size:12.5px; margin:0 0 12px; max-width:720px; }
+        /* a 750px-wide modal card, footerless (antd footer:false) */
+        .modal { width:750px; max-width:100%; background:#fff; border-radius:var(--r);
+                 box-shadow:var(--sh); overflow:hidden; margin-bottom:8px; }
+        .mbody { padding:24px; display:flex; flex-direction:column; gap:16px; }
+        /* status pills */
+        .pill { display:inline-flex; align-items:center; white-space:nowrap; font-weight:600;
+                background:var(--review-bg); color:var(--review-fg); border:1px solid var(--review-bd); }
+        .pill.lg { padding:8px 14px; border-radius:var(--rsm); font-size:14px; line-height:1; }
+        .pill.sm { padding:3px 10px; border-radius:var(--rsm); font-size:12px; line-height:1.3; }
+        /* chips */
+        .chips { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+        .avatars { display:flex; } .ava { width:26px; height:26px; border-radius:50%; display:grid;
+                 place-items:center; font-size:11px; font-weight:600; color:#fff; border:2px solid #fff; margin-left:-7px; }
+        .ava:first-child { margin-left:0; } .ava.b { background:#6c4df6; } .ava.g { background:#1c9c6b; }
+        .due { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--line2);
+               border-radius:var(--rpill); padding:4px 12px; color:var(--ink); white-space:nowrap; font-size:12.5px; }
+        .due svg { width:13px; height:13px; color:var(--ink3); }
+        .edit { border:1px solid transparent; background:transparent; border-radius:var(--rsm); width:28px; height:28px;
+                display:grid; place-items:center; cursor:pointer; color:var(--ink2); }
+        .edit:hover { color:var(--violet); border-color:var(--violet); }
+        .edit svg { width:16px; height:16px; }
+        /* description lead-in (Part 64: plain markdown, first child of the card — no callout chrome) */
+        .desc { color:var(--ink); }
+        .desc p { margin:0; } .desc strong { font-weight:650; }
+        /* comment field */
+        .lab { display:block; margin-bottom:5px; font-weight:550; }
+        .ta { width:100%; border:1px solid var(--line2); border-radius:var(--rsm); padding:8px 11px;
+              font:inherit; color:var(--ink3); background:#fff; min-height:64px; box-sizing:border-box; }
+        /* in-flow right-aligned signal bar */
+        .bar { display:flex; justify-content:flex-end; gap:8px; }
+        .btn { font:inherit; font-weight:550; border-radius:var(--rsm); padding:7px 16px; cursor:pointer;
+               border:1px solid var(--line2); background:#fff; color:var(--ink); }
+        .btn.primary { background:var(--violet); border-color:var(--violet); color:#fff; }
+        .btn.danger { color:#d9480f; border-color:#ffc9a8; background:#fff7f2; }
+        /* header variants */
+        .hA { display:flex; align-items:center; gap:12px; }
+        .hA .ttl { font-size:18px; font-weight:650; flex:1 1 auto; }
+        .hB { display:flex; align-items:flex-start; gap:14px; }
+        .hB .pillwrap { flex:0 0 auto; padding-top:2px; }
+        .hB .col { flex:1 1 0; min-width:0; }
+        .hB .eyebrow { font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--ink3); }
+        .hB .ttl { font-size:23px; font-weight:700; letter-spacing:-.01em; margin:1px 0; line-height:1.14; }
+        .hB .sub { color:var(--ink2); font-size:13px; }
+        .hB .chips { padding-top:4px; }
+        .hC .top { display:flex; align-items:center; gap:12px; }
+        .hC .ttl { font-size:18px; font-weight:650; }
+        .hC .meta { display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:12px;
+                    border-top:1px solid var(--line); }
+        .hC .mlabel { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink3); margin-right:2px; }
+      </style>
+
+      <h2>Check-action modal — header layout options</h2>
+      <p class="subtitle">Same body in all three (authored description lead-in · optional comment · signal bar). Only the header differs. State: a <em>review-mode</em> check action, 2 assignees + a due date, description set. Modal is 750px wide, footerless.</p>
+      <p class="note" style="background:#efeafe;border:1px solid #d9cffc;border-radius:8px;padding:10px 13px;color:#4b3aa8;max-width:720px;font-weight:550;">✓ Chosen: <strong>Option B</strong> — the shared <code>title-block</code> component, with the workflow eyebrow dropped (and no subtitle). See design.md D3.</p>
+
+      <h3>A · Compact header, chips on the right</h3>
+      <p class="note">Today's header (Title + status Tag) on one row, with assignees/due/✎ right-aligned. Smallest footprint; reads like a modal, not a page. No workflow-name eyebrow.</p>
+      <div class="modal">
+        <div class="mbody">
+          <div class="hA">
+            <span class="pill lg">In Review</span>
+            <span class="ttl">Qualify the lead</span>
+            <div class="chips">
+              <div class="avatars"><span class="ava b">SM</span><span class="ava g">AK</span></div>
+              <span class="due"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>Jul 12</span>
+              <button class="edit" title="Edit details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+            </div>
+          </div>
+          <div class="desc"><p>Confirm the lead's contact details and capture qualification notes. Reference: <strong>LEAD-1042</strong>.</p></div>
+          <div><span class="lab">Comment</span><div class="ta">Add a comment (optional).</div></div>
+          <div class="bar"><button class="btn danger">Request Changes</button><button class="btn primary">Approve</button></div>
+        </div>
+      </div>
+
+      <h3>B · Shared title-block component (the page header, reused) — as built</h3>
+      <p class="note">The exact <code>title-block</code> the workspace pages use — 23px title, status pill left, chips in <code>page_actions</code> — <strong>with the workflow eyebrow and the subtitle both dropped</strong> (D3). This is the true as-built header: pill · bare title · chips. Maximum visual consistency with the full page; the trade-off is the lone large title and page-scaled pill can feel page-sized inside a modal — fallback is Option A. (Earlier iterations rendered an eyebrow + subtitle to balance the title; both are removed here.)</p>
+      <div class="modal">
+        <div class="mbody">
+          <div class="hB">
+            <div class="pillwrap"><span class="pill lg">In Review</span></div>
+            <div class="col">
+              <div class="ttl">Qualify the lead</div>
+            </div>
+            <div class="chips">
+              <div class="avatars"><span class="ava b">SM</span><span class="ava g">AK</span></div>
+              <span class="due"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>Jul 12</span>
+              <button class="edit" title="Edit details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+            </div>
+          </div>
+          <div class="desc"><p>Confirm the lead's contact details and capture qualification notes. Reference: <strong>LEAD-1042</strong>.</p></div>
+          <div><span class="lab">Comment</span><div class="ta">Add a comment (optional).</div></div>
+          <div class="bar"><button class="btn danger">Request Changes</button><button class="btn primary">Approve</button></div>
+        </div>
+      </div>
+
+      <h3>C · Compact title, chips on a second meta row</h3>
+      <p class="note">Title + status on top; a thin divided meta strip beneath carries assignees/due/✎. Keeps the title small while giving the chips their own breathing room — useful if the title runs long and would crowd the chips in option A.</p>
+      <div class="modal">
+        <div class="mbody">
+          <div class="hC">
+            <div class="top"><span class="pill lg">In Review</span><span class="ttl">Qualify the lead</span></div>
+            <div class="meta">
+              <span class="mlabel">Details</span>
+              <div class="avatars"><span class="ava b">SM</span><span class="ava g">AK</span></div>
+              <span class="due"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>Jul 12</span>
+              <button class="edit" title="Edit details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+            </div>
+          </div>
+          <div class="desc"><p>Confirm the lead's contact details and capture qualification notes. Reference: <strong>LEAD-1042</strong>.</p></div>
+          <div><span class="lab">Comment</span><div class="ta">Add a comment (optional).</div></div>
+          <div class="bar"><button class="btn danger">Request Changes</button><button class="btn primary">Approve</button></div>
+        </div>
+      </div>
+      <!-- CONTENT:END -->
+    </div>
+  </div>
+
+  <script>
+    // ----- Scroll preservation across meta-refresh reloads -----
+    // The whole page reloads every couple seconds; persist scroll so the view
+    // doesn't jump back to the top each time.
+    try {
+      var saved = sessionStorage.getItem("dc-scroll");
+      if (saved !== null) {
+        var main = document.querySelector(".main");
+        if (main) main.scrollTop = parseInt(saved, 10) || 0;
+      }
+      document.querySelector(".main").addEventListener("scroll", function (e) {
+        sessionStorage.setItem("dc-scroll", String(e.target.scrollTop));
+      });
+    } catch (err) { /* sessionStorage unavailable on some file:// setups — ignore */ }
+  </script>
+</body>
+</html>

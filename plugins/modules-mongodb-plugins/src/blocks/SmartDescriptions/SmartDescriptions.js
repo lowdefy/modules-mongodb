@@ -5,7 +5,7 @@ import withTheme from "@lowdefy/blocks-antd/blocks/withTheme.js";
 import processData from "./processData.js";
 import processFields from "./processFields.js";
 import renderValue from "./renderValue.js";
-import "./style.module.css";
+import "./style.css";
 
 const SmartDescriptions = ({
   blockId,

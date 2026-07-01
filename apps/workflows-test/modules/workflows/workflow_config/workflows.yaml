@@ -1,0 +1,12 @@
+# Workflow fixture index — cluster tasks (Part 22 tasks 3–10) append
+# `_ref` entries to this list, one per cluster workflow.
+- _ref: modules/workflows/workflow_config/form-lifecycle/form-lifecycle.yaml
+- _ref: modules/workflows/workflow_config/check-blocked-by/check-blocked-by.yaml
+- _ref: modules/workflows/workflow_config/cascade-keyed/cascade-keyed.yaml
+- _ref: modules/workflows/workflow_config/error-recovery/error-recovery.yaml
+- _ref: modules/workflows/workflow_config/tracker-child/tracker-parent.yaml
+- _ref: modules/workflows/workflow_config/tracker-child/tracker-child-flow.yaml
+- _ref: modules/workflows/workflow_config/field-gallery/field-gallery.yaml
+- _ref: modules/workflows/workflow_config/operational-lifecycle/operational-lifecycle.yaml
+- _ref: modules/workflows/workflow_config/access-verbs/access-verbs.yaml
+- _ref: modules/workflows/workflow_config/custom-action/custom-action.yaml

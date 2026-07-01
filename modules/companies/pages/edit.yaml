@@ -3,14 +3,14 @@ _ref:
   component: page
   vars:
     id: edit
-    title:
+    type:
       _string.concat:
         - "Edit "
         - _module.var: label
-        - ": "
-        - _if_none:
-            - _request: get_company.0.display_name
-            - ""
+    title:
+      _if_none:
+        - _request: get_company.0.display_name
+        - ""
     content_width: 700
     breadcrumbs:
       - home: true
@@ -151,6 +151,20 @@ _ref:
           component: floating-actions
           vars:
             actions:
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        back: true
               - id: save_button
                 type: Button
                 layout:
@@ -226,20 +240,6 @@ _ref:
                             - " updated."
                     - id: reset
                       type: Reset
-                    - id: back
-                      type: Link
-                      params:
-                        back: true
-              - id: cancel_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Cancel
-                  icon: AiOutlineCloseCircle
-                  type: default
-                events:
-                  onClick:
                     - id: back
                       type: Link
                       params:

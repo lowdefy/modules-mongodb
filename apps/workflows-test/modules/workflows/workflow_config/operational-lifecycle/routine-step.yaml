@@ -1,0 +1,18 @@
+# A plain check: submit → done (no review verb). Completed before the close
+# sweep so the workflow has a done action to preserve.
+type: routine-step
+kind: check
+action_group: routine
+sort_order: 10
+description: A routine step completed in the normal course of the workflow.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Complete the routine step.
+  done:
+    test:
+      message: Routine step complete.

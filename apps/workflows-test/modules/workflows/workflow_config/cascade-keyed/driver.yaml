@@ -1,0 +1,53 @@
+# The driver: a `kind: form` action with no review verb (so submit → done).
+# Its submit pre-hook returns `actions[]` expressing the whole cascade. The
+# keyed-spawn's `key` is read from the form input (`form.spawn_key`), so the spec
+# controls the spawned identity through real form data — the production path a
+# real app uses to spawn a per-instance keyed action (cf. demo qualify → site-
+# visit). Pre-hooks may only target AUXILIARY actions, never redirect `driver`
+# itself (invokePreHook redirect guard).
+type: driver
+kind: form
+action_group: cascade
+sort_order: 10
+description: Drives a multi-effect cascade from a single submit.
+access:
+  test:
+    view: true
+    edit: true
+form:
+  # Required — its value becomes the spawned keyed action's `key`. The hook reads
+  # it off the payload's form bag (without the `form.` prefix): _payload: form.spawn_key.
+  - key: form.spawn_key
+    component: text_input
+    title: Keyed-spawn key
+    required: true
+hooks:
+  submit:
+    pre:
+      routine:
+        - :return:
+            actions:
+              # Cascade at three seeded siblings…
+              - type: gets-blocked
+                signal: block
+              - type: gets-errored
+                signal: error
+              - type: gets-activated
+                signal: activate
+              # …and upsert-spawn a KEYED action at its none-row birth stage.
+              # No matching (type, key) doc exists on the first submit, so the
+              # planner inserts it at the `activate` birth stage (action-required);
+              # a later submit with the same key resolves the existing doc (no
+              # duplicate) — resolveSignal.test.js owns that semantics.
+              - type: keyed-spawn
+                signal: activate
+                upsert: true
+                key:
+                  _payload: form.spawn_key
+status_map:
+  action-required:
+    test:
+      message: Submit to fire the cascade.
+  done:
+    test:
+      message: Cascade fired.

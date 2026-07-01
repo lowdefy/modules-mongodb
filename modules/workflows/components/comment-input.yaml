@@ -1,0 +1,110 @@
+# Shared comment input + visibility control (Part 61 D6).
+#
+# The single comment-input fragment every workflow comment surface _refs, so the
+# text-only config and the shared/internal visibility control live in exactly ONE
+# place (one correct way). Replaces the previously-inline TiptapInput blocks on
+# every surface; supersedes Part 62's per-input text-only edits.
+#
+# Consumed via `_ref: { path, vars }` with OPERATOR-valued vars (no `key`), the
+# same pattern as universal-fields.yaml — the file IS the block, var values are
+# substituted into the `_var` operators below.
+#
+# Text-only (D6): the TiptapInput's inline Image extension is disabled and
+# s3PostPolicyRequestId is left unset, so comment.html is always real text and
+# comment.fileList is always empty — every comment input validates on
+# comment.text alone (no fileList clause).
+#
+# Visibility control: a CheckboxSwitch (off = shared default, on = internal),
+# shown ONLY when the host wired `enable_internal_comments: true` on the
+# workflows module entry (read at build time via _module.var, which defaults to
+# false). With the flag off the switch never renders and every comment is shared;
+# the engine coerces any internal request to shared regardless (server-side
+# enforcement, Part 61 D2), so the absent control can never silo a comment.
+#
+# Vars:
+#   - comment_path      state path of the TiptapInput (its block id; auto-bound).
+#   - visibility_path   state path of the CheckboxSwitch toggle (boolean; on = internal).
+#   - title             input title (default "Comment").
+#   - placeholder       input placeholder (optional).
+#   - required          true → mandatory comment: adds the required flag + a
+#                       "comment.text non-empty" validate (default false).
+#   - required_message  validate message when required (default "A comment is required").
+#   - visible           container visibility operator (default true) — gates BOTH
+#                       the input and the toggle (e.g. the check-surface comment's
+#                       mode gate).
+#
+# The payload mapping lives at each BUTTON site, not here: a button reads
+# `comment: { _state: comment_path }` and maps the toggle to the string enum via
+# `comment_visibility: { _if: { test: { _eq: [{ _state: visibility_path }, true] },
+# then: internal, else: shared } }`. The test is `_eq [..., true]` rather than the
+# bare `_state`, because the CheckboxSwitch is hidden unless the host opted in and a
+# hidden input's value drops out of state — the bare state would be `undefined`, not
+# a boolean, and `_if` requires a boolean test.
+id:
+  _string.concat:
+    - _var: comment_path
+    - _input_group
+type: Box
+visible:
+  _var:
+    key: visible
+    default: true
+layout:
+  gap: 8
+blocks:
+  - id:
+      _var: comment_path
+    type: TiptapInput
+    required:
+      _var:
+        key: required
+        default: false
+    validate:
+      _build.if:
+        test:
+          _build.eq:
+            - _var:
+                key: required
+                default: false
+            - true
+        then:
+          - message:
+              _var:
+                key: required_message
+                default: A comment is required
+            status: error
+            pass:
+              _ne:
+                - _if_none:
+                    - _state:
+                        _string.concat:
+                          - _var: comment_path
+                          - .text
+                    - null
+                - null
+        else: []
+    properties:
+      # Text-only (D6): disable the inline Image extension and leave
+      # s3PostPolicyRequestId unset, so the comment never carries a fileList /
+      # inline <img>.
+      image:
+        disabled: true
+      title:
+        _var:
+          key: title
+          default: Comment
+      placeholder:
+        _var: placeholder
+  # Shared/internal control — hidden unless the host opted this app in. Off =
+  # shared (the default audience); on = internal (kept to this app, honoured
+  # server-side only when the connection enabled it).
+  - id:
+      _var: visibility_path
+    type: CheckboxSwitch
+    visible:
+      _module.var: enable_internal_comments
+    properties:
+      title: Internal comment
+      description: >-
+        On: visible only in this app. Off: shared with every app that sees this
+        event.

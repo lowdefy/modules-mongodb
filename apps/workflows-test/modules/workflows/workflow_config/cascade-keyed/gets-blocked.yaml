@@ -1,0 +1,19 @@
+# Sibling the cascade `block`s: action-required → blocked (form/check `block`
+# cell). A second cascade `block` while already blocked is an FSM no-op skip
+# (the `blocked` row has no `block` entry) — proved in the tail.
+type: gets-blocked
+kind: check
+action_group: cascade
+sort_order: 20
+description: A sibling the driver's cascade blocks.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Awaiting the cascade.
+  blocked:
+    test:
+      message: Blocked by the cascade.

@@ -1,6 +1,6 @@
 id:
   _build.string.concat:
-    - 'upload_policy_'
+    - "upload_policy_"
     - _var:
         key: block_id
         default: file_upload
@@ -18,14 +18,14 @@ properties:
   key:
     _string.concat:
       - _var: entity_type
-      - '/'
+      - "/"
       - _dayjs.format:
           on:
             _date: now
-          format: 'YYYYMMDD_HHmmssSSS'
-      - '/'
+          format: "YYYYMMDD_HHmmssSSS"
+      - "/"
       - _uuid: true
-      - '/'
+      - "/"
       - _payload: file_name
   fields:
     Content-Type:
@@ -33,22 +33,22 @@ properties:
     x-amz-meta-uploaded-by-id:
       _if_none:
         - _user: id
-        - 'unknown'
+        - "unknown"
     x-amz-meta-uploaded-by-name:
       _if_none:
         - _user: profile.name
-        - 'unknown'
+        - "unknown"
     x-amz-meta-uploaded-by-url:
       _if_none:
         - _payload: url
-        - 'unknown'
+        - "unknown"
   conditions:
     - - starts-with
       - $x-amz-meta-uploaded-by-id
-      - ''
+      - ""
     - - starts-with
       - $x-amz-meta-uploaded-by-name
-      - ''
+      - ""
     - - starts-with
       - $x-amz-meta-uploaded-by-url
-      - ''
+      - ""

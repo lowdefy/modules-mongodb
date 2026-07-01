@@ -1,0 +1,44 @@
+# A form action with the `review` verb. Because `access.test.review` is truthy,
+# the FSM routes `submit` to `in-review` (not straight to `done`); a reviewer
+# then `approve`s (→ done) or `request_changes` (→ changes-required, back to the
+# submitter). `progress` saves a draft (no validation) and lands `in-progress`.
+#
+# Access is kept maximally readable here — every verb is open (`true`). Role-
+# gating the `review` verb is task 10's (`access-verbs`) job, not this template's.
+type: reviewed-form
+kind: form
+action_group: lifecycle
+sort_order: 10
+description: A form action that is reviewed before it completes.
+access:
+  test:
+    view: true
+    edit: true
+    review: true
+form:
+  # Required — drives the validation split: `submit` enforces it, `progress`
+  # (draft-save) does not.
+  - key: form.summary
+    component: text_input
+    title: Summary
+    required: true
+  # Optional — the field a draft-save can persist on its own.
+  - key: form.notes
+    component: text_area
+    title: Notes
+status_map:
+  action-required:
+    test:
+      message: Fill in and submit the form.
+  in-progress:
+    test:
+      message: Draft saved — finish and submit.
+  in-review:
+    test:
+      message: Submitted — awaiting review.
+  changes-required:
+    test:
+      message: Reviewer requested changes.
+  done:
+    test:
+      message: Approved and complete.

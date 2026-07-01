@@ -1,0 +1,236 @@
+# Build-time resolver invocations (resolvers in modules/workflows/resolvers/):
+#   makeWorkflowsConfig    — engine config validation; component
+#                            validated_workflows_config, consumed by
+#                            connections/workflow-api.yaml.
+#   makeWorkflowApis       — per-workflow {type}-submit/start/cancel/close
+#                            APIs plus engine-only hook / group on-complete
+#                            InternalApis; spliced into api:.
+#   makeActionPages        — per-action edit/view/review/error pages (form kinds)
+#                            plus one per-workflow {type}-action page (check or
+#                            custom kinds) from templates/{verb}.yaml.njk and
+#                            templates/action.yaml.njk; spliced into pages:. All
+#                            page kinds share the three-tier action workspace
+#                            shell (components/action-workspace.yaml).
+#   makeActionsForm        — template-scope form-block substitution (already
+#                            wired from templates/{verb}.yaml.njk).
+#
+# The workflow-api connection `_ref`s the canonical enum file directly
+# (`actionsEnum: { _ref: ../shared/enums/action_statuses.yaml }`), so the engine
+# always reads the shipped enum with its canonical priorities. The merged
+# enum components below are UI-only consumers.
+
+name: Workflows
+version: 0.8.1
+description: Workflow engine — action lifecycle, status transitions, hooks, trackers
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper consumed by every shared page.
+  - id: events
+    description: >
+      Provides the change_stamp component referenced by the workflow-api
+      connection, the new-event Api the engine dispatches the per-invocation
+      log event to (endpoints.new_event on the connection), and the
+      events-timeline component composed by the three-tier action workspace
+      shell (components/action-workspace.yaml, the History tab on every action
+      page) to render the action's activity stream — comments included inline
+      via display.{app}.description.
+  - id: notifications
+    description: >
+      Provides the send-notification InternalApi the engine dispatches to
+      after each committed event (endpoints.send_notification on the
+      workflow-api connection).
+  - id: contacts
+    description: >
+      Provides the contact-selector component wrapped by the `contact` /
+      `multiple_contact` form fields (components/fields/). Only exercised when
+      a workflow form uses one of those fields.
+  - id: user-account
+    description: >
+      Supplies the user-multi-selector and user-avatar components the
+      universal-fields surface composes (Part 24 / Part 24a).
+
+vars:
+  workflows_config:
+    type: array
+    required: true
+    description: >
+      Array of workflow definitions consumed by every build-time resolver in this
+      module (parts 4, 12, 13, 15). Host app supplies via the entry's `vars` block,
+      e.g. `vars: { _ref: workflow_config/workflows.yaml }`. Each entry is a workflow
+      object with `type`, a required `entity:` block, `starting_actions`,
+      `action_groups`, and `actions` (see
+      workflows-module-concept/action-authoring/spec.md). The `entity:` block carries
+      the workflow's entity routing:
+      - `connection_id` (required) — the entity's Lowdefy connection id (e.g. `leads-collection`).
+      - `ref_key` (required) — the event-references key for the workflow's entity (e.g. `lead_ids`),
+        written into event docs so events surface on the entity.
+      - `page_id` (required) — host-app page id rendering the entity (the entity
+        breadcrumb crumb links here).
+      - `id_query_key` (optional, default `_id`) — URL query-string key for the entity's primary id.
+      - `title` (required) — singular human-readable entity-kind label (e.g. "Lead").
+      - `data` (optional) — an inline routine, authored exactly like a hook
+        (`{ routine: [ ... ] }`), that returns an object describing the entity
+        instance. The module generates an engine-only `{type}-entity-data`
+        endpoint from it; the action read handlers call it server-side (payload
+        `{ entity_id }`) and surface the result on the response. Its reserved
+        `name` key is lifted onto the breadcrumb / back-link as the instance
+        display name; all other keys are host-owned and available on the action
+        response's `entity` object and via the `entity_view` slot. Omit it and
+        chrome falls back to the `title` type label and no endpoint is emitted.
+        (Replaces the former `name_field` dot-path.)
+      - `list_page_id` + `list_title` (optional pair) — the host-app entity-LIST
+        page id and its (plural) crumb label. Set both to prepend a list crumb to
+        the action-page breadcrumb so the trail mirrors the host app's own entity
+        pages: `Home / {list_title} / {entity} / {workflow} / {action}`. Omit both
+        to drop the list crumb. Setting only one is an authoring error (a link
+        needs both a target and a label).
+      Each workflow also accepts an optional `entity_view:` block — a build-time,
+      read-only UI hint, NOT part of the materialized engine config (it never
+      reaches the validated engine output). It carries a single `slot` (a Lowdefy
+      block ref) rendering a read-only view of the entity. On form action pages
+      the slot is the RHS Details tab; on the check page it is the middle review
+      subject. Omit it and the Details tab is dropped (form pages) / the middle
+      review subject is empty (check page).
+      Workflows, actions, and
+      action groups accept an optional `title:`; when omitted it is derived from
+      the slug (`type`/`id`) by the title humanizer — splits on `-`/`_`/camelCase,
+      applies Title Case, lowercases minor words mid-string, uppercases acronyms
+      (base set: PO ID URL API CRM SLA KPI VAT PDF CSV FAQ KYC RFQ; extended by
+      `title_acronyms`). Set `title:` only when the default is wrong.
+  app_name:
+    type: string
+    required: true
+    description: >
+      The host app's deployment name. Serves three roles: (1) filters action
+      access via `access.{app_name}` per action; (2) keys the engine's default
+      log event display block (matching the events module's display_key
+      projection); and (3) keys the per-app action display the engine writes
+      onto each action doc — display surfaces read `action.{app_name}.message`
+      and `action.{app_name}.links` for the current app's slug.
+  enable_internal_comments:
+    type: boolean
+    default: false
+    description: >
+      Opt this app in to the shared/internal comment distinction (Part 61). The
+      host wires it onto the workflow-api connection (`enable_internal_comments`)
+      and the comment surfaces read it at build time. When `true`, every comment
+      input shows a small shared/internal control and the engine honours an
+      `internal` (single-app) comment from this app. When `false` (the default),
+      the control is hidden, and the engine coerces any `internal` request to
+      `shared` — so every comment is visible to all apps that see the event.
+      Comments default to `shared` regardless. Set this only on the internal/team
+      app that sometimes needs to keep a note off other apps; single-app and
+      customer-facing apps leave it off.
+  action_statuses_display:
+    type: object
+    default: {}
+    description: >
+      Per-status display overrides for the shipped action_statuses enum.
+      Merged via `_build.object.assign` onto the shipped enum and exposed
+      as the `action_statuses` component for UI consumption only. The
+      engine reads the shipped enum directly from the module file —
+      overrides are UI-only and cannot affect engine behaviour (transition
+      legality is owned by the per-kind FSM tables; the enum's `priority`
+      is display-only ordering).
+  workflow_lifecycle_stages_display:
+    type: object
+    default: {}
+    description: >
+      Per-stage display overrides for the shipped workflow_lifecycle_stages
+      enum. Same merge semantics as action_statuses_display: UI-only,
+      cannot affect engine logic.
+  title_acronyms:
+    type: array
+    default: []
+    description: >
+      Domain acronyms (e.g. [BOM, SKU]) merged into the module's base acronym
+      set and applied by the title humanizer when deriving default titles from
+      workflow/action/group slugs. A token whose lowercased form matches an entry
+      is fully uppercased in derived titles (e.g. "upload-bom" → "Upload BOM").
+      Base set ships in the module; this var extends it. Has no effect on
+      explicitly authored `title:` values.
+  contacts_collection:
+    type: string
+    default: user-contacts
+    description: >
+      Collection name the workflow-api connection's contact lookups join to
+      resolve each contact's avatar (the action-page read GetWorkflowAction
+      joins it to project profile.picture). Defaults to `user-contacts` — the
+      shared collection where a user IS a contact (same _id space). Set this to
+      match your contacts collection name if the host app points the contacts
+      module at a custom collection.
+
+exports:
+  components:
+    - id: check-action-modal
+      description: >
+        Standalone in-context check-action modal — a single Modal block (fixed
+        blockId check_action_modal) wrapping the shared check-action surface.
+        The PAGE drops the modal exactly once and owns its on_complete (the
+        host's refetch action sequence run after a successful signal, default
+        []) — the page is the only scope that sees every co-present surface, so
+        it composes the full refetch list. Surfaces no longer auto-bundle it; a
+        check-row click degrades to navigation when no modal is on the page.
+        Opened exclusively via the documented SetState + CallMethod(setOpen,
+        [{ open: true }]) contract. One instance per page; never drop it on a
+        page that already defines a get_workflow_action request (the
+        per-workflow {workflow_type}-action page).
+
+components:
+  - id: action_statuses
+    component:
+      _ref: components/action_statuses.yaml
+  - id: workflow_lifecycle_stages
+    component:
+      _ref: components/workflow_lifecycle_stages.yaml
+  - id: actions-on-entity
+    component:
+      _ref: components/actions-on-entity.yaml
+  - id: check-action-modal
+    component:
+      _ref: components/check-action-modal.yaml
+  - id: validated_workflows_config
+    component:
+      _ref: components/validated_workflows_config.yaml
+  - id: entity-workflows-refetch
+    component:
+      _ref: components/entity-workflows-refetch.yaml
+
+connections:
+  - _ref: connections/workflows-collection.yaml
+  - _ref: connections/actions-collection.yaml
+  - _ref: connections/workflow-api.yaml
+
+api:
+  _build.array.concat:
+    - - _ref: api/get-entity-workflows.yaml
+      - _ref: api/get-workflow-overview.yaml
+      - _ref: api/get-action-group-overview.yaml
+    - _ref:
+        resolver: resolvers/makeWorkflowApis.js
+        vars:
+          workflows:
+            _module.var: workflows_config
+
+pages:
+  _build.array.concat:
+    - - _ref: pages/workflow-overview.yaml
+      - _ref: pages/workflow-group-overview.yaml
+    - _ref:
+        resolver: resolvers/makeActionPages.js
+        vars:
+          workflows:
+            _module.var: workflows_config
+          app_name:
+            _module.var: app_name
+          title_acronyms:
+            _module.var: title_acronyms
+
+plugins:
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.8.1"
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI

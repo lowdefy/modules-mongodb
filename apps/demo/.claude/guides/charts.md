@@ -7,23 +7,24 @@ How to build data visualizations using EChart, Statistic blocks, and the reporti
 All charts use the `EChart` block type (Apache ECharts via Lowdefy). Charts are wrapped in a **reporting card** component (`reporting_card.yaml`) that provides: title, loading skeleton, no-data empty state, optional header buttons, and a content area for the chart itself.
 
 **Reporting card wrapper** — a shared component that handles the boilerplate:
+
 ```yaml
 _ref:
   path: ../shared/reporting/components/reporting_card.yaml
   vars:
-    id: {chart_id}
-    title: {Chart Title}
-    no_data_type: bar_chart    # icon: pie_chart, line_chart, bar_chart, table, statistic
-    height: 500                # skeleton + no-data placeholder height
-    data:                      # array to check for empty state
+    id: { chart_id }
+    title: { Chart Title }
+    no_data_type: bar_chart # icon: pie_chart, line_chart, bar_chart, table, statistic
+    height: 500 # skeleton + no-data placeholder height
+    data: # array to check for empty state
       _request: get_{data}
-    extra: []                  # header buttons (drill-down back, export)
-    content:                   # the EChart block(s)
-      - id: {chart}
+    extra: [] # header buttons (drill-down back, export)
+    content: # the EChart block(s)
+      - id: { chart }
         type: EChart
         properties:
           height: 500
-          option: {echart_config}
+          option: { echart_config }
 ```
 
 The wrapper shows a skeleton while `data` is null, a "No data" result icon when the array is empty, and the chart content when data exists.
@@ -33,6 +34,7 @@ The wrapper shows a skeleton while `data` is null, a "No data" result icon when 
 **Colors from enums** — chart series colors should reference status enum colors via `_get` from `_ref: ../shared/enums/{type}.yaml` or `_global: enums.{type}`. This keeps charts semantically consistent with tables and badges.
 
 **Click-to-filter interactivity** — charts emit `click` events with `_event: data`. The handler typically sets filter state and either re-fetches requests (same page drill-down) or navigates to a list page with URL query filters:
+
 ```yaml
 events:
   click:
@@ -62,6 +64,7 @@ Report page onMount → filter state initialized → Request fires aggregation
 ## Variations
 
 **Stacked bar chart** — multiple series with `stack` and enum-derived colors:
+
 ```yaml
 series:
   - type: bar
@@ -74,21 +77,25 @@ series:
     stack: status
     encode: { y: _id, x: open }
 ```
+
 Add `type: line` with `lineStyle: { opacity: 0 }` as a "total" overlay with labels.
 
 **Time-series line chart** — `xAxis: { type: time }` with `dataset.dimensions`:
+
 ```yaml
 xAxis:
   type: time
-  axisLabel: { formatter: '{d} {MMM}' }
+  axisLabel: { formatter: "{d} {MMM}" }
 series:
   - type: line
     encode: { x: _id, y: created }
     connectNulls: true
 ```
+
 Add confidence bands with paired upper/lower line series using `areaStyle`.
 
 **Heatmap** — agent × status grid, `visualMap` for color intensity:
+
 ```yaml
 xAxis:
   type: category
@@ -102,12 +109,12 @@ xAxis:
         _function: { __args: 0._id }
 yAxis:
   type: category
-  data: {same pattern for agents}
+  data: { same pattern for agents }
 visualMap:
   min: 0
-  max: {computed from data}
+  max: { computed from data }
   inRange:
-    color: ['#fff', { _ref: { path: app_config.yaml, key: colors.primary } }]
+    color: ["#fff", { _ref: { path: app_config.yaml, key: colors.primary } }]
 series:
   type: heatmap
   data:
@@ -117,19 +124,22 @@ series:
         _function:
           value: [{ __args: 0.x }, { __args: 0.y }, { __args: 0.count }]
 ```
+
 Use `_mql.aggregate` client-side to extract axis categories from the same dataset.
 
 **Pie/donut chart** — `series.radius: ['40%', '70%']` for donut:
+
 ```yaml
 series:
   type: pie
-  radius: ['40%', '70%']
+  radius: ["40%", "70%"]
   padAngle: 4
   itemStyle: { borderRadius: 10 }
   selectedMode: single
 ```
 
 **Treemap** — for hierarchical breakdowns (causes, categories):
+
 ```yaml
 series:
   type: treemap
@@ -145,6 +155,7 @@ series:
 ```
 
 **Sparkline/micro-chart** — minimal trend line in a small area, no axes:
+
 ```yaml
 xAxis: { type: time, show: false }
 yAxis: { type: value, show: false, min: dataMin }
@@ -154,16 +165,17 @@ series:
     areaStyle: { opacity: 0.3 }
     symbol: none
     smooth: true
-    encode: { x: month, y: {field} }
+    encode: { x: month, y: { field } }
 ```
 
 **KPI statistics row** — clickable cards with single numbers:
+
 ```yaml
 - id: kpi_card
   type: Card
   layout: { span: 5 }
   properties:
-    style: { border: '1px solid #8484844c', textAlign: center, height: 100px }
+    style: { border: "1px solid #8484844c", textAlign: center, height: 100px }
   events:
     onClick: [set filter + link to list page]
   blocks:

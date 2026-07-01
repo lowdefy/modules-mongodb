@@ -23,10 +23,10 @@ vars:
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
-    description: 'Gradient pairs for avatar backgrounds. Each entry: { from, to }.'
+    description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
   fields:
     type: object
-    description: 'Field block arrays: profile. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr).'
+    description: "Field block arrays: profile. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
     properties:
       show_honorific:
         type: boolean
@@ -40,14 +40,14 @@ vars:
           `state.profile.*`.
   components:
     type: object
-    description: 'Component overrides: main_slots'
+    description: "Component overrides: main_slots"
     properties:
       main_slots:
         default: []
         description: Extra blocks appended to the main column on the profile page.
   request_stages:
     type: object
-    description: 'MongoDB pipeline stage overrides: write. write stages are appended to both create and update profile flows.'
+    description: "MongoDB pipeline stage overrides: write. write stages are appended to both create and update profile flows."
     properties:
       write:
         default: []
@@ -96,6 +96,12 @@ exports:
   components:
     - id: profile-avatar
       description: Avatar config for PageHeaderMenu profile — user picture with first-letter fallback
+    - id: user-selector
+      description: Single-select autocomplete for picking one app user
+    - id: user-multi-selector
+      description: Multi-select picker for an array of app users
+    - id: user-avatar
+      description: Inline avatar + name chip rendered from a user-contacts doc
   menus:
     - id: default
       description: User account navigation links
@@ -109,6 +115,15 @@ components:
   - id: profile-avatar
     component:
       _ref: components/profile-avatar.yaml
+  - id: user-selector
+    component:
+      _ref: components/user-selector.yaml
+  - id: user-multi-selector
+    component:
+      _ref: components/user-multi-selector.yaml
+  - id: user-avatar
+    component:
+      _ref: components/user-avatar.yaml
 menus:
   - _ref: menu.yaml
   - _ref: menus/profile-default.yaml
@@ -118,7 +133,7 @@ secrets:
     description: MongoDB connection URI
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
-    version: '^3'
-  - name: '@lowdefy/modules-mongodb-plugins'
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^3"
+  - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.8.1"

@@ -11,7 +11,9 @@ routine:
           - _payload: display
           - _payload: references
           - _id:
-              _uuid: true
+              _if_none:
+                - _payload: _id
+                - _uuid: true
             date:
               _date: now
             created:

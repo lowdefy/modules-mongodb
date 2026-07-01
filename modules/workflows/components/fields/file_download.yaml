@@ -1,0 +1,51 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  fileList:
+    type: array
+    required: true
+  label_disabled:
+    type: boolean
+    default: true
+  s3GetPolicyRequestId:
+    type: string
+    default: file_download_policy
+
+config:
+  id:
+    _string.concat:
+      - _var: key
+      - _download_label
+  type: Label
+  visible:
+    _var:
+      key: visible
+      default: true
+  properties:
+    title:
+      _var: title
+    span: 8
+    style:
+      marginTop: 6px
+    disabled:
+      _var:
+        key: label_disabled
+        default: true
+  blocks:
+    - id:
+        _var: key
+      type: S3Download
+      properties:
+        s3GetPolicyRequestId:
+          _var:
+            key: s3GetPolicyRequestId
+            default: file_download_policy
+        fileList:
+          _var: fileList

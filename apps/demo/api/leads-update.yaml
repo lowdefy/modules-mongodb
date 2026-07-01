@@ -1,0 +1,23 @@
+id: leads-update
+type: Api
+routine:
+  - id: update
+    type: MongoDBUpdateOne
+    connectionId: leads-collection
+    properties:
+      filter:
+        _id:
+          _payload: _id
+      update:
+        $set:
+          name:
+            _payload: name
+          email:
+            _payload: email
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
+  - :return:
+      _id:
+        _payload: _id

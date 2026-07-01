@@ -1,0 +1,72 @@
+# Implementation Tasks — Part 42: Timeline action cards
+
+## Overview
+
+Restores the live "action status card" that the events timeline used to render
+inline on the most-recent event referencing each workflow action. Implements the
+design via one shared lookup/de-dup aggregation fragment plus two shared compute
+stages (`visible_verbs`, `resolve_action_link`), wired unconditionally into the
+events module's timeline and re-exported from the workflows module. Derived from
+`designs/workflows-module/parts/42-timeline-action-cards/design.md`.
+
+## Tasks
+
+All tasks ✅ implemented on `design/42-timeline-action-cards` ([PR #71](https://github.com/lowdefy/modules-mongodb/pull/71), base `workflows-sam`). See the Implementation record below.
+
+| #   | File                                    | Summary                                                                                                                             | Depends On | Status     |
+| --- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
+| 1   | `01-move-action-statuses-enum.md`       | Move `action_statuses.yaml` to `modules/shared/enums/`; repoint all 6 referencing files (D3).                                       | —          | ✅         |
+| 2   | `02-parameterize-visible-verbs.md`      | Convert shared `visible_verbs.yaml` to `_var: app_name` with `_module.var` default (no caller churn).                               | —          | ✅         |
+| 3   | `03-resolve-action-link-stage.md`       | Create `modules/shared/workflow/resolve_action_link.yaml` access-aware link pick (D5).                                              | —          | ✅         |
+| 4   | `04-apis-adopt-resolve-link.md`         | Adopt `resolve_action_link.yaml` in the 3 read APIs, replacing singular `link` projection (D5).                                     | 2, 3       | ✅         |
+| 5   | `05-timeline-action-lookup-fragment.md` | Create the shared lookup/de-dup fragment + re-export it from the workflows manifest (D1, D4, D5).                                   | 2, 3       | ✅         |
+| 6   | `06-reconcile-eventaction-colours.md`   | Reconcile `EventsTimeline.js` `EventAction` colour keys to the enum shape (D3).                                                     | —          | ✅         |
+| 7   | `07-wire-events-timeline.md`            | Splice fragment + D6 self-card filter into `events-timeline.yaml`; pass `actionStatusConfig`; add events manifest var (D2, D3, D6). | 1, 5, 6    | ✅         |
+| 8   | `08-reconcile-part38-design.md`         | Drop the superseded "UI applies the per-verb selection rule" prose from Part 38 design + tasks.                                     | —          | ✅ (no-op) |
+| 9   | `09-docs.md`                            | Document the always-on lookup convention and the exported fragment (events README + idioms).                                        | 5, 7       | ✅         |
+
+## Implementation record
+
+Implemented 2026-06-05 on `design/42-timeline-action-cards` (branched from `workflows-sam` @ `d10fd65`), one commit per task plus fix commits — [PR #71](https://github.com/lowdefy/modules-mongodb/pull/71). Every task passed spec-compliance review + code-check.
+
+- **Task 1:** the action pages are `simple-view/review/edit.yaml` on this branch (Part 38's task-18 renames not yet landed); the repoints targeted them — ref counts (6/2/1) matched the task spec exactly.
+- **Task 3:** in-run fix `c30ea0a` — the first commit inverted the `$getField` nesting (`$$ROOT.links.<app>` instead of `$$ROOT.<app>.links`); corrected to read the per-verb map off the app-named field.
+- **Task 5:** in-run fix `c32af5a` — the fragment's two inner `_ref`s used bare sibling filenames; relative `_ref` paths resolve against the **consuming module's** root (verified in the Lowdefy build's `walker.js`), so they were corrected to `../shared/workflow/...`.
+- **Tasks 3, 5, 7:** the design sketches' `$let`/`$filter` variable names (`v`/`vv`, `as: s`/`as: a`) were replaced with descriptive names / `$$this` per code rules NAME-002/NAME-003; design sketches aligned in `bdb7089`.
+- **Task 8:** verification-only as drafted — the Part 38 prose reconcile had already landed in `d462706`; grep found no residual UI-selection attribution, no edits made.
+- **Not run:** the Lowdefy app build (deferred; it hung in the run environment). Plugin swc build green; `makeWorkflowsConfig.test.js` 31/31. Run `pnpm ldf:b` before merge to mechanically validate the `_ref` chain.
+
+## Ordering Rationale
+
+**Three independent foundations start immediately (1, 2, 3, 6, 8):**
+
+- **Task 1** (enum move) is a self-contained mechanical relocation + ref repoint. Nothing else depends on the _location_, but Task 7 reads the moved file via `../shared/enums/...`.
+- **Task 2** (parameterize `visible_verbs.yaml`) is a pure one-file refactor that keeps the build green — it converts each `_module.var: app_name` site to `_var: { key: app_name, default: { _module.var: app_name } }`, so the existing caller (`visible_verbs_filter.yaml`, refed bare by the 3 APIs) keeps resolving via the default while the events fragment passes `app_name` explicitly. Required because Part 38 shipped `visible_verbs.yaml` using `_module.var: app_name`, which cannot resolve inside the dependency-free events module (it has no `app_name` var). Both the fragment (Task 5) and the link-adoption (Task 4) build on the parameterized form.
+- **Task 3** (`resolve_action_link.yaml`) is a new standalone file; it depends only on `visible_verbs` _output_ (which already ships), so it has no task dependency.
+- **Task 6** (block colour reconcile) is a pure plugin/JS change, independent of all aggregation work.
+- **Task 8** (Part 38 design-doc prose) is documentation reconciliation, independent of code.
+
+**Dependency chains:**
+
+- `2, 3 → 4` — the APIs need both the parameterized `visible_verbs` ref and the new link stage.
+- `2, 3 → 5` — the fragment composes both shared stages.
+- `1, 5, 6 → 7` — wiring the events timeline needs the moved enum (1), the fragment to splice (5), and the reconciled block to render the new colour keys (6).
+- `5, 7 → 9` — docs describe the shipped fragment + always-on behaviour.
+
+**Parallelism:** Tasks 1, 2, 3, 6, 8 can all run in parallel. Then 4 and 5 (after 2+3). Then 7. Then 9 last. Tasks 4 and 5 both depend on 2+3 but are independent of each other.
+
+## Scope
+
+**Source:** `designs/workflows-module/parts/42-timeline-action-cards/design.md`
+**Context files considered:** none beyond `design.md` — the design folder contains only `design.md` and a `review/` subfolder.
+**Review files skipped:** `designs/workflows-module/parts/42-timeline-action-cards/review/` (entire folder).
+
+## Deviations from the design's "Files changed" table (flagged for the implementer)
+
+These were discovered against the live codebase and are **not** captured in the design's Files table. Each is handled in the relevant task:
+
+1. **Enum-move blast radius (Task 1).** The design names only `modules/workflows/components/action_statuses.yaml` as needing a repoint. In fact `enums/action_statuses.yaml` is `_ref`'d directly in **six** files: `connections/workflow-api.yaml`, `components/action_statuses.yaml`, `pages/workflow-action-view.yaml` (×6), `pages/workflow-action-review.yaml` (×2), `pages/workflow-action-edit.yaml`, and `templates/edit.yaml.njk`. All must be repointed or the build breaks. (`_ref` paths within a module resolve relative to the module root, so the new path is `../shared/enums/action_statuses.yaml` from every workflows-module file.)
+
+2. **`visible_verbs.yaml` already exists from Part 38 (Task 2).** The design's Files table listed it as **New**, but Part 38 task 7 already created it at `modules/shared/workflow/visible_verbs.yaml` using `_module.var: app_name`. Part 42 must _convert_ it (not create it) to `_var: app_name` **with a `_module.var: app_name` default** (the `events-timeline.yaml` `display_key` pattern), because `_module.var: app_name` cannot resolve inside the events module. The only existing `_ref` to the stage is `api/stages/visible_verbs_filter.yaml:16` (the 3 APIs ref that bundle bare) — the default keeps all of them working untouched; a bare `_var` without the default would silently resolve to `null` there and break every access gate at request time.
+
+3. **Multi-stage fragment splicing needs `_build.array.concat` (Tasks 5, 7, 9).** Lowdefy `_ref` substitutes a node in place and does **not** flatten a list spliced as a single array item — it nests it (this is exactly why Part 38 kept `visible_verbs` compute + drop as two separate single-stage `_ref`s). The design's proposed-shape sketches (single `- _ref:` for the multi-stage fragment, and the app-developer example) would nest. Consumers must splice the fragment via `_build.array.concat`, the same pattern the workflows manifest uses for its `api:`/`pages:` arrays.

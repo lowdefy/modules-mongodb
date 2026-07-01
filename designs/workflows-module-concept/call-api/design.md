@@ -1,5 +1,7 @@
 # CallApi from Plugin Connections
 
+> **Shipped-contract note.** The primitive landed in `@lowdefy/api`, but with a different surface than Decisions 1–2 propose: `callApi({ endpointId, payload })` (single destructured object, opaque pre-scoped endpoint id string), **throws** on failure preserving the error class, returns the target's `:return` value or `null`, and offers no user/pageId/timeout options. [spec.md](spec.md) documents the shipped contract and the full deviation table; the decision text below is preserved as the original rationale.
+
 A new Lowdefy primitive: invoking a Lowdefy `Api` from inside a plugin connection's request handler. Currently plugin handlers can read connection-shaped Mongo / S3 / SQL but can't call back into the Lowdefy Api layer to invoke other modules' Apis or app-supplied routines.
 
 This sub-design carves out the primitive on its own because it's load-bearing for [submit-pipeline](../submit-pipeline/design.md) and likely useful for any future plugin that needs to compose Lowdefy Apis server-side. The workflows module is the first concrete consumer; the capability is upstream-Lowdefy work in `@lowdefy/api`.
@@ -26,16 +28,16 @@ async function SubmitWorkflowAction({ payload, connection, context }) {
 
   if (preHookId) {
     const preResult = await context.callApi(preHookId, {
-      workflow_id, action_id, interaction, form, ...
+      workflow_id, action_id, signal, form, ...
     });
-    // merge preResult.actions[] with auto-unblocks
+    // merge preResult.actions[] signals with auto-unblocks
   }
 
   // ... engine writes ...
 
   await context.callApi(
     { id: 'new-event', module: 'events' },
-    { type: 'action-submit_edit', references: { workflow_ids: [workflow_id], action_ids: [action_id] }, ... }
+    { type: 'action-submit', references: { workflow_ids: [workflow_id], action_ids: [action_id] }, ... }
   );
 
   // ... post hook ...
@@ -85,7 +87,7 @@ Pre/post hooks and cross-module API calls happen inside an already-authenticated
 
 ## Decision 3 — Depth-limit guard
 
-A pre-hook calls back into another Api that calls back into a per-action endpoint (`update-action-{action_type}`) that fires another pre-hook... pathological recursion is possible. Engine-driven recursion (tracker subscription cascading, group `on_complete` triggering another submit) is also possible.
+A pre-hook calls back into another Api that calls back into a per-action endpoint (`{workflow_type}-{action_type}-submit`) that fires another pre-hook... pathological recursion is possible. Engine-driven recursion (tracker subscription cascading, group `on_complete` triggering another submit) is also possible.
 
 **Mitigation:** `context.callApi` carries a hidden `_depth` counter on every invocation. Default limit 10. Exceeded → throws a structured error citing the call chain. Configurable per-handler if a real use case surfaces a need to go deeper.
 
@@ -93,13 +95,13 @@ Matches the tracker-subscription depth-limit mitigation already documented in [e
 
 ## Decision 4 — Error propagation
 
-Errors raised inside an invoked Api propagate to the calling handler as `{ success: false, error: { ... } }`. The handler decides:
+**Amended by [Part 29 § D6](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d6-propagate-everywhere--no-engine-side-catching-of-sub-step-throws) and [Part 1 Deviation note](../../workflows-module/parts/_completed/01-call-api-primitive/design.md).** Shipped `callApi` throws on `:reject` / `:throw` rather than returning a `{ success: false, error }` envelope. The 11-step submit lifecycle catches nothing — every step that throws propagates to `CallApi`. Concretely:
 
-- **Pre-hook errors** abort the submit by default — engine writes the action's `status[0]` to `{ stage: error, reason, error_message, error_metadata }` carrying the captured failure context. (See engine Decision 5 "Action error transition.")
-- **Side-effect errors** (events module call fails, notifications call fails) are logged but don't abort the submit — those writes are recoverable; the user's action transition already happened.
-- **Post-hook errors** never abort; logged and surfaced in the API return as `post_hook_response.error`.
+- **Pre-hook throws** propagate. Authors choose between `:reject` (user-facing rejection — propagates as `UserError(isReject: true)`, surfaced as a `'reject'` by the wrapping endpoint's `runRoutine`; see [Part 29 § D5](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently)) and `throw` (infrastructure failure — surfaced as a transient error toast). No engine-side `error` transition is written; no `hook_error` return field exists.
+- **Side-effect throws** (events module call fails, notifications call fails) propagate. The user sees the submit as failed — honest reporting, since they may want to manually notify the affected party while the system retries. The notifications module's own retry/queue still operates independently.
+- **Post-hook throws** propagate. Writes from steps 4–10 stay durable (deliberately non-atomic); authors must make post-hooks idempotent. No `post_hook_error` soft-surface field.
 
-Behaviour is per-call (the handler picks) — `context.callApi` itself doesn't decide; it just returns the structured error.
+The single rule: failures throw; success returns the target's raw `:return` value (or `null` when the routine ends without `:return`). There is no `{ success, response, error }` envelope anywhere — see [spec.md](spec.md) § Deviations. Resolver code must not inspect `result.success`; the shipped routines (`new-event` returns `{ eventId }`, `send-notification` returns `null` under the default empty routine) carry no such field, so a success-check misfires on every successful call.
 
 ## Decision 5 — Payload evaluation
 

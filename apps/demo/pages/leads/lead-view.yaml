@@ -1,0 +1,162 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: lead-view
+    title:
+      _request: get_lead.0.name
+    # Pipeline status badge in the page header (title-block pill). status is the
+    # current stage slug; status_enum resolves it to the colour contract.
+    status:
+      _request: get_lead.0.status.0.stage
+    status_enum:
+      _ref: enums/lead_statuses.yaml
+    loading:
+      _not:
+        _request: get_lead.0
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Leads
+        pageId: lead-list
+      - label:
+          _request: get_lead.0.name
+    events:
+      onMount:
+        - id: fetch
+          type: Request
+          params:
+            - get_lead
+        - id: redirect_if_not_found
+          type: Link
+          skip:
+            _ne:
+              - _request: get_lead.0
+              - null
+          params:
+            pageId: lead-list
+    requests:
+      - id: get_lead
+        type: MongoDBAggregation
+        connectionId: leads-collection
+        payload:
+          _id:
+            _url_query: _id
+        properties:
+          pipeline:
+            - $match:
+                _id:
+                  _payload: _id
+            - $limit: 1
+    blocks:
+      - id: lead_view_row
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - id: workflows_column
+            type: Box
+            layout:
+              span: 8
+              sm:
+                span: 24
+            blocks:
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    title: Workflows
+                    blocks:
+                      - _ref:
+                          module: workflows
+                          component: actions-on-entity
+                          vars:
+                            entity_id:
+                              _url_query: _id
+                            entity_connection_id: leads-collection
+          - id: lead_info_column
+            type: Box
+            layout:
+              span: 16
+              sm:
+                span: 24
+              gap: 16
+            blocks:
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    title: Lead information
+                    blocks:
+                      # SmartDescriptions read-only view — selectors render as
+                      # tags, the denormalized contact auto-detects into a CRM
+                      # link. Status lives in the page-header pill, so it's not
+                      # repeated here.
+                      - id: lead_info_fields
+                        type: SmartDescriptions
+                        properties:
+                          column: 1
+                          size: small
+                          data:
+                            _request: get_lead.0
+                          fields:
+                            - id: company
+                              type: TextInput
+                              properties:
+                                title: Company
+                            - id: source
+                              type: Selector
+                              properties:
+                                title: Source
+                                options:
+                                  - label: Web
+                                    value: web
+                                  - label: Referral
+                                    value: referral
+                                  - label: Event
+                                    value: event
+                                  - label: Cold outreach
+                                    value: cold
+                            - id: estimated_value
+                              type: NumberInput
+                              properties:
+                                title: Estimated value
+                            - id: contact
+                              properties:
+                                title: Contact
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    title: Activity
+                    blocks:
+                      - _ref:
+                          module: events
+                          component: events-timeline
+                          vars:
+                            reference_field: lead_ids
+                            reference_value:
+                              _url_query: _id
+                            contact_page_url: "/contacts/view?_id={id}"
+      # Page owns the single check-action modal drop and its on_complete (Part
+      # 55 D1): refresh every co-present surface after a successful signal — the
+      # action steps (actions-on-entity) and the Activity timeline
+      # (events-timeline, which only fetches on mount).
+      - _ref:
+          module: workflows
+          component: check-action-modal
+          vars:
+            on_complete:
+              _build.array.concat:
+                # refresh the action steps (actions-on-entity's surface)
+                - _ref:
+                    module: workflows
+                    component: entity-workflows-refetch
+                    vars:
+                      entity_id:
+                        _url_query: _id
+                      entity_connection_id: leads-collection
+                # refresh the activity timeline (events-timeline's surface)
+                - - id: refetch_events_timeline
+                    type: Request
+                    params: get-events

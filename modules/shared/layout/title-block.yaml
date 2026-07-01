@@ -1,7 +1,7 @@
 id: title-block
 type: Box
 layout:
-  align: middle
+  selfAlign: middle
 blocks:
   _build.array.concat:
     # Back button (optional — placed before the title)
@@ -15,46 +15,201 @@ blocks:
             type: Button
             layout:
               flex: 0 0 auto
+              # Centre against the taller eyebrow+title+subtitle column rather
+              # than stretching to the full row height (the row's default
+              # cross-axis alignment is stretch, which top-aligns the arrow).
+              selfAlign: middle
             style:
               marginRight: 8
             properties:
+              hideTitle: true
               icon: AiOutlineArrowLeft
               type: text
               size: large
             events:
               onClick:
+                # Explicit back target when `back_link` ({ pageId, urlQuery })
+                # is supplied; otherwise browser history back.
                 - id: back
                   type: Link
                   params:
-                    back: true
+                    _build.if:
+                      test:
+                        _build.ne:
+                          - _var:
+                              key: back_link
+                              default: null
+                          - null
+                      then:
+                        _var: back_link
+                      else:
+                        back: true
         else: []
-    - - id: title
-        type: Html
-        layout:
-          flex: 1 0 auto
-        properties:
-          html:
-            _nunjucks:
-              template: |
-                <h2 class="text-2xl font-semibold" style="margin: 0;">{{ title | safe }}</h2>
-                <div class="text-text-secondary text-sm" style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-                  {% if doc.updated.user.name %}
-                    Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('MMM D, YYYY h:mm A')}}
-                  {% endif %}
-                  {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
-                  {% if doc.created.user.name %}
-                    Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('MMM D, YYYY h:mm A')}}
-                  {% endif %}
-                </div>
-              on:
-                title:
-                  _var: title
-                doc:
-                  _var: doc
-      - id: page-actions
+    # Status pill (optional) — caller supplies a status slug + a status-enum
+    # map; the pill resolves label + the three-colour contract internally and
+    # renders to the left of the title. Built only when `status_enum` is wired,
+    # so pages without a status produce no pill block (and no loading flash).
+    - _build.if:
+        test:
+          _build.ne:
+            - _var:
+                key: status_enum
+                default: null
+            - null
+        then:
+          - id: title-status-pill
+            type: Html
+            layout:
+              flex: 0 0 auto
+              # Centre against the taller eyebrow+title column rather than
+              # stretching to the full row height (the row's default cross-axis
+              # alignment is stretch). This is what keeps the pill "chunky and
+              # vertically centred" instead of full-height.
+              selfAlign: middle
+            loading:
+              _var:
+                key: loading
+                default: false
+            skeleton:
+              type: Skeleton
+              properties:
+                width: 96
+                height: 50
+            # Visible while loading (so the skeleton can render — Lowdefy skips
+            # loading/skeleton entirely when visible is false) OR once the
+            # status slug resolves to an enum entry. Once loaded, an
+            # unmatched/null status hides the pill — no empty placeholder.
+            visible:
+              _or:
+                - _var:
+                    key: loading
+                    default: false
+                - _ne:
+                    - _get:
+                        from:
+                          _var: status_enum
+                        key:
+                          _var:
+                            key: status
+                            default: null
+                    - null
+            style:
+              marginRight: 12
+            properties:
+              html:
+                _nunjucks:
+                  template: |
+                    <span style="display:inline-block; padding:15px 14px; border-radius:6px; font-size:15px; font-weight:500; line-height:1; white-space:nowrap; background-color:{{ entry.color }}; border:1px solid {{ entry.borderColor }}; color:{{ entry.titleColor }};">{{ entry.title | safe }}</span>
+                  on:
+                    entry:
+                      _get:
+                        from:
+                          _var: status_enum
+                        key:
+                          _var:
+                            key: status
+                            default: null
+        else: []
+    # Eyebrow + title/subtitle, stacked in a column so the eyebrow sits ABOVE
+    # the title (the outer Box is a horizontal row). The eyebrow is a separate
+    # sibling block with no loading/skeleton of its own, so it renders
+    # immediately and is never swapped out when `loading` is set.
+    - - id: title-column
         type: Box
         layout:
-          flex: 0 1 auto
+          direction: column
+          # flex-basis 0 (not auto) is load-bearing. Lowdefy turns layout.flex
+          # into a bare `flex:` on the item with no min-width:0 (deriveLayout.js
+          # — and a block's `style` lands on the inner div, not this flex item,
+          # so min-width:0 can't be injected that way). With basis `auto` the
+          # browser collects flex lines at this column's MIN-content width; the
+          # change-stamp subtitle therefore must be allowed to wrap (no
+          # white-space:nowrap below) so min-content collapses to the longest
+          # word. basis 0 + a wrapping subtitle keeps the row on one line: the
+          # column is collected small, then grows (grow 1) to fill the space the
+          # pill and page-actions leave, and the subtitle wraps within it.
+          # Verified in a headless-Chrome render of this exact structure.
+          flex: 1 1 0
+          gap: 2
+        blocks:
+          _build.array.concat:
+            # Type eyebrow (optional) — uppercased entity-type label. Static
+            # config, so it has no loading/skeleton and stays outside the
+            # block that skeletons.
+            - _build.if:
+                test:
+                  _build.ne:
+                    - _var:
+                        key: type
+                        default: null
+                    - null
+                then:
+                  - id: title-type-eyebrow
+                    type: Html
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: |
+                            <div class="text-text-secondary" style="text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; line-height: 1.2;">{{ type | safe }}</div>
+                          on:
+                            type:
+                              _var: type
+                else: []
+            # Title + change-stamp subtitle. Carries the loading/skeleton.
+            - - id: title
+                type: Html
+                loading:
+                  _var:
+                    key: loading
+                    default: false
+                skeleton:
+                  type: Box
+                  layout:
+                    direction: column
+                    gap: 8
+                  blocks:
+                    - type: Skeleton
+                      properties:
+                        height: 26
+                        width: 280
+                    - type: Skeleton
+                      properties:
+                        height: 13
+                        width: 360
+                properties:
+                  html:
+                    _nunjucks:
+                      template: |
+                        <h2 class="text-2xl font-semibold" style="margin: 0;">{{ title | safe }}</h2>
+                        <div class="text-text-secondary text-sm">
+                          {% if description %}
+                            {{ description | safe }}
+                          {% else %}
+                            {% if doc.updated.user.name %}
+                              Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('MMM D, YYYY h:mm A')}}
+                            {% endif %}
+                            {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
+                            {% if doc.created.user.name %}
+                              Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('MMM D, YYYY h:mm A')}}
+                            {% endif %}
+                          {% endif %}
+                        </div>
+                      on:
+                        title:
+                          _var: title
+                        doc:
+                          _var: doc
+                        description:
+                          _var:
+                            key: description
+                            default: null
+    - - id: page-actions
+        type: Box
+        # flex: 0 0 auto — never grow, never shrink. The actions always hold
+        # the right edge at their natural width; the title-column (flex 1 1 0)
+        # absorbs all the give instead.
+        layout:
+          flex: 0 0 auto
         style:
           margin: 16
         blocks:

@@ -1,0 +1,16 @@
+- id: refetch_entity_workflows
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: get-entity-workflows
+    payload:
+      entity:
+        id:
+          _var: entity_id
+        connection_id:
+          _var: entity_connection_id
+- id: set_entity_workflows
+  type: SetState
+  params:
+    entity_workflows:
+      _actions: refetch_entity_workflows.response.response.workflows

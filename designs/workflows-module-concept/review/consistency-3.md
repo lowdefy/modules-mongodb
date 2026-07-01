@@ -17,8 +17,8 @@ Parent-level consistency pass following the parent-scope review-1 action-review 
 
 **Reviews (decision register inputs):**
 
-- [review-1.md](review-1.md) — 11 findings, all resolved.
-- [consistency-1.md](consistency-1.md), [consistency-2.md](consistency-2.md) — historical parent-level.
+- [review-1.md](designs/workflows-module-concept/review/review-1.md) — 11 findings, all resolved.
+- [consistency-1.md](designs/workflows-module-concept/review/consistency-1.md), [consistency-2.md](designs/workflows-module-concept/review/consistency-2.md) — historical parent-level.
 - Sub-design reviews under each sub-design's `review/` folder — historical, already propagated.
 
 **Tasks / plans:** None exist yet.

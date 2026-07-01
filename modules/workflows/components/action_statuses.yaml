@@ -1,0 +1,3 @@
+_build.object.assign:
+  - _ref: ../shared/enums/action_statuses.yaml
+  - _module.var: action_statuses_display

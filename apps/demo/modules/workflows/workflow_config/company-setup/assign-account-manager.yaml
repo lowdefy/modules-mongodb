@@ -1,0 +1,18 @@
+type: assign-account-manager
+kind: check
+action_group: setup
+description: |
+  Match on **region and industry** first, then current book size — don't assign
+  a manager already at capacity. The assignee owns the kickoff call and the
+  customer relationship from here on.
+access:
+  demo:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    demo:
+      message: Assign an account manager.
+  done:
+    demo:
+      message: Account manager assigned.

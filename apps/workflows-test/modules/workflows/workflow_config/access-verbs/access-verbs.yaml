@@ -1,0 +1,43 @@
+# access-verbs (Part 22 task 10) — per-verb access gating bound through the app.
+#
+# Three form actions with deliberately distinct access bags, so one workflow
+# exercises every interesting role/verb combination from a single entity surface:
+#
+#   everyone-edits  — view + edit open to all roles (true gates).
+#   reviewer-gated  — view + edit open; the `review` verb role-gated to [reviewer]
+#                     (review is action-global per resolveSignal — its mere
+#                     presence routes submit → in-review; the role gate then
+#                     decides who may approve).
+#   admin-only      — view + edit gated to [admin]; invisible to everyone else
+#                     (GetEntityWorkflows drops an action with no accessible verb).
+#
+# The spec drives three sessions (plain user, reviewer, admin) and asserts the
+# rendered visibility + button gating per role AND the endpoint-side enforcement
+# of the `review` gate (the gates bind through the wired app, not just in unit
+# tests).
+type: access-verbs
+title: Access verbs
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
+
+starting_actions:
+  - type: everyone-edits
+    status: action-required
+  - type: reviewer-gated
+    status: action-required
+  - type: admin-only
+    status: action-required
+
+action_groups:
+  - id: gated
+    title: Gated
+    icon: AiOutlineLock
+
+actions:
+  - _ref: modules/workflows/workflow_config/access-verbs/everyone-edits.yaml
+  - _ref: modules/workflows/workflow_config/access-verbs/reviewer-gated.yaml
+  - _ref: modules/workflows/workflow_config/access-verbs/admin-only.yaml

@@ -1,0 +1,16 @@
+id: get-workflow-overview
+type: Api
+routine:
+  - id: query
+    type: GetWorkflowOverview
+    connectionId:
+      _module.connectionId: workflow-api
+    properties:
+      workflow_id:
+        _payload: workflow_id
+
+  - :return:
+      workflow:
+        _step: query.workflow
+      groups:
+        _step: query.groups

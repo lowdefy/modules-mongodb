@@ -1,0 +1,636 @@
+# Review page for a form action — read-only main form + writable form_review.
+#
+# Build-time vars (from makeActionPages.js): action_config, page_config,
+# page_ids, workflow_type, connection_id, workflow_title, reference_field,
+# entity_view_slot. See view.yaml.njk. The entity instance name + entity fields
+# arrive on get_workflow_action (entity_link.name + entity), from the workflow's
+# entity.data routine (Part 26) — no per-page entity request.
+#
+# Stale-URL allowlist: [in-review, error]. `error` is included so reviewers
+# can see the action while it's mid-recovery; the engine-side recovery flow
+# handles the actual transition.
+#
+# Three buttons: Edit (navigation, leftmost), Request Changes (danger),
+# Approve (primary). Edit-link sets `skip_status_redirect: true` so the
+# edit page's stale-URL guard doesn't bounce reviewers out of `in-review`.
+#
+# Layout (Part 56 addendum; Part 64): universal-fields chips + ✎ ride the title
+# bar's page_actions; a bare workflow-closed banner sits above the review card,
+# and the author-authored description renders as the review card's first child
+# (plain Markdown lead-in); the action bar is the shell's floating `actions`
+# slot. Reviewers who need to change metadata use the ✎ modal (or the edit page).
+_ref:
+  module: layout
+  component: page
+  vars:
+    id:
+      _var: page_ids.review
+    title:
+      _var:
+        key: page_config.title
+        default: null
+    type:
+      _var: workflow_title
+    description:
+      _state: action.message
+    breadcrumbs:
+      _ref:
+        path: components/action-breadcrumbs.yaml
+        vars:
+{%- if list_page_id %}
+          entity_list_page_id: {{ list_page_id }}
+          entity_list_title: "{{ list_title }}"
+{%- else %}
+          entity_list_page_id: null
+          entity_list_title: null
+{%- endif %}
+          entity_title:
+            _state: action.entity_link.title
+          entity_name:
+            _state: action.entity_link.name
+          entity_page_id:
+            _state: action.entity_link.pageId
+          entity_url_query:
+            _state: action.entity_link.urlQuery
+          workflow_id:
+            _state: action.workflow_id
+          workflow_title:
+            _var: workflow_title
+          action_label:
+            _var:
+              key: page_config.title
+              default: null
+    status:
+      _state: action.status.0.stage
+    status_enum:
+      _ref: ../shared/enums/action_statuses.yaml
+    # Universal-fields chips (assignees avatars + due pill + ✎ → edit modal) in the
+    # title bar's page_actions, only when the action declares universal fields.
+    page_actions:
+      _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _var:
+                  key: action_config.universal_fields
+                  default: []
+            - 0
+        then:
+          - _ref:
+              path: components/universal-fields/universal-fields-chips.yaml
+              vars:
+                modal_id: universal_fields_edit_modal
+                show:
+                  _var: action_config.universal_fields
+                action_data:
+                  assignee_docs:
+                    _state: action.assignee_docs
+                  due_date:
+                    _state: action.due_date
+        else: []
+    show_back_button: true
+    content_width:
+      _var:
+        key: page_config.maxWidth
+        default: null
+    requests:
+      _build.array.concat:
+        - - _ref: requests/get_workflow_action.yaml
+        - _var:
+            key: page_config.requests
+            default: []
+    events:
+      onMount:
+        _build.array.concat:
+          - - id: redirect_no_action
+              type: Link
+              skip:
+                _ne:
+                  - _url_query: action_id
+                  - null
+              params:
+                back: true
+            - id: get_action
+              type: Request
+              params: get_workflow_action
+            - id: set_action
+              type: SetState
+              params:
+                action:
+                  _request: get_workflow_action
+            # Normalized entity id for the shell's columns.
+            - id: set_entity_id
+              type: SetState
+              params:
+                entity_id:
+                  _request: get_workflow_action.entity.id
+            # Closed-workflow guard: a closed (non-survivor) action is locked —
+            # bounce to the read-only view before the stale-URL guard runs.
+            # Ignores skip_status_redirect (closed is a harder stop than stale).
+            - id: redirect_workflow_closed
+              type: Link
+              skip:
+                _not:
+                  _and:
+                    - _state: action.workflow_closed
+                    - _ne:
+                        - _state: action.required_after_close
+                        - true
+              params:
+                pageId:
+                  _module.pageId:
+                    _var: page_ids.view
+                urlQuery:
+                  _url_query: true
+            - id: redirect_stale_status
+              type: Link
+              skip:
+                _array.includes:
+                  - - in-review
+                    - error
+                  - _state: action.status.0.stage
+              params:
+                pageId:
+                  _module.pageId:
+                    _var: page_ids.view
+                urlQuery:
+                  _url_query: true
+            - id: prime_form_state
+              type: SetState
+              params:
+                form:
+                  _state: action.form_values
+                form_review:
+                  _state: action.form_values
+                fields:
+                  assignees:
+                    _state: action.assignees
+                  due_date:
+                    _state: action.due_date
+                comment: null
+                change_request_comment: null
+                comment_internal: false
+                change_request_comment_internal: false
+          - _var:
+              key: page_config.events.onMount
+              default: []
+    blocks:
+      _build.array.concat:
+        # Three-tier shell: left (entity workflows) + middle (closed banner +
+        # review card with description lead-in + floating action bar) + RHS
+        # (Details? above History).
+        - - _ref:
+              path: components/action-workspace.yaml
+              vars:
+                entity_connection_id:
+                  _var: connection_id
+                reference_field:
+                  _var: reference_field
+                details_slot:
+                  _var: entity_view_slot
+                middle:
+                  _build.array.concat:
+                    # Workflow-closed banner — bare full-width alert above the
+                    # content card (Part 64 layout model; consistency fix). Gated
+                    # on workflow_closed AND not required_after_close.
+                    - - id: workflow_closed_banner
+                        type: Alert
+                        visible:
+                          _and:
+                            - _state: action.workflow_closed
+                            - _ne:
+                                - _state: action.required_after_close
+                                - true
+                        properties:
+                          type: warning
+                          showIcon: true
+                          message: Workflow closed
+                          description: This workflow is closed. Updates to this action are no longer accepted.
+                    # Changes-requested callout — bare full-width alert below the
+                    # closed banner, above the content card (Part 62). Self-hides
+                    # unless the action is in changes-required with a brief.
+                    - - _ref:
+                          path: components/changes-requested-callout.yaml
+                          vars:
+                            content:
+                              _state: action.changes_requested
+                    - - id: review_card
+                        type: Card
+                        layout:
+                          gap: 16
+                        blocks:
+                          _build.array.concat:
+                            # Description lead-in — first child of the review card
+                            # (plain Markdown; self-hides when unset).
+                            - - _ref:
+                                  path: components/action-description.yaml
+                                  vars:
+                                    content:
+                                      _state: action.description
+                            - _var:
+                                key: page_config.formHeader
+                                default: []
+                            - - id: form_body
+                                type: DataDescriptions
+                                properties:
+                                  formConfig:
+                                    _var: action_config.form
+                                  data:
+                                    form:
+                                      _state: form
+                                    entity:
+                                      _request: get_workflow_action.entity
+                            # Writable form_review section — only renders when the
+                            # action has a form_review schema declared.
+                            - _build.if:
+                                test:
+                                  _build.gt:
+                                    - _build.array.length:
+                                        _var:
+                                          key: action_config.form_review
+                                          default: []
+                                    - 0
+                                then:
+                                  - id: form_review_section
+                                    type: Box
+                                    visible:
+                                      _and:
+                                        - _eq:
+                                            - _state: action.status.0.stage
+                                            - in-review
+                                        - _state: action.allowed.review
+                                    blocks:
+                                      _build.array.concat:
+                                        - - id: form_review_divider
+                                            type: Divider
+                                            properties:
+                                              title: Review
+                                        - _ref:
+                                            resolver: resolvers/makeActionsForm.js
+                                            vars:
+                                              form:
+                                                _var: action_config.form_review
+                                              mode: review
+                                else: []
+                            - - _ref:
+                                  path: components/comment-input.yaml
+                                  vars:
+                                    comment_path: comment
+                                    visibility_path: comment_internal
+                                    placeholder: Add a comment (optional).
+                            - _var:
+                                key: page_config.formFooter
+                                default: []
+                # Floating action bar (shell `actions` slot): workflow extras on the
+                # left, signal verbs on the right (grow spacer between).
+                actions:
+                  _build.array.concat:
+                    - _var:
+                        key: page_config.buttons.extra
+                        default: []
+                    - - id: action_bar_spacer
+                        type: Box
+                        layout:
+                          flex: 1 1 0
+                      # Edit (navigation) — not gated on action_allowed; edit page
+                      # gates its own writes. Always sets skip_status_redirect so
+                      # edit's stale-URL guard lets `in-review` actions through.
+                    - - id: button_edit
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        visible:
+                          _var:
+                            key: page_config.buttons.edit.visible
+                            default:
+                              _build.ne:
+                                - _var:
+                                    key: page_ids.edit
+                                    default: null
+                                - null
+                        properties:
+                          title: Edit
+                          type: default
+                          disabled:
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.edit.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
+                        events:
+                          onClick:
+                            - id: link_edit
+                              type: Link
+                              params:
+                                pageId:
+                                  _module.pageId:
+                                    _var: page_ids.edit
+                                urlQuery:
+                                  _url_query: true
+                                input:
+                                  skip_status_redirect: true
+                      - id: button_request_changes
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        visible:
+                          _and:
+                            - _var:
+                                key: page_config.buttons.request_changes.visible
+                                default: true
+                            - _state: action.buttons.request_changes
+                        properties:
+                          title: Request Changes
+                          type: default
+                          danger: true
+                          ghost: true
+                          disabled:
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.request_changes.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
+                        events:
+                          onClick:
+                            # request_changes_modal is a Modal (not a ConfirmModal):
+                            # its open method is setOpen({ open }), not open.
+                            - id: open_request_changes_modal
+                              type: CallMethod
+                              params:
+                                method: setOpen
+                                blockId: request_changes_modal
+                                args:
+                                  - open: true
+                      - id: button_approve
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        visible:
+                          _and:
+                            - _var:
+                                key: page_config.buttons.approve.visible
+                                default: true
+                            - _state: action.buttons.approve
+                        properties:
+                          title: Approve
+                          type: primary
+                          disabled:
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.approve.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
+                        events:
+                          onClick:
+                            _build.if:
+                              test:
+                                _build.ne:
+                                  - _var:
+                                      key: page_config.buttons.approve.modal
+                                      default: null
+                                  - null
+                              then:
+                                - id: open_approve_modal
+                                  type: CallMethod
+                                  params:
+                                    method: open
+                                    blockId: approve_modal
+                              else:
+                                _build.array.concat:
+                                  - - id: validate
+                                      type: Validate
+                                      params:
+                                        regex:
+                                          - ^form_review\.
+                                  - _var:
+                                      key: page_config.events.onApprove
+                                      default: []
+                                  - - id: submit_approve
+                                      type: CallAPI
+                                      params:
+                                        endpointId:
+                                          _module.endpointId: {{ workflow_type }}-submit
+                                        payload:
+                                          action_id:
+                                            _state: action._id
+                                          signal: approve
+                                          current_key:
+                                            _state: action.key
+                                          form:
+                                            _state: form
+                                          form_review:
+                                            _state: form_review
+                                          comment:
+                                            _state: comment
+                                          comment_visibility:
+                                            _if:
+                                              test:
+                                                _eq:
+                                                  - _state: comment_internal
+                                                  - true
+                                              then: internal
+                                              else: shared
+                                  # Terminal signal — return to the entity on success.
+                                  - _ref:
+                                      path: components/return-to-entity.yaml
+                                      vars:
+                                        entity_page_id:
+                                          _state: action.entity_link.pageId
+                                        entity_url_query:
+                                          _state: action.entity_link.urlQuery
+                                        success_message:
+                                          _var:
+                                            key: page_config.buttons.approve.successMessage
+                                            default: Approved.
+        # Universal-fields edit modal — opened by the title-bar ✎ chip.
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: action_config.universal_fields
+                      default: []
+                - 0
+            then:
+              - _ref:
+                  path: components/universal-fields/universal-fields-modal.yaml
+                  vars:
+                    modal_id: universal_fields_edit_modal
+                    state_path: fields
+                    workflow_type: {{ workflow_type }}
+                    action_id:
+                      _state: action._id
+                    allowed_edit:
+                      _state: action.allowed.edit
+                    show:
+                      _var: action_config.universal_fields
+                    on_complete:
+                      - id: refetch_action_fields
+                        type: Request
+                        params: get_workflow_action
+                      - id: reset_action_fields
+                        type: SetState
+                        params:
+                          action:
+                            _request: get_workflow_action
+                      - id: update_fields_success
+                        type: DisplayMessage
+                        params:
+                          status: success
+                          content: Updated successfully.
+            else: []
+        # Mandatory Request Changes modal — carries the required comment input.
+        - - id: request_changes_modal
+            type: Modal
+            properties:
+              width: 600
+              title: Request Changes
+              maskClosable: false
+              okText: Request Changes
+            events:
+              onOk:
+                _build.array.concat:
+                  - - id: validate
+                      type: Validate
+                      params: change_request_comment
+                  - _var:
+                      key: page_config.events.onRequestChanges
+                      default: []
+                  - - id: submit_request_changes
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: {{ workflow_type }}-submit
+                        payload:
+                          action_id:
+                            _state: action._id
+                          signal: request_changes
+                          current_key:
+                            _state: action.key
+                          form:
+                            _state: form
+                          form_review:
+                            _state: form_review
+                          comment:
+                            _state: change_request_comment
+                          comment_visibility:
+                            _if:
+                              test:
+                                _eq:
+                                  - _state: change_request_comment_internal
+                                  - true
+                              then: internal
+                              else: shared
+                  # Terminal signal — return to the entity on success.
+                  - _ref:
+                      path: components/return-to-entity.yaml
+                      vars:
+                        entity_page_id:
+                          _state: action.entity_link.pageId
+                        entity_url_query:
+                          _state: action.entity_link.urlQuery
+                        success_message:
+                          _var:
+                            key: page_config.buttons.request_changes.successMessage
+                            default: Changes requested.
+              onClose:
+                - id: reset_comment
+                  type: SetState
+                  params:
+                    change_request_comment: null
+                    change_request_comment_internal: false
+            blocks:
+              # Mandatory request-changes comment — shared comment-input fragment
+              # (Part 61): text-only + the shared/internal control.
+              - _ref:
+                  path: components/comment-input.yaml
+                  vars:
+                    comment_path: change_request_comment
+                    visibility_path: change_request_comment_internal
+                    required: true
+                    required_message: A comment is required to request changes
+                    title: Change Description
+                    placeholder: Please provide a description of the changes you would like.
+        # Optional Approve modal — renders iff page_config.buttons.approve.modal is set.
+        - _build.if:
+            test:
+              _build.ne:
+                - _var:
+                    key: page_config.buttons.approve.modal
+                    default: null
+                - null
+            then:
+              - id: approve_modal
+                type: ConfirmModal
+                properties:
+                  width: 600
+                  title:
+                    _var:
+                      key: page_config.buttons.approve.modal.title
+                      default: null
+                  okText: Approve
+                  content:
+                    _var:
+                      key: page_config.buttons.approve.modal.content
+                      default: You are approving this action. Would you like to proceed?
+                events:
+                  onOk:
+                    _build.array.concat:
+                      - - id: validate
+                          type: Validate
+                          params:
+                            regex:
+                              - ^form_review\.
+                      - _var:
+                          key: page_config.events.onApprove
+                          default: []
+                      - - id: submit_approve
+                          type: CallAPI
+                          params:
+                            endpointId:
+                              _module.endpointId: {{ workflow_type }}-submit
+                            payload:
+                              action_id:
+                                _state: action._id
+                              signal: approve
+                              current_key:
+                                _state: action.key
+                              form:
+                                _state: form
+                              form_review:
+                                _state: form_review
+                              comment:
+                                _state: comment
+                              comment_visibility:
+                                _if:
+                                  test:
+                                    _eq:
+                                      - _state: comment_internal
+                                      - true
+                                  then: internal
+                                  else: shared
+                      # Terminal signal — return to the entity on success.
+                      - _ref:
+                          path: components/return-to-entity.yaml
+                          vars:
+                            entity_page_id:
+                              _state: action.entity_link.pageId
+                            entity_url_query:
+                              _state: action.entity_link.urlQuery
+                            success_message:
+                              _var:
+                                key: page_config.buttons.approve.successMessage
+                                default: Approved.
+            else: []

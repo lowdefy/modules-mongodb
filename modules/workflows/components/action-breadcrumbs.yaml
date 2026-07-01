@@ -1,0 +1,82 @@
+# Action-page breadcrumb fragment (Part 56 — D8/D9/D10; entity-list link added).
+#
+# Returns the breadcrumb LIST a template assigns to its layout-page `breadcrumbs`
+# var, so the trail isn't duplicated across the form templates and the check
+# page. With an entity-list link configured the trail mirrors the host app's own
+# entity pages (e.g. lead-list → lead-view):
+#
+#   Home / {entity list} / {entity name|type} / {workflow title} / {action title}
+#
+# The {entity list} segment is build-time optional: present only when the
+# workflow's `entity.list_page_id` is configured. Without it the trail collapses
+# to the original four segments:
+#
+#   Home / {entity name|type} / {workflow title} / {action title}
+#
+# Lowdefy breadcrumb items spread their whole object onto the Link component, so
+# an item carries `label` + `pageId` + `urlQuery` directly. Page-only — the
+# in-context modal has no breadcrumb.
+#
+# Vars (each template supplies its own state-path operators; human-string labels
+# are baked at build time by makeActionPages and passed via `_var`):
+#   - entity_list_page_id  baked string|null — the entity-LIST page id. When
+#                          non-null a list crumb renders ahead of the entity
+#                          crumb; null drops it (build-time decision).
+#   - entity_list_title    baked string|null — the list crumb's (plural) label.
+#   - entity_title         operator → the entity TYPE label (entity_link.title).
+#   - entity_name          operator → the entity INSTANCE name, or null. Sourced
+#                          from `entity_link.name` on the get_workflow_action
+#                          response, which the read handler resolves server-side
+#                          from the workflow's optional `entity.data` routine
+#                          (Part 26). The entity crumb shows the name when set,
+#                          else the type.
+#   - entity_page_id       operator → the entity (view) page id (entity_link.pageId).
+#   - entity_url_query     operator → the entity deep-link query (entity_link.urlQuery).
+#   - workflow_id          operator → the parent workflow id (for the overview link).
+#   - workflow_title       baked string — the workflow-title label.
+#   - action_label         baked string — the current action's title (no link).
+_build.array.concat:
+  - - home: true
+      icon: AiOutlineHome
+  # Entity list — plural label linking to the host-app list page. Build-time
+  # optional: emitted only when entity_list_page_id is configured.
+  - _build.if:
+      test:
+        _build.ne:
+          - _var:
+              key: entity_list_page_id
+              default: null
+          - null
+      then:
+        - label:
+            _var: entity_list_title
+          pageId:
+            _var: entity_list_page_id
+      else: []
+  # Entity — the instance name when resolved (D10), else the type label. Links to
+  # the entity view page.
+  - - label:
+        _if:
+          test:
+            _ne:
+              - _var: entity_name
+              - null
+          then:
+            _var: entity_name
+          else:
+            _var: entity_title
+      pageId:
+        _var: entity_page_id
+      urlQuery:
+        _var: entity_url_query
+  # Workflow — links to the workflow-overview page (D9).
+  - - label:
+        _var: workflow_title
+      pageId:
+        _module.pageId: workflow-overview
+      urlQuery:
+        workflow_id:
+          _var: workflow_id
+  # Action — the current page, no link.
+  - - label:
+        _var: action_label

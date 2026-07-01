@@ -1,13 +1,13 @@
 # Workflows Action Groups — Spec
 
-Elevates `action_group` from UI label to engine concept. Full rationale in [design.md](design.md); this file carries only the committed decisions.
+Elevates `action_group` from UI label to engine concept. Full rationale in [design.md](designs/workflows-module-concept/action-groups/design.md); this file carries only the committed decisions.
 
 ## Workflow YAML — top-level `action_groups:`
 
 ```yaml
 type: onboarding
 title: Onboarding
-entity_type: lead
+entity_collection: leads-collection
 display_order: 1
 
 action_groups:
@@ -75,7 +75,7 @@ blocked_by: [phase-2, contact-customer] # group ID + action type
 ```js
 // workflow doc
 {
-  _id, workflow_type, entity_type, entity_id, entity_collection, ...,
+  _id, workflow_type, entity_id, entity_collection, ...,
   status: [ { stage: 'active', created } ],
   summary: { done: 3, not_required: 0, total: 6 },
   groups: [
@@ -122,7 +122,7 @@ Ordered steps (extending engine sub-design's existing ordering):
 
 `completed_groups` is populated only when step 2 transitioned a group from any other status to `done`. Already-`done` groups don't appear. Retry of an idempotent `SubmitWorkflowAction` call produces `completed_groups: []` because step 2 no-ops.
 
-**Idempotency.** Step 2 is idempotent (writing the same `groups[]` produces the same state). Step 3 is idempotent (priority rule no-ops repeated stage pushes). Step 7's `completed_groups` is computed from actual transitions; retries don't re-fire hooks.
+**Idempotency.** Step 2 is idempotent (writing the same `groups[]` produces the same state). Step 3 is idempotent (the FSM no-ops repeated `unblock` re-fires — an already-unblocked `action-required` action has no `unblock` transition). Step 7's `completed_groups` is computed from actual transitions; retries don't re-fire hooks.
 
 ## `on_complete` invocation — engine-internal fan-out (submit-pipeline)
 
@@ -140,7 +140,7 @@ Groups without `on_complete` declared have no hook to fire; they appear in `comp
 
 ## Worked example — phase transition
 
-User submits `send-quote` (last open action in phase-1) via `update-action-send-quote` (submit-pipeline). `SubmitWorkflowAction` runs the lifecycle:
+User submits `send-quote` (last open action in phase-1) via `onboarding-send-quote-submit` (submit-pipeline). `SubmitWorkflowAction` runs the lifecycle:
 
 1. Write `send-quote.status = done`.
 2. Recompute affected groups: phase-1 all-terminal → `groups[0].status = done`. Write `groups[]`.

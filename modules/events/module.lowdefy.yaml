@@ -1,11 +1,15 @@
 name: Events
-version: 0.8.1
+version: 0.7.0
 description: Event logging — new-event API, event timeline panel, shared event metadata
 
 exports:
   connections:
     - id: events-collection
       description: MongoDB collection connection for event log records
+    - id: events-timeline
+      description: >
+        Read-only EventsTimeline connection exposing the GetEventsTimeline
+        engine method that the events-timeline component fetches from.
   components:
     - id: change_stamp
       description: Audit metadata template with timestamp and user fields
@@ -45,29 +49,6 @@ vars:
     description: >
       Additional event type display metadata. Merged with built-in types.
       Keys are type strings, values have color, title, icon.
-  action_status:
-    type: object
-    default: {}
-    description: >
-      Additional action (task) status display metadata. Merged with the
-      built-in action_status enum. Keys are status stages, values have
-      color, title, card_color, border_color — used to render the action
-      cards looked up onto each event from `action_ids`.
-  lookup_collections:
-    type: object
-    description: >-
-      Real Mongo collection names used by the events-timeline read-pipeline
-      `$lookup` stages. Override when an app points its connections at
-      differently-named collections.
-    properties:
-      actions:
-        type: string
-        default: actions
-        description: >-
-          Collection the events-timeline pipeline joins (event `action_ids`
-          → action `_id`) to populate each event's action cards. Set to the
-          same real collection name the activities module's `actions-collection`
-          connection is mapped to.
   contact_page_url:
     type: string
     default: ""
@@ -78,6 +59,23 @@ vars:
       without a link. Example: `/user-admin/view?user_id={id}`.
       Per-call overrides via `contact_page_url` and `disable_contact_link`
       vars on the events-timeline component.
+  actions_collection:
+    type: string
+    default: null
+    description: >
+      Actions collection the events timeline joins to enrich events with action
+      cards. The engine falls back to `actions` when unset, so override only when
+      your actions collection is named differently. Enrichment is data-driven:
+      the join is inert when events carry no `action_ids`, so entities with no
+      workflow actions render as an events-only timeline.
+  contacts_collection:
+    type: string
+    default: null
+    description: >
+      Contacts collection joined to resolve each event author's avatar
+      (`created.user.id` → `_id`, projecting `profile.picture`). The engine
+      falls back to `user-contacts` when unset; avatars fall back to initials
+      when an author has no matching contact.
 
 components:
   - id: change_stamp
@@ -97,10 +95,11 @@ api:
 
 connections:
   - _ref: connections/events-collection.yaml
+  - _ref: connections/events-timeline.yaml
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.8.1"
+    version: "^0.7.0"
 
 secrets:
   - name: MONGODB_URI

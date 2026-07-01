@@ -1,0 +1,86 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  validate:
+    type: array
+    default: []
+  disabled:
+    type: boolean
+    default: false
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
+  extra:
+    type: string
+    required: false
+  on_change:
+    type: array
+    default: []
+
+config:
+  id:
+    _var: key
+  type: ButtonSelector
+  visible:
+    _var:
+      key: visible
+      default: true
+  required:
+    _var:
+      key: required
+      default: false
+  validate:
+    _var:
+      key: validate
+      default: []
+  properties:
+    title:
+      _var: title
+    disabled:
+      _var:
+        key: disabled
+        default: false
+    label:
+      _build.object.assign:
+        - inline:
+            _var:
+              key: label_inline
+              default: false
+          colon: false
+          extra:
+            _var: extra
+        - _build.if:
+            test:
+              _build.ne:
+                - _var:
+                    key: label_span
+                    default: null
+                - null
+            then:
+              span:
+                _var: label_span
+              align: right
+            else: {}
+    options:
+      - label: "Yes"
+        value: true
+      - label: "No"
+        value: false
+  events:
+    onChange:
+      _var:
+        key: on_change
+        default: []

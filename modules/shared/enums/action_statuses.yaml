@@ -1,0 +1,48 @@
+not-required:
+  color: "#d9d9d9"
+  borderColor: "#8c8c8c"
+  titleColor: "#434343"
+  title: Not Required
+  priority: 0
+blocked:
+  color: "#efefef"
+  borderColor: "#aeaeae"
+  titleColor: "#595959"
+  title: Blocked
+  priority: 7
+action-required:
+  color: "#e6f7ff"
+  borderColor: "#91d5ff"
+  titleColor: "#096dd9"
+  title: Action Required
+  priority: 6
+in-progress:
+  color: "#e6fffb"
+  borderColor: "#87e8de"
+  titleColor: "#08979c"
+  title: In Progress
+  priority: 5
+in-review:
+  color: "#f9f0ff"
+  borderColor: "#d3adf7"
+  titleColor: "#531dab"
+  title: In Review
+  priority: 4
+done:
+  color: "#f6ffed"
+  borderColor: "#b7eb8f"
+  titleColor: "#389e0d"
+  title: Done
+  priority: 3
+changes-required:
+  color: "#fff7e6"
+  borderColor: "#ffc069"
+  titleColor: "#d46b08"
+  title: Changes Required
+  priority: 2
+error:
+  color: "#fff1f0"
+  borderColor: "#ff7875"
+  titleColor: "#cf1322"
+  title: Alert
+  priority: 1

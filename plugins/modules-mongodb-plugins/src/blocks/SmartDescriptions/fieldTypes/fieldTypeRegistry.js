@@ -1,6 +1,10 @@
 import React from "react";
 import { type } from "@lowdefy/helpers";
-import { S3Download } from "@lowdefy/plugin-aws/blocks";
+// Deep import — the blocks barrel pulls S3UploadDragger's CSS module, which
+// crashes Node's SSR external import in apps that don't independently
+// transpile @lowdefy/plugin-aws (it is only added to Next transpilePackages
+// when one of its block types is used on a page).
+import S3Download from "@lowdefy/plugin-aws/blocks/S3Download/S3Download.js";
 import { DangerousHtml } from "@lowdefy/blocks-basic/blocks";
 import formatValue from "../utils/formatValue.js";
 import formatFieldName from "../utils/formatFieldName.js";

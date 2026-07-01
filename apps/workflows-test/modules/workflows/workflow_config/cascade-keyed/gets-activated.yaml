@@ -1,0 +1,19 @@
+# Sibling the cascade `activate`s: starts blocked, and `activate` lifts it to
+# action-required (form/check `blocked` row `activate` cell). Demonstrates a
+# cascade that UNBLOCKS a sibling (the mirror of gets-blocked).
+type: gets-activated
+kind: check
+action_group: cascade
+sort_order: 40
+description: A sibling the driver's cascade activates.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  blocked:
+    test:
+      message: Blocked, awaiting activation.
+  action-required:
+    test:
+      message: Activated by the cascade.

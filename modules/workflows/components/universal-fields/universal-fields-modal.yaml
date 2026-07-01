@@ -1,0 +1,72 @@
+# Universal-fields edit modal (Part 56 addendum DA1).
+#
+# Hosts the Part 24 universal-fields EDIT inputs (the assignees multi-selector +
+# DateSelector) inside a Modal, opened by the title-bar ✎ chip. Uses the Modal's
+# NATIVE footer: Ok (`okText: Update`, primary, right) runs the update; the
+# built-in Cancel (left) just dismisses. The Update still calls
+# `{workflow_type}-update-fields` exactly as before (Part 24) — only its host
+# moved from an inline body button into the footer Ok.
+#
+# Footer mechanics (antd Modal via the Lowdefy block): `onOk` runs the shared
+# update_fields_actions sequence (Validate → CallAPI → on_complete). The block
+# auto-closes the modal when `onOk` succeeds and KEEPS IT OPEN when an action
+# returns success:false — so a failed `Validate` holds the dialog open with the
+# error shown. No manual self-close is needed (the previous footer:false body
+# button appended one; the native footer makes it automatic). The Ok button also
+# shows a loading spinner while the async CallAPI runs (`confirmLoading`).
+#
+# The body renders the inputs only — `show_update_button: false` suppresses
+# universal-fields.yaml's in-body Update button, since the footer Ok drives it.
+#
+# Consumed via `_ref: { path, vars }` with OPERATOR-valued vars. Vars:
+#   - modal_id      build-time block id (matches the chips ✎ setOpen target).
+#   - state_path    state namespace for the edit inputs (Part 24).
+#   - workflow_type literal (form njk) or `_state` operator (check) — builds the
+#                   Update endpoint id.
+#   - action_id     operator leaf the Update payload posts.
+#   - allowed_edit  operator leaf gating the inputs (disabled).
+#   - show          build-time array of field names to render (default both).
+#   - on_complete   actions appended after the Update CallAPI (default []); runs
+#                   before the modal auto-closes.
+id:
+  _var: modal_id
+type: Modal
+properties:
+  width: 520
+  title: Edit details
+  okText: Update
+events:
+  onOk:
+    _ref:
+      path: components/universal-fields/update_fields_actions.yaml
+      vars:
+        state_path:
+          _var: state_path
+        workflow_type:
+          _var: workflow_type
+        action_id:
+          _var: action_id
+        on_complete:
+          _var:
+            key: on_complete
+            default: []
+blocks:
+  - _ref:
+      path: components/universal-fields/universal-fields.yaml
+      vars:
+        mode: edit
+        show_update_button: false
+        state_path:
+          _var: state_path
+        workflow_type:
+          _var: workflow_type
+        action_id:
+          _var: action_id
+        allowed_edit:
+          _var:
+            key: allowed_edit
+            default: false
+        show:
+          _var:
+            key: show
+            default: [assignees, due_date]

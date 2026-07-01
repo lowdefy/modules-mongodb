@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Part 56 — Option C (converged): title-bar meta · description callout · floating actions</title>
+<style>
+  /* ---------------------------------------------------------------------------
+     Option C (CONVERGED) — the working candidate.
+       • Status pill on the LEFT of the title (standard title-block placement).
+       • Assignees + due date → chips in the title bar's page-actions (right). ✎ → modal.
+       • Description → a PROMINENT callout at the top of the middle column when set;
+         collapses entirely when unset. Edited via the same ✎ modal.
+       • One RHS card, no tabs: entity Details stacked above the History timeline
+         (form); History only on check (Details is the middle review subject).
+       • Floating action card: workflow's own extra buttons on the left, the
+         standard Save Draft / Submit (or Reopen / Accept) on the right. No status text.
+       • Form + Check toggle; Description set/unset toggle.
+     Local mockup, committed alongside the design. Open in a browser.
+  --------------------------------------------------------------------------- */
+  :root {
+    --bg: #f3f3f6; --card: #fff; --line: #ededf2; --line-2: #e1e1e9;
+    --ink: #1b1b22; --ink-2: #56565f; --ink-3: #8a8a96;
+    --violet: #6c4df6; --violet-2: #efeafe; --violet-3: #f6f3ff;
+    --blue: #1677ff; --blue-soft: #e8f1ff; --blue-border: #a9d2ff;
+    --r: 10px; --r-sm: 7px; --r-pill: 999px;
+    --sh: 0 1px 2px rgba(20,20,35,.05), 0 1px 3px rgba(20,20,35,.05);
+    --sh-float: 0 8px 22px rgba(20,20,35,.12), 0 3px 8px rgba(20,20,35,.08);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --pad: 14px; --gap: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--ink); font-size: 13px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+
+  .toolbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 22px; background: rgba(243,243,246,.88); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .toolbar .name { font-weight: 650; font-size: 12px; } .toolbar .name span { color: var(--ink-3); font-weight: 500; }
+  .seg { display: inline-flex; background: #e6e6ee; border-radius: 9px; padding: 3px; gap: 2px; }
+  .seg button { font: inherit; font-weight: 550; border: 0; background: transparent; color: var(--ink-2); padding: 5px 13px; border-radius: 6px; cursor: pointer; }
+  .seg button.on { background: #fff; color: var(--ink); box-shadow: var(--sh); }
+  .seg button:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+  .seg .lbl { font-size: 11px; color: var(--ink-3); align-self: center; margin: 0 -4px 0 2px; }
+
+  .page { max-width: 1340px; margin: 0 auto; padding: 18px 22px 60px; }
+  .crumbs { display: flex; align-items: center; gap: 7px; color: var(--ink-3); margin-bottom: 14px; }
+  .crumbs a { color: var(--ink-2); text-decoration: none; } .crumbs .here { color: var(--ink); font-weight: 600; }
+  .crumbs svg { width: 14px; height: 14px; opacity: .7; }
+
+  /* ---- title bar: back | status | title-col (grow) | meta ---- */
+  .head { display: flex; align-items: center; gap: 0; margin-bottom: 18px; }
+  .back { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: #fff; display: grid; place-items: center; color: var(--ink-2); cursor: pointer; margin-right: 12px; }
+  .status { flex: 0 0 auto; margin-right: 14px; padding: 8px 14px; border-radius: var(--r-sm); font-weight: 600; font-size: 14px; line-height: 1; white-space: nowrap; background: var(--blue-soft); color: var(--blue); border: 1px solid var(--blue-border); }
+  .status.review { background: #fff4e6; color: #d9730d; border-color: #ffd8a8; }
+  .title-col { flex: 1 1 0; min-width: 0; }
+  .eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); line-height: 1.2; }
+  .title { font-size: 23px; font-weight: 700; letter-spacing: -.01em; line-height: 1.14; margin: 1px 0 1px; }
+  .subtitle { color: var(--ink-2); }
+  .head-meta { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; margin-left: 16px; }
+  .head-meta .k { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; margin-right: 1px; }
+
+  .avatars { display: flex; } .ava { width: 25px; height: 25px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; font-weight: 600; color: #fff; border: 2px solid #fff; margin-left: -7px; } .ava:first-child { margin-left: 0; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--line-2); border-radius: var(--r-pill); padding: 4px 12px; color: var(--ink); white-space: nowrap; }
+  .chip svg { width: 13px; height: 13px; color: var(--ink-3); }
+  .iconbtn { border: 1px solid var(--line-2); background: #fff; border-radius: var(--r-sm); width: 28px; height: 28px; display: grid; place-items: center; cursor: pointer; color: var(--ink-2); }
+  .iconbtn:hover { color: var(--violet); border-color: var(--violet); }
+
+  /* ---- workspace ---- */
+  .ws { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(0, 2.3fr) minmax(290px, 1.4fr); gap: var(--gap); align-items: start; }
+  @media (max-width: 920px) { .ws { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--sh); }
+  .pad { padding: var(--pad); }
+
+  /* left steps */
+  .wf-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .wf-head .nm { font-weight: 600; font-size: 13.5px; }
+  .wf-badge { width: 28px; height: 28px; border-radius: 8px; background: var(--violet); display: grid; place-items: center; color: #fff; }
+  .step { display: grid; grid-template-columns: 18px 1fr; gap: 10px; }
+  .step .rail { display: flex; flex-direction: column; align-items: center; }
+  .step .ic { color: var(--ink-3); display: grid; place-items: center; }
+  .step .line { width: 2px; flex: 1; background: var(--line-2); margin: 3px 0; min-height: 12px; }
+  .step .lbl { font-weight: 600; color: var(--blue); margin-bottom: 2px; }
+  .step.on .lbl { color: var(--violet); }
+  .step .sub { color: var(--ink-2); font-size: 12.5px; } .step .sub.cur { color: var(--violet); }
+  .step .sub::before { content: "• "; color: var(--ink-3); }
+  .step:last-child .line { display: none; }
+  .step .body { padding-bottom: 10px; }
+
+  /* middle */
+  .mid { display: flex; flex-direction: column; gap: var(--gap); }
+
+  /* description callout — prominent, only when set */
+  .desc { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 13px 15px; border: 1px solid var(--violet-2); background: var(--violet-3); border-radius: var(--r); }
+  .desc .ic { color: var(--violet); margin-top: 1px; }
+  .desc .k { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--violet); margin-bottom: 3px; }
+  .desc .tx { color: var(--ink); }
+
+  .field { margin-bottom: 13px; } .field:last-child { margin-bottom: 0; }
+  .lab { display: block; margin-bottom: 5px; font-weight: 500; } .lab .req { color: #e5484d; }
+  .inp, .ta { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 6px 10px; font: inherit; color: var(--ink); background: #fff; }
+  .inp.ph { color: var(--ink-3); display: flex; align-items: center; justify-content: space-between; }
+  .ta { min-height: 64px; } .ta.sm { min-height: 48px; } .ta.ph { color: var(--ink-3); }
+  .empty { border: 1px dashed var(--line-2); border-radius: var(--r-sm); padding: 14px; text-align: center; color: var(--ink-3); }
+  .yn { display: inline-flex; border: 1px solid var(--line-2); border-radius: var(--r-sm); overflow: hidden; } .yn span { padding: 5px 16px; border-right: 1px solid var(--line-2); } .yn span:last-child { border-right: 0; }
+  .dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; } .dl dt { color: var(--ink-3); } .dl dd { margin: 0; }
+  .review-sep { height: 1px; background: var(--line); margin: 14px 0; }
+
+  .btn { font: inherit; font-weight: 550; border-radius: var(--r-sm); padding: 7px 16px; cursor: pointer; border: 1px solid var(--line-2); background: #fff; color: var(--ink); }
+  .btn.primary { background: var(--violet); border-color: var(--violet); color: #fff; }
+  .btn.danger { color: #d9480f; border-color: #ffc9a8; background: #fff7f2; }
+  .btn.ghost { border-color: var(--line-2); background: #fff; color: var(--ink-2); }
+  .btn:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+
+  /* floating action card */
+  .actions { position: sticky; bottom: 16px; display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: var(--r); background: rgba(255,255,255,.93); backdrop-filter: blur(6px); border: 1px solid var(--line-2); box-shadow: var(--sh-float); }
+  .actions .extra { display: flex; gap: 8px; } /* workflow's own extra buttons */
+  .actions .spacer { flex: 1; }
+
+  /* RHS — one card, no tabs: Details (form) stacked above History */
+  .ctxcard { display: flex; flex-direction: column; min-height: 520px; }
+  .sec-h { padding: 12px var(--pad); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--line); }
+  .sec-details { padding: 12px var(--pad) 14px; border-bottom: 1px solid var(--line); }
+  .sec-history { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .tl-wrap { padding: 4px var(--pad) 10px; overflow-y: auto; flex: 1; }
+  .tl-item { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .tl-item:last-child { border-bottom: 0; }
+  .tl-ic { width: 26px; height: 26px; border-radius: 50%; background: var(--violet-2); color: var(--violet); display: grid; place-items: center; font-size: 11px; margin-top: 1px; }
+  .tl-main .a b { font-weight: 600; } .tl-main .t { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+  .dl-rhs { display: grid; grid-template-columns: max-content 1fr; gap: 9px 16px; } .dl-rhs dt { color: var(--ink-3); } .dl-rhs dd { margin: 0; }
+
+  /* modal */
+  .scrim { position: fixed; inset: 0; background: rgba(20,20,30,.34); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+  .scrim.open { display: flex; }
+  .modal { width: 440px; max-width: 100%; background: #fff; border-radius: var(--r); box-shadow: var(--sh-float); overflow: hidden; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); } .modal-head .t { font-weight: 650; font-size: 14px; }
+  .modal-body { padding: 16px; } .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <span class="name">Part 56 · Option C (converged) <span>— title-bar meta · description callout · floating actions</span></span>
+    <div class="seg" role="tablist" aria-label="Action kind">
+      <button class="on" data-kind="form" aria-selected="true">Form</button>
+      <button data-kind="check" aria-selected="false">Check</button>
+    </div>
+    <div class="seg">
+      <span class="lbl">Description</span>
+      <button class="on" data-desc="set">Set</button>
+      <button data-desc="unset">Unset</button>
+    </div>
+  </div>
+
+  <div class="page">
+    <nav class="crumbs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 9v11h5v-6h4v6h5V9"/></svg>
+      <span>/</span><a>Lead · Test 1</a><span>/</span><a>Onboarding</a><span>/</span><span class="here" data-bc-action>Qualify</span>
+    </nav>
+
+    <!-- title bar: back | STATUS (left) | title-col | meta chips (right) -->
+    <header class="head">
+      <button class="back" aria-label="Back"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
+      <span class="status" data-pill>Action Required</span>
+      <div class="title-col">
+        <div class="eyebrow">Onboarding</div>
+        <div class="title" data-title>Qualify</div>
+        <div class="subtitle" data-sub>Qualify the lead.</div>
+      </div>
+      <div class="head-meta">
+        <span class="k">Assignees</span>
+        <span class="avatars"><span class="ava" style="background:#6c4df6" title="Sam H.">SH</span><span class="ava" style="background:#1677ff" title="Jane D.">JD</span></span>
+        <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Jul 12, 2026</span>
+        <button class="iconbtn" id="editMeta" aria-label="Edit assignment"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
+      </div>
+    </header>
+
+    <div class="ws">
+      <!-- LEFT -->
+      <aside class="card pad">
+        <div class="wf-head"><span class="nm">Onboarding</span><span class="wf-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4M15 3h4a2 2 0 012 2v4M9 21H5a2 2 0 01-2-2v-4M15 21h4a2 2 0 002-2v-4"/></svg></span></div>
+        <div class="step on"><div class="rail"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg></span><span class="line"></span></div><div class="body"><div class="lbl">Qualify</div><div class="sub cur">Qualify the lead.</div></div></div>
+        <div class="step"><div class="rail"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span><span class="line"></span></div><div class="body"><div class="lbl">Quote</div><div class="sub">Build and send the quote.</div><div class="sub">Schedule the follow-up call.</div></div></div>
+        <div class="step"><div class="rail"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg></span><span class="line"></span></div><div class="body"><div class="lbl">Purchase order</div><div class="sub">Upload once the quote is approved.</div></div></div>
+        <div class="step"><div class="rail"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg></span></div><div class="body"><div class="lbl">Convert to customer</div><div class="sub">Convert once the PO is uploaded.</div></div></div>
+      </aside>
+
+      <!-- MIDDLE -->
+      <div class="mid">
+        <!-- prominent description callout (only when set) -->
+        <div class="desc" data-desc-callout>
+          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg></span>
+          <div><div class="k">Description</div><div class="tx">Returning customer referred by Acme. Wants onboarding completed before end of quarter — prioritise the contract review and confirm the renewal terms with their finance lead.</div></div>
+        </div>
+
+        <!-- FORM -->
+        <section class="card pad" data-mid="form">
+          <div class="field"><label class="lab"><span class="req">*</span> Contact</label><div class="inp ph">Search contacts… <span>⌄</span></div></div>
+          <div class="field"><div class="empty">No contacts selected</div></div>
+          <div class="field"><label class="lab">Qualification notes</label><div class="ta"></div></div>
+          <div class="field"><label class="lab">Site visit needed?</label><div class="yn"><span>Yes</span><span>No</span></div></div>
+          <div class="field"><label class="lab">Comment</label><div class="ta ph">Add a comment (optional).</div></div>
+        </section>
+
+        <!-- CHECK -->
+        <section class="card pad" data-mid="check" hidden>
+          <div class="eyebrow" style="margin-bottom:10px">Reviewing — Lead · Test 1</div>
+          <dl class="dl">
+            <dt>Name</dt><dd>Test 1</dd><dt>Company</dt><dd>Acme Corp</dd>
+            <dt>Contact</dt><dd>jane@acme.example</dd><dt>Estimated value</dt><dd>$48,000</dd>
+            <dt>Qualification notes</dt><dd>Budget confirmed; decision by Q3. Site visit not required.</dd>
+            <dt>Source</dt><dd>Referral</dd>
+          </dl>
+          <div class="review-sep"></div>
+          <div class="field" style="margin-bottom:0"><label class="lab">Comment</label><div class="ta ph">Add a review comment (optional).</div></div>
+        </section>
+
+        <!-- FLOATING actions: extra workflow buttons (left) · standard (right) -->
+        <div class="actions" data-mid="form">
+          <div class="extra"><button class="btn ghost">Reassign</button><button class="btn ghost">Request info</button></div>
+          <span class="spacer"></span>
+          <button class="btn">Save Draft</button><button class="btn primary">Submit</button>
+        </div>
+        <div class="actions" data-mid="check" hidden>
+          <div class="extra"><button class="btn ghost">Reassign</button></div>
+          <span class="spacer"></span>
+          <button class="btn danger">Reopen</button><button class="btn primary">Accept</button>
+        </div>
+      </div>
+
+      <!-- RIGHT — one card, no tabs: Details (form) above History -->
+      <aside class="card ctxcard">
+        <!-- entity Details — form only; on check the entity is the middle review subject -->
+        <div data-mid="form">
+          <div class="sec-h">Details</div>
+          <div class="sec-details">
+            <dl class="dl-rhs">
+              <dt>Name</dt><dd>Test 1</dd><dt>Company</dt><dd>Acme Corp</dd>
+              <dt>Contact</dt><dd>jane@acme.example</dd><dt>Stage</dt><dd><span class="chip">Lead</span></dd>
+              <dt>Source</dt><dd>Referral</dd><dt>Created</dt><dd>Jun 24, 2026</dd>
+            </dl>
+          </div>
+        </div>
+        <!-- History timeline — fills remaining height, scrolls -->
+        <div class="sec-history">
+          <div class="sec-h">History</div>
+          <div class="tl-wrap">
+            <div class="tl-item"><span class="tl-ic">✎</span><div class="tl-main"><div class="a"><b>Sam H.</b> updated the assignment</div><div class="t">Today · 10:42</div></div></div>
+            <div class="tl-item"><span class="tl-ic">↗</span><div class="tl-main"><div class="a"><b>Workflow</b> advanced to <b>Qualify</b></div><div class="t">Today · 09:30</div></div></div>
+            <div class="tl-item"><span class="tl-ic">💬</span><div class="tl-main"><div class="a"><b>Jane D.</b>: confirmed budget with the buyer</div><div class="t">Today · 09:15</div></div></div>
+            <div class="tl-item"><span class="tl-ic">＋</span><div class="tl-main"><div class="a"><b>Jane D.</b> created the lead</div><div class="t">Yesterday · 16:05</div></div></div>
+            <div class="tl-item"><span class="tl-ic">✉</span><div class="tl-main"><div class="a"><b>System</b> sent intake email</div><div class="t">Yesterday · 16:05</div></div></div>
+            <div class="tl-item"><span class="tl-ic">✎</span><div class="tl-main"><div class="a"><b>Jane D.</b> set source to Referral</div><div class="t">Jun 24 · 11:20</div></div></div>
+            <div class="tl-item"><span class="tl-ic">📎</span><div class="tl-main"><div class="a"><b>Jane D.</b> attached intake-form.pdf</div><div class="t">Jun 24 · 11:18</div></div></div>
+            <div class="tl-item"><span class="tl-ic">＋</span><div class="tl-main"><div class="a"><b>Workflow</b> started — Onboarding</div><div class="t">Jun 24 · 11:15</div></div></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- EDIT MODAL -->
+  <div class="scrim" id="scrim">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+      <div class="modal-head"><span class="t" id="mtitle">Edit assignment</span><button class="iconbtn" id="closeMeta" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="modal-body">
+        <div class="field"><label class="lab">Assignees</label><div class="inp ph">Sam H., Jane D. <span>⌄</span></div></div>
+        <div class="field"><label class="lab">Due date</label><div class="inp ph">Jul 12, 2026 <span>▦</span></div></div>
+        <div class="field" style="margin-bottom:0"><label class="lab">Description</label><div class="ta sm">Returning customer referred by Acme. Wants onboarding completed before end of quarter.</div></div>
+      </div>
+      <div class="modal-foot"><button class="btn" id="cancelMeta">Cancel</button><button class="btn primary" id="saveMeta">Update</button></div>
+    </div>
+  </div>
+
+<script>
+  const T = {
+    form:  { title:'Qualify',        sub:'Qualify the lead.',          bc:'Qualify',        pill:'Action Required', pillClass:'' },
+    check: { title:'RCA Acceptance', sub:'Review and accept the RCA.', bc:'RCA Acceptance', pill:'In Review',       pillClass:'review' },
+  };
+  function setKind(kind) {
+    document.querySelectorAll('.seg [data-kind]').forEach(b => { const on = b.dataset.kind === kind; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+    document.querySelectorAll('[data-mid]').forEach(el => { el.hidden = el.dataset.mid !== kind; });
+    const t = T[kind];
+    document.querySelector('[data-title]').textContent = t.title;
+    document.querySelector('[data-sub]').textContent = t.sub;
+    document.querySelector('[data-bc-action]').textContent = t.bc;
+    const pill = document.querySelector('[data-pill]'); pill.textContent = t.pill; pill.className = 'status ' + t.pillClass;
+  }
+  function setDesc(state) {
+    document.querySelectorAll('.seg [data-desc]').forEach(b => b.classList.toggle('on', b.dataset.desc === state));
+    document.querySelector('[data-desc-callout]').hidden = state !== 'set';
+  }
+  document.querySelectorAll('.seg [data-kind]').forEach(b => b.addEventListener('click', () => setKind(b.dataset.kind)));
+  document.querySelectorAll('.seg [data-desc]').forEach(b => b.addEventListener('click', () => setDesc(b.dataset.desc)));
+
+  const scrim = document.getElementById('scrim');
+  const close = () => scrim.classList.remove('open');
+  document.getElementById('editMeta').addEventListener('click', () => scrim.classList.add('open'));
+  document.getElementById('closeMeta').addEventListener('click', close);
+  document.getElementById('cancelMeta').addEventListener('click', close);
+  document.getElementById('saveMeta').addEventListener('click', close);
+  scrim.addEventListener('click', e => { if (e.target === scrim) close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  setKind('form'); setDesc('set');
+</script>
+</body>
+</html>

@@ -53,14 +53,14 @@ On update, `company_ids` can be replaced (contacts module) or union-merged via `
 
 ### apps.{app_name} (per-app access)
 
-| Field                            | Type     | Notes                                                              |
-| -------------------------------- | -------- | ------------------------------------------------------------------ |
+| Field                            | Type     | Notes                                                                        |
+| -------------------------------- | -------- | ---------------------------------------------------------------------------- |
 | `apps.{app_name}.is_user`        | Boolean  | `true` = has app access; blocks the contacts edit page (must use user-admin) |
-| `apps.{app_name}.disabled`       | Boolean  | Per-app disable (independent of global `disabled`)                 |
-| `apps.{app_name}.roles`          | String[] | Role names for this app (e.g., `["admin", "procurement-lead"]`)    |
-| `apps.{app_name}.invite.open`    | Boolean  | `true` = invite link is active/pending                             |
-| `apps.{app_name}.sign_up`        | Object   | `{ timestamp, method }` — set when user accepts invite             |
-| `apps.{app_name}.app_attributes` | Object   | App-specific custom data, merged via `$mergeObjects`               |
+| `apps.{app_name}.disabled`       | Boolean  | Per-app disable (independent of global `disabled`)                           |
+| `apps.{app_name}.roles`          | String[] | Role names for this app (e.g., `["admin", "procurement-lead"]`)              |
+| `apps.{app_name}.invite.open`    | Boolean  | `true` = invite link is active/pending                                       |
+| `apps.{app_name}.sign_up`        | Object   | `{ timestamp, method }` — set when user accepts invite                       |
+| `apps.{app_name}.app_attributes` | Object   | App-specific custom data, merged via `$mergeObjects`                         |
 
 The `apps` layer is set by user-admin (invite-user, update-user). The contacts module never touches it. The `is_user` guard in update-contact's filter (`apps.{app_name}.is_user: { $ne: true }`) prevents editing user records through the contacts form.
 

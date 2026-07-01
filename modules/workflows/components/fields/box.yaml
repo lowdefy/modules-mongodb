@@ -1,0 +1,26 @@
+vars:
+  key:
+    type: string
+    required: true
+  visible:
+    type: boolean
+    default: true
+  blocks:
+    type: array
+    default: []
+
+config:
+  id:
+    _var: key
+  type: Box
+  layout:
+    gap: 16
+    justify: center
+  visible:
+    _var:
+      key: visible
+      default: true
+  blocks:
+    _var:
+      key: blocks
+      default: []

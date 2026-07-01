@@ -1,0 +1,75 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  options:
+    type: array
+    default: []
+  extra:
+    type: string
+    default: null
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
+  on_change:
+    type: array
+    default: []
+
+config:
+  id:
+    _var: key
+  type: Selector
+  visible:
+    _var:
+      key: visible
+      default: true
+  required:
+    _var:
+      key: required
+      default: false
+  properties:
+    label:
+      _build.object.assign:
+        - inline:
+            _var:
+              key: label_inline
+              default: false
+        - _build.if:
+            test:
+              _build.ne:
+                - _var:
+                    key: label_span
+                    default: null
+                - null
+            then:
+              span:
+                _var: label_span
+              align: right
+            else: {}
+    title:
+      _var: title
+    options:
+      _var:
+        key: options
+        default: []
+    extra:
+      _var:
+        key: extra
+        default: null
+  events:
+    onChange:
+      _var:
+        key: on_change
+        default: []

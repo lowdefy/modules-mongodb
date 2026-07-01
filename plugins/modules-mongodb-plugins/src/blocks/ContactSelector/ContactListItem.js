@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Avatar, Button, Space, theme } from "antd";
 import { renderHtml } from "@lowdefy/block-utils";
 
-import parseNunjucks from "./parseNunjucks.js";
+import parseNunjucks from "../../connections/shared/render/parseNunjucks.js";
 
 const ContactListItem = ({
   className,
@@ -91,9 +91,7 @@ const ContactListItem = ({
               <Button
                 size="small"
                 type="default"
-                icon={
-                  <Icon properties={{ name: "AiOutlineEdit" }} />
-                }
+                icon={<Icon properties={{ name: "AiOutlineEdit" }} />}
                 onClick={() => editContact(contact)}
               />
             )
@@ -103,9 +101,7 @@ const ContactListItem = ({
               size="small"
               type="default"
               danger
-              icon={
-                <Icon properties={{ name: "AiOutlineDelete" }} />
-              }
+              icon={<Icon properties={{ name: "AiOutlineDelete" }} />}
               onClick={() => removeContact(contact)}
             />
           )}

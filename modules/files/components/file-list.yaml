@@ -162,5 +162,4 @@ blocks:
                             key: block_id
                             default: file_list
                         - _items.$.created.timestamp
-                  params:
-                    format: YYYY-MM-DD
+                  format: YYYY-MM-DD

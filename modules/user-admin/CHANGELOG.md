@@ -56,7 +56,7 @@
   - If you didn't override `event_display`, no action needed beyond setting `app_name` on companies.
   - If you overrode `event_display`, list every app and event type you want stored — defaults no longer fill the gaps. The override shape stays `{ [app_name]: { [event-type]: template } }`.
 
-  See `docs/idioms.md#event-display` for the updated reference.
+  See [`docs/shared/event-display.md`](../../docs/shared/event-display.md) for the updated reference.
 
 ## 0.3.0
 

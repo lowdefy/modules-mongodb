@@ -1,0 +1,113 @@
+name: E2E
+
+# Part 22 task 12. There was no e2e lane before this; "matching the demo's e2e
+# posture" therefore means matching its LOCAL posture — `pnpm e2e` runs the
+# Playwright config, whose webServer does a full `lowdefy build` + `lowdefy
+# start` before the specs. No bespoke CI-only server path.
+#
+# Both apps self-provision Mongo: their playwright.config.js calls
+# `configureMdb()`, which boots mongodb-memory-server (a single-node replica set,
+# required for the engine's transactions) and sets LOWDEFY_SECRET_MONGODB_URI at
+# config-eval time. So no MongoDB service container and no real secrets are
+# needed — the demo config also injects a build-only NEXTAUTH_SECRET itself.
+#
+# The two jobs are independent (no `needs`) so a demo flake never masks a
+# workflows-test regression, and vice versa.
+
+on:
+  pull_request:
+    # Path filters keep design-only / docs-only PRs off this (slow) lane.
+    paths:
+      - "apps/workflows-test/**"
+      - "apps/demo/**"
+      - "modules/**"
+      - "plugins/**"
+      - ".github/workflows/e2e.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workflows-test-e2e:
+    name: workflows-test e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Cache the Playwright browser binaries across runs.
+      - name: Get Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install Playwright browsers
+        run: pnpm --filter @lowdefy/modules-workflows-test exec playwright install --with-deps chromium
+
+      # The Playwright webServer runs `lowdefy build` + `lowdefy start` (port 3001).
+      - name: Run workflows-test e2e
+        run: pnpm --filter @lowdefy/modules-workflows-test e2e
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflows-test-playwright
+          path: |
+            apps/workflows-test/e2e/test-results
+            apps/workflows-test/e2e/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+  demo-e2e:
+    name: demo e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Get Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install Playwright browsers
+        run: pnpm --filter @lowdefy/modules-demo exec playwright install --with-deps chromium
+
+      # The Playwright webServer runs `lowdefy build` + `lowdefy start` (port 3101);
+      # the config injects a build-only NEXTAUTH_SECRET, so no runner secrets are
+      # required. The demo carries only the curated example smoke + the form-submit
+      # button specs (Part 22 keeps exhaustive coverage in workflows-test).
+      - name: Run demo e2e
+        run: pnpm --filter @lowdefy/modules-demo e2e
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-playwright
+          path: |
+            apps/demo/e2e/test-results
+            apps/demo/e2e/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7

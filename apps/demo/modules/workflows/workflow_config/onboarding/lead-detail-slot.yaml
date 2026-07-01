@@ -1,0 +1,61 @@
+# entity_view.slot for the onboarding workflow (read-only).
+#
+# Baked by makeActionPages into the onboarding form pages (RHS Details section) and
+# the onboarding-check page (middle review subject). It reads the entity fields the
+# workflow's `entity.data` routine returns, surfaced server-side on the
+# get_workflow_action response's `entity` object (Part 26 — an object, so no `.0`).
+# Display only, NO inputs and NO save handlers (Part 56 D6: entity_view is read-only).
+#
+# Rendered with SmartDescriptions (the idiomatic read-only data view) rather than
+# hand-rolled HTML: selectors render as tags, and the denormalized `contact` object
+# auto-detects into a CRM link. `fields` controls exactly which keys show and their
+# labels.
+- id: lead_detail_slot
+  type: SmartDescriptions
+  properties:
+    column: 1
+    size: small
+    data:
+      _request: get_workflow_action.entity
+    fields:
+      - id: status
+        type: Selector
+        properties:
+          title: Status
+          options:
+            - label: New
+              value: new
+            - label: Qualified
+              value: qualified
+            - label: Quoted
+              value: quoted
+            - label: Won
+              value: won
+            - label: Parked
+              value: parked
+      - id: company
+        type: TextInput
+        properties:
+          title: Company
+      - id: source
+        type: Selector
+        properties:
+          title: Source
+          options:
+            - label: Web
+              value: web
+            - label: Referral
+              value: referral
+            - label: Event
+              value: event
+            - label: Cold outreach
+              value: cold
+      - id: estimated_value
+        type: NumberInput
+        properties:
+          title: Estimated value
+      # No `type` — the denormalized { contact_id, name, email } object
+      # auto-detects as a contact and renders as a CRM link.
+      - id: contact
+        properties:
+          title: Contact

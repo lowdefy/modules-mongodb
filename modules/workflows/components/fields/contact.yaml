@@ -1,0 +1,68 @@
+# Single-contact form field. Wraps the contacts module's `contact-selector`
+# export (the rich search/add/edit picker) capped at one selection. The block
+# value is an array of denormalized `{ contact_id, name, email, verified }`
+# objects (length 0 or 1) at the `key` state path — read the single contact as
+# `_state: {key}.0`. Requires the host app to wire a `contacts` module entry.
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  validate:
+    type: array
+    default: []
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
+
+config:
+  _ref:
+    module: contacts
+    component: contact-selector
+    vars:
+      id:
+        _var: key
+      max: 1
+      required:
+        _var:
+          key: required
+          default: false
+      visible:
+        _var:
+          key: visible
+          default: true
+      validate:
+        _var:
+          key: validate
+          default: []
+      label:
+        _build.object.assign:
+          - title:
+              _var: title
+            inline:
+              _var:
+                key: label_inline
+                default: false
+          - _build.if:
+              test:
+                _build.ne:
+                  - _var:
+                      key: label_span
+                      default: null
+                  - null
+              then:
+                span:
+                  _var: label_span
+                align: right
+              else: {}

@@ -161,10 +161,7 @@ const Selector = ({
           ) : null,
         )}
         {searchText && properties.allowNewContacts && (
-          <Option
-            id={`${blockId}_new_contact`}
-            value={"new_contact"}
-          >
+          <Option id={`${blockId}_new_contact`} value={"new_contact"}>
             {renderHtml({
               html: `<div class="secondary" style="border-top: 1px solid #808080; padding: 8px"> Add <b>${searchText}</b> as new contact</div>`,
               methods,

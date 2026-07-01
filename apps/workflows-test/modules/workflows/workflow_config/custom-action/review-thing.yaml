@@ -1,0 +1,32 @@
+# A kind:custom action. `edit`/`review` are role-gated (`reviewer`) so the e2e
+# can drive two users: a `reviewer` (gets the working app-page link) and a
+# view-only observer (falls back to the shared `custom-action-action` page).
+#
+# No `view_link` is authored on any stage — so the observer's `view` slot always
+# resolves to the shared per-workflow page, exercising the default fallback.
+type: review-thing
+kind: custom
+sort_order: 10
+description: Review the thing on the app-owned page.
+access:
+  test:
+    view: true
+    edit: [reviewer]
+    review: [reviewer]
+status_map:
+  action-required:
+    test:
+      message: Review the thing on the app page.
+      link: { pageId: custom-thing-review, urlQuery: { action_id: true } }
+  in-review:
+    test:
+      message: Awaiting approval.
+      link: { pageId: custom-thing-review, urlQuery: { action_id: true } }
+  changes-required:
+    test:
+      message: Reviewer requested changes.
+      link: { pageId: custom-thing-review, urlQuery: { action_id: true } }
+  done:
+    test:
+      message: Thing approved.
+      link: { pageId: custom-thing-review, urlQuery: { action_id: true } }

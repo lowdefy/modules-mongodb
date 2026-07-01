@@ -1,0 +1,49 @@
+# cascade-keyed (Part 22 task 5) — pre-hook cascades + keyed upsert-spawn.
+#
+# A single `driver` form whose `submit` pre-hook returns an `actions[]` list that
+# cascades three engine-only signals at sibling actions AND `upsert: true`-spawns
+# a KEYED action at its `none`-row birth stage:
+#   block    at gets-blocked    (action-required → blocked)
+#   error    at gets-errored     (action-required → error)
+#   activate at gets-activated   (blocked → action-required)
+#   activate at keyed-spawn[key] (none → action-required, spawned by upsert)
+#
+# This is the PRODUCTION mechanism for engine-only signals — there is no test
+# DSL; cascades are written exactly as a real app writes them (cf. the demo's
+# onboarding/qualify.yaml pre-hook). The cascade SEMANTICS (multi-level, depth
+# guard, FSM no-op skip, none-row upsert spawn) are unit-owned
+# (runTrackerCascade.test.js, resolveSignal.test.js); this cluster proves the
+# mechanism fires through the wired app.
+type: cascade-keyed
+title: Cascade keyed
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
+
+starting_actions:
+  - type: driver
+    status: action-required
+  - type: gets-blocked
+    status: action-required
+  - type: gets-errored
+    status: action-required
+  - type: gets-activated
+    status: blocked
+  # keyed-spawn is deliberately ABSENT from starting_actions — it is not seeded.
+  # The driver's submit pre-hook spawns it at its `none`-row birth stage via
+  # { upsert: true }, keyed by a value taken from the driver's form input.
+
+action_groups:
+  - id: cascade
+    title: Cascade
+    icon: AiOutlineApartment
+
+actions:
+  - _ref: modules/workflows/workflow_config/cascade-keyed/driver.yaml
+  - _ref: modules/workflows/workflow_config/cascade-keyed/gets-blocked.yaml
+  - _ref: modules/workflows/workflow_config/cascade-keyed/gets-errored.yaml
+  - _ref: modules/workflows/workflow_config/cascade-keyed/gets-activated.yaml
+  - _ref: modules/workflows/workflow_config/cascade-keyed/keyed-spawn.yaml

@@ -1,0 +1,6 @@
+workflows_config:
+  _ref: modules/workflows/workflow_config/workflows.yaml
+app_name:
+  _ref:
+    path: app_config.yaml
+    key: app_name

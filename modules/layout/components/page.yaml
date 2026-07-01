@@ -215,14 +215,38 @@ blocks:
                               _var:
                                 key: doc
                                 default: null
+                            description:
+                              _var:
+                                key: description
+                                default: null
                             page_actions:
                               _var:
                                 key: page_actions
                                 default: []
+                            type:
+                              _var:
+                                key: type
+                                default: null
+                            status:
+                              _var:
+                                key: status
+                                default: null
+                            status_enum:
+                              _var:
+                                key: status_enum
+                                default: null
+                            loading:
+                              _var:
+                                key: loading
+                                default: false
                             show_back_button:
                               _var:
                                 key: show_back_button
                                 default: false
+                            back_link:
+                              _var:
+                                key: back_link
+                                default: null
             else: []
         # Consumer content
         - _var: blocks

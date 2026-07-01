@@ -1,0 +1,334 @@
+# Workflow overview page (part 17).
+#
+# Addressed by ?workflow_id=<id>. Single CallApi to get-workflow-overview
+# (part 19), then renders the workflow header + action cards. The workflow
+# title, entity back-link, and per-action form metadata all ride the API
+# response (part 46) — this page reads no module config vars.
+#
+# Path-stub dependencies (won't build until other parts ship):
+#   - ../components/workflow-header.yaml         (part 18)
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: workflow-overview
+    content_width: 1100
+    title:
+      _state: workflow.title
+    show_back_button: true
+    back_link:
+      pageId:
+        _state: workflow.entity_link.pageId
+      urlQuery:
+        _state: workflow.entity_link.urlQuery
+    # Breadcrumb trail: Home / [entity list] / entity / workflow (terminal).
+    breadcrumbs:
+      _ref:
+        path: components/overview-breadcrumbs.yaml
+        vars:
+          tail:
+            - label:
+                _state: workflow.title
+    type: Workflow
+    status:
+      _state: workflow.status.0.stage
+    status_enum:
+      _ref: components/workflow_lifecycle_stages.yaml
+    loading:
+      _not:
+        _state: workflow
+    events:
+      onMount:
+        # workflow_id presence guard.
+        - id: redirect_no_workflow
+          type: Link
+          skip:
+            _ne:
+              - _url_query: workflow_id
+              - null
+          params:
+            back: true
+        # Single CallApi to get-workflow-overview.
+        - id: call_get_overview
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: get-workflow-overview
+            payload:
+              workflow_id:
+                _url_query: workflow_id
+        # Stash the response in _state.workflow, plus put the grouped actions
+        # under their own top-level state key so the List block can read from it.
+        - id: set_overview_state
+          type: SetState
+          params:
+            workflow:
+              _actions: call_get_overview.response.response.workflow
+            groups_list:
+              _actions: call_get_overview.response.response.groups
+        # Null-redirect guard — Api returns workflow: null when no actions
+        # pass the access filter (or the workflow doc is missing).
+        # - id: redirect_no_workflow_doc
+        #   type: Link
+        #   skip:
+        #     _ne:
+        #       - _state: workflow
+        #       - null
+        #   params:
+        #     back: true
+    blocks:
+      - id: workflow_progress_row
+        type: Box
+        layout:
+          gap: 8
+          selfAlign: middle
+        blocks:
+          - id: workflow_progress
+            type: Progress
+            layout:
+              flex: 1 1 auto
+            properties:
+              type: line
+              percent:
+                _js:
+                  args:
+                    summary:
+                      _state: workflow.summary
+                  fn: |
+                    const { summary } = args;
+                    if (!summary) return 0;
+                    const total = summary.total || 0;
+                    if (total === 0) return 100;
+                    const filled = (summary.done || 0) + (summary.not_required || 0);
+                    return Math.round((filled / total) * 100);
+          - id: workflow_summary
+            type: Paragraph
+            layout:
+              flex: 0 0 auto
+            properties:
+              type: secondary
+              content:
+                _string.concat:
+                  - ""
+                  - _sum:
+                      - _get:
+                          from:
+                            _state: workflow
+                          key: summary.done
+                          default: 0
+                      - _get:
+                          from:
+                            _state: workflow
+                          key: summary.not_required
+                          default: 0
+                  - " of "
+                  - _get:
+                      from:
+                        _state: workflow
+                      key: summary.total
+                      default: 0
+                  - " done"
+      # Action cards grouped by action group (engine emits groups in declaration
+      # order; cards within keep declaration order). Each group renders an
+      # icon + title header (suppressed for ungrouped/null-title groups) above
+      # its card list.
+      #
+      # List spacing: blocks-basic List builds its item flex-container from
+      # properties.direction/wrap and merges its `.element` CSS slot into it, so
+      # the gap BETWEEN items lives on `style: .element: gap`. (A bare `style.gap`
+      # would land on the outer BlockLayout div, not the flex container — which is
+      # why it had no effect.) layout.gap cannot space items either — the
+      # framework Area wraps each item individually, so layout.gap only spaces the
+      # blocks WITHIN one item. Hence here: layout.gap spaces the header from its
+      # own cards inside each group; `.element` gap spaces the group sections.
+      - id: groups_list
+        type: List
+        properties:
+          direction: column
+          wrap: nowrap
+        layout:
+          gap: 8
+        style:
+          .element:
+            gap: 24px
+        blocks:
+          - id: groups_list.$.group_header
+            type: Box
+            visible:
+              _ne:
+                - _state: groups_list.$.title
+                - null
+            layout:
+              gap: 8
+              selfAlign: middle
+            blocks:
+              - id: groups_list.$.group_icon
+                type: Icon
+                layout:
+                  flex: 0 0 auto
+                visible:
+                  _ne:
+                    - _state: groups_list.$.icon
+                    - null
+                properties:
+                  name:
+                    _state: groups_list.$.icon
+              - id: groups_list.$.group_title
+                type: Title
+                layout:
+                  flex: 1 1 auto
+                properties:
+                  level: 5
+                  content:
+                    _state: groups_list.$.title
+          - id: groups_list.$.actions
+            type: List
+            properties:
+              direction: column
+              wrap: nowrap
+            style:
+              .element:
+                gap: 8px
+            blocks:
+              - id: groups_list.$.actions.$.card
+                type: Card
+                layout:
+                  gap: 16
+                blocks:
+                  - id: groups_list.$.actions.$.header
+                    type: Box
+                    layout:
+                      gap: 8
+                      selfAlign: middle
+                      justify: space-between
+                    blocks:
+                      - id: groups_list.$.actions.$.title_row
+                        type: Box
+                        layout:
+                          gap: 8
+                          selfAlign: middle
+                        blocks:
+                          - id: groups_list.$.actions.$.status_badge
+                            type: Tag
+                            layout:
+                              flex: 0 0 auto
+                            properties:
+                              color:
+                                _get:
+                                  from:
+                                    _ref: components/action_statuses.yaml
+                                  key:
+                                    _string.concat:
+                                      - _state: groups_list.$.actions.$.status
+                                      - .titleColor
+                              title:
+                                _get:
+                                  from:
+                                    _ref: components/action_statuses.yaml
+                                  key:
+                                    _string.concat:
+                                      - _state: groups_list.$.actions.$.status
+                                      - .title
+                          - id: groups_list.$.actions.$.message
+                            layout:
+                              flex: 1 1 auto
+                            type: Paragraph
+                            properties:
+                              content:
+                                _state: groups_list.$.actions.$.message
+                          - id: groups_list.$.actions.$.link_button
+                            type: Button
+                            layout:
+                              flex: 0 0 auto
+                            visible:
+                              _ne:
+                                - _state: groups_list.$.actions.$.link
+                                - null
+                            properties:
+                              title:
+                                _if_none:
+                                  - _state: groups_list.$.actions.$.link.title
+                                  - Open
+                              type: link
+                            events:
+                              onClick:
+                                - id: groups_list.$.actions.$.link
+                                  type: Link
+                                  params:
+                                    _state: groups_list.$.actions.$.link
+                  - id: groups_list.$.actions.$.body_empty
+                    type: Html
+                    visible:
+                      _eq:
+                        - _get:
+                            from:
+                              _state: workflow.form_data
+                            key:
+                              _if:
+                                test:
+                                  _ne:
+                                    - _state: groups_list.$.actions.$.key
+                                    - null
+                                then:
+                                  _string.concat:
+                                    - _state: groups_list.$.actions.$.type
+                                    - .
+                                    - _state: groups_list.$.actions.$.key
+                                else:
+                                  _state: groups_list.$.actions.$.type
+                            default: null
+                        - null
+                    properties:
+                      html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
+                  - id: groups_list.$.actions.$.body_dataview
+                    type: DataDescriptions
+                    visible:
+                      _ne:
+                        - _get:
+                            from:
+                              _state: workflow.form_data
+                            key:
+                              _if:
+                                test:
+                                  _ne:
+                                    - _state: groups_list.$.actions.$.key
+                                    - null
+                                then:
+                                  _string.concat:
+                                    - _state: groups_list.$.actions.$.type
+                                    - .
+                                    - _state: groups_list.$.actions.$.key
+                                else:
+                                  _state: groups_list.$.actions.$.type
+                            default: null
+                        - null
+                    properties:
+                      formConfig:
+                        _array.concat:
+                          - _if_none:
+                              - _state: groups_list.$.actions.$.form_meta.form
+                              - []
+                          - _if_none:
+                              - _state: groups_list.$.actions.$.form_meta.form_review
+                              - []
+                      data:
+                        form:
+                          _get:
+                            from:
+                              _state: workflow.form_data
+                            key:
+                              _if:
+                                test:
+                                  _ne:
+                                    - _state: groups_list.$.actions.$.key
+                                    - null
+                                then:
+                                  _string.concat:
+                                    - _state: groups_list.$.actions.$.type
+                                    - .
+                                    - _state: groups_list.$.actions.$.key
+                                else:
+                                  _state: groups_list.$.actions.$.type
+                            default: null
+                        workflow:
+                          _state: workflow

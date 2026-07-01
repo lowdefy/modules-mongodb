@@ -1,0 +1,7 @@
+- id: default
+  links:
+    - id: things
+      type: MenuLink
+      pageId: things
+      properties:
+        title: Things

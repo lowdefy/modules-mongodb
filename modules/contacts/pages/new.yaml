@@ -3,7 +3,7 @@ _ref:
   component: page
   vars:
     id: new
-    title:
+    type:
       _string.concat:
         - "New "
         - _module.var: label
@@ -53,6 +53,21 @@ _ref:
           component: floating-actions
           vars:
             actions:
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: all
               - id: save_button
                 type: Button
                 layout:
@@ -106,18 +121,3 @@ _ref:
                         urlQuery:
                           _id:
                             _actions: create_contact.response.response.contactId
-              - id: cancel_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Cancel
-                  icon: AiOutlineCloseCircle
-                  type: default
-                events:
-                  onClick:
-                    - id: back
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: all

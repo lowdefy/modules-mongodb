@@ -1,0 +1,63 @@
+vars:
+  key:
+    type: string
+    required: true
+  visible:
+    type: boolean
+    default: true
+  message:
+    type: string
+    required: false
+  description:
+    type: string
+    required: false
+  type:
+    type: string
+    default: warning
+  show_icon:
+    type: boolean
+    default: true
+  label_span:
+    type: number
+    required: false
+
+config:
+  id:
+    _string.concat:
+      - _var: key
+      - _container
+  type: Box
+  visible:
+    _var:
+      key: visible
+      default: true
+  blocks:
+    - id:
+        _var: key
+      type: Alert
+      layout:
+        _build.object.assign:
+          - span:
+              _subtract:
+                - 24
+                - _var:
+                    key: label_span
+                    default: 0
+            push:
+              _var:
+                key: label_span
+                default: 0
+      properties:
+        message:
+          _var: message
+        description:
+          _var: description
+        icon: AiOutlineAlert
+        type:
+          _var:
+            key: type
+            default: warning
+        showIcon:
+          _var:
+            key: show_icon
+            default: true

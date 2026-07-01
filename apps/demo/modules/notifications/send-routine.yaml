@@ -1,10 +1,179 @@
-- id: create-notifications
-  type: AxiosHttp
-  connectionId: consume-notifications
-  payload:
-    event_ids:
-      _payload: event_ids
+# Demo dispatch routine for the notifications module's send-notification endpoint.
+# Two aggregation branches on the events collection, each $merge-ing production-shaped
+# notification docs (minus email fields) into the notifications collection.
+# An empty $match merges nothing, so every other event type is a silent no-op.
+# See designs/demo-notifications/design.md.
+- id: notify_quote_approved
+  type: MongoDBAggregation
+  connectionId:
+    _module.connectionId:
+      id: events-collection
+      module: events
   properties:
-    data:
-      ids:
-        _payload: event_ids
+    pipeline:
+      # ── select the handled events ──
+      - $match:
+          _id:
+            $in:
+              _payload: event_ids
+          type: action-approve
+          metadata.action_type: send-quote
+      # ── join the send-quote action (action_ids may include
+      #    cascade-touched actions, so filter by type) ──
+      # The new-event endpoint flattens the `references` payload onto the event
+      # doc's top level (_object.assign), so reference arrays are top-level
+      # fields (action_ids, lead_ids, …), not nested under `references`.
+      - $lookup:
+          from: actions
+          let:
+            action_ids: $action_ids
+          pipeline:
+            - $match:
+                $expr:
+                  $and:
+                    - $in:
+                        - $_id
+                        - $$action_ids
+                    - $eq:
+                        - $type
+                        - send-quote
+          as: quote_action
+      - $set:
+          quote_action:
+            $first: $quote_action
+      # ── recipient: the submit transition's user (last in-review entry) ──
+      - $set:
+          recipient_id:
+            $let:
+              vars:
+                submit_entry:
+                  $last:
+                    $filter:
+                      input: $quote_action.status
+                      as: entry
+                      cond:
+                        $eq:
+                          - $$entry.stage
+                          - in-review
+              in: $$submit_entry.created.user.id
+      # ── shape the notification doc ──
+      - $project:
+          _id:
+            $function:
+              body: |
+                function(){
+                  return UUID().toString().split('"')[1]
+                }
+              args: []
+              lang: js
+          key:
+            $concat:
+              - $_id
+              - ":"
+              - $recipient_id
+              - ":"
+              - $dateToString:
+                  date: $created.timestamp
+          popup:
+            $literal: false
+          contact_id: $recipient_id
+          title: Quote approved
+          description:
+            $concat:
+              - $created.user.name
+              - " approved your quote."
+          body: "<p>Your quote was approved.</p>"
+          links:
+            button:
+              pageId: lead-view
+              urlQuery:
+                _id:
+                  $first: $lead_ids
+          type: quote-approved
+          event_type: action-approve
+          event_id: $_id
+          created:
+            _ref:
+              module: events
+              component: change_stamp
+          read:
+            $literal: false
+          priority:
+            $literal: 50
+      - $merge:
+          into: notifications
+          on: _id
+          whenMatched: keepExisting # uuids never collide; defensive
+          whenNotMatched: insert
+
+# Invite mock — the inbox notification stands in for the production invite email.
+- id: notify_invite
+  type: MongoDBAggregation
+  connectionId:
+    _module.connectionId:
+      id: events-collection
+      module: events
+  properties:
+    pipeline:
+      - $match:
+          _id:
+            $in:
+              _payload: event_ids
+          type:
+            $in:
+              - invite-user
+              - resend-user-invite
+      - $set:
+          recipient_id:
+            $first: $contact_ids
+      - $project:
+          _id:
+            $function:
+              body: |
+                function(){
+                  return UUID().toString().split('"')[1]
+                }
+              args: []
+              lang: js
+          key:
+            $concat:
+              - $_id
+              - ":"
+              - $recipient_id
+              - ":"
+              - $dateToString:
+                  date: $created.timestamp
+          popup:
+            $literal: false
+          contact_id: $recipient_id
+          title:
+            $cond:
+              - $eq:
+                  - $type
+                  - invite-user
+              - "You've been invited to the demo app"
+              - "Your demo app invite was resent"
+          description: Sign in with your email address to get started.
+          body: "<p>You've been invited to the demo app. Sign in with your email address to get started.</p>"
+          links:
+            button:
+              pageId:
+                _module.pageId:
+                  id: login
+                  module: user-account
+          type: user-invite
+          event_type: $type
+          event_id: $_id
+          created:
+            _ref:
+              module: events
+              component: change_stamp
+          read:
+            $literal: false
+          priority:
+            $literal: 50
+      - $merge:
+          into: notifications
+          on: _id
+          whenMatched: keepExisting
+          whenNotMatched: insert

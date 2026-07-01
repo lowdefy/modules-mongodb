@@ -15,6 +15,8 @@
     "./*": "./dist/*",
     "./actions": "./dist/actions.js",
     "./blocks": "./dist/blocks.js",
+    "./connections": "./dist/connections.js",
+    "./fsm": "./dist/connections/shared/fsm/tables.js",
     "./metas": "./dist/metas.js",
     "./types": "./dist/types.js"
   },
@@ -23,6 +25,7 @@
   ],
   "scripts": {
     "build": "swc src --out-dir dist --config-file ../../.swcrc --delete-dir-on-start --copy-files --strip-leading-paths",
+    "build:watch": "swc src --out-dir dist --config-file ../../.swcrc --copy-files --strip-leading-paths --watch",
     "clean": "rm -rf dist",
     "prepare": "pnpm build"
   },
@@ -31,18 +34,23 @@
     "dompurify": "^3"
   },
   "peerDependencies": {
-    "@lowdefy/block-utils": "0.0.0-experimental-20260526123919",
-    "@lowdefy/blocks-antd": "0.0.0-experimental-20260526123919",
-    "@lowdefy/blocks-basic": "0.0.0-experimental-20260526123919",
-    "@lowdefy/helpers": "0.0.0-experimental-20260526123919",
-    "@lowdefy/nunjucks": "0.0.0-experimental-20260526123919",
+    "@lowdefy/block-utils": "0.0.0-experimental-20260611102401",
+    "@lowdefy/blocks-antd": "0.0.0-experimental-20260611102401",
+    "@lowdefy/blocks-basic": "0.0.0-experimental-20260611102401",
+    "@lowdefy/community-plugin-mongodb": "^3",
+    "@lowdefy/helpers": "0.0.0-experimental-20260611102401",
+    "@lowdefy/nunjucks": "0.0.0-experimental-20260611102401",
     "@lowdefy/plugin-aws": ">=4.0.0",
     "antd": ">=6",
+    "mongodb": "^6",
     "react": ">=18",
     "react-dom": ">=18"
   },
   "devDependencies": {
     "@swc/cli": "0.6.0",
-    "@swc/core": "1.11.24"
+    "@swc/core": "1.11.24",
+    "antd": "6.3.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   }
 }

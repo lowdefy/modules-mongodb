@@ -71,7 +71,6 @@ Create:
     module: layout
     component: floating-actions
     vars:
-      width: 700
       actions:
         - id: cancel_button
           ...
@@ -101,7 +100,10 @@ blocks:
 **Edit page with extra action buttons** — floating-actions can include additional buttons alongside Save/Cancel. Use `visible` for conditional display:
 
 ```yaml
+# List left-to-right: secondary actions first, primary (Save) last so it lands rightmost.
 actions:
+  - id: cancel_button
+    ...
   - id: resend_invite_button
     type: Button
     visible:
@@ -120,8 +122,6 @@ actions:
           type: CallAPI
           ...
   - id: save_button
-    ...
-  - id: cancel_button
     ...
 ```
 
@@ -212,7 +212,7 @@ _ref:
         - id: set_state
           type: SetState
           params:
-            {entity}:
+            { entity }:
               _request: get_{entity}.0
     requests:
       - _ref: requests/get_{entity}.yaml
@@ -241,12 +241,7 @@ _ref:
           module: layout
           component: floating-actions
           vars:
-            width: 700
             actions:
-              - id: spacer
-                type: Box
-                layout:
-                  flex: 1 0 auto
               - id: cancel_button
                 type: Button
                 layout:
@@ -278,8 +273,8 @@ _ref:
                         endpointId:
                           _module.endpointId: update-{entity}
                         payload:
-                          {entity}:
-                            _state: {entity}
+                          { entity }:
+                            _state: { entity }
                       messages:
                         success:
                           _string.concat:
@@ -326,12 +321,7 @@ _ref:
           module: layout
           component: floating-actions
           vars:
-            width: 700
             actions:
-              - id: spacer
-                type: Box
-                layout:
-                  flex: 1 0 auto
               - id: cancel_button
                 type: Button
                 layout:
@@ -368,8 +358,8 @@ _ref:
                         endpointId:
                           _module.endpointId: create-{entity}
                         payload:
-                          {entity}:
-                            _state: {entity}
+                          { entity }:
+                            _state: { entity }
                       messages:
                         success:
                           _string.concat:
@@ -397,6 +387,6 @@ _ref:
 - [ ] `Validate` before `CallAPI` — use `params: regex: ^entity\.` if other state is on the page
 - [ ] Save flow: Validate -> CallAPI -> Reset -> Link (back for edit, detail page for create)
 - [ ] Endpoint via `_module.endpointId`, payload wraps `_state: {entity}`
-- [ ] Floating-actions: spacer (flex 1 0 auto) + Cancel + Save — buttons use `flex: 0 1 auto`
+- [ ] Floating-actions: list Cancel then Save (primary lands rightmost) — every button needs `layout.flex: 0 1 auto`; the bar right-aligns and never wraps. No `spacer` or `width` var.
 - [ ] Create page Save button uses `type: primary`; edit page uses default
 - [ ] Create page Cancel links to list page (`_module.pageId: all`); edit page uses `back: true`

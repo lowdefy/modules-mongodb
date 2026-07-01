@@ -26,14 +26,14 @@ _ref:
     title:
       _module.var:
         key: label_plural
-        default: {Entity Plural}
+        default: { Entity Plural }
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label:
           _module.var:
             key: label_plural
-            default: {Entity Plural}
+            default: { Entity Plural }
     page_actions:
       - id: new_{entity}_button
         type: Button
@@ -44,7 +44,7 @@ _ref:
             _string.concat:
               - "New "
               - _module.var: label
-          icon: {AiOutlineIcon}
+          icon: { AiOutlineIcon }
           type: primary
         events:
           onClick:

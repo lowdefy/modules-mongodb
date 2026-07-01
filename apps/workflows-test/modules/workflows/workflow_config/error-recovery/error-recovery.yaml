@@ -1,0 +1,35 @@
+# error-recovery (Part 22 task 6) — the error-verb path + real cross-module dispatch.
+#
+# `trigger`'s submit pre-hook cascades `error` at `fragile` (the production
+# mechanism, same as cascade-keyed). `fragile` lands the error stage; the submit
+# writes a timeline event (events module `new-event`) and dispatches a
+# notification (notifications module `send-notification`) through the REAL
+# endpoints — the third "only e2e can prove" item the plugin integration tests
+# mock. The emitted `error-recovery-fragile-error` page (from the `error` verb)
+# then recovers it: resolve_error → in-review → approve → done.
+#
+# Revives the intent of the demo's old skipped error-push-and-resolve.spec.js
+# (deleted in task 11 once this lands).
+type: error-recovery
+title: Error recovery
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
+
+starting_actions:
+  - type: trigger
+    status: action-required
+  - type: fragile
+    status: action-required
+
+action_groups:
+  - id: recovery
+    title: Recovery
+    icon: AiOutlineWarning
+
+actions:
+  - _ref: modules/workflows/workflow_config/error-recovery/trigger.yaml
+  - _ref: modules/workflows/workflow_config/error-recovery/fragile.yaml

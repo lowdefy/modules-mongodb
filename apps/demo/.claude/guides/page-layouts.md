@@ -44,7 +44,7 @@ Every page wraps in `_ref: module: layout, component: page` — the `PageSiderMe
 - `hide_title` — hide the card title (default `false`, matches the `hide_title` convention on `layout/page`)
 - `show_back_button` — back arrow above the card
 
-**`floating-actions`** (`_ref: module: layout, component: floating-actions`) — sticky bottom bar (Affix) for Save/Cancel on edit pages. Vars: `width`, `actions`.
+**`floating-actions`** (`_ref: module: layout, component: floating-actions`) — sticky bottom bar (Affix) for Save/Cancel on edit pages. Right-aligns its buttons and never wraps to a second line; list buttons left-to-right (e.g. Cancel then Save, so the primary lands rightmost). Var: `actions` (each button needs `layout.flex: 0 1 auto`).
 
 **`auth-page`** (`_ref: module: layout, component: auth-page`) — centered card layout for login/signup. Full-height, logo cover, branded background. Vars: `id`, `title`, `blocks`, `actions`, `events`, `requests`.
 
@@ -106,8 +106,7 @@ vars:
         module: layout
         component: floating-actions
         vars:
-          width: 700
-          actions: [spacer, Cancel, Save]
+          actions: [Cancel, Save]
 ```
 
 **Tabbed workspace** — for complex domain pages (lot-view, ticket-view):

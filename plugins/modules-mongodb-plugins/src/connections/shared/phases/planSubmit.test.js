@@ -1,0 +1,548 @@
+/**
+ * Unit tests for planSubmit (task 15) — the plan-phase orchestrator.
+ *
+ * Pure composition: no Mongo, no callApi. Asserts the PLAN shape the commit
+ * phase consumes — transition-entry composition, auxiliary signal flows,
+ * form-data merge, completed_groups (with on_complete join), and the
+ * Submit→trackerFires composition (step 9).
+ */
+import planSubmit from "./planSubmit.js";
+
+const now = { timestamp: new Date("2026-05-20T00:00:00Z"), user: { id: "u1" } };
+const event_id = "evt-1";
+let idCounter;
+const newId = () => `new-${idCounter++}`;
+
+function makeAction({
+  _id = "A1",
+  type = "qualify",
+  kind = "form",
+  stage = "action-required",
+  key = null,
+  action_group = null,
+  ...rest
+} = {}) {
+  return {
+    _id,
+    workflow_id: "W1",
+    type,
+    kind,
+    key,
+    action_group,
+    status: [{ stage, event_id: "e0", created: now }],
+    metadata: {},
+    ...rest,
+  };
+}
+
+function makeWorkflow(overrides = {}) {
+  return {
+    _id: "W1",
+    workflow_type: "onboarding",
+    entity: { connection_id: "leads-collection", id: "L1", ref_key: "lead_ids" },
+    status: [{ stage: "active", event_id: "e0", created: now }],
+    summary: { done: 0, not_required: 0, total: 1 },
+    groups: [],
+    form_data: {},
+    updated: {
+      timestamp: new Date("2026-05-19T00:00:00Z"),
+      user: { id: "u0" },
+    },
+    ...overrides,
+  };
+}
+
+function makeConfig({ actions, action_groups } = {}) {
+  return {
+    type: "onboarding",
+    entity: { connection_id: "leads-collection", ref_key: "lead_ids" },
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: actions ?? [
+      {
+        type: "qualify",
+        title: "Qualify",
+        kind: "form",
+        access: { "test-app": { view: true, edit: true } },
+      },
+    ],
+    ...(action_groups ? { action_groups } : {}),
+  };
+}
+
+function makeContext(overrides = {}) {
+  return {
+    event_id,
+    now,
+    newId,
+    connection: { entry_id: "workflows", app_name: "test-app" },
+    params: { action_id: "A1", signal: "submit" },
+    user: {
+      id: "U1",
+      profile: { name: "Test User" },
+      roles: ["account-manager"],
+    },
+    lowdefyContext: {},
+    ...overrides,
+  };
+}
+
+function makeLoadedState({
+  workflow,
+  actions,
+  config,
+  targetActionId = "A1",
+} = {}) {
+  const wf = workflow ?? makeWorkflow();
+  const acts = actions ?? [makeAction()];
+  const cfg = config ?? makeConfig();
+  const targetAction = acts.find((a) => a._id === targetActionId);
+  const actionConfig = cfg.actions.find((c) => c.type === targetAction.type);
+  return {
+    workflow: wf,
+    actions: acts,
+    workflowConfig: cfg,
+    actionConfig,
+    targetAction,
+  };
+}
+
+const EMPTY_PREHOOK = { actions: [], event_overrides: {}, form_overrides: {} };
+
+beforeEach(() => {
+  idCounter = 1;
+});
+
+test("current action is planned with source user; submit (no review) → done", () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+
+  expect(plan.actions).toHaveLength(1);
+  expect(plan.actions[0].operation).toBe("update");
+  expect(plan.actions[0].doc.status[0]).toEqual({
+    stage: "done",
+    event_id,
+    created: now,
+  });
+  // Workflow recompute: all actions terminal → completed pushed.
+  expect(plan.workflow.doc.status[0].stage).toBe("completed");
+  expect(plan.workflow.operation).toBe("update");
+});
+
+test("user-driven signal with no FSM entry throws signal_not_allowed", () => {
+  const actions = [makeAction({ stage: "done" })];
+  expect(() =>
+    planSubmit({
+      loadedState: makeLoadedState({ actions }),
+      preHookResult: EMPTY_PREHOOK,
+      context: makeContext({ params: { action_id: "A1", signal: "approve" } }),
+    }),
+  ).toThrow(/not allowed/);
+});
+
+test("pre-hook auxiliary signal against another existing action lands the aux transition", () => {
+  const actions = [
+    makeAction({ _id: "A1", type: "qualify" }),
+    makeAction({ _id: "A2", type: "review-docs", stage: "in-review" }),
+  ];
+  const config = makeConfig({
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        access: { "test-app": { view: true, edit: true } },
+      },
+      {
+        type: "review-docs",
+        kind: "form",
+        access: { "test-app": { view: true, review: true } },
+      },
+    ],
+  });
+  const plan = planSubmit({
+    loadedState: makeLoadedState({ actions, config }),
+    preHookResult: {
+      actions: [{ type: "review-docs", signal: "approve" }],
+      event_overrides: {},
+      form_overrides: {},
+    },
+    context: makeContext(),
+  });
+
+  const aux = plan.actions.find((e) => e.doc._id === "A2");
+  expect(aux).toBeDefined();
+  expect(aux.doc.status[0].stage).toBe("done");
+});
+
+test("pre-hook auxiliary upsert spawns a new action (operation insert, seeded fields/metadata)", () => {
+  const config = makeConfig({
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        access: { "test-app": { view: true, edit: true } },
+      },
+      {
+        type: "follow-up",
+        kind: "form",
+        access: { "test-app": { view: true, edit: true } },
+      },
+    ],
+  });
+  const plan = planSubmit({
+    loadedState: makeLoadedState({ config }),
+    preHookResult: {
+      actions: [
+        {
+          type: "follow-up",
+          key: "k1",
+          signal: "activate",
+          upsert: true,
+          fields: { description: "seeded" },
+          metadata: { origin: "prehook" },
+        },
+      ],
+      event_overrides: {},
+      form_overrides: {},
+    },
+    context: makeContext(),
+  });
+
+  const spawned = plan.actions.find((e) => e.operation === "insert");
+  expect(spawned).toBeDefined();
+  expect(spawned.doc.type).toBe("follow-up");
+  expect(spawned.doc.key).toBe("k1");
+  expect(spawned.doc.status[0].stage).toBe("action-required");
+  expect(spawned.doc.description).toBe("seeded");
+  expect(spawned.doc.metadata).toEqual({ origin: "prehook" });
+});
+
+test("pre-hook auxiliary no-op (FSM has no entry) is silently dropped", () => {
+  const actions = [
+    makeAction({ _id: "A1", type: "qualify" }),
+    makeAction({ _id: "A2", type: "review-docs", stage: "not-required" }),
+  ];
+  const config = makeConfig({
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        access: { "test-app": { view: true, edit: true } },
+      },
+      {
+        type: "review-docs",
+        kind: "form",
+        access: { "test-app": { view: true, review: true } },
+      },
+    ],
+  });
+  const plan = planSubmit({
+    loadedState: makeLoadedState({ actions, config }),
+    // not-required has no outgoing entries → auxiliary no-op.
+    preHookResult: {
+      actions: [{ type: "review-docs", signal: "approve" }],
+      event_overrides: {},
+      form_overrides: {},
+    },
+    context: makeContext(),
+  });
+  expect(plan.actions.find((e) => e.doc._id === "A2")).toBeUndefined();
+});
+
+test("form-data merge: submitted form lands under form_data[type]", () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext({
+      params: { action_id: "A1", signal: "submit", form: { score: 5 } },
+    }),
+  });
+  expect(plan.workflow.doc.form_data.qualify).toEqual({ score: 5 });
+});
+
+test("completed_groups: a group whose status flips to done emits with joined on_complete", () => {
+  const workflow = makeWorkflow({
+    groups: [
+      {
+        id: "g1",
+        status: "in-progress",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+  });
+  const actions = [
+    makeAction({ _id: "A1", type: "qualify", action_group: "g1" }),
+  ];
+  const config = makeConfig({
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        action_group: "g1",
+        access: { "test-app": { view: true, edit: true } },
+      },
+    ],
+    action_groups: [
+      { id: "g1", title: "Group 1", on_complete: { signal: "progress" } },
+    ],
+  });
+  const plan = planSubmit({
+    loadedState: makeLoadedState({ workflow, actions, config }),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  expect(plan.completedGroups).toEqual([
+    { workflow_id: "W1", id: "g1", on_complete: { signal: "progress" } },
+  ]);
+});
+
+test("completed_groups: one submit completing the last open action of two groups emits both, each with its on_complete", () => {
+  // g1 and g2 each hold a single open action. The user submit completes g1's
+  // member; a pre-hook auxiliary submit completes g2's member. Both groups flip
+  // in_progress → done in the one plan, so the diff loop emits both entries.
+  const workflow = makeWorkflow({
+    summary: { done: 0, not_required: 0, total: 2 },
+    groups: [
+      {
+        id: "g1",
+        status: "in-progress",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+      {
+        id: "g2",
+        status: "in-progress",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+  });
+  const actions = [
+    makeAction({ _id: "A1", type: "qualify", action_group: "g1" }),
+    makeAction({ _id: "A2", type: "review-docs", action_group: "g2" }),
+  ];
+  const config = makeConfig({
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        action_group: "g1",
+        access: { "test-app": { view: true, edit: true } },
+      },
+      {
+        type: "review-docs",
+        kind: "form",
+        action_group: "g2",
+        access: { "test-app": { view: true, edit: true } },
+      },
+    ],
+    action_groups: [
+      { id: "g1", title: "Group 1", on_complete: { signal: "progress" } },
+      { id: "g2", title: "Group 2", on_complete: { signal: "notify" } },
+    ],
+  });
+  const plan = planSubmit({
+    loadedState: makeLoadedState({ workflow, actions, config }),
+    preHookResult: {
+      actions: [{ type: "review-docs", signal: "submit" }],
+      event_overrides: {},
+      form_overrides: {},
+    },
+    context: makeContext(),
+  });
+  expect(plan.completedGroups).toEqual([
+    { workflow_id: "W1", id: "g1", on_complete: { signal: "progress" } },
+    { workflow_id: "W1", id: "g2", on_complete: { signal: "notify" } },
+  ]);
+});
+
+test("trackerFires: emitted iff workflow auto-completed AND has a parent_action_id", () => {
+  const workflow = makeWorkflow({
+    parent_workflow_id: "PW1",
+    parent_action_id: "PA1",
+  });
+  const plan = planSubmit({
+    loadedState: makeLoadedState({ workflow }),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  expect(plan.workflow.doc.status[0].stage).toBe("completed");
+  expect(plan.trackerFires).toEqual([
+    {
+      parentWorkflowId: "PW1",
+      parentActionId: "PA1",
+      signal: "internal_mirror_child_completed",
+    },
+  ]);
+});
+
+test("trackerFires: empty when completed but no parent", () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  expect(plan.workflow.doc.status[0].stage).toBe("completed");
+  expect(plan.trackerFires).toEqual([]);
+});
+
+test("trackerFires: empty when workflow did not auto-complete even with a parent", () => {
+  // Two actions, only one submitted → not all terminal → no completed push.
+  const workflow = makeWorkflow({
+    parent_workflow_id: "PW1",
+    parent_action_id: "PA1",
+    summary: { done: 0, not_required: 0, total: 2 },
+  });
+  const actions = [
+    makeAction({ _id: "A1", type: "qualify" }),
+    makeAction({ _id: "A2", type: "review-docs", stage: "action-required" }),
+  ];
+  const config = makeConfig({
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        access: { "test-app": { view: true, edit: true } },
+      },
+      {
+        type: "review-docs",
+        kind: "form",
+        access: { "test-app": { view: true, edit: true } },
+      },
+    ],
+  });
+  const plan = planSubmit({
+    loadedState: makeLoadedState({ workflow, actions, config }),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  expect(plan.workflow.doc.status[0].stage).not.toBe("completed");
+  expect(plan.trackerFires).toEqual([]);
+});
+
+test("event doc: action-event type action-{signal}, _id is the per-invocation event_id", () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  expect(plan.event.doc._id).toBe(event_id);
+  expect(plan.event.doc.type).toBe("action-submit");
+});
+
+test("changeLog: empty when connection has no changeLog config", () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  expect(plan.changeLog).toEqual([]);
+});
+
+test("submitted metadata lands on the planned action doc (params.metadata thread)", () => {
+  // Verifies that params.metadata is threaded into the user-action transition
+  // payload (not hardcoded undefined) so the planner's update-side merge picks
+  // it up. Without the one-line thread, submitted metadata silently falls on
+  // the floor (review-18 #9).
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext({
+      params: {
+        action_id: "A1",
+        signal: "submit",
+        metadata: { reviewer: "U2", note: "approved" },
+      },
+    }),
+  });
+  expect(plan.actions[0].doc.metadata).toMatchObject({
+    reviewer: "U2",
+    note: "approved",
+  });
+});
+
+test("event override: actionConfig.event_overrides[signal] is applied to the planned event display", () => {
+  // actionConfig carries the override map (spliced on by loadWorkflowState in Part 48).
+  // The planned event display should reflect the merged title.
+  const config = makeConfig({
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        access: { "test-app": { view: true, edit: true } },
+        event_overrides: {
+          submit: {
+            display: { "test-app": { title: "Custom submit title" } },
+          },
+        },
+      },
+    ],
+  });
+  const plan = planSubmit({
+    loadedState: makeLoadedState({ config }),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  expect(plan.event.doc.display["test-app"].title).toBe("Custom submit title");
+});
+
+test("event override: params.event_overrides set but actionConfig.event_overrides absent → no YAML override applied", () => {
+  // The old read path (params.event_overrides) is dead after Part 48.
+  // Setting only params.event_overrides must NOT affect the planned event.
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext({
+      params: {
+        action_id: "A1",
+        signal: "submit",
+        event_overrides: {
+          submit: { display: { "test-app": { title: "Should not appear" } } },
+        },
+      },
+    }),
+  });
+  // Engine-default title template is used (not the params override).
+  expect(plan.event.doc.display["test-app"].title).not.toBe(
+    "Should not appear",
+  );
+});
+
+test("event override: no overrides anywhere → engine default display title is used", () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  // Engine default (Part 53): submit → done renders "completed {{ action.title }}".
+  expect(plan.event.doc.display["test-app"].title).toBe(
+    "Test User completed Qualify",
+  );
+});
+
+test("comment threads through to display.{app}.description; no metadata.comment (Part 33)", () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext({
+      params: {
+        action_id: "A1",
+        signal: "submit",
+        comment: { html: "<p>Looks wrong</p>", text: "Looks wrong" },
+      },
+    }),
+  });
+  expect(plan.event.doc.display["test-app"].description).toBe(
+    "<p>Looks wrong</p>",
+  );
+  expect(plan.event.doc.metadata.comment).toBeUndefined();
+});
+
+test("no comment → no description key under the app bucket (Part 33)", () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  expect(plan.event.doc.display["test-app"]).not.toHaveProperty("description");
+});

@@ -1,6 +1,6 @@
 # Workflows Action Authoring — Spec
 
-YAML surface for workflows and actions. Full rationale in [design.md](design.md); this file carries only the committed decisions.
+YAML surface for workflows and actions. Full rationale in [design.md](designs/workflows-module-concept/action-authoring/design.md); this file carries only the committed decisions.
 
 ## File layout (app side)
 
@@ -11,21 +11,25 @@ my-app/
     {workflow-type}/
       {workflow-type}.yaml        # workflow definition
       {action-type}.yaml          # one per action
-      api/
-        {action-type}-submit-hook.yaml   # optional, form actions only
 ```
+
+Hook routines live **inline** on the action YAML's `hooks:` block (and group `on_complete:` routines live inline on the workflow YAML's `action_groups[]`). The resolver emits the corresponding Lowdefy Apis at build time — authors do not write separate hook Api files.
 
 ## Workflow YAML
 
 ```yaml
 type: onboarding
 title: Onboarding
-entity_type: lead
+entity_collection: leads-collection
 display_order: 1
 action_groups:
   - id: phase-1
     title: Discovery
-    on_complete: workflow_config/onboarding/api/phase-1-complete.yaml
+    on_complete:
+      routine:
+        - id: notify-ops
+          type: CallApi
+          # ...further steps...
   - id: phase-2
     title: Quote
   - id: phase-3
@@ -52,7 +56,7 @@ The module ships `enums/action_statuses.yaml` (exposed as `global.action_statuse
 
 | Key                | Priority | Default title                                                   |
 | ------------------ | -------- | --------------------------------------------------------------- |
-| `not-required`     | 0        | Not Required (universal terminal — only `force: true` moves it) |
+| `not-required`     | 0        | Not Required (terminal for form kind — undone only out-of-band) |
 | `error`            | 1        | Alert                                                           |
 | `changes-required` | 2        | Changes Required                                                |
 | `done`             | 3        | Done                                                            |
@@ -61,27 +65,28 @@ The module ships `enums/action_statuses.yaml` (exposed as `global.action_statuse
 | `action-required`  | 6        | Action Required                                                 |
 | `blocked`          | 7        | Blocked                                                         |
 
-Each entry carries `priority`, `title`, `color`, `borderColor`, `titleColor`, optional `icon`.
+Each entry carries `priority`, `title`, `color`, `borderColor`, `titleColor`, optional `icon`. `priority` is **display-only** — it orders statuses in pickers and visualizations but no longer drives transition legality (transitions are signal-driven via the per-kind FSM; see [state-machine](../state-machine/design.md), engine "Signal-driven FSM transitions").
 
 ### Workflow lifecycle stages
 
-`active`, `completed`, `cancelled`. Same display-field shape (no priority — workflow stages don't follow the priority rule).
+`active`, `completed`, `cancelled`. Same display-field shape (no priority — workflow stages aren't FSM-driven; their transitions are `active → completed` / `active → cancelled`).
 
 ## Action kinds
 
-Every action declares its kind via a required `kind:` field:
+Every action declares its kind via a required `kind:` field. `kind` is the **lifecycle-driver discriminator** for an action — it tells the engine what code path produces and transitions this action, and what UI surface (if any) the module emits for it. Workflow actions take one of the values below; a further value `kind: task` is reserved for adhoc todos owned by the future tasks module (those docs have `workflow_id: null` and are out of scope for workflow authoring — see [tasks-module-plan](../tasks-module-plan/design.md)).
 
-| `kind:`   | Required companion block | Primary content                                                       |
-| --------- | ------------------------ | --------------------------------------------------------------------- |
-| `form`    | `form:` block            | Domain-specific form schema; rendered as the edit page's main content |
-| `task`    | none                     | Generic status selector + comment field on shared task-edit page      |
-| `tracker` | `tracker:` block         | Display-only inline; mirrors a child workflow                         |
+| `kind:`   | Required companion block | Primary content                                                                                                                          |
+| --------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `form`    | `form:` block            | Domain-specific form schema; rendered as the edit page's main content                                                                    |
+| `check`   | none                     | Universal fields + comment + signal buttons on the shared `{workflow_type}-action` page                                                  |
+| `custom`  | none                     | A check-clone whose working surface is an **app-owned page**; author writes the navigation `link:` (see [Custom action](#custom-action)) |
+| `tracker` | `tracker:` block         | Display-only inline; mirrors a child workflow                                                                                            |
 
 **Build-time validation** (in `makeWorkflowsConfig` — single place all workflow-config validation lives):
 
 Per workflow:
 
-- `type`, `entity_type`, `display_order` required.
+- `type`, `entity_collection`, `entity_ref_key`, `display_order` required. `entity_ref_key` (e.g. `lead_ids`) is the event-references key for the entity — author-chosen, not derived from `entity_collection`.
 - `starting_actions` required; each entry `{ type, status }` resolves to one of the workflow's `actions[].type` values, with `status` a key in `action_statuses`.
 - `actions` required, non-empty.
 - Action `type` values within a workflow must be unique.
@@ -92,101 +97,158 @@ Per action:
 
 - `type`, `kind` required.
 - `kind: form` requires non-empty `form:` block; rejects if `tracker:` is also present.
-- `kind: tracker` requires `tracker:` block with `workflow_type`; rejects if `form:` is also present.
-- `kind: task` rejects both `form:` and `tracker:`.
+- `kind: tracker` requires `tracker:` block with `workflow_type`; optionally carries `start_link: { pageId: string, urlQuery?: object }` — allowed keys exactly `pageId` / `urlQuery`; in `urlQuery` the reserved keys `action_id` / `entity_id` are sentinel-only (if present, value must be exactly `true`); all other `urlQuery` keys must carry strings. Rejects if `form:` is also present.
+- `kind: check` rejects both `form:` and `tracker:`.
+- `kind: custom` rejects both `form:` and `tracker:` (same as check). Unlike check, its `status_map` cells may carry `link:` / `view_link:` engine-link objects (`{ pageId, urlQuery? }`, same shape as `tracker.start_link`); built-in kinds reject those cells.
+- `kind: task` is rejected in workflow-config validation — that value is reserved for the future tasks module, whose docs are not authored via `workflows_config`.
 - Any other `kind:` value rejects with "unknown action kind."
 - `status_map` keys (if present) must be members of `action_statuses`; display config keyed by `app_name`.
 - `action_group` (if present) must reference a declared `action_groups[].id` in the same workflow.
 - `blocked_by` entries (if present) must resolve to either another `actions[].type` OR an `action_groups[].id` in the same workflow. Mixed lists valid; engine resolves by group-id-first precedence (action-groups spec).
 - `access.<app_name>` entries (if present) must be arrays of valid verbs (`view`, `edit`, `review`; unknown verbs flagged at build time, silently ignored at runtime).
 - Static `references:` blocks (if present) are checked for reserved-key collisions; runtime references go through the engine's merge-order silencing.
-- `hooks.{interaction}.{pre,post}` (if present) — each referenced hook API must declare `auth.roles ⊇ action.access.roles` and must not declare `auth.public: true`. See submit-pipeline "Hook auth gate." Fails the build with a path to the offending hook + action when the relationship doesn't hold.
+- `hooks.{signal}.{pre,post}` (if present) — keyed by the button-surfaced signal names (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`). Each value must be an **object** carrying an inline `routine:` array (Lowdefy Api routine shape). String values (the legacy form referencing an external Api id) are rejected with a migration message. The resolver emits each hook as an **internal-only Api** (no HTTP entry point; callable only via `context.callApi` from the submit endpoint's routine) — it carries no `auth:` block of its own. There is no hook auth gate: the submit endpoint's access check is the sole gate for the interaction including its hooks ([Part 34 § D11](../../workflows-module/parts/_completed/34-action-access-model/design.md)).
 
 Errors fail the app build with a path to the offending workflow / action.
 
 The kind drives:
 
-1. **Page generation**: form → per-action `edit` / `view` / `review` / `error` pages (per-verb gated by `access.{app_name}` verb list; `-error` additionally requires `pages.error` declared on the action — emission rule `action.access[app_name].includes('error') && !!action.pages?.error`); task → shared `task-edit` / `task-view` / `task-review`; tracker → no pages (inline display).
-2. **Submit API surface**: form → resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline) called with an `interaction` value; task → same endpoint with `interaction: submit_edit` and caller-supplied `current_status` (status selector on `task-edit`); tracker → no caller submission (engine writes via subscription).
-3. **Resolver invocation**: `makeActionsForm` and `makeActionFormConfigs` run only for form actions; `makeWorkflowApis` emits endpoints only for form actions.
+1. **Page generation**: form → per-action `edit` / `view` / `review` / `error` pages (per-verb gated by presence of the verb key in `access.{app_name}`; all four verbs are gated identically); check → one shared per-workflow `{workflow_type}-action` page (mode-derived at runtime); custom → none (the app supplies the working page; navigation rides the author's `link:` cells, with the shared `{workflow_type}-action` page as the read-only observer fallback); tracker → no pages (inline display).
+2. **Submit API surface**: form → resolver-emitted `{workflow_type}-submit` endpoint (submit-pipeline) called with a `signal` value; check and custom → same endpoint with the same nullary signal buttons (`submit`, `progress`, `not_required`, …) — no status selector, no `current_status` (state-machine "Check kind", review #6); tracker → no caller submission (engine writes via the `internal_mirror_child_*` subscription).
+3. **Resolver invocation**: `makeActionsForm` and `makeActionFormConfigs` run only for form actions; `makeWorkflowApis` emits endpoints for form, check, and custom actions.
+
+### Custom action
+
+`kind: custom` is a **check-clone with author-owned links** ([Part 28](designs/workflows-module/parts/_completed/28-custom-action-kind/design.md)). Everything about its lifecycle is identical to `check` — the same eight-status FSM (the FSM table is `custom: form`, an object-identity alias of the form table, exactly like `check: form`), the same nullary submit signals, the same `fields:` channel, the same per-workflow `{workflow_type}-submit` / `{workflow_type}-update-fields` endpoints, and the same `hooks:` / `event:` machinery.
+
+The single difference is the **source of the navigation link** the engine writes onto the action doc. For the three built-in kinds `computeEngineLinks` derives the per-verb link map from module page ids. For `custom` the author writes the links: a `status_map.{stage}.{slug}.link` cell (and optional `view_link:`) pointing at app-owned pages, and the engine routes them into the per-verb map — the working `link` into the stage's active working verb slot (`edit` at action-required / in-progress / changes-required, `review` at in-review, `error` at error, `view` at done), and `view_link` (or, absent it, the shared `{workflow_type}-action` page) into the `view` slot. So a user who can act lands on the app page; an observer always lands on a read-only status surface.
+
+The motivating shape is "the action represents a piece of work, the user does that work on a page the app already owns, and the workflow's status array, group rollup, `blocked_by`, and tracker fan-up keep working." Custom actions cannot _be_ trackers (they carry no `tracker:` block). The `link.pageId` is a free-form app page id — **not** build-validated against the host app's page tree (a typo surfaces as a click-time 404, like any free-form Lowdefy page reference).
 
 ## Access
 
-Two-part `access:` block on every action — verb maps per app deployment, plus a role gate that applies across apps.
+Every action declares an `access:` block — **one canonical shape**: a map of `{app_name}` → verb → role-gate. No action-wide role list, no shorthand verb-list form. `notification_roles` lives at the action root, not under `access:`. Full model in [Part 34 — Action access model](../../workflows-module/parts/_completed/34-action-access-model/design.md).
 
 ```yaml
 access:
-  my-team-app: [view, edit, review]
-  my-customer-app: [view]
-  roles: [account-manager, ops-lead]
+  my-team-app:
+    view: true # any my-team-app user
+    edit: [account-manager, account-rep] # role-gated
+    review: [account-manager] # narrower gate
+  my-customer-app:
+    view: [customer-lead]
+notification_roles: # action root, not under access:
+  - account-manager
 ```
 
-### Per-app verb maps
+### Per-app verb-gate map
 
-Keys are app deployment names (matching `vars.app_name` per module composition). Values are verb lists controlling UI affordances in that app:
+`access.{app_name}` keys are verbs from the closed set `view` / `edit` / `review` / `error` (unknown verb keys hard-error at build); values are role gates:
 
-| Verb     | Effect                                                                                                                                                                                                                                                                                                                                |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`   | Shows action in `actions-on-entity`; renders read-only detail pages (form `-view`, task `task-view`).                                                                                                                                                                                                                                 |
-| `edit`   | Renders submit form (form `-edit`, task `task-edit`). Implies `view`.                                                                                                                                                                                                                                                                 |
-| `review` | Renders a dedicated review page (form: per-action `-review`; task: shared `task-review`). Approve and Request Changes are template-shipped buttons calling `update-action-{action_type}` with `interaction: approve` and `interaction: request_changes`; engine resolves target status (`done` / `changes-required`). Implies `view`. |
+| Gate value    | Meaning                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| `true`        | No role gate — any user of this app passes.                                                        |
+| `[role, ...]` | User's roles **for this app** (`_user.apps.{app_name}.roles`) must intersect the list (non-empty). |
 
-Apps without a key for a given app deployment hide the action entirely there. `makeActionPages` reads the host app's `app_name` and filters page emission accordingly (form actions only emit `-edit` when `edit` is listed, etc.). Vocabulary is module-defined and extensible in v1.x; unknown verbs are silently ignored.
+- **Missing app key** → no access in that app. **Missing verb key** → no access to that verb. Omission is the canonical "no access"; empty array `[]` is invalid (no `app-name: []` ceremony).
+- **Verbs are independent** — granting one never grants another (`edit` does not imply `view`). Lint-warn (not hard-error) when `edit` / `review` / `error` is declared without `view`.
+- **Roles are app-scoped by construction** — each gate reads only its own app's roles list, so role names never clash across apps.
 
-### Role gate
-
-`access.roles` controls **who** can interact, regardless of app. Empty/missing means no role gate. Non-empty means the user's roles must intersect this list.
-
-Roles resolve from `_user: roles` — the user's effective roles for the current app, sourced from `apps.{app_name}.roles` on the `user_contacts` doc.
-
-Check: `(access.roles is empty) OR (size(setIntersection(user.roles, access.roles)) > 0)`.
+Per-verb check for a present gate: `gate === true OR size(setIntersection(_user.apps.{app_name}.roles, gate)) > 0`.
 
 ### Where checks run
 
-- **Build-time** (`makeActionPages`): per-app verb filter on page emission.
-- **Query-time** (`get-entity-workflows`): per-app verb filter + role gate. Both must pass for the action to appear.
-- **Submit-time** (the `SubmitWorkflowAction` handler): role-gate re-check before any writes. Rejects with structured error on mismatch (e.g. role revoked between page render and submit).
+- **Build-time** (`makeActionPages`): emits a verb page iff the verb key is present in `access.{host_app_name}`. Presence-of-key only; role gates aren't evaluated at build time.
+- **Query-time** (`get-entity-workflows`): evaluates each declared verb's gate against the caller's per-app roles and returns `visible_verbs: { view, edit, review, error }` (four bools, `false` for undeclared verbs) per action. All-false → action dropped from the response (preserves "no role intersection → invisible").
+- **Submit-time** (the `SubmitWorkflowAction` handler): reads the interaction's accepted verbs (table below), passes when any listed verb's gate in `access.{current_app}` allows the caller's `_user.apps.{current_app}.roles`, rejects with a structured error naming the full accepted set on failure. Authoritative gate; the central `api.roles` glob over the submit endpoint id is the coarse outer fence ([Part 34 § D10–D11](../../workflows-module/parts/_completed/34-action-access-model/design.md)).
 
-`action_role_check` (ui sub-design) is a thin client-side wrapper over the same query-time check, used by entity pages to conditionally render verb buttons.
+### Interaction → accepted verbs
 
-Composition is AND: per-app verb filter, then role gate. A user with `account-manager` role visiting from an app without an `access.<that-app>` key sees nothing — app-scoping is intentional.
+| Interaction       | Accepted verbs (any)     |
+| ----------------- | ------------------------ |
+| `submit_edit`     | `edit`                   |
+| `not_required`    | `edit`                   |
+| `resolve_error`   | `error`                  |
+| `approve`         | `review`                 |
+| `request_changes` | `view`, `edit`, `review` |
+
+`request_changes` passes on any of the three ([Part 49](../../workflows-module/parts/_completed/49-request-changes-verb-gate/design.md)): `review` gates judgement power (`approve`, review-page access); `request_changes` is flag-a-problem — anyone who can see or work on the action may raise it.
+
+`view` has no interaction of its own — it's the read affordance only.
+
+`action_role_check` (ui sub-design) mirrors the query-time check client-side, populating per-verb `_state.action_allowed: { view, edit, review, error }` for conditional rendering. Defence in depth; the server-side query/submit checks are the real gate.
 
 ## Universal action fields
 
-Every action doc carries three optional content fields, settable per-instance via the edit page:
+Every action doc carries two optional content fields, settable per-instance via the edit page:
 
-| Field         | Type       | Default |
-| ------------- | ---------- | ------- |
-| `assignees`   | `string[]` | `[]`    |
-| `due_date`    | `Date?`    | `null`  |
-| `description` | `string?`  | `null`  |
+| Field       | Type       | Default |
+| ----------- | ---------- | ------- |
+| `assignees` | `string[]` | `[]`    |
+| `due_date`  | `Date?`    | `null`  |
 
-Updates flow through the per-action endpoint's `fields:` payload block. `null` clears, omitted leaves unchanged. Atomic with the status transition (same Mongo `$set`).
+> **Part 64 — the editable `description` universal field was removed.** Part 24 shipped a third universal field, a per-instance end-user-editable rich-text `description` (`{ text, html }`) written through `update-fields`. It was redundant with the action comment (which already captures per-instance free text, with history and authorship) and is deleted everywhere. In its place the **author-authored** action body `description` (below) was revived — same field name, different author and lifetime.
+
+**Write path (kind-split, Part 24).** Universal fields are decoupled from the form submit:
+
+- **`kind: check`** (and **`kind: custom`**, which behaves identically here) — the fields _are_ the submission content. They are written via the submit endpoint's `fields:` payload block (`null` clears, omitted leaves unchanged), atomic with the status transition (same Mongo `$set`). They are **also** independently editable via the operation below.
+- **`kind: form`** — the form submit (`submit` / `progress`) carries **no** universal fields. They are written exclusively by a dedicated operation, **`{workflow_type}-update-fields`** (one endpoint per workflow type, dispatched by `action_id` — mirroring `{workflow_type}-submit`). It has no signal and no FSM transition, is gated on the per-app **`edit`** verb (`access.{app}.edit`), and is editable in **any** stage the caller has `edit` on — including `done` / `not-required` / `error` and on a `completed` / `cancelled` workflow (`required_after_close` does **not** apply to it). It re-renders the action's status-map cell so the entity-page card never goes stale, and emits an `action-fields-updated` event. An optional `comment` rides the operation and is rendered into the event's `display.{app}.description` (Part 33) — never `metadata.comment`.
+- **`kind: tracker`** — the fields are carried on the action doc (seeded from the parent at `StartWorkflow`) but have no UI surface in v1.
+
+**`universal_fields`** — an optional UI presence declaration drawn from `[assignees, due_date]`. Omitted = both shown (and optional); `false` / `[]` = the surface is hidden (data-only). It controls only what the templates render — the action doc always physically carries both fields. (There is no `universal_fields_required` flag.)
 
 Reserved on `references` payloads — apps can't claim these field names.
 
+## Action `description` (authored body)
+
+A workflow-author-authored markdown string describing the action to whoever performs it — performer guidance, not per-instance metadata. It is the field the form / check / tracker examples below have always shown at the action root; Part 64 wired it to a real read path.
+
+| Field         | Type     | Default | Author          | Lifetime            |
+| ------------- | -------- | ------- | --------------- | ------------------- |
+| `description` | `string` | `null`  | workflow author | static, in the YAML |
+
+- **Type** — a single **markdown** string (rendered client-side by the built-in `Markdown` block; no server-side markdown→HTML). Markdown is chosen over HTML because the author writes this in YAML, where markdown is far more ergonomic. Optional; omitted / null → the surface renders nothing.
+- **Authoring** — set once in the action YAML; identical for every workflow instance of that action type. Not per-instance, not editable through any operation. (Contrast the deleted Part 24 universal field, which was the editable one.)
+- **Storage** — lives in the workflow config produced by `makeWorkflowsConfig`, reachable in the engine as `actionConfig.description` (exactly where `required_after_close` lives). **Not** written onto the action doc.
+- **Templating** — supports `{{ var }}` nunjucks against the action instance, rendered **at read time** by `GetWorkflowAction` (autoescaping on; the `| safe` filter must not be used). Read-time rendering is the deliberate anti-staleness choice — there is no create-time materialisation to drift, so `{{ key }}` and reference fields always reflect the current instance.
+- **Read path** — `GetWorkflowAction` returns the rendered string as the envelope's `description` key (the same key the deleted universal field used). Null when unset.
+- **Per-kind rule** — `description` is authored on **any** kind, rendered on the **form + check** surfaces (a plain markdown lead-in at the top of the content card, no callout chrome), and **accepted-but-unrendered** on `custom` (which owns its working page) / `tracker` (no working surface). No validation rejects it on those kinds — the field is defined once; surfaces choose whether to render it.
+
+**One consistent meaning.** The action `description` is "the descriptive body of an action, rendered to whoever works it, authored when the action is defined." For workflow actions the workflow author writes it (static config); for future task actions the task creator will write it (per-doc). Same field, same surface, same render; only the author and storage differ by the action's origin.
+
+**Disambiguation — two `description` keys, opposite rules.** Do not confuse the action body `description` with the **event** `display.{app}.description`:
+
+| Key                               | Authored?                                                       | Renders?                                            |
+| --------------------------------- | --------------------------------------------------------------- | --------------------------------------------------- |
+| action `description` (root)       | **yes** — workflow-author config                                | yes — performer body on form + check                |
+| event `display.{app}.description` | **no** — `makeWorkflowsConfig` hard-errors if an author sets it | n/a — owned by the runtime action comment (Part 33) |
+
+The rejection rule applies specifically to the **event display** key (event descriptions are owned by the action comment and cannot be authored — authors set only `title` there). It is **not** a blanket "descriptions are never authored": the action body `description` IS authored config and renders.
+
 ### Display-positioning fields
 
-| Field          | Type     | Default | Effect                                                                                                            |
-| -------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
-| `action_group` | `string` | `null`  | Group ID; must reference a declared `action_groups[].id`. Drives entity-page grouping and group-status rollup.    |
-| `sort_order`   | `number` | `null`  | Display order within an `action_group` (or workflow when no group). Lower comes first; ties broken by decl order. |
+| Field          | Type     | Default | Effect                                                                                                         |
+| -------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| `action_group` | `string` | `null`  | Group ID; must reference a declared `action_groups[].id`. Drives entity-page grouping and group-status rollup. |
 
-Engine treats these as opaque display metadata; UI consumes them.
+Display order is **declaration order** — group position in `action_groups[]`, then
+action position in `actions[]` — computed server-side at read time (see
+[Part 54 — Workflow action ordering](../../workflows-module/parts/_completed/54-action-ordering/design.md)).
+There is no `sort_order` field.
 
 ### Terminal-behaviour field
 
-| Field                  | Type      | Default | Effect                                                                                                                        |
-| ---------------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `required_after_close` | `boolean` | `false` | When `true`, the action remains submittable after the workflow lifecycle reaches `completed` or `cancelled`. Default rejects. |
+| Field                  | Type      | Default | Effect                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `required_after_close` | `boolean` | `false` | When `true`, the action remains submittable after the workflow lifecycle reaches `completed` (close path only). Default rejects. **Does not apply to `cancelled`** — cancel is the stronger termination signal (workflow aborted, not concluded) and audit/notes work is semantically meaningless on a cancelled workflow. Matches v0's `CloseWorkflowActions`-only filter posture. |
 
 The `SubmitWorkflowAction` handler enforces this at submit time.
 
 ### Fields explicitly dropped from v1
 
 - **`responsibility`** — display-only label, left to app-side UI.
-- **`access.notification_roles`** — moved to notifications config.
-- **action-level `roles`** — only `access.roles` remains as the role gate.
+- **`access.notification_roles`** — `notification_roles` is no longer nested under `access:`; it lives at the action root (Access section, D9).
+- **action-wide `access.roles`** — gone. Every role gate is per-app per-verb (Access section); there is no global role list on an action.
 - **`workflow.ticket_category`** — categorization lives on the entity if needed.
 
 ## `status_map` — per-status display copy + links
@@ -280,20 +342,22 @@ These fields ride into the generated page YAML via the page-emission resolver (u
 
 ### `error` page emission rules
 
-- The `-error` page is **opt-in**. Emission rule: `action.access[app_name].includes('error') && !!action.pages?.error`. An action that doesn't opt in (missing the `error` verb in its per-app access list, missing a `pages.error` block, or both) generates no `-error` page; that action cannot enter a user-recoverable error state in that app deployment, so the engine's `error` transition has no reachable recovery surface for it. Authors who want recovery add both the verb and the `pages.error` block.
+- The `-error` page is gated identically to the other verbs: emitted iff the `error` verb key is present in the action's `access.{app_name}` map. Actions without `error` declared have no `-error` page in that app deployment; an author-driven `error` push (pre-hook / external) still lands on the action, but there's no reachable recovery surface for it in the UI. `pages.error` is purely a chrome-override slot (like `pages.edit`) — the template ships sensible defaults when it's absent.
 - The error template ships with a stale-URL guard appended to `onMount`: if `status[0].stage !== 'error'` when the page loads, the template emits a `Link` back to `-view`.
 - The error form schema defaults to the action's `form:` block. Apps that need a different recovery schema declare a `form_error:` block parallel to `form:` / `form_review:`; otherwise the submitter's form schema is reused.
 
 ### How an action enters `error`
 
-- Engine writes `{ stage: error, created, reason, error_message, error_metadata? }` to the action's status array when a submit hook or built-in side-effect step raises an unrecoverable failure mid-submit. All error context lives on this status entry — `form_data` is not touched on the error transition.
-- A pre-hook (submit-pipeline Decision 4) returns `hook_error: <message>` to abort the submit for app-validated business-rule failures. Engine writes `{ stage: error, reason: 'pre-hook', error_message: <message>, error_metadata? }` to the action's status array.
+`error` is purely **author-driven** ([engine § Action error transition](../engine/spec.md#action-error-transition), [Part 29 § D2](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d2-why-pre-hooks-no-longer-get-a-hook_error-field)). Two entry paths (both form and check kind):
 
-Either path makes the action's `status_map.error.{app_name}.link` (typically pointing at `{workflow_type}-{action_type}-error?action_id=<id>`) the reachable recovery surface.
+- **Pre-hook `error` signal.** A pre-hook (submit-pipeline Decision 4) fires `error` against _another_ action via `actions: [{ type, signal: error }]`. The form/check FSM accepts `error` from every non-terminal state → `error`. This replaces the v0 `{ ..., status: 'error' }` return. There is no way to error the _current_ action from its own pre-hook — to fail a submission, `:reject` / `throw`. Diagnostic context rides on the events-log entry via `event_overrides.metadata`.
+- **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly. A follow-on injection API is deferred ([Part 29 § Out of scope](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#out-of-scope--deferred)).
+
+Status entries are uniform `{ stage, created, event_id }` — there are no polymorphic `reason` / `error_message` / `error_metadata` fields. Engine sub-step failures **throw**, they do not write an `error` transition. Either path above makes the action's `status_map.error.{app_name}.link` (typically pointing at `{workflow_type}-{action_type}-error?action_id=<id>`) the reachable recovery surface. Recovery is the `resolve_error` signal (form FSM `error → resolve_error → in-review`).
 
 ## `form_review` — separate schema for review pages
 
-Actions whose access includes `review` may declare a second form block under `form_review:`:
+Actions that declare the `review` verb (in any app's `access` map) may declare a second form block under `form_review:`:
 
 ```yaml
 form:
@@ -321,7 +385,6 @@ Actions with `key:` exist as N instances per workflow, one action doc per `(work
 type: proof-of-installation
 kind: form
 key: $device_id # symbolic — concrete values supplied at spawn time
-sort_order: 140
 form:
   - { component: file_upload, key: form.installation_files, required: true }
 status_map:
@@ -356,14 +419,21 @@ status_map:
 type: qualify
 kind: form
 action_group: discovery
-sort_order: 10
 description: Confirm the lead's contact details and capture qualification notes.
-hooks: # optional; per-interaction pre/post hook APIs (submit-pipeline Decision 4)
-  submit_edit:
-    pre: lead-onboarding-qualify-pre-submit
+hooks: # optional; per-signal pre/post routines (inline), keyed by button-surfaced signal
+  submit:
+    pre:
+      routine:
+        - id: validate
+          type: MongoDBFindOne
+          connectionId: leads-collection
+          properties:
+            filter: { _id: { _payload: action.references.lead_id } }
+        # ...further steps...
 access:
-  my-team-app: [view, edit]
-  roles: [account-manager]
+  my-team-app:
+    view: true
+    edit: [account-manager]
 form:
   - { component: text_input, key: contact_name, required: true }
   - { component: text_area, key: notes }
@@ -379,20 +449,20 @@ status_map:
     my-team-app: { message: Lead qualified }
 ```
 
-`makeWorkflowApis` always emits a `update-action-{action_type}` endpoint for form / task actions; the action's `hooks:`, `event:`, and `interactions:` blocks are baked in as build-time literals. If the action declares no `hooks:`, the engine runs the default lifecycle (no pre/post extension points). See submit-pipeline Decisions 2 + 4 for the canonical endpoint shape and hook contract.
+`makeWorkflowApis` always emits a `{workflow_type}-{action_type}-submit` endpoint for form / check actions; the action's `hooks:` and `event:` blocks are baked in as build-time literals. If the action declares no `hooks:`, the engine runs the default lifecycle (no pre/post extension points). See submit-pipeline Decisions 2 + 4 for the canonical endpoint shape and hook contract.
 
-## Task action
+## Check action
 
 ```yaml
 type: schedule-followup
-kind: task
+kind: check
 action_group: follow-up
-sort_order: 30
 description: Schedule a follow-up call with the lead within a week of qualification.
 blocked_by: [send-quote]
 access:
-  my-team-app: [view, edit]
-  roles: [account-manager]
+  my-team-app:
+    view: true
+    edit: [account-manager]
 status_map:
   blocked:
     my-team-app: { message: Awaiting quote acceptance. }
@@ -401,13 +471,13 @@ status_map:
       message: Schedule a follow-up call
       link:
         pageId:
-          _module.pageId: { id: task-edit, module: workflows }
+          _module.pageId: { id: workflow-action-edit, module: workflows }
         urlQuery: { action_id: true }
   done:
     my-team-app: { message: Follow-up scheduled. }
 ```
 
-No `hooks:` declared — engine runs the default lifecycle. The shared `task-edit` page calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the page surfaces a status selector), `fields:`, and `event.metadata.comment`.
+No `hooks:` declared — engine runs the default lifecycle. The shared `workflow-action-edit` page calls `{workflow_type}-{action_type}-submit` with `signal: submit` (nullary — no status selector, no `current_status`; the FSM resolves `in-review` vs `done` from the action's `review` verb, exactly as for form actions), `fields:`, and a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment`).
 
 ## Tracker action
 
@@ -415,24 +485,34 @@ No `hooks:` declared — engine runs the default lifecycle. The shared `task-edi
 type: track-installation
 kind: tracker
 action_group: setup
-sort_order: 40
 description: Tracks the device-installation workflow on the linked installation ticket.
 blocked_by: [schedule-followup]
 access:
-  my-team-app: [view] # display-only, no edit page
-  roles: [account-manager]
+  my-team-app:
+    view: true # everyone sees the row
+    edit: [account-manager] # only AMs get the start link (Part 44)
 tracker:
   workflow_type: device-installation
+  start_link: # optional (Part 44) — navigation target before the child exists
+    pageId: ticket-new
+    urlQuery:
+      action_id: true # → tracker action _id (parent_action_id for start-workflow)
+      entity_id: true # → parent entity _id (prefill the child doc's parent ref)
+      source: onboarding # static params pass through verbatim
 status_map:
   blocked:
     my-team-app: { message: Awaiting follow-up scheduling. }
+  action-required:
+    my-team-app: { message: Create the installation ticket. }
   in-progress:
     my-team-app: { message: Installation in progress. }
   done:
     my-team-app: { message: Installation completed. }
 ```
 
-The `tracker:` block carries one field — the child `workflow_type`. The status_map is display copy per parent stage; the parent-stage mapping itself is hard-coded by the engine (`active → in-progress`, `completed → done`, `cancelled → not-required`).
+The `tracker:` block carries the child `workflow_type` and, optionally, a `start_link`. The `status_map` is display copy per parent stage; the parent-stage mapping itself is hard-coded by the engine (`active → in-progress`, `completed → done`, `cancelled → not-required`).
+
+`start_link: { pageId, urlQuery? }` declares the navigation target rendered while the tracker is `action-required` with no child started. It is emitted as the tracker's `edit`-verb link — role-gated at read time like every other link. Two reserved `urlQuery` sentinel keys: `action_id: true` → tracker action `_id`; `entity_id: true` → parent workflow's entity `_id`. All other `urlQuery` keys must carry strings (static params passed through verbatim). No other top-level keys besides `pageId` and `urlQuery` are allowed.
 
 ### Parent ↔ child link at runtime
 
@@ -456,7 +536,6 @@ App code that creates the child entity calls `start-workflow` with `parent_actio
     _module.endpointId: { id: start-workflow, module: workflows }
   payload:
     workflow_type: device-installation
-    entity_type: ticket
     entity_id: { _step: create_ticket.insertedId }
     entity_collection: tickets-collection
     parent_action_id: { _state: parent_action_id }
@@ -468,36 +547,41 @@ One `CallApi`; no follow-up submit to write the link.
 
 Each child workflow has at most one `parent_action_id`; each tracker action has at most one `child_workflow_id`. Apps needing the same physical event to drive multiple parents either spawn separate child workflows per parent or read shared entity state independently.
 
-`kind: form` / `kind: task` / `kind: tracker` are mutually exclusive.
+`kind: form` / `kind: check` / `kind: tracker` are mutually exclusive.
 
-### Recommended shape: paired trigger + tracker actions
+### Recommended shape: `start_link` vs paired trigger + tracker
 
-A trigger form action creates the child entity and starts the child workflow with `parent_action_id` set; a separate tracker action mirrors the child's lifecycle. The module doesn't enforce this split but the README documents it as the recommended shape.
+Two shapes suit different situations (Part 44):
+
+- **App page owns creation → `start_link`** — add `start_link` to the `tracker:` block. One tracker row links to the existing app page; no separate trigger action needed.
+- **Inline form owns creation → paired trigger + tracker** — a trigger form action creates the child entity and starts the child workflow with `parent_action_id` set; a separate tracker action mirrors the child's lifecycle.
+
+The module doesn't enforce either split. The README documents the choice: **app page owns creation → `start_link`; inline form owns creation → paired trigger + tracker.**
 
 ### Tracking simple entities
 
-Tracker actions only track workflows — there is no entity-only mode. For entities whose lifecycle is a single status field, declare a minimal workflow with one `kind: task` action; the user marks it `done` (or app calls `cancel-workflow`) and the existing tracker subscription flips the parent. Per-app-type cost: one (workflow, action) YAML pair, reused per entity instance. See action-authoring/design.md "Tracking simple entities (minimal workflow shim)" for the worked example.
+Tracker actions only track workflows — there is no entity-only mode. For entities whose lifecycle is a single status field, declare a minimal workflow with one `kind: check` action; the user marks it `done` (or app calls `cancel-workflow`) and the existing tracker subscription flips the parent. Per-app-type cost: one (workflow, action) YAML pair, reused per entity instance. See action-authoring/design.md "Tracking simple entities (minimal workflow shim)" for the worked example.
 
 ## Resolver pipeline
 
 Five JS resolvers consume authored YAML at build time:
 
-| Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                         | Used in                                  |
-| ----------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML, one per (workflow_type, action_type, verb) for form actions only                                                                                                                                                          | `module.lowdefy.yaml` `pages:`           |
-| `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML — one `update-action-{action_type}` per form / task action (bakes in `hooks:` / `event:` / `interactions:` blocks as build-time literals; validates `hook.auth.roles ⊇ action.access.roles`); skipped for tracker actions | `module.lowdefy.yaml` `api:`             |
-| `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection. Also the single place all build-time validation of `workflows_config` lives (workflow + action invariants — see "Action kinds" section for the full list).                      | `module.lowdefy.yaml` connection config  |
-| `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name                                                                                                                                                                          | Called inside form-action page templates |
-| `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, defaults, types)                                                                                                                                                                                    | `global.action_form_configs`             |
+| Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                                                                  | Used in                                                                 |
+| ----------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------- |
+| `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML, one per (workflow_type, action_type, verb) for form actions only                                                                                                                                                                                                   | `module.lowdefy.yaml` `pages:`                                          |
+| `makeWorkflowApis`      | `workflows_config`                                      | Array of `Api` YAML — one `{workflow_type}-{action_type}-submit` per form / check action (bakes in `hooks:` / `event_overrides:` blocks, both keyed by signal, as build-time literals); also emits the resolver-derived internal-only hook Apis (one per declared `hooks.{signal}.{pre | post}`routine) and group`on_complete` Apis; skipped for tracker actions | `module.lowdefy.yaml` `api:` |
+| `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection. Also the single place all build-time validation of `workflows_config` lives (workflow + action invariants — see "Action kinds" section for the full list).                                                               | `module.lowdefy.yaml` connection config                                 |
+| `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name                                                                                                                                                                                                                   | Called inside form-action page templates                                |
+| `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, defaults, types)                                                                                                                                                                                                                             | `global.action_form_configs`                                            |
 
 Resolvers live at `resolvers/{name}.js` in the module package and are invoked via `_ref: { resolver: ..., vars: { ... } }` from the appropriate location in `module.lowdefy.yaml`. Apps don't invoke any of them directly.
 
 ### `makeWorkflowApis` generated endpoint
 
-One `update-action-{action_type}` endpoint per form / task action. The routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:`, `event:`, and `interactions:` blocks baked in as build-time literals. Full shape in [submit-pipeline spec](../submit-pipeline/spec.md) "Per-action `update-action-{action_type}` Api"; summarized here:
+One `{workflow_type}-{action_type}-submit` endpoint per form / check action. The routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:` and `event:` blocks baked in as build-time literals. Full shape in [submit-pipeline spec](../submit-pipeline/spec.md) "Per-action `{workflow_type}-{action_type}-submit` Api"; summarized here:
 
 ```yaml
-- id: update-action-{action_type}
+- id: {workflow_type}-{action_type}-submit
   type: Api
   routine:
     - id: submit
@@ -508,21 +592,17 @@ One `update-action-{action_type}` endpoint per form / task action. The routine i
         action_id: { _payload: action_id }
         action_type: <action_type>
         workflow_type: <workflow_type>
-        interaction: { _payload: interaction }
+        signal: { _payload: signal }
         current_key: { _payload: current_key }
         form: { _payload: form }
         form_review: { _payload: form_review }
         fields: { _payload: fields }
+        # sparse — keys present only for the signals the action declares hooks/overrides for.
+        # values are resolver-derived internal-only Api ids
+        # ({workflow_type}-{action_type}-{signal}-{pre|post}), not author-supplied.
         hooks:
-          {
-            submit_edit: { pre, post },
-            not_required: { pre, post },
-            resolve_error: { pre, post },
-            approve: { pre, post },
-            request_changes: { pre, post },
-          }
-        event_overrides: { submit_edit: { type, display, metadata }, ... }
-        interactions: { submit_edit: { status: <override-or-null> }, ... }
+          submit: { pre: {workflow_type}-{action_type}-submit-pre }
+        event_overrides: { submit: { type, display, references, metadata }, ... }
     - :return:
         action_ids: { _step: submit.action_ids }
         completed_groups: { _step: submit.completed_groups }
@@ -532,7 +612,7 @@ One `update-action-{action_type}` endpoint per form / task action. The routine i
         post_hook_response: { _step: submit.post_hook_response }
 ```
 
-Tracker actions don't get a generated endpoint; the engine writes their status via the subscription. Build-time validation: `hook.auth.roles ⊇ action.access.roles` (and `hook.auth.public !== true`) for every hook API referenced from `hooks.{interaction}.{pre,post}` — see submit-pipeline Decision 4.
+Tracker actions don't get a generated endpoint; the engine writes their status via the subscription. Hook Apis are resolver-emitted as **internal-only** Apis (no HTTP entry, no `auth:` block); the submit endpoint's access check is the sole gate. No hook auth synthesis, no separate validation pass. See submit-pipeline Decision 4 for the runtime hook invocation contract.
 
 ## Form components library
 
@@ -617,7 +697,7 @@ form:
 
 ### Override + extension
 
-Apps that need a domain-specific component ship it as a regular Lowdefy custom component in their plugin and reference it in `form:` blocks via `component: <plugin-name>:device_selector`. The resolver passes through any `component:` name it doesn't recognize as a library component, so app custom components compose alongside library components naturally.
+Apps that need a domain-specific component write a raw inline Lowdefy block directly in the `form:` array — an entry with no `component:` key, carrying its own `id`, `type` (any plugin block type), and `properties` (the `id` doubles as the state path). There is no `component: <plugin>:name` namespace; `component:` resolves only against the library. Raw blocks compose alongside library components naturally. See Part 58 (`designs/workflows-module/parts/58-form-custom-component-seam/design.md`).
 
 ## Open question
 

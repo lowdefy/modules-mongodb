@@ -13,7 +13,7 @@ blocks:
     properties:
       icon:
         name: AiOutlineContainer
-        color: '#d9d9d9'
+        color: "#d9d9d9"
       subTitle: No matching notifications. Change filter to view more.
   - id: list
     type: List

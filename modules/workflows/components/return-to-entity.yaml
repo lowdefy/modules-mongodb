@@ -1,0 +1,48 @@
+# Post-terminal-signal navigation (Part 65 addendum).
+#
+# Confirm a successful TERMINAL signal with a success toast, then return to the
+# entity page the action belongs to. Falls back to browser-back when the action
+# carries no resolvable entity page (entity_page_id null).
+#
+# This is the SHARED post-submit step for every terminal signal across the form
+# action pages (edit / review / error templates) and the standalone check action
+# page (action.yaml.njk): submit, approve, request_changes, not_required,
+# resolve_error. It is appended AFTER the signal's CallAPI, which halts the chain
+# on error, so navigation only runs once the submit has actually succeeded.
+#
+# NOT used by:
+#   - NON-terminal signals — progress (Save Draft / Mark Started) keeps the
+#     in-place refetch + reseed; the user is still working the same action, so
+#     navigating away would be wrong.
+#   - the in-context check-action modal (check-action-surface.yaml) — it already
+#     sits on the entity page, so it closes the modal instead. There is nowhere
+#     to link to, which is why the modal and this page diverge here (the page is
+#     a standalone deep link, so it returns to the entity like the form pages).
+#
+# Vars (all operator-position, so this is a plain .yaml consumed with `_var`):
+#   entity_page_id   — the action's entity_link.pageId (null when unresolvable).
+#   entity_url_query — the action's entity_link.urlQuery.
+#   success_message  — toast content (default "Submitted successfully.").
+- id: submit_success_message
+  type: DisplayMessage
+  params:
+    status: success
+    content:
+      _var:
+        key: success_message
+        default: Submitted successfully.
+- id: return_to_entity
+  type: Link
+  params:
+    _if:
+      test:
+        _ne:
+          - _var: entity_page_id
+          - null
+      then:
+        pageId:
+          _var: entity_page_id
+        urlQuery:
+          _var: entity_url_query
+      else:
+        back: true

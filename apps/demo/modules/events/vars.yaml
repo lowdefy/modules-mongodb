@@ -3,6 +3,10 @@ display_key:
     path: app_config.yaml
     key: app_name
 contact_page_url: "/contacts/view?_id={id}"
+actions_collection: actions
+contacts_collection: user-contacts
+event_types:
+  _ref: modules/events/event_types.yaml
 change_stamp:
   timestamp:
     _date: now

@@ -1,0 +1,12 @@
+create-lead:
+  color: "#1890ff"
+  title: Lead Created
+  icon: AiOutlineUserAdd
+convert-lead:
+  color: "#7c3aed"
+  title: Lead Converted
+  icon: AiOutlineShop
+action-approve:
+  color: "#52c41a"
+  title: Action Approved
+  icon: AiOutlineCheckCircle

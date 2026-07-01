@@ -3,15 +3,26 @@ _ref:
   component: page
   vars:
     id: view
+    type:
+      _nunjucks:
+        template: |
+          {% if app_title %}{{ app_title }} {% endif %}User
+        on:
+          app_title:
+            _module.var: app_title
     title:
       _nunjucks:
         template: |
-          {% if app_title %}{{ app_title }} {% endif %}User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+          {% if profile %}{{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
         on:
-          _object.assign:
-            - _request: get_user.0
-            - app_title:
-                _module.var: app_title
+          _request: get_user.0
+    status:
+      _request: get_user.0.status
+    status_enum:
+      _ref: enums/user_statuses.yaml
+    loading:
+      _not:
+        _request: get_user
     content_width: 900
     breadcrumbs:
       - home: true
@@ -46,8 +57,6 @@ _ref:
                 input:
                   user_id:
                     _input: user_id
-    doc:
-      _request: get_user.0
     requests:
       - _ref: requests/get_user.yaml
     events:
@@ -118,6 +127,10 @@ _ref:
               _request: get_user.0.is_user
             sign_up:
               _request: get_user.0.sign_up
+            created:
+              _request: get_user.0.created
+            updated:
+              _request: get_user.0.updated
             _id:
               _request: get_user.0._id
     blocks:

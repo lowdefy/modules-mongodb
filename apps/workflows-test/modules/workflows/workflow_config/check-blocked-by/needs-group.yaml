@@ -1,0 +1,24 @@
+# Blocked on a GROUP id: unblocks when the whole `prep` group completes (both
+# first-check and second-check done). Groups are blocked_by targets, never
+# carriers — the engine reads blocked_by only on actions.
+type: needs-group
+kind: check
+action_group: launch
+sort_order: 40
+blocked_by:
+  - prep
+description: Blocked until the entire prep group is done.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  blocked:
+    test:
+      message: Waiting on the prep group.
+  action-required:
+    test:
+      message: Unblocked by the prep group.
+  done:
+    test:
+      message: Group-dependent check complete.

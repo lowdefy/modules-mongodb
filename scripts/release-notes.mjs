@@ -30,29 +30,39 @@
  * Zero external dependencies — uses only Node.js built-ins.
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
-import { execSync } from 'child_process';
-import { join, dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  readdirSync,
+  statSync,
+} from "fs";
+import { execSync } from "child_process";
+import { join, dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const ROOT = resolve(__dirname, '..');
+const ROOT = resolve(__dirname, "..");
 
-const PRIMARY_PACKAGE = '@lowdefy/modules-mongodb-plugins';
+const PRIMARY_PACKAGE = "@lowdefy/modules-mongodb-plugins";
 
-const flags = new Set(process.argv.slice(2).filter((a) => !a.startsWith('--output-file')));
-const FLAG_ALL = flags.has('--all');
-const outputFileArg = process.argv.find((a) => a.startsWith('--output-file='));
-const OUTPUT_FILE = outputFileArg ? outputFileArg.split('=')[1] : '/tmp/release-notes.md';
+const flags = new Set(
+  process.argv.slice(2).filter((a) => !a.startsWith("--output-file")),
+);
+const FLAG_ALL = flags.has("--all");
+const outputFileArg = process.argv.find((a) => a.startsWith("--output-file="));
+const OUTPUT_FILE = outputFileArg
+  ? outputFileArg.split("=")[1]
+  : "/tmp/release-notes.md";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function readOr(path, fallback = '') {
+function readOr(path, fallback = "") {
   try {
-    return readFileSync(path, 'utf-8');
+    return readFileSync(path, "utf-8");
   } catch {
     return fallback;
   }
@@ -63,15 +73,15 @@ function readOr(path, fallback = '') {
 // ---------------------------------------------------------------------------
 
 function discoverChangelogs() {
-  const wsPath = join(ROOT, 'pnpm-workspace.yaml');
+  const wsPath = join(ROOT, "pnpm-workspace.yaml");
   const wsContent = readOr(wsPath);
   if (!wsContent) {
-    console.error('Could not read pnpm-workspace.yaml');
+    console.error("Could not read pnpm-workspace.yaml");
     process.exit(1);
   }
 
   const patterns = [];
-  for (const line of wsContent.split('\n')) {
+  for (const line of wsContent.split("\n")) {
     const m = line.match(/^\s*-\s*['"]?([^'"#\n]+?)['"]?\s*$/);
     if (m && m[1].trim()) patterns.push(m[1].trim());
   }
@@ -79,45 +89,46 @@ function discoverChangelogs() {
   const changelogs = [];
 
   for (const pattern of patterns) {
-    const base = pattern.replace(/\/?\*\*?$/, '');
+    const base = pattern.replace(/\/?\*\*?$/, "");
     const baseDir = base ? join(ROOT, base) : ROOT;
 
     if (!existsSync(baseDir) || !statSync(baseDir).isDirectory()) continue;
 
-    const isGlob = pattern.endsWith('/*') || pattern.endsWith('/**') || pattern === '*';
+    const isGlob =
+      pattern.endsWith("/*") || pattern.endsWith("/**") || pattern === "*";
     if (isGlob) {
       const scanDir = (dir) => {
         for (const entry of readdirSync(dir)) {
-          if (entry === 'node_modules' || entry.startsWith('.')) continue;
+          if (entry === "node_modules" || entry.startsWith(".")) continue;
           const full = join(dir, entry);
           if (!statSync(full).isDirectory()) continue;
-          const cl = join(full, 'CHANGELOG.md');
-          const pkg = join(full, 'package.json');
+          const cl = join(full, "CHANGELOG.md");
+          const pkg = join(full, "package.json");
           if (existsSync(cl) && existsSync(pkg)) {
-            const pkgJson = JSON.parse(readFileSync(pkg, 'utf-8'));
+            const pkgJson = JSON.parse(readFileSync(pkg, "utf-8"));
             changelogs.push({ path: cl, name: pkgJson.name, dir: full });
           }
-          if (pattern.endsWith('/**')) {
+          if (pattern.endsWith("/**")) {
             scanDir(full);
           }
         }
       };
       scanDir(baseDir);
     } else {
-      const cl = join(baseDir, 'CHANGELOG.md');
-      const pkg = join(baseDir, 'package.json');
+      const cl = join(baseDir, "CHANGELOG.md");
+      const pkg = join(baseDir, "package.json");
       if (existsSync(cl) && existsSync(pkg)) {
-        const pkgJson = JSON.parse(readFileSync(pkg, 'utf-8'));
+        const pkgJson = JSON.parse(readFileSync(pkg, "utf-8"));
         changelogs.push({ path: cl, name: pkgJson.name, dir: baseDir });
       }
     }
   }
 
   // Root changelog (if present) — the root package.json uses PRIMARY_PACKAGE
-  const rootCl = join(ROOT, 'CHANGELOG.md');
-  const rootPkg = join(ROOT, 'package.json');
+  const rootCl = join(ROOT, "CHANGELOG.md");
+  const rootPkg = join(ROOT, "package.json");
   if (existsSync(rootCl) && existsSync(rootPkg)) {
-    const pkgJson = JSON.parse(readFileSync(rootPkg, 'utf-8'));
+    const pkgJson = JSON.parse(readFileSync(rootPkg, "utf-8"));
     if (!changelogs.some((c) => c.name === pkgJson.name)) {
       changelogs.push({ path: rootCl, name: pkgJson.name, dir: ROOT });
     }
@@ -135,14 +146,14 @@ function parseChangelog(filePath) {
   const sections = [];
   let current = null;
 
-  for (const line of text.split('\n')) {
+  for (const line of text.split("\n")) {
     const versionMatch = line.match(/^## (\d+\.\d+\.\d+)\s*$/);
     if (versionMatch) {
       if (current) sections.push(current);
       current = { version: versionMatch[1], lines: [] };
       continue;
     }
-    if (line.startsWith('All notable changes to this project')) {
+    if (line.startsWith("All notable changes to this project")) {
       if (current) sections.push(current);
       break;
     }
@@ -151,13 +162,13 @@ function parseChangelog(filePath) {
   if (current) sections.push(current);
 
   return sections.map((s) => {
-    while (s.lines.length > 0 && s.lines[s.lines.length - 1].trim() === '') {
+    while (s.lines.length > 0 && s.lines[s.lines.length - 1].trim() === "") {
       s.lines.pop();
     }
-    while (s.lines.length > 0 && s.lines[0].trim() === '') {
+    while (s.lines.length > 0 && s.lines[0].trim() === "") {
       s.lines.shift();
     }
-    return { version: s.version, content: s.lines.join('\n') };
+    return { version: s.version, content: s.lines.join("\n") };
   });
 }
 
@@ -166,11 +177,11 @@ function parseChangelog(filePath) {
 // ---------------------------------------------------------------------------
 
 function hasRealChanges(content) {
-  const lines = content.split('\n').filter((l) => l.trim());
+  const lines = content.split("\n").filter((l) => l.trim());
   for (const line of lines) {
-    const trimmed = line.replace(/^[\s-]*/, '');
-    if (trimmed.startsWith('### ')) continue;
-    if (trimmed.startsWith('Updated dependencies')) continue;
+    const trimmed = line.replace(/^[\s-]*/, "");
+    if (trimmed.startsWith("### ")) continue;
+    if (trimmed.startsWith("Updated dependencies")) continue;
     if (trimmed.match(/^@?[\w/-]+@\d+\.\d+\.\d+$/)) continue;
     return true;
   }
@@ -197,14 +208,20 @@ function mergeByPrimaryVersion(changelogs, processAll) {
   }));
 
   const merged = [];
-  const versionsToProcess = processAll ? primaryVersions : primaryVersions.slice(0, 1);
+  const versionsToProcess = processAll
+    ? primaryVersions
+    : primaryVersions.slice(0, 1);
 
   for (const version of versionsToProcess) {
     const packageSections = [];
 
     for (const pkg of allParsed) {
       const section = pkg.sections.find((s) => s.version === version);
-      if (section && section.content.trim() && hasRealChanges(section.content)) {
+      if (
+        section &&
+        section.content.trim() &&
+        hasRealChanges(section.content)
+      ) {
         packageSections.push({
           name: pkg.name,
           version: section.version,
@@ -228,24 +245,24 @@ function getVersionDate(version) {
   const tag = `v${version}`;
   try {
     const date = execSync(`git log -1 --format=%ai "${tag}" 2>/dev/null`, {
-      encoding: 'utf-8',
+      encoding: "utf-8",
       cwd: ROOT,
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: ["pipe", "pipe", "pipe"],
     }).trim();
     if (date) {
-      return new Date(date).toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
+      return new Date(date).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
       });
     }
   } catch {
     // tag not found
   }
-  return new Date().toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+  return new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
 }
 
@@ -258,8 +275,10 @@ function parseChangesetEntries(content) {
   let currentSection = null;
   let currentEntry = null;
 
-  for (const line of content.split('\n')) {
-    const sectionMatch = line.match(/^### (Minor Changes|Patch Changes|Major Changes)/);
+  for (const line of content.split("\n")) {
+    const sectionMatch = line.match(
+      /^### (Minor Changes|Patch Changes|Major Changes)/,
+    );
     if (sectionMatch) {
       if (currentEntry) entries.push(currentEntry);
       currentEntry = null;
@@ -293,10 +312,13 @@ function parseChangesetEntries(content) {
   if (currentEntry) entries.push(currentEntry);
 
   for (const entry of entries) {
-    while (entry.bodyLines.length > 0 && entry.bodyLines[entry.bodyLines.length - 1].trim() === '') {
+    while (
+      entry.bodyLines.length > 0 &&
+      entry.bodyLines[entry.bodyLines.length - 1].trim() === ""
+    ) {
       entry.bodyLines.pop();
     }
-    entry.body = entry.bodyLines.join('\n');
+    entry.body = entry.bodyLines.join("\n");
     delete entry.bodyLines;
   }
 
@@ -309,13 +331,13 @@ function parseChangesetEntries(content) {
 
 function stripDependencyLines(content) {
   return content
-    .split('\n')
+    .split("\n")
     .filter((line) => {
       if (line.match(/^- Updated dependencies/)) return false;
       if (line.match(/^\s+- @?[\w/-]+@\d+\.\d+\.\d+$/)) return false;
       return true;
     })
-    .join('\n');
+    .join("\n");
 }
 
 function buildVersionMarkdown(entry) {
@@ -353,38 +375,39 @@ function buildVersionMarkdown(entry) {
   const patchChanges = [];
 
   for (const [, cs] of changesetMap) {
-    const target = cs.section === 'Minor Changes' || cs.section === 'Major Changes'
-      ? minorChanges
-      : patchChanges;
+    const target =
+      cs.section === "Minor Changes" || cs.section === "Major Changes"
+        ? minorChanges
+        : patchChanges;
     target.push(cs);
   }
 
   if (minorChanges.length > 0) {
     lines.push("## What's New");
-    lines.push('');
+    lines.push("");
     for (const cs of minorChanges) {
-      const pkgList = cs.packages.map((p) => `\`${p}\``).join(', ');
+      const pkgList = cs.packages.map((p) => `\`${p}\``).join(", ");
       lines.push(`### ${cs.firstLine}`);
-      lines.push('');
+      lines.push("");
       lines.push(`Packages: ${pkgList}`);
-      lines.push('');
+      lines.push("");
       if (cs.body.trim()) {
         lines.push(cs.body);
-        lines.push('');
+        lines.push("");
       }
     }
   }
 
   if (patchChanges.length > 0) {
-    lines.push('## Fixes & Improvements');
-    lines.push('');
+    lines.push("## Fixes & Improvements");
+    lines.push("");
     for (const cs of patchChanges) {
-      const pkgList = cs.packages.map((p) => `\`${p}\``).join(', ');
+      const pkgList = cs.packages.map((p) => `\`${p}\``).join(", ");
       lines.push(`- **${cs.firstLine}** (${pkgList})`);
       if (cs.body.trim()) {
-        lines.push('');
+        lines.push("");
         lines.push(cs.body);
-        lines.push('');
+        lines.push("");
       }
     }
   }
@@ -393,10 +416,10 @@ function buildVersionMarkdown(entry) {
     for (const pe of plainEntries) {
       lines.push(`- **${pe.packageName}**: ${pe.text}`);
     }
-    lines.push('');
+    lines.push("");
   }
 
-  return lines.join('\n').trimEnd();
+  return lines.join("\n").trimEnd();
 }
 
 // ---------------------------------------------------------------------------
@@ -404,14 +427,14 @@ function buildVersionMarkdown(entry) {
 // ---------------------------------------------------------------------------
 
 function main() {
-  console.log('Release Notes Generator\n');
+  console.log("Release Notes Generator\n");
 
-  console.log('Discovering package changelogs...');
+  console.log("Discovering package changelogs...");
   const changelogs = discoverChangelogs();
   console.log(`  Found ${changelogs.length} packages`);
 
   if (changelogs.length === 0) {
-    console.log('No changelogs found. Exiting.');
+    console.log("No changelogs found. Exiting.");
     process.exit(0);
   }
 
@@ -419,11 +442,11 @@ function main() {
   console.log(`  Versions to process: ${merged.length}`);
 
   if (merged.length === 0) {
-    console.log('No versions to process.');
+    console.log("No versions to process.");
     process.exit(0);
   }
 
-  console.log('\nGenerating release notes...');
+  console.log("\nGenerating release notes...");
   const allSections = [];
 
   for (const entry of merged) {
@@ -433,14 +456,12 @@ function main() {
     allSections.push({ version: entry.version, date, markdown });
   }
 
-  const output = allSections
-    .map((s) => s.markdown)
-    .join('\n\n---\n\n');
+  const output = allSections.map((s) => s.markdown).join("\n\n---\n\n");
 
-  writeFileSync(OUTPUT_FILE, output, 'utf-8');
+  writeFileSync(OUTPUT_FILE, output, "utf-8");
   console.log(`\nWrote release notes to ${OUTPUT_FILE}`);
 
-  console.log('Done!');
+  console.log("Done!");
 }
 
 main();

@@ -121,7 +121,7 @@
   - If you didn't override `event_display`, no action needed beyond setting `app_name` on companies.
   - If you overrode `event_display`, list every app and event type you want stored — defaults no longer fill the gaps. The override shape stays `{ [app_name]: { [event-type]: template } }`.
 
-  See `docs/idioms.md#event-display` for the updated reference.
+  See [`docs/shared/event-display.md`](../../docs/shared/event-display.md) for the updated reference.
 
 ## 0.3.0
 
@@ -192,7 +192,7 @@
 
   **Breaking:** apps that previously set `vars.collection` on any of these modules must remove it. If a non-default collection name was in use, switch to a `connections` remap on the module entry.
 
-- [#29](https://github.com/lowdefy/modules-mongodb/pull/29) [`2855113`](https://github.com/lowdefy/modules-mongodb/commit/28551131d91fd863b979212ce0c53d3e4da2485d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - Remove the `data-upload` module. The module has been deleted from the repo along with its pages, components, requests, connections, menus, and event-type enums. Consumers using `data-upload` should pin to the previous release tag or vendor the module locally. Cross-references from `modules/shared/enums/event_types.yaml`, `apps/demo/modules.yaml`, the root `README.md`, `docs/idioms.md`, and the demo `.claude/guides/*.md` have been removed. The `SYNC_S3_*` secrets are no longer documented.
+- [#29](https://github.com/lowdefy/modules-mongodb/pull/29) [`2855113`](https://github.com/lowdefy/modules-mongodb/commit/28551131d91fd863b979212ce0c53d3e4da2485d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - Remove the `data-upload` module. The module has been deleted from the repo along with its pages, components, requests, connections, menus, and event-type enums. Consumers using `data-upload` should pin to the previous release tag or vendor the module locally. Cross-references from `modules/shared/enums/event_types.yaml`, `apps/demo/modules.yaml`, the root `README.md`, the shared idioms doc, and the demo `.claude/guides/*.md` have been removed. The `SYNC_S3_*` secrets are no longer documented.
 
 - [#28](https://github.com/lowdefy/modules-mongodb/pull/28) [`2c4aa70`](https://github.com/lowdefy/modules-mongodb/commit/2c4aa70f54840a33d5f21ea45539328a860d3525) Thanks [@Yianni99](https://github.com/Yianni99)! - Rename module pages from entity-prefixed IDs to semantic verbs to remove the redundant URL prefix (e.g. `/companies/companies` → `/companies/all`). Module pages now use `all`, `view`, `edit`, `new` consistently. Cross-module references via `_module.pageId:` and hardcoded scoped page IDs (`{entry-id}/{page-id}`) must be updated to the new IDs.
 

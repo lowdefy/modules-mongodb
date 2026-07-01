@@ -1,0 +1,31 @@
+# The driver: submitting `trigger` cascades `error` at `fragile` via its submit
+# pre-hook — the production mechanism (cf. cascade-keyed's driver). `trigger` is
+# a `kind: check` action, so it submits from the per-workflow
+# error-recovery-check page (button_submit). Its `action-submit` event is the one
+# that carries the
+# transition into error and triggers the notification dispatch (the event
+# references both touched actions: trigger + the cascaded fragile).
+type: trigger
+kind: check
+action_group: recovery
+sort_order: 10
+description: Submitting this pushes the fragile action into error.
+access:
+  test:
+    view: true
+    edit: true
+hooks:
+  submit:
+    pre:
+      routine:
+        - :return:
+            actions:
+              - type: fragile
+                signal: error
+status_map:
+  action-required:
+    test:
+      message: Submit to trigger the error path.
+  done:
+    test:
+      message: Error path triggered.

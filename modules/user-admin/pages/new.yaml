@@ -3,15 +3,13 @@ _ref:
   component: page
   vars:
     id: new
-    title:
+    type:
       _nunjucks:
         template: |
-          Invite {% if app_title %}{{ app_title }} {% endif %}User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+          Invite {% if app_title %}{{ app_title }} {% endif %}User
         on:
-          _object.assign:
-            - _request: get_user.0
-            - app_title:
-                _module.var: app_title
+          app_title:
+            _module.var: app_title
     content_width: 600
     breadcrumbs:
       - home: true
@@ -124,16 +122,6 @@ _ref:
           component: floating-actions
           vars:
             actions:
-              - id: save_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Send Invite
-                  icon: RiMailSendLine
-                events:
-                  onClick:
-                    _ref: actions/invite_user.yaml
               - id: cancel_button
                 type: Button
                 layout:
@@ -149,3 +137,13 @@ _ref:
                       params:
                         pageId:
                           _module.pageId: all
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Send Invite
+                  icon: RiMailSendLine
+                events:
+                  onClick:
+                    _ref: actions/invite_user.yaml

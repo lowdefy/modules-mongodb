@@ -1,0 +1,117 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: lead-list
+    title: Leads
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Leads
+    page_actions:
+      - id: new_lead_btn
+        type: Button
+        layout:
+          flex: 0 1 auto
+        properties:
+          title: New lead
+          icon: AiOutlineUserAdd
+          type: primary
+        events:
+          onClick:
+            - id: go_new
+              type: Link
+              params:
+                pageId: lead-new
+    events:
+      onMount:
+        - id: fetch
+          type: Request
+          params: get_all_leads
+    requests:
+      - id: get_all_leads
+        type: MongoDBAggregation
+        connectionId: leads-collection
+        properties:
+          pipeline:
+            - $sort:
+                updated.timestamp: -1
+            - $limit: 500
+            # Current pipeline stage (status is a newest-first array) → a tag
+            # display { title, color } for the AgGrid tag cell. color is an antd
+            # preset name (not hex), as the tag cell expects.
+            - $addFields:
+                current_stage:
+                  $arrayElemAt:
+                    - $status.stage
+                    - 0
+            - $addFields:
+                status_display:
+                  $switch:
+                    branches:
+                      - case:
+                          $eq:
+                            - $current_stage
+                            - qualified
+                        then:
+                          title: Qualified
+                          color: blue
+                      - case:
+                          $eq:
+                            - $current_stage
+                            - quoted
+                        then:
+                          title: Quoted
+                          color: gold
+                      - case:
+                          $eq:
+                            - $current_stage
+                            - won
+                        then:
+                          title: Won
+                          color: green
+                      - case:
+                          $eq:
+                            - $current_stage
+                            - parked
+                        then:
+                          title: Parked
+                          color: red
+                    default:
+                      title: New
+                      color: default
+    blocks:
+      - id: leads_table_card
+        type: Card
+        blocks:
+          - id: leads_table
+            type: AgGridBalham
+            properties:
+              rowData:
+                _request: get_all_leads
+              defaultColDef:
+                resizable: true
+                sortable: true
+                filter: true
+              columnDefs:
+                - field: name
+                  headerName: Name
+                  flex: 2
+                - field: company
+                  headerName: Company
+                  flex: 2
+                - field: status_display.title
+                  headerName: Status
+                  width: 160
+                  cell:
+                    type: tag
+                    colorFrom: status_display.color
+            events:
+              onCellClick:
+                - id: go_view
+                  type: Link
+                  params:
+                    pageId: lead-view
+                    urlQuery:
+                      _id:
+                        _event: row._id

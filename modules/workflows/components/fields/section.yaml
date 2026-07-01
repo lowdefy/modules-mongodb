@@ -1,0 +1,58 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    default: null
+  visible:
+    type: boolean
+    default: true
+  blocks:
+    type: array
+    default: []
+
+config:
+  id:
+    _var: key
+  type: Box
+  layout:
+    gap: 16
+  visible:
+    _var:
+      key: visible
+      default: true
+  blocks:
+    - id:
+        _string.concat:
+          - _var: key
+          - _title
+      type: Divider
+      visible:
+        _and:
+          - _var:
+              key: visible
+              default: true
+          - _ne:
+              - _var: title
+              - null
+      properties:
+        style:
+          marginBottom: 4
+        title:
+          _var: title
+    - id:
+        _string.concat:
+          - _var: key
+          - _card
+      type: Card
+      properties:
+        style:
+          boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
+      layout:
+        gap: 16
+        justify: center
+      blocks:
+        _var:
+          key: blocks
+          default: []

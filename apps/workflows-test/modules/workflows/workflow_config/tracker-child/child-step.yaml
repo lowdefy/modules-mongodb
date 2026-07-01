@@ -1,0 +1,21 @@
+# The child workflow's one completable step. kind:check with NO review verb, so
+# `submit` lands `done` directly (no in-review hop). Completing it is the child
+# workflow's last action → the child auto-completes → planSubmit emits
+# internal_mirror_child_completed against the parent tracker. Renders on the
+# per-workflow tracker-child-flow-check page, addressed by ?action_id=.
+type: child-step
+kind: check
+action_group: steps
+sort_order: 10
+description: The child workflow's one completable step.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Complete the child step.
+  done:
+    test:
+      message: Child step complete.

@@ -12,121 +12,85 @@ _ref:
         type: Paragraph
         properties:
           content: |
-            This app tests all modules in the monorepo.
-      - id: links
+            Explore the modules in this monorepo. Each card opens a working demo of that module.
+
+      # CRM modules
+      - id: crm_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: CRM
+      - id: crm_cards
         type: Box
         layout:
           gap: 16
         blocks:
-          - id: activities_link
-            type: Button
-            layout:
-              span: 8
-              sm:
-                span: 24
-            properties:
-              title: Activities
-              icon: AiOutlineFlag
-              block: true
-            events:
-              onClick:
-                - id: link
-                  type: Link
-                  params:
-                    pageId: activities/all
-          - id: user_admin_link
-            type: Button
-            layout:
-              span: 8
-              sm:
-                span: 24
-            properties:
-              title: User Admin
-              icon: AiOutlineTeam
-              block: true
-            events:
-              onClick:
-                - id: link
-                  type: Link
-                  params:
-                    pageId: user-admin/all
-          - id: companies_link
-            type: Button
-            layout:
-              span: 8
-              sm:
-                span: 24
-            properties:
-              title: Companies
-              icon: AiOutlineShop
-              block: true
-            events:
-              onClick:
-                - id: link
-                  type: Link
-                  params:
-                    pageId: companies/all
-          - id: contacts_link
-            type: Button
-            layout:
-              span: 8
-              sm:
-                span: 24
-            properties:
-              title: Contacts
-              icon: AiOutlineContacts
-              block: true
-            events:
-              onClick:
-                - id: link
-                  type: Link
-                  params:
-                    pageId: contacts/all
-          - id: notifications_link
-            type: Button
-            layout:
-              span: 8
-              sm:
-                span: 24
-            properties:
-              title: Notifications
-              icon: AiOutlineBell
-              block: true
-            events:
-              onClick:
-                - id: link
-                  type: Link
-                  params:
-                    pageId: notifications/all
-          - id: profile_link
-            type: Button
-            layout:
-              span: 8
-              sm:
-                span: 24
-            properties:
-              title: Profile
-              icon: AiOutlineUser
-              block: true
-            events:
-              onClick:
-                - id: link
-                  type: Link
-                  params:
-                    pageId: user-account/view
-          - id: release_notes_link
-            type: Button
-            layout:
-              span: 8
-              sm:
-                span: 24
-            properties:
-              title: Release Notes
-              icon: AiOutlineFileText
-              block: true
-            events:
-              onClick:
-                - id: link
-                  type: Link
-                  params:
-                    pageId: release-notes/view
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: leads
+                icon: AiOutlineUserAdd
+                title: Leads
+                description: Lead pipeline — capture, qualify, and convert.
+                note: Demonstrates the Workflows module — action lifecycle & status transitions.
+                pageId: lead-list
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: companies
+                icon: AiOutlineShop
+                title: Companies
+                description: Company records — list, detail, edit, and create.
+                pageId: companies/all
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: contacts
+                icon: AiOutlineContacts
+                title: Contacts
+                description: Contact management with a reusable picker.
+                pageId: contacts/all
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: activities
+                icon: AiOutlineFlag
+                title: Activities
+                description: Calls, meetings, and emails linked to records.
+                pageId: activities/all
+
+      # Platform modules
+      - id: platform_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: Platform
+      - id: platform_cards
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: notifications
+                icon: AiOutlineBell
+                title: Notifications
+                description: Inbox, bell, and deep-link routing.
+                pageId: notifications/all
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: user_admin
+                icon: AiOutlineTeam
+                title: User Admin
+                description: Invite, list, and manage app users.
+                pageId: user-admin/all
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: release_notes
+                icon: AiOutlineFileText
+                title: Release Notes
+                description: Changelog rendered from CHANGELOG.md.
+                pageId: release-notes/view

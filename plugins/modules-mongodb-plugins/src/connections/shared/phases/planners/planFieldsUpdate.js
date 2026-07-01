@@ -1,0 +1,125 @@
+import renderStatusMap from "../../render/renderStatusMap.js";
+import deepMerge from "./deepMerge.js";
+import planEventDispatch from "./planEventDispatch.js";
+import planChangeLog from "./planChangeLog.js";
+
+// The action-level metadata fields this operation owns. A key present in the
+// payload `fields` bag is written ($set semantics — `null` clears); a key
+// absent leaves the stored value unchanged. Any other key in the bag is ignored
+// — universal-field writes flow exclusively through this operation. (Part 64
+// removed the editable `description` universal field; the action body
+// `description` is now author-authored config read via GetWorkflowAction.)
+const UNIVERSAL_FIELDS = ["assignees", "due_date"];
+
+/**
+ * Plan-phase planner for the `UpdateActionFields` operation (Part 24). Writes
+ * the three universal fields on ONE action with NO FSM transition and NO
+ * workflow doc write, then re-renders the status-map cell against the planned
+ * doc so the sticky entity-page cell can't go stale (the design's "why it still
+ * goes through the engine" invariant — D12 spreads `assignees` / `due_date`
+ * into the cell render context).
+ *
+ * Pure: no I/O, no id/clock minting — `event_id`, `now` (`{ timestamp, user }`),
+ * `connection`, `user`, and `lowdefyContext` are injected via `context` (minted
+ * once per handler invocation by `createEngineContext`).
+ *
+ * Contract differences from `planActionTransition`:
+ *   - No signal resolution / status change — the `status` array and stage are
+ *     identical before/after (metadata edit, not a transition).
+ *   - No engine-link recompute (`computeEngineLinks`) — stage and access are
+ *     unchanged, so per-verb links are unchanged.
+ *   - `Plan.workflow` is `null` (Part 38 task 3 / D15): summary/groups/form_data
+ *     are unaffected by action metadata, so no workflow doc is written and there
+ *     is no CAS gate — per-action concurrency is last-write-wins.
+ *   - No `trackerFires` / `completedGroups` — this is not a transition.
+ *
+ * The field-update operation carries NO comment (Part 61): changing assignees /
+ * due date is a metadata edit, not a note-bearing transition, and the surface
+ * has no comment input. So this planner passes no `comment` to
+ * `planEventDispatch` — the `action-fields-updated` event never carries a
+ * description, and `metadata.comment` is never written.
+ *
+ * @param {Object} args
+ * @param {import('../types.js').LoadedState} args.loadedState — verb-mode load
+ *   (`{ actionId, verb: 'edit' }`); carries `workflow`, `targetAction`,
+ *   `actionConfig`.
+ * @param {{ assignees?, due_date? }} [args.fields] — the universal
+ *   fields to write ($set semantics; only the two universal keys are honoured).
+ * @param {Object} [args.metadata] — optional metadata bag merged onto the doc
+ *   (the v1 endpoint sends none — normally a no-op merge).
+ * @param {Object} args.context — engine context (`event_id`, `now`,
+ *   `connection`, `user`, `lowdefyContext`).
+ * @returns {import('../types.js').Plan} — `{ workflow: null, actions, event, changeLog }`.
+ */
+function planFieldsUpdate({ loadedState, fields, metadata, context }) {
+  const { workflow, targetAction, actionConfig } = loadedState;
+  const { event_id, now, connection, user } = context;
+
+  // ── Planned action doc — $set the three universal fields onto the loaded doc ─
+  const fieldUpdates = {};
+  for (const field of UNIVERSAL_FIELDS) {
+    if (fields != null && field in fields) {
+      fieldUpdates[field] = fields[field];
+    }
+  }
+
+  let doc = {
+    ...targetAction,
+    ...fieldUpdates,
+    updated: now,
+    metadata: { ...(targetAction.metadata ?? {}), ...(metadata ?? {}) },
+  };
+
+  // ── Re-render the status-map cell against the planned doc ─────────────────
+  // Stage is unchanged (no transition), so the cell is the current stage's.
+  // deepMerge keeps prior (sticky) values for keys the cell omits.
+  const currentStage = targetAction.status?.[0]?.stage;
+  const cell = actionConfig.status_map?.[currentStage];
+  const rendered = renderStatusMap({
+    cell,
+    plannedActionDoc: doc,
+    mergedMetadata: doc.metadata,
+  });
+  doc = deepMerge(doc, rendered);
+
+  // ── Event (action-fields-updated; engine-default only) ────────────────────
+  const event = planEventDispatch({
+    event_id,
+    user,
+    handlerType: "UpdateActionFields",
+    plannedWorkflowDoc: workflow,
+    plannedActionDoc: doc,
+    allTouchedActionDocs: [doc],
+    connection,
+  });
+
+  // ── Change-log — one action update; no workflow entry ─────────────────────
+  const changeLog = planChangeLog({
+    planActions: [
+      {
+        doc,
+        operation: "update",
+        changeLog: { before: targetAction, after: doc },
+      },
+    ],
+    planWorkflow: null,
+    connection,
+    lowdefyContext: context.lowdefyContext,
+    timestamp: now?.timestamp,
+  });
+
+  return {
+    workflow: null,
+    actions: [
+      {
+        doc,
+        operation: "update",
+        changeLog: { before: targetAction, after: doc },
+      },
+    ],
+    event,
+    changeLog,
+  };
+}
+
+export default planFieldsUpdate;

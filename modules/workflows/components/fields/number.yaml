@@ -1,0 +1,86 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  placeholder:
+    type: number
+    default: 0
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  validate:
+    type: array
+    default: []
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
+  extra:
+    type: string
+    required: false
+  precision:
+    type: number
+    default: 0
+  min:
+    type: number
+    default: 0
+
+config:
+  id:
+    _var: key
+  type: NumberInput
+  visible:
+    _var:
+      key: visible
+      default: true
+  required:
+    _var:
+      key: required
+      default: false
+  validate:
+    _var:
+      key: validate
+      default: []
+  properties:
+    label:
+      _build.object.assign:
+        - inline:
+            _var:
+              key: label_inline
+              default: false
+          extra:
+            _var: extra
+        - _build.if:
+            test:
+              _build.ne:
+                - _var:
+                    key: label_span
+                    default: null
+                - null
+            then:
+              span:
+                _var: label_span
+              align: right
+            else: {}
+    title:
+      _var: title
+    placeholder:
+      _var:
+        key: placeholder
+        default: 0
+    precision:
+      _var:
+        key: precision
+        default: 0
+    min:
+      _var:
+        key: min
+        default: 0

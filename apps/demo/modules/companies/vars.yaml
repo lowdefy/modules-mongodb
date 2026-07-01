@@ -24,10 +24,65 @@ fields:
           - Retail
 event_display:
   demo:
-    create-company: "{{ user.profile.name }} created {{ target.name }}"
-    update-company: "{{ user.profile.name }} updated {{ target.name }}"
+    create-company: "{{ user.profile.name }} created company {{ target.name }}"
+    update-company: "{{ user.profile.name }} updated company {{ target.name }}"
+on_create_routine:
+  - id: start_company_setup
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId: { id: company-setup-start, module: workflows }
+      payload:
+        entity:
+          id:
+            _step: insert.insertedId
+        parent_action_id:
+          _payload: url_query.action_id
+  - ":if":
+      _ne:
+        - _payload: url_query.entity_id
+        - null
+    ":then":
+      - id: log_convert_lead
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId: { id: new-event, module: events }
+          payload:
+            type: convert-lead
+            display:
+              demo:
+                title:
+                  _nunjucks:
+                    template: "{{ user.profile.name }} converted lead {{ target.name }} to a customer"
+                    on:
+                      user:
+                        _user: true
+                      target:
+                        name:
+                          _payload: name
+            references:
+              lead_ids:
+                - _payload: url_query.entity_id
+              company_ids:
+                - _step: insert.insertedId
 components:
   sidebar_slots:
+    - _ref:
+        module: layout
+        component: card
+        vars:
+          title: Workflows
+          blocks:
+            - _ref:
+                module: workflows
+                component: actions-on-entity
+                vars:
+                  entity_id:
+                    _url_query: _id
+                  entity_connection_id:
+                    _module.connectionId:
+                      { id: companies-collection, module: companies }
     - _ref:
         module: activities
         component: tile_activities
@@ -42,3 +97,22 @@ components:
             - id: refetch_events
               type: Request
               params: get-events
+    # Page owns the single check-action modal drop and its on_complete (Part 55
+    # D1). The co-present activities tile keeps its own on_created refetch and
+    # stays out of on_complete — a check submit changes workflow state, not
+    # activities — so only the action steps (actions-on-entity) refresh here.
+    - _ref:
+        module: workflows
+        component: check-action-modal
+        vars:
+          on_complete:
+            _build.array.concat:
+              - _ref:
+                  module: workflows
+                  component: entity-workflows-refetch
+                  vars:
+                    entity_id:
+                      _url_query: _id
+                    entity_connection_id:
+                      _module.connectionId:
+                        { id: companies-collection, module: companies }
