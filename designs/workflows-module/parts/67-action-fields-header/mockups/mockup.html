@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    The theme CSS in this file is adapted from the Superpowers project
+    (https://github.com/obra/superpowers, the skills/brainstorming companion).
+    The original live-reloaded mockups over a Node.js WebSocket server and read
+    click selections back over it; this version drops the server entirely — the
+    file reloads itself via the meta-refresh tag below, Claude edits its content
+    region in place, and the user reports choices verbally in the terminal.
+
+    MIT License — Copyright (c) 2025 Jesse Vincent
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+  -->
+  <meta charset="utf-8">
+  <!--
+    Auto-reload: the page reloads itself every 2s so edits to this file appear
+    without the user pressing refresh. Bump/lower the interval if you like; set
+    it to a large number (or delete this tag) to require a manual refresh.
+  -->
+  <meta http-equiv="refresh" content="2">
+  <title>Design Companion</title>
+  <style>
+    /*
+     * DESIGN VISUAL COMPANION TEMPLATE (single-file, serverless)
+     * Attribution + MIT license: see the comment at the top of this file.
+     *
+     * - OS-aware light/dark theming
+     * - Fixed header
+     * - Scrollable main content area
+     * - CSS helpers for common UI patterns
+     *
+     * Claude edits only the region between CONTENT:START and CONTENT:END.
+     */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+
+    /* ===== THEME VARIABLES ===== */
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    /* ===== FRAME STRUCTURE ===== */
+    .header {
+      background: var(--bg-secondary);
+      padding: 0.5rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header h1 { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
+    .header .status { font-size: 0.7rem; color: var(--text-tertiary); }
+
+    .main { flex: 1; overflow-y: auto; }
+    #claude-content { padding: 2rem; min-height: 100%; }
+
+    /* ===== TYPOGRAPHY ===== */
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    /* ===== OPTIONS (for A/B/C choices) ===== */
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    /* ===== CARDS (for showing designs/mockups) ===== */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    /* ===== MOCKUP CONTAINER ===== */
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    /* ===== SPLIT VIEW (side-by-side comparison) ===== */
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    /* ===== PROS/CONS ===== */
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    /* ===== PLACEHOLDER (for mockup areas) ===== */
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    /* ===== INLINE MOCKUP ELEMENTS ===== */
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Design Companion <span style="opacity:0.6">— visuals based on <a href="https://github.com/obra/superpowers" style="color: inherit; text-decoration: underline dotted;">Superpowers</a></span></h1>
+    <div class="status">auto-refreshing</div>
+  </div>
+
+  <div class="main">
+    <div id="claude-content">
+      <!-- CONTENT:START -->
+      <style>
+        .pb { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px 18px; box-shadow:0 1px 2px rgba(0,0,0,.04); color:#1f2937; }
+        .fieldrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+        .avs { display:inline-flex; }
+        .av { width:26px; height:26px; border-radius:50%; color:#fff; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.06); margin-left:-8px; cursor:pointer; }
+        .av:first-child { margin-left:0; }
+        .g1 { background:linear-gradient(135deg,#6366f1,#8b5cf6); }
+        .g2 { background:linear-gradient(135deg,#0ea5e9,#22d3ee); }
+        .due { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; border-radius:14px; padding:3px 10px; white-space:nowrap; }
+        .due-set { color:#0958d9; background:#e6f4ff; border:1px solid #91caff; }
+        .due-empty { color:#94a3b8; background:#f8fafc; border:1px dashed #d7dde5; }
+        .lbl { font-size:11px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#94a3b8; }
+        .pencil { width:28px; height:28px; border-radius:6px; color:#64748b; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; border:1px solid transparent; }
+        .pencil:hover { background:#f1f5f9; }
+        .empty-txt { font-size:12px; color:#94a3b8; font-style:italic; }
+        .divider { width:1px; height:20px; background:#e5e7eb; }
+        .cap { font-size:12px; color:#64748b; margin-top:8px; }
+        .row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+        .badge { flex:0 0 24px; width:24px; height:24px; border-radius:50%; background:#3b82f6; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+        .rowlbl { flex:0 0 150px; font-size:12px; color:#64748b; }
+      </style>
+
+      <h2>Option A &mdash; due pill color &amp; empty state</h2>
+      <p class="subtitle">Layout locked to Option A (inline labels, one row). Two picks left: due-pill color, and the empty-state look.</p>
+
+      <h3>1 &middot; Due-date pill color (populated)</h3>
+      <div class="row">
+        <span class="badge">A</span><span class="rowlbl">Info blue</span>
+        <div class="pb" style="flex:1"><div class="fieldrow">
+          <span class="lbl">Assignees</span><div class="avs"><div class="av g1">DR</div><div class="av g2">SO</div></div>
+          <span class="divider"></span>
+          <span class="lbl">Due</span><span class="due due-set">&#128197; Jul 14, 2026</span><span class="pencil">&#9998;</span>
+        </div></div>
+      </div>
+      <div class="row">
+        <span class="badge">B</span><span class="rowlbl">Neutral gray</span>
+        <div class="pb" style="flex:1"><div class="fieldrow">
+          <span class="lbl">Assignees</span><div class="avs"><div class="av g1">DR</div><div class="av g2">SO</div></div>
+          <span class="divider"></span>
+          <span class="lbl">Due</span><span class="due" style="color:#475569;background:#f1f5f9;border:1px solid #e2e8f0">&#128197; Jul 14, 2026</span><span class="pencil">&#9998;</span>
+        </div></div>
+      </div>
+      <div class="row">
+        <span class="badge">C</span><span class="rowlbl">Due-aware</span>
+        <div class="pb" style="flex:1"><div class="fieldrow">
+          <span class="lbl">Due</span>
+          <span class="due" style="color:#475569;background:#f1f5f9;border:1px solid #e2e8f0">&#128197; Jul 14, 2026</span>
+          <span class="empty-txt">future &rarr; neutral</span>
+          <span class="due" style="color:#b42318;background:#fef3f2;border:1px solid #fecdca;margin-left:12px">&#128197; Jun 2, 2026</span>
+          <span class="empty-txt">overdue &rarr; red</span>
+        </div></div>
+      </div>
+      <div class="cap">C adds overdue logic (compare due_date to today); A and B are static.</div>
+
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0" />
+
+      <h3>2 &middot; Empty state (nothing assigned, no due date)</h3>
+      <div class="row">
+        <span class="badge">X</span><span class="rowlbl">Muted text + dashed pill</span>
+        <div class="pb" style="flex:1"><div class="fieldrow">
+          <span class="lbl">Assignees</span><span class="empty-txt">Unassigned</span>
+          <span class="divider"></span>
+          <span class="lbl">Due</span><span class="due due-empty">No due date</span><span class="pencil">&#9998;</span>
+        </div></div>
+      </div>
+      <div class="row">
+        <span class="badge">Y</span><span class="rowlbl">Both dashed pills</span>
+        <div class="pb" style="flex:1"><div class="fieldrow">
+          <span class="lbl">Assignees</span><span class="due due-empty">&#43; Add</span>
+          <span class="divider"></span>
+          <span class="lbl">Due</span><span class="due due-empty">No due date</span><span class="pencil">&#9998;</span>
+        </div></div>
+      </div>
+      <div class="row">
+        <span class="badge">Z</span><span class="rowlbl">Ghost avatar + text</span>
+        <div class="pb" style="flex:1"><div class="fieldrow">
+          <span class="lbl">Assignees</span>
+          <div class="av" style="margin:0;background:#f1f5f9;color:#cbd5e1;border:1px dashed #cbd5e1">?</div>
+          <span class="divider"></span>
+          <span class="lbl">Due</span><span class="empty-txt">None</span><span class="pencil">&#9998;</span>
+        </div></div>
+      </div>
+      <div class="cap">All three keep the pencil anchored so the strip never collapses to a lone icon.</div>
+      <!-- CONTENT:END -->
+    </div>
+  </div>
+
+  <script>
+    // ----- Scroll preservation across meta-refresh reloads -----
+    // The whole page reloads every couple seconds; persist scroll so the view
+    // doesn't jump back to the top each time.
+    try {
+      var saved = sessionStorage.getItem("dc-scroll");
+      if (saved !== null) {
+        var main = document.querySelector(".main");
+        if (main) main.scrollTop = parseInt(saved, 10) || 0;
+      }
+      document.querySelector(".main").addEventListener("scroll", function (e) {
+        sessionStorage.setItem("dc-scroll", String(e.target.scrollTop));
+      });
+    } catch (err) { /* sessionStorage unavailable on some file:// setups — ignore */ }
+  </script>
+</body>
+</html>
