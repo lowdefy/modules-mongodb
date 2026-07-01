@@ -150,20 +150,31 @@ const ALL_LINKS = {
   error: ERROR_LINK,
 };
 
+// collapseLink stamps the winning link with a verb-default `title` (the CTA
+// names the action the user takes): edit→Complete, review→Review, error→Resolve,
+// view→View.
+const withTitle = (link, title) => ({ ...link, title });
+
 test("collapseLink: edit is highest priority when allowed and non-null", () => {
   const allowed = { view: true, edit: true, review: true, error: true };
-  expect(collapseLink({ links: ALL_LINKS, allowed })).toEqual(EDIT_LINK);
+  expect(collapseLink({ links: ALL_LINKS, allowed })).toEqual(
+    withTitle(EDIT_LINK, "Complete"),
+  );
 });
 
 test("collapseLink: review wins when edit is null", () => {
   const links = { ...ALL_LINKS, edit: null };
   const allowed = { view: true, edit: true, review: true, error: true };
-  expect(collapseLink({ links, allowed })).toEqual(REVIEW_LINK);
+  expect(collapseLink({ links, allowed })).toEqual(
+    withTitle(REVIEW_LINK, "Review"),
+  );
 });
 
 test("collapseLink: review wins when edit not allowed", () => {
   const allowed = { view: true, edit: false, review: true, error: true };
-  expect(collapseLink({ links: ALL_LINKS, allowed })).toEqual(REVIEW_LINK);
+  expect(collapseLink({ links: ALL_LINKS, allowed })).toEqual(
+    withTitle(REVIEW_LINK, "Review"),
+  );
 });
 
 test("collapseLink: error wins when edit and review are null/denied", () => {
@@ -174,13 +185,33 @@ test("collapseLink: error wins when edit and review are null/denied", () => {
     error: ERROR_LINK,
   };
   const allowed = { view: true, edit: false, review: false, error: true };
-  expect(collapseLink({ links, allowed })).toEqual(ERROR_LINK);
+  expect(collapseLink({ links, allowed })).toEqual(
+    withTitle(ERROR_LINK, "Resolve"),
+  );
 });
 
 test("collapseLink: view wins when edit/review/error are null or denied", () => {
   const links = { view: VIEW_LINK, edit: null, review: null, error: null };
   const allowed = { view: true, edit: false, review: false, error: false };
-  expect(collapseLink({ links, allowed })).toEqual(VIEW_LINK);
+  expect(collapseLink({ links, allowed })).toEqual(
+    withTitle(VIEW_LINK, "View"),
+  );
+});
+
+test("collapseLink: view-access on an edit-stage action labels 'View', not 'Complete'", () => {
+  // The label follows the resolved verb, not the status: a user with only view
+  // access falls through to the view link and must see "View".
+  const allowed = { view: true, edit: false, review: false, error: false };
+  expect(collapseLink({ links: ALL_LINKS, allowed })).toEqual(
+    withTitle(VIEW_LINK, "View"),
+  );
+});
+
+test("collapseLink: author-provided title on the winning cell overrides the verb default", () => {
+  const custom = { ...EDIT_LINK, title: "Sign contract" };
+  const links = { ...ALL_LINKS, edit: custom };
+  const allowed = { view: true, edit: true, review: true, error: true };
+  expect(collapseLink({ links, allowed })).toEqual(custom);
 });
 
 test("collapseLink: null when all verbs denied", () => {
@@ -218,7 +249,9 @@ test("collapseLink: edit user, pre-child tracker (view null) → edit link", () 
   };
   const links = { view: null, edit: startLink, review: null, error: null };
   const allowed = { view: true, edit: true, review: false, error: false };
-  expect(collapseLink({ links, allowed })).toEqual(startLink);
+  expect(collapseLink({ links, allowed })).toEqual(
+    withTitle(startLink, "Complete"),
+  );
 });
 
 // ---------------------------------------------------------------------------

@@ -332,6 +332,27 @@ test("custom at action-required: working link → edit slot, sentinel substitute
   expect(links.demo.error).toBeNull();
 });
 
+test("custom: an author-provided title on the link cell is preserved onto the resolved link", () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: customAction("action-required", {
+      message: "Review.",
+      link: {
+        pageId: "contract-review",
+        urlQuery: { action_id: true },
+        title: "Review contract",
+      },
+    }),
+  });
+  expect(links.demo.edit).toEqual({
+    pageId: "contract-review",
+    urlQuery: { action_id: "c1" },
+    title: "Review contract",
+  });
+  // Engine-built view fallback carries no title (takes the verb default downstream).
+  expect(links.demo.view.title).toBeUndefined();
+});
+
 test("custom at in-review: working link → review slot; view falls back", () => {
   const links = computeEngineLinks({
     entry_id: ENTRY,

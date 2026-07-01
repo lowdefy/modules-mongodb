@@ -36,6 +36,7 @@ status_map:
       link: # the working page — routed to the `edit` slot at this stage
         pageId: contract-review # an app-owned page id (not a module page)
         urlQuery: { action_id: true } # sentinel → substituted with the action _id
+        title: Review contract # optional — overrides the verb-default button label
       view_link: # optional in-flight observer page; omit to fall back to the shared status page
         pageId: contract-view
         urlQuery: { action_id: true }
@@ -53,15 +54,28 @@ status_map:
 
 The engine routes the working `link` into the stage's **active working verb slot**, and `view_link` (or, absent it, the shared `{workflow_type}-action` page) into the `view` slot:
 
-| Stage                                            | Working `link` lands in | `view` slot                                 |
-| ------------------------------------------------ | ----------------------- | ------------------------------------------- |
-| `action-required` / `in-progress` / `changes-required` | `edit`                  | `view_link` or shared `{workflow_type}-action` |
-| `in-review`                                      | `review`                | `view_link` or shared `{workflow_type}-action` |
-| `error`                                          | `error`                 | `view_link` or shared `{workflow_type}-action` |
-| `done`                                           | `view` (no working verb) | the working `link` itself                  |
-| `blocked` / `not-required`                       | (none — message-only)   | (none)                                      |
+| Stage                                                  | Working `link` lands in  | `view` slot                                    |
+| ------------------------------------------------------ | ------------------------ | ---------------------------------------------- |
+| `action-required` / `in-progress` / `changes-required` | `edit`                   | `view_link` or shared `{workflow_type}-action` |
+| `in-review`                                            | `review`                 | `view_link` or shared `{workflow_type}-action` |
+| `error`                                                | `error`                  | `view_link` or shared `{workflow_type}-action` |
+| `done`                                                 | `view` (no working verb) | the working `link` itself                      |
+| `blocked` / `not-required`                             | (none — message-only)    | (none)                                         |
 
 A user who holds the stage's working verb (e.g. `edit`) gets your app page; everyone else with `view` gets the read-only fallback. You never have to author the observer page — omit `view_link` and the shared `{workflow_type}-action` page covers it. At `done` the working `link` is the canonical closed-action destination, so it claims the `view` slot.
+
+### The action card button label
+
+The action card renders a single button whose label names the action the user takes when they click. The engine derives it from the **resolved verb** (the slot the collapsed link came from), not from the status — so a user who holds only `view` on an `action-required` action sees **View**, because they land on the read-only fallback:
+
+| Resolved verb | Stages                                                 | Default label |
+| ------------- | ------------------------------------------------------ | ------------- |
+| `edit`        | `action-required` / `in-progress` / `changes-required` | **Complete**  |
+| `review`      | `in-review`                                            | **Review**    |
+| `error`       | `error`                                                | **Resolve**   |
+| `view`        | `done`, or any stage where the user holds only `view`  | **View**      |
+
+To override the label, set a `title:` on the `link:` (or `view_link:`) cell — it wins over the verb default wherever that cell is the one the card resolves to. This is the only place a workflow controls the button wording; the shared `{workflow_type}-action` fallback page always carries the verb default.
 
 ### Sentinels
 

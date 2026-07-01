@@ -78,12 +78,17 @@ function substituteSentinels(urlQuery, action) {
   return out;
 }
 
-// Build a link object from an engine-link cell `{ pageId, urlQuery? }`,
+// Build a link object from an engine-link cell `{ pageId, urlQuery?, title? }`,
 // substituting sentinels. Omits urlQuery entirely when the cell has none.
+// A cell may carry an author `title` (custom action link/view_link, tracker
+// start_link) — passed through so it overrides the verb-default button label in
+// collapseLink. Engine-built check/form links (below) carry no title and take
+// the verb default.
 function resolveCellLink(cell, action) {
   const link = { pageId: cell.pageId };
   const urlQuery = substituteSentinels(cell.urlQuery, action);
   if (urlQuery !== undefined) link.urlQuery = urlQuery;
+  if (cell.title != null) link.title = cell.title;
   return link;
 }
 

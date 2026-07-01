@@ -63,11 +63,31 @@ export function computeAllowed({ access, app_name, userRoles }) {
 }
 
 /**
+ * Default action-card button label per winning verb. The CTA names the action
+ * the user takes when they click, so the label follows the *resolved verb* (not
+ * the status): a user with only `view` access on an `action-required` action
+ * gets the view link and sees "View", not "Complete". An explicit `title` on
+ * the link cell (author-provided on custom actions / tracker start_link) wins
+ * over these defaults.
+ */
+export const VERB_LABEL = {
+  view: "View",
+  edit: "Complete",
+  review: "Review",
+  error: "Resolve",
+};
+
+function labelledLink(link, verb) {
+  return { ...link, title: link.title ?? VERB_LABEL[verb] };
+}
+
+/**
  * Collapse the per-verb links map to the single link a surface renders.
  *
  * Ported from `resolve_action_link.yaml`'s `$switch`. Returns the link for the
  * highest-priority verb whose cell is BOTH non-null (state) AND truthy in
- * `allowed` (access). Priority: edit > review > error > view. Returns `null`
+ * `allowed` (access), stamped with a `title` (verb default, or the cell's own
+ * title if authored). Priority: edit > review > error > view. Returns `null`
  * when no verb qualifies.
  *
  * @param {{ links: { view, edit, review, error } | null | undefined, allowed: { view: boolean, edit: boolean, review: boolean, error: boolean } }}
@@ -75,10 +95,14 @@ export function computeAllowed({ access, app_name, userRoles }) {
  */
 export function collapseLink({ links, allowed }) {
   if (!links) return null;
-  if (allowed.edit && links.edit != null) return links.edit;
-  if (allowed.review && links.review != null) return links.review;
-  if (allowed.error && links.error != null) return links.error;
-  if (allowed.view && links.view != null) return links.view;
+  if (allowed.edit && links.edit != null)
+    return labelledLink(links.edit, "edit");
+  if (allowed.review && links.review != null)
+    return labelledLink(links.review, "review");
+  if (allowed.error && links.error != null)
+    return labelledLink(links.error, "error");
+  if (allowed.view && links.view != null)
+    return labelledLink(links.view, "view");
   return null;
 }
 
