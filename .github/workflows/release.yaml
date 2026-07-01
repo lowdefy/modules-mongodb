@@ -22,7 +22,11 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          # node 24.17.0 ships a regressed undici that throws "Premature close"
+          # on GitHub's GraphQL keep-alive responses, breaking
+          # @changesets/changelog-github during `changeset version` (24.16.0 was
+          # fine). Moved to 26, which has the fixed undici.
+          node-version: 26
           cache: pnpm
           registry-url: "https://registry.npmjs.org"
 
