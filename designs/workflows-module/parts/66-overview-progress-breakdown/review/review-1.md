@@ -86,4 +86,6 @@ The caption says "3 of 7 done" (⇒ 3/7 = 43%) while the percentage reads 57% (=
 
 ### 6. Progress counts all actions while the shown list is access-filtered — confirm the mismatch is intended
 
+> **Accepted.** Intentional and already documented in §Counting scope: progress is an objective property of the workflow, counted over all actions (matching the old stored `summary`), not scoped to the viewer's visible subset. Confirmed the mechanic at `GetWorkflowOverview.js:52-72` (all `rawActions` loaded; `visibleActions` access-filtered for the row list). No change.
+
 `GetWorkflowOverview.js:59-72` drops actions the viewer can't access (`continue` at `:67`); the rendered `groups` are built from `visibleActions`. `summarizeStatuses` counts **all** `rawActions` (design §Counting scope, line 56-58), so the caption "N of M done" and the per-group segment counts can reference more actions than the viewer actually sees listed. The design explicitly chooses objective counting and notes it matches the old stored summary — so this is **not a regression** and is a defensible call. Flagging only so it stays a conscious decision: a viewer seeing "3 of 7 done" above four visible rows may read it as a bug. No change required if the objective-progress reading is intended.

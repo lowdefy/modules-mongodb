@@ -36,19 +36,28 @@
   links:
     - id: profile
       type: MenuLink
-      pageId: user-account/view
+      pageId:
+        _module.pageId:
+          module: user-account
+          id: view
       properties:
         title: Profile
         icon: AiOutlineUser
     - id: release-notes
       type: MenuLink
-      pageId: release-notes/view
+      pageId:
+        _module.pageId:
+          module: release-notes
+          id: view
       properties:
         title: Release Notes
         icon: AiOutlineFileText
     - id: users
       type: MenuLink
-      pageId: user-admin/all
+      pageId:
+        _module.pageId:
+          module: user-admin
+          id: all
       properties:
         title: User Admin
         icon: AiOutlineTeam
@@ -56,7 +65,10 @@
       type: MenuDivider
     - id: logout
       type: MenuLink
-      pageId: user-account/logout
+      pageId:
+        _module.pageId:
+          module: user-account
+          id: logout
       properties:
         title: Logout
         icon: AiOutlineLogout

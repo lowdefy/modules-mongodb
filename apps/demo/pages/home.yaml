@@ -41,7 +41,10 @@ _ref:
                 icon: AiOutlineShop
                 title: Companies
                 description: Company records — list, detail, edit, and create.
-                pageId: companies/all
+                pageId:
+                  _module.pageId:
+                    module: companies
+                    id: all
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
@@ -49,7 +52,10 @@ _ref:
                 icon: AiOutlineContacts
                 title: Contacts
                 description: Contact management with a reusable picker.
-                pageId: contacts/all
+                pageId:
+                  _module.pageId:
+                    module: contacts
+                    id: all
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
@@ -57,7 +63,10 @@ _ref:
                 icon: AiOutlineFlag
                 title: Activities
                 description: Calls, meetings, and emails linked to records.
-                pageId: activities/all
+                pageId:
+                  _module.pageId:
+                    module: activities
+                    id: all
 
       # Platform modules
       - id: platform_divider
@@ -77,7 +86,10 @@ _ref:
                 icon: AiOutlineBell
                 title: Notifications
                 description: Inbox, bell, and deep-link routing.
-                pageId: notifications/all
+                pageId:
+                  _module.pageId:
+                    module: notifications
+                    id: all
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
@@ -85,7 +97,10 @@ _ref:
                 icon: AiOutlineTeam
                 title: User Admin
                 description: Invite, list, and manage app users.
-                pageId: user-admin/all
+                pageId:
+                  _module.pageId:
+                    module: user-admin
+                    id: all
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
@@ -93,4 +108,7 @@ _ref:
                 icon: AiOutlineFileText
                 title: Release Notes
                 description: Changelog rendered from CHANGELOG.md.
-                pageId: release-notes/view
+                pageId:
+                  _module.pageId:
+                    module: release-notes
+                    id: view
