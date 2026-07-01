@@ -82,11 +82,12 @@ _ref:
                 modal_id: universal_fields_edit_modal
                 show:
                   _var: action_config.universal_fields
+                assignee_docs: action.assignee_docs
                 action_data:
-                  assignee_docs:
-                    _state: action.assignee_docs
                   due_date:
                     _state: action.due_date
+                  stage:
+                    _state: action.status.0.stage
         else: []
     show_back_button: true
     content_width:

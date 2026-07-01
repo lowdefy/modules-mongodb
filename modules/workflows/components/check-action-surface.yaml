@@ -136,11 +136,12 @@ blocks:
           path: components/universal-fields/universal-fields-chips.yaml
           vars:
             modal_id: universal_fields_edit_modal
+            assignee_docs: current_action.assignee_docs
             action_data:
-              assignee_docs:
-                _state: current_action.assignee_docs
               due_date:
                 _state: current_action.due_date
+              stage:
+                _state: current_action.stage
   # 3. Authored description — read-only Markdown lead-in (Part 64). Self-hides
   #    when the action carries no authored description.
   - _ref:
