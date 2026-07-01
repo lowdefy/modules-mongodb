@@ -77,57 +77,13 @@ _ref:
         #   params:
         #     back: true
     blocks:
-      - id: workflow_progress_row
-        type: Box
-        layout:
-          gap: 8
-          selfAlign: middle
-        blocks:
-          - id: workflow_progress
-            type: Progress
-            layout:
-              flex: 1 1 auto
-            properties:
-              type: line
-              percent:
-                _js:
-                  args:
-                    summary:
-                      _state: workflow.summary
-                  fn: |
-                    const { summary } = args;
-                    if (!summary) return 0;
-                    const total = summary.total || 0;
-                    if (total === 0) return 100;
-                    const filled = (summary.done || 0) + (summary.not_required || 0);
-                    return Math.round((filled / total) * 100);
-          - id: workflow_summary
-            type: Paragraph
-            layout:
-              flex: 0 0 auto
-            properties:
-              type: secondary
-              content:
-                _string.concat:
-                  - ""
-                  - _sum:
-                      - _get:
-                          from:
-                            _state: workflow
-                          key: summary.done
-                          default: 0
-                      - _get:
-                          from:
-                            _state: workflow
-                          key: summary.not_required
-                          default: 0
-                  - " of "
-                  - _get:
-                      from:
-                        _state: workflow
-                      key: summary.total
-                      default: 0
-                  - " done"
+      # Segmented status bar (Part 66): one coloured segment per action state,
+      # fed the whole summary object so the page does no arithmetic.
+      - _ref:
+          path: components/overview-progress-bar.yaml
+          vars:
+            summary:
+              _state: workflow.summary
       # Action cards grouped by action group (engine emits groups in declaration
       # order; cards within keep declaration order). Each group renders an
       # icon + title header (suppressed for ungrouped/null-title groups) above

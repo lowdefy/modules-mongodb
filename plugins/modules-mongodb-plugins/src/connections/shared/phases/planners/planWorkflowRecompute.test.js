@@ -21,8 +21,6 @@ function makeWorkflow(overrides = {}) {
     workflow_type: "onboarding",
     entity: { connection_id: "leads-collection", id: "lead-1" },
     status: [{ stage: "active", created: new Date("2026-05-19T00:00:00Z") }],
-    summary: { done: 0, not_required: 0, total: 0 },
-    groups: [],
     form_data: { qualify: { score: 7 } },
     updated: {
       timestamp: new Date("2026-05-19T00:00:00Z"),
@@ -46,7 +44,7 @@ function makeLoadedState(overrides = {}) {
   return { workflow: makeWorkflow(), workflowConfig, ...overrides };
 }
 
-test("recomputes summary and groups against planned action states", () => {
+test("Part 66: no longer composes summary/groups (derived on read now)", () => {
   const plannedActions = [
     makeAction({ type: "qualify", stage: "done", action_group: "phase-1" }),
     makeAction({
@@ -63,41 +61,11 @@ test("recomputes summary and groups against planned action states", () => {
     now,
   });
 
-  expect(doc.summary).toEqual({ done: 1, not_required: 0, total: 2 });
-  expect(doc.groups).toEqual([
-    {
-      id: "phase-1",
-      status: "done",
-      summary: { done: 1, not_required: 0, total: 1 },
-    },
-    {
-      id: "phase-2",
-      status: "in-progress",
-      summary: { done: 0, not_required: 0, total: 1 },
-    },
-  ]);
-});
-
-test("groups reflect an unblock-style planned state (blocked → action-required flips the label)", () => {
-  // Post-fixpoint planned state: kickoff was loaded `blocked` but the plan
-  // holds `action-required` — the final recompute must read the planned stage.
-  const plannedActions = [
-    makeAction({ type: "qualify", stage: "done", action_group: "phase-1" }),
-    makeAction({
-      type: "kickoff",
-      stage: "action-required",
-      action_group: "phase-1",
-    }),
-  ];
-
-  const doc = planWorkflowRecompute({
-    loadedState: makeLoadedState(),
-    plannedActions,
-    event_id,
-    now,
-  });
-
-  expect(doc.groups.find((g) => g.id === "phase-1").status).toBe("in-progress");
+  expect("summary" in doc).toBe(false);
+  expect("groups" in doc).toBe(false);
+  // auto-complete unchanged: a non-terminal action keeps `active`.
+  expect(doc.status).toHaveLength(1);
+  expect(doc.status[0].stage).toBe("active");
 });
 
 test("all actions terminal → pushes completed at status[0] with event_id + created stamp", () => {
@@ -151,7 +119,6 @@ test("empty workflow (total: 0) never auto-completes", () => {
     now,
   });
 
-  expect(doc.summary).toEqual({ done: 0, not_required: 0, total: 0 });
   expect(doc.status).toHaveLength(1);
   expect(doc.status[0].stage).toBe("active");
 });

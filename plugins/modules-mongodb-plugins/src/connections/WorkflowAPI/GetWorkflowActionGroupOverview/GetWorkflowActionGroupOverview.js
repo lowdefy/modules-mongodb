@@ -6,6 +6,8 @@ import {
   collapseLink,
 } from "../../shared/render/resolveActionAccess.js";
 import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
+import summarizeStatuses from "../../shared/render/summarizeStatuses.js";
+import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js";
 
 /**
  * GetWorkflowActionGroupOverview — server-side replacement for the
@@ -16,11 +18,17 @@ import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOr
  * and enriches with display config. Collapses group to null when the workflow
  * doesn't exist, has no visible actions, or the group is unknown.
  *
+ * Part 66: the group's `status`/`summary` are derived on read from the group's
+ * action docs (`deriveGroupStatus` / `summarizeStatuses`, over ALL of the
+ * group's actions — an objective property), and the existence guard keys off
+ * the declared config group instead of the dropped runtime `groups[]` cache.
+ *
  * Params: { workflow_id, group_id }
  *
  * Response: { workflow, group, actions }
  *   workflow: { ...doc, title, entity_link, form_data (pruned) }
  *   group: { id, status, summary, title, icon } | null
+ *     summary: { counts: { <stage>: n, ... }, total }
  *   actions: [ { type, status, message, link, allowed } ]
  */
 async function GetWorkflowActionGroupOverview(lowdefyContext) {
@@ -188,30 +196,29 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
   };
 
   // ── Group collapse logic (mirrors the original aggregation's :return) ──
-  // group is null when: no visible actions, OR the group_id is not found
-  // in the workflow doc's groups array.
+  // group is null when: no visible actions, OR the group_id is not a declared
+  // config group. Part 66: the existence guard keys off the declared config
+  // group (the doc no longer carries a runtime groups[] cache) — behaviour-
+  // equivalent, since groups[] was only ever populated for declared groups.
   if (visibleActions.length === 0) {
     return { workflow, group: null, actions: [] };
   }
 
-  // Find the runtime group entry from the workflow doc (status/summary).
-  const wfGroupEntry = (wfDoc.groups ?? []).find((g) => g.id === group_id);
-  if (!wfGroupEntry) {
+  const configGroups = wfConfig?.action_groups ?? [];
+  const configGroup = configGroups.find((g) => g.id === group_id);
+  if (!configGroup) {
     return { workflow, group: null, actions: actionCards };
   }
 
-  // Find display config for this group from workflowConfig.
-  const configGroups = wfConfig?.action_groups ?? [];
-  const configGroup = configGroups.find((g) => g.id === group_id);
-  const groupTitle = configGroup?.title ?? null;
-  const groupIcon = configGroup?.icon ?? null;
-
+  // status/summary derived from ALL of the group's actions. rawActions is the
+  // full group set (queried by workflow_id + action_group), not the visible
+  // subset — progress is objective (Part 66).
   const group = {
-    id: wfGroupEntry.id,
-    status: wfGroupEntry.status ?? null,
-    summary: wfGroupEntry.summary ?? null,
-    title: groupTitle,
-    icon: groupIcon,
+    id: group_id,
+    status: deriveGroupStatus(rawActions),
+    summary: summarizeStatuses(rawActions),
+    title: configGroup.title ?? null,
+    icon: configGroup.icon ?? null,
     // no link — back-nav is entity_link (per task spec)
   };
 

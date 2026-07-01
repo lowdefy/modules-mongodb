@@ -105,21 +105,13 @@ _ref:
           type: secondary
           content:
             _state: workflow.title
-      - id: group_progress
-        type: Progress
-        properties:
-          percent:
-            _js:
-              args:
-                summary:
-                  _state: group.summary
-              fn: |
-                const { summary } = args;
-                if (!summary) return 0;
-                const total = summary.total || 0;
-                if (total === 0) return 100;
-                const filled = (summary.done || 0) + (summary.not_required || 0);
-                return Math.round((filled / total) * 100);
+      # Segmented status bar (Part 66) — same shared component as the workflow
+      # overview, fed this group's summary.
+      - _ref:
+          path: components/overview-progress-bar.yaml
+          vars:
+            summary:
+              _state: group.summary
 
       # Card gap rides the `.element` CSS slot — blocks-basic List merges it into
       # its item flex-container; layout.gap only reaches blocks within a card.

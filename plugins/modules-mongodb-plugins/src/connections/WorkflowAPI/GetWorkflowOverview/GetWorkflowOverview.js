@@ -6,6 +6,8 @@ import {
   collapseLink,
 } from "../../shared/render/resolveActionAccess.js";
 import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
+import summarizeStatuses from "../../shared/render/summarizeStatuses.js";
+import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js";
 
 /**
  * GetWorkflowOverview — server-side replacement for the get-workflow-overview.yaml
@@ -16,11 +18,17 @@ import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOr
  * applies per-user access filtering, resolves links, enriches with display config,
  * groups the cards by action_group, and prunes form_data to view-visible actions only.
  *
+ * Part 66: the workflow-level and per-group progress `summary` (and per-group
+ * `status`) are derived on read from the action docs via `summarizeStatuses` /
+ * `deriveGroupStatus`, over ALL raw actions (an objective property, independent
+ * of per-viewer access), replacing the dropped denormalised cache.
+ *
  * Params: { workflow_id }
  *
  * Response: { workflow, groups }
- *   workflow: { ...doc, title, entity_link, form_data (pruned) }
- *   groups: [ { id, order, title, icon, actions: [...] } ]  (declaration order)
+ *   workflow: { ...doc, title, entity_link, form_data (pruned), summary }
+ *     summary: { counts: { <stage>: n, ... }, total }
+ *   groups: [ { id, order, title, icon, status, summary, actions: [...] } ]  (declaration order)
  *     action card: { type, key, status, message, link, allowed, form_meta }
  */
 async function GetWorkflowOverview(lowdefyContext) {
@@ -124,11 +132,18 @@ async function GetWorkflowOverview(lowdefyContext) {
       unseenInsertionIndex += 1;
     }
     const configGroup = configGroups.find((g) => g.id === group_id);
+    // status/summary count ALL raw actions in the group (not the visible subset)
+    // — progress is objective (Part 66).
+    const groupRawActions = rawActions.filter(
+      (act) => (act.action_group ?? null) === group_id,
+    );
     groups.push({
       id: group_id,
       order,
       title: configGroup?.title ?? null,
       icon: configGroup?.icon ?? null,
+      status: deriveGroupStatus(groupRawActions),
+      summary: summarizeStatuses(groupRawActions),
       actions: groupActions,
     });
   }
@@ -226,6 +241,8 @@ async function GetWorkflowOverview(lowdefyContext) {
     title,
     entity_link,
     form_data: prunedFormData,
+    // Progress summary over ALL raw actions (objective, per-viewer-independent).
+    summary: summarizeStatuses(rawActions),
   };
 
   return { workflow, groups };
