@@ -119,4 +119,4 @@ Edit `src/`; the build regenerates `dist/`.
 
 ## Depends on
 
-- [Part 46 — debundle workflow config](../_completed/46-debundle-workflow-config/design.md) moved the overview reads to server-side `WorkflowAPI` resolvers (the `Get*Overview` handlers replaced the `get-*-overview.yaml` aggregations), which is what makes dropping the cache safe.
+- [Part 46 — debundle workflow config](designs/workflows-module/parts/_completed/46-debundle-workflow-config/design.md) moved the overview reads to server-side `WorkflowAPI` resolvers (the `Get*Overview` handlers replaced the `get-*-overview.yaml` aggregations), which is what makes dropping the cache safe.
