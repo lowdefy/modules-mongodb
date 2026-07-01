@@ -79,8 +79,8 @@ function stringToColor(str) {
 function Avatar({ user, contactPageUrl, disableContactLink, compact }) {
   if (!user) return null;
 
-  const size = compact ? 22 : 32;
-  const fontSize = compact ? 10 : 13;
+  const size = compact ? 16 : 26;
+  const fontSize = compact ? 8 : 11;
 
   let visual;
   if (user.picture) {
