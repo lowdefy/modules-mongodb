@@ -237,4 +237,4 @@ Part 63's open decision was how the shared overview pages resolve the entity ins
 - [Part 16 page templates](designs/workflows-module/parts/_completed/16-page-templates/design.md) — shipped; this part edits the four templates to drop `get_entity` and source `entity` from the action response.
 - [Part 17 shared pages](designs/workflows-module/parts/_completed/17-shared-pages/design.md) — introduced the overview pages and the per-workflow `entity` block this part extends.
 - [Part 56](designs/workflows-module/parts/_completed/56-three-tier-action-pages/design.md) — introduced `name_field` + the action-breadcrumb entity crumb this part rewrites.
-- [Part 63](designs/workflows-module/parts/63-overview-page-breadcrumbs/design.md) — consumes `entity_link.name` from this part.
+- [Part 63](designs/workflows-module/parts/_completed/63-overview-page-breadcrumbs/design.md) — consumes `entity_link.name` from this part.
