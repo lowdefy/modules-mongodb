@@ -75,7 +75,7 @@ Internalize this before doing anything else: see [Signals vs status](../concepts
 | `responsibility: <app-defined>`                                | _(removed)_                                                                                        | Values are app-specific. Replaced by per-app `access:` (who may act) + check-action `assignees` (who should) |
 | `access: { app: [view, edit, review] }`                        | `access: { app: { view: true, edit: [roles], review: [roles] } }`                                 | Per-verb map; array shorthand is now rejected — see [Access](../concepts/access.md)             |
 | `roles:` / `access.roles`                                      | folded into per-verb gates                                                                        | Action-wide `roles:` is rejected by the validator                                               |
-| `notification_roles`                                           | `notification_roles` (action root)                                                                | Kept; now drives engine auto-dispatch                                                           |
+| `notification_roles`                                           | `notification_roles` (action root)                                                                | Kept at the action root; engine auto-dispatch is planned but **not yet implemented**            |
 | `status_map.{stage}.{app}.message`                             | `status_map.{stage}.{app}.message`                                                                | Kept                                                                                            |
 | `status_map.{stage}.status_title`                              | `status_map.{stage}.status_title`                                                                  | Kept                                                                                            |
 | `status_map.{stage}.{app}.link`                                | _(removed for built-in kinds)_                                                                    | Engine derives navigation; authored links rejected except on `kind: custom`                     |
@@ -313,14 +313,11 @@ pages:
 
 Button `visible` overrides can only **further restrict** the server-resolved gate. A legacy submit-confirmation `modal:` becomes the [button → modal pattern](../reference/authoring-grammar.md#extra-buttons-buttonsextra) (a `Modal` in `formFooter` opened from an extra button).
 
-#### Notifications — delete the per-routine fan-out
+#### Notifications — not yet automated; keep handling them app-side
 
-Legacy routines ended with an `_ref` to a notifications routine (commonly `create_notifications.yaml`) that posted to an external notifications service (an HTTP/Lambda consumer with per-recipient templates). The engine now dispatches to the notifications module's `send-notification` API **automatically** after every committed transition. You provide:
+Legacy routines ended with an `_ref` to a notifications routine (commonly `create_notifications.yaml`) that posted to an external notifications service (an HTTP/Lambda consumer with per-recipient templates).
 
-- `notification_roles` on the action (recipients — kept from legacy).
-- The app's notifications `send_routine` var, which reads the event and decides channels.
-
-Delete the per-action notification wiring; keep `notification_roles`. See [Events](../concepts/events.md#notifications-dispatch).
+Engine-driven notification dispatch is **not yet implemented** in the module — until it lands, keep handling notifications in your app (e.g. an app-side routine invoked after the transition). The planned model is automatic dispatch to the notifications module's `send-notification` API after every committed transition, with the action's `notification_roles` (kept at the action root) naming recipients and the app's notifications `send_routine` var deciding channels. This section will be updated when the feature ships.
 
 #### Event log — delete the manual writes
 
@@ -334,7 +331,7 @@ Watch for:
 
 - **Contact fields.** Legacy `contact_selector_number_required` → `contact` / `multiple_contact` (wrap the contacts module's selector).
 - **Domain selectors with no library entry** (e.g. legacy `device_type_selector`, `org_units_selector`). There is no plugin-block `component:` namespace — either contribute a library field component or drop a raw Lowdefy block inline in the `form:` array (the [custom-components escape hatch](../reference/form-components.md#custom-components)).
-- **Universal fields.** `assignees`, `due_date`, `description` are rendered by the page chrome — do **not** put them in `form:`.
+- **Universal fields.** `assignees` and `due_date` are rendered by the page chrome — do **not** put them in `form:`. (`description` is no longer a user-authored field: it is developer-authored on the action definition and holds the instructions for what to do. Users annotate an action through comments, not a `description` input.)
 - **`viewOnly`** is gone; the read-only `-view` page is generated.
 
 ### 8. Instanced actions (per-device, per-line)
@@ -371,10 +368,9 @@ The child's `{child-type}-start` endpoint, called with `parent_action_id`, links
 
 ### 10. Reports and dashboards
 
-Status dashboards that read the `actions` collection still work — the collection and its statuses persist. Two upgrades worth adopting:
+Status dashboards that read the `actions` collection still work — the collection and its statuses persist. One upgrade worth adopting:
 
-- The workflow doc now carries denormalized `groups: [{ id, status, summary }]` and an overall `summary`, so phase-level dashboards can read the workflow doc directly instead of aggregating actions.
-- For per-entity and per-group reads, prefer the static APIs `get-entity-workflows`, `get-workflow-overview`, and `get-action-group-overview` over bespoke aggregations.
+- For per-entity and per-group reads, prefer the static APIs `get-entity-workflows`, `get-workflow-overview`, and `get-action-group-overview` over bespoke aggregations. These **recompute group/phase status fresh** on each read — the workflow doc does **not** carry a denormalized `groups`/`summary` block, so a dashboard that wants rolled-up phase status calls the overview API rather than reading a stored field. Reports needing a different shape aggregate the `actions` collection themselves.
 
 ## How workflows start
 
