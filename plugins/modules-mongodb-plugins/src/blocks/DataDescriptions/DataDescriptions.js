@@ -4,6 +4,7 @@ import { Card, Descriptions } from "antd";
 import withTheme from "@lowdefy/blocks-antd/blocks/withTheme.js";
 import preprocessData from "./preprocessing/preprocessData.js";
 import renderFieldValue from "./core/renderFieldValue.js";
+import computeDescriptionSpans from "../shared/computeDescriptionSpans.js";
 import "./style.css";
 
 const DataDescriptions = ({
@@ -39,6 +40,7 @@ const DataDescriptions = ({
 
   // Render a group's fields as a <Descriptions> block
   function renderDescriptions(group, title, extra) {
+    const spans = computeDescriptionSpans(group.fields, descProps.column);
     return (
       <Descriptions
         {...descProps}
@@ -46,11 +48,7 @@ const DataDescriptions = ({
         extra={extra}
       >
         {group.fields.map((field, j) => (
-          <Descriptions.Item
-            key={j}
-            label={field.label}
-            span={field.fullWidth ? "filled" : 1}
-          >
+          <Descriptions.Item key={j} label={field.label} span={spans[j]}>
             {renderFieldValue(field, Icon, methods, properties)}
           </Descriptions.Item>
         ))}

@@ -5,6 +5,7 @@ import withTheme from "@lowdefy/blocks-antd/blocks/withTheme.js";
 import processData from "./processData.js";
 import processFields from "./processFields.js";
 import renderValue from "./renderValue.js";
+import computeDescriptionSpans from "../shared/computeDescriptionSpans.js";
 import "./style.css";
 
 const SmartDescriptions = ({
@@ -62,15 +63,13 @@ const SmartDescriptions = ({
     );
   }
 
+  const spans = computeDescriptionSpans(items, descProps.column);
+
   return (
     <div id={blockId}>
       <Descriptions {...descProps} title={title} extra={extra}>
         {items.map((item, i) => (
-          <Descriptions.Item
-            key={i}
-            label={item.label}
-            span={item.fullWidth ? "filled" : 1}
-          >
+          <Descriptions.Item key={i} label={item.label} span={spans[i]}>
             {renderValue(item, Icon, methods, properties)}
           </Descriptions.Item>
         ))}
