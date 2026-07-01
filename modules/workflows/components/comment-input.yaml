@@ -98,13 +98,18 @@ blocks:
   # Shared/internal control — hidden unless the host opted this app in. Off =
   # shared (the default audience); on = internal (kept to this app, honoured
   # server-side only when the connection enabled it).
+  #
+  # Layout: the concept ("Internal comment") is the checkbox's own inline label
+  # (`description`), and the effect is a short flowing sentence in muted helper
+  # text below (`label.extra`). `label.disabled` suppresses the form-item label
+  # entirely — otherwise the Label block falls back to rendering the block id.
   - id:
       _var: visibility_path
     type: CheckboxSwitch
     visible:
       _module.var: enable_internal_comments
     properties:
-      title: Internal comment
-      description: >-
-        On: visible only in this app. Off: shared with every app that sees this
-        event.
+      description: Internal comment
+      label:
+        disabled: true
+        extra: Keeps this comment in this app instead of sharing it with every app that sees the event.
