@@ -1,5 +1,37 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.9.0
+
+### Minor Changes
+
+- [#82](https://github.com/lowdefy/modules-mongodb/pull/82) [`2076040`](https://github.com/lowdefy/modules-mongodb/commit/2076040218c3f932f54843ee1e54e06cdce81870) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Feature:** the action workspace now surfaces the reviewer's request-changes comment as a read-only callout while an action is in `changes-required` (Part 62). The callout sits in the middle column's bare-alerts slot — below the `workflow_closed_banner`, above the content card — as a `type: warning` Alert ("Changes requested" + the comment), so the reworker sees the "what to fix" brief without hunting the History timeline.
+
+  The brief is resolved server-side in the `GetWorkflowAction` envelope as a new `changes_requested` field: a single gated read of the latest `action-request_changes` event (`sort date desc, limit 1`), projecting the calling app's `{app_name}.description` bucket. App-scoping is inherited from the multi-app comment-visibility model for free — an `internal` reviewer note resolves to `null` for an app that can't see it; the read is skipped (and `null`) in every other stage. Empty/whitespace-only HTML normalizes to `null` so the callout never renders blank. The Alert sanitizes the comment HTML at render (`renderHtml` → DOMPurify).
+
+  The WorkflowAPI connection now declares `eventsCollection` (string, default `"log-events"`), and the request-changes comment inputs are now text-only (inline image uploads disabled), so the callout only ever renders a text brief.
+
+  Host apps in a multi-app deployment must add a `{ action_ids: 1 }` index to the events collection (`log-events`) — see the workflows Indexes reference.
+
+- [#82](https://github.com/lowdefy/modules-mongodb/pull/82) [`5dce3ba`](https://github.com/lowdefy/modules-mongodb/commit/5dce3bacb7f5e69d91454a2951eee94356d76e81) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Feature (Part 26):** workflows declare an inline `entity.data` routine on the `entity:` block (authored exactly like a hook — `{ routine: [...] }`) that returns host-shaped data about the entity instance. The module generates an engine-only `{type}-entity-data` InternalApi from the routine (`makeWorkflowApis`) and carries the resolved endpoint id on `entity.data_endpoint` (`makeWorkflowsConfig`, with the build-only `data` routine stripped from the runtime config). The single-workflow read handlers — `GetWorkflowAction`, `GetWorkflowOverview`, `GetWorkflowActionGroupOverview` — call the endpoint server-side via the engine's `callApi` (same authenticated user) through a shared `resolveEntityData` helper.
+
+  The routine's reserved `name` key is lifted onto `entity_link.name` for the breadcrumb / back-link; all other keys are host-owned and merged onto the action response's `entity` object (consumed by the action page's `DataDescriptions` summary and the `entity_view` slot). Resolution never fails the read — a missing endpoint, a throwing routine, or a deleted entity all degrade to `name: null` (chrome falls back to the type label) and `entity: { id }`.
+
+  This replaces the previous `entity.name_field` dot-path + the per-page `get_entity` request: the request file is deleted, all five action templates (`view`/`review`/`edit`/`error`/`action`) drop the `get_entity` request + onMount read and source the instance name from `entity_link.name` and entity fields from `get_workflow_action.entity`. The action-workspace shell stops blanking the page on the self-set `entity_id` — the middle/right content show content-shaped skeletons gated on the `get_workflow_action` request, and the entity-id mount gate is narrowed to just the `actions-on-entity` and History panels.
+
+  `entity.data` must be an object with a `routine:` array; a string value (the legacy external-endpoint-id shape) hard-errors with a migration hint. The demo onboarding workflow declares an `entity.data` routine and its `entity_view` slot reads `get_workflow_action.entity.*`.
+
+### Patch Changes
+
+- [#82](https://github.com/lowdefy/modules-mongodb/pull/82) [`fb190ff`](https://github.com/lowdefy/modules-mongodb/commit/fb190ff753b887c89fab689eb52a1dd19412b087) Thanks [@SamTolmay](https://github.com/SamTolmay)! - Fix block styling never reaching the app. ActionSteps, EventsTimeline, DataDescriptions and SmartDescriptions each shipped their global CSS via a `style.module.css` imported only for side effects (`import "./style.module.css"`). Vite/Rollup tree-shakes such an import — the CSS-module proxy is treated as side-effect-free because its exported class map is unused — so none of the `:global(...)` rules were emitted into the client bundle (badge stacking, timeline rails, dataview value styling all silently missing). Every selector in these files was already `:global(...)`, so they were CSS modules in name only. Renamed each to a plain `style.css` and import it as a plain global stylesheet, which Vite always keeps.
+
+  Also fix ActionSteps action items wrapping side-by-side: the per-group actions now render in a flex-column container so they stack regardless of stylesheet loading.
+
+- [#82](https://github.com/lowdefy/modules-mongodb/pull/82) [`f1be116`](https://github.com/lowdefy/modules-mongodb/commit/f1be116224290306c358c2267bfb6c55d8d960ca) Thanks [@SamTolmay](https://github.com/SamTolmay)! - Strip leftover `:global(...)` wrappers from the block stylesheets so their rules actually apply. When `ActionSteps`, `EventsTimeline`, `DataDescriptions` and `SmartDescriptions` were converted from `style.module.css` to a plain `style.css`, the rename kept the file content byte-for-byte — including the `:global(...)` wrapper around every selector. `:global()` is a CSS Modules construct, not valid CSS; in a plain stylesheet (processed with `modules: false`) css-loader passes it through verbatim, the browser sees an unknown pseudo-class, treats the whole selector as invalid, and drops the rule. So even though the side-effect import now reaches the production bundle, every styled rule was silently a no-op (badge layout, timeline rails, dataview value/link/tag/array styling).
+
+  Removed the `:global(...)` wrapper from each rule, leaving the inner selector. These classes (`action-steps-*`, `dataview-*`, `events-timeline-compact`) are already namespaced, so there is no module scope to escape in a plain stylesheet. No other blocks are affected: `ContactSelector` and `FileManager` ship no stylesheet, and there are no remaining `.module.css` files in the package.
+
+- [#82](https://github.com/lowdefy/modules-mongodb/pull/82) [`e0f646a`](https://github.com/lowdefy/modules-mongodb/commit/e0f646a1900269a245c6402ad9eda497319833f4) Thanks [@SamTolmay](https://github.com/SamTolmay)! - Restore the `DataDescriptions` block.
+
 ## 0.8.1
 
 ## 0.8.0

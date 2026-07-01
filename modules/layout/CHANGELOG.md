@@ -1,5 +1,33 @@
 # @lowdefy/modules-mongodb-layout
 
+## 0.9.0
+
+### Minor Changes
+
+- [#82](https://github.com/lowdefy/modules-mongodb/pull/82) [`163529c`](https://github.com/lowdefy/modules-mongodb/commit/163529cd6063914ff715b37934feea595967ee86) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking:** the `layout` `floating-actions` component now lays its buttons out with `direction: row` + `justify: flex-end` + `wrap: nowrap` instead of `direction: row-reverse`. Buttons are now listed in natural left-to-right order (the last one renders rightmost), and the bar never wraps onto a second line.
+
+  Migration: reverse the order of buttons in each `floating-actions` `actions:` array — what used to be listed first (and rendered rightmost under `row-reverse`) must now be listed last. Every action button must set `layout: { flex: 0 1 auto }` so it is content-sized rather than a full-width grid column; a button without it stretches full width and stacks onto its own line. Any `spacer` Box or `width` var previously used to coax right-alignment is no longer needed and should be removed.
+
+  All in-repo callers (contacts, activities, companies, user-account, user-admin) have been updated to the new order. The workflows action-page templates (edit/view/review/error) and the shared `check-action-surface` signal bar (used by the in-context action modal and the `workflow-action-*` pages) now set `flex: 0 1 auto` on every signal button and order them so the primary action lands rightmost, fixing buttons that previously stacked onto multiple lines and left-aligned. The signal bar's `justify` was also corrected from the invalid `flex-end` token to `end` (Lowdefy's justify map only accepts `end`; `flex-end` silently fell back to left alignment).
+
+- [#82](https://github.com/lowdefy/modules-mongodb/pull/82) [`c4e1000`](https://github.com/lowdefy/modules-mongodb/commit/c4e100087969a67336fc071a0183198c57fd46c2) Thanks [@SamTolmay](https://github.com/SamTolmay)! - The shared page title bar (`modules/shared/layout/title-block.yaml`, threaded through the `layout` `page` component) gains three capabilities:
+
+  - **`type` eyebrow** — a small uppercase entity-type label rendered directly above the title (e.g. `COMPANY`, `EDIT COMPANY`, `INVITE ACME USER`). The `title` prop now holds just the entity name; pages stop hand-concatenating `"{type}: {name}"` into the heading. The eyebrow renders immediately and is never skeletoned.
+  - **`status` + `status_enum` pill** — the caller passes a status slug (runtime) and a status-enum map (build-time `_ref`); the title block resolves the label and the three-colour contract (`color`→fill, `borderColor`→border, `titleColor`→text) internally and renders a chunky, vertically-centred pill. Status resolution lives in the component now, not in each caller.
+  - **opt-in `loading` skeleton** — when `loading` is truthy, the title, subtitle, and status pill render as shimmer skeletons (via Lowdefy's native `loading:`/`skeleton:` pair). Defaults to `false`, so static list/index titles are untouched.
+
+  **Breaking:** the raw `badge_text` / `badge_color` props are **removed** (replaced by `status` + `status_enum`). Any external/consumer title-bar override that passed `badge_*` silently loses its badge and must migrate to a status enum with the standard `{ color, borderColor, titleColor, title }` entry shape. The wholesale `title_block` override path is unaffected — it replaces the block entirely and never used these props.
+
+  All in-repo callers are migrated: workflow overview and group overview (badge → status pill), and contacts / activities / user-admin view, edit, and new pages (entity type split out of the title into the eyebrow; `loading` added on the request-backed view pages). A new `modules/workflows/enums/action_group_statuses.yaml` enum backs the group-overview rollup status (done / in-progress / blocked), preserving its previous green / blue / grey colours. The title-bar prop interface is now documented in the layout module README.
+
+### Patch Changes
+
+- [#82](https://github.com/lowdefy/modules-mongodb/pull/82) [`3dbbbdf`](https://github.com/lowdefy/modules-mongodb/commit/3dbbbdfd5c5fa930671c82dda7a8933d41feebb8) Thanks [@SamTolmay](https://github.com/SamTolmay)! - Follow-on to the title-block eyebrow/status-pill work: wire two modules the first pass missed, fix a title-bar layout bug, and relocate the user record stamp.
+
+  - **layout** — the title bar's change-stamp subtitle now **wraps** instead of being a single `nowrap`/ellipsis line. The previous styling gave the title column a min-content width equal to the full subtitle, which on narrower bars pushed the page actions (e.g. the Edit button) onto a new row. The title column is now `flex: 1 1 0` and the page-actions block `flex: 0 0 auto`, so the actions always hold the right edge and the subtitle wraps within the remaining width. (Verified in a headless-browser render of the exact DOM.)
+  - **user-admin** gains a status pill on the view and edit pages. A new `modules/user-admin/enums/user_statuses.yaml` enum (active / open invite / disabled) backs it, and `get_user` now emits a `status` slug derived the same way as the list table's `active` column (disabled > open invite > active). The enum uses the antd preset green / blue / red colour families so the title pill matches the existing AgGrid Tag in the list — the table tag mechanism is unchanged. The view page no longer renders the created/modified stamp as a title subtitle; that audit info moves into the **Access** sidebar card (next to "Signed up"), and the Access card's status Tag is removed since the title pill now shows status.
+  - **companies** view / edit / new pages are migrated to the eyebrow + title shape (entity type moved out of the hand-concatenated `"{label}: {name}"` heading into the `type` eyebrow; `loading` added on the request-backed view page). These pages used the title bar before the redesign but were not migrated with the other modules.
+
 ## 0.8.1
 
 ## 0.8.0
