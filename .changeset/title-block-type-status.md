@@ -1,6 +1,5 @@
 ---
 "@lowdefy/modules-mongodb-layout": minor
-"@lowdefy/modules-mongodb-workflows": patch
 "@lowdefy/modules-mongodb-contacts": patch
 "@lowdefy/modules-mongodb-activities": patch
 "@lowdefy/modules-mongodb-user-admin": patch

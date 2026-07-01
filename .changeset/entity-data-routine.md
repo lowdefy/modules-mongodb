@@ -1,6 +1,5 @@
 ---
 "@lowdefy/modules-mongodb-plugins": minor
-"@lowdefy/modules-mongodb-workflows": minor
 ---
 
 **Feature (Part 26):** workflows declare an inline `entity.data` routine on the `entity:` block (authored exactly like a hook — `{ routine: [...] }`) that returns host-shaped data about the entity instance. The module generates an engine-only `{type}-entity-data` InternalApi from the routine (`makeWorkflowApis`) and carries the resolved endpoint id on `entity.data_endpoint` (`makeWorkflowsConfig`, with the build-only `data` routine stripped from the runtime config). The single-workflow read handlers — `GetWorkflowAction`, `GetWorkflowOverview`, `GetWorkflowActionGroupOverview` — call the endpoint server-side via the engine's `callApi` (same authenticated user) through a shared `resolveEntityData` helper.

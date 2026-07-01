@@ -1,6 +1,6 @@
 {
   "name": "@lowdefy/modules-mongodb-workflows",
-  "version": "0.6.0",
+  "version": "0.8.1",
   "license": "MIT",
   "private": true,
   "devDependencies": {
