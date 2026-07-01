@@ -124,6 +124,24 @@ _ref:
               params:
                 entity_id:
                   _request: get_workflow_action.entity.id
+            # Closed-workflow guard: a closed (non-survivor) action is locked —
+            # bounce to the read-only view before the stale-URL guard runs.
+            # Ignores skip_status_redirect (closed is a harder stop than stale).
+            - id: redirect_workflow_closed
+              type: Link
+              skip:
+                _not:
+                  _and:
+                    - _state: action.workflow_closed
+                    - _ne:
+                        - _state: action.required_after_close
+                        - true
+              params:
+                pageId:
+                  _module.pageId:
+                    _var: page_ids.view
+                urlQuery:
+                  _url_query: true
             # Stale-URL guard: skip when status is in the allowlist OR
             # when the caller (review's Edit-link) opted out.
             - id: redirect_stale_status
@@ -294,9 +312,15 @@ _ref:
                           title: Mark Not Required
                           type: default
                           disabled:
-                            _var:
-                              key: page_config.buttons.not_required.disabled
-                              default: false
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.not_required.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
                         events:
                           onClick:
                             _build.if:
@@ -332,9 +356,12 @@ _ref:
                                             _state: comment
                                           comment_visibility:
                                             _if:
-                                              - _state: comment_internal
-                                              - internal
-                                              - shared
+                                              test:
+                                                _eq:
+                                                  - _state: comment_internal
+                                                  - true
+                                              then: internal
+                                              else: shared
                                   # Terminal signal — return to the entity on success.
                                   - _ref:
                                       path: components/return-to-entity.yaml
@@ -361,9 +388,15 @@ _ref:
                           title: Save Draft
                           type: default
                           disabled:
-                            _var:
-                              key: page_config.buttons.progress.disabled
-                              default: false
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.progress.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
                         events:
                           onClick:
                             _build.array.concat:
@@ -416,9 +449,15 @@ _ref:
                           title: Submit
                           type: primary
                           disabled:
-                            _var:
-                              key: page_config.buttons.submit.disabled
-                              default: false
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.submit.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
                         events:
                           onClick:
                             _build.if:
@@ -461,9 +500,12 @@ _ref:
                                             _state: comment
                                           comment_visibility:
                                             _if:
-                                              - _state: comment_internal
-                                              - internal
-                                              - shared
+                                              test:
+                                                _eq:
+                                                  - _state: comment_internal
+                                                  - true
+                                              then: internal
+                                              else: shared
                                   # Submit succeeded (CallAPI halts the chain on
                                   # error): confirm, then return to the entity.
                                   - _ref:
@@ -564,9 +606,12 @@ _ref:
                                 _state: comment
                               comment_visibility:
                                 _if:
-                                  - _state: comment_internal
-                                  - internal
-                                  - shared
+                                  test:
+                                    _eq:
+                                      - _state: comment_internal
+                                      - true
+                                  then: internal
+                                  else: shared
                       # Submit succeeded (CallAPI halts the chain on error):
                       # confirm, then return to the entity.
                       - _ref:
@@ -623,9 +668,12 @@ _ref:
                                 _state: comment
                               comment_visibility:
                                 _if:
-                                  - _state: comment_internal
-                                  - internal
-                                  - shared
+                                  test:
+                                    _eq:
+                                      - _state: comment_internal
+                                      - true
+                                  then: internal
+                                  else: shared
                       # Terminal signal — return to the entity on success.
                       - _ref:
                           path: components/return-to-entity.yaml

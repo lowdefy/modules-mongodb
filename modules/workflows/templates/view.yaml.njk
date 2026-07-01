@@ -245,9 +245,15 @@ _ref:
                           danger: true
                           ghost: true
                           disabled:
-                            _var:
-                              key: page_config.buttons.request_changes.disabled
-                              default: false
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.request_changes.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
                         events:
                           onClick:
                             - id: open_request_changes_modal
@@ -275,9 +281,15 @@ _ref:
                           title: Edit
                           type: default
                           disabled:
-                            _var:
-                              key: page_config.buttons.edit.disabled
-                              default: false
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.edit.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
                         events:
                           onClick:
                             - id: link_edit
@@ -361,9 +373,12 @@ _ref:
                             _state: change_request_comment
                           comment_visibility:
                             _if:
-                              - _state: change_request_comment_internal
-                              - internal
-                              - shared
+                              test:
+                                _eq:
+                                  - _state: change_request_comment_internal
+                                  - true
+                              then: internal
+                              else: shared
                   # Terminal signal — return to the entity on success.
                   - _ref:
                       path: components/return-to-entity.yaml

@@ -124,6 +124,24 @@ _ref:
               params:
                 entity_id:
                   _request: get_workflow_action.entity.id
+            # Closed-workflow guard: a closed (non-survivor) action is locked —
+            # bounce to the read-only view before the stale-URL guard runs.
+            # Ignores skip_status_redirect (closed is a harder stop than stale).
+            - id: redirect_workflow_closed
+              type: Link
+              skip:
+                _not:
+                  _and:
+                    - _state: action.workflow_closed
+                    - _ne:
+                        - _state: action.required_after_close
+                        - true
+              params:
+                pageId:
+                  _module.pageId:
+                    _var: page_ids.view
+                urlQuery:
+                  _url_query: true
             - id: redirect_stale_status
               type: Link
               skip:
@@ -294,9 +312,15 @@ _ref:
                           title: Edit
                           type: default
                           disabled:
-                            _var:
-                              key: page_config.buttons.edit.disabled
-                              default: false
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.edit.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
                         events:
                           onClick:
                             - id: link_edit
@@ -325,9 +349,15 @@ _ref:
                           danger: true
                           ghost: true
                           disabled:
-                            _var:
-                              key: page_config.buttons.request_changes.disabled
-                              default: false
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.request_changes.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
                         events:
                           onClick:
                             # request_changes_modal is a Modal (not a ConfirmModal):
@@ -353,9 +383,15 @@ _ref:
                           title: Approve
                           type: primary
                           disabled:
-                            _var:
-                              key: page_config.buttons.approve.disabled
-                              default: false
+                            _or:
+                              - _var:
+                                  key: page_config.buttons.approve.disabled
+                                  default: false
+                              - _and:
+                                  - _state: action.workflow_closed
+                                  - _ne:
+                                      - _state: action.required_after_close
+                                      - true
                         events:
                           onClick:
                             _build.if:
@@ -400,9 +436,12 @@ _ref:
                                             _state: comment
                                           comment_visibility:
                                             _if:
-                                              - _state: comment_internal
-                                              - internal
-                                              - shared
+                                              test:
+                                                _eq:
+                                                  - _state: comment_internal
+                                                  - true
+                                              then: internal
+                                              else: shared
                                   # Terminal signal — return to the entity on success.
                                   - _ref:
                                       path: components/return-to-entity.yaml
@@ -488,9 +527,12 @@ _ref:
                             _state: change_request_comment
                           comment_visibility:
                             _if:
-                              - _state: change_request_comment_internal
-                              - internal
-                              - shared
+                              test:
+                                _eq:
+                                  - _state: change_request_comment_internal
+                                  - true
+                              then: internal
+                              else: shared
                   # Terminal signal — return to the entity on success.
                   - _ref:
                       path: components/return-to-entity.yaml
@@ -573,9 +615,12 @@ _ref:
                                 _state: comment
                               comment_visibility:
                                 _if:
-                                  - _state: comment_internal
-                                  - internal
-                                  - shared
+                                  test:
+                                    _eq:
+                                      - _state: comment_internal
+                                      - true
+                                  then: internal
+                                  else: shared
                       # Terminal signal — return to the entity on success.
                       - _ref:
                           path: components/return-to-entity.yaml
