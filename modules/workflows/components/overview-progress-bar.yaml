@@ -1,0 +1,62 @@
+# Overview progress bar (Part 66).
+#
+# A segmented status bar shared by the two overview pages (workflow-overview,
+# workflow-group-overview). Replaces the single-colour antd `Progress` line:
+# instead of "how much is filled", it shows one coloured segment per action
+# state so the bar reads as "what state the rest is in".
+#
+# antd's `Progress` can only render success/primary/remainder (or single-colour
+# steps), so it can't stack an arbitrary multi-colour bar — hence Html +
+# `_nunjucks` (the sanctioned fallback when no native block fits). No new plugin
+# block is justified: this renders in two server-fed, non-interactive places
+# (hover `title` is the only affordance).
+#
+# Consumed via `_ref: { path, vars }` with an OPERATOR-valued var:
+#   - summary  = { counts: { <stage>: n, ... }, total }  (the resolver's shape)
+# Both pages pass their own source (`_state: workflow.summary` /
+# `_state: group.summary`), so the page does no arithmetic and both call sites
+# are identical.
+#
+# Segments (left → right): done, in-review, changes-required, error, in-progress,
+# action-required, blocked. `not-required` is EXCLUDED from the bar — it only
+# shrinks the pool (and shows in the caption).
+#
+# Invariants (design "Segment fill vs. denominator"):
+#   - pool          = total − not-required
+#   - segment width = count / pool  (flex-grow: count, flex-basis: 0 on a
+#     gap:0, overflow:hidden track → widths distribute purely by count)
+#   - percentage    = done / pool   (== the green `done` segment's width)
+#   - pool === 0 (no actions, or every action not-required) → no segments,
+#     empty grey track, 100%.
+# Colour = each state's enum `titleColor` (matches ActionSteps.js's statusColor);
+# a state slug missing from the enum falls back to the trail grey (defensive).
+id: overview_progress_bar
+type: Html
+properties:
+  html:
+    _nunjucks:
+      template: |
+        {%- set counts = summary.counts or {} -%}
+        {%- set total = summary.total or 0 -%}
+        {%- set order = ["done", "in-review", "changes-required", "error", "in-progress", "action-required", "blocked"] -%}
+        {%- set nr = counts["not-required"] or 0 -%}
+        {%- set pool = total - nr -%}
+        {%- set doneCount = counts["done"] or 0 -%}
+        {%- if pool > 0 -%}{%- set pct = ((doneCount / pool) * 100) | round -%}{%- else -%}{%- set pct = 100 -%}{%- endif -%}
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="flex:1 1 auto; display:flex; gap:0; height:8px; border-radius:4px; overflow:hidden; background:#f5f5f5;">
+            {%- for stage in order -%}
+              {%- set c = counts[stage] or 0 -%}
+              {%- if c > 0 -%}
+                <div title="{{ statuses[stage].title }}: {{ c }}" style="flex:{{ c }} {{ c }} 0; min-width:0; background:{{ statuses[stage].titleColor or '#f5f5f5' }};"></div>
+              {%- endif -%}
+            {%- endfor -%}
+          </div>
+          <div style="flex:0 0 auto; color:#8c8c8c; font-size:14px; line-height:1;">{{ pct }}%</div>
+        </div>
+        <div style="color:#8c8c8c; font-size:13px; margin-top:6px;">{{ doneCount }} of {{ pool }} done{%- if nr > 0 %} · {{ nr }} not required{%- endif -%}</div>
+      on:
+        summary:
+          _var: summary
+        statuses:
+          _ref: components/action_statuses.yaml

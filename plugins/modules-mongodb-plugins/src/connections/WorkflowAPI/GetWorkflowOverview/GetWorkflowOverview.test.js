@@ -135,19 +135,6 @@ async function seedWorkflow({
     },
     display_order: 1,
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
-    summary: { done: 0, not_required: 0, total: 2 },
-    groups: [
-      {
-        id: "phase-1",
-        status: "in-progress",
-        summary: { done: 0, not_required: 0, total: 1 },
-      },
-      {
-        id: "phase-2",
-        status: "blocked",
-        summary: { done: 0, not_required: 0, total: 1 },
-      },
-    ],
     form_data,
     created: changeStamp,
     updated: changeStamp,
@@ -321,6 +308,8 @@ describe("grouping", () => {
         order: 0,
         title: "Phase 1",
         icon: "rocket",
+        status: "in-progress",
+        summary: expect.objectContaining({ total: 1 }),
         actions: [expect.objectContaining({ type: "qualify" })],
       },
       {
@@ -328,6 +317,8 @@ describe("grouping", () => {
         order: 1,
         title: "Phase 2",
         icon: "flag",
+        status: "in-progress",
+        summary: expect.objectContaining({ total: 1 }),
         actions: [expect.objectContaining({ type: "kickoff" })],
       },
     ]);
@@ -362,6 +353,106 @@ describe("grouping", () => {
       "secret-action",
     ]);
     expect(phase2.actions.map((c) => c.type)).toEqual(["kickoff"]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// progress summary (Part 66) — derived on read, counts ALL actions
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("progress summary", () => {
+  test("workflow.summary counts ALL raw actions, including access-denied ones", async () => {
+    await seedWorkflow();
+    // visible to account-manager
+    await seedAction({
+      _id: "a-qualify",
+      type: "qualify",
+      action_group: "phase-1",
+      stage: "action-required",
+    });
+    await seedAction({
+      _id: "a-kickoff",
+      type: "kickoff",
+      action_group: "phase-2",
+      stage: "done",
+    });
+    // access-denied to account-manager, but progress is objective → still counted
+    await seedAction({
+      _id: "a-secret",
+      type: "secret-action",
+      action_group: "phase-1",
+      stage: "done",
+      extra: {
+        access: { "test-app": { view: ["admin"], edit: ["admin"] } },
+        "test-app": {
+          links: { view: null, edit: null, review: null, error: null },
+          message: "",
+        },
+      },
+    });
+
+    const result = await GetWorkflowOverview(
+      buildContext({ request: { workflow_id: "wf-1" } }),
+    );
+
+    expect(result.workflow.summary).toEqual({
+      counts: {
+        done: 2,
+        "in-review": 0,
+        "changes-required": 0,
+        error: 0,
+        "in-progress": 0,
+        "action-required": 1,
+        blocked: 0,
+        "not-required": 0,
+      },
+      total: 3,
+    });
+  });
+
+  test("each group carries derived status + summary over all its raw actions", async () => {
+    await seedWorkflow();
+    await seedAction({
+      _id: "a-qualify",
+      type: "qualify",
+      action_group: "phase-1",
+      stage: "action-required",
+    });
+    // access-denied phase-1 sibling still counted in the group summary
+    await seedAction({
+      _id: "a-secret",
+      type: "secret-action",
+      action_group: "phase-1",
+      stage: "done",
+      extra: {
+        access: { "test-app": { view: ["admin"], edit: ["admin"] } },
+        "test-app": {
+          links: { view: null, edit: null, review: null, error: null },
+          message: "",
+        },
+      },
+    });
+    await seedAction({
+      _id: "a-kickoff",
+      type: "kickoff",
+      action_group: "phase-2",
+      stage: "done",
+    });
+
+    const result = await GetWorkflowOverview(
+      buildContext({ request: { workflow_id: "wf-1" } }),
+    );
+
+    const phase1 = result.groups.find((g) => g.id === "phase-1");
+    expect(phase1.status).toBe("in-progress");
+    expect(phase1.summary.total).toBe(2); // qualify + secret-action
+    expect(phase1.summary.counts.done).toBe(1);
+    expect(phase1.summary.counts["action-required"]).toBe(1);
+
+    const phase2 = result.groups.find((g) => g.id === "phase-2");
+    expect(phase2.status).toBe("done");
+    expect(phase2.summary.total).toBe(1);
+    expect(phase2.summary.counts.done).toBe(1);
   });
 });
 

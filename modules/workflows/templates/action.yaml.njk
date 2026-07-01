@@ -96,11 +96,12 @@ _ref:
           path: components/universal-fields/universal-fields-chips.yaml
           vars:
             modal_id: universal_fields_edit_modal
+            assignee_docs: current_action.assignee_docs
             action_data:
-              assignee_docs:
-                _state: current_action.assignee_docs
               due_date:
                 _state: current_action.due_date
+              stage:
+                _state: current_action.stage
     breadcrumbs:
       _ref:
         path: components/action-breadcrumbs.yaml

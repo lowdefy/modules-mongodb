@@ -175,8 +175,6 @@ async function StartWorkflow(lowdefyContext) {
       ref_key: workflowConfig.entity.ref_key,
     },
     status: [{ stage: "active", event_id, created: now }],
-    summary: { done: 0, not_required: 0, total: 0 },
-    groups: [],
     form_data: {},
     parent_action_id: parent ? params.parent_action_id : null,
     parent_workflow_id: parent ? parent.workflow_id : null,
@@ -205,9 +203,10 @@ async function StartWorkflow(lowdefyContext) {
   );
   const seededDrafts = seededEntries.map((e) => e.doc);
 
-  // ── Plan: the workflow-doc derived fields (summary, groups[]) via the
-  //    single composition site. No lifecyclePush — auto-complete can't fire
-  //    (legal seeds are non-terminal; the total > 0 guard covers zero actions).
+  // ── Plan: compose the workflow doc via the single composition site. No
+  //    lifecyclePush — auto-complete can't fire (legal seeds are non-terminal;
+  //    the total > 0 guard covers zero actions). Part 66: summary/groups are no
+  //    longer composed or seeded — overview counts derive on read.
   const plannedWorkflowDoc = planWorkflowRecompute({
     loadedState: { workflow: baseWorkflowDoc, workflowConfig },
     plannedActions: seededDrafts,

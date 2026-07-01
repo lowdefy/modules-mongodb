@@ -14,13 +14,6 @@
  */
 
 /**
- * @typedef {Object} WorkflowGroupEntry
- * @property {string} id
- * @property {'blocked' | 'in-progress' | 'done'} status
- * @property {{ done: number, not_required: number, total: number }} summary
- */
-
-/**
  * @typedef {Object} WorkflowDoc
  * @property {string} _id
  * @property {string} workflow_type
@@ -30,11 +23,12 @@
  * @property {string | null} parent_action_id
  * @property {{ connection_id: string, id: string } | null} parent_entity
  * @property {StatusEntry[]} status
- * @property {{ done: number, not_required: number, total: number }} summary
- * @property {WorkflowGroupEntry[]} groups
  * @property {Object} form_data
  * @property {ChangeStamp} created
  * @property {ChangeStamp} updated
+ *
+ * Part 66: the denormalised `summary`/`groups[]` fields were removed — overview
+ * progress counts derive on read from the action docs.
  */
 
 /**

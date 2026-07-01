@@ -126,19 +126,6 @@ async function seedWorkflow({
     entity: { connection_id: entity_collection, id: entity_id, ref_key: "lead_ids" },
     display_order: 1,
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
-    summary: { done: 0, not_required: 0, total: 0 },
-    groups: [
-      {
-        id: "phase-1",
-        status: "in-progress",
-        summary: { done: 0, not_required: 0, total: 1 },
-      },
-      {
-        id: "phase-2",
-        status: "blocked",
-        summary: { done: 0, not_required: 0, total: 1 },
-      },
-    ],
     form_data: {},
     created: changeStamp,
     updated: changeStamp,
@@ -466,6 +453,39 @@ describe("group display config", () => {
     const phase1 = result.workflows[0].groups.find((g) => g.id === "phase-1");
     expect(phase1.title).toBe("Phase 1");
     expect(phase1.icon).toBe("rocket");
+  });
+
+  test("Part 66: group status derived from actions; no summary field", async () => {
+    await seedWorkflow();
+    // phase-1: one action-required + one done → in-progress
+    await seedAction({
+      _id: "a1",
+      type: "qualify",
+      action_group: "phase-1",
+      stage: "action-required",
+    });
+    await seedAction({
+      _id: "a3",
+      type: "review-only",
+      action_group: "phase-1",
+      stage: "done",
+      extra: {
+        access: { "test-app": { view: true } },
+        "test-app": {
+          links: { view: null, edit: null, review: null, error: null },
+          message: "done msg",
+        },
+      },
+    });
+    const result = await GetEntityWorkflows(
+      buildContext({
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
+      }),
+    );
+    const phase1 = result.workflows[0].groups.find((g) => g.id === "phase-1");
+    expect(phase1.status).toBe("in-progress");
+    // summary cache dropped — ActionSteps recomputes per-action display itself.
+    expect("summary" in phase1).toBe(false);
   });
 
   test("group link uses entry_id/workflow-group-overview with workflow_id + group_id", async () => {

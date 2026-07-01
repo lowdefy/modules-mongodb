@@ -1,20 +1,31 @@
-# Universal-fields chips (Part 56 addendum DA1).
+# Universal-fields chips (Part 56 addendum DA1; Part 67 relabelled + restructured).
 #
 # The title-bar `page_actions` presentation of an action's universal fields:
-# assignees as avatars + due date as a Tag pill + a pencil (✎) button that opens
-# the edit modal. Display-only here — editing happens in the modal
-# (universal-fields-modal.yaml), so a calm chip strip reads at a glance.
+# two labelled fields — Assignees (a hover-named, contact-linked avatar stack)
+# and Due (a due-aware colour pill) — plus a pencil (✎) button that opens the
+# edit modal. Display-only here — editing happens in the modal
+# (universal-fields-modal.yaml), so a calm labelled strip reads at a glance.
+# Both fields carry real empty states (Unassigned / No due date) and the ✎ is
+# always present, so the strip never collapses to a lone icon.
 #
 # Composed by every action template into the layout `page` `page_actions` slot, so
 # the chip strip is identical across the form + check pages. Consumed via
-# `_ref: { path, vars }` with OPERATOR-valued vars. Vars:
-#   - action_data  map of operator leaves: `assignee_docs` (avatar source) and
-#                  `due_date`. (Assignees themselves are not needed — the avatars
-#                  render from the resolved docs.)
-#   - show         build-time array of field names (default all three); a chip is
-#                  omitted when its field is not listed (same gate as the component).
-#   - modal_id     build-time block id of the edit modal the ✎ opens (setOpen).
-#   - date_format  due-date display format (default `MMM D, YYYY`).
+# `_ref: { path, vars }`. Vars:
+#   - assignee_docs  build-time PATH STRING (e.g. `action.assignee_docs` /
+#                    `current_action.assignee_docs`) — the state path where the
+#                    consumer already holds the resolved assignee docs. Used as
+#                    the assignees `List` `id` (so the List binds that array
+#                    reactively) and, via `_state: {path}`, for the `+N`
+#                    overflow count. NOT an operator leaf — a `List` `id` must be
+#                    a literal state path at build time.
+#   - action_data    map of operator leaves: `due_date` (the due pill's value)
+#                    and `stage` (the action's current stage — drives the overdue
+#                    colour). Assignees are read from the `assignee_docs` path
+#                    above, so they are not in this map.
+#   - show           build-time array of field names (default [assignees,
+#                    due_date]); a field is omitted when not listed.
+#   - modal_id       build-time block id of the edit modal the ✎ opens (setOpen).
+#   - date_format    due-date display format (default `MMM D, YYYY`).
 id: universal_fields_chips
 type: Box
 # flex 0 0 auto: this strip sizes to its chips. A block with no flex/grow/shrink
@@ -25,11 +36,13 @@ layout:
   direction: row
   contentAlign: center
   wrap: nowrap
-  gap: 8
+  gap: 10
   flex: 0 0 auto
 blocks:
   _build.array.concat:
-    # Assignees → avatars, only when there are resolved assignee docs.
+    # ── Assignees field ──────────────────────────────────────────────────────
+    # Label → avatar stack (List of Tooltip→Avatar→Link) when there are docs,
+    # else muted italic "Unassigned". A trailing +N pill collapses overflow.
     - _build.if:
         test:
           _build.array.includes:
@@ -39,47 +52,206 @@ blocks:
                 default: [assignees, due_date]
             value: assignees
         then:
-          # A single Avatar block in group mode renders one overlapping
-          # Avatar.Group from the resolved assignee docs — the design's
-          # "overlapping avatars". A `List` is the wrong tool here: a list-category
-          # block iterates STATE at its own id (not `properties.data`), so with no
-          # state seeded at the list id it renders zero items. Computing the
-          # avatars array sidesteps per-item state binding entirely. flex 0 0 auto
-          # keeps the strip compact (a flex-less block defaults to a 24-span column
-          # and would push the due-date pill past the viewport).
-          - id: universal_fields_chips_assignees
-            type: Avatar
+          - id: universal_fields_chips_assignees_field
+            type: Box
+            layout:
+              direction: row
+              contentAlign: center
+              wrap: nowrap
+              gap: 6
+              flex: 0 0 auto
+            blocks:
+              - id: universal_fields_chips_assignees_label
+                type: Paragraph
+                layout:
+                  flex: 0 0 auto
+                style:
+                  ".element":
+                    margin: 0
+                    fontSize: 11px
+                    fontWeight: 600
+                    letterSpacing: 0.03em
+                    textTransform: uppercase
+                properties:
+                  type: secondary
+                  content: Assignees
+              # Avatar stack — one overlapping, hover-named, contact-linked
+              # avatar per assignee doc. The `List` binds to the array the
+              # consumer already holds at `assignee_docs` (seeded on mount +
+              # reseeded on refetch by the same SetState the chips depend on),
+              # so nothing is seeded here. `direction: row` lays the items out
+              # horizontally; a small negative left margin per item (except the
+              # first) gives the overlap.
+              - id:
+                  _var: assignee_docs
+                type: List
+                layout:
+                  flex: 0 0 auto
+                visible:
+                  _gt:
+                    - _array.length:
+                        _state:
+                          _var: assignee_docs
+                    - 0
+                properties:
+                  direction: row
+                blocks:
+                  # Only the first `maxCount` (5) render as avatars; the rest
+                  # collapse into the trailing +N pill below.
+                  - id:
+                      _build.string.concat:
+                        - _var: assignee_docs
+                        - .$.tooltip
+                    type: Tooltip
+                    layout:
+                      flex: 0 0 auto
+                    visible:
+                      _lt:
+                        - _index: 0
+                        - 5
+                    properties:
+                      title:
+                        _state:
+                          _build.string.concat:
+                            - _var: assignee_docs
+                            - .$.profile.name
+                    blocks:
+                      - id:
+                          _build.string.concat:
+                            - _var: assignee_docs
+                            - .$.avatar
+                        type: Avatar
+                        # picture is a pre-generated gradient SVG; `content` (the
+                        # name initial) is only the fallback when a doc has no
+                        # picture.
+                        properties:
+                          size: small
+                          src:
+                            _state:
+                              _build.string.concat:
+                                - _var: assignee_docs
+                                - .$.profile.picture
+                          content:
+                            _nunjucks:
+                              template: "{{ (name or '')[0] | upper }}"
+                              on:
+                                name:
+                                  _state:
+                                    _build.string.concat:
+                                      - _var: assignee_docs
+                                      - .$.profile.name
+                        style:
+                          ".element":
+                            border: 2px solid #fff
+                            marginLeft:
+                              _if:
+                                test:
+                                  _eq:
+                                    - _index: 0
+                                    - 0
+                                then: 0
+                                else: -8
+                        # onClick → contact page. Cross-module page ref resolves
+                        # in this file's own (workflows) module context, so the
+                        # link is fully wired here — consumers pass nothing for
+                        # it. `_id` is the query key the contacts view reads
+                        # (`_url_query: _id`).
+                        events:
+                          onClick:
+                            - id: link_to_contact
+                              type: Link
+                              params:
+                                pageId:
+                                  _module.pageId:
+                                    id: view
+                                    module: contacts
+                                urlQuery:
+                                  _id:
+                                    _state:
+                                      _build.string.concat:
+                                        - _var: assignee_docs
+                                        - .$._id
+              # +N overflow — count beyond maxCount, only when it overflows.
+              - id: universal_fields_chips_assignees_overflow
+                type: Avatar
+                layout:
+                  flex: 0 0 auto
+                visible:
+                  _gt:
+                    - _array.length:
+                        _state:
+                          _var: assignee_docs
+                    - 5
+                properties:
+                  size: small
+                  content:
+                    _nunjucks:
+                      template: "+{{ n }}"
+                      on:
+                        n:
+                          _subtract:
+                            - _array.length:
+                                _state:
+                                  _var: assignee_docs
+                            - 5
+                style:
+                  ".element":
+                    marginLeft: -8
+                    border: 2px solid #fff
+                    backgroundColor: "#8c8c8c"
+              # Empty state — muted italic "Unassigned" when there are no docs.
+              - id: universal_fields_chips_unassigned
+                type: Paragraph
+                layout:
+                  flex: 0 0 auto
+                visible:
+                  _eq:
+                    - _array.length:
+                        _state:
+                          _var: assignee_docs
+                    - 0
+                style:
+                  ".element":
+                    margin: 0
+                    fontStyle: italic
+                properties:
+                  type: secondary
+                  content: Unassigned
+        else: []
+    # ── Divider ────────────────────────────────────────────────────────────
+    # A thin 1px separator, only when BOTH fields render — a single-field action
+    # (e.g. universal_fields: [assignees]) shows no dangling separator.
+    - _build.if:
+        test:
+          _build.and:
+            - _build.array.includes:
+                on:
+                  _var:
+                    key: show
+                    default: [assignees, due_date]
+                value: assignees
+            - _build.array.includes:
+                on:
+                  _var:
+                    key: show
+                    default: [assignees, due_date]
+                value: due_date
+        then:
+          - id: universal_fields_chips_divider
+            type: Box
             layout:
               flex: 0 0 auto
-            visible:
-              _gt:
-                - _array.length:
-                    _var: action_data.assignee_docs
-                - 0
-            properties:
-              group:
-                size: small
-                maxCount: 5
-                # assignee_docs entries carry { _id, profile: { name, picture } }.
-                # picture is a pre-generated gradient SVG, so `content` (the name
-                # initial) is only a fallback when a doc has no picture.
-                avatars:
-                  _js:
-                    args:
-                      docs:
-                        _var: action_data.assignee_docs
-                    fn: |
-                      const docs = args.docs || [];
-                      return docs.map((d) => {
-                        const name = d.profile && d.profile.name;
-                        return {
-                          src: d.profile && d.profile.picture,
-                          alt: name,
-                          content: name ? name.charAt(0).toUpperCase() : undefined,
-                        };
-                      });
+            style:
+              ".element":
+                width: 1px
+                height: 20px
+                backgroundColor: "#e5e7eb"
         else: []
-    # Due date → a compact Tag pill, only when set.
+    # ── Due field ────────────────────────────────────────────────────────────
+    # Label → a due-aware colour pill when set, else a dashed "No due date"
+    # placeholder pill. Colours are pinned explicitly (fixing the antd-default
+    # blend bug): neutral grey normally, the shared `action_statuses` error
+    # palette (red) when overdue.
     - _build.if:
         test:
           _build.array.includes:
@@ -89,27 +261,103 @@ blocks:
                 default: [assignees, due_date]
             value: due_date
         then:
-          - id: universal_fields_chips_due_date
-            type: Tag
+          - id: universal_fields_chips_due_field
+            type: Box
             layout:
+              direction: row
+              contentAlign: center
+              wrap: nowrap
+              gap: 6
               flex: 0 0 auto
-            visible:
-              _ne:
-                - _var: action_data.due_date
-                - null
-            properties:
-              icon: AiOutlineCalendar
-              title:
-                _dayjs.format:
-                  on:
-                    _var: action_data.due_date
-                  format:
-                    _var:
-                      key: date_format
-                      default: MMM D, YYYY
+            blocks:
+              - id: universal_fields_chips_due_label
+                type: Paragraph
+                layout:
+                  flex: 0 0 auto
+                style:
+                  ".element":
+                    margin: 0
+                    fontSize: 11px
+                    fontWeight: 600
+                    letterSpacing: 0.03em
+                    textTransform: uppercase
+                properties:
+                  type: secondary
+                  content: Due
+              - id: universal_fields_chips_due_date
+                type: Tag
+                layout:
+                  flex: 0 0 auto
+                visible:
+                  _ne:
+                    - _var: action_data.due_date
+                    - null
+                properties:
+                  icon: AiOutlineCalendar
+                  title:
+                    _dayjs.format:
+                      on:
+                        _var: action_data.due_date
+                      format:
+                        _var:
+                          key: date_format
+                          default: MMM D, YYYY
+                # Due-aware colour. `overdue` = due_date set AND stage not
+                # terminal (done / not-required) AND due_date before start of
+                # today (day granularity). A stored-date vs. today comparison is
+                # awkward with comparison operators, so it's a small _js leaf
+                # (js-operator guide). Reads action_data.due_date + .stage, so it
+                # recomputes on refetch.
+                style:
+                  ".element":
+                    _if:
+                      test:
+                        _js:
+                          args:
+                            due:
+                              _var: action_data.due_date
+                            stage:
+                              _var: action_data.stage
+                          fn: |
+                            const { due, stage } = args;
+                            if (!due) return false;
+                            if (stage === 'done' || stage === 'not-required') return false;
+                            const d = new Date(due);
+                            const now = new Date();
+                            const startOfToday = new Date(
+                              now.getFullYear(),
+                              now.getMonth(),
+                              now.getDate()
+                            );
+                            return d < startOfToday;
+                      then:
+                        backgroundColor: "#fff1f0"
+                        borderColor: "#ff7875"
+                        color: "#cf1322"
+                      else:
+                        backgroundColor: "#f1f5f9"
+                        borderColor: "#e2e8f0"
+                        color: "#475569"
+              # Empty state — dashed "No due date" placeholder when null.
+              - id: universal_fields_chips_due_empty
+                type: Tag
+                layout:
+                  flex: 0 0 auto
+                visible:
+                  _eq:
+                    - _var: action_data.due_date
+                    - null
+                properties:
+                  title: No due date
+                style:
+                  ".element":
+                    color: "#94a3b8"
+                    backgroundColor: "#f8fafc"
+                    border: 1px dashed #d7dde5
         else: []
-    # Edit (✎) — always present, so a field (assignees / due date) can be ADDED
-    # even when no chips are showing a value yet. Opens the edit modal.
+    # ── Edit (✎) ─────────────────────────────────────────────────────────────
+    # Always present, so a field (assignees / due date) can be ADDED even when
+    # both fields are showing empty states. Opens the edit modal.
     - - id: universal_fields_chips_edit
         type: Button
         layout:

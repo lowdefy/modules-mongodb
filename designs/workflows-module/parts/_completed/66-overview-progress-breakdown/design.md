@@ -31,11 +31,13 @@ Today the workflow doc stores two denormalised fields, rewritten on every action
 - `summary: { done, not_required, total }` — workflow-level, composed in `planWorkflowRecompute.js`, seeded in `StartWorkflow.js`.
 - `groups: [{ id, status, summary }]` — per-group runtime state, composed via `recomputeGroups.js`.
 
-Neither is read for engine logic and neither is ever queried or sorted on (confirmed by grep across `apps/`, `modules/`, and the plugin sources):
+`summary` is read nowhere but the display resolvers. `groups[]` has **one** engine reader (see the correction below), which is re-sourced from actions rather than the cache — everything else recomputes group state fresh:
 
 - **Auto-complete** in `planWorkflowRecompute.js` computes `allTerminal` directly from the planned actions, not from `summary`.
 - **Auto-unblock** (`planAutoUnblock.js`) recomputes group state fresh from the in-memory action `view` every fixpoint iteration (`recomputeGroups({ declaredGroups, actions: view })`) — it never reads the persisted `groups[]`.
-- The only readers are the three display resolvers, and each already loads the actions it would need.
+- The display readers are the three overview resolvers, and each already loads the actions it would need.
+
+> **Correction (implementation).** An earlier draft of this design claimed the cache had **no** engine reader. That was wrong for `groups[]`: `planSubmit.js` step 5 computes `completed_groups` — the list that fires each group's `on_complete` hook — by diffing the loaded `workflow.groups` ("before") against the recomputed `plannedWorkflowDoc.groups` ("after"). Dropping the cache naively disabled every group-completion hook (three tests caught it). The fix keeps the design's intent — actions are the single source of truth — by recomputing **both** sides of the diff from the action docs via `recomputeGroups` (loaded pre-transition actions → "before", planned actions → "after"). Behaviour-equivalent to the old diff, with no staleness. See "Stop persisting" and "Files in play" below.
 
 The cache existed because reads once hit the DB directly with no server-side resolver; that era is over (Part 46 moved all reads behind `WorkflowAPI` resolvers). So:
 
@@ -44,12 +46,13 @@ The cache existed because reads once hit the DB directly with no server-side res
 - `planWorkflowRecompute.js` — its composed doc no longer includes `summary` or `groups`. The final persist-only `recomputeGroups` pass is deleted; auto-complete (computed from `plannedActions`) is unchanged.
 - `StartWorkflow.js` — drop the `summary: { done: 0, not_required: 0, total: 0 }` seed **and** the adjacent `groups: []` seed (line 179). Both are denormalised fields the recompute pass will no longer write; leaving either would persist a dead field on every new workflow.
 - `CloseWorkflow.js` / `CancelWorkflow.js` — remove `summary` and `groups` from `RESERVED_WORKFLOW_KEYS` (they can no longer be overwritten because they no longer exist).
-- `recomputeGroups.js` and `deriveGroupStatus.js` **stay** — `planAutoUnblock` still calls them in-memory for unblock logic; the result simply isn't written. `recomputeGroups` **drops its `summary` computation** and returns just `{ id, status }`: after this part its only caller (`planAutoUnblock`) reads only `.status` (`:84`, `groupById.get(entry)?.status === "done"`), so a per-group `summary` there would be dead work. `deriveGroupStatus` is retained for the `status` field.
+- `recomputeGroups.js` and `deriveGroupStatus.js` **stay** — `planAutoUnblock` and `planSubmit` still call them in-memory (unblock logic and the `completed_groups` diff); the result simply isn't written. `recomputeGroups` **drops its `summary` computation** and returns just `{ id, status }`: its callers read only `.status`, so a per-group `summary` there would be dead work. `deriveGroupStatus` is retained for the `status` field.
+- `planSubmit.js` — the step-5 `completed_groups` diff no longer reads `workflow.groups` / `plannedWorkflowDoc.groups`. Both sides are recomputed from actions: `recomputeGroups({ declaredGroups, actions })` for "before" (loaded, pre-transition) and `recomputeGroups({ declaredGroups, actions: plannedActions })` for "after". The `on_complete` join and emit shape are unchanged.
 
 **Derive on read**:
 
 - New `shared/render/summarizeStatuses.js` — pure `summarizeStatuses(actions)` → `{ counts: { done, "in-review", "changes-required", error, "in-progress", "action-required", blocked, "not-required" }, total }`. The three read resolvers import it directly, so all counts flow through one counter. (It is **not** threaded through `recomputeGroups` — that path's sole caller consumes only `.status`, so a `summary` computed there would be discarded; see "Stop persisting" above.)
-- `GetWorkflowOverview.js` — attach `summary` (from all raw actions) to the workflow response and `summary` + `status` to each group entry, computed from the grouped actions it already builds.
+- `GetWorkflowOverview.js` — attach `summary` (from all raw actions) to the workflow response and `summary` + `status` to each group entry. The per-group counts are computed over **all** of that group's raw actions (filtered from `rawActions` by `action_group`), not the access-visible subset used to build the cards — progress is objective (see "Counting scope").
 - `GetWorkflowActionGroupOverview.js` — the returned `group` object drew `id`, `status`, `summary` from the runtime `wfGroupEntry` (found in the now-deleted `wfDoc.groups[]`), and the existence guard collapsed the group to `null` when no such entry was found. All four uses must be re-sourced:
   - **Existence guard** — switch from `wfGroupEntry` to `configGroup` (already looked up from `wfConfig.action_groups[]`): `if (!configGroup) return { workflow, group: null, actions: actionCards }`. Behaviour-equivalent — `groups[]` was only ever populated for groups declared in `action_groups[]`, so an unknown `group_id` collapses to `null` under both the old and new guard.
   - **`id`** — take `group_id` (the param) directly.
@@ -60,7 +63,7 @@ The cache existed because reads once hit the DB directly with no server-side res
 
 ### Counting scope
 
-`summarizeStatuses` counts **all** actions on the workflow/group, not just the per-viewer visible subset — progress is an objective property of the workflow, not a function of who's looking. `GetWorkflowOverview` loads all `rawActions`; `GetWorkflowActionGroupOverview` loads all of the group's actions by query. This matches the old stored summary, which `recomputeGroups` computed over every action.
+`summarizeStatuses` (and the `deriveGroupStatus` re-source) counts **all** actions on the workflow/group, not just the per-viewer visible subset — progress is an objective property of the workflow, not a function of who's looking. `GetWorkflowOverview` uses all `rawActions` (workflow summary) and, per group, all raw actions filtered by `action_group` (not the visible cards); `GetWorkflowActionGroupOverview` loads all of the group's actions by query; `GetEntityWorkflows` derives each group's `status` from all raw actions filtered by `action_group`. This matches the old stored summary, which `recomputeGroups` computed over every action.
 
 ## The segmented bar
 
@@ -92,6 +95,8 @@ Rendering notes:
 - `plugins/.../shared/render/summarizeStatuses.js` — **new** pure counter; imported directly by the three read resolvers.
 - `plugins/.../shared/phases/planners/recomputeGroups.js` — drop the `summary` computation; return `{ id, status }` only.
 - `plugins/.../shared/phases/planners/planWorkflowRecompute.js` — stop composing `summary`/`groups`; drop the persist-only recompute pass.
+- `plugins/.../shared/phases/planSubmit.js` — re-source the step-5 `completed_groups` diff from actions (loaded + planned) via `recomputeGroups`, since it no longer has `workflow.groups`/`plannedWorkflowDoc.groups` to read (see the correction under "Single source of truth").
+- `plugins/.../shared/types.js` — drop `summary`/`groups` from the `WorkflowDoc` typedef and remove the `WorkflowGroupEntry` typedef.
 - `plugins/.../WorkflowAPI/StartWorkflow/StartWorkflow.js` — drop the `summary` **and** `groups: []` seeds.
 - `plugins/.../WorkflowAPI/{CloseWorkflow,CancelWorkflow}/*.js` — drop `summary`/`groups` from `RESERVED_WORKFLOW_KEYS`.
 
@@ -103,14 +108,15 @@ Edit `src/`; the build regenerates `dist/`.
 - `StartWorkflow` test — no `summary` seed on the created doc.
 - `GetWorkflowOverview` / `GetWorkflowActionGroupOverview` / `GetEntityWorkflows` tests — assert the computed `summary`/`status` (and `GetEntityWorkflows`' absence of `summary`).
 - New `summarizeStatuses.test.js` — counts across all eight stages, empty input, missing-status actions.
+- `planSubmit.test.js` / `SubmitWorkflowAction.test.js` — the `completed_groups` diff still emits (with the `on_complete` join) now that both sides recompute from actions rather than the dropped cache. `CancelWorkflow`/`CloseWorkflow`/`StartWorkflow` seeds drop the dead `summary`/`groups` fields.
 
 ## Resolved questions
 
-1. **Store enriched summary vs. compute on read** — **compute on read.** The cache is unread by logic and unqueried; deriving on read makes the action docs the single source of truth and removes write-path work. Unreleased ⇒ no migration. (Aligned with user.)
+1. **Store enriched summary vs. compute on read** — **compute on read.** The cache is unqueried and its one engine reader (`planSubmit`'s `completed_groups` diff) recomputes just as cheaply from actions; deriving on read makes the action docs the single source of truth and removes write-path work. Unreleased ⇒ no migration. (Aligned with user.)
 2. **Segment colour field** — **`titleColor`**, matching `ActionSteps.js`'s existing `statusColor` helper.
 3. **`not-required` in the bar** — **excluded** from segments (caption only), so the `done` segment width equals the percentage.
 4. **Rendering block** — **`Html` + `_nunjucks`**, the sanctioned fallback when no native block fits (antd `Progress` can't render an arbitrary multi-colour stack — only success/primary/remainder or single-colour steps). No new plugin block: the bar appears in two server-fed places with no interactivity requirement beyond a hover title, so a `StatusBar` React block isn't justified yet.
 
 ## Depends on
 
-- [Part 46 — debundle workflow config](../_completed/46-debundle-workflow-config/design.md) moved the overview reads to server-side `WorkflowAPI` resolvers (the `Get*Overview` handlers replaced the `get-*-overview.yaml` aggregations), which is what makes dropping the cache safe.
+- [Part 46 — debundle workflow config](designs/workflows-module/parts/_completed/46-debundle-workflow-config/design.md) moved the overview reads to server-side `WorkflowAPI` resolvers (the `Get*Overview` handlers replaced the `get-*-overview.yaml` aggregations), which is what makes dropping the cache safe.

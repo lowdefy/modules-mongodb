@@ -4,8 +4,12 @@
       "source": {
         "source": "github",
         "repo": "TECHMRM/claude-plugins"
-      }
+      },
+      "autoUpdate": true
     }
+  },
+  "enabledPlugins": {
+    "r@resonancy": true
   },
   "sandbox": {
     "enabled": true,

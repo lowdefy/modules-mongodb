@@ -43,8 +43,12 @@ dependencies:
   - id: contacts
     description: >
       Provides the contact-selector component wrapped by the `contact` /
-      `multiple_contact` form fields (components/fields/). Only exercised when
-      a workflow form uses one of those fields.
+      `multiple_contact` form fields (components/fields/), and the `view` page
+      the universal-fields chips link each assignee avatar to (cross-module
+      `_module.pageId: { id: view, module: contacts }` in
+      components/universal-fields/universal-fields-chips.yaml). The always-present
+      chips make this a build-time dependency — not just exercised when a
+      workflow form uses a contact field.
   - id: user-account
     description: >
       Supplies the user-multi-selector and user-avatar components the

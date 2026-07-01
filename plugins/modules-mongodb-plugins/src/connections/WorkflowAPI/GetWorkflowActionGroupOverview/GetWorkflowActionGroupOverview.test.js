@@ -130,19 +130,6 @@ async function seedWorkflow({
     },
     display_order: 1,
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
-    summary: { done: 0, not_required: 0, total: 2 },
-    groups: [
-      {
-        id: "phase-1",
-        status: "in-progress",
-        summary: { done: 0, not_required: 0, total: 2 },
-      },
-      {
-        id: "phase-2",
-        status: "blocked",
-        summary: { done: 0, not_required: 0, total: 0 },
-      },
-    ],
     form_data,
     created: changeStamp,
     updated: changeStamp,
@@ -249,7 +236,7 @@ describe("group null collapse", () => {
     expect(result.actions).toEqual([]);
   });
 
-  test("group is null when group_id not found in workflow.groups", async () => {
+  test("group is null when group_id is not a declared config group", async () => {
     await seedWorkflow();
     await seedAction({
       _id: "a1",
@@ -347,16 +334,36 @@ describe("return shape", () => {
     expect("link" in result.group).toBe(false);
   });
 
-  test("group carries status and summary from workflow doc", async () => {
+  test("group status + summary derived from the group's actions (Part 66)", async () => {
     await seedWorkflow();
-    await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
+    // Two actions in phase-1: one action-required, one done.
+    await seedAction({
+      _id: "a1",
+      type: "qualify",
+      action_group: "phase-1",
+      stage: "action-required",
+    });
+    await seedAction({
+      _id: "a2",
+      type: "kickoff",
+      action_group: "phase-1",
+      stage: "done",
+    });
     const result = await GetWorkflowActionGroupOverview(
       buildContext({ request: { workflow_id: "wf-1", group_id: "phase-1" } }),
     );
     expect(result.group.status).toBe("in-progress");
     expect(result.group.summary).toEqual({
-      done: 0,
-      not_required: 0,
+      counts: {
+        done: 1,
+        "in-review": 0,
+        "changes-required": 0,
+        error: 0,
+        "in-progress": 0,
+        "action-required": 1,
+        blocked: 0,
+        "not-required": 0,
+      },
       total: 2,
     });
   });

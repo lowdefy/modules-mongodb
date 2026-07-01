@@ -134,8 +134,6 @@ async function seedWorkflow({ _id = "wf-1", overrides = {} } = {}) {
     title: "Onboarding",
     entity: { connection_id: "leads-collection", id: "lead-1", ref_key: "lead_ids" },
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
-    summary: { done: 0, not_required: 0, total: 0 },
-    groups: [],
     form_data: {},
     created: changeStamp,
     updated: changeStamp,
@@ -173,9 +171,7 @@ async function seedAction({
 
 describe("cancel sweep + lifecycle", () => {
   test("sweeps all non-terminal actions to not-required and preserves done actions", async () => {
-    await seedWorkflow({
-      overrides: { summary: { done: 1, not_required: 0, total: 3 } },
-    });
+    await seedWorkflow();
     await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
     await seedAction({ _id: "a2", type: "kickoff", stage: "blocked" });
     await seedAction({ _id: "a3", type: "qualify", stage: "done" });
@@ -279,10 +275,8 @@ describe("cancel sweep + lifecycle", () => {
     expect("completed_groups" in result).toBe(false);
   });
 
-  test("groups/summary recompute after the sweep", async () => {
-    await seedWorkflow({
-      overrides: { summary: { done: 0, not_required: 0, total: 2 } },
-    });
+  test("Part 66: sweep lands all actions terminal; the doc carries no summary/groups cache", async () => {
+    await seedWorkflow();
     await seedAction({
       _id: "a1",
       type: "qualify",
@@ -298,9 +292,17 @@ describe("cancel sweep + lifecycle", () => {
 
     await CancelWorkflow(buildContext({ request: { workflow_id: "wf-1" } }));
 
+    // Both actions swept to not-required (the source of truth for counts).
+    const actions = await mongo.db
+      .collection("actions")
+      .find({ workflow_id: "wf-1" })
+      .toArray();
+    expect(actions.every((a) => a.status[0].stage === "not-required")).toBe(true);
+
+    // Denormalised caches dropped — counts derive on read from the actions.
     const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-    expect(wf.summary).toEqual({ done: 0, not_required: 2, total: 2 });
-    expect(wf.groups.every((g) => g.status === "done")).toBe(true);
+    expect("summary" in wf).toBe(false);
+    expect("groups" in wf).toBe(false);
   });
 });
 
@@ -407,8 +409,6 @@ describe("tracker cascade", () => {
         ref_key: "lead_ids",
       },
       status: [{ stage: "active", event_id: "e0", created: changeStamp }],
-      summary: { done: 0, not_required: 0, total: 2 },
-      groups: [],
       form_data: {},
       created: changeStamp,
       updated: changeStamp,

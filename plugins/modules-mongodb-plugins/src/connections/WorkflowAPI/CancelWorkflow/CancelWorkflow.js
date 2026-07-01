@@ -18,8 +18,6 @@ const RESERVED_WORKFLOW_KEYS = [
   "workflow_type",
   "entity",
   "status",
-  "summary",
-  "groups",
   "form_data",
   "created",
   "updated",

@@ -5,6 +5,7 @@ import {
   collapseLink,
 } from "../../shared/render/resolveActionAccess.js";
 import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
+import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js";
 
 /**
  * GetEntityWorkflows — server-side replacement for the get-entity-workflows.yaml
@@ -146,8 +147,13 @@ async function GetEntityWorkflows(lowdefyContext) {
       const title = configGroup?.title ?? null;
       const icon = configGroup?.icon ?? null;
 
-      // Find the workflow doc's runtime group entry (status/summary).
-      const wfGroupEntry = (wfDoc.groups ?? []).find((g) => g.id === group_id);
+      // Part 66: derive the group's runtime `status` on read from ALL of the
+      // group's raw actions (objective, per-viewer-independent), replacing the
+      // dropped `groups[]` cache. `summary` is dropped — ActionSteps.js
+      // recomputes per-action display from `actions` and never read it.
+      const groupRawActions = rawActions.filter(
+        (act) => (act.action_group ?? null) === group_id,
+      );
 
       const groupLink =
         group_id != null ? buildGroupLink(wfDoc._id, group_id) : null;
@@ -161,8 +167,7 @@ async function GetEntityWorkflows(lowdefyContext) {
         action_group: group_id,
         workflow_type: wfDoc.workflow_type,
         workflow_id: wfDoc._id,
-        status: wfGroupEntry?.status ?? null,
-        summary: wfGroupEntry?.summary ?? null,
+        status: deriveGroupStatus(groupRawActions),
         actions: groupActions,
       });
     }

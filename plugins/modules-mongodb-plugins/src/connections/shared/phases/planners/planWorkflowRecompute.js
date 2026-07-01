@@ -1,5 +1,3 @@
-import recomputeGroups from "./recomputeGroups.js";
-
 const TERMINAL = ["done", "not-required"];
 
 /**
@@ -9,11 +7,12 @@ const TERMINAL = ["done", "not-required"];
  * phase `$set`s the composed doc whole under the CAS gate (design D9/D15) —
  * this planner does no I/O.
  *
- * The group recompute here is the **final** pass after the auto-unblock ⇄
- * recompute fixpoint (task 10): `planAutoUnblock` imports the shared
- * `recomputeGroups` helper directly per iteration; this planner runs it one
- * last time against the settled planned action states so `groups[]` reflects
- * the unblock transitions (e.g. a group label flipping blocked → in-progress).
+ * Part 66: the denormalised `summary`/`groups[]` caches are gone. They were
+ * pure read-display fields never read for engine logic; the overview resolvers
+ * now derive their counts on read from the action docs. So this planner no
+ * longer composes them and the final persist-only group recompute pass is
+ * deleted. `planAutoUnblock` still runs `recomputeGroups` in-memory per
+ * fixpoint iteration for unblock logic — that result simply isn't persisted.
  *
  * Auto-complete: pushes `completed` onto the workflow status iff
  * `total > 0 && total === done + not_required` and the current workflow stage
@@ -34,12 +33,12 @@ const TERMINAL = ["done", "not-required"];
  * `completed` under its `cancelled`. Submit and tracker levels omit it —
  * auto-complete behaviour unchanged.
  *
- * Pure: derives everything from its inputs; builds **new** `status`/`groups`/
- * `summary` values rather than mutating the loaded doc.
+ * Pure: derives everything from its inputs; builds a **new** `status` value
+ * rather than mutating the loaded doc.
  *
  * @param {Object} args
  * @param {import('../types.js').LoadedState} args.loadedState — load-phase
- *   output; reads `workflow` and `workflowConfig.action_groups`.
+ *   output; reads `workflow`.
  * @param {Array<Object>} args.plannedActions — every action doc on the
  *   workflow in its **planned post-commit** state (task 10 output, after the
  *   auto-unblock fixpoint).
@@ -64,20 +63,8 @@ function planWorkflowRecompute({
   event_id,
   now,
 }) {
-  const { workflow, workflowConfig } = loadedState;
+  const { workflow } = loadedState;
   const actions = plannedActions ?? [];
-
-  const groups = recomputeGroups({
-    declaredGroups: workflowConfig.action_groups ?? [],
-    actions,
-  });
-
-  const summary = {
-    done: actions.filter((a) => a.status?.[0]?.stage === "done").length,
-    not_required: actions.filter((a) => a.status?.[0]?.stage === "not-required")
-      .length,
-    total: actions.length,
-  };
 
   let status;
   if (lifecyclePush != null) {
@@ -109,8 +96,6 @@ function planWorkflowRecompute({
   return {
     ...workflow,
     status,
-    summary,
-    groups,
     form_data: formData ?? workflow.form_data,
     updated: now,
   };

@@ -8,7 +8,7 @@ The workflow action pages render an action's universal fields (`assignees`, `due
 2. **Real empty states (Option X).** When there are no assignees, the field shows muted italic `Unassigned` text instead of hiding the avatars; when `due_date` is null it shows a dashed `No due date` placeholder pill. The label and the ✎ are always present, so the strip never collapses to a bare icon.
 3. **Due-aware pill colour (Option C), fixing the blend bug.** The due pill's colours are set **explicitly** (no reliance on the antd default that currently makes it invisible): a neutral grey pill normally, switching to the shared `action_statuses` **`error`** palette (red) when the action is **overdue** — `due_date` is before today _and_ the action is not in a terminal stage (`done` / `not-required`). Completed actions never show red.
 4. **Assignees as a hover-named, linkable avatar stack — config, no plugin.** The single core `Avatar` _group_ block (which exposes only one `onClick` for the whole group — no per-avatar tooltip or link) is replaced by a Lowdefy `List` over the `assignee_docs` array that is **already in state** on every consumer. Each item renders the stock `Avatar` block wrapped in a `Tooltip` (hover name) with an `onClick` → `Link` click-through to the contact page; items past `maxCount` collapse into a `+N` pill. All of it lives in the one shared `universal-fields-chips.yaml`, so there is nothing to rebuild per page and no new plugin surface.
-5. **Optional contact-link wiring.** A new `contact_page_url` workflows var (mirroring the events module's var, `{id}` placeholder) is threaded to the chips; when set, the avatar `onClick` navigates (via a `Link` action) to the contact view, when unset the click is disabled. Off by default — no behaviour change for apps that don't configure it.
+5. **Contact-link wiring — cross-module page ref, no var.** Each assignee avatar's `onClick` fires a `Link` action to the contacts module's `view` page, resolved structurally via `_module.pageId: { id: view, module: contacts }` (workflows already declares a `contacts` dependency) with `urlQuery: { _id: <assignee _id> }` — `_id` is the query key the contacts view reads (`_url_query: _id`). The link is **always on**: there is no `contact_page_url` var and no `{id}` string substitution. Assignees resolve on the contacts view via the shared `user_contacts` model (see Non-goals). Trade-off: this hardwires the target to the contacts view (apps can't redirect avatars to a different person page or turn the link off) and promotes `contacts` from a soft dependency — today "only exercised when a workflow form uses contact fields" — to a build-time dependency of the always-present chips. Accepted as the "one correct way" over a configurable URL string, since workflows already depends on contacts.
 
 ## Why a List, not a new plugin block
 
@@ -37,7 +37,7 @@ Two other surfaces already render single contact avatars: user-account's `user-a
 The assignees field in `universal-fields-chips.yaml` becomes a Lowdefy `List` whose `id` is the state path the consumer already holds the docs at (`action.assignee_docs` or `current_action.assignee_docs`, passed as a build-time var so each consumer binds its own path). The list renders left→right as an overlapping stack:
 
 - **Per item** — a `Tooltip` (title = `_state: {docs}.$.profile.name`) wrapping the stock `Avatar` block. `Avatar` `src` = `{docs}.$.profile.picture` (the gradient SVG), with the name's initial as the `content` fallback; a small negative left margin gives the overlap.
-- **Link** — when `contact_page_url` is set, the `Avatar`'s `onClick` fires a `Link` action to the contact page, substituting the assignee `_id` into the `{id}` placeholder (mirroring the events module). When unset, no `onClick` is wired and the avatar is non-interactive.
+- **Link** — the `Avatar`'s `onClick` fires a `Link` action to the contacts `view` page: `pageId: _module.pageId: { id: view, module: contacts }`, `urlQuery: { _id: _state: {docs}.$._id }`. `_module.*` resolves in the chips file's own (workflows) module context, so the ref lives entirely in the shared `universal-fields-chips.yaml` — consumers pass nothing for it. Cross-module page resolution replaces any URL string; the link is always wired.
 - **Overflow** — items with `_index ≥ maxCount` (default 5) are hidden (`visible: _lt: [{_index: 0}, maxCount]`); a trailing `+N` `Avatar`/`Tag` shows `length − maxCount`, visible only when the count exceeds `maxCount`.
 
 No state seeding is added — the `List` binds to the array the chips already read reactively. No events beyond the optional per-avatar `Link`.
@@ -71,7 +71,7 @@ The converged consumers read the **`current_action.stage` scalar**, not `current
 The chips `Box` becomes a labelled two-field row (`layout.direction: row`, `contentAlign: center`, `gap`), per field gated by the existing `show` array:
 
 - **Assignees**: `Assignees` label → the assignees `List` (stock `Avatar` stack) when `assignee_docs` is non-empty, else muted italic `Unassigned` (`Paragraph`, `type: secondary`).
-- thin divider `Box` (1px) between the two fields.
+- thin divider `Box` (1px) between the two fields — gated (build-time `_build.array.includes`) on **both** `assignees` and `due_date` being in `show`, so a single-field action (e.g. `universal_fields: [assignees]`) renders no dangling separator.
 - **Due**: `Due` label → the due-aware `Tag` when `due_date` is set, else a dashed `No due date` placeholder `Tag`.
 - **✎** edit button — unchanged, always last.
 
@@ -79,11 +79,10 @@ Labels use a small uppercase secondary style consistent with the mockup (`design
 
 ## Files changed
 
-- `modules/workflows/components/universal-fields/universal-fields-chips.yaml` — labels, empty states, the assignees `List` (stock `Avatar` stack + `Tooltip` + optional `Link`), due-aware pill, `overdue` computation. No plugin block; no changes under `plugins/`.
+- `modules/workflows/components/universal-fields/universal-fields-chips.yaml` — labels, empty states, the assignees `List` (stock `Avatar` stack + `Tooltip` + `Link` to the contacts `view` via `_module.pageId`), due-aware pill, `overdue` computation. No plugin block; no changes under `plugins/`. **Var-contract change:** the assignees field is now a `List` whose `id` must be the literal state path, so the chips stop taking `assignee_docs` as an operator leaf and instead take the docs **path as a build-time string** (used both as the `List` `id` and, via `_state: {path}`, for the `+N` overflow count). The `action_data` operator map therefore shrinks to `due_date` + the new `stage` leaf. The file's header comment (which documents the old `action_data.assignee_docs` avatar-source contract) is rewritten to match.
 - `modules/workflows/components/universal-fields/universal-fields.yaml` — remove the now-dead `mode: display` group (nothing renders it — the edit modal uses `mode: edit`, the check surface composes the chips), collapse the `mode` var to edit-only, and correct the stale header comment that still claims the check surface uses the display group.
-- `modules/workflows/module.lowdefy.yaml` — new `contact_page_url` var (+ generated `docs/workflows/reference/vars.md` via `pnpm docs:gen`).
-- The six chip consumers (5 templates + `check-action-surface.yaml`) — pass the new `stage` leaf and thread `contact_page_url` into the chips `_ref` vars.
-- `apps/demo/modules/workflows/vars.yaml` — set `contact_page_url` to the contacts view (demo wiring, matching the events module).
+- `modules/workflows/module.lowdefy.yaml` — no new var. Update the `contacts` dependency description: it is now also consumed by the chips' assignee-avatar link (cross-module `_module.pageId: view`), so it is no longer "only exercised when a workflow form uses contact fields."
+- The six chip consumers (5 templates + `check-action-surface.yaml`) — switch `assignee_docs` from an operator leaf to a build-time path string (`action.assignee_docs` on the four form templates; `current_action.assignee_docs` on `action.yaml.njk` + `check-action-surface.yaml`) and pass the new `stage` leaf. Nothing to thread for the contact link — the `_module.pageId` ref lives in the shared chips file.
 
 ## Non-goals
 
