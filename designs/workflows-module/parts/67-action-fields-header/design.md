@@ -7,17 +7,18 @@ The workflow action pages render an action's universal fields (`assignees`, `due
 1. **Inline labels, one row (Option A).** The strip becomes `Assignees {avatars} │ Due {pill} ✎` — each field carries a small uppercase label, separated by a thin divider, with the ✎ edit button anchored at the end. Layout unchanged: still the title-bar `page_actions` slot, still gated on the action declaring universal fields.
 2. **Real empty states (Option X).** When there are no assignees, the field shows muted italic `Unassigned` text instead of hiding the avatars; when `due_date` is null it shows a dashed `No due date` placeholder pill. The label and the ✎ are always present, so the strip never collapses to a bare icon.
 3. **Due-aware pill colour (Option C), fixing the blend bug.** The due pill's colours are set **explicitly** (no reliance on the antd default that currently makes it invisible): a neutral grey pill normally, switching to the shared `action_statuses` **`error`** palette (red) when the action is **overdue** — `due_date` is before today _and_ the action is not in a terminal stage (`done` / `not-required`). Completed actions never show red.
-4. **New `ContactAvatars` plugin block.** Assignee avatars move from the core `Avatar` group block (which supports no per-avatar tooltip or link) to a new display-only block in `@lowdefy/modules-mongodb-plugins`. It renders an overlapping avatar stack with per-avatar hover-name tooltips and an optional click-through to the contact page, with `+N` overflow. It reuses the exact avatar renderer already in `EventsTimeline` (extracted to a shared internal module), so the two surfaces stay visually identical.
-5. **Optional contact-link wiring.** A new `contact_page_url` workflows var (mirroring the events module's var, `{id}` placeholder) is threaded to the chips; when set, avatars link to the contact view, when unset the link is disabled. Off by default — no behaviour change for apps that don't configure it.
+4. **Assignees as a hover-named, linkable avatar stack — config, no plugin.** The single core `Avatar` _group_ block (which exposes only one `onClick` for the whole group — no per-avatar tooltip or link) is replaced by a Lowdefy `List` over the `assignee_docs` array that is **already in state** on every consumer. Each item renders the stock `Avatar` block wrapped in a `Tooltip` (hover name) with an `onClick` → `Link` click-through to the contact page; items past `maxCount` collapse into a `+N` pill. All of it lives in the one shared `universal-fields-chips.yaml`, so there is nothing to rebuild per page and no new plugin surface.
+5. **Optional contact-link wiring.** A new `contact_page_url` workflows var (mirroring the events module's var, `{id}` placeholder) is threaded to the chips; when set, the avatar `onClick` navigates (via a `Link` action) to the contact view, when unset the click is disabled. Off by default — no behaviour change for apps that don't configure it.
 
-## Why a plugin block, not a List-in-state
+## Why a List, not a new plugin block
 
-The obvious pure-config route is to seed `assignee_docs` into a state array and iterate it with a Lowdefy `List`, wrapping each item in a `Tooltip` + link. We rejected it:
+An earlier draft proposed a new display-only `ContactAvatars` plugin block, on the reasoning that a pure-config `List` would need `assignee_docs` seeded into state and re-seeded after every refetch. That premise is false: **the docs are already in state**. The chips today read `_state: action.assignee_docs` (form templates) / `_state: current_action.assignee_docs` (check + `action` pages), and that state is seeded on mount and re-seeded on refetch by the same `SetState action / current_action` the chips already depend on (the universal-fields modal's `on_complete` re-runs `get_workflow_action`). A `List` bound to that same path is reactive for free — no new plumbing, no staleness risk.
 
-- The chips are **display-only and refetched** after every field edit (the universal-fields modal's `on_complete` re-runs `get_workflow_action`). A `List` binds to a _state_ array, so the docs would have to be `SetState`-seeded on mount **and** re-seeded after every refetch, across all six consumers (five templates + `check-action-surface.yaml`) — and would still risk going stale.
-- The core `Avatar` group block already can't do per-avatar tooltips or links (only one `onClick` on the whole group), so the group visual would have to be rebuilt in YAML anyway.
+The other stated blocker — per-avatar tooltip and link being impossible in stock blocks — also doesn't hold. The `Tooltip` block (`@lowdefy/blocks-antd`) wraps a child and shows a hover title, and the `Avatar` block fires an `onClick` event that a `Link` action turns into a contact click-through. The assignee docs already carry `profile.picture` (a pre-generated gradient SVG) with an initial fallback, exactly as today's display group renders them.
 
-A display-only plugin block reads `properties.data` straight off the `action.assignee_docs` operator, so it stays reactive for free, needs no state plumbing, and gives us the timeline's proven tooltip + link + initials/gradient-fallback + overflow rendering. One renderer, two consumers — the "one correct way" over reconstructing it per-page.
+So the strip is composed from stock blocks — `List` → `Tooltip` → `Avatar` + `Link` — authored **once** in the shared `universal-fields-chips.yaml`. Under "build for concrete needs, not speculation," a new React block (with its schema, meta, exports, and a shared-renderer refactor) isn't warranted when stock composition renders the same strip and the only non-trivial part (`+N` overflow) sits in a single file. The `Avatar` visual is the same block user-account's `user-avatar` chip already wraps; the two surfaces stay consistent by using the same block, not by sharing a bespoke renderer.
+
+**Trade-off accepted:** the chips and the events timeline render avatars through different code paths (stock `Avatar` block vs. the timeline's own React `Avatar`), so the two are not guaranteed pixel-identical. Visual parity across those two surfaces was a nice-to-have, not a requirement, and isn't worth a plugin block to secure.
 
 ## Current state
 
@@ -29,25 +30,17 @@ A display-only plugin block reads `properties.data` straight off the `action.ass
 
 There are no labels, so with both fields empty only the ✎ survives.
 
-The events timeline (`plugins/.../EventsTimeline.js`) already solves the avatar-link problem: its internal `Avatar` component wraps an image/initials in a `Tooltip` and, unless `disableContactLink`, an `<a href>` built by `buildContactHref(contactPageUrl, userId)` (`{id}` substitution or `?_id=` append). `AvatarStack` handles overlap + `+N` overflow. This is the renderer we extract and share.
+Two other surfaces already render single contact avatars: user-account's `user-avatar` component (a `Box` wrapping the stock `Avatar` block + an optional inline name, used by menus and single-user chips) and the events timeline's own React `Avatar` (image/initials + `Tooltip` + optional `<a href>`). Neither is a _group_ with overlap/overflow, so neither is reused wholesale here; the chips compose the same underlying stock `Avatar` block that `user-avatar` wraps.
 
-## The `ContactAvatars` block
+## The assignees List
 
-New block under `plugins/modules-mongodb-plugins/src/blocks/ContactAvatars/` (`ContactAvatars.js`, `meta.js` — `category: display` —, `schema.json`, `README.md` stub), exported from `blocks.js` and `metas.js` (the build's `extractBlockTypes` picks it up via `types.js`). The workflows module already declares `@lowdefy/modules-mongodb-plugins` in its `plugins:`, so no manifest change is needed for availability.
+The assignees field in `universal-fields-chips.yaml` becomes a Lowdefy `List` whose `id` is the state path the consumer already holds the docs at (`action.assignee_docs` or `current_action.assignee_docs`, passed as a build-time var so each consumer binds its own path). The list renders left→right as an overlapping stack:
 
-**Shared renderer.** Factor the `Avatar` + `AvatarStack` functions out of `EventsTimeline.js` into a shared internal module (e.g. `src/blocks/_shared/contactAvatars.jsx`) and have both `EventsTimeline` and `ContactAvatars` import it. No visual change to the timeline; it's a pure refactor to avoid a second copy.
+- **Per item** — a `Tooltip` (title = `_state: {docs}.$.profile.name`) wrapping the stock `Avatar` block. `Avatar` `src` = `{docs}.$.profile.picture` (the gradient SVG), with the name's initial as the `content` fallback; a small negative left margin gives the overlap.
+- **Link** — when `contact_page_url` is set, the `Avatar`'s `onClick` fires a `Link` action to the contact page, substituting the assignee `_id` into the `{id}` placeholder (mirroring the events module). When unset, no `onClick` is wired and the avatar is non-interactive.
+- **Overflow** — items with `_index ≥ maxCount` (default 5) are hidden (`visible: _lt: [{_index: 0}, maxCount]`); a trailing `+N` `Avatar`/`Tag` shows `length − maxCount`, visible only when the count exceeds `maxCount`.
 
-**Props:**
-
-| Prop                 | Type    | Notes                                                                                                                                            |
-| -------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `data`               | array   | `[{ id, name, picture }]` — the chips map `assignee_docs` (`{ _id, profile:{name,picture} }`) into this shape via the `_js` that already exists. |
-| `contactPageUrl`     | string  | Optional. `{id}` placeholder or `?_id=` append (same `buildContactHref` as the timeline).                                                        |
-| `disableContactLink` | boolean | Default `false`. No link when true or when `contactPageUrl` is unset.                                                                            |
-| `maxCount`           | number  | Default 5; overflow collapses to `+N`.                                                                                                           |
-| `size`               | number  | Default small (matches the current chip avatars).                                                                                                |
-
-Display-only: no state binding, no events required.
+No state seeding is added — the `List` binds to the array the chips already read reactively. No events beyond the optional per-avatar `Link`.
 
 ## Due pill — due-aware colour + bug fix
 
@@ -64,13 +57,20 @@ overdue = due_date is set
           AND due_date < start-of-today          # day granularity
 ```
 
-Because a stored date vs. "today at day granularity" comparison is awkward with comparison operators, this is a small `_js` leaf (per the js-operator guide — operators would nest badly here). It reads `action_data.due_date` + a new `action_data.stage` leaf, so it recomputes automatically on refetch. Each consumer passes `stage: _state: action.status.0.stage` (check surface: `current_action.status.0.stage`) alongside the existing `assignee_docs` / `due_date`.
+Only `done` and `not-required` are exempt — every other stage stays eligible for the red pill, **by design**. Overdue means "should have been done by now": a past-due action in any non-terminal stage represents work that should have completed, including `blocked` (a blocker that outlived the due date is itself the thing that should have been resolved) and `error`. The red overdue pill can therefore sit beside a red `error` status pill; that double-red is accepted rather than special-cased away — a uniform rule is easier to reason about than a bespoke exclusion list.
+
+Because a stored date vs. "today at day granularity" comparison is awkward with comparison operators, this is a small `_js` leaf (per the js-operator guide — operators would nest badly here). It reads `action_data.due_date` + a new `action_data.stage` leaf, so it recomputes automatically on refetch. Each consumer passes that `stage` leaf alongside the existing `assignee_docs` / `due_date`, and there are **two** state-path families:
+
+- The four **form** templates — `edit` / `view` / `review` / `error` — hold the loaded action under `action.*` and pass `stage: _state: action.status.0.stage`.
+- The two **converged** consumers — `action.yaml.njk` **and** `check-action-surface.yaml` — hold it under `current_action.*` and pass `stage: _state: current_action.stage`. Wiring `action.*` into these resolves to nothing, so `overdue` would silently stay false and the pill would never go red.
+
+The converged consumers read the **`current_action.stage` scalar**, not `current_action.status.0.stage`. Both surfaces seed and reseed that scalar in the same `SetState` that spreads the response (`action.yaml.njk` lines 165 / 460; `check-action-surface.yaml` line 602), and it is the canonical stage source the check surface already reads for its status pill and error-stage comment gate (D4). Re-deriving `status.0.stage` for the overdue leaf would introduce a second, differently-refreshed read that can go stale if a reseed touches only the scalar — the exact divergence the scalar was created to avoid. (`action.yaml.njk`'s status _pill_ happens to read `status.0.stage` directly; since it reseeds `current_action` and `current_action.stage` together they can't diverge, so that pre-existing quirk is left untouched.)
 
 ## Labels & empty states
 
 The chips `Box` becomes a labelled two-field row (`layout.direction: row`, `contentAlign: center`, `gap`), per field gated by the existing `show` array:
 
-- **Assignees**: `Assignees` label → `ContactAvatars` when `assignee_docs` is non-empty, else muted italic `Unassigned` (`Paragraph`, `type: secondary`).
+- **Assignees**: `Assignees` label → the assignees `List` (stock `Avatar` stack) when `assignee_docs` is non-empty, else muted italic `Unassigned` (`Paragraph`, `type: secondary`).
 - thin divider `Box` (1px) between the two fields.
 - **Due**: `Due` label → the due-aware `Tag` when `due_date` is set, else a dashed `No due date` placeholder `Tag`.
 - **✎** edit button — unchanged, always last.
@@ -79,16 +79,13 @@ Labels use a small uppercase secondary style consistent with the mockup (`design
 
 ## Files changed
 
-- `plugins/modules-mongodb-plugins/src/blocks/ContactAvatars/` — new block (+ `blocks.js`, `metas.js` exports).
-- `plugins/modules-mongodb-plugins/src/blocks/_shared/contactAvatars.jsx` — extracted shared renderer.
-- `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.js` — import the shared renderer (no behaviour change).
-- `modules/workflows/components/universal-fields/universal-fields-chips.yaml` — labels, empty states, `ContactAvatars`, due-aware pill, `overdue` computation.
+- `modules/workflows/components/universal-fields/universal-fields-chips.yaml` — labels, empty states, the assignees `List` (stock `Avatar` stack + `Tooltip` + optional `Link`), due-aware pill, `overdue` computation. No plugin block; no changes under `plugins/`.
+- `modules/workflows/components/universal-fields/universal-fields.yaml` — remove the now-dead `mode: display` group (nothing renders it — the edit modal uses `mode: edit`, the check surface composes the chips), collapse the `mode` var to edit-only, and correct the stale header comment that still claims the check surface uses the display group.
 - `modules/workflows/module.lowdefy.yaml` — new `contact_page_url` var (+ generated `docs/workflows/reference/vars.md` via `pnpm docs:gen`).
 - The six chip consumers (5 templates + `check-action-surface.yaml`) — pass the new `stage` leaf and thread `contact_page_url` into the chips `_ref` vars.
 - `apps/demo/modules/workflows/vars.yaml` — set `contact_page_url` to the contacts view (demo wiring, matching the events module).
 
 ## Non-goals
 
-- No change to the edit **modal** (`universal-fields-modal.yaml`) or the underlying update operation — this is display-only.
-- No change to the `mode: display` group in `universal-fields.yaml` (still used by the in-context check surface).
+- No change to the edit **modal** (`universal-fields-modal.yaml`) or the underlying update operation — the chips remain display-only.
 - Assignees remain user records; linking relies on the unified `user_contacts` model (user `_id` resolves on the contact view), exactly as the events timeline already links event actors.
