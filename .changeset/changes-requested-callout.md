@@ -1,6 +1,5 @@
 ---
 "@lowdefy/modules-mongodb-plugins": minor
-"@lowdefy/modules-mongodb-workflows": minor
 ---
 
 **Feature:** the action workspace now surfaces the reviewer's request-changes comment as a read-only callout while an action is in `changes-required` (Part 62). The callout sits in the middle column's bare-alerts slot — below the `workflow_closed_banner`, above the content card — as a `type: warning` Alert ("Changes requested" + the comment), so the reworker sees the "what to fix" brief without hunting the History timeline.
