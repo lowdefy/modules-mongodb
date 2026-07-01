@@ -180,13 +180,14 @@ Per-verb check for a present gate: `gate === true OR size(setIntersection(_user.
 
 ## Universal action fields
 
-Every action doc carries three optional content fields, settable per-instance via the edit page:
+Every action doc carries two optional content fields, settable per-instance via the edit page:
 
-| Field         | Type                              | Default |
-| ------------- | --------------------------------- | ------- |
-| `assignees`   | `string[]`                        | `[]`    |
-| `due_date`    | `Date?`                           | `null`  |
-| `description` | `{ text: string, html: string }?` | `null`  |
+| Field       | Type       | Default |
+| ----------- | ---------- | ------- |
+| `assignees` | `string[]` | `[]`    |
+| `due_date`  | `Date?`    | `null`  |
+
+> **Part 64 — the editable `description` universal field was removed.** Part 24 shipped a third universal field, a per-instance end-user-editable rich-text `description` (`{ text, html }`) written through `update-fields`. It was redundant with the action comment (which already captures per-instance free text, with history and authorship) and is deleted everywhere. In its place the **author-authored** action body `description` (below) was revived — same field name, different author and lifetime.
 
 **Write path (kind-split, Part 24).** Universal fields are decoupled from the form submit:
 
@@ -194,9 +195,35 @@ Every action doc carries three optional content fields, settable per-instance vi
 - **`kind: form`** — the form submit (`submit` / `progress`) carries **no** universal fields. They are written exclusively by a dedicated operation, **`{workflow_type}-update-fields`** (one endpoint per workflow type, dispatched by `action_id` — mirroring `{workflow_type}-submit`). It has no signal and no FSM transition, is gated on the per-app **`edit`** verb (`access.{app}.edit`), and is editable in **any** stage the caller has `edit` on — including `done` / `not-required` / `error` and on a `completed` / `cancelled` workflow (`required_after_close` does **not** apply to it). It re-renders the action's status-map cell so the entity-page card never goes stale, and emits an `action-fields-updated` event. An optional `comment` rides the operation and is rendered into the event's `display.{app}.description` (Part 33) — never `metadata.comment`.
 - **`kind: tracker`** — the fields are carried on the action doc (seeded from the parent at `StartWorkflow`) but have no UI surface in v1.
 
-**`universal_fields`** — an optional UI presence declaration drawn from `[assignees, due_date, description]`. Omitted = all three shown (and optional); `false` / `[]` = the surface is hidden (data-only). It controls only what the templates render — the action doc always physically carries all three fields. (There is no `universal_fields_required` flag.)
+**`universal_fields`** — an optional UI presence declaration drawn from `[assignees, due_date]`. Omitted = both shown (and optional); `false` / `[]` = the surface is hidden (data-only). It controls only what the templates render — the action doc always physically carries both fields. (There is no `universal_fields_required` flag.)
 
 Reserved on `references` payloads — apps can't claim these field names.
+
+## Action `description` (authored body)
+
+A workflow-author-authored markdown string describing the action to whoever performs it — performer guidance, not per-instance metadata. It is the field the form / check / tracker examples below have always shown at the action root; Part 64 wired it to a real read path.
+
+| Field         | Type     | Default | Author          | Lifetime            |
+| ------------- | -------- | ------- | --------------- | ------------------- |
+| `description` | `string` | `null`  | workflow author | static, in the YAML |
+
+- **Type** — a single **markdown** string (rendered client-side by the built-in `Markdown` block; no server-side markdown→HTML). Markdown is chosen over HTML because the author writes this in YAML, where markdown is far more ergonomic. Optional; omitted / null → the surface renders nothing.
+- **Authoring** — set once in the action YAML; identical for every workflow instance of that action type. Not per-instance, not editable through any operation. (Contrast the deleted Part 24 universal field, which was the editable one.)
+- **Storage** — lives in the workflow config produced by `makeWorkflowsConfig`, reachable in the engine as `actionConfig.description` (exactly where `required_after_close` lives). **Not** written onto the action doc.
+- **Templating** — supports `{{ var }}` nunjucks against the action instance, rendered **at read time** by `GetWorkflowAction` (autoescaping on; the `| safe` filter must not be used). Read-time rendering is the deliberate anti-staleness choice — there is no create-time materialisation to drift, so `{{ key }}` and reference fields always reflect the current instance.
+- **Read path** — `GetWorkflowAction` returns the rendered string as the envelope's `description` key (the same key the deleted universal field used). Null when unset.
+- **Per-kind rule** — `description` is authored on **any** kind, rendered on the **form + check** surfaces (a plain markdown lead-in at the top of the content card, no callout chrome), and **accepted-but-unrendered** on `custom` (which owns its working page) / `tracker` (no working surface). No validation rejects it on those kinds — the field is defined once; surfaces choose whether to render it.
+
+**One consistent meaning.** The action `description` is "the descriptive body of an action, rendered to whoever works it, authored when the action is defined." For workflow actions the workflow author writes it (static config); for future task actions the task creator will write it (per-doc). Same field, same surface, same render; only the author and storage differ by the action's origin.
+
+**Disambiguation — two `description` keys, opposite rules.** Do not confuse the action body `description` with the **event** `display.{app}.description`:
+
+| Key                               | Authored?                                                       | Renders?                                            |
+| --------------------------------- | --------------------------------------------------------------- | --------------------------------------------------- |
+| action `description` (root)       | **yes** — workflow-author config                                | yes — performer body on form + check                |
+| event `display.{app}.description` | **no** — `makeWorkflowsConfig` hard-errors if an author sets it | n/a — owned by the runtime action comment (Part 33) |
+
+The rejection rule applies specifically to the **event display** key (event descriptions are owned by the action comment and cannot be authored — authors set only `title` there). It is **not** a blanket "descriptions are never authored": the action body `description` IS authored config and renders.
 
 ### Display-positioning fields
 

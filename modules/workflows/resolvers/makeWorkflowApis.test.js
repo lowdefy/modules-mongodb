@@ -144,6 +144,7 @@ test("makeWorkflowApis: payload contains the complete required field set", () =>
   expect(props.form).toEqual({ _payload: "form" });
   expect(props.form_review).toEqual({ _payload: "form_review" });
   expect(props.comment).toEqual({ _payload: "comment" });
+  expect(props.comment_visibility).toEqual({ _payload: "comment_visibility" });
   expect(props.metadata).toEqual({ _payload: "metadata" });
 });
 
@@ -302,6 +303,29 @@ test("makeWorkflowApis: group on_complete Api emission", () => {
 test("makeWorkflowApis: submit Api stays client-invokable type Api", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   expect(findApi(apis, "onboarding-submit").type).toBe("Api");
+});
+
+test("makeWorkflowApis: entity.data emits a {type}-entity-data InternalApi (Part 26)", () => {
+  const routine = [
+    {
+      id: "load",
+      type: "MongoDBAggregation",
+      connectionId: "leads-collection",
+    },
+    { ":return": { name: { _step: "load.0.name" } } },
+  ];
+  const workflow = { ...workedExample, entity: { data: { routine } } };
+  const apis = makeWorkflowApis(null, { workflows: [workflow] });
+  const entityData = findApi(apis, "onboarding-entity-data");
+  expect(entityData).toBeDefined();
+  // Engine-only, same rationale as hook / on_complete Apis.
+  expect(entityData.type).toBe("InternalApi");
+  expect(entityData.routine).toEqual(routine);
+});
+
+test("makeWorkflowApis: no entity.data → no entity-data endpoint", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  expect(findApi(apis, "onboarding-entity-data")).toBeUndefined();
 });
 
 test("makeWorkflowApis: render_config carries own slices — raw status_map + signal-keyed event_overrides", () => {
@@ -647,7 +671,6 @@ test("makeWorkflowApis: update-fields endpoint shape — Api, exact properties, 
     action_id: { _payload: "action_id" },
     workflow_type: "onboarding",
     fields: { _payload: "fields" },
-    comment: { _payload: "comment" },
   });
   expect(ep.routine[0].type).toBe("UpdateActionFields");
   expect(ep.routine[1][":return"]).toEqual({
@@ -660,6 +683,9 @@ test("makeWorkflowApis: update-fields endpoint shape — Api, exact properties, 
   expect(props).not.toHaveProperty("form");
   expect(props).not.toHaveProperty("interaction");
   expect(props).not.toHaveProperty("action_type");
+  // Part 61: the field-update operation carries no comment.
+  expect(props).not.toHaveProperty("comment");
+  expect(props).not.toHaveProperty("comment_visibility");
 });
 
 test("makeWorkflowApis: a workflow with only check actions still emits update-fields", () => {

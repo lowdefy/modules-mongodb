@@ -52,7 +52,6 @@
  * @property {{ connection_id: string, id: string }} entity
  * @property {string[]} assignees
  * @property {Date | null} due_date
- * @property {string | null} description
  * @property {{ child_workflow_type: string, start_link?: { pageId: string, urlQuery?: Object } } | null} tracker
  * @property {string | null} child_workflow_id
  * @property {{ connection_id: string, id: string } | null} child_entity

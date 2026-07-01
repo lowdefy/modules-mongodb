@@ -1,7 +1,20 @@
 type: qualify
 kind: form
 action_group: qualification
-description: Confirm the lead's details and capture qualification notes.
+# Authored action description (Part 64) — markdown, rendered read-time as the
+# chrome-less lead-in at the top of the action's content card. Carries the
+# *criteria* for qualifying (context the form fields don't state), not a restate
+# of the fields themselves.
+description: |
+  Qualify before advancing — a lead that fails a criterion should be parked,
+  not quoted:
+
+  - **Budget** — spend is in range for a standard package
+  - **Authority** — you're talking to the decision-maker, not a researcher
+  - **Need** — a concrete problem we solve, with a deadline behind it
+
+  Flag a **site visit** only when the install is non-standard — multiple sites,
+  restricted access, or bespoke hardware. Routine installs skip it.
 access:
   demo:
     view: true
@@ -18,6 +31,10 @@ form:
   - key: form.notes
     component: text_area
     title: Qualification notes
+  - key: form.estimated_value
+    component: number
+    title: Estimated value
+    extra: Approximate deal size, in dollars.
   - key: form.site_visit_required
     component: yes_no_selector
     title: Site visit needed?
@@ -37,12 +54,47 @@ hooks:
                     signal: activate
                     upsert: true
                 else: []
+    # Post-submit (Part 26 pattern, mirrors company-setup/billing-details):
+    # advance the lead's pipeline status to `qualified` and persist the values
+    # the form already captured (point of contact + estimated value). The
+    # `status.0.stage: { $ne: qualified }` filter is the same-status guard from
+    # the status-fields skill — it also makes the hook idempotent (post-hook
+    # failures don't roll back engine writes, so replays must be safe).
+    post:
+      routine:
+        - id: advance_lead_status
+          type: MongoDBUpdateOne
+          connectionId: leads-collection
+          properties:
+            filter:
+              _id:
+                _payload: context.workflow.entity.id
+              status.0.stage:
+                $ne: qualified
+            update:
+              $set:
+                contact:
+                  _payload: form.contact.0
+                estimated_value:
+                  _payload: form.estimated_value
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+              $push:
+                status:
+                  $position: 0
+                  $each:
+                    - stage: qualified
+                      created:
+                        _ref:
+                          module: events
+                          component: change_stamp
+        - :return:
+            lead_id:
+              _payload: context.workflow.entity.id
 pages:
   edit:
-    # Part 36: author-supplied extra button in the floating-actions bar.
-    # A full Lowdefy Button block concatenated verbatim after the template's
-    # signal buttons — a plain Link, no engine call and no new endpoint, so it
-    # exercises the slot end-to-end (validator accepts it; template concats it).
     buttons:
       extra:
         - id: open_help
@@ -51,8 +103,7 @@ pages:
             flex: 0 1 auto
           properties:
             title: Help
-            type: link
-            icon: QuestionCircleOutlined
+            icon: AiOutlineQuestionCircle
           events:
             onClick:
               - id: nav_help

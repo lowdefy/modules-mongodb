@@ -1,0 +1,44 @@
+# Update-fields action sequence (Part 24 operation; Part 56 addendum DA1).
+#
+# Validates the edit inputs, calls `{workflow_type}-update-fields`, then runs the
+# consumer's `on_complete`. Shared by the two triggers so they run IDENTICAL
+# logic (one correct way):
+#   - the edit modal's native footer Ok (universal-fields-modal.yaml), and
+#   - the in-body Update button (universal-fields.yaml) used by the in-context
+#     check surface, whose host modal has no standard footer.
+#
+# A failed `Validate` stops the chain (event returns success:false) — in the
+# modal that keeps the dialog open; the host's own close path runs only on
+# success. Consumed via `_ref: { path, vars }` with OPERATOR-valued vars:
+#   - state_path    state namespace of the edit inputs (Validate scope + payload).
+#   - workflow_type literal (form njk) or `_state` operator (check) — builds the
+#                   endpoint id.
+#   - action_id     operator leaf posted in the payload.
+#   - on_complete   actions appended after the CallAPI (default []).
+_build.array.concat:
+  - - id: validate_fields
+      type: Validate
+      params:
+        regex:
+          - _string.concat:
+              - "^"
+              - _var: state_path
+              - '\.'
+    - id: update_fields
+      type: CallAPI
+      params:
+        endpointId:
+          _string.concat:
+            - _module.id: true
+            - /
+            - _var: workflow_type
+            - -update-fields
+        payload:
+          action_id:
+            _var: action_id
+          fields:
+            _state:
+              _var: state_path
+  - _var:
+      key: on_complete
+      default: []

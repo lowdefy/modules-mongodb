@@ -5,6 +5,15 @@ _ref:
     id: lead-view
     title:
       _request: get_lead.0.name
+    # Pipeline status badge in the page header (title-block pill). status is the
+    # current stage slug; status_enum resolves it to the colour contract.
+    status:
+      _request: get_lead.0.status.0.stage
+    status_enum:
+      _ref: enums/lead_statuses.yaml
+    loading:
+      _not:
+        _request: get_lead.0
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -79,27 +88,42 @@ _ref:
                   vars:
                     title: Lead information
                     blocks:
+                      # SmartDescriptions read-only view — selectors render as
+                      # tags, the denormalized contact auto-detects into a CRM
+                      # link. Status lives in the page-header pill, so it's not
+                      # repeated here.
                       - id: lead_info_fields
-                        type: Html
+                        type: SmartDescriptions
                         properties:
-                          html:
-                            _nunjucks:
-                              template: |
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                  <div style="display: flex; gap: 8px; align-items: baseline;">
-                                    <span style="color: rgba(0, 0, 0, 0.45);">Name:</span>
-                                    <span>{{ name }}</span>
-                                  </div>
-                                  <div style="display: flex; gap: 8px; align-items: baseline;">
-                                    <span style="color: rgba(0, 0, 0, 0.45);">Email:</span>
-                                    <span>{{ email }}</span>
-                                  </div>
-                                </div>
-                              on:
-                                name:
-                                  _request: get_lead.0.name
-                                email:
-                                  _request: get_lead.0.email
+                          column: 1
+                          size: small
+                          data:
+                            _request: get_lead.0
+                          fields:
+                            - id: company
+                              type: TextInput
+                              properties:
+                                title: Company
+                            - id: source
+                              type: Selector
+                              properties:
+                                title: Source
+                                options:
+                                  - label: Web
+                                    value: web
+                                  - label: Referral
+                                    value: referral
+                                  - label: Event
+                                    value: event
+                                  - label: Cold outreach
+                                    value: cold
+                            - id: estimated_value
+                              type: NumberInput
+                              properties:
+                                title: Estimated value
+                            - id: contact
+                              properties:
+                                title: Contact
               - _ref:
                   module: layout
                   component: card

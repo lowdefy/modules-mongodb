@@ -18,6 +18,40 @@ access:
     edit: true
     review:
       - admin
+# Advance the lead to `quoted` when the reviewer approves the quote (the
+# milestone for a reviewed action is approval, not submit — submit only lands
+# it in-review). Same idempotent $push pattern as qualify's post-hook.
+hooks:
+  approve:
+    post:
+      routine:
+        - id: advance_lead_status
+          type: MongoDBUpdateOne
+          connectionId: leads-collection
+          properties:
+            filter:
+              _id:
+                _payload: context.workflow.entity.id
+              status.0.stage:
+                $ne: quoted
+            update:
+              $set:
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+              $push:
+                status:
+                  $position: 0
+                  $each:
+                    - stage: quoted
+                      created:
+                        _ref:
+                          module: events
+                          component: change_stamp
+        - :return:
+            lead_id:
+              _payload: context.workflow.entity.id
 status_map:
   blocked:
     demo:

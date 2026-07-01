@@ -12,6 +12,11 @@ properties:
     _ref: components/validated_workflows_config.yaml
   app_name:
     _module.var: app_name
+  # Part 61: opt this app in to internal (single-app) comments. When false (the
+  # default) the engine coerces any `internal` request to `shared`. The comment
+  # surfaces read the same module var at build time to show/hide the control.
+  enable_internal_comments:
+    _module.var: enable_internal_comments
   user:
     _user: true
   # TODO: this re-declares the contacts module's collection name. Ideally derive

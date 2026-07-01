@@ -39,6 +39,10 @@ function makeWorkflowsConfig() {
           action_group: "phase-1",
           allow_not_required: false,
           required_after_close: true,
+          // Part 64: author-authored body, nunjucks-templated against the action
+          // instance at read time. `{{ type }}` resolves off the action doc and
+          // `{{ some }}` off action.metadata (the renderStatusMap context shape).
+          description: "Body for {{ type }} — {{ some }}.",
           access: { "test-app": { view: true, edit: ["account-manager"] } },
           form_meta: {
             form: [
@@ -209,6 +213,29 @@ async function resetCollections() {
   await mongo.db.collection("workflows").deleteMany({});
   await mongo.db.collection("actions").deleteMany({});
   await mongo.db.collection("user-contacts").deleteMany({});
+  await mongo.db.collection("log-events").deleteMany({});
+}
+
+/**
+ * Seed an `action-request_changes` event for an action (Part 62). The reviewer's
+ * comment is folded into the event's per-app bucket at top level
+ * (`{app_name}.description`) — new-event.yaml spreads `display` and `references`
+ * onto the doc root, so both `action_ids` and the app slice are top-level.
+ */
+async function seedRequestChangesEvent({
+  _id = "evt-rc-1",
+  action_id = "a1",
+  date = new Date("2026-05-21T00:00:00Z"),
+  buckets = { "test-app": { description: "<p>Fix the address</p>" } },
+} = {}) {
+  await mongo.db.collection("log-events").insertOne({
+    _id,
+    type: "action-request_changes",
+    action_ids: [action_id],
+    date,
+    created: changeStamp,
+    ...buckets,
+  });
 }
 
 beforeEach(async () => {
@@ -225,6 +252,7 @@ function buildContext({
     roles: ["account-manager"],
   },
   workflowsConfig = makeWorkflowsConfig(),
+  callApi = async () => null,
 } = {}) {
   return {
     request,
@@ -243,7 +271,7 @@ function buildContext({
       changeStamp,
       user,
     },
-    callApi: async () => null,
+    callApi,
   };
 }
 
@@ -257,7 +285,11 @@ async function seedWorkflow({
   await mongo.db.collection("workflows").insertOne({
     _id,
     workflow_type: "onboarding",
-    entity: { connection_id: "leads-collection", id: entity_id, ref_key: "lead_ids" },
+    entity: {
+      connection_id: "leads-collection",
+      id: entity_id,
+      ref_key: "lead_ids",
+    },
     display_order: 1,
     status: [{ stage: wfStage, event_id: "e0", created: changeStamp }],
     groups: [
@@ -314,7 +346,6 @@ async function seedAction({
       message: `${type} message`,
     },
     metadata: { some: "internal" },
-    description: `${type} description`,
     entity: { connection_id: "leads-collection", id: "lead-1" },
     created: changeStamp,
     updated: changeStamp,
@@ -404,8 +435,10 @@ describe("envelope shape", () => {
     expect(result.action_group).toBe("phase-1");
     expect(result.created).toBeDefined();
     expect(result.updated).toBeDefined();
+    // Part 26: no entity.data routine declared (buildContext's callApi returns
+    // null), so the entity object reduces to the always-present instance id; the
+    // dead connection_id subfield is gone.
     expect(result.entity).toEqual({
-      connection_id: "leads-collection",
       id: "lead-1",
     });
   });
@@ -417,11 +450,13 @@ describe("envelope shape", () => {
       buildContext({ request: { action_id: "a1" } }),
     );
     // id_query_key/page_id/title come from wfConfig.entity; the id comes from
-    // the action doc's entity.id (seedAction stamps entity.id: 'lead-1').
+    // the action doc's entity.id (seedAction stamps entity.id: 'lead-1'). name is
+    // null because no entity.data routine is declared (Part 26).
     expect(result.entity_link).toEqual({
       pageId: "leads/lead-view",
       urlQuery: { lead_id: "lead-1" },
       title: "Lead",
+      name: null,
     });
   });
 
@@ -453,6 +488,27 @@ describe("envelope shape", () => {
     );
     expect(result.message).toBe("qualify message");
     expect(result.required_after_close).toBe(true);
+  });
+
+  test("description is rendered from config (read-time nunjucks), not the doc", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    // Sourced from actionConfig.description and rendered against the instance:
+    // `{{ type }}` → action.type, `{{ some }}` → action.metadata.some.
+    expect(result.description).toBe("Body for qualify — internal.");
+  });
+
+  test("description is null when the action config declares none", async () => {
+    await seedWorkflow();
+    // check-step config carries no `description` key.
+    await seedAction({ _id: "c1", type: "check-step", kind: "check" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "c1" } }),
+    );
+    expect(result.description).toBeNull();
   });
 
   test("envelope carries allowed and buttons", async () => {
@@ -488,6 +544,113 @@ describe("envelope shape", () => {
       checkRead: false,
       checkWrite: false,
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// entity.data resolution (Part 26)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("entity.data resolution (Part 26)", () => {
+  // A workflowsConfig whose entity carries the resolved endpoint id (as
+  // makeWorkflowsConfig emits it once the build walker resolves _module.endpointId).
+  function configWithDataEndpoint() {
+    const config = makeWorkflowsConfig();
+    config[0].entity.data_endpoint = "workflows/onboarding-entity-data";
+    return config;
+  }
+
+  test("calls the data endpoint with { entity_id }, lifts name onto entity_link, merges entity object", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const calls = [];
+    const callApi = async (args) => {
+      calls.push(args);
+      return { name: "Acme Corp", email: "ops@acme.test", status: "warm" };
+    };
+    const result = await GetWorkflowAction(
+      buildContext({
+        request: { action_id: "a1" },
+        workflowsConfig: configWithDataEndpoint(),
+        callApi,
+      }),
+    );
+    // Exactly one call, to the resolved endpoint, payload is { entity_id } only.
+    expect(calls).toEqual([
+      {
+        endpointId: "workflows/onboarding-entity-data",
+        payload: { entity_id: "lead-1" },
+      },
+    ]);
+    // name lifted onto chrome.
+    expect(result.entity_link.name).toBe("Acme Corp");
+    // entity object = routine result + the always-present instance id.
+    expect(result.entity).toEqual({
+      name: "Acme Corp",
+      email: "ops@acme.test",
+      status: "warm",
+      id: "lead-1",
+    });
+  });
+
+  test("module-injected id wins over a host-returned id (injected last)", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const callApi = async () => ({ id: "host-supplied", name: "X" });
+    const result = await GetWorkflowAction(
+      buildContext({
+        request: { action_id: "a1" },
+        workflowsConfig: configWithDataEndpoint(),
+        callApi,
+      }),
+    );
+    expect(result.entity.id).toBe("lead-1");
+  });
+
+  test("routine returning no name → entity_link.name null, host fields still present", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const callApi = async () => ({ email: "ops@acme.test" });
+    const result = await GetWorkflowAction(
+      buildContext({
+        request: { action_id: "a1" },
+        workflowsConfig: configWithDataEndpoint(),
+        callApi,
+      }),
+    );
+    expect(result.entity_link.name).toBeNull();
+    expect(result.entity).toEqual({ email: "ops@acme.test", id: "lead-1" });
+  });
+
+  test("a throwing routine never fails the read — name null, entity reduces to { id }", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const callApi = async () => {
+      throw new Error("routine blew up");
+    };
+    const result = await GetWorkflowAction(
+      buildContext({
+        request: { action_id: "a1" },
+        workflowsConfig: configWithDataEndpoint(),
+        callApi,
+      }),
+    );
+    expect(result.entity_link.name).toBeNull();
+    expect(result.entity).toEqual({ id: "lead-1" });
+  });
+
+  test("no data_endpoint → no callApi fired", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    let called = false;
+    const callApi = async () => {
+      called = true;
+      return null;
+    };
+    await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" }, callApi }),
+    );
+    expect(called).toBe(false);
   });
 });
 
@@ -1014,5 +1177,93 @@ describe("assignee_docs (Part 24)", () => {
       buildContext({ request: { action_id: "a1" } }),
     );
     expect(result.assignee_docs).toEqual([]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Part 62: changes_requested (request-changes brief)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("changes_requested (Part 62)", () => {
+  test("resolves from the latest request-changes event's {app_name}.description in changes-required", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
+    await seedRequestChangesEvent({
+      action_id: "a1",
+      buckets: { "test-app": { description: "<p>Fix the address</p>" } },
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBe("<p>Fix the address</p>");
+  });
+
+  test("is null when the latest such event has no description in the calling app's bucket (Part 61 internal note from another app)", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
+    // The brief was marked internal and written only into another app's bucket.
+    await seedRequestChangesEvent({
+      action_id: "a1",
+      buckets: { "other-app": { description: "<p>Internal note</p>" } },
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBeNull();
+  });
+
+  test("is null in every other stage (read skipped)", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+    // Even with a request-changes event present, a non-changes-required stage
+    // never reads it.
+    await seedRequestChangesEvent({ action_id: "a1" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBeNull();
+  });
+
+  test("is null when no request-changes event exists for the action", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBeNull();
+  });
+
+  test("newest event wins when the action has cycled (changes requested twice)", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
+    await seedRequestChangesEvent({
+      _id: "evt-old",
+      action_id: "a1",
+      date: new Date("2026-05-21T00:00:00Z"),
+      buckets: { "test-app": { description: "<p>Old brief</p>" } },
+    });
+    await seedRequestChangesEvent({
+      _id: "evt-new",
+      action_id: "a1",
+      date: new Date("2026-05-22T00:00:00Z"),
+      buckets: { "test-app": { description: "<p>New brief</p>" } },
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBe("<p>New brief</p>");
+  });
+
+  test("normalizes empty/whitespace-only html to null (legacy comment-less row)", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
+    await seedRequestChangesEvent({
+      action_id: "a1",
+      buckets: { "test-app": { description: "<p></p>" } },
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBeNull();
   });
 });

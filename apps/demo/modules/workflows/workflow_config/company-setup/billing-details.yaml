@@ -1,7 +1,15 @@
 type: billing-details
 kind: form
 action_group: setup
-description: Capture the company's billing details.
+# Authored description (Part 64) — context the two form fields don't give:
+# *which* email, *when* a VAT number is needed, and what submitting does.
+description: |
+  Use the **accounts-payable** contact, not the sales contact — this address
+  receives every invoice. Capture the **VAT number** for EU-registered companies
+  (it drives reverse-charge handling); leave it blank otherwise.
+
+  On submit these write straight onto the company record and feed the invoice
+  run, so confirm them with the customer first.
 access:
   demo:
     view: true

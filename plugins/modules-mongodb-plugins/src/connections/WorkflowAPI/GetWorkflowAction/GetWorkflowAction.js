@@ -1,5 +1,7 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import parseNunjucks from "../../shared/render/parseNunjucks.js";
+import resolveEntityData from "../../shared/render/resolveEntityData.js";
 import {
   computeAllowed,
   resolveButtons,
@@ -20,8 +22,9 @@ import {
  *
  *   {
  *     _id, type, workflow_type, workflow_id, kind, key, status, action_group, description, due_date,
- *     assignees, assignee_docs, entity: { connection_id, id }, created, updated,
- *     entity_link,          // { pageId, urlQuery, title } from the workflow config's `entity` block, or null
+ *     assignees, assignee_docs, created, updated,
+ *     entity,               // { ...entity.data routine result, id } — host fields + the always-present instance id
+ *     entity_link,          // { pageId, urlQuery, title, name } from the workflow config's `entity` block (name from the routine), or null
  *     required_after_close, message,
  *     form_values,          // form-field values from workflow.form_data (allowlisted)
  *     allowed,              // { view, edit, review, error }
@@ -125,6 +128,7 @@ async function GetWorkflowAction(lowdefyContext) {
   const workflowsCollection = connection.workflowsCollection ?? "workflows";
   const actionsCollection = connection.actionsCollection ?? "actions";
   const contactsCollection = connection.contactsCollection ?? "user-contacts";
+  const eventsCollection = connection.eventsCollection ?? "log-events";
 
   // ── Step 1: Read the action doc ──
   const [action] = await findDocs({
@@ -227,18 +231,76 @@ async function GetWorkflowAction(lowdefyContext) {
     }
   }
 
+  // ── Entity data (Part 26) — call the host's `entity.data` routine via the
+  //    module-generated {type}-entity-data InternalApi (server-side, same user).
+  //    Returns the host-shaped object (reserved `name` for chrome + host fields),
+  //    or null when no routine is declared / it throws / the entity is missing.
+  const entityId = action.entity?.id ?? null;
+  const entityData = await resolveEntityData(context, wfConfig, entityId);
+
   // ── Entity link (mirrors GetWorkflowOverview) — resolved from the workflow
   //    config's `entity` block (by action.workflow_type) so submit/back nav can
-  //    return to the entity page. Null when the workflow type has no config or
-  //    no `entity` block.
+  //    return to the entity page. The instance `name` is lifted off the routine
+  //    result onto the chrome (falls back to the type label when null). Null when
+  //    the workflow type has no config or no `entity` block.
   const entityConfig = wfConfig?.entity;
   const entity_link = entityConfig
     ? {
         pageId: entityConfig.page_id,
         urlQuery: { [entityConfig.id_query_key]: action.entity.id },
         title: entityConfig.title ?? null,
+        name: entityData?.name ?? null,
       }
     : null;
+
+  // ── Authored description (Part 64) — rendered at read time from config ──
+  // The action body `description` is workflow-author-authored config (lives on
+  // `actionConfig`, NOT the action doc). It is rendered fresh on every read via
+  // nunjucks against the action instance — same context shape `renderStatusMap`
+  // builds (`{ ...action, ...metadata }`) — so a templated description can never
+  // go stale (there is no create-time materialisation to drift). Null when the
+  // author declared none.
+  const description =
+    actionConfig.description != null
+      ? parseNunjucks(actionConfig.description, {
+          ...action,
+          ...(action.metadata ?? {}),
+        })
+      : null;
+
+  // ── Changes-requested brief (Part 62) — the latest request-changes comment ──
+  // When the action sits in `changes-required`, surface the reviewer's brief so
+  // the reworker sees "what to fix" without hunting the History timeline. The
+  // comment lives once on the request_changes event (Part 33), so this reads the
+  // event — never the action doc — and inherits Part 61's app-scoping for free:
+  // the projection keys off the CALLING connection's app_name, so an `internal`
+  // note resolves to null for an app that can't see it.
+  //
+  // Read contract: the latest `action-request_changes` event for this action
+  // overall (sort date desc, limit 1) — then this app's bucket on it. If that
+  // latest event has no brief in my bucket, `changes_requested` is null (the
+  // callout is omitted; the status pill still conveys the state). Skipped — and
+  // null — in every other stage.
+  let changes_requested = null;
+  if (stage === "changes-required") {
+    const [evt] = await findDocs({
+      mongoDb,
+      collection: eventsCollection,
+      query: { type: "action-request_changes", action_ids: action._id },
+      options: {
+        sort: { date: -1 },
+        limit: 1,
+        projection: { [`${app_name}.description`]: 1 },
+      },
+    });
+    const html = evt?.[app_name]?.description ?? null;
+    // Defensive (D3): request-changes comments are text-only (inline files are
+    // disabled on the input), but legacy image-only rows stored TipTap's empty
+    // doc marker `<p></p>` with the content in `fileList` (not read here). Treat
+    // empty/whitespace-only html as "no brief" so the callout's non-null gate
+    // never renders a present-but-blank brief.
+    changes_requested = html?.replace(/<[^>]*>/g, "").trim() ? html : null;
+  }
 
   // ── Step 6: Curated envelope (explicit allowlist — no spread of raw doc) ──
   const message = action[app_name]?.message ?? null;
@@ -254,20 +316,26 @@ async function GetWorkflowAction(lowdefyContext) {
     key: action.key ?? null,
     status: action.status,
     action_group: action.action_group ?? null,
-    description: action.description ?? null,
+    // Authored config field, rendered at read time (not the action doc).
+    description,
     due_date: action.due_date ?? null,
     assignees: action.assignees ?? null,
     assignee_docs,
-    entity: {
-      connection_id: action.entity?.connection_id ?? null,
-      id: action.entity?.id ?? null,
-    },
+    // Part 26: the entity object the action page's slot + DataDescriptions read.
+    // The host routine result merged with the always-present entity id — id is
+    // injected LAST so the instance id always wins over any host-returned `id`.
+    // Degrades to `{ id }` when no routine is declared / it threw.
+    entity: { ...(entityData ?? {}), id: entityId },
     entity_link,
     created: action.created ?? null,
     updated: action.updated ?? null,
     // Display copy
     required_after_close,
     message,
+    // Latest request-changes brief (Part 62) — null outside `changes-required`,
+    // and null when the latest such event has no brief in the calling app's
+    // bucket (Part 61 app-scoping). The callout binds and gates on this.
+    changes_requested,
     // Form-field values (from parent workflow, not the action doc)
     form_values,
     // Resolved fields

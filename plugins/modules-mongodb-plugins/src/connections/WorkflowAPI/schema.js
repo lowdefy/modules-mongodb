@@ -68,6 +68,16 @@ const schema = {
       description: 'Actions collection name. Defaults to "actions".',
       default: "actions",
     },
+    eventsCollection: {
+      type: "string",
+      default: "log-events",
+      description:
+        "Events collection name. Defaults to \"log-events\" (matching the " +
+        "events module's collection). Read by GetEventsTimeline and by " +
+        "GetWorkflowAction (the changes-requested callout's request-changes " +
+        "comment lookup). Host apps need only set this when overriding the " +
+        "collection name.",
+    },
     changeLog: {
       type: "object",
       description:
@@ -112,6 +122,19 @@ const schema = {
         "key the default log event's display block (matching the events " +
         "module's display_key projection). Apps wire this from _module.var: app_name " +
         "on connections/workflow-api.yaml.",
+    },
+    enable_internal_comments: {
+      type: "boolean",
+      default: false,
+      description:
+        "When true, this app may write `internal` (single-app) comments and its " +
+        "comment surfaces offer the shared/internal control. When false, the " +
+        "engine coerces any `internal` request to `shared`, so every comment " +
+        "from this app is visible to all apps that see the event. Comments " +
+        "default to `shared` regardless. The engine reads this property (via " +
+        "planEventDispatch → foldCommentIntoEvent); it is not UI-only. Apps wire " +
+        "it from _module.var: enable_internal_comments on " +
+        "connections/workflow-api.yaml.",
     },
     actionsEnum: {
       type: "object",

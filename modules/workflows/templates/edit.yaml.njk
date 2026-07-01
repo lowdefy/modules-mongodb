@@ -2,7 +2,9 @@
 #
 # Build-time vars (from makeActionPages.js): action_config, page_config,
 # page_ids, workflow_type, connection_id, workflow_title, reference_field,
-# entity_view_slot, name_field. See view.yaml.njk for the full schema.
+# entity_view_slot. See view.yaml.njk for the full schema. The entity instance
+# name arrives on get_workflow_action.entity_link.name (Part 26, from the
+# workflow's entity.data routine) — no per-page entity request.
 #
 # Stale-URL allowlist: [action-required, in-progress, changes-required].
 # Escape hatch: review's Edit-link sets _input: skip_status_redirect=true.
@@ -11,9 +13,12 @@
 # truthy at build time, the first form entry owns its own outer chrome — drop the
 # outer layout.card wrap to avoid the double-card nesting.
 #
-# Layout (Part 56 addendum): universal-fields chips + ✎ ride the title bar's
-# page_actions; the description is a middle-top callout; the action bar is the
-# shell's floating `actions` slot (not_required / progress / submit).
+# Layout (Part 56 addendum; Part 64): universal-fields chips + ✎ ride the title
+# bar's page_actions; a bare workflow-closed banner sits above the working
+# content, and the author-authored description renders as the form's first child
+# (plain Markdown lead-in, prepended in both the carded and outer-chrome
+# branches); the action bar is the shell's floating `actions` slot (not_required
+# / progress / submit).
 _ref:
   module: layout
   component: page
@@ -42,11 +47,7 @@ _ref:
           entity_title:
             _state: action.entity_link.title
           entity_name:
-{%- if name_field %}
-            _request: get_entity.0.{{ name_field }}
-{%- else %}
-            null
-{%- endif %}
+            _state: action.entity_link.name
           entity_page_id:
             _state: action.entity_link.pageId
           entity_url_query:
@@ -95,10 +96,6 @@ _ref:
     requests:
       _build.array.concat:
         - - _ref: requests/get_workflow_action.yaml
-          - _ref:
-              path: requests/get_entity.yaml.njk
-              vars:
-                connection_id: {{ connection_id }}
         - _var:
             key: page_config.requests
             default: []
@@ -147,9 +144,6 @@ _ref:
                     _var: page_ids.view
                 urlQuery:
                   _url_query: true
-            - id: get_entity
-              type: Request
-              params: get_entity
             - id: prime_form_state
               type: SetState
               params:
@@ -160,18 +154,18 @@ _ref:
                     _state: action.assignees
                   due_date:
                     _state: action.due_date
-                  description:
-                    _state: action.description
                 comment: null
+                comment_internal: false
           - _var:
               key: page_config.events.onMount
               default: []
     blocks:
       _build.array.concat:
-        # Three-tier shell: left (entity workflows) + middle (description callout
-        # + form body + floating action bar) + RHS (Details? above History).
-        # The middle body is wrapped in a Card unless the first form entry owns
-        # its own outer chrome (outer-card suppression on form[0].form).
+        # Three-tier shell: left (entity workflows) + middle (closed banner +
+        # form body with description lead-in + floating action bar) + RHS
+        # (Details? above History). The middle body is wrapped in a Card unless
+        # the first form entry owns its own outer chrome (outer-card suppression
+        # on form[0].form).
         - - _ref:
               path: components/action-workspace.yaml
               vars:
@@ -183,14 +177,30 @@ _ref:
                   _var: entity_view_slot
                 middle:
                   _build.array.concat:
-                    # Description callout (top of the middle column; self-hides
-                    # when unset).
+                    # Workflow-closed banner — bare full-width alert above the
+                    # working content (Part 64 layout model; consistency fix).
+                    # Gated on workflow_closed AND not required_after_close.
+                    - - id: workflow_closed_banner
+                        type: Alert
+                        visible:
+                          _and:
+                            - _state: action.workflow_closed
+                            - _ne:
+                                - _state: action.required_after_close
+                                - true
+                        properties:
+                          type: warning
+                          showIcon: true
+                          message: Workflow closed
+                          description: This workflow is closed. Updates to this action are no longer accepted.
+                    # Changes-requested callout — bare full-width alert below the
+                    # closed banner, above the working content (Part 62). Self-hides
+                    # unless the action is in changes-required with a brief.
                     - - _ref:
-                          path: components/universal-fields/universal-fields-callout.yaml
+                          path: components/changes-requested-callout.yaml
                           vars:
-                            action_data:
-                              description:
-                                _state: action.description
+                            content:
+                              _state: action.changes_requested
                     - _build.if:
                         test:
                           _build.ne:
@@ -200,7 +210,14 @@ _ref:
                             - null
                         then:
                           # First form entry owns outer chrome — render directly.
+                          # The description lead-in is prepended here too (it must
+                          # land inside whichever container holds the form).
                           _build.array.concat:
+                            - - _ref:
+                                  path: components/action-description.yaml
+                                  vars:
+                                    content:
+                                      _state: action.description
                             - _var:
                                 key: page_config.formHeader
                                 default: []
@@ -210,11 +227,12 @@ _ref:
                                   form:
                                     _var: action_config.form
                                   mode: edit
-                            - - id: comment
-                                type: TiptapInput
-                                properties:
-                                  title: Comment
-                                  placeholder: Add a comment (optional).
+                            - - _ref:
+                                  path: components/comment-input.yaml
+                                  vars:
+                                    comment_path: comment
+                                    visibility_path: comment_internal
+                                    placeholder: Add a comment (optional).
                             - _var:
                                 key: page_config.formFooter
                                 default: []
@@ -226,6 +244,13 @@ _ref:
                               gap: 16
                             blocks:
                               _build.array.concat:
+                                # Description lead-in — first child of the form
+                                # card (plain Markdown; self-hides when unset).
+                                - - _ref:
+                                      path: components/action-description.yaml
+                                      vars:
+                                        content:
+                                          _state: action.description
                                 - _var:
                                     key: page_config.formHeader
                                     default: []
@@ -235,11 +260,12 @@ _ref:
                                       form:
                                         _var: action_config.form
                                       mode: edit
-                                - - id: comment
-                                    type: TiptapInput
-                                    properties:
-                                      title: Comment
-                                      placeholder: Add a comment (optional).
+                                - - _ref:
+                                      path: components/comment-input.yaml
+                                      vars:
+                                        comment_path: comment
+                                        visibility_path: comment_internal
+                                        placeholder: Add a comment (optional).
                                 - _var:
                                     key: page_config.formFooter
                                     default: []
@@ -304,6 +330,23 @@ _ref:
                                             _state: action.key
                                           comment:
                                             _state: comment
+                                          comment_visibility:
+                                            _if:
+                                              - _state: comment_internal
+                                              - internal
+                                              - shared
+                                  # Terminal signal — return to the entity on success.
+                                  - _ref:
+                                      path: components/return-to-entity.yaml
+                                      vars:
+                                        entity_page_id:
+                                          _state: action.entity_link.pageId
+                                        entity_url_query:
+                                          _state: action.entity_link.urlQuery
+                                        success_message:
+                                          _var:
+                                            key: page_config.buttons.not_required.successMessage
+                                            default: Marked as not required.
                       - id: button_progress
                         type: Button
                         layout:
@@ -416,31 +459,24 @@ _ref:
                                             _state: form
                                           comment:
                                             _state: comment
-                                    # Submit succeeded (CallAPI halts the chain on
-                                    # error): confirm, then return to the entity.
-                                    - id: submit_success_message
-                                      type: DisplayMessage
-                                      params:
-                                        status: success
-                                        content:
+                                          comment_visibility:
+                                            _if:
+                                              - _state: comment_internal
+                                              - internal
+                                              - shared
+                                  # Submit succeeded (CallAPI halts the chain on
+                                  # error): confirm, then return to the entity.
+                                  - _ref:
+                                      path: components/return-to-entity.yaml
+                                      vars:
+                                        entity_page_id:
+                                          _state: action.entity_link.pageId
+                                        entity_url_query:
+                                          _state: action.entity_link.urlQuery
+                                        success_message:
                                           _var:
                                             key: page_config.buttons.submit.successMessage
                                             default: Submitted successfully.
-                                    - id: return_to_entity
-                                      type: Link
-                                      params:
-                                        _if:
-                                          test:
-                                            _ne:
-                                              - _state: action.entity_link.pageId
-                                              - null
-                                          then:
-                                            pageId:
-                                              _state: action.entity_link.pageId
-                                            urlQuery:
-                                              _state: action.entity_link.urlQuery
-                                          else:
-                                            back: true
         # Universal-fields edit modal — opened by the title-bar ✎ chip.
         - _build.if:
             test:
@@ -526,31 +562,24 @@ _ref:
                                 _state: form
                               comment:
                                 _state: comment
-                        # Submit succeeded (CallAPI halts the chain on error):
-                        # confirm, then return to the entity.
-                        - id: submit_success_message
-                          type: DisplayMessage
-                          params:
-                            status: success
-                            content:
+                              comment_visibility:
+                                _if:
+                                  - _state: comment_internal
+                                  - internal
+                                  - shared
+                      # Submit succeeded (CallAPI halts the chain on error):
+                      # confirm, then return to the entity.
+                      - _ref:
+                          path: components/return-to-entity.yaml
+                          vars:
+                            entity_page_id:
+                              _state: action.entity_link.pageId
+                            entity_url_query:
+                              _state: action.entity_link.urlQuery
+                            success_message:
                               _var:
                                 key: page_config.buttons.submit.successMessage
                                 default: Submitted successfully.
-                        - id: return_to_entity
-                          type: Link
-                          params:
-                            _if:
-                              test:
-                                _ne:
-                                  - _state: action.entity_link.pageId
-                                  - null
-                              then:
-                                pageId:
-                                  _state: action.entity_link.pageId
-                                urlQuery:
-                                  _state: action.entity_link.urlQuery
-                              else:
-                                back: true
             else: []
         - _build.if:
             test:
@@ -592,4 +621,21 @@ _ref:
                                 _state: action.key
                               comment:
                                 _state: comment
+                              comment_visibility:
+                                _if:
+                                  - _state: comment_internal
+                                  - internal
+                                  - shared
+                      # Terminal signal — return to the entity on success.
+                      - _ref:
+                          path: components/return-to-entity.yaml
+                          vars:
+                            entity_page_id:
+                              _state: action.entity_link.pageId
+                            entity_url_query:
+                              _state: action.entity_link.urlQuery
+                            success_message:
+                              _var:
+                                key: page_config.buttons.not_required.successMessage
+                                default: Marked as not required.
             else: []

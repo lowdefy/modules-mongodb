@@ -3,7 +3,16 @@ title: Action Kinds
 module: workflows
 type: concept
 concepts:
-  [form, check, custom, tracker, kinds, instanced-actions, start-link, form-data]
+  [
+    form,
+    check,
+    custom,
+    tracker,
+    kinds,
+    instanced-actions,
+    start-link,
+    form-data,
+  ]
 ---
 
 # Workflows — Action kinds
@@ -45,7 +54,7 @@ form:
 
 ## Check actions (`kind: check`)
 
-A check action is a lightweight task — no domain form, just the universal fields (`assignees`, `due_date`, `description`) and a comment. It is served by the per-workflow `{workflow_type}-action` page, routed by `?action_id=<id>`. That single page covers every check action in the workflow and switches between edit / view / review at load based on the action's stage and the caller's resolved access. See [Action pages](action-pages.md).
+A check action is a lightweight task — no domain form, just the universal fields (`assignees`, `due_date`) and a comment. It is served by the per-workflow `{workflow_type}-action` page, routed by `?action_id=<id>`. That single page covers every check action in the workflow and switches between edit / view / review at load based on the action's stage and the caller's resolved access. See [Action pages](action-pages.md).
 
 ```yaml
 type: schedule-followup

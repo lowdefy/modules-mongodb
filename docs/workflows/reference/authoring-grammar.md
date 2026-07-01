@@ -29,7 +29,8 @@ entity: # required — the workflow's entity wiring
   page_id: <page> # required — host-app page id the back-link navigates to
   id_query_key: <key> # optional — URL query key for the entity id (default _id)
   title: <Label> # required — singular entity-kind label (e.g. Lead)
-  name_field: <dot-path> # optional — entity-doc path to the instance name; adds "· {name}" to the breadcrumb
+  data: # optional — inline routine ({ routine: [...] }, like a hook) returning entity data;
+    routine: [...] #   reserved `name` key → breadcrumb instance name; other keys host-owned (replaces name_field)
 entity_view: # optional — build-time, read-only UI hint; never part of the engine config
   slot: { ... } # a Lowdefy block ref rendering a read-only view of the entity
 title: <string> # optional — human-readable title; derived from slug when omitted
@@ -48,13 +49,14 @@ actions: # required — action definitions
 
 ### Core fields
 
-| Field          | Required | Description                                          |
-| -------------- | -------- | ---------------------------------------------------- |
-| `type`         | yes      | Action type slug — unique within the workflow        |
-| `kind`         | yes      | `form`, `check`, or `tracker`                        |
-| `title`        | no       | Human-readable title; derived from slug when omitted |
-| `action_group` | no       | Group ID this action belongs to                      |
-| `access`       | yes      | Per-app, per-verb role gate (see below)              |
+| Field          | Required | Description                                                                                            |
+| -------------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| `type`         | yes      | Action type slug — unique within the workflow                                                          |
+| `kind`         | yes      | `form`, `check`, or `tracker`                                                                          |
+| `title`        | no       | Human-readable title; derived from slug when omitted                                                   |
+| `action_group` | no       | Group ID this action belongs to                                                                        |
+| `description`  | no       | Authored markdown body shown to whoever works the action (see [Description](#description-description)) |
+| `access`       | yes      | Per-app, per-verb role gate (see below)                                                                |
 
 ### Runtime-read fields (engine reads at runtime)
 
@@ -95,7 +97,7 @@ Emits per-verb pages (`-edit`, `-view`, `-review`, `-error`) and a submit endpoi
 
 ### `kind: check`
 
-Served by the per-workflow `{workflow_type}-action` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`, `description`).
+Served by the per-workflow `{workflow_type}-action` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`).
 
 ```yaml
 - type: send-quote
@@ -151,6 +153,21 @@ status_map:
   done:
     my-app: { message: Lead qualified. }
 ```
+
+## Description (`description:`)
+
+Optional authored body shown to whoever works the action — the performer guidance for the action ("what to do here"). A single **markdown** string at the action root; omit it and the surface renders nothing.
+
+```yaml
+description: |
+  Confirm the lead's contact details and **note any access constraints**
+  before quoting. Reference: {{ key }}.
+```
+
+- **Markdown** — rendered by the built-in `Markdown` block as a **chrome-less lead-in** at the top of the action's content card (no callout, no eyebrow, no box of its own). Markdown over HTML because it is authored in YAML.
+- **Templated, read-time** — supports `{{ var }}` nunjucks against the action instance (e.g. `{{ key }}` on an instanced action). Rendered fresh on every read, so it can never go stale. Autoescaping is on.
+- **Authored once, read-only** — set in the action YAML; identical for every instance and not editable per instance. It is **not** `message` (the short per-stage `status_map` copy) and **not** a comment (the per-instance free-text channel); an action can have all three.
+- **Which kinds render it** — `form` and `check`. Authoring it on `custom` (owns its working page) or `tracker` (no working surface) is harmless config but not rendered; no validator rejects it there.
 
 ## Starting actions (`starting_actions:`)
 
@@ -271,14 +288,34 @@ pages:
         successMessage: <string> # override "Submitted successfully."
         visible: <bool | operator> # AND-combines with server boolean
       not_required:
+        successMessage: <string> # override "Marked as not required."
         visible: <bool | operator>
       progress:
+        successMessage: <string> # override "Draft saved."
         visible: <bool | operator>
-      request_changes: # view page only; default false
+  review:
+    buttons:
+      approve:
+        successMessage: <string> # override "Approved."
+        visible: <bool | operator>
+      request_changes:
+        successMessage: <string> # override "Changes requested."
+        visible: <bool | operator>
+  error:
+    buttons:
+      resolve_error:
+        successMessage: <string> # override "Resolved."
+        visible: <bool | operator>
+  view:
+    buttons:
+      request_changes: # view page only; default visible false
+        successMessage: <string> # override "Changes requested."
         visible: <bool | operator>
 ```
 
 Button `visible` accepts a boolean or any Lowdefy operator expression. It AND-combines with the server-resolved boolean — authors can only further restrict visibility, never show a button the FSM or role gate would reject.
+
+`successMessage` is the success toast shown after the signal lands. Every **terminal** signal (`submit`, `not_required`, `approve`, `request_changes`, `resolve_error`) shows it and then returns to the entity page; the one non-terminal signal, `progress` (Save Draft / Mark Started), shows it and stays on the page. These knobs are **form-action only** — the per-workflow check page (`{workflow_type}-action`) is auto-generated and serves every check action at once, so it has no per-button override surface; its toasts are fixed.
 
 ### Extra buttons (`buttons.extra`)
 
@@ -298,7 +335,7 @@ pages:
           properties:
             title: Help
             type: link # primary | default | link | danger
-            icon: QuestionCircleOutlined
+            icon: AiOutlineQuestionCircle
           visible: <bool | operator> # optional, author-controlled
           events:
             onClick:
@@ -314,3 +351,32 @@ Extras carry no recognised `signal` and never touch the engine's FSM; their `onC
 **Reserved ids.** An extra entry's `id` may not collide with a template-shipped signal button. Reservation is global across all verb pages: `button_submit`, `button_progress`, `button_not_required`, `button_approve`, `button_request_changes`, `button_resolve_error`, `button_edit`.
 
 **Button → modal pattern.** To collect input before a side-effect, declare a `Modal` block in the verb's `formFooter:` and open it from the extra button's `onClick` via `CallMethod` — `method: toggleOpen` for a `Modal`, `method: open` for a `ConfirmModal`. The modal overlays at render time regardless of where it's declared, so `formFooter` is just a tidy home; the modal's own `onOk` reads its inputs via `_state:` and calls the app API.
+
+### Form header / footer slots (`formHeader`, `formFooter`)
+
+Each verb page accepts two slots for arbitrary author blocks that render inside the content card, around the form: `formHeader` renders **above the form fields** (below the authored [`description`](#description-description) lead-in), and `formFooter` renders **below the comment field**. Both are **lists of full Lowdefy blocks** and default to `[]` (render nothing).
+
+```yaml
+pages:
+  edit:
+    formHeader:
+      - id: po_guidance
+        type: Alert
+        properties:
+          type: info
+          showIcon: true
+          message: Attach the counter-signed purchase order.
+    formFooter:
+      # A tidy home for a Modal opened from a buttons.extra button (above).
+      - id: po_help_modal
+        type: Modal
+        properties:
+          title: Purchase order requirements
+        blocks:
+          - id: po_help_body
+            type: Markdown
+            properties:
+              content: A valid purchase order includes the PO number, an authorised signature, and the quoted total.
+```
+
+Both slots are available on all four verb pages (`edit`, `view`, `review`, `error`), set independently per verb. Like `buttons.extra`, they are **form-action only** — `check` and `tracker` actions emit no verb pages, so authoring them there is rejected at build time. Blocks render verbatim and carry no implicit gating — gate them yourself with `visible:` if needed.

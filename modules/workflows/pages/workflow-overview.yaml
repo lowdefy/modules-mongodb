@@ -21,6 +21,14 @@ _ref:
         _state: workflow.entity_link.pageId
       urlQuery:
         _state: workflow.entity_link.urlQuery
+    # Breadcrumb trail: Home / [entity list] / entity / workflow (terminal).
+    breadcrumbs:
+      _ref:
+        path: components/overview-breadcrumbs.yaml
+        vars:
+          tail:
+            - label:
+                _state: workflow.title
     type: Workflow
     status:
       _state: workflow.status.0.stage

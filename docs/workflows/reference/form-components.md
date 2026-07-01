@@ -11,7 +11,7 @@ Built-in field components for action `form:` blocks. The form-builder resolver s
 
 Apps never `_ref` these files directly. A domain-specific field not in this library is added one of two ways: contribute a library component, or — as an escape hatch — write a raw Lowdefy block inline in the `form:` array (see [Custom components](#custom-components)).
 
-**Universal action fields (`assignees`, `due_date`, `description`) are not form components** — they render in the page templates via the page chrome. Do not include them in `form:` blocks.
+**Universal action fields (`assignees`, `due_date`) are not form components** — they render in the page templates via the page chrome. Do not include them in `form:` blocks. The authored action [`description`](authoring-grammar.md#description-description) is likewise not a form component — it is set at the action root, not in `form:`.
 
 ## Text
 

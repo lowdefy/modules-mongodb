@@ -69,10 +69,16 @@ vars:
         breadcrumb crumb links here).
       - `id_query_key` (optional, default `_id`) — URL query-string key for the entity's primary id.
       - `title` (required) — singular human-readable entity-kind label (e.g. "Lead").
-      - `name_field` (optional) — dot-path on the entity doc resolving to the
-        instance's display name (e.g. `name`, `profile.full_name`). When set, the
-        action-page breadcrumb's entity crumb shows the instance name; omitted, it
-        shows the type label (`title`) and no extra read fires.
+      - `data` (optional) — an inline routine, authored exactly like a hook
+        (`{ routine: [ ... ] }`), that returns an object describing the entity
+        instance. The module generates an engine-only `{type}-entity-data`
+        endpoint from it; the action read handlers call it server-side (payload
+        `{ entity_id }`) and surface the result on the response. Its reserved
+        `name` key is lifted onto the breadcrumb / back-link as the instance
+        display name; all other keys are host-owned and available on the action
+        response's `entity` object and via the `entity_view` slot. Omit it and
+        chrome falls back to the `title` type label and no endpoint is emitted.
+        (Replaces the former `name_field` dot-path.)
       - `list_page_id` + `list_title` (optional pair) — the host-app entity-LIST
         page id and its (plural) crumb label. Set both to prepend a list crumb to
         the action-page breadcrumb so the trail mirrors the host app's own entity
@@ -102,6 +108,20 @@ vars:
       projection); and (3) keys the per-app action display the engine writes
       onto each action doc — display surfaces read `action.{app_name}.message`
       and `action.{app_name}.links` for the current app's slug.
+  enable_internal_comments:
+    type: boolean
+    default: false
+    description: >
+      Opt this app in to the shared/internal comment distinction (Part 61). The
+      host wires it onto the workflow-api connection (`enable_internal_comments`)
+      and the comment surfaces read it at build time. When `true`, every comment
+      input shows a small shared/internal control and the engine honours an
+      `internal` (single-app) comment from this app. When `false` (the default),
+      the control is hidden, and the engine coerces any `internal` request to
+      `shared` — so every comment is visible to all apps that see the event.
+      Comments default to `shared` regardless. Set this only on the internal/team
+      app that sometimes needs to keep a note off other apps; single-app and
+      customer-facing apps leave it off.
   action_statuses_display:
     type: object
     default: {}

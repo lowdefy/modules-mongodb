@@ -7,7 +7,7 @@ import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js"
 /**
  * UpdateActionFields connection resolver (Part 24).
  *
- * Writes the three universal fields (`assignees` / `due_date` / `description`)
+ * Writes the universal fields (`assignees` / `due_date`)
  * on ONE action as a state-orthogonal operation — NO FSM transition, NO
  * workflow doc write, NO pre/post hook, NO tracker cascade. It is an operation,
  * not a signal: the deliberate operations/transitions boundary (critique
@@ -21,12 +21,12 @@ import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js"
  *     → return { action_id, event_id }
  *
  * Params (from `context.params`): `action_id` (required — the authoritative
- * target locator), `fields` (`{ assignees?, due_date?, description? }`),
- * `comment` (optional; routed through the planner's `comment` param — Part 33
- * renders it into `display.{app_name}.description`, never `metadata.comment`),
- * and `metadata` (optional). `action_type` is NOT sent — the endpoint is
- * per-workflow (not per-action-type, Rev 2), so the handler derives type/kind
- * from the loaded action doc.
+ * target locator), `fields` (`{ assignees?, due_date? }`), and `metadata`
+ * (optional). The field-update operation carries NO comment (Part 61): editing
+ * assignees / due date is a metadata edit with no comment input, so the
+ * `action-fields-updated` event never carries a description. `action_type` is
+ * NOT sent — the endpoint is per-workflow (not per-action-type, Rev 2), so the
+ * handler derives type/kind from the loaded action doc.
  *
  * Access: the load phase's `edit`-verb gate (`access.{app_name}.edit`) is the
  * sole access authority — the same posture as the submit endpoint. The
@@ -54,7 +54,6 @@ async function UpdateActionFields(lowdefyContext) {
   const plan = planFieldsUpdate({
     loadedState,
     fields: params.fields,
-    comment: params.comment,
     metadata: params.metadata,
     context,
   });

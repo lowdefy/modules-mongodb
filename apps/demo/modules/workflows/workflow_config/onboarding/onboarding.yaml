@@ -6,7 +6,39 @@ entity:
   page_id: lead-view
   title: Lead
   # id_query_key omitted — defaults to _id
-  name_field: name # D10 — entity instance name → breadcrumb entity crumb shows the name
+  # Part 26 — inline routine the module turns into the onboarding-entity-data
+  # InternalApi. The action read handlers call it server-side (payload
+  # { entity_id }); its reserved `name` key drives the breadcrumb entity crumb,
+  # and the rest (email) is read by the entity_view slot off
+  # get_workflow_action.entity. The routine names its own connection.
+  data:
+    routine:
+      - id: load_lead
+        type: MongoDBAggregation
+        connectionId: leads-collection
+        payload:
+          entity_id:
+            _payload: entity_id
+        properties:
+          pipeline:
+            - $match:
+                _id:
+                  _payload: entity_id
+      - :return:
+          name:
+            _step: load_lead.0.name
+          company:
+            _step: load_lead.0.company
+          source:
+            _step: load_lead.0.source
+          estimated_value:
+            _step: load_lead.0.estimated_value
+          contact:
+            _step: load_lead.0.contact
+          # Current pipeline stage (status is a newest-first array) — drives the
+          # status badge on the entity_view profile card.
+          status:
+            _step: load_lead.0.status.0.stage
   # Entity-list breadcrumb link → trail mirrors lead-list / lead-view:
   # Home / Leads / {name} / {workflow} / {action}.
   list_page_id: lead-list

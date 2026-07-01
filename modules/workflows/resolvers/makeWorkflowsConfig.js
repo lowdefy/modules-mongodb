@@ -31,6 +31,10 @@ const ACTION_FIELDS = [
   "allow_not_required",
   "access",
   "universal_fields",
+  // Part 64: the author-authored action body. Carried into the runtime config
+  // so GetWorkflowAction can render it (read-time nunjucks) as the envelope's
+  // `description`. Lives on `actionConfig.description`, never on the action doc.
+  "description",
 ];
 
 const WORKFLOW_FIELDS = [
@@ -118,10 +122,11 @@ const RESERVED_BUTTON_IDS = [
   "button_edit",
 ];
 
-// Part 24: the three universal action fields an author may declare for the UI
-// presence list. The action doc always physically carries all three; this list
-// only controls which the templates render.
-const UNIVERSAL_FIELDS = ["assignees", "due_date", "description"];
+// Part 24 / Part 64: the universal action fields an author may declare for the
+// UI presence list. The action doc carries both; this list only controls which
+// the templates render. (Part 64 removed `description` from the universal set —
+// it is now author-authored config rendered by GetWorkflowAction.)
+const UNIVERSAL_FIELDS = ["assignees", "due_date"];
 
 function pick(source, fields) {
   const picked = {};
@@ -235,6 +240,34 @@ function validateEvent(workflow, action) {
     fail(
       workflow.type,
       `${where} event key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(", ")}${isTracker ? `, ${MIRROR_SIGNALS.join(", ")}` : ""}).`,
+    );
+  }
+}
+
+// Part 26: the optional `entity.data` block — an inline routine the module turns
+// into the `{type}-entity-data` InternalApi (mirrors validateHooks /
+// validateGroupOnComplete). When present it must be a plain object with a
+// `routine:` array; a string value is the rejected draft's `data_endpoint: <id>`
+// shape and hard-errors with the same migration hint hooks emit. Routine
+// internals are not validated here — the build walks them like any other routine.
+function validateEntityData(workflow) {
+  const entity = workflow.entity;
+  if (!entity || !("data" in entity)) return;
+  const value = entity.data;
+  if (typeof value === "string") {
+    fail(
+      workflow.type,
+      `entity.data is a string ("${value}") — the legacy shape pointing at an external Api id. Convert to an inline routine object: { routine: [ ... ] }. The module generates the engine-only endpoint from it.`,
+    );
+  }
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    !Array.isArray(value.routine)
+  ) {
+    fail(
+      workflow.type,
+      `entity.data must be an object with a routine: array (got: ${JSON.stringify(value)}).`,
     );
   }
 }
@@ -516,10 +549,10 @@ function validateStatusMapCells(workflow, action) {
   }
 }
 
-// Part 24: universal_fields is an optional UI presence declaration. Legal
-// values: the field omitted; `false`; or an array whose every member is one of
-// assignees / due_date / description with no duplicates. Anything else hard-
-// errors (a bare `true`, a string, unknown field names, a non-array non-false).
+// Part 24 / Part 64: universal_fields is an optional UI presence declaration.
+// Legal values: the field omitted; `false`; or an array whose every member is
+// one of assignees / due_date with no duplicates. Anything else hard-errors (a
+// bare `true`, a string, unknown field names, a non-array non-false).
 function validateUniversalFields(workflow, action) {
   if (!("universal_fields" in action)) return;
   const where = `action "${action.type}"`;
@@ -550,6 +583,20 @@ function validateUniversalFields(workflow, action) {
       );
     }
     seen.add(field);
+  }
+}
+
+// Part 64: the authored action body. Optional markdown string, rendered to the
+// performer at read time (nunjucks-templated against the action instance). When
+// present it must be a string. Authored on any kind; rendered on form + check;
+// accepted-but-unrendered on custom / tracker (no validation rejects it there).
+function validateActionDescription(workflow, action) {
+  if (!("description" in action)) return;
+  if (typeof action.description !== "string") {
+    fail(
+      workflow.type,
+      `action "${action.type}" description must be a string when present (got: ${JSON.stringify(action.description)}).`,
+    );
   }
 }
 
@@ -601,6 +648,7 @@ function validateAction(workflow, action) {
 
   validateActionAccess(workflow, action);
   validateUniversalFields(workflow, action);
+  validateActionDescription(workflow, action);
   validateStatusMapCells(workflow, action);
   validateTrackerChildWorkflowType(workflow, action);
   validateTrackerStartLink(workflow, action);
@@ -660,10 +708,7 @@ function validateButtonsExtra(workflow, action) {
         );
       }
       if (!Array.isArray(entry.events?.onClick)) {
-        fail(
-          workflow.type,
-          `${at} must have an events.onClick action array.`,
-        );
+        fail(workflow.type, `${at} must have an events.onClick action array.`);
       }
     });
   }
@@ -785,18 +830,9 @@ function validateWorkflow(workflow) {
     );
   }
 
-  // Part 56 D10: optional dot-path to the entity's display name field, read by
-  // GetWorkflowAction to resolve the breadcrumb instance name. When present it
-  // must be a non-empty string; it rides the wholesale entity carry untouched.
-  if (
-    "name_field" in entity &&
-    (typeof entity.name_field !== "string" || entity.name_field === "")
-  ) {
-    fail(
-      workflow.type,
-      `entity.name_field must be a non-empty string when present (got: ${JSON.stringify(entity.name_field)}).`,
-    );
-  }
+  // Part 26: the optional `entity.data` inline routine (replaces name_field —
+  // the routine returns the instance display name as its reserved `name` key).
+  validateEntityData(workflow);
 
   // Optional entity-LIST breadcrumb link (e.g. Home / Leads / {entity} / …).
   // `list_page_id` is the host-app entity-list page id; `list_title` is its
@@ -822,10 +858,10 @@ function validateWorkflow(workflow) {
       `entity.list_title must be a non-empty string when present (got: ${JSON.stringify(entity.list_title)}).`,
     );
   }
-  if (("list_page_id" in entity) !== ("list_title" in entity)) {
+  if ("list_page_id" in entity !== "list_title" in entity) {
     fail(
       workflow.type,
-      'entity.list_page_id and entity.list_title must be set together — a list breadcrumb link needs both a page id and a label (or omit both to drop the list crumb).',
+      "entity.list_page_id and entity.list_title must be set together — a list breadcrumb link needs both a page id and a label (or omit both to drop the list crumb).",
     );
   }
 
@@ -985,7 +1021,9 @@ function makeWorkflowsConfig(_, vars) {
       // its group's position in `action_groups[]`. `findIndex` → -1 for a
       // missing/unknown group; stored as -1 (the comparator maps -1 → +∞).
       picked.decl_index = declIndex;
-      picked.group_index = groupIds.findIndex((id) => id === action.action_group);
+      picked.group_index = groupIds.findIndex(
+        (id) => id === action.action_group,
+      );
 
       // Title default: explicit `action.title` wins; else derive from `type`.
       // Materialized once here so every config-reading surface reads a
@@ -1029,10 +1067,25 @@ function makeWorkflowsConfig(_, vars) {
       title: workflow.title ?? humanizeSlug(workflow.type, title_acronyms),
       // Part 57: carry the whole authored `entity` block wholesale (no field is
       // lifted to a flat alias), applying only the id_query_key default.
-      entity: {
-        ...workflow.entity,
-        id_query_key: workflow.entity.id_query_key ?? "_id",
-      },
+      // Part 26: the build-only `data` routine is stripped (heavy, never read at
+      // runtime); when present, a resolved `data_endpoint` _module.endpointId ref
+      // is carried so the read handlers can callApi the generated InternalApi.
+      // The build walker resolves the ref to a pre-scoped opaque id (same as the
+      // connection's own `endpoints:` block).
+      entity: (() => {
+        const { data, ...rest } = workflow.entity;
+        return {
+          ...rest,
+          id_query_key: workflow.entity.id_query_key ?? "_id",
+          ...(data
+            ? {
+                data_endpoint: {
+                  "_module.endpointId": `${workflow.type}-entity-data`,
+                },
+              }
+            : {}),
+        };
+      })(),
       ...(actionGroups.length > 0 ? { action_groups: actionGroups } : {}),
       actions,
     };

@@ -14,6 +14,8 @@ completeness and one server-side enforcement gap.
 
 ### 1. The connection flag is never enforced server-side, so a crafted `internal` payload re-silos the very comments this part exists to un-silo
 
+> **Resolved.** Adopted the preferred option: the engine enforces the flag. `planEventDispatch` passes `connection.enable_internal_comments` into `foldCommentIntoEvent`, whose effective predicate is now `visibility === 'internal' && enableInternalComments` → single bucket; everything else → shared. An app with the flag off coerces any `internal` request (including a crafted payload) back to `shared`, making "customer/single-app apps are always shared" a server guarantee. Schema doc, Wire section, and Verification updated; the connection property is now engine-consumed, not UI-only.
+
 The design adds `enable_internal_comments` to the connection schema
 (`WorkflowAPI/schema.js`) and states (D2) that "single-app and customer apps
 leave it off and every comment is `shared`." But nothing in the engine reads that
@@ -73,6 +75,8 @@ call in `UpdateActionFields.js` that isn't there.
 
 ### 3. The comment-surface inventory is materially incomplete — it lists 3 surfaces; at least 8 post a comment, and the Part 24 surface (which the design explicitly wires) is omitted
 
+> **Resolved.** Verified the 8-file inventory by grep. Expanded the design's surface list to enumerate every comment-input site — adding `action.yaml.njk`, `view.yaml.njk`, `error.yaml.njk`, `universal-fields.yaml`, and noting `check-action-modal.yaml` is covered transitively (it wraps the check surface). All sites `_ref` the single shared fragment. Called out that the universal-fields surface is required to actually feed the Part 24 thread wired in #1, and that no surface is deliberately excluded.
+
 The design's surface list is `check-action-surface.yaml`, `review.yaml.njk`, and
 "`edit.yaml.njk` / wherever a submit comment is captured." A grep for comment
 payloads across the module shows the control would actually be needed in:
@@ -110,6 +114,8 @@ get no control, and why).
 
 ### 4. D2's "readable by the page because it is the app's own connection var" is mechanically inaccurate
 
+> **Resolved.** Reworded D2: the flag is a **module var** the host sets once on the module entry (like `app_name`), fanning out two ways — wired onto the connection via `_module.var: enable_internal_comments` for engine enforcement (#1), and read by the comment surfaces at build time for UI gating. D2 now states explicitly that page config reads module vars at build time and cannot read a server-side connection property at runtime.
+
 Lowdefy connection config is server-side; a page block cannot read a connection
 property at runtime. The actual page-readable mechanism is the **module var**:
 surfaces gate on `_module.var: enable_internal_comments` at build time, exactly as
@@ -122,6 +128,8 @@ which, per #1, the engine should actually consume). This is wording, not a desig
 flaw, but the rationale currently leans on a capability that doesn't exist.
 
 ### 5. Specify the toggle's default and control type so "absent → shared" actually holds
+
+> **Resolved.** Wire section now specifies a default-off `Switch` (on = `internal`) in the shared fragment, gated by the module var. Boolean state maps to the `"shared" | "internal"` string enum at payload time via `_if`, so the engine receives a clean enum; off-by-default _is_ the shared default with no separate init. Toggle resets to `false` on modal close alongside the existing `comment`/`change_request_comment` null-reset. The fold predicate was already pinned by #1 (`=== 'internal' && enableInternalComments` → single bucket; everything else, incl. `undefined`/garbage → shared).
 
 The wire shape is `comment_visibility: { _state: <toggle-state> }`. For the
 default-shared guarantee to hold when the control _is_ shown, the toggle's initial

@@ -1,7 +1,10 @@
 type: assign-account-manager
 kind: check
 action_group: setup
-description: Assign an account manager to the company.
+description: |
+  Match on **region and industry** first, then current book size — don't assign
+  a manager already at capacity. The assignee owns the kickoff call and the
+  customer relationship from here on.
 access:
   demo:
     view: true

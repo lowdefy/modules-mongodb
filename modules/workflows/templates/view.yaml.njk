@@ -9,15 +9,20 @@
 #                     modals, maxWidth, buttons }), defaults to {}.
 #   page_ids:      { view, edit?, review?, error? }
 #   workflow_type: workflow.type
-#   connection_id: workflow.entity.connection_id (connection id baked into get_entity)
+#   connection_id: workflow.entity.connection_id (the actions-on-entity panel's connection)
 #   workflow_title: baked workflow-title string (eyebrow + breadcrumb workflow label)
 #   reference_field: baked entity.ref_key string (History match field)
 #   entity_view_slot: baked block array from workflow.entity_view.slot (may be [])
-#   name_field: baked dot-path string for the entity instance name, or "" when none
 #
-# Layout (Part 56 addendum): universal-fields chips + ✎ ride the title bar's
-# page_actions; the description is a middle-top callout; the action bar is the
-# shell's floating `actions` slot (Edit nav + request_changes here). No stale-URL guard.
+# Part 26: the entity instance name + entity fields arrive on the single
+# get_workflow_action response (entity_link.name + the entity object), resolved
+# server-side from the workflow's entity.data routine — no per-page entity request.
+#
+# Layout (Part 56 addendum; Part 64): universal-fields chips + ✎ ride the title
+# bar's page_actions; a bare workflow-closed banner sits above the form card, and
+# the author-authored description renders as the form card's first child (plain
+# Markdown lead-in); the action bar is the shell's floating `actions` slot (Edit
+# nav + request_changes here). No stale-URL guard.
 _ref:
   module: layout
   component: page
@@ -46,11 +51,7 @@ _ref:
           entity_title:
             _state: action.entity_link.title
           entity_name:
-{%- if name_field %}
-            _request: get_entity.0.{{ name_field }}
-{%- else %}
-            null
-{%- endif %}
+            _state: action.entity_link.name
           entity_page_id:
             _state: action.entity_link.pageId
           entity_url_query:
@@ -99,10 +100,6 @@ _ref:
     requests:
       _build.array.concat:
         - - _ref: requests/get_workflow_action.yaml
-          - _ref:
-              path: requests/get_entity.yaml.njk
-              vars:
-                connection_id: {{ connection_id }}
         - _var:
             key: page_config.requests
             default: []
@@ -134,11 +131,7 @@ _ref:
                 entity_id:
                   _request: get_workflow_action.entity.id
             # Step 3 (stale-URL guard) — intentionally omitted on view.
-            # Step 4: load the entity.
-            - id: get_entity
-              type: Request
-              params: get_entity
-            # Step 5: prime form state from envelope's form_values.
+            # Step 4: prime form state from envelope's form_values.
             - id: prime_form_state
               type: SetState
               params:
@@ -149,17 +142,17 @@ _ref:
                     _state: action.assignees
                   due_date:
                     _state: action.due_date
-                  description:
-                    _state: action.description
                 change_request_comment: null
+                change_request_comment_internal: false
           # Step 8: author-supplied onMount runs last.
           - _var:
               key: page_config.events.onMount
               default: []
     blocks:
       _build.array.concat:
-        # Three-tier shell: left (entity workflows) + middle (description callout
-        # + form body + floating action bar) + RHS (Details? above History).
+        # Three-tier shell: left (entity workflows) + middle (closed banner +
+        # form card with description lead-in + floating action bar) + RHS
+        # (Details? above History).
         - - _ref:
               path: components/action-workspace.yaml
               vars:
@@ -171,20 +164,44 @@ _ref:
                   _var: entity_view_slot
                 middle:
                   _build.array.concat:
-                    # Description callout (top of the middle column; self-hides
-                    # when unset).
+                    # Workflow-closed banner — bare full-width alert above the
+                    # content card (Part 64 layout model; the form pages gain it
+                    # for consistency with the check page). Gated on
+                    # workflow_closed AND not required_after_close.
+                    - - id: workflow_closed_banner
+                        type: Alert
+                        visible:
+                          _and:
+                            - _state: action.workflow_closed
+                            - _ne:
+                                - _state: action.required_after_close
+                                - true
+                        properties:
+                          type: warning
+                          showIcon: true
+                          message: Workflow closed
+                          description: This workflow is closed. Updates to this action are no longer accepted.
+                    # Changes-requested callout — bare full-width alert below the
+                    # closed banner, above the content card (Part 62). Self-hides
+                    # unless the action is in changes-required with a brief.
                     - - _ref:
-                          path: components/universal-fields/universal-fields-callout.yaml
+                          path: components/changes-requested-callout.yaml
                           vars:
-                            action_data:
-                              description:
-                                _state: action.description
+                            content:
+                              _state: action.changes_requested
                     - - id: form_card
                         type: Card
                         layout:
                           gap: 16
                         blocks:
                           _build.array.concat:
+                            # Description lead-in — first child of the form card
+                            # (plain Markdown; self-hides when unset).
+                            - - _ref:
+                                  path: components/action-description.yaml
+                                  vars:
+                                    content:
+                                      _state: action.description
                             - _var:
                                 key: page_config.formHeader
                                 default: []
@@ -197,7 +214,7 @@ _ref:
                                     form:
                                       _state: form
                                     entity:
-                                      _request: get_entity
+                                      _request: get_workflow_action.entity
                             - _var:
                                 key: page_config.formFooter
                                 default: []
@@ -342,31 +359,38 @@ _ref:
                             _state: form
                           comment:
                             _state: change_request_comment
+                          comment_visibility:
+                            _if:
+                              - _state: change_request_comment_internal
+                              - internal
+                              - shared
+                  # Terminal signal — return to the entity on success.
+                  - _ref:
+                      path: components/return-to-entity.yaml
+                      vars:
+                        entity_page_id:
+                          _state: action.entity_link.pageId
+                        entity_url_query:
+                          _state: action.entity_link.urlQuery
+                        success_message:
+                          _var:
+                            key: page_config.buttons.request_changes.successMessage
+                            default: Changes requested.
               onClose:
                 - id: reset_comment
                   type: SetState
                   params:
                     change_request_comment: null
+                    change_request_comment_internal: false
             blocks:
-              - id: change_request_comment
-                type: TiptapInput
-                required: true
-                validate:
-                  - message: A comment is required to request changes
-                    status: error
-                    pass:
-                      _or:
-                        - _ne:
-                            - _if_none:
-                                - _state: change_request_comment.text
-                                - null
-                            - null
-                        - _gt:
-                            - _array.length:
-                                _if_none:
-                                  - _state: change_request_comment.fileList
-                                  - []
-                            - 0
-                properties:
-                  title: Change Description
-                  placeholder: Please provide a description of the changes you would like.
+              # Mandatory request-changes comment — shared comment-input fragment
+              # (Part 61): text-only + the shared/internal control.
+              - _ref:
+                  path: components/comment-input.yaml
+                  vars:
+                    comment_path: change_request_comment
+                    visibility_path: change_request_comment_internal
+                    required: true
+                    required_message: A comment is required to request changes
+                    title: Change Description
+                    placeholder: Please provide a description of the changes you would like.

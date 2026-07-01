@@ -1,0 +1,34 @@
+# Changes-requested callout (Part 62).
+#
+# Renders the reviewer's request-changes comment as a read-only "what to fix"
+# brief in the middle column's bare-alerts slot — below the workflow_closed_banner
+# (a hard stop outranks a rework brief) and above the content card that holds the
+# action-description render. Shown only while the action is in changes-required
+# AND a brief exists (GetWorkflowAction resolves `changes_requested` to null
+# outside that stage, and to null when the latest request-changes event has no
+# brief in the calling app's bucket — Part 61 app-scoping).
+#
+# It is a native Lowdefy Alert (type: warning), the same block and shape as the
+# workflow_closed_banner, so the workspace's full-width banners read uniformly.
+# The Alert renders `message`/`description` via renderHtml → HtmlComponent →
+# DOMPurify.sanitize, which is what makes it safe to render the verbatim-stored
+# comment HTML (no `| safe`, no DangerousHtml). The request-changes comment is
+# text-only (inline files are disabled on its input), so `description` is always
+# a text brief and never an attachment.
+#
+# Consumed via `_ref: { path, vars }` with an OPERATOR-valued var:
+#   - content  the request-changes brief HTML (or null) — `_state: action.changes_requested`
+#              on the form pages, `_state: current_action.changes_requested` on
+#              the check page.
+id: changes_requested_callout
+type: Alert
+visible:
+  _ne:
+    - _var: content
+    - null
+properties:
+  type: warning
+  showIcon: true
+  message: Changes requested
+  description:
+    _var: content

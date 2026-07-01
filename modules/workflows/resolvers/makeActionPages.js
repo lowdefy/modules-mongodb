@@ -27,10 +27,11 @@ const ACTION_FIELDS_FOR_TEMPLATE = [
   "universal_fields",
 ];
 
-// Part 24: the all-three default for the UI presence list. Normalized onto the
+// Part 24 / Part 64: the default for the UI presence list. Normalized onto the
 // emitted action_config so templates/components always see a (possibly empty)
-// array — `false` → [], omitted → all three, array → as-is.
-const UNIVERSAL_FIELDS_DEFAULT = ["assignees", "due_date", "description"];
+// array — `false` → [], omitted → both fields, array → as-is. (Part 64 dropped
+// `description` from the universal set; it is now author-authored config.)
+const UNIVERSAL_FIELDS_DEFAULT = ["assignees", "due_date"];
 
 function normalizeUniversalFields(value) {
   if (value === undefined) return UNIVERSAL_FIELDS_DEFAULT;
@@ -60,24 +61,30 @@ function resolveWorkflowTitle(workflow, titleAcronyms) {
 // Per-workflow vars shared by the form templates and the shared action page (Part 56):
 // the entity connection id + ref_key (nested entity: block — Part 57), the baked
 // workflow title, the read-only entity_view.slot block array (empty when the
-// workflow declares none), the optional entity.name_field dot-path (empty
-// string when absent, so the templates' `{% if name_field %}` gate is falsy),
-// and the optional entity-list breadcrumb link (list_page_id + list_title, both
-// empty strings when absent so the templates' `{% if list_page_id %}` gate is
-// falsy and the breadcrumb drops the list crumb).
+// workflow declares none), and the optional entity-list breadcrumb link
+// (list_page_id + list_title, both empty strings when absent so the templates'
+// `{% if list_page_id %}` gate is falsy and the breadcrumb drops the list crumb).
+// Part 26: the instance name no longer comes from a baked name_field — the
+// templates source the breadcrumb name from `entity_link.name` on the action
+// response (resolved server-side from the entity.data routine).
 function workspaceVars(workflow, workflowTitle) {
   return {
     connection_id: workflow.entity.connection_id,
     reference_field: workflow.entity.ref_key,
     workflow_title: workflowTitle,
     entity_view_slot: workflow.entity_view?.slot ?? [],
-    name_field: workflow.entity.name_field ?? "",
     list_page_id: workflow.entity.list_page_id ?? "",
     list_title: workflow.entity.list_title ?? "",
   };
 }
 
-function emitForAction(workflow, action, appName, titleAcronyms, workflowTitle) {
+function emitForAction(
+  workflow,
+  action,
+  appName,
+  titleAcronyms,
+  workflowTitle,
+) {
   if (action.kind !== "form") return [];
 
   // Part 34 D5: emit a verb page iff the verb key is present in the app's

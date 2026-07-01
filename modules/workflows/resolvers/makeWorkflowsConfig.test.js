@@ -161,45 +161,62 @@ test("makeWorkflowsConfig: rejects a non-string entity.id_query_key when present
   );
 });
 
-// --- entity.name_field (Part 56 D10) ---------------------------------------
+// --- entity.data (Part 26) -------------------------------------------------
 
-test("makeWorkflowsConfig: entity.name_field non-empty string validates and survives onto the materialized entity block", () => {
+const entityDataRoutine = {
+  routine: [
+    {
+      id: "load",
+      type: "MongoDBAggregation",
+      connectionId: "leads-collection",
+    },
+    { ":return": { name: { _step: "load.0.name" } } },
+  ],
+};
+
+test("makeWorkflowsConfig: entity.data strips the raw routine and adds a resolved data_endpoint ref", () => {
   const workflow = {
     ...validWorkflow,
-    entity: { ...validWorkflow.entity, name_field: "company.name" },
+    entity: { ...validWorkflow.entity, data: entityDataRoutine },
   };
   const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
-  expect(out.entity.name_field).toBe("company.name");
+  // The heavy build-only routine is not carried onto the runtime config.
+  expect("data" in out.entity).toBe(false);
+  // A pre-scoped endpoint ref rides the carried config instead.
+  expect(out.entity.data_endpoint).toEqual({
+    "_module.endpointId": "onboarding-entity-data",
+  });
 });
 
-test("makeWorkflowsConfig: omitted entity.name_field validates (no error)", () => {
+test("makeWorkflowsConfig: omitted entity.data carries no data_endpoint", () => {
   expect(() =>
     makeWorkflowsConfig(null, { workflows: [validWorkflow] }),
   ).not.toThrow();
   const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
-  expect("name_field" in out.entity).toBe(false);
+  expect("data" in out.entity).toBe(false);
+  expect("data_endpoint" in out.entity).toBe(false);
 });
 
-test("makeWorkflowsConfig: rejects a non-string entity.name_field", () => {
+test("makeWorkflowsConfig: rejects a string entity.data (legacy external-endpoint shape)", () => {
   const workflow = {
     ...validWorkflow,
-    entity: { ...validWorkflow.entity, name_field: 42 },
+    entity: { ...validWorkflow.entity, data: "get-lead-entity-data" },
   };
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
-    /entity\.name_field must be a non-empty string when present/,
+    /entity\.data is a string.*Convert to an inline routine object/s,
   );
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
     /onboarding/,
   );
 });
 
-test("makeWorkflowsConfig: rejects an empty-string entity.name_field", () => {
+test("makeWorkflowsConfig: rejects entity.data without a routine array", () => {
   const workflow = {
     ...validWorkflow,
-    entity: { ...validWorkflow.entity, name_field: "" },
+    entity: { ...validWorkflow.entity, data: { routine: 42 } },
   };
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
-    /entity\.name_field must be a non-empty string when present/,
+    /entity\.data must be an object with a routine: array/,
   );
 });
 
@@ -973,21 +990,27 @@ test("validateButtonsExtra: (b) non-array extra rejected", () => {
 test("validateButtonsExtra: (c) entry missing id rejected", () => {
   expect(() =>
     runForm({
-      edit: { buttons: { extra: [{ type: "Button", events: { onClick: [] } }] } },
+      edit: {
+        buttons: { extra: [{ type: "Button", events: { onClick: [] } }] },
+      },
     }),
   ).toThrow(/must have a string "id"/);
 });
 
 test("validateButtonsExtra: (d) entry missing events.onClick rejected", () => {
   expect(() =>
-    runForm({ edit: { buttons: { extra: [{ id: "open_help", type: "Button" }] } } }),
+    runForm({
+      edit: { buttons: { extra: [{ id: "open_help", type: "Button" }] } },
+    }),
   ).toThrow(/must have an events\.onClick action array/);
 });
 
 test("validateButtonsExtra: (e) reserved id button_submit on edit rejected", () => {
   expect(() =>
     runForm({
-      edit: { buttons: { extra: [{ ...extraHelpButton, id: "button_submit" }] } },
+      edit: {
+        buttons: { extra: [{ ...extraHelpButton, id: "button_submit" }] },
+      },
     }),
   ).toThrow(/reserved button id "button_submit"/);
 });
@@ -995,7 +1018,9 @@ test("validateButtonsExtra: (e) reserved id button_submit on edit rejected", () 
 test("validateButtonsExtra: (e2) reserved id button_progress on edit rejected", () => {
   expect(() =>
     runForm({
-      edit: { buttons: { extra: [{ ...extraHelpButton, id: "button_progress" }] } },
+      edit: {
+        buttons: { extra: [{ ...extraHelpButton, id: "button_progress" }] },
+      },
     }),
   ).toThrow(/reserved button id "button_progress"/);
 });
@@ -1004,7 +1029,9 @@ test("validateButtonsExtra: (f) reserved id button_resolve_error on error reject
   expect(() =>
     runForm({
       error: {
-        buttons: { extra: [{ ...extraHelpButton, id: "button_resolve_error" }] },
+        buttons: {
+          extra: [{ ...extraHelpButton, id: "button_resolve_error" }],
+        },
       },
     }),
   ).toThrow(/reserved button id "button_resolve_error"/);
@@ -1013,7 +1040,9 @@ test("validateButtonsExtra: (f) reserved id button_resolve_error on error reject
 test("validateButtonsExtra: (f2) reserved nav id button_edit on review rejected", () => {
   expect(() =>
     runForm({
-      review: { buttons: { extra: [{ ...extraHelpButton, id: "button_edit" }] } },
+      review: {
+        buttons: { extra: [{ ...extraHelpButton, id: "button_edit" }] },
+      },
     }),
   ).toThrow(/reserved button id "button_edit"/);
 });
@@ -1022,7 +1051,9 @@ test("validateButtonsExtra: (f3) reserved id button_approve rejected on edit (gl
   // The edit bar ships no approve button, yet the id is reserved everywhere.
   expect(() =>
     runForm({
-      edit: { buttons: { extra: [{ ...extraHelpButton, id: "button_approve" }] } },
+      edit: {
+        buttons: { extra: [{ ...extraHelpButton, id: "button_approve" }] },
+      },
     }),
   ).toThrow(/reserved button id "button_approve"/);
 });
@@ -1205,7 +1236,9 @@ test("validateStatusMapCells: kind: custom rejects a link missing pageId", () =>
 test("validateStatusMapCells: kind: custom rejects a non-true sentinel value", () => {
   const wf = workflowWithCustomStatusMap({
     "action-required": {
-      demo: { link: { pageId: "contract-review", urlQuery: { action_id: "x" } } },
+      demo: {
+        link: { pageId: "contract-review", urlQuery: { action_id: "x" } },
+      },
     },
   });
   expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
@@ -2362,6 +2395,59 @@ test("makeWorkflowsConfig: universal_fields with a duplicate entry throws", () =
   ).toThrow(/duplicate entry "assignees"/);
 });
 
+test("makeWorkflowsConfig: universal_fields ['description'] throws (Part 64 removed it)", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, {
+      workflows: [universalFieldsWorkflow(["description"])],
+    }),
+  ).toThrow(/universal_fields entry "description"/);
+});
+
+// ── Part 64: authored action `description` body ──────────────────────────────
+
+function descriptionWorkflow(description) {
+  return {
+    ...validWorkflow,
+    actions: [
+      {
+        type: "do-it",
+        kind: "form",
+        form: [{ id: "x", type: "TextInput" }],
+        ...(description !== undefined ? { description } : {}),
+      },
+    ],
+  };
+}
+
+test("makeWorkflowsConfig: authored description string is carried onto the action config", () => {
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [descriptionWorkflow("Call the lead. Reference: {{ key }}.")],
+  });
+  expect(out.actions[0].description).toBe(
+    "Call the lead. Reference: {{ key }}.",
+  );
+});
+
+test("makeWorkflowsConfig: description omitted is absent from the config", () => {
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [descriptionWorkflow(undefined)],
+  });
+  expect("description" in out.actions[0]).toBe(false);
+});
+
+test("makeWorkflowsConfig: non-string description throws, action named", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, {
+      workflows: [descriptionWorkflow({ text: "x", html: "<p>x</p>" })],
+    }),
+  ).toThrow(/description must be a string/);
+  expect(() =>
+    makeWorkflowsConfig(null, {
+      workflows: [descriptionWorkflow({ text: "x" })],
+    }),
+  ).toThrow(/do-it/);
+});
+
 // Part 50: denormalised sort indices attached to each action config entry.
 test("makeWorkflowsConfig: attaches decl_index and group_index onto each action config entry", () => {
   const workflow = {
@@ -2377,9 +2463,21 @@ test("makeWorkflowsConfig: attaches decl_index and group_index onto each action 
 
   const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
 
-  expect(out.actions[0]).toMatchObject({ type: "qualify", decl_index: 0, group_index: 0 });
-  expect(out.actions[1]).toMatchObject({ type: "send-quote", decl_index: 1, group_index: 1 });
-  expect(out.actions[2]).toMatchObject({ type: "close", decl_index: 2, group_index: 0 });
+  expect(out.actions[0]).toMatchObject({
+    type: "qualify",
+    decl_index: 0,
+    group_index: 0,
+  });
+  expect(out.actions[1]).toMatchObject({
+    type: "send-quote",
+    decl_index: 1,
+    group_index: 1,
+  });
+  expect(out.actions[2]).toMatchObject({
+    type: "close",
+    decl_index: 2,
+    group_index: 0,
+  });
 });
 
 test("makeWorkflowsConfig: group_index is -1 when the action has no group or an unknown group", () => {
@@ -2395,13 +2493,25 @@ test("makeWorkflowsConfig: group_index is -1 when the action has no group or an 
 
   const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
 
-  expect(out.actions[0]).toMatchObject({ type: "qualify", decl_index: 0, group_index: 0 });
+  expect(out.actions[0]).toMatchObject({
+    type: "qualify",
+    decl_index: 0,
+    group_index: 0,
+  });
   // No action_group declared → findIndex returns -1 (comparator maps -1 → +∞).
-  expect(out.actions[1]).toMatchObject({ type: "send-quote", decl_index: 1, group_index: -1 });
+  expect(out.actions[1]).toMatchObject({
+    type: "send-quote",
+    decl_index: 1,
+    group_index: -1,
+  });
 });
 
 test("makeWorkflowsConfig: decl_index/group_index default to -1 group when a workflow declares no groups", () => {
   const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
 
-  expect(out.actions[0]).toMatchObject({ type: "do-it", decl_index: 0, group_index: -1 });
+  expect(out.actions[0]).toMatchObject({
+    type: "do-it",
+    decl_index: 0,
+    group_index: -1,
+  });
 });
