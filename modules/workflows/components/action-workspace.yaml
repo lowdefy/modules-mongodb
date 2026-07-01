@@ -50,49 +50,67 @@
 # History reference_value, and the mount gate.
 #
 # Loading + mount sequencing (Part 26) — the shell renders immediately; it no
-# longer blanks the whole page on the self-set `entity_id`. The middle action
-# surface and the RHS Details/History card show content-shaped skeletons while
-# the action request is in flight, swapped on `_not: _request: get_workflow_action`
-# (the request is the source of truth — never gate `loading` on the self-set
-# `entity_id`, per the loading-skeletons idiom). The two id-dependent panels keep
-# a narrowed entity-id gate: `actions-on-entity` (its `call_entity_workflows`
-# onMount CallAPI) and the History timeline (`reference_value: _state.entity_id`)
-# must mount only once the id resolves, so their onMount reads never fire with a
-# null id (a `visible: false` block does not mount). The gate is now on just those
-# panels, not the whole shell.
+# longer blanks the whole page on the self-set `entity_id`. All three columns
+# (left card, middle surface, RHS Details/History card) show content-shaped
+# skeletons while the action request is in flight, swapped on
+# `_not: _request: get_workflow_action` (the request is the source of truth —
+# never gate `loading` on the self-set `entity_id`, per the loading-skeletons
+# idiom), so every column reserves its width from first paint and nothing pops
+# in. The two id-dependent panels keep a narrowed entity-id gate INSIDE their
+# card: `actions-on-entity` (its `call_entity_workflows` onMount CallAPI) and the
+# History timeline (`reference_value: _state.entity_id`) must mount only once the
+# id resolves — set a beat after the request resolves in the same onMount — so
+# their onMount reads never fire with a null id (a `visible: false` block does
+# not mount). The gate is on those inner panels, not the cards or the shell.
 id: action_workspace
 type: Box
 layout:
   gap: 16
 blocks:
   # LEFT — the entity's workflows + steps (current row links to its action page),
-  # in a card. Entity-id-gated (Part 26): the inner actions-on-entity panel fires
-  # an onMount CallAPI keyed on entity_id, so it must not mount until the id is
-  # set (a non-visible block does not mount).
+  # in a card. The CARD renders immediately with a content-shaped skeleton while
+  # the action request is in flight (Part 26), gated on the request — never the
+  # self-set entity_id — so it reserves its column width and doesn't pop in (the
+  # layout-shift fix). The entity-id gate is narrowed to the INNER panel: the
+  # actions-on-entity block fires an onMount CallAPI keyed on entity_id, so it
+  # must not mount until the id is set (a non-visible block does not mount), and
+  # entity_id lands a beat after the request resolves in the same onMount.
   - id: workspace_left
     type: Card
-    visible:
-      _ne:
-        - _state: entity_id
-        - null
+    loading:
+      _not:
+        _request: get_workflow_action
+    skeleton:
+      type: Card
+      blocks:
+        - type: Skeleton
+          properties:
+            height: 400
     layout:
       span: 6
       sm:
         span: 24
     blocks:
-      - _ref:
-          path: components/actions-on-entity.yaml
-          vars:
-            entity_id:
-              _state: entity_id
-            entity_connection_id:
-              _var: entity_connection_id
-            # The action page is addressed by ?action_id; pass it so the left
-            # panel highlights the current action's row (Part 60). The URL
-            # convention stays here at the workspace layer; the component just
-            # takes an optional id.
-            active_action_id:
-              _url_query: action_id
+      - id: workspace_left_panel
+        type: Box
+        visible:
+          _ne:
+            - _state: entity_id
+            - null
+        blocks:
+          - _ref:
+              path: components/actions-on-entity.yaml
+              vars:
+                entity_id:
+                  _state: entity_id
+                entity_connection_id:
+                  _var: entity_connection_id
+                # The action page is addressed by ?action_id; pass it so the left
+                # panel highlights the current action's row (Part 60). The URL
+                # convention stays here at the workspace layer; the component just
+                # takes an optional id.
+                active_action_id:
+                  _url_query: action_id
   # MIDDLE — the caller-supplied action surface, with the floating action bar
   # (addendum DA3) docked at the bottom of the column when `actions` is non-empty.
   - id: workspace_middle
