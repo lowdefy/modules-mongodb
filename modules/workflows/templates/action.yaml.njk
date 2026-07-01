@@ -328,9 +328,12 @@ _ref:
                                 _state: current_action.change_request_comment
                               comment_visibility:
                                 _if:
-                                  - _state: current_action.change_request_comment_internal
-                                  - internal
-                                  - shared
+                                  test:
+                                    _eq:
+                                      - _state: current_action.change_request_comment_internal
+                                      - true
+                                  then: internal
+                                  else: shared
                       # Terminal signal — return to the entity on success.
                       - _ref:
                           path: components/return-to-entity.yaml
@@ -431,9 +434,12 @@ _ref:
                             _state: current_action.comment
                           comment_visibility:
                             _if:
-                              - _state: current_action.comment_internal
-                              - internal
-                              - shared
+                              test:
+                                _eq:
+                                  - _state: current_action.comment_internal
+                                  - true
+                              then: internal
+                              else: shared
                     - id: refetch_action_progress
                       type: Request
                       params: get_workflow_action

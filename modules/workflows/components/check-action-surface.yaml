@@ -256,9 +256,12 @@ blocks:
                         _state: current_action.comment
                       comment_visibility:
                         _if:
-                          - _state: current_action.comment_internal
-                          - internal
-                          - shared
+                          test:
+                            _eq:
+                              - _state: current_action.comment_internal
+                              - true
+                          then: internal
+                          else: shared
               - _var:
                   key: on_complete
                   default: []
@@ -303,9 +306,12 @@ blocks:
                         _state: current_action.comment
                       comment_visibility:
                         _if:
-                          - _state: current_action.comment_internal
-                          - internal
-                          - shared
+                          test:
+                            _eq:
+                              - _state: current_action.comment_internal
+                              - true
+                          then: internal
+                          else: shared
               - _var:
                   key: on_complete
                   default: []
@@ -350,9 +356,12 @@ blocks:
                         _state: current_action.comment
                       comment_visibility:
                         _if:
-                          - _state: current_action.comment_internal
-                          - internal
-                          - shared
+                          test:
+                            _eq:
+                              - _state: current_action.comment_internal
+                              - true
+                          then: internal
+                          else: shared
               - _var:
                   key: on_complete
                   default: []
@@ -427,9 +436,12 @@ blocks:
                         _state: current_action.comment
                       comment_visibility:
                         _if:
-                          - _state: current_action.comment_internal
-                          - internal
-                          - shared
+                          test:
+                            _eq:
+                              - _state: current_action.comment_internal
+                              - true
+                          then: internal
+                          else: shared
               - _var:
                   key: on_complete
                   default: []
@@ -474,9 +486,12 @@ blocks:
                         _state: current_action.comment
                       comment_visibility:
                         _if:
-                          - _state: current_action.comment_internal
-                          - internal
-                          - shared
+                          test:
+                            _eq:
+                              - _state: current_action.comment_internal
+                              - true
+                          then: internal
+                          else: shared
               - _var:
                   key: on_complete
                   default: []
@@ -523,9 +538,12 @@ blocks:
                     _state: current_action.change_request_comment
                   comment_visibility:
                     _if:
-                      - _state: current_action.change_request_comment_internal
-                      - internal
-                      - shared
+                      test:
+                        _eq:
+                          - _state: current_action.change_request_comment_internal
+                          - true
+                      then: internal
+                      else: shared
           - _var:
               key: on_complete
               default: []

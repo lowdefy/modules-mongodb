@@ -35,7 +35,11 @@
 #
 # The payload mapping lives at each BUTTON site, not here: a button reads
 # `comment: { _state: comment_path }` and maps the toggle to the string enum via
-# `comment_visibility: { _if: [{ _state: visibility_path }, internal, shared] }`.
+# `comment_visibility: { _if: { test: { _eq: [{ _state: visibility_path }, true] },
+# then: internal, else: shared } }`. The test is `_eq [..., true]` rather than the
+# bare `_state`, because the CheckboxSwitch is hidden unless the host opted in and a
+# hidden input's value drops out of state — the bare state would be `undefined`, not
+# a boolean, and `_if` requires a boolean test.
 id:
   _string.concat:
     - _var: comment_path
