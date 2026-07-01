@@ -54,7 +54,6 @@ blocks:
   - _ref:
       path: components/universal-fields/universal-fields.yaml
       vars:
-        mode: edit
         show_update_button: false
         state_path:
           _var: state_path

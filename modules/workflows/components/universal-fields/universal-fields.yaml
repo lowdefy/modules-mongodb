@@ -1,27 +1,25 @@
-# Universal-fields surface (Part 24; Part 64 shrank it to two fields).
+# Universal-fields EDIT surface (Part 24; Part 64 shrank it to two fields;
+# Part 67 removed the display group).
 #
-# Renders the action-level universal fields (assignees / due_date) for one
-# action, in edit or display mode. The surface is always a plain Box (no card
-# chrome): its container owns the chrome. Every consumer gets the same
-# standalone Update button (edit mode) that calls the per-workflow
-# `{workflow_type}-update-fields` operation — independent of any form submit or
-# FSM transition. (Part 64 removed the editable `description` field; the action
-# body `description` is now author-authored config, rendered separately by
+# Renders the action-level universal-fields EDIT inputs (assignees / due_date)
+# for one action. The surface is always a plain Box (no card chrome): its
+# container owns the chrome. Every consumer gets the same standalone Update
+# button that calls the per-workflow `{workflow_type}-update-fields` operation —
+# independent of any form submit or FSM transition. (Part 64 removed the
+# editable `description` field; the action body `description` is now
+# author-authored config, rendered separately by
 # `components/action-description.yaml`.)
 #
-# Placement (Part 56 addendum DA1): on the action workspace pages the EDIT group
-# is hosted inside `universal-fields-modal.yaml` (opened by the title-bar ✎ chip),
-# while DISPLAY is split out of this component — assignees + due render as
-# title-bar chips (`universal-fields-chips.yaml`). The `mode: display` group
-# below is therefore no longer used by the workspace pages; it stays intact
-# because the component is shared and the in-context check-action surface still
-# composes this component inline (D6, untouched).
+# Placement (Part 56 addendum DA1): the EDIT inputs are hosted inside
+# `universal-fields-modal.yaml` (opened by the title-bar ✎ chip). Read-only
+# display of assignees + due now lives entirely in the title-bar chips
+# (`universal-fields-chips.yaml`) on every surface — including the in-context
+# check-action surface — so the former `mode: display` group was removed
+# (Part 67), and with it the `mode` var: this component now only renders edit
+# inputs.
 #
 # Consumed via `_ref: { path: ..., vars: {...} }` with OPERATOR-valued vars, so
 # block-id namespacing uses `_string.concat` (not njk). Vars:
-#   - mode         'edit' | 'display' (required). Literal from the form
-#                  templates; a runtime `_if` operator from the check surface —
-#                  so mode is gated at RUNTIME (`_eq`), never `_build.*`.
 #   - state_path   state namespace for the edit inputs (default `fields`). Block
 #                  ids become `{state_path}.{field}`; the Update Validate is
 #                  scoped to `^{state_path}\.`.
@@ -30,17 +28,13 @@
 #   - action_id    operator leaf the Update payload posts (action root differs
 #                  per consumer, so the consumer passes it).
 #   - allowed_edit operator leaf — gates the Update button (visible) and the
-#                  inline inputs (disabled). Defaults false (display consumers
-#                  pass nothing).
+#                  inline inputs (disabled). Defaults false.
 #   - show         build-time array of field names to render (default both;
 #                  per-field presence gated via `_build.array.includes`).
 #   - show_update_button  build-time flag — render the in-body Update button
 #                  (default true). The edit modal sets false and drives the
 #                  Update from its native footer Ok instead (Part 56 addendum).
-#   - action_data  map of operator leaves: assignees, due_date, and
-#                  (display) assignee_docs.
 #   - on_complete  actions appended after the Update CallAPI (default []).
-#   - date_format  display date format (default `MMM D, YYYY`).
 id: universal_fields
 type: Box
 # Render nothing when the presence list is empty (the form templates also omit
@@ -59,13 +53,9 @@ visible:
 layout:
   gap: 16
 blocks:
-  # ── Edit group (mode: edit) — inputs + standalone Update button ───────────
+  # ── Edit inputs + standalone Update button ────────────────────────────────
   - id: universal_fields_edit_group
     type: Box
-    visible:
-      _eq:
-        - _var: mode
-        - edit
     layout:
       gap: 16
     blocks:
@@ -115,11 +105,10 @@ blocks:
                       - false
             else: []
         # Update button — rendered only when the consumer hosts the action in the
-        # body. The in-context check surface needs it (its host modal has no
-        # standard footer); the edit MODAL passes show_update_button: false and
-        # runs the SAME sequence from its native footer Ok instead. Visible only
-        # with the edit verb. The action sequence is the shared
-        # update_fields_actions.yaml fragment (one correct way).
+        # body (show_update_button: true). The edit MODAL passes false and runs
+        # the SAME sequence from its native footer Ok instead. The action
+        # sequence is the shared update_fields_actions.yaml fragment (one
+        # correct way).
         - _build.if:
             test:
               _var:
@@ -152,114 +141,4 @@ blocks:
                           _var:
                             key: on_complete
                             default: []
-            else: []
-  # ── Display group (mode: display) — read-only with empty-state placeholders ─
-  - id: universal_fields_display_group
-    type: Box
-    visible:
-      _eq:
-        - _var: mode
-        - display
-    layout:
-      gap: 16
-    blocks:
-      _build.array.concat:
-        # assignees → one avatar per assignee_docs entry; placeholder when empty
-        - _build.if:
-            test:
-              _build.array.includes:
-                on:
-                  _var:
-                    key: show
-                    default: [assignees, due_date]
-                value: assignees
-            then:
-              - id: universal_fields_assignees_label
-                type: Title
-                properties:
-                  level: 5
-                  content: Assignees
-              # A single Avatar block in group mode renders an overlapping
-              # Avatar.Group from the resolved docs. A `List` is the wrong tool: a
-              # list-category block iterates STATE at its own id (not
-              # `properties.data`), so with no state seeded at the list id it
-              # renders zero items. Computing the avatars array sidesteps per-item
-              # state binding. (assignee_docs entries: { _id, profile: { name,
-              # picture } }; picture is a pre-generated SVG, so `content` — the
-              # name initial — is only a fallback.)
-              - id: universal_fields_assignees_list
-                type: Avatar
-                visible:
-                  _gt:
-                    - _array.length:
-                        _var: action_data.assignee_docs
-                    - 0
-                properties:
-                  group:
-                    avatars:
-                      _js:
-                        args:
-                          docs:
-                            _var: action_data.assignee_docs
-                        fn: |
-                          const docs = args.docs || [];
-                          return docs.map((d) => {
-                            const name = d.profile && d.profile.name;
-                            return {
-                              src: d.profile && d.profile.picture,
-                              alt: name,
-                              content: name ? name.charAt(0).toUpperCase() : undefined,
-                            };
-                          });
-              - id: universal_fields_assignees_empty
-                type: Paragraph
-                visible:
-                  _not:
-                    _gt:
-                      - _array.length:
-                          _var: action_data.assignee_docs
-                      - 0
-                properties:
-                  type: secondary
-                  content: Not assigned
-            else: []
-        # due_date → formatted date; placeholder when null
-        - _build.if:
-            test:
-              _build.array.includes:
-                on:
-                  _var:
-                    key: show
-                    default: [assignees, due_date]
-                value: due_date
-            then:
-              - id: universal_fields_due_date_label
-                type: Title
-                properties:
-                  level: 5
-                  content: Due date
-              - id: universal_fields_due_date_value
-                type: Paragraph
-                visible:
-                  _ne:
-                    - _var: action_data.due_date
-                    - null
-                properties:
-                  content:
-                    _dayjs.format:
-                      on:
-                        _var: action_data.due_date
-                      format:
-                        _var:
-                          key: date_format
-                          default: MMM D, YYYY
-              - id: universal_fields_due_date_empty
-                type: Paragraph
-                visible:
-                  _eq:
-                    - _var: action_data.due_date
-                    - null
-                properties:
-                  type: secondary
-                  content: No due date
             else: []
