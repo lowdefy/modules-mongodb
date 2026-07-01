@@ -404,7 +404,7 @@ describe("seeded drafts", () => {
     expect(a["test-app"].message).toBe("Kick-off task for lead-1.");
   });
 
-  test("groups[] composed via planWorkflowRecompute in declaration order", async () => {
+  test("Part 66: the created doc carries no summary/groups cache", async () => {
     await StartWorkflow(
       buildContext({
         request: {
@@ -422,24 +422,12 @@ describe("seeded drafts", () => {
       }),
     );
     const wf = await readOneWorkflow();
-    expect(wf.summary).toEqual({ done: 0, not_required: 0, total: 3 });
-    expect(wf.groups).toEqual([
-      {
-        id: "phase-1",
-        status: "in-progress",
-        summary: { done: 0, not_required: 0, total: 2 },
-      },
-      {
-        id: "phase-2",
-        status: "blocked",
-        summary: { done: 0, not_required: 0, total: 1 },
-      },
-      {
-        id: "phase-3",
-        status: "done",
-        summary: { done: 0, not_required: 0, total: 0 },
-      },
-    ]);
+    // Denormalised caches dropped — overview counts derive on read.
+    expect("summary" in wf).toBe(false);
+    expect("groups" in wf).toBe(false);
+    // The seeds still land as action docs (the source of truth for counts).
+    const actionCount = await mongo.db.collection("actions").countDocuments({});
+    expect(actionCount).toBe(3);
   });
 });
 
@@ -509,8 +497,6 @@ describe("started as a tracker child", () => {
         ref_key: "lead_ids",
       },
       status: [{ stage: "active", event_id: "e0", created: changeStamp }],
-      summary: { done: 0, not_required: 0, total: 2 },
-      groups: [],
       form_data: {},
       created: changeStamp,
       updated: changeStamp,
@@ -551,7 +537,7 @@ describe("started as a tracker child", () => {
     });
   }
 
-  test("parent tracker lands in-progress with the child link fields, recomputed groups/summary, and a mirror event", async () => {
+  test("parent tracker lands in-progress with the child link fields and a mirror event", async () => {
     await seedParent();
     const calls = [];
     const result = await StartWorkflow(
@@ -576,11 +562,13 @@ describe("started as a tracker child", () => {
       id: "child-entity",
     });
 
-    // Parent groups/summary recomputed (deliberate delta vs today's stale push).
+    // Part 66: the parent doc carries no summary/groups cache after the
+    // tracker cascade recompose (counts derive on read now).
     const parentWf = await mongo.db
       .collection("workflows")
       .findOne({ _id: "wf-parent" });
-    expect(parentWf.summary.total).toBe(2);
+    expect("summary" in parentWf).toBe(false);
+    expect("groups" in parentWf).toBe(false);
 
     // Parent timeline gains an action-internal-mirror-active event.
     const mirrorEvents = await mongo.db
