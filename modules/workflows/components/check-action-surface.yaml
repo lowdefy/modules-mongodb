@@ -69,32 +69,78 @@ blocks:
       showIcon: true
       message: Workflow closed
       description: This workflow is closed. Updates to this action are no longer accepted.
-  # 2. Header — shared title-block (status pill from the current_action.stage
-  #    scalar · message title · universal-fields chips in page_actions). No
-  #    eyebrow (the modal's host page already names the workflow, D3) and no
-  #    subtitle (no description/doc var — the authored description renders below,
-  #    D3). The chips read the RESOLVED envelope values (assignee_docs / due_date),
-  #    not the working copy; the ✎ opens the edit modal mounted below.
-  - _ref:
-      path: ../shared/layout/title-block.yaml
-      vars:
-        title:
-          _state: current_action.message
-        status:
-          _state: current_action.stage
-        status_enum:
-          _ref: ../shared/enums/action_statuses.yaml
-        show_back_button: false
-        page_actions:
-          - _ref:
-              path: components/universal-fields/universal-fields-chips.yaml
-              vars:
-                modal_id: universal_fields_edit_modal
-                action_data:
-                  assignee_docs:
-                    _state: current_action.assignee_docs
-                  due_date:
-                    _state: current_action.due_date
+  # 2. Header — compact modal header (Part 65 D3, Option A). Hand-rolled and
+  #    modal-namespaced — deliberately NOT the shared page `title-block`. One row:
+  #    status pill (left) · message title (18px) · universal-fields chips (right).
+  #    Reverts the shared-component header (the original D3 attempt): page-scaled
+  #    at the modal's 750px it read as oversized chrome (text-2xl title, chunky
+  #    pill, dead subtitle gap), and title-block's fixed block ids (`title`,
+  #    `title-status-pill`, `page-actions`, …) collided with the host page's own
+  #    title-block header, since block ids aren't module-scoped. The compact
+  #    hand-rolled header fixes both at once (see design D3).
+  #    - Pill: resolves label + the three-colour contract from action_statuses,
+  #      keyed by the current_action.stage scalar (D4); self-hides on no match.
+  #    - No eyebrow / no subtitle: the modal's host page already names the
+  #      workflow, and the authored description renders below (D3).
+  #    - Chips read the RESOLVED envelope values (assignee_docs / due_date), not
+  #      the working copy; the ✎ opens the edit modal mounted below.
+  - id: action_header
+    type: Box
+    layout:
+      direction: row
+      contentAlign: center
+      wrap: nowrap
+      gap: 12
+    blocks:
+      - id: action_status_pill
+        type: Html
+        layout:
+          flex: 0 0 auto
+        # Visible only once the stage slug resolves to an enum entry — an
+        # unmatched/null stage hides the pill (no empty placeholder).
+        visible:
+          _ne:
+            - _get:
+                from:
+                  _ref: ../shared/enums/action_statuses.yaml
+                key:
+                  _state: current_action.stage
+            - null
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <span style="display:inline-block; padding:8px 14px; border-radius:6px; font-size:13px; font-weight:500; line-height:1; white-space:nowrap; background-color:{{ entry.color }}; border:1px solid {{ entry.borderColor }}; color:{{ entry.titleColor }};">{{ entry.title | safe }}</span>
+              on:
+                entry:
+                  _get:
+                    from:
+                      _ref: ../shared/enums/action_statuses.yaml
+                    key:
+                      _state: current_action.stage
+      # Message as the heading (18px). Grows to fill the row so the chips hold
+      # the right edge; a long title wraps within this column.
+      - id: action_title
+        type: Html
+        layout:
+          flex: 1 1 0
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <h2 class="text-lg font-semibold" style="margin:0;">{{ title | safe }}</h2>
+              on:
+                title:
+                  _state: current_action.message
+      - _ref:
+          path: components/universal-fields/universal-fields-chips.yaml
+          vars:
+            modal_id: universal_fields_edit_modal
+            action_data:
+              assignee_docs:
+                _state: current_action.assignee_docs
+              due_date:
+                _state: current_action.due_date
   # 3. Authored description — read-only Markdown lead-in (Part 64). Self-hides
   #    when the action carries no authored description.
   - _ref:
