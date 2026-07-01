@@ -2,6 +2,7 @@ import planActionTransition from "./planners/planActionTransition.js";
 import planAutoUnblock from "./planners/planAutoUnblock.js";
 import planFormDataMerge from "./planners/planFormDataMerge.js";
 import planWorkflowRecompute from "./planners/planWorkflowRecompute.js";
+import recomputeGroups from "./planners/recomputeGroups.js";
 import planEventDispatch from "./planners/planEventDispatch.js";
 import planChangeLog from "./planners/planChangeLog.js";
 import { WorkflowEngineError } from "../errors.js";
@@ -21,7 +22,8 @@ import { WorkflowEngineError } from "../errors.js";
  *      throw/no-op live inside the planner).
  *   3. planAutoUnblock fixpoint.
  *   4. planFormDataMerge → planWorkflowRecompute.
- *   5. completedGroups diff (loaded groups vs planned groups, `on_complete` join).
+ *   5. completedGroups diff (loaded vs planned group status, both recomputed
+ *      from the action docs; `on_complete` join).
  *   6. (folded into planActionTransition — doc/cell/links composed per action.)
  *   7. planEventDispatch (action-event context).
  *   8. planChangeLog.
@@ -165,11 +167,19 @@ function planSubmit({ loadedState, preHookResult, context }) {
   });
 
   // ── Step 5 — completed_groups diff (loaded groups vs planned groups) ─────
+  // Part 66: the denormalised `groups[]` cache is gone, so both sides of the
+  // diff are recomputed on the fly from the action docs — the loaded (pre-
+  // transition) actions for "before", the planned actions for "after". This is
+  // the group state the cache used to hold, derived without staleness.
   const loadedGroupById = new Map(
-    (workflow.groups ?? []).map((g) => [g.id, g]),
+    recomputeGroups({ declaredGroups, actions }).map((g) => [g.id, g]),
   );
+  const plannedGroups = recomputeGroups({
+    declaredGroups,
+    actions: plannedActions,
+  });
   const completedGroups = [];
-  for (const planned of plannedWorkflowDoc.groups ?? []) {
+  for (const planned of plannedGroups) {
     const before = loadedGroupById.get(planned.id);
     if (planned.status === "done" && before?.status !== "done") {
       const cfg = declaredGroups.find((g) => g.id === planned.id);
