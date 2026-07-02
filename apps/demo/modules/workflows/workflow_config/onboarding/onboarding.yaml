@@ -76,6 +76,42 @@ action_groups:
   - id: qualification
     title: Qualify
     icon: AiOutlineUserAdd
+    # Group `on_complete` — worked example. When the qualification phase reaches
+    # `done` (here: the sole `qualify` action completes), the engine fires this
+    # routine once, post-commit, and it advances the lead's pipeline status to
+    # `qualified`. This is the group-level counterpart to a per-action post-hook:
+    # the status change belongs to the *phase* completing, not to one action, so
+    # it lives on the group. Because `on_complete` fires only on the transition
+    # to `done`, no replay guard is needed — a later re-edit of an already-done
+    # action leaves the group `done` and never re-fires this (contrast the
+    # `$cond` guard a re-runnable post-hook needs). The routine reaches the lead
+    # id off its payload: dispatchGroupOnComplete sends the committed workflow
+    # doc as `context.workflow`, so `context.workflow.entity.id` is the lead _id.
+    on_complete:
+      routine:
+        - id: advance_lead_status
+          type: MongoDBUpdateOne
+          connectionId: leads-collection
+          properties:
+            filter:
+              _id:
+                _payload: context.workflow.entity.id
+            update:
+              # Prepend the `qualified` stage onto the newest-first status array.
+              - $set:
+                  status:
+                    $concatArrays:
+                      - - stage: qualified
+                          created:
+                            _ref:
+                              module: events
+                              component: change_stamp
+                      - $ifNull:
+                          - $status
+                          - []
+        - :return:
+            lead_id:
+              _payload: context.workflow.entity.id
   - id: quoting
     title: Quote
     icon: AiOutlineFileText

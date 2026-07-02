@@ -54,20 +54,17 @@ hooks:
                     signal: activate
                     upsert: true
                 else: []
-    # Post-submit (Part 26 pattern, mirrors company-setup/billing-details):
-    # advance the lead's pipeline status to `qualified` and persist the values
-    # the form already captured (point of contact + estimated value).
+    # Post-submit: persist the values the form captured (point of contact +
+    # estimated value). The lead's *pipeline status* advance lives on the
+    # qualification group's `on_complete` (see onboarding.yaml) — the phase
+    # completing owns the status change, not this action.
     #
-    # Uses aggregation-pipeline update syntax so the write is replay-safe on
-    # re-submit from the edit page: the $set of contact/value/stamp always
-    # applies, but the `qualified` stage is only prepended when the current
-    # status.0.stage isn't already `qualified`. (A plain $push behind a
-    # status.0.stage $ne filter can't do this — the filter would gate the whole
-    # update, so re-edits wouldn't persist, and a zero-match would error.)
+    # Uses aggregation-pipeline update syntax; the $set of contact/value/stamp
+    # always applies, so a re-submit from the edit page re-persists cleanly.
     # Filter is a plain _id match, so it always matches; no guard needed.
     post:
       routine:
-        - id: advance_lead_status
+        - id: persist_qualification_fields
           type: MongoDBUpdateOne
           connectionId: leads-collection
           properties:
@@ -84,25 +81,6 @@ hooks:
                     _ref:
                       module: events
                       component: change_stamp
-                  status:
-                    $cond:
-                      if:
-                        $ne:
-                          - $arrayElemAt:
-                              - $status.stage
-                              - 0
-                          - qualified
-                      then:
-                        $concatArrays:
-                          - - stage: qualified
-                              created:
-                                _ref:
-                                  module: events
-                                  component: change_stamp
-                          - $ifNull:
-                              - $status
-                              - []
-                      else: $status
         - :return:
             lead_id:
               _payload: context.workflow.entity.id

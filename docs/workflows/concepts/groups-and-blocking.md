@@ -52,6 +52,37 @@ The engine recomputes and persists group status on the workflow doc as part of e
 
 **`on_complete` hook.** When a group transitions to `done`, the engine calls the routine declared in `on_complete`. Use this to update entity fields, emit custom events, or trigger external integrations. The hook fires after notifications dispatch; the log event is already in the database when it runs. It does not fire when a workflow is cancelled.
 
+`on_complete` is a `{ routine: [...] }` object — the same shape as a hook routine. The routine receives a payload of `{ workflow_id, workflow_type, group_id, user, context }`, where `context.workflow` is the committed workflow doc — so `context.workflow.entity.id` is the entity's `_id`.
+
+**Worked example — advance the entity's pipeline status when a phase completes.** When the `qualification` group finishes, stamp the lead's status to `qualified`:
+
+```yaml
+action_groups:
+  - id: qualification
+    title: Qualify
+    on_complete:
+      routine:
+        - id: advance_lead_status
+          type: MongoDBUpdateOne
+          connectionId: leads-collection
+          properties:
+            filter:
+              _id: { _payload: context.workflow.entity.id }
+            update:
+              # Prepend the new stage onto the newest-first status array.
+              - $set:
+                  status:
+                    $concatArrays:
+                      - - stage: qualified
+                          created:
+                            _ref: { module: events, component: change_stamp }
+                      - { $ifNull: [$status, []] }
+```
+
+**Why a group `on_complete` and not a per-action post-hook?** A status like "qualified" describes the *phase* finishing, not one action — so it belongs to the group, and it fires correctly even when the phase spans several actions. It also needs **no replay guard**: `on_complete` fires only on the transition to `done`, so re-editing an already-`done` action never re-fires it. (A re-runnable post-hook that advanced status would need a `$cond` to avoid prepending the stage twice.) Reach for a post-hook instead when the side effect needs the submitted `form` data (which `on_complete` does not receive) or must run on a specific action rather than the whole phase.
+
+> **Note.** `on_complete` fires for groups that complete on the workflow you submit against. A group whose completion is driven purely by a **tracker cascade** from a child workflow does not currently fire its `on_complete` — put such side effects on the child, or on the tracker action's mirror-signal hook.
+
 ## `blocked_by` — action-type and group references
 
 An action's `blocked_by:` list accepts both action types and group IDs, mixed freely:
