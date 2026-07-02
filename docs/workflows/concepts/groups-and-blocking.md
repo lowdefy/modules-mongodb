@@ -69,17 +69,25 @@ action_groups:
             filter:
               _id: { _payload: context.workflow.entity.id }
             update:
-              # Prepend the new stage onto the newest-first status array.
+              # Idempotent prepend: only add `qualified` if it isn't already the
+              # current stage (a group can re-complete — see below).
               - $set:
                   status:
-                    $concatArrays:
-                      - - stage: qualified
-                          created:
-                            _ref: { module: events, component: change_stamp }
-                      - { $ifNull: [$status, []] }
+                    $cond:
+                      if:
+                        $ne: [{ $arrayElemAt: [$status.stage, 0] }, qualified]
+                      then:
+                        $concatArrays:
+                          - - stage: qualified
+                              created:
+                                _ref: { module: events, component: change_stamp }
+                          - { $ifNull: [$status, []] }
+                      else: $status
 ```
 
-**Why a group `on_complete` and not a per-action post-hook?** A status like "qualified" describes the *phase* finishing, not one action — so it belongs to the group, and it fires correctly even when the phase spans several actions. It also needs **no replay guard**: `on_complete` fires only on the transition to `done`, so re-editing an already-`done` action never re-fires it. (A re-runnable post-hook that advanced status would need a `$cond` to avoid prepending the stage twice.) Reach for a post-hook instead when the side effect needs the submitted `form` data (which `on_complete` does not receive) or must run on a specific action rather than the whole phase.
+**Why a group `on_complete` and not a per-action post-hook?** A status like "qualified" describes the *phase* finishing, not one action — so it belongs to the group, and it fires correctly even when the phase spans several actions. Reach for a post-hook instead when the side effect needs the submitted `form` data (which `on_complete` does not receive) or must run on a specific action rather than the whole phase.
+
+**Make `on_complete` routines idempotent.** The engine fires `on_complete` on every transition of the group to `done` — and a group can complete more than once. A `done` form or check action can be reopened (`request_changes` → `changes-required`, or `activate` → `action-required`) and later re-completed, at which point the group re-enters `done` and `on_complete` fires again. Write routines that tolerate re-firing (the example's `$cond` avoids prepending `qualified` twice). This is the same idempotency contract as post-hooks; `on_complete` failures propagate after the writes have committed.
 
 > **Parent workflows fire too.** `on_complete` fires for every group that transitions to `done` in a submit — including groups on a **parent** workflow reached by tracker propagation. When a child workflow completes and its parent's tracker action flips to `done`, any parent group that thereby completes fires its own `on_complete`, with `context.workflow` set to the parent doc. It does not fire on cancel or close.
 
