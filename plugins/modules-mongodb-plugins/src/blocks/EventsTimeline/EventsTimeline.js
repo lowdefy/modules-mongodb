@@ -460,7 +460,12 @@ function EventAction({
                     action.message || statusConf.title || action.status,
                   ),
                 }}
-                style={{ fontSize: 13 }}
+                // Use the fixed-dark status accent for the text, matching the
+                // fixed-light `statusConf.color` card background. Without it the
+                // span inherits the theme text color, which is light in dark mode
+                // → light-on-light (invisible). titleColor is undefined for an
+                // unknown status → inherits, the correct fallback.
+                style={{ fontSize: 13, color: statusConf.titleColor }}
               />
             }
           />

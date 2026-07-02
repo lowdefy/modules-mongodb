@@ -2,6 +2,7 @@ import loadWorkflowState from "../../shared/phases/loadWorkflowState.js";
 import invokePreHook from "../../shared/phases/invokePreHook.js";
 import planSubmit from "../../shared/phases/planSubmit.js";
 import commitPlan from "../../shared/phases/commitPlan.js";
+import dispatchGroupOnComplete from "../../shared/phases/dispatchGroupOnComplete.js";
 import invokePostHook from "../../shared/phases/invokePostHook.js";
 import runTrackerCascade from "../../shared/phases/runTrackerCascade.js";
 import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js";
@@ -66,6 +67,12 @@ async function handleSubmit(context) {
 
   // ── Commit (D9: workflow CAS → actions → event → notifications → log) ────
   const commitResult = await commitPlan(context, plan);
+
+  // ── Group on_complete (fires for groups that flipped to done this submit) ─
+  // Post-commit, ahead of the tracker cascade + post-hook, matching the
+  // documented lifecycle (concepts/hooks.md step 9). Endpoint ids arrive
+  // pre-scoped on params.group_on_complete (build-resolved), keyed by group id.
+  await dispatchGroupOnComplete(plan, params, user, callApi);
 
   // ── Tracker cascade (task 16; per-level load-plan-commit loop) ───────────
   const cascade = await runTrackerCascade(plan.trackerFires, context);

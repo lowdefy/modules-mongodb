@@ -116,7 +116,12 @@ function emitRenderConfig(workflow, workflowsByType, edges) {
   return Object.keys(config).length > 0 ? config : undefined;
 }
 
-function emitSubmitEndpoint(workflow, hooksByAction, renderConfig) {
+function emitSubmitEndpoint(
+  workflow,
+  hooksByAction,
+  renderConfig,
+  groupOnComplete,
+) {
   const properties = {
     action_id: { _payload: "action_id" },
     signal: { _payload: "signal" },
@@ -132,6 +137,11 @@ function emitSubmitEndpoint(workflow, hooksByAction, renderConfig) {
     // display config. Keyed by action type (Part 48 D7) — handleSubmit
     // re-slices to the signal-keyed shape the hook phases consume.
     ...(hooksByAction ? { hooks: hooksByAction } : {}),
+    // group_on_complete: pre-scoped on-complete endpoint ids keyed by group id,
+    // consumed off params by dispatchGroupOnComplete (same build-resolved
+    // _module.endpointId mechanism as hooks). Present only for groups that
+    // declare an on_complete routine.
+    ...(groupOnComplete ? { group_on_complete: groupOnComplete } : {}),
     ...(renderConfig ? { render_config: renderConfig } : {}),
   };
 
@@ -331,6 +341,21 @@ function emitForWorkflow(workflow, { workflowsByType, edges }) {
   const apis = [];
   const renderConfig = emitRenderConfig(workflow, workflowsByType, edges);
 
+  // Group on_complete InternalApis + the id map the submit endpoint carries on
+  // params.group_on_complete. Built before emitSubmitEndpoint so the map can be
+  // passed in — dispatchGroupOnComplete reads it off params to fire each
+  // completed group's routine post-commit. Same build-resolved
+  // _module.endpointId mechanism as hooks. Groups without an on_complete
+  // routine emit no api and contribute no map entry.
+  const groupOnComplete = {};
+  for (const group of workflow.action_groups ?? []) {
+    const api = emitGroupOnCompleteApi(workflow, group);
+    if (api) {
+      apis.push(api);
+      groupOnComplete[group.id] = { "_module.endpointId": api.id };
+    }
+  }
+
   // One submit endpoint per workflow (Part 48); hook InternalApis stay
   // per-action with unchanged ids. Trackers are skipped — an all-tracker
   // workflow emits no submit endpoint.
@@ -350,6 +375,7 @@ function emitForWorkflow(workflow, { workflowsByType, edges }) {
         workflow,
         Object.keys(hooksByAction).length > 0 ? hooksByAction : undefined,
         renderConfig,
+        Object.keys(groupOnComplete).length > 0 ? groupOnComplete : undefined,
       ),
     );
     // Part 24: one update-fields endpoint per surface-bearing workflow (the
@@ -374,11 +400,6 @@ function emitForWorkflow(workflow, { workflowsByType, edges }) {
       signal: "closed",
     }),
   );
-
-  for (const group of workflow.action_groups ?? []) {
-    const api = emitGroupOnCompleteApi(workflow, group);
-    if (api) apis.push(api);
-  }
 
   const entityDataApi = emitEntityDataApi(workflow);
   if (entityDataApi) apis.push(entityDataApi);

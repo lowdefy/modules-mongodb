@@ -300,6 +300,33 @@ test("makeWorkflowApis: group on_complete Api emission", () => {
   expect(onComplete.routine).toEqual([{ id: "notify", type: "CallApi" }]);
 });
 
+test("makeWorkflowApis: submit endpoint carries group_on_complete keyed by group id — only groups with on_complete", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  // phase-1 declares on_complete; phase-2 / phase-3 do not. The id is wrapped in
+  // string-form _module.endpointId so the build walker resolves it to the same
+  // pre-scoped opaque string the dispatcher receives on params.group_on_complete.
+  expect(propsOf(findApi(apis, "onboarding-submit")).group_on_complete).toEqual({
+    "phase-1": {
+      "_module.endpointId": "onboarding-group-phase-1-on-complete",
+    },
+  });
+});
+
+test("makeWorkflowApis: group_on_complete absent when no group declares on_complete", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    action_groups: [{ id: "phase-1", title: "Discovery" }],
+    starting_actions: [{ type: "kickoff", status: "action-required" }],
+    actions: [{ type: "kickoff", kind: "check", action_group: "phase-1" }],
+  };
+  const apis = makeWorkflowApis(null, { workflows: [workflow] });
+  expect(propsOf(findApi(apis, "onboarding-submit"))).not.toHaveProperty(
+    "group_on_complete",
+  );
+});
+
 test("makeWorkflowApis: submit Api stays client-invokable type Api", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   expect(findApi(apis, "onboarding-submit").type).toBe("Api");
