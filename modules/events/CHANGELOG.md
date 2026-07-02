@@ -1,5 +1,11 @@
 # @lowdefy/modules-mongodb-events
 
+## 0.9.2
+
+### Patch Changes
+
+- [`384da61`](https://github.com/lowdefy/modules-mongodb/commit/384da6108b4c5ef599ff075ea6368eb95d2da050) Thanks [@JohannMoller](https://github.com/JohannMoller)! - **Fix: events-timeline connection ConfigError on default vars** — `actions_collection` and `contacts_collection` defaulted to `null`, but the `EventsTimeline` connection schema requires strings, so `get-events` threw `[ConfigError] property "actionsCollection" must be type "string"` at request time whenever a consumer left the vars unset. The var defaults are now the real collection names (`actions`, `user-contacts`) so the connection resolves to valid strings out of the box.
+
 ## 0.9.1
 
 ## 0.9.0
