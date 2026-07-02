@@ -29,7 +29,10 @@ _ref:
           tail:
             - label:
                 _state: workflow.title
-    type: Workflow
+    # Eyebrow names the entity this workflow hangs off ("{type}: {name}", e.g.
+    # "Company: Acme Corp") — same data as the breadcrumb trail, above the title.
+    type:
+      _ref: components/overview-entity-eyebrow.yaml
     status:
       _state: workflow.status.0.stage
     status_enum:

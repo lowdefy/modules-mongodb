@@ -1,0 +1,27 @@
+# Overview-page title-bar eyebrow (entity context).
+#
+# Returns the eyebrow STRING the two shared overview pages
+# (workflow-overview, workflow-group-overview) assign to their layout-page
+# `type` var — the small uppercased label above the title. Instead of a static
+# "Workflow", it names the entity this workflow hangs off, matching the data the
+# breadcrumb trail already carries:
+#
+#   {entity type}: {entity name}      e.g. "Company: Acme Corp"
+#
+# Reads `_state.workflow.entity_link` (carried on the get-(action-group-)overview
+# response, Part 63). Falls back to the type label alone when the instance name
+# is unresolved — the same `name ?? title` fallback the breadcrumb uses. Renders
+# empty until the API response lands (the entity is not knowable at build time);
+# the eyebrow has no skeleton, so it simply fills in when the workflow loads.
+_if:
+  test:
+    _ne:
+      - _state: workflow.entity_link.name
+      - null
+  then:
+    _string.concat:
+      - _state: workflow.entity_link.title
+      - ": "
+      - _state: workflow.entity_link.name
+  else:
+    _state: workflow.entity_link.title

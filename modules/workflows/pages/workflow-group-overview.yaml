@@ -40,7 +40,10 @@ _ref:
                   _url_query: workflow_id
             - label:
                 _state: group.title
-    type: Workflow
+    # Eyebrow names the entity this workflow hangs off ("{type}: {name}", e.g.
+    # "Company: Acme Corp") — same data as the breadcrumb trail, above the title.
+    type:
+      _ref: components/overview-entity-eyebrow.yaml
     status:
       _state: group.status
     status_enum:

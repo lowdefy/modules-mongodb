@@ -64,6 +64,11 @@ type: Modal
 properties:
   width: 750
   footer: false
+  # No native floating close X: with no title strip it floats over the full-width
+  # in-body header (status pill / title / chips) and overlaps it. The close
+  # affordance is an in-flow button in the header row instead (see
+  # check-action-surface.yaml); mask-click and Esc still close too.
+  closable: false
 requests:
   - id: get_workflow_action
     type: GetWorkflowAction
