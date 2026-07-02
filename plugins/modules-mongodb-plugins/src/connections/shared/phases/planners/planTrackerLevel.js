@@ -4,6 +4,7 @@ import planAutoUnblock from "./planAutoUnblock.js";
 import planWorkflowRecompute from "./planWorkflowRecompute.js";
 import planEventDispatch from "./planEventDispatch.js";
 import planChangeLog from "./planChangeLog.js";
+import recomputeGroups from "./recomputeGroups.js";
 
 /**
  * Plan-phase orchestrator for ONE tracker-cascade level (design D3 / D10 / D12;
@@ -183,6 +184,32 @@ function planTrackerLevel(
         ]
       : [];
 
+  // ── Completed-groups diff (loaded vs planned) ─────────────────────────────
+  // A mirror transition can complete a group on THIS parent workflow (e.g. the
+  // tracker action was the group's last open member). Same diff planSubmit runs
+  // for the originating workflow; the cascade fans these out post-commit, so a
+  // parent group's on_complete fires just like the originating workflow's.
+  const loadedGroupById = new Map(
+    recomputeGroups({ declaredGroups, actions }).map((g) => [g.id, g]),
+  );
+  const plannedGroups = recomputeGroups({
+    declaredGroups,
+    actions: plannedActions,
+  });
+  const completedGroups = [];
+  for (const planned of plannedGroups) {
+    const before = loadedGroupById.get(planned.id);
+    if (planned.status === "done" && before?.status !== "done") {
+      const cfg = declaredGroups.find((g) => g.id === planned.id);
+      completedGroups.push({
+        workflow_id: workflow._id,
+        workflow_type: workflow.workflow_type,
+        id: planned.id,
+        on_complete: cfg?.on_complete ?? null,
+      });
+    }
+  }
+
   // ── The level's fired entry (today's shape; FSM-resolved new_status) ──────
   const fired = {
     parent_action_id: targetAction._id,
@@ -196,7 +223,7 @@ function planTrackerLevel(
     event,
     changeLog,
     trackerFires,
-    completedGroups: [],
+    completedGroups,
     fired,
   };
 }

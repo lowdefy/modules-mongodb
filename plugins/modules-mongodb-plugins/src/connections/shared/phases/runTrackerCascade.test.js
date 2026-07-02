@@ -48,7 +48,34 @@ const twoActionParent = {
   ],
 };
 
-const WORKFLOWS_CONFIG = [oneTrackerParent, twoActionParent];
+// One-tracker parent whose tracker action lives in a group with an on_complete:
+// when the tracker flips terminal the group completes, so the cascade level
+// emits a completedGroups entry (parent-level group on_complete fan-out).
+const groupedTrackerParent = {
+  type: "grouped-tracker-parent",
+  entity: { connection_id: "parents", ref_key: "parent_ids" },
+  action_groups: [
+    {
+      id: "phase",
+      title: "Phase",
+      on_complete: { routine: [{ id: "notify", type: "CallApi" }] },
+    },
+  ],
+  actions: [
+    {
+      type: "track-child",
+      kind: "tracker",
+      action_group: "phase",
+      tracker: { child_workflow_type: "child" },
+    },
+  ],
+};
+
+const WORKFLOWS_CONFIG = [
+  oneTrackerParent,
+  twoActionParent,
+  groupedTrackerParent,
+];
 
 let mongo;
 
@@ -143,6 +170,7 @@ async function seedAction({
   kind = "form",
   stage = "action-required",
   child_workflow_id = null,
+  action_group = null,
 }) {
   await mongo.db.collection("actions").insertOne({
     _id,
@@ -150,7 +178,7 @@ async function seedAction({
     type,
     kind,
     key: null,
-    action_group: null,
+    action_group,
     child_workflow_id,
     tracker: kind === "tracker" ? { child_workflow_type: "child" } : null,
     status: [{ stage, event_id: "e0", created: changeStamp }],
@@ -296,6 +324,87 @@ describe("3-level cascade", () => {
     expect(trackC.status[0].event_id).not.toBe("BASE-EVENT");
     expect(trackB.status[0].event_id).not.toBe("BASE-EVENT");
     expect(trackC.status[0].event_id).not.toBe(trackB.status[0].event_id);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Parent-level group on_complete fan-out — completedGroups accumulation
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("completedGroups accumulation", () => {
+  test("a group that completes on a parent level is returned, paired with its committed doc", async () => {
+    // Parent's tracker action is in group `phase` (has on_complete), in-progress.
+    // The child completed → mirror completes the tracker → group flips to done.
+    await seedWorkflow({
+      _id: "wf-P",
+      workflow_type: "grouped-tracker-parent",
+    });
+    await seedAction({
+      _id: "track-P",
+      workflow_id: "wf-P",
+      type: "track-child",
+      kind: "tracker",
+      stage: "in-progress",
+      action_group: "phase",
+      child_workflow_id: "wf-child",
+    });
+
+    const result = await runTrackerCascade(
+      [
+        {
+          parentWorkflowId: "wf-P",
+          parentActionId: "track-P",
+          signal: "internal_mirror_child_completed",
+        },
+      ],
+      makeBaseContext(),
+    );
+
+    expect(result.cascadeErrors).toEqual([]);
+    expect(result.completedGroups).toHaveLength(1);
+    const [cg] = result.completedGroups;
+    expect(cg).toEqual(
+      expect.objectContaining({
+        workflow_id: "wf-P",
+        workflow_type: "grouped-tracker-parent",
+        id: "phase",
+        on_complete: { routine: [{ id: "notify", type: "CallApi" }] },
+      }),
+    );
+    // Paired with the committed parent doc (context.workflow for the fan-out).
+    expect(cg.workflow._id).toBe("wf-P");
+    expect(cg.workflow.status[0].stage).toBe("completed");
+  });
+
+  test("no completed group is returned when the parent's group does not flip to done", async () => {
+    // grouped-tracker-parent has only the tracker in `phase`; fire an ACTIVE
+    // mirror (tracker → in-progress) so the group stays in-progress, not done.
+    await seedWorkflow({
+      _id: "wf-P2",
+      workflow_type: "grouped-tracker-parent",
+    });
+    await seedAction({
+      _id: "track-P2",
+      workflow_id: "wf-P2",
+      type: "track-child",
+      kind: "tracker",
+      stage: "blocked",
+      action_group: "phase",
+      child_workflow_id: "wf-child",
+    });
+
+    const result = await runTrackerCascade(
+      [
+        {
+          parentWorkflowId: "wf-P2",
+          parentActionId: "track-P2",
+          signal: "internal_mirror_child_active",
+        },
+      ],
+      makeBaseContext(),
+    );
+    expect(result.cascadeErrors).toEqual([]);
+    expect(result.completedGroups).toEqual([]);
   });
 });
 

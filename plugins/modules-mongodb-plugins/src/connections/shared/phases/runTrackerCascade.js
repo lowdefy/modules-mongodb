@@ -74,12 +74,16 @@ const RECORDED_CODES = [
  *   fires: Array<{ parent_action_id: string, parent_workflow_id: string, new_status: string }>,
  *   dispatchErrors: Array<{ step: number, error: Error }>,
  *   cascadeErrors: Array<{ fire: Object, error: Error }>,
+ *   completedGroups: Array<{ workflow_id: string, workflow_type: string, id: string,
+ *     on_complete: Object|null, workflow: Object }>,
  * }>}
  */
 async function runTrackerCascade(initialFires, baseContext) {
   const fires = []; // accumulated level `fired` entries (today's shape)
   const dispatchErrors = []; // commit steps 3–5 failures, across levels (task 13)
   const cascadeErrors = []; // CAS exhaustion + gone parents
+  const completedGroups = []; // groups that flipped to done on a parent level,
+  // each paired with its committed workflow doc (for the on_complete payload)
   const pendingFires = (initialFires ?? []).map((f) => ({ ...f, depth: 1 }));
 
   while (pendingFires.length > 0) {
@@ -114,6 +118,12 @@ async function runTrackerCascade(initialFires, baseContext) {
         const commitResult = await commitPlan(levelContext, levelPlan);
         dispatchErrors.push(...commitResult.dispatchErrors);
         fires.push(levelPlan.fired);
+        // Pair each of this level's completed groups with the committed parent
+        // doc so the fan-out payload's context.workflow is the parent, not the
+        // originating workflow.
+        for (const cg of levelPlan.completedGroups) {
+          completedGroups.push({ ...cg, workflow: levelPlan.workflow.doc });
+        }
         for (const next of levelPlan.trackerFires) {
           pendingFires.push({ ...next, depth: fire.depth + 1 });
         }
@@ -132,7 +142,7 @@ async function runTrackerCascade(initialFires, baseContext) {
     }
   }
 
-  return { fires, dispatchErrors, cascadeErrors };
+  return { fires, dispatchErrors, cascadeErrors, completedGroups };
 }
 
 export default runTrackerCascade;

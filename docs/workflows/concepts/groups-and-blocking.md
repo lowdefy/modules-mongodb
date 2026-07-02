@@ -81,7 +81,7 @@ action_groups:
 
 **Why a group `on_complete` and not a per-action post-hook?** A status like "qualified" describes the *phase* finishing, not one action — so it belongs to the group, and it fires correctly even when the phase spans several actions. It also needs **no replay guard**: `on_complete` fires only on the transition to `done`, so re-editing an already-`done` action never re-fires it. (A re-runnable post-hook that advanced status would need a `$cond` to avoid prepending the stage twice.) Reach for a post-hook instead when the side effect needs the submitted `form` data (which `on_complete` does not receive) or must run on a specific action rather than the whole phase.
 
-> **Note.** `on_complete` fires for groups that complete on the workflow you submit against. A group whose completion is driven purely by a **tracker cascade** from a child workflow does not currently fire its `on_complete` — put such side effects on the child, or on the tracker action's mirror-signal hook.
+> **Parent workflows fire too.** `on_complete` fires for every group that transitions to `done` in a submit — including groups on a **parent** workflow reached by tracker propagation. When a child workflow completes and its parent's tracker action flips to `done`, any parent group that thereby completes fires its own `on_complete`, with `context.workflow` set to the parent doc. It does not fire on cancel or close.
 
 ## `blocked_by` — action-type and group references
 

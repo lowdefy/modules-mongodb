@@ -294,7 +294,12 @@ test("completed_groups: a group whose status flips to done emits with joined on_
     context: makeContext(),
   });
   expect(plan.completedGroups).toEqual([
-    { workflow_id: "W1", id: "g1", on_complete: { signal: "progress" } },
+    {
+      workflow_id: "W1",
+      workflow_type: "onboarding",
+      id: "g1",
+      on_complete: { signal: "progress" },
+    },
   ]);
 });
 
@@ -351,8 +356,18 @@ test("completed_groups: one submit completing the last open action of two groups
     context: makeContext(),
   });
   expect(plan.completedGroups).toEqual([
-    { workflow_id: "W1", id: "g1", on_complete: { signal: "progress" } },
-    { workflow_id: "W1", id: "g2", on_complete: { signal: "notify" } },
+    {
+      workflow_id: "W1",
+      workflow_type: "onboarding",
+      id: "g1",
+      on_complete: { signal: "progress" },
+    },
+    {
+      workflow_id: "W1",
+      workflow_type: "onboarding",
+      id: "g2",
+      on_complete: { signal: "notify" },
+    },
   ]);
 });
 

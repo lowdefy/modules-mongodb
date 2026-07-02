@@ -185,6 +185,7 @@ function planSubmit({ loadedState, preHookResult, context }) {
       const cfg = declaredGroups.find((g) => g.id === planned.id);
       completedGroups.push({
         workflow_id: workflow._id,
+        workflow_type: workflow.workflow_type,
         id: planned.id,
         on_complete: cfg?.on_complete ?? null,
       });

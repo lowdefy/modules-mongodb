@@ -68,15 +68,28 @@ async function handleSubmit(context) {
   // ── Commit (D9: workflow CAS → actions → event → notifications → log) ────
   const commitResult = await commitPlan(context, plan);
 
-  // ── Group on_complete (fires for groups that flipped to done this submit) ─
-  // Post-commit, ahead of the tracker cascade + post-hook, matching the
-  // documented lifecycle (concepts/hooks.md step 9). Endpoint ids arrive
-  // pre-scoped on params.group_on_complete (build-resolved), keyed by group id.
-  await dispatchGroupOnComplete(plan, params, user, callApi);
-
   // ── Tracker cascade (task 16; per-level load-plan-commit loop) ───────────
+  // Runs before the group on_complete fan-out: a group can complete on a PARENT
+  // workflow via tracker propagation, and those completions don't exist until
+  // each parent level commits (Part 11 lifecycle — tracker before fan-out).
   const cascade = await runTrackerCascade(plan.trackerFires, context);
   const trackerFired = cascade.fires;
+
+  // ── Group on_complete fan-out (concepts/hooks.md step 10) ─────────────────
+  // The union of the originating workflow's completed groups (paired with its
+  // committed doc) and every parent level's (already paired by the cascade).
+  // Endpoint ids arrive pre-scoped on params.group_on_complete, keyed
+  // workflow_type → group_id, so parent-level groups resolve too.
+  const completedGroupDispatches = [
+    ...plan.completedGroups.map((g) => ({ ...g, workflow: plan.workflow.doc })),
+    ...cascade.completedGroups,
+  ];
+  await dispatchGroupOnComplete(
+    completedGroupDispatches,
+    params.group_on_complete,
+    user,
+    callApi,
+  );
 
   // ── Post-hook (D6: fires after commit + cascade; throws propagate) ───────
   const postHookResponse = await invokePostHook(

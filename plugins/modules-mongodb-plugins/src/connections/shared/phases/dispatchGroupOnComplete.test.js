@@ -4,27 +4,19 @@ import dispatchGroupOnComplete from "./dispatchGroupOnComplete.js";
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function makePlan(overrides = {}) {
+// A completed-group dispatch entry: the group's workflow_type + id, paired with
+// its committed workflow doc (the shape handleSubmit / runTrackerCascade build).
+function entry({ workflow_type = "onboarding", id, workflowDoc } = {}) {
   return {
-    workflow: {
-      doc: overrides.workflowDoc ?? {
-        _id: "W1",
-        workflow_type: "onboarding",
-        entity: { id: "lead-42" },
-      },
-      operation: "update",
-      changeLog: { before: null, after: {} },
+    workflow_id: workflowDoc?._id ?? "W1",
+    workflow_type,
+    id,
+    on_complete: {},
+    workflow: workflowDoc ?? {
+      _id: "W1",
+      workflow_type,
+      entity: { id: "lead-42" },
     },
-    completedGroups: overrides.completedGroups ?? [],
-  };
-}
-
-function makeParams(overrides = {}) {
-  return {
-    action_id: "A1",
-    signal: "approve",
-    group_on_complete: undefined,
-    ...overrides,
   };
 }
 
@@ -39,50 +31,51 @@ const user = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("dispatchGroupOnComplete — skip cases", () => {
-  test("no-op when completedGroups is empty (cancel/close set it [])", async () => {
+  test("no-op on an empty completed-groups list", async () => {
     const callApi = jest.fn();
     await dispatchGroupOnComplete(
-      makePlan({ completedGroups: [] }),
-      makeParams({ group_on_complete: { "phase-1": "some-id" } }),
+      [],
+      { onboarding: { "phase-1": "some-id" } },
       user,
       callApi,
     );
     expect(callApi).not.toHaveBeenCalled();
   });
 
-  test("no-op when completedGroups is absent", async () => {
+  test("no-op when completedGroups is undefined", async () => {
     const callApi = jest.fn();
-    const plan = makePlan();
-    delete plan.completedGroups;
-    await dispatchGroupOnComplete(plan, makeParams(), user, callApi);
+    await dispatchGroupOnComplete(undefined, {}, user, callApi);
     expect(callApi).not.toHaveBeenCalled();
   });
 
-  test("skips a completed group that declares no on_complete (absent from the id map)", async () => {
+  test("skips a group whose type/id is absent from the id map (no on_complete)", async () => {
     const callApi = jest.fn();
     await dispatchGroupOnComplete(
-      makePlan({
-        completedGroups: [{ workflow_id: "W1", id: "phase-2", on_complete: null }],
-      }),
-      // id map only carries phase-1 — phase-2 has no on_complete endpoint.
-      makeParams({
-        group_on_complete: {
-          "phase-1": "workflows/onboarding-group-phase-1-on-complete",
-        },
-      }),
+      [entry({ id: "phase-2" })],
+      // map only carries phase-1
+      { onboarding: { "phase-1": "onboarding-group-phase-1-on-complete" } },
       user,
       callApi,
     );
     expect(callApi).not.toHaveBeenCalled();
   });
 
-  test("no-op when params.group_on_complete is undefined even if a group completed", async () => {
+  test("skips when the whole workflow_type is absent from the id map", async () => {
     const callApi = jest.fn();
     await dispatchGroupOnComplete(
-      makePlan({
-        completedGroups: [{ workflow_id: "W1", id: "phase-1", on_complete: {} }],
-      }),
-      makeParams({ group_on_complete: undefined }),
+      [entry({ workflow_type: "renewal", id: "phase-1" })],
+      { onboarding: { "phase-1": "ep" } },
+      user,
+      callApi,
+    );
+    expect(callApi).not.toHaveBeenCalled();
+  });
+
+  test("no-op when the id map is undefined", async () => {
+    const callApi = jest.fn();
+    await dispatchGroupOnComplete(
+      [entry({ id: "phase-1" })],
+      undefined,
       user,
       callApi,
     );
@@ -95,18 +88,16 @@ describe("dispatchGroupOnComplete — skip cases", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("dispatchGroupOnComplete — dispatch", () => {
-  test("fires the pre-scoped endpoint id with the group-completion payload", async () => {
+  test("fires the type-resolved endpoint id with the group-completion payload", async () => {
     const callApi = jest.fn(async () => ({ notified: true }));
-    const plan = makePlan({
-      completedGroups: [{ workflow_id: "W1", id: "phase-1", on_complete: {} }],
-    });
+    const workflowDoc = {
+      _id: "W1",
+      workflow_type: "onboarding",
+      entity: { id: "lead-42" },
+    };
     await dispatchGroupOnComplete(
-      plan,
-      makeParams({
-        group_on_complete: {
-          "phase-1": "workflows/onboarding-group-phase-1-on-complete",
-        },
-      }),
+      [entry({ id: "phase-1", workflowDoc })],
+      { onboarding: { "phase-1": "workflows/onboarding-group-phase-1-on-complete" } },
       user,
       callApi,
     );
@@ -123,47 +114,47 @@ describe("dispatchGroupOnComplete — dispatch", () => {
           profile: { name: "Sam" },
           roles: ["account-manager"],
         },
-        context: { workflow: plan.workflow.doc },
+        context: { workflow: workflowDoc },
       },
     });
   });
 
-  test("payload.context.workflow is the committed workflow doc (reachable as context.workflow.entity.id)", async () => {
+  test("payload.context.workflow is the entry's OWN committed doc (parent for a parent-level group)", async () => {
     const callApi = jest.fn(async () => ({}));
+    const parentDoc = {
+      _id: "PARENT-1",
+      workflow_type: "program",
+      entity: { id: "program-7" },
+    };
     await dispatchGroupOnComplete(
-      makePlan({
-        completedGroups: [{ workflow_id: "W1", id: "phase-1", on_complete: {} }],
-      }),
-      makeParams({ group_on_complete: { "phase-1": "h" } }),
+      [entry({ workflow_type: "program", id: "rollout", workflowDoc: parentDoc })],
+      { program: { rollout: "workflows/program-group-rollout-on-complete" } },
       user,
       callApi,
     );
     const { payload } = callApi.mock.calls[0][0];
-    expect(payload.context.workflow.entity.id).toBe("lead-42");
+    expect(payload.workflow_id).toBe("PARENT-1");
+    expect(payload.context.workflow.entity.id).toBe("program-7");
   });
 
-  test("fires once per completed group that has an on_complete, in order", async () => {
+  test("fires once per resolvable group across the originating + parent union, in order", async () => {
     const callApi = jest.fn(async () => ({}));
     await dispatchGroupOnComplete(
-      makePlan({
-        completedGroups: [
-          { workflow_id: "W1", id: "phase-1", on_complete: {} },
-          { workflow_id: "W1", id: "phase-2", on_complete: null }, // no endpoint
-          { workflow_id: "W1", id: "phase-3", on_complete: {} },
-        ],
-      }),
-      makeParams({
-        group_on_complete: {
-          "phase-1": "ep-1",
-          "phase-3": "ep-3",
-        },
-      }),
+      [
+        entry({ workflow_type: "onboarding", id: "phase-1" }), // originating
+        entry({ workflow_type: "onboarding", id: "phase-2" }), // no endpoint
+        entry({ workflow_type: "program", id: "rollout" }), // parent-level
+      ],
+      {
+        onboarding: { "phase-1": "ep-onb-1" },
+        program: { rollout: "ep-prog-rollout" },
+      },
       user,
       callApi,
     );
     expect(callApi).toHaveBeenCalledTimes(2);
-    expect(callApi.mock.calls[0][0].endpointId).toBe("ep-1");
-    expect(callApi.mock.calls[1][0].endpointId).toBe("ep-3");
+    expect(callApi.mock.calls[0][0].endpointId).toBe("ep-onb-1");
+    expect(callApi.mock.calls[1][0].endpointId).toBe("ep-prog-rollout");
   });
 });
 
@@ -178,10 +169,8 @@ describe("dispatchGroupOnComplete — error propagation", () => {
     });
     await expect(
       dispatchGroupOnComplete(
-        makePlan({
-          completedGroups: [{ workflow_id: "W1", id: "phase-1", on_complete: {} }],
-        }),
-        makeParams({ group_on_complete: { "phase-1": "h" } }),
+        [entry({ id: "phase-1" })],
+        { onboarding: { "phase-1": "ep" } },
         user,
         callApi,
       ),
@@ -194,18 +183,12 @@ describe("dispatchGroupOnComplete — error propagation", () => {
     });
     await expect(
       dispatchGroupOnComplete(
-        makePlan({
-          completedGroups: [
-            { workflow_id: "W1", id: "phase-1", on_complete: {} },
-            { workflow_id: "W1", id: "phase-3", on_complete: {} },
-          ],
-        }),
-        makeParams({ group_on_complete: { "phase-1": "ep-1", "phase-3": "ep-3" } }),
+        [entry({ id: "phase-1" }), entry({ id: "phase-3" })],
+        { onboarding: { "phase-1": "ep-1", "phase-3": "ep-3" } },
         user,
         callApi,
       ),
     ).rejects.toThrow("boom");
-    // Sequential await — the second group never dispatches.
     expect(callApi).toHaveBeenCalledTimes(1);
   });
 });

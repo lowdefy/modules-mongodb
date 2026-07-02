@@ -806,8 +806,78 @@ describe("completed_groups with on_complete join", () => {
       }),
     );
     expect(result.completed_groups).toEqual([
-      { workflow_id: "W1", id: "g1", on_complete: { signal: "progress" } },
+      {
+        workflow_id: "W1",
+        workflow_type: "onboarding",
+        id: "g1",
+        on_complete: { signal: "progress" },
+      },
     ]);
+  });
+
+  test("fires the completed group's on_complete endpoint resolved from params.group_on_complete", async () => {
+    await seed({
+      workflowOverrides: {
+        groups: [
+          {
+            id: "g1",
+            status: "in-progress",
+            summary: { done: 1, not_required: 0, total: 2 },
+          },
+        ],
+      },
+      qualifyStage: "in-review",
+      extraActions: [
+        {
+          _id: "A2",
+          type: "kickoff",
+          action_group: "g1",
+          status: [{ stage: "done", event_id: "e0", created: changeStamp }],
+        },
+      ],
+    });
+    await mongo.db
+      .collection("actions")
+      .updateOne({ _id: "A1" }, { $set: { action_group: "g1" } });
+
+    const calls = [];
+    const base = makeCallApi({ calls });
+    const callApi = async (args) => {
+      if (args.endpointId === "workflows/onboarding-group-g1-on-complete") {
+        calls.push(args);
+        return { done: true };
+      }
+      return base(args);
+    };
+
+    await SubmitWorkflowAction(
+      buildContext({
+        request: {
+          action_id: "A1",
+          signal: "approve",
+          // workflow_type → group_id → pre-scoped endpoint id (build-resolved).
+          group_on_complete: {
+            onboarding: { g1: "workflows/onboarding-group-g1-on-complete" },
+          },
+        },
+        workflowsConfig: makeWorkflowsConfig({ withGroups: true }),
+        callApi,
+      }),
+    );
+
+    const fired = calls.find(
+      (c) => c.endpointId === "workflows/onboarding-group-g1-on-complete",
+    );
+    expect(fired).toBeDefined();
+    expect(fired.payload).toEqual(
+      expect.objectContaining({
+        workflow_id: "W1",
+        workflow_type: "onboarding",
+        group_id: "g1",
+      }),
+    );
+    // context.workflow is the committed originating doc.
+    expect(fired.payload.context.workflow._id).toBe("W1");
   });
 });
 

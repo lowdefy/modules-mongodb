@@ -30,8 +30,8 @@ When a button fires a signal, the engine runs this sequence inside a single `Sub
 6. Recompute summary and group status
 7. Write log event
 8. Dispatch notifications
-9. Fire group `on_complete` hooks (if any groups transitioned to `done`)
-10. Fire tracker subscription (if workflow status changed)
+9. Fire tracker subscription (if workflow status changed) — cascades to parent workflows
+10. Fire group `on_complete` hooks for every group that transitioned to `done` — on the submitted workflow and on any parent reached by the cascade
 11. **Post-hook** (if declared for this signal)
 12. Return result
 

@@ -300,16 +300,60 @@ test("makeWorkflowApis: group on_complete Api emission", () => {
   expect(onComplete.routine).toEqual([{ id: "notify", type: "CallApi" }]);
 });
 
-test("makeWorkflowApis: submit endpoint carries group_on_complete keyed by group id — only groups with on_complete", () => {
+test("makeWorkflowApis: submit endpoint carries group_on_complete keyed by workflow_type → group id — only groups with on_complete", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  // phase-1 declares on_complete; phase-2 / phase-3 do not. The id is wrapped in
-  // string-form _module.endpointId so the build walker resolves it to the same
-  // pre-scoped opaque string the dispatcher receives on params.group_on_complete.
+  // phase-1 declares on_complete; phase-2 / phase-3 do not. Keyed by workflow
+  // type (own + ancestors); the id is wrapped in string-form _module.endpointId
+  // so the build walker resolves it to the same pre-scoped opaque string the
+  // dispatcher receives on params.group_on_complete.
   expect(propsOf(findApi(apis, "onboarding-submit")).group_on_complete).toEqual({
-    "phase-1": {
-      "_module.endpointId": "onboarding-group-phase-1-on-complete",
+    onboarding: {
+      "phase-1": {
+        "_module.endpointId": "onboarding-group-phase-1-on-complete",
+      },
     },
   });
+});
+
+test("makeWorkflowApis: group_on_complete bundles ancestor group endpoints (parent-level fan-out)", () => {
+  // A parent workflow that tracks `onboarding` as its child and declares its own
+  // on_complete group. onboarding's submit endpoint must carry the parent type's
+  // group endpoint too, so a group completing on the parent via tracker
+  // propagation resolves in dispatchGroupOnComplete.
+  const parent = {
+    type: "program",
+    entity_collection: "programs-collection",
+    display_order: 0,
+    starting_actions: [],
+    action_groups: [
+      {
+        id: "rollout",
+        title: "Rollout",
+        on_complete: { routine: [{ id: "notify_rollout", type: "CallApi" }] },
+      },
+    ],
+    actions: [
+      {
+        type: "track-onboarding",
+        kind: "tracker",
+        action_group: "rollout",
+        tracker: { child_workflow_type: "onboarding" },
+      },
+    ],
+  };
+  const apis = makeWorkflowApis(null, { workflows: [workedExample, parent] });
+  expect(propsOf(findApi(apis, "onboarding-submit")).group_on_complete).toEqual({
+    onboarding: {
+      "phase-1": {
+        "_module.endpointId": "onboarding-group-phase-1-on-complete",
+      },
+    },
+    program: {
+      rollout: { "_module.endpointId": "program-group-rollout-on-complete" },
+    },
+  });
+  // The parent still emits its own group InternalApi.
+  expect(findApi(apis, "program-group-rollout-on-complete")).toBeDefined();
 });
 
 test("makeWorkflowApis: group_on_complete absent when no group declares on_complete", () => {
