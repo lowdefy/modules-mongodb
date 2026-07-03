@@ -5,8 +5,7 @@ test("database seeding example", async ({ ldf, page, mdb }) => {
   await mdb.seed("leads", [
     {
       _id: "lead-e2e-seed",
-      name: "Seed Lead",
-      company: "Seeded QA Company",
+      name: "Seeded QA Lead",
       status: [{ stage: "new" }],
     },
   ]);
@@ -14,9 +13,11 @@ test("database seeding example", async ({ ldf, page, mdb }) => {
   // lead-view reads the doc by `_url_query: _id`, so it is reachable directly.
   await ldf.goto("/lead-view?_id=lead-e2e-seed");
 
-  // Assert the seeded data renders. The name appears in both the breadcrumb and
-  // the page title, so assert the (unique) company from the info card instead.
-  await expect(page.getByText("Seeded QA Company")).toBeVisible();
+  // The seeded name drives the page-title <h2> (get_lead.0.name). It also appears
+  // in the breadcrumb, so target the heading specifically.
+  await expect(
+    page.getByRole("heading", { name: "Seeded QA Lead" }),
+  ).toBeVisible();
 });
 
 // Example: Testing with database assertions

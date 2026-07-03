@@ -121,7 +121,11 @@ test("completing a type blocker and completing a group both unblock their depend
     `/workflows/check-blocked-by-action?action_id=${firstCheck._id.toString()}`,
   );
   await expect(page).toHaveURL(/check-blocked-by-action/);
-  await expect(page.getByText("First prep check complete.")).toBeVisible();
+  // Heading-specific: the check-action title also appears in the breadcrumb, a
+  // link, and the events-timeline, so a bare getByText is ambiguous.
+  await expect(
+    page.getByRole("heading", { name: "First prep check complete." }),
+  ).toBeVisible();
 
   // ── overview pages render against the group-structured workflow ────────────
   await ldf.goto(`/workflows/workflow-overview?workflow_id=${workflow_id}`);
