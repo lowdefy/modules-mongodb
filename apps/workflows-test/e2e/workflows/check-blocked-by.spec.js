@@ -129,7 +129,9 @@ test("completing a type blocker and completing a group both unblock their depend
 
   // ── overview pages render against the group-structured workflow ────────────
   await ldf.goto(`/workflows/workflow-overview?workflow_id=${workflow_id}`);
-  await expect(page.getByText("Check blocked-by")).toBeVisible(); // workflow.title
+  await expect(
+    page.getByRole("heading", { name: "Check blocked-by" }),
+  ).toBeVisible(); // workflow.title
 
   await ldf.goto(
     `/workflows/workflow-group-overview?workflow_id=${workflow_id}&group_id=prep`,

@@ -1,6 +1,14 @@
 import { test, expect } from "./fixtures.js";
 
 test("database seeding example", async ({ ldf, page, mdb }) => {
+  // Demo pages are `protected: true`, so authenticate before navigating —
+  // an unauthenticated goto redirects to the login page.
+  await ldf.user({
+    name: "Test Admin",
+    email: "test-admin@example.com",
+    roles: ["admin"],
+  });
+
   // Seed a lead directly into the demo's `leads` collection.
   await mdb.seed("leads", [
     {
