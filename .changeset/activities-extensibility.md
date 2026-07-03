@@ -1,0 +1,11 @@
+---
+"@lowdefy/modules-mongodb-activities": minor
+---
+
+Five backwards-compatible extension points in the activities module:
+
+- **Type behavior flags** — the meeting-specific form behavior is no longer keyed to the literal `meeting` type id. Activity-type enum entries (built-in or registered via the `activity_types` var) now carry optional flags: `agenda: true` renders the Agenda Topics section, `duration: true` / `direction: true` show those meta fields in the form and view, and `contact_label` titles the linked-contacts selector (default "Participants"). The built-ins keep their previous behavior as defaults (`call`: duration; `email`: direction + CC; `meeting`: agenda + duration + Attendees), so a consumer type can now be fully meeting-like.
+- **Per-type attribute fields** — new `fields.attributes_by_type.<type_id>` var. A type with an entry renders that block list (form and detail view) instead of the global `fields.attributes` array; types without an entry fall back to the global array.
+- **Attachment slots** — the attachments UI is now a pair of overridable block-array slots: `components.form_attachments` (defaults to the files module's file-manager at the bottom of the form) and `components.view_attachments` (defaults to the files file-card sidebar tile on the detail page). Apps that don't wire the files module can supply their own blocks or `[]`.
+- **Post-create hook** — new `hooks.on_created` var: actions run after every successful create (new page and `capture_activity` modal) with the new activity's id at `state.activity_id` and the captured fields still in state. On the new page, setting `state.on_created_handled: true` in the hook skips the built-in reset + navigate-to-view tail so the hook can route elsewhere.
+- **Agenda origin marker** — task docs created from activity agenda topics are stamped `metadata.task_type: agenda` (create flow, and backfilled by the edit flow's upsert), so host apps can distinguish them from adhoc tasks without relying on the `activity_ids` back-link.
