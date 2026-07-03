@@ -7,7 +7,7 @@
 # direction meta field, and the default "Participants" contact label.
 #   `agenda: true`       — render the Agenda Topics section in the form
 #                          (topics persist as tasks in the actions
-#                          collection, stamped `task_type: agenda`).
+#                          collection, stamped `metadata.task_type: agenda`).
 #   `duration: true`     — show the Duration meta field (form + view).
 #   `direction: true`    — show the Direction meta field (form + view).
 #   `contact_label: str` — title of the linked-contacts selector.
