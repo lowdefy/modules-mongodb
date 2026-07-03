@@ -17,8 +17,8 @@
 #      `_state: type` (shared with the form pages, where a `type`
 #      input block exists) also work here.
 #
-# Files sidebar embeds `files.file-card` inline (per `decisions.md` §4
-# — no local `tile_files.yaml` wrapper).
+# The files sidebar tile is the `components.view_attachments` slot,
+# defaulting to `files.file-card` (`components/attachments_view.yaml`).
 _ref:
   module: layout
   component: page
@@ -400,19 +400,12 @@ _ref:
               gap: 16
             blocks:
               _build.array.concat:
-                - - id: files_wrapper
-                    type: Box
-                    ~ignoreBuildChecks:
-                      - state-refs
-                    blocks:
-                      - _ref:
-                          module: files
-                          component: file-card
-                          vars:
-                            entity_type: activity
-                            entity_id:
-                              _url_query: _id
-                  - _ref:
+                # Attachments slot — defaults to the files module's
+                # file-card (`components/attachments_view.yaml`); apps
+                # that don't wire the files module supply their own
+                # blocks (or `[]`) via `components.view_attachments`.
+                - _module.var: components.view_attachments
+                - - _ref:
                       module: layout
                       component: card
                       vars:

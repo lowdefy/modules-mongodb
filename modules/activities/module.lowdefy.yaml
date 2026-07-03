@@ -60,7 +60,7 @@ vars:
           and the view); types without an entry fall back to `attributes`.
   components:
     type: object
-    description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns"
+    description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, form_attachments, view_attachments"
     properties:
       table_columns:
         default: []
@@ -96,6 +96,25 @@ vars:
           name on the activity-detail company chips. `value` is a top-level
           key on the projected company doc — extend `lookup_companies.yaml`'s
           `$project` to surface additional fields.
+      form_attachments:
+        default:
+          _ref: components/attachments_form.yaml
+        description: >-
+          Block array for the attachments section at the bottom of the
+          activity form (new / edit / capture modal). Defaults to a divider
+          plus the files module's file-manager; apps that don't wire the
+          files module supply their own blocks (`state.activity_id` holds
+          the activity id, minted before create) or `[]` to drop the
+          section.
+      view_attachments:
+        default:
+          _ref: components/attachments_view.yaml
+        description: >-
+          Block array for the attachments tile at the top of the
+          activity-detail sidebar. Defaults to the files module's
+          file-card; apps that don't wire the files module supply their
+          own blocks (the activity id is at `_url_query: _id`) or `[]` to
+          drop the tile.
   request_stages:
     type: object
     description: Pipeline overrides

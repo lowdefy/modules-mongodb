@@ -309,24 +309,10 @@ blocks:
               span: 12
             properties:
               title: Due Date
-    # Attachments — upload files against the activity. The wrapping page/modal
-    # seeds `activity_id` in state (reused as the create _id), so files link to
-    # the activity before it exists. Requires the host app to register the
-    # files module.
-    - - id: divider_attachments
-        type: Divider
-        properties:
-          title: Attachments
-          style:
-            margin: 4
-      - _ref:
-          module: files
-          component: file-manager
-          vars:
-            block_id: activity_files
-            entity_type: activity
-            entity_id:
-              _state: activity_id
-            file_category: activity-attachment
-            single_file: false
-            hint: Click or drag to attach a file
+    # Attachments — the `components.form_attachments` slot. Defaults to the
+    # files module's file-manager (`components/attachments_form.yaml`); apps
+    # that don't wire the files module supply their own block array (or `[]`
+    # to drop the section). The wrapping page/modal seeds `activity_id` in
+    # state (reused as the create _id), so attachment blocks can link files
+    # to the activity before it exists.
+    - _module.var: components.form_attachments
