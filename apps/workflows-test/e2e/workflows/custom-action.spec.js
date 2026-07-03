@@ -102,6 +102,9 @@ test("a reviewer's custom-action card link carries the concrete action _id and c
   await expect(page.locator("#loaded-action-id")).toHaveText(actionId);
 
   // ── ROUND-TRIP: the app page → custom-action-submit advances the FSM ────────
+  // The click-through above navigated via a raw locator, so re-enter the page
+  // through ldf.goto to sync the e2e page manager before addressing its blocks.
+  await ldf.goto(`/custom-thing-review?action_id=${actionId}`);
   await ldf.block("submit_review").do.click();
   await workflow.assertStatus(actionId, "in-review");
 });

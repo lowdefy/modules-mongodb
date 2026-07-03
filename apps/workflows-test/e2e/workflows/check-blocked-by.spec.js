@@ -32,10 +32,6 @@ function actionByType(mdb, workflowId, type) {
     .findOne({ workflow_id: String(workflowId), type });
 }
 
-function groupSummary(wf, groupId) {
-  return wf?.groups?.find((g) => g.id === groupId);
-}
-
 test("completing a type blocker and completing a group both unblock their dependents — committed in the DB and reflected on the entity surface", async ({
   ldf,
   mdb,
@@ -83,7 +79,11 @@ test("completing a type blocker and completing a group both unblock their depend
   await ldf.goto(
     `/workflows/check-blocked-by-action?action_id=${firstCheck._id.toString()}`,
   );
-  await expect(page.getByText("Complete the first prep check.")).toBeVisible();
+  // Target the heading specifically — the restructured check-action header also
+  // renders the action title in a breadcrumb, so a bare getByText is ambiguous.
+  await expect(
+    page.getByRole("heading", { name: "Complete the first prep check." }),
+  ).toBeVisible();
   await ldf.block("button_submit").do.click();
 
   await workflow.assertStatus(firstCheck._id.toString(), "done");
@@ -112,28 +112,26 @@ test("completing a type blocker and completing a group both unblock their depend
 
   // prep group now complete (both checks done) → needs-group → action-required.
   await workflow.assertStatus(needsGroup._id.toString(), "action-required");
-  await expect
-    .poll(
-      async () => {
-        const wf = await mdb
-          .collection("workflows")
-          .findOne({ _id: String(workflow_id) });
-        return groupSummary(wf, "prep")?.status;
-      },
-      { timeout: 10_000 },
-    )
-    .toBe("done");
+  // The prep group's derived status flips to done (both checks complete). Since
+  // Part 66 group status is derived on read, so assert it through the overview.
+  await workflow.assertGroup(workflow_id, "prep", { status: "done" });
 
   // ── check page sweep: the page renders for a done check action ─────────────
   await ldf.goto(
     `/workflows/check-blocked-by-action?action_id=${firstCheck._id.toString()}`,
   );
   await expect(page).toHaveURL(/check-blocked-by-action/);
-  await expect(page.getByText("First prep check complete.")).toBeVisible();
+  // Heading-specific: the check-action title also appears in the breadcrumb, a
+  // link, and the events-timeline, so a bare getByText is ambiguous.
+  await expect(
+    page.getByRole("heading", { name: "First prep check complete." }),
+  ).toBeVisible();
 
   // ── overview pages render against the group-structured workflow ────────────
   await ldf.goto(`/workflows/workflow-overview?workflow_id=${workflow_id}`);
-  await expect(page.getByText("Check blocked-by")).toBeVisible(); // workflow.title
+  await expect(
+    page.getByRole("heading", { name: "Check blocked-by" }),
+  ).toBeVisible(); // workflow.title
 
   await ldf.goto(
     `/workflows/workflow-group-overview?workflow_id=${workflow_id}&group_id=prep`,

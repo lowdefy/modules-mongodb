@@ -178,16 +178,9 @@ test("not_required marks the optional action not-required and the group summary 
   await workflow.assertStatus(actionId, "not-required");
 
   // The workflow's group summary recomputes to count the not-required action.
-  await expect
-    .poll(
-      async () => {
-        const wf = await mdb
-          .collection("workflows")
-          .findOne({ _id: String(workflowId) });
-        return wf?.groups?.find((g) => g.id === "lifecycle")?.summary
-          ?.not_required;
-      },
-      { timeout: 10_000 },
-    )
-    .toBe(1);
+  await workflow.assertGroup(workflowId, "lifecycle", {
+    summary: expect.objectContaining({
+      counts: expect.objectContaining({ "not-required": 1 }),
+    }),
+  });
 });

@@ -114,7 +114,8 @@ test("starting the child mirrors the parent tracker to in-progress, and completi
   await workflow.assertStatus(trackChildId, "done");
   // The parent workflow's own summary reflects its single tracker action done.
   await workflow.assertSummary(parentWorkflowId, {
-    summary: { done: 1, not_required: 0, total: 1 },
+    total: 1,
+    counts: expect.objectContaining({ done: 1, "not-required": 0 }),
   });
 
   // ── SPINE CLOSURE: the entity surface reflects the recovered done state ─────
@@ -159,7 +160,8 @@ test("cancelling the child workflow flips the parent tracker to not-required", a
   // off the active entity surface — so the closure is the summary recompute, the
   // same shape form-lifecycle's not_required test asserts, not a surface message.)
   await workflow.assertSummary(parentWorkflowId, {
-    summary: { done: 0, not_required: 1, total: 1 },
+    total: 1,
+    counts: expect.objectContaining({ done: 0, "not-required": 1 }),
   });
 });
 

@@ -218,29 +218,44 @@ export const workflowTest = base.extend({
       // ── Assertion helpers (poll the engine collections via mdb) ────────────
       // expect.poll because UI-triggered writes land asynchronously.
 
-      // Poll the `workflows` doc and assert expect.objectContaining(expected)
-      // against the whole doc (use for summary fields { done, not_required,
-      // total } or any top-level workflow field).
+      // Poll the workflow-level progress summary and assert
+      // expect.objectContaining(expected) against it. Since Part 66 the
+      // denormalised `summary`/`groups[]` caches on the workflows doc are gone —
+      // progress is derived on read from the action docs (summarizeStatuses), so
+      // this reads it back through the `get-workflow-overview` endpoint. Shape:
+      //   { counts: { <stage>: n, ... }, total }   (stage keys are hyphenated,
+      //   e.g. "not-required"). Pass e.g.
+      //   { total: 3, counts: expect.objectContaining({ done: 1 }) }.
       async assertSummary(workflow_id, expected) {
         await expect
           .poll(
-            () =>
-              mdb.collection("workflows").findOne({ _id: toId(workflow_id) }),
+            async () => {
+              const res = await post("workflows/get-workflow-overview", {
+                workflow_id,
+              });
+              return res?.workflow?.summary;
+            },
             { timeout: 10_000 },
           )
           .toEqual(expect.objectContaining(expected));
       },
 
-      // Poll the `workflows` doc's group-status field and assert against it.
-      // The workflow doc field is `groups`: an array of
-      // { id, status, summary: { done, not_required, total } }
-      // (recomputeGroups.js / deriveGroupStatus.js). `expected` is matched with
-      // expect.objectContaining, so pass e.g. { groups: [...] } or a partial.
-      async assertGroups(workflow_id, expected) {
+      // Poll a single declared group's derived runtime shape and assert
+      // expect.objectContaining(expected) against it. Read (like assertSummary)
+      // through `get-workflow-overview`, whose `groups[]` each carry
+      //   { id, order, title, icon, status, summary: { counts, total } }
+      // (deriveGroupStatus / summarizeStatuses). Pass e.g. { status: "done" } or
+      // { summary: expect.objectContaining({ counts: expect.objectContaining({
+      // "not-required": 1 }) }) }.
+      async assertGroup(workflow_id, group_id, expected) {
         await expect
           .poll(
-            () =>
-              mdb.collection("workflows").findOne({ _id: toId(workflow_id) }),
+            async () => {
+              const res = await post("workflows/get-workflow-overview", {
+                workflow_id,
+              });
+              return res?.groups?.find((g) => g.id === group_id);
+            },
             { timeout: 10_000 },
           )
           .toEqual(expect.objectContaining(expected));
