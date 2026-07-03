@@ -21,7 +21,8 @@
 #   mode          — `modal | page`. Default `modal`.
 #   on_created    — action sequence run after a successful create
 #                   (used by `tile_activities` to refetch its timeline).
-#                   Default `[]`.
+#                   Default `[]`. The module-level `hooks.on_created` var
+#                   runs first — see `module.lowdefy.yaml`.
 #
 # Modal mechanics: the button opens the modal with the Modal block's own
 # `toggleOpen` method (no args) so each instance carries independent
@@ -234,6 +235,13 @@ blocks:
                           _string.concat:
                             - _module.var: label
                             - " created."
+                  # Module-level post-create hook — runs right after a
+                  # successful create, before this instance's `on_created`
+                  # actions, with the new activity's id at
+                  # `_state: activity_id` and the captured fields still in
+                  # state (the onClose reset only fires once the modal
+                  # closes, after this chain completes).
+                  - _module.var: hooks.on_created
                   - _var:
                       key: on_created
                       default: []

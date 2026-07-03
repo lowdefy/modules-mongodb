@@ -115,6 +115,21 @@ vars:
           file-card; apps that don't wire the files module supply their
           own blocks (the activity id is at `_url_query: _id`) or `[]` to
           drop the tile.
+  hooks:
+    type: object
+    description: "Action-list extension points spliced into built-in flows: on_created"
+    properties:
+      on_created:
+        default: []
+        description: >-
+          Actions run after a successful create — in both the new page's
+          save flow and the capture_activity modal — with the new
+          activity's id at `_state: activity_id` and the captured fields
+          (`type`, `title`, `contacts`, `company_ids`, `attributes`,
+          `references`) still in state. On the new page the built-in tail
+          (form reset + navigate to the view page) runs after the hook;
+          set `state.on_created_handled: true` in a hook action to skip it
+          (e.g. when routing somewhere else with a Link).
   request_stages:
     type: object
     description: Pipeline overrides

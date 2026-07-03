@@ -80,6 +80,10 @@ _ref:
             cycle_check_self_id: null
             cycle_check_ids: []
             references: {}
+            # Read by the skip conditions on the post-create tail (reset +
+            # navigate) — a `hooks.on_created` action can set it true to
+            # take over navigation.
+            on_created_handled: false
     blocks:
       - id: card
         type: Card
@@ -120,54 +124,71 @@ _ref:
                   type: primary
                 events:
                   onClick:
-                    - id: validate
-                      type: Validate
-                    - id: create_activity
-                      type: CallAPI
-                      params:
-                        endpointId:
-                          _module.endpointId: create-activity
-                        payload:
-                          _id:
-                            _state: activity_id
-                          type:
-                            _state: type
-                          title:
-                            _state: title
-                          description:
-                            _state: description
-                          contacts:
-                            _if_none:
-                              - _state: contacts
-                              - []
-                          company_ids:
-                            _if_none:
-                              - _state: company_ids
-                              - []
-                          attributes:
-                            _if_none:
-                              - _state: attributes
-                              - {}
-                          agenda_topics:
-                            _if_none:
-                              - _state: agenda_topics
-                              - []
-                          references:
-                            _if_none:
-                              - _state: references
-                              - {}
-                      messages:
-                        success:
-                          _string.concat:
-                            - _module.var: label
-                            - " created."
-                    - id: reset
-                      type: Reset
-                    - id: go_detail
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: view
-                        urlQuery:
-                          _id:
-                            _actions: create_activity.response.response.activityId
+                    _build.array.concat:
+                      - - id: validate
+                          type: Validate
+                        - id: create_activity
+                          type: CallAPI
+                          params:
+                            endpointId:
+                              _module.endpointId: create-activity
+                            payload:
+                              _id:
+                                _state: activity_id
+                              type:
+                                _state: type
+                              title:
+                                _state: title
+                              description:
+                                _state: description
+                              contacts:
+                                _if_none:
+                                  - _state: contacts
+                                  - []
+                              company_ids:
+                                _if_none:
+                                  - _state: company_ids
+                                  - []
+                              attributes:
+                                _if_none:
+                                  - _state: attributes
+                                  - {}
+                              agenda_topics:
+                                _if_none:
+                                  - _state: agenda_topics
+                                  - []
+                              references:
+                                _if_none:
+                                  - _state: references
+                                  - {}
+                          messages:
+                            success:
+                              _string.concat:
+                                - _module.var: label
+                                - " created."
+                      # Post-create hook — consumer actions run right after
+                      # a successful create, with the new activity's id at
+                      # `_state: activity_id` and the captured fields
+                      # (type, title, contacts, company_ids, attributes,
+                      # references) still in state. A hook that navigates
+                      # elsewhere sets `state.on_created_handled: true` to
+                      # skip the built-in reset + view-page navigation.
+                      - _module.var: hooks.on_created
+                      - - id: reset
+                          type: Reset
+                          skip:
+                            _eq:
+                              - _state: on_created_handled
+                              - true
+                        - id: go_detail
+                          type: Link
+                          skip:
+                            _eq:
+                              - _state: on_created_handled
+                              - true
+                          params:
+                            pageId:
+                              _module.pageId: view
+                            urlQuery:
+                              _id:
+                                _actions: create_activity.response.response.activityId
