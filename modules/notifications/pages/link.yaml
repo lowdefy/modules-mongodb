@@ -94,19 +94,55 @@ events:
     - id: update_read
       type: Request
       params: update_selected_notification
-    # Navigate to target page or fall back to inbox
+    # Resolve the redirect target. Framework-composed links (lowdefy
+    # `notifications:` records) carry ?option=<dataPath> pointing into the
+    # record's `data` (e.g. links.button, actions.0.link); legacy records
+    # store a resolved target at top-level links.button.
+    - id: set_target
+      type: SetState
+      params:
+        link_target:
+          _if_none:
+            - _get:
+                from:
+                  _if_none:
+                    - _request: get_notification_for_link.0.data
+                    - {}
+                key:
+                  _if_none:
+                    - _url_query: option
+                    - links.button
+            - _request: get_notification_for_link.0.links.button
+    # Absolute URL targets (e.g. framework data values) navigate directly
+    - id: link_notification_url
+      type: Link
+      skip:
+        _not:
+          _type:
+            type: string
+            on:
+              _state: link_target
+      params:
+        url:
+          _state: link_target
+    # Page targets navigate in-app, falling back to the inbox
     - id: link_notification
       type: Link
+      skip:
+        _type:
+          type: string
+          on:
+            _state: link_target
       params:
         pageId:
           _if_none:
-            - _request: get_notification_for_link.0.links.button.pageId
+            - _state: link_target.pageId
             - _module.pageId: all
         urlQuery:
           _if_none:
-            - _request: get_notification_for_link.0.links.button.urlQuery
+            - _state: link_target.urlQuery
             - {}
         input:
           _if_none:
-            - _request: get_notification_for_link.0.links.button.input
+            - _state: link_target.input
             - {}

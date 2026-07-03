@@ -39,6 +39,19 @@ modules:
 
 The `link` page resolves a notification id to its target page and forwards the user. Auth-less event types (`invite-user`, `resend-user-invite`) can be resolved without a session, for flows where the recipient is not yet logged in.
 
+The page accepts two record shapes:
+
+- **Legacy records** (Lambda-produced): the resolved target is read from the record's top-level `links.button`.
+- **Lowdefy framework records** (the `notifications:` config section, Lowdefy ≥ 5.4): email links are composed as `{serverUrl}/{landingPage}?_id=<record>&option=<dataPath>`, where `option` is a dot-path into the record's `data` (e.g. `links.button`, `actions.0.link`). Point the app at this page to enable mark-as-read tracking on email clicks:
+
+```yaml
+# lowdefy.yaml — with the module installed under entry id `notifications`
+app:
+  notificationLandingPage: /notifications/link
+```
+
+Leave `app.notificationLandingPage` unset and framework email links go directly to their target pages instead (no mark-as-read). Absolute URL targets in `data` are followed as-is; the inbox list also falls back to the framework record's `preview` field when `description` is absent.
+
 The `file-download` page is a redirector for notification attachments: params `_id` and `index` are required; it generates a presigned GET against `notifications-files-bucket-public` and forwards the browser.
 
 ## Reference
