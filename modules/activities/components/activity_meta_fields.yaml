@@ -1,5 +1,6 @@
 # Shared field definitions for the activity meta row: date (all types),
-# duration (call / meeting), direction (email).
+# duration / direction (per the type's enum flags — see
+# `enums/activity_types.yaml`).
 #
 # Referenced by both `form_activity.yaml` (as input blocks in the meta
 # row) and `view_activity.yaml` (as the `fields` config of a
@@ -7,10 +8,12 @@
 # `properties.title` and ignores form-only keys like `required` and
 # `layout`).
 #
-# The duration / direction `visible` conditions read `_state: type` —
-# set by the type input on form pages and mirrored from
-# `get_activity.0.type` by `pages/view.yaml`, so the same conditions
-# work in both contexts.
+# The duration / direction `visible` conditions look the current
+# `_state: type` up in the merged activity-type enum (built-ins +
+# consumer `activity_types` var) and read the type's `duration` /
+# `direction` flags. `_state: type` is set by the type input on form
+# pages and mirrored from `get_activity.0.type` by `pages/view.yaml`,
+# so the same conditions work in both contexts.
 - id: attributes.date
   type: DateSelector
   required: true
@@ -21,13 +24,18 @@
 - id: attributes.duration
   type: Selector
   visible:
-    _or:
-      - _eq:
-          - _state: type
-          - call
-      - _eq:
-          - _state: type
-          - meeting
+    _eq:
+      - _get:
+          from:
+            _build.object.assign:
+              - _ref: enums/activity_types.yaml
+              - _module.var: activity_types
+          key:
+            _string.concat:
+              - _state: type
+              - .duration
+          default: false
+      - true
   layout:
     flex: 1 1 0
   properties:
@@ -47,8 +55,17 @@
   type: Selector
   visible:
     _eq:
-      - _state: type
-      - email
+      - _get:
+          from:
+            _build.object.assign:
+              - _ref: enums/activity_types.yaml
+              - _module.var: activity_types
+          key:
+            _string.concat:
+              - _state: type
+              - .direction
+          default: false
+      - true
   layout:
     flex: 1 1 0
   properties:

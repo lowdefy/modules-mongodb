@@ -30,7 +30,14 @@ vars:
     description: >-
       App-level additions to the built-in activity-type enum. Same shape as
       event_types — keys are type strings, values have title, color, icon,
-      default_stage.
+      default_stage, plus optional behavior flags: `agenda: true` renders
+      the Agenda Topics section in the form, `duration: true` /
+      `direction: true` show those meta fields, and `contact_label` titles
+      the linked-contacts selector (default "Participants"). The built-in
+      `meeting` type carries `agenda`, `duration`, and
+      `contact_label: Attendees` as its defaults. Merging is by top-level
+      key — overriding a built-in type replaces its whole entry, flags
+      included.
   event_display:
     description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge."
   fields:

@@ -4,18 +4,21 @@
 #   - Type picker rendered as a SegmentedSelector (Call / Email / Meeting
 #     tabs), options + icons sourced from the merged activity_types enum
 #     (built-ins + consumer-registered types).
-#   - A Date + (Duration | Direction) row. Duration shows for call and
-#     meeting; Direction shows for email. Both write to `attributes.*`.
+#   - A Date + (Duration | Direction) row. Duration / Direction show per
+#     the type's enum flags (see `enums/activity_types.yaml`). Both write
+#     to `attributes.*`.
 #   - Subject (title) and Notes (description).
-#   - Linked contacts, relabelled per type (Participants / CC / Attendees).
+#   - Linked contacts, relabelled per the type's `contact_label` flag
+#     (Participants / CC / Attendees for the built-ins).
 #   - Linked companies — gated behind the `show_company` component var
 #     (default true) so full new/edit pages keep company linking while
 #     consumers that seed the company via prefill can hide it. The edit
 #     page passes `disable_company` (from the module-level
 #     `disable_company_edit` var) to render the selector read-only.
 #   - A consumer-extension hook (`fields.attributes`) for app-level fields.
-#   - Agenda topics (meeting only) — saved as tasks in the actions
-#     collection by the create/update APIs, not on the activity doc.
+#   - Agenda topics (types flagged `agenda: true`, e.g. meeting) — saved
+#     as tasks in the actions collection by the create/update APIs, not
+#     on the activity doc.
 #
 # The form is stateless: it doesn't know whether it's creating or updating
 # an activity. The wrapping page or modal seeds initial state, runs
@@ -93,7 +96,9 @@ blocks:
         type: TiptapInput
         properties:
           title: Notes
-      # Linked contacts — Participants / CC / Attendees by type.
+      # Linked contacts — relabelled per type via the merged enum's
+      # `contact_label` flag (Participants / CC / Attendees for the
+      # built-ins; consumer types default to Participants).
       - _ref:
           module: contacts
           component: contact-selector
@@ -102,20 +107,16 @@ blocks:
             keyword: contact
             label:
               title:
-                _if:
-                  test:
-                    _eq:
+                _get:
+                  from:
+                    _build.object.assign:
+                      - _ref: enums/activity_types.yaml
+                      - _module.var: activity_types
+                  key:
+                    _string.concat:
                       - _state: type
-                      - meeting
-                  then: Attendees
-                  else:
-                    _if:
-                      test:
-                        _eq:
-                          - _state: type
-                          - email
-                      then: CC
-                      else: Participants
+                      - .contact_label
+                  default: Participants
     # Linked companies — optional, on by default; consumers that seed the
     # company via prefill can hide it.
     - _build.if:
@@ -146,8 +147,10 @@ blocks:
         then:
           _module.var: fields.attributes
         else: []
-    # Agenda topics — meeting only. Topics are not stored on the activity:
-    # create-activity / update-activity persist each one as a task doc in
+    # Agenda topics — types with `agenda: true` in the merged enum
+    # (built-in `meeting`, plus any consumer type that sets the flag).
+    # Topics are not stored on the activity: create-activity /
+    # update-activity persist each one as a task doc in
     # the actions collection (kind: task, activity_ids link). Items seeded
     # by the edit page carry a hidden `_id` (the task _id) that round-trips
     # through the ControlledList so saves update the right task; items
@@ -156,8 +159,17 @@ blocks:
         type: Alert
         visible:
           _eq:
-            - _state: type
-            - meeting
+            - _get:
+                from:
+                  _build.object.assign:
+                    - _ref: enums/activity_types.yaml
+                    - _module.var: activity_types
+                key:
+                  _string.concat:
+                    - _state: type
+                    - .agenda
+                default: false
+            - true
         properties:
           type: warning
           showIcon: false
@@ -169,8 +181,17 @@ blocks:
         type: ControlledList
         visible:
           _eq:
-            - _state: type
-            - meeting
+            - _get:
+                from:
+                  _build.object.assign:
+                    - _ref: enums/activity_types.yaml
+                    - _module.var: activity_types
+                key:
+                  _string.concat:
+                    - _state: type
+                    - .agenda
+                default: false
+            - true
         layout:
           gap: 8
         properties:

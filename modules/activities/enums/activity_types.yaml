@@ -1,19 +1,43 @@
 # `icon` — AiOutline* name, rendered as a React Icon in the form selector.
+#
+# Behavior flags — read at runtime by `form_activity.yaml` /
+# `activity_meta_fields.yaml` via the merged enum (built-ins +
+# consumer-registered `activity_types` var entries). All optional; a
+# consumer type that omits them gets no agenda section, no duration /
+# direction meta field, and the default "Participants" contact label.
+#   `agenda: true`       — render the Agenda Topics section in the form
+#                          (topics persist as tasks in the actions
+#                          collection, stamped `task_type: agenda`).
+#   `duration: true`     — show the Duration meta field (form + view).
+#   `direction: true`    — show the Direction meta field (form + view).
+#   `contact_label: str` — title of the linked-contacts selector.
+#                          Default "Participants".
+#
+# Note: entries here merge with the consumer `activity_types` var by
+# top-level key — overriding a built-in type replaces its whole entry,
+# flags included.
 call:
   title: Call
   color: "#1890ff"
   icon: AiOutlinePhone
   default_stage: done
   type: basic
+  duration: true
+  contact_label: Participants
 email:
   title: Email
   color: "#13c2c2"
   icon: AiOutlineMail
   default_stage: done
   type: basic
+  direction: true
+  contact_label: CC
 meeting:
   title: Meeting
   color: "#722ed1"
   icon: AiOutlineCalendar
   default_stage: done
   type: complex
+  agenda: true
+  duration: true
+  contact_label: Attendees
