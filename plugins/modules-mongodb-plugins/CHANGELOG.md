@@ -1,5 +1,21 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.9.2
+
+### Patch Changes
+
+- [`384da61`](https://github.com/lowdefy/modules-mongodb/commit/384da6108b4c5ef599ff075ea6368eb95d2da050) Thanks [@JohannMoller](https://github.com/JohannMoller)! - **Fix: EventsTimeline inline card text invisible in dark mode** — the action card set a fixed light background tint but rendered its message with no explicit color, so the text inherited the theme foreground and washed out to light-on-light in dark mode. The message now uses the status's `titleColor` (the same dark accent already used for the badge dot), with an undefined `titleColor` for unknown statuses correctly falling back to inherited color.
+
+- [`384da61`](https://github.com/lowdefy/modules-mongodb/commit/384da6108b4c5ef599ff075ea6368eb95d2da050) Thanks [@JohannMoller](https://github.com/JohannMoller)! - **Fix: group `on_complete` routines were never dispatched** — `makeWorkflowApis` emitted the `{type}-group-{id}-on-complete` InternalApis and `planSubmit` computed `completedGroups`, but nothing ever fired the endpoints, so an authored group `on_complete` silently never ran (the docs promised the engine fires it). A new `dispatchGroupOnComplete` phase now fires each completed group's routine post-commit, after the tracker cascade and ahead of the post-hook.
+
+  Fan-out covers **both the submitted workflow and any parent workflow** reached by tracker propagation: when a child completes and a parent group thereby transitions to `done`, that parent group's `on_complete` fires too, with `context.workflow` set to the parent doc. `planTrackerLevel` computes each cascade level's completed-group diff; the submit endpoint carries a build-resolved `workflow_type → group_id → endpoint` bundle (own workflow + ancestors) on `params.group_on_complete`, and the dispatcher resolves each completion by its `workflow_type` (same `_module.endpointId` mechanism as hooks). The payload mirrors the post-hook `context` so a routine can reach the committed workflow doc. Failures propagate after writes have landed, so `on_complete` routines must be idempotent — the same contract as post-hooks. Does not fire on cancel or close.
+
+- [`771d738`](https://github.com/lowdefy/modules-mongodb/commit/771d738a76c7981e73f758c913b13d6e04a7b403) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Action-card verb-default button labels** — the collapsed action link is now stamped with a label that names the action the _resolved verb_ performs: `edit → Complete`, `review → Review`, `error → Resolve`, `view → View`. So a view-only user on an `action-required` action reads "View", not "Complete". Previously every card fell back to the `EventsTimeline` default "View".
+
+  An author-provided `title` on a custom-action `link:` / `view_link:` cell (or a tracker `start_link`) is preserved through `resolveCellLink` and wins over the verb default. Documented in `docs/workflows/how-to/custom-actions.md` (§ The action card button label) and `docs/plugins/events-timeline.md`.
+
+- [`e87504a`](https://github.com/lowdefy/modules-mongodb/commit/e87504aeb6e125f0a9ec96ca5b1a249adf3572cc) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Smaller EventsTimeline avatars** — the timeline avatars are shrunk to sit better against the compact rows: compact 22→16px, default 32→26px (font size scaled to match).
+
 ## 0.9.1
 
 ### Patch Changes
