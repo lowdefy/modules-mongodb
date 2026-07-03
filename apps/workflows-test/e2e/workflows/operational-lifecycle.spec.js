@@ -151,9 +151,10 @@ test("the close sweep marks an open optional action not-required but skips requi
   // routine-step's done is preserved.
   await workflow.assertStatus(routineStep._id, "done");
 
-  // Workflow summary reflects the close: 1 done + 1 not_required of 3, completed.
+  // Workflow summary reflects the close: 1 done + 1 not-required of 3, completed.
   await workflow.assertSummary(workflow_id, {
-    summary: { done: 1, not_required: 1, total: 3 },
+    total: 3,
+    counts: expect.objectContaining({ done: 1, "not-required": 1 }),
   });
   const wf = await mdb
     .collection("workflows")
