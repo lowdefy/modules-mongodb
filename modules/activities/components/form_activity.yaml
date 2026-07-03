@@ -15,7 +15,8 @@
 #     consumers that seed the company via prefill can hide it. The edit
 #     page passes `disable_company` (from the module-level
 #     `disable_company_edit` var) to render the selector read-only.
-#   - A consumer-extension hook (`fields.attributes`) for app-level fields.
+#   - Consumer-extension fields (`fields.attributes`, with per-type
+#     overrides via `fields.attributes_by_type`) for app-level fields.
 #   - Agenda topics (types flagged `agenda: true`, e.g. meeting) — saved
 #     as tasks in the actions collection by the create/update APIs, not
 #     on the activity doc.
@@ -137,16 +138,76 @@ blocks:
                     key: disable_company
                     default: false
         else: []
-    # Consumer-defined attribute fields (only when provided).
+    # Consumer-defined attribute fields (only when provided). Per-type
+    # lists (`fields.attributes_by_type.<type_id>`) win over the global
+    # `fields.attributes` array; types without a per-type entry fall back
+    # to the global array. Type selection is runtime (the type tabs), so
+    # each list renders inside a Box gated on `_state: type`; when no
+    # per-type lists are configured the global array splices in flat,
+    # exactly as before.
     - _build.if:
         test:
           _build.gt:
             - _build.array.length:
-                _module.var: fields.attributes
+                _build.object.entries:
+                  _module.var: fields.attributes_by_type
             - 0
         then:
-          _module.var: fields.attributes
-        else: []
+          _build.array.concat:
+            - _build.if:
+                test:
+                  _build.gt:
+                    - _build.array.length:
+                        _module.var: fields.attributes
+                    - 0
+                then:
+                  - id: attributes_fallback
+                    type: Box
+                    layout:
+                      gap: 16
+                    visible:
+                      _not:
+                        _array.includes:
+                          - _build.array.map:
+                              on:
+                                _build.object.entries:
+                                  _module.var: fields.attributes_by_type
+                              callback:
+                                _build.function:
+                                  __build.args: "0.0"
+                          - _state: type
+                    blocks:
+                      _module.var: fields.attributes
+                else: []
+            - _build.array.map:
+                on:
+                  _build.object.entries:
+                    _module.var: fields.attributes_by_type
+                callback:
+                  _build.function:
+                    id:
+                      __build.string.concat:
+                        - attributes_by_type_
+                        - __build.args: "0.0"
+                    type: Box
+                    layout:
+                      gap: 16
+                    visible:
+                      _eq:
+                        - _state: type
+                        - __build.args: "0.0"
+                    blocks:
+                      __build.args: "0.1"
+        else:
+          _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _module.var: fields.attributes
+                - 0
+            then:
+              _module.var: fields.attributes
+            else: []
     # Agenda topics — types with `agenda: true` in the merged enum
     # (built-in `meeting`, plus any consumer type that sets the flag).
     # Topics are not stored on the activity: create-activity /

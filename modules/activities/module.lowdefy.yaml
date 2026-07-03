@@ -50,6 +50,14 @@ vars:
           Custom field blocks appended after the built-in sections in the
           form and view. Block ids must be prefixed with `attributes.` so
           they bind to `state.attributes.*`.
+      attributes_by_type:
+        type: object
+        default: {}
+        description: >-
+          Per-type custom field blocks, keyed by activity type id — same
+          block shape as `attributes`. A type with an entry renders that
+          list instead of the global `attributes` array (in both the form
+          and the view); types without an entry fall back to `attributes`.
   components:
     type: object
     description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns"
