@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>User Account on BetterAuth — Mockups</title>
+<style>
+  :root{
+    --violet:#7c3aed; --violet-hover:#6d28d9; --violet-active:#5b21b6;
+    --violet-bg:#f4ecff; --violet-bg-2:#ece0ff; --violet-border:#d6bbfb;
+    --cover-a:#5729a6; --cover-b:#7c3aed; /* auth cover gradient stops (color-mix primary 70% black → primary) */
+    --bg-layout:#f5f5f5; --bg-container:#ffffff;
+    --text:rgba(0,0,0,.88); --text-2:rgba(0,0,0,.62); --text-3:rgba(0,0,0,.42);
+    --border:#f0f0f0; --border-strong:#d9d9d9;
+    --radius:6px; --radius-sm:4px; --radius-lg:8px;
+    --shadow-card:0 1px 2px 0 rgba(0,0,0,.03),0 1px 6px -1px rgba(0,0,0,.03),0 2px 4px 0 rgba(0,0,0,.02);
+    --shadow-pop:0 6px 16px 0 rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05);
+    --shadow-auth:0 12px 32px -8px rgba(60,30,110,.22),0 2px 8px rgba(0,0,0,.04);
+    --ok-bg:#f6ffed;--ok-bd:#b7eb8f;--ok-fg:#389e0d;
+    --info-bg:#e6f7ff;--info-bd:#91d5ff;--info-fg:#096dd9;
+    --err-bg:#fff1f0;--err-bd:#ffa39e;--err-fg:#cf1322;
+    --warn-bg:#fffbe6;--warn-bd:#ffe58f;--warn-fg:#d48806;
+    --neutral-bg:#fafafa;--neutral-bd:#d9d9d9;--neutral-fg:#595959;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:var(--font);color:var(--text);background:#e9e9ee;font-size:14px;line-height:1.5714;-webkit-font-smoothing:antialiased}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+  code{font-size:12px;background:#efeaf9;color:var(--violet-active);padding:1px 5px;border-radius:4px}
+
+  /* ---------- deck chrome ---------- */
+  .deck-nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--border-strong);padding:10px 20px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .deck-nav b{font-size:13px;letter-spacing:.02em;margin-right:12px;color:var(--text)}
+  .deck-nav a{font-size:12.5px;color:var(--text-2);text-decoration:none;padding:5px 10px;border-radius:20px;border:1px solid transparent;transition:.15s}
+  .deck-nav a:hover{color:var(--violet);background:var(--violet-bg)}
+  .deck-nav a:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 20px}
+  .section-head{padding:52px 20px 6px;max-width:1160px;margin:0 auto}
+  .section-head .kicker{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--violet);font-weight:600}
+  .section-head h2.dh{font-size:26px;font-weight:600;margin:6px 0 4px}
+  .section-head p{margin:0;color:var(--text-2);max-width:78ch}
+  .opt-tag{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#fff;background:var(--violet);padding:3px 10px;border-radius:20px}
+  .opt-tag.b{background:#0d9488}
+  .chosen{display:inline-block;margin-left:8px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ok-fg);background:var(--ok-bg);border:1px solid var(--ok-bd);padding:3px 9px;border-radius:20px}
+  .faded{opacity:.62}
+  .subeyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:8px}
+  .caption{font-size:12px;color:var(--text-3);text-align:center;margin:9px 0 0}
+  .caption b{color:var(--text-2);font-weight:600}
+
+  /* ---------- app-shell frame (layout module PageHeaderMenu) ---------- */
+  .frame{background:var(--bg-layout);border:1px solid var(--border-strong);border-radius:12px;overflow:hidden;box-shadow:0 10px 30px -12px rgba(20,10,40,.25);margin:14px auto 0}
+  .appbar{display:flex;align-items:center;gap:18px;background:var(--bg-container);padding:0 18px;height:52px;border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px}
+  .brand .mark{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--violet),#4527a0);display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800}
+  .topmenu{display:flex;gap:2px;align-items:center;height:100%}
+  .topmenu a{height:100%;display:flex;align-items:center;padding:0 14px;font-size:13.5px;color:var(--text-2);text-decoration:none;border-bottom:2px solid transparent}
+  .topmenu a.on{color:var(--violet);border-bottom-color:var(--violet);font-weight:500}
+  .topmenu a:hover{color:var(--violet)}
+  .appbar .right{margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--text-2)}
+  .bell{width:16px;height:16px;border:2px solid currentColor;border-bottom:none;border-radius:8px 8px 0 0;position:relative;display:inline-block}
+  .bell::after{content:"";position:absolute;left:-3px;bottom:-2px;width:20px;height:2px;background:currentColor;border-radius:2px}
+  .profilemenu{display:flex;align-items:center;gap:7px;cursor:pointer}
+  .profilemenu .chev{font-size:9px;color:var(--text-3)}
+  .canvas{padding:20px 22px 30px}
+
+  .crumbs{font-size:12.5px;color:var(--text-3);margin-bottom:12px;display:flex;gap:7px;align-items:center}
+  .crumbs a{color:var(--text-3);text-decoration:none}
+  .crumbs a:hover{color:var(--violet)}
+  .crumbs .sep{opacity:.5}
+  .crumbs .cur{color:var(--text-2)}
+
+  .titleblock{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+  .titleblock .tcol{flex:1 1 0;min-width:0}
+  .titleblock .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);line-height:1.2}
+  .titleblock h1{font-size:24px;font-weight:600;margin:2px 0 2px;letter-spacing:-.01em}
+  .titleblock .sub{font-size:13px;color:var(--text-2)}
+
+  /* ---------- pills / tags ---------- */
+  .tag{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:4px;font-size:12px;line-height:20px;border:1px solid var(--neutral-bd);background:var(--neutral-bg);color:var(--neutral-fg)}
+  .tag.ok{background:var(--ok-bg);border-color:var(--ok-bd);color:var(--ok-fg)}
+  .tag.info{background:var(--info-bg);border-color:var(--info-bd);color:var(--info-fg)}
+  .tag.err{background:var(--err-bg);border-color:var(--err-bd);color:var(--err-fg)}
+  .tag.warn{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn-fg)}
+  .tag.violet{background:var(--violet-bg);border-color:var(--violet-border);color:var(--violet-active)}
+
+  /* ---------- buttons ---------- */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;font-size:13.5px;line-height:1;border-radius:6px;padding:7px 13px;border:1px solid var(--border-strong);background:#fff;color:var(--text);cursor:pointer;transition:.15s;white-space:nowrap}
+  .btn:hover{color:var(--violet);border-color:var(--violet)}
+  .btn:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+  .btn.pri{background:var(--violet);border-color:var(--violet);color:#fff;box-shadow:0 2px 0 rgba(124,58,237,.12)}
+  .btn.pri:hover{background:var(--violet-hover);border-color:var(--violet-hover);color:#fff}
+  .btn.danger{color:var(--err-fg);border-color:var(--err-bd)}
+  .btn.danger:hover{background:var(--err-fg);border-color:var(--err-fg);color:#fff}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--text-2);padding:7px 8px}
+  .btn.ghost:hover{background:var(--violet-bg);color:var(--violet)}
+  .btn.sm{padding:4px 9px;font-size:12.5px}
+  .btn.lg{padding:10px 15px;font-size:14.5px;height:40px}
+  .btn.block{width:100%}
+  .btn.link{border:none;background:none;color:var(--violet);padding:0;height:auto}
+  .btn.link:hover{color:var(--violet-hover);text-decoration:underline}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .btn .ic{font-size:14px;line-height:1}
+
+  /* ---------- avatars ---------- */
+  .av{border-radius:50%;color:#fff;display:inline-grid;place-items:center;font-weight:600;flex:0 0 auto;font-size:13px;letter-spacing:.02em;overflow:hidden}
+  .av.s24{width:24px;height:24px;font-size:10px}
+  .av.s28{width:28px;height:28px;font-size:11px}
+  .av.s32{width:32px;height:32px;font-size:12px}
+  .av.s72{width:72px;height:72px;font-size:26px}
+  .g-jm{background:linear-gradient(135deg,#6a1b9a,#c62828)}
+  .g-tn{background:linear-gradient(135deg,#1565c0,#00695c)}
+  .g-ap{background:linear-gradient(135deg,#ef6c00,#d84315)}
+  .g-ld{background:linear-gradient(135deg,#00695c,#2e7d32)}
+
+  /* ---------- cards ---------- */
+  .grid{display:flex;gap:16px;align-items:flex-start}
+  .col{min-width:0}
+  .col.main{flex:1.35 1 0}
+  .col.side{flex:1 1 0}
+  .stack{display:flex;flex-direction:column;gap:16px}
+  .card{background:var(--bg-container);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-card)}
+  .card .chead{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+  .card .chead h3{font-size:15px;font-weight:600;margin:0}
+  .card .chead .ch-ic{color:var(--violet)}
+  .card .chead .spacer{margin-left:auto}
+  .card .cbody{padding:6px 16px 10px}
+  .card .cbody.pad{padding:14px 16px}
+  .desc{display:grid;grid-template-columns:120px 1fr;gap:0}
+  .desc dt{padding:8px 12px 8px 0;color:var(--text-2);font-size:13px;border-bottom:1px solid var(--border)}
+  .desc dd{margin:0;padding:8px 0;font-size:13px;border-bottom:1px solid var(--border)}
+  .desc dt:last-of-type,.desc dd:last-of-type{border-bottom:none}
+  .muted{color:var(--text-3)}
+  .hint{font-size:12px;color:var(--text-3);margin-top:8px}
+  .divider{height:1px;background:var(--border);margin:12px 0}
+
+  .idhead{display:flex;align-items:center;gap:14px;background:var(--violet-bg);border:1px solid var(--violet-border);padding:16px;border-radius:8px}
+  .idhead .who{flex:1 1 auto;min-width:0}
+  .idhead .nm{font-size:17px;font-weight:600}
+  .idhead .em{font-size:13px;color:var(--text-2)}
+  .idhead .meta{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+
+  /* ---------- settings rows (self-service list) ---------- */
+  .setrow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border)}
+  .setrow:last-child{border-bottom:none}
+  .setrow .sr-ic{width:34px;height:34px;border-radius:8px;background:var(--violet-bg);color:var(--violet);display:grid;place-items:center;flex:0 0 auto;font-size:16px}
+  .setrow .sr-main{flex:1 1 auto;min-width:0}
+  .setrow .sr-t{font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px}
+  .setrow .sr-s{font-size:12px;color:var(--text-3);margin-top:1px}
+  .setrow .sr-act{flex:0 0 auto;display:flex;gap:8px;align-items:center}
+
+  .rowitem{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .rowitem:last-child{border-bottom:none}
+  .rowitem .ri-ic{width:30px;height:30px;border-radius:8px;background:var(--neutral-bg);color:var(--text-2);display:grid;place-items:center;flex:0 0 auto;font-size:15px}
+  .rowitem .ri-main{flex:1 1 auto;min-width:0}
+  .rowitem .ri-sub{color:var(--text-3);font-size:12px}
+  .listcaps{display:flex;flex-direction:column}
+  .methods{display:flex;gap:6px;flex-wrap:wrap}
+
+  /* ---------- auth chrome (layout/auth-page) ---------- */
+  .authbg{background:
+      radial-gradient(1100px 380px at 50% -8%,rgba(124,58,237,.10),transparent 70%),
+      var(--bg-layout);
+    padding:44px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:360px}
+  .authcard{width:100%;max-width:360px;background:#fff;border-radius:12px;box-shadow:var(--shadow-auth);overflow:hidden}
+  .authcover{background:linear-gradient(160deg,var(--cover-a) 0%,var(--cover-b) 100%);padding:30px 32px 26px;display:flex;justify-content:center}
+  .authcover .logo{display:flex;align-items:center;gap:10px;color:#fff}
+  .authcover .logo .mk{width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);display:grid;place-items:center;font-weight:800;font-size:16px}
+  .authcover .logo .nm{font-size:16px;font-weight:600;letter-spacing:.01em}
+  .authbody{padding:26px 32px 28px;display:flex;flex-direction:column;gap:16px}
+  .authbody h3{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+  .authbody .lead{margin:-8px 0 0;font-size:13px;color:var(--text-2)}
+  .authfoot{max-width:360px;width:100%;margin:18px auto 0;text-align:center;font-size:12px;color:var(--text-3)}
+  .authfoot a{color:var(--violet);text-decoration:none}
+  .authfoot a:hover{text-decoration:underline}
+
+  .frow{display:flex;flex-direction:column;gap:5px}
+  .frow label{font-size:13px;font-weight:500;color:var(--text-2);display:flex;align-items:center;gap:6px}
+  .frow label .req{color:var(--err-fg)}
+  .frow label .spacer{margin-left:auto;font-weight:400}
+  .inp{width:100%;height:40px;border:1px solid var(--border-strong);border-radius:6px;padding:0 12px;font:inherit;font-size:14px;color:var(--text);background:#fff;display:flex;align-items:center;gap:8px}
+  .inp input{border:none;outline:none;font:inherit;background:transparent;width:100%;color:var(--text)}
+  .inp .aff{color:var(--text-3);font-size:15px;flex:0 0 auto}
+  .inp:focus-within{border-color:var(--violet);box-shadow:0 0 0 2px var(--violet-bg)}
+  .inp.locked{background:#fafafa;color:var(--text-2)}
+  .placeholder{color:var(--text-3)}
+
+  .div-or{display:flex;align-items:center;gap:12px;color:var(--text-3);font-size:12px}
+  .div-or::before,.div-or::after{content:"";height:1px;background:var(--border);flex:1}
+  .provider{width:100%;height:40px;border:1px solid var(--border-strong);border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;gap:9px;font-size:14px;font-weight:500;color:var(--text);cursor:pointer;transition:.15s}
+  .provider:hover{border-color:var(--violet);color:var(--violet);background:var(--violet-bg)}
+  .provider .glyph{width:18px;height:18px;border-radius:4px;display:grid;place-items:center;font-weight:800;font-size:12px;color:#fff}
+  .g-google{background:conic-gradient(from -45deg,#ea4335,#fbbc05,#34a853,#4285f4,#ea4335)}
+  .g-ms{background:#2f2f2f}
+  .g-key{background:var(--violet)}
+  .authalert{display:flex;gap:10px;align-items:flex-start;border-radius:8px;padding:11px 13px;font-size:13px;background:var(--err-bg);border:1px solid var(--err-bd);color:#820e0e}
+  .authalert.warn{background:var(--warn-bg);border-color:var(--warn-bd);color:#7a5300}
+  .authalert .ai{flex:0 0 auto;font-size:15px;line-height:1.3}
+  .authalert .at{font-weight:600;margin-bottom:1px}
+  .authalert .ax{font-size:12.5px;opacity:.92}
+
+  /* invitation context banner inside the auth card */
+  .invctx{display:flex;align-items:center;gap:11px;background:var(--violet-bg);border:1px solid var(--violet-border);border-radius:8px;padding:11px 13px}
+  .invctx .who{min-width:0}
+  .invctx .who .l1{font-size:12px;color:var(--text-2)}
+  .invctx .who .l2{font-size:13.5px;font-weight:600}
+
+  /* OTP */
+  .otp{display:flex;gap:8px;justify-content:center}
+  .otp .cell{width:42px;height:50px;border:1px solid var(--border-strong);border-radius:8px;display:grid;place-items:center;font-size:22px;font-weight:600;font-family:var(--mono)}
+  .otp .cell.on{border-color:var(--violet);box-shadow:0 0 0 2px var(--violet-bg)}
+  .otp .cell.empty{color:var(--text-3)}
+
+  /* Result-style state (verify / logout / already member) */
+  .result{padding:22px 12px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .result .ric{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:32px;margin-bottom:4px}
+  .result .rt{font-size:19px;font-weight:600}
+  .result .rs{font-size:13px;color:var(--text-2);max-width:34ch}
+
+  /* QR enrolment */
+  .qrwrap{display:flex;gap:16px;align-items:center}
+  .qr{width:132px;height:132px;flex:0 0 auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:#fff}
+  .backupgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  .backupgrid .bc{font-family:var(--mono);font-size:13px;background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:7px 10px;text-align:center;letter-spacing:.04em}
+
+  /* modal */
+  .modalstage{background:linear-gradient(0deg,rgba(30,20,50,.35),rgba(30,20,50,.35)),repeating-linear-gradient(45deg,#e9e9ee,#e9e9ee 12px,#e4e4ea 12px,#e4e4ea 24px);border-radius:12px;padding:34px 20px;display:flex;justify-content:center}
+  .modal{width:100%;max-width:440px;background:#fff;border-radius:10px;box-shadow:var(--shadow-pop);overflow:hidden}
+  .modal .mhead{padding:16px 20px 6px;display:flex;gap:10px;align-items:center}
+  .modal .mhead .mic{width:28px;height:28px;border-radius:7px;background:var(--violet-bg);color:var(--violet);display:grid;place-items:center;flex:0 0 auto;font-size:15px}
+  .modal .mhead h4{margin:0;font-size:16px;font-weight:600}
+  .modal .mbody{padding:8px 20px 6px;font-size:13.5px;color:var(--text-2);display:flex;flex-direction:column;gap:14px}
+  .modal .mfoot{padding:14px 20px 18px;display:flex;justify-content:flex-end;gap:8px}
+
+  .authgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:20px;align-items:start}
+
+  .swatches{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .sw{width:74px;text-align:center;font-size:11px;color:var(--text-2)}
+  .sw .chip{height:40px;border-radius:8px;border:1px solid rgba(0,0,0,.08);margin-bottom:5px}
+  .syscols{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:12px}
+  .syscard{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 16px;box-shadow:var(--shadow-card)}
+  .syscard h4{margin:0 0 8px;font-size:13px}
+  .syscard p{margin:0;font-size:12.5px;color:var(--text-2)}
+  .foot{max-width:1160px;margin:40px auto 60px;padding:0 20px;color:var(--text-3);font-size:12px}
+
+  @media (max-width:820px){
+    .grid{flex-direction:column}
+    .desc{grid-template-columns:104px 1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav class="deck-nav">
+  <b>User Account · BetterAuth</b>
+  <a href="#system">System</a>
+  <a href="#login">Login</a>
+  <a href="#signup">Signup</a>
+  <a href="#recover">Password reset</a>
+  <a href="#verify">Verify email</a>
+  <a href="#twofactor">2FA challenge</a>
+  <a href="#accept">Accept invite</a>
+  <a href="#workspace">Workspace ✓</a>
+  <a href="#enrol">Enrolment</a>
+  <a href="#onboarding">Onboarding</a>
+  <a href="#logout">Logout</a>
+</nav>
+
+<!-- =========================================================== SYSTEM -->
+<div class="section-head" id="system">
+  <div class="kicker">Design system</div>
+  <h2 class="dh">The same language as user-admin — two chromes</h2>
+  <p>Ant Design (<code>compact</code>) on the repo's violet accent, reusing the <b>user-admin</b> deck's tokens verbatim so the two modules read as one product. This module renders in <b>two</b> chromes: the signed-in <b>account workspace</b> lives in the <code>layout</code> app shell; the eight <b>public auth pages</b> use the real <code>layout/auth-page</code> component — a centred 360px card with a primary-gradient cover band over the logo. Nothing here invents a palette; the risk budget goes to the method-driven login and the settings-row workspace.</p>
+</div>
+<div class="wrap">
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#7c3aed"></div>Primary<br>#7c3aed</div>
+    <div class="sw"><div class="chip" style="background:linear-gradient(160deg,#5729a6,#7c3aed)"></div>Auth cover</div>
+    <div class="sw"><div class="chip" style="background:#f4ecff;border-color:#d6bbfb"></div>Primary bg</div>
+    <div class="sw"><div class="chip" style="background:#f6ffed;border-color:#b7eb8f"></div>Verified</div>
+    <div class="sw"><div class="chip" style="background:#fffbe6;border-color:#ffe58f"></div>Action needed</div>
+    <div class="sw"><div class="chip" style="background:#fff1f0;border-color:#ffa39e"></div>Error</div>
+    <div class="sw"><div class="chip" style="background:#f5f5f5"></div>Layout bg</div>
+  </div>
+  <div class="syscols">
+    <div class="syscard"><h4>Auth chrome</h4><p><code>layout/auth-page</code>: gradient cover + logo, 360px card, radius 12, level-3 title, footer. One chrome for all 8 public pages.</p></div>
+    <div class="syscard"><h4>Method-driven login</h4><p>Page renders whatever the <code>methods</code> var enables — password, magic link, passkey, OAuth. Errors are inline, never <code>?error=</code>.</p></div>
+    <div class="syscard"><h4>App shell</h4><p><code>layout/page</code> PageHeaderMenu for the account workspace: brand, nav, notifications, profile menu.</p></div>
+    <div class="syscard"><h4>Settings-row tiles</h4><p>Self-service concerns as icon · label · status · action rows — a lighter grammar than admin's description lists.</p></div>
+    <div class="syscard"><h4>Gradient avatar</h4><p><code>user-account</code> avatar with shuffle-colour, reused in the workspace identity header and profile edit.</p></div>
+    <div class="syscard"><h4>Write-pathway honesty</h4><p>Contact fields → app request. Password / 2FA / passkeys / sessions → BetterAuth client actions. Each section saves on its own.</p></div>
+  </div>
+</div>
+
+<!-- =========================================================== LOGIN (signature) -->
+<div class="section-head" id="login">
+  <div class="kicker">Page · login · signature</div>
+  <h2 class="dh">One page, rendered from the <code>methods</code> var</h2>
+  <p>The login page shows only the sign-in methods the deployment enables (Decision 2). Same file, same chrome — three deployments below prove it. All methods dispatch through the one <code>Login</code> action; BetterAuth returns errors <b>inline</b>, so the hard-wall and unverified-email states render in-page instead of NextAuth's dead <code>?error=</code> redirect.</p>
+</div>
+<div class="wrap">
+<div class="frame">
+  <div class="authbg">
+    <div class="authgrid">
+
+      <!-- Full: password + providers + passkey -->
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>Sign in</h3>
+            <p class="lead">Welcome back. Use your work email to continue.</p>
+            <div class="frow"><label>Email</label><div class="inp"><input placeholder="you@company.com" value="jane.mokoena@example.com"/><span class="aff">✉</span></div></div>
+            <div class="frow"><label>Password <span class="spacer"><a class="btn link" href="#recover">Forgot?</a></span></label><div class="inp"><input type="password" value="············"/><span class="aff">👁</span></div></div>
+            <button class="btn pri lg block">Sign in</button>
+            <div class="div-or">or</div>
+            <button class="provider"><span class="glyph g-google">G</span> Continue with Google</button>
+            <button class="provider"><span class="glyph g-key">⚿</span> Sign in with a passkey</button>
+          </div>
+        </div>
+        <div class="authfoot">New here? <a href="#signup">Create an account</a></div>
+        <div class="caption"><b>methods:</b> password ✓ · google ✓ · passkey ✓</div>
+      </div>
+
+      <!-- Minimal: password only -->
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>Sign in</h3>
+            <div class="frow"><label>Email</label><div class="inp"><input class="placeholder" placeholder="you@company.com"/><span class="aff">✉</span></div></div>
+            <div class="frow"><label>Password <span class="spacer"><a class="btn link" href="#recover">Forgot?</a></span></label><div class="inp"><input type="password" class="placeholder" placeholder="Your password"/><span class="aff">👁</span></div></div>
+            <button class="btn pri lg block">Sign in</button>
+          </div>
+        </div>
+        <div class="authfoot">New here? <a href="#signup">Create an account</a></div>
+        <div class="caption"><b>methods:</b> password ✓ — nothing else offered</div>
+      </div>
+
+      <!-- Passwordless: magic link -->
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>Sign in</h3>
+            <p class="lead">We'll email you a secure link — no password to remember.</p>
+            <div class="frow"><label>Email</label><div class="inp"><input class="placeholder" placeholder="you@company.com"/><span class="aff">✉</span></div></div>
+            <button class="btn pri lg block">Email me a sign-in link</button>
+          </div>
+        </div>
+        <div class="authfoot">New here? <a href="#signup">Create an account</a></div>
+        <div class="caption"><b>methods:</b> magic_link ✓ (passwordless)</div>
+      </div>
+
+      <!-- Error state: hard wall -->
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>Sign in</h3>
+            <div class="authalert"><span class="ai">⛔</span><div><div class="at">You don't have access to this app</div><div class="ax">Your sign-in worked, but no one has granted you access to Module Demo App yet. Ask an administrator for an invitation.</div></div></div>
+            <div class="frow"><label>Email</label><div class="inp"><input value="new.person@example.com"/><span class="aff">✉</span></div></div>
+            <div class="frow"><label>Password <span class="spacer"><a class="btn link" href="#recover">Forgot?</a></span></label><div class="inp"><input type="password" value="············"/><span class="aff">👁</span></div></div>
+            <button class="btn pri lg block">Sign in</button>
+          </div>
+        </div>
+        <div class="caption"><b>error:</b> <code>MEMBERSHIP_REQUIRED</code> — the hard wall, inline</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- =========================================================== SIGNUP -->
+<div class="section-head" id="signup">
+  <div class="kicker">Page · signup</div>
+  <h2 class="dh">Signup ships unconditionally — admission is engine policy</h2>
+  <p>The page exists even under <code>invite-only</code>: a brand-new invitee signs up first, then accepts (Decision 3). Email + password creates the account via <code>SignUp</code>; social buttons route through <code>Login</code>. With <code>requireEmailVerification</code> the response carries no session, so the page swaps to the check-your-email state instead of navigating.</p>
+</div>
+<div class="wrap">
+<div class="frame">
+  <div class="authbg">
+    <div class="authgrid" style="max-width:760px;margin:0 auto">
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>Create your account</h3>
+            <div class="frow"><label>First name <span class="req">*</span></label><div class="inp"><input value="Sam"/></div></div>
+            <div class="frow"><label>Last name <span class="req">*</span></label><div class="inp"><input value="Taylor"/></div></div>
+            <div class="frow"><label>Email <span class="req">*</span></label><div class="inp"><input value="sam.taylor@example.com"/><span class="aff">✉</span></div></div>
+            <div class="frow"><label>Password <span class="req">*</span></label><div class="inp"><input type="password" value="············"/><span class="aff">👁</span></div><div class="hint">At least 8 characters.</div></div>
+            <button class="btn pri lg block">Create account</button>
+            <div class="div-or">or</div>
+            <button class="provider"><span class="glyph g-google">G</span> Continue with Google</button>
+          </div>
+        </div>
+        <div class="authfoot">Already have an account? <a href="#login">Sign in</a></div>
+        <div class="caption">Default render — <b>email + password</b> via <code>SignUp</code></div>
+      </div>
+
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <div class="result">
+              <div class="ric" style="background:var(--violet-bg);color:var(--violet)">✉</div>
+              <div class="rt">Check your email</div>
+              <div class="rs">We sent a verification link to <b>sam.taylor@example.com</b>. Open it to finish setting up your account.</div>
+            </div>
+            <button class="btn block">Resend link</button>
+            <div class="hint" style="text-align:center">Wrong address? <a class="btn link" href="#signup">Start over</a></div>
+          </div>
+        </div>
+        <div class="caption">With <code>requireEmailVerification</code> — <b>no session yet</b>, so we wait</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- =========================================================== PASSWORD RESET -->
+<div class="section-head" id="recover">
+  <div class="kicker">Pages · forgot-password · reset-password</div>
+  <h2 class="dh">Forgotten password — request, then reset</h2>
+  <p>Two thin pages over <code>RequestPasswordReset</code> and <code>ResetPassword</code>. Both shown only when <code>methods.password</code> is on; the emailed link lands on <code>reset-password</code> with the token in the URL.</p>
+</div>
+<div class="wrap">
+<div class="frame">
+  <div class="authbg">
+    <div class="authgrid" style="max-width:760px;margin:0 auto">
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>Reset your password</h3>
+            <p class="lead">Enter your email and we'll send a link to choose a new password.</p>
+            <div class="frow"><label>Email</label><div class="inp"><input value="jane.mokoena@example.com"/><span class="aff">✉</span></div></div>
+            <button class="btn pri lg block">Send reset link</button>
+          </div>
+        </div>
+        <div class="authfoot"><a href="#login">← Back to sign in</a></div>
+        <div class="caption">Page · <b>forgot-password</b></div>
+      </div>
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>Choose a new password</h3>
+            <div class="frow"><label>New password <span class="req">*</span></label><div class="inp"><input type="password" value="············"/><span class="aff">👁</span></div></div>
+            <div class="frow"><label>Confirm password <span class="req">*</span></label><div class="inp"><input type="password" value="············"/><span class="aff">👁</span></div></div>
+            <button class="btn pri lg block">Update password</button>
+          </div>
+        </div>
+        <div class="caption">Page · <b>reset-password</b> — token from the emailed link</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- =========================================================== VERIFY EMAIL -->
+<div class="section-head" id="verify">
+  <div class="kicker">Page · verify-email</div>
+  <h2 class="dh">One page, two renders</h2>
+  <p>The <code>verify-email</code> page covers the whole flow (module surface): the post-signup "check your email" prompt, and the landing after the emailed link — BetterAuth's <code>GET /api/auth/verify-email</code> redirects here with success or an error query. Three states below.</p>
+</div>
+<div class="wrap">
+<div class="frame">
+  <div class="authbg">
+    <div class="authgrid">
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <div class="result">
+              <div class="ric" style="background:var(--violet-bg);color:var(--violet)">✉</div>
+              <div class="rt">Check your email</div>
+              <div class="rs">Verify your email to finish signing in. We sent a link to <b>jane.mokoena@example.com</b>.</div>
+            </div>
+            <button class="btn block">Resend verification email</button>
+          </div>
+        </div>
+        <div class="caption"><b>Prompt</b> — awaiting verification</div>
+      </div>
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <div class="result">
+              <div class="ric" style="background:var(--ok-bg);color:var(--ok-fg)">✓</div>
+              <div class="rt">Email verified</div>
+              <div class="rs">You're all set. Your email address has been confirmed.</div>
+            </div>
+            <button class="btn pri lg block">Continue to app</button>
+          </div>
+        </div>
+        <div class="caption"><b>Success</b> — landed from the link</div>
+      </div>
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <div class="result">
+              <div class="ric" style="background:var(--warn-bg);color:var(--warn-fg)">⚠</div>
+              <div class="rt">This link has expired</div>
+              <div class="rs">Verification links are valid for a short time. Request a fresh one to continue.</div>
+            </div>
+            <button class="btn pri lg block">Send a new link</button>
+          </div>
+        </div>
+        <div class="caption"><b>Error</b> — expired / already used</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- =========================================================== TWO FACTOR -->
+<div class="section-head" id="twofactor">
+  <div class="kicker">Page · two-factor</div>
+  <h2 class="dh">2FA challenge — the module's own routing</h2>
+  <p>When a 2FA-enrolled user signs in, the <code>Login</code> result signals two-factor-required and the page routes here (Decision 2 — <code>authPages</code> has no 2FA key, so this never leaves the module). TOTP code or a backup code, with an optional trust-this-device.</p>
+</div>
+<div class="wrap">
+<div class="frame">
+  <div class="authbg">
+    <div class="authgrid" style="max-width:760px;margin:0 auto">
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>Enter your code</h3>
+            <p class="lead">Open your authenticator app and enter the 6-digit code for Module Demo App.</p>
+            <div class="otp"><span class="cell">4</span><span class="cell">1</span><span class="cell">9</span><span class="cell on">2</span><span class="cell empty">·</span><span class="cell empty">·</span></div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2)"><input type="checkbox" checked style="accent-color:var(--violet);width:15px;height:15px"/> Trust this device for 30 days</label>
+            <button class="btn pri lg block">Verify</button>
+            <div class="hint" style="text-align:center">Lost your device? <a class="btn link" href="#">Use a backup code</a></div>
+          </div>
+        </div>
+        <div class="caption"><b>TOTP</b> challenge</div>
+      </div>
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>Use a backup code</h3>
+            <p class="lead">Enter one of the single-use codes you saved when you set up two-factor authentication.</p>
+            <div class="frow"><label>Backup code</label><div class="inp"><input class="placeholder" placeholder="xxxx-xxxx" style="font-family:var(--mono)"/></div></div>
+            <button class="btn pri lg block">Verify</button>
+            <div class="hint" style="text-align:center"><a class="btn link" href="#">← Back to authenticator code</a></div>
+          </div>
+        </div>
+        <div class="caption"><b>Backup code</b> fallback</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- =========================================================== ACCEPT INVITATION -->
+<div class="section-head" id="accept">
+  <div class="kicker">Page · accept</div>
+  <h2 class="dh">Accept invitation — public, thin, engine-trusting</h2>
+  <p>A public page taking the invitation id from the URL (Decision 4). It reads the invitation natively for the context banner — org, inviter, expiry — then does exactly one thing per state: ensure a session, or make one <code>AcceptInvitation</code> client call. No orchestration; <code>contactId</code> stamping is engine-tier.</p>
+</div>
+<div class="wrap">
+<div class="frame">
+  <div class="authbg">
+    <div class="authgrid">
+      <!-- No session -->
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>You're invited</h3>
+            <div class="invctx"><span class="av s32 g-jm">JM</span><div class="who"><div class="l1">Jane Mokoena invited you to</div><div class="l2">Module Demo App</div></div></div>
+            <p class="lead" style="margin-top:0">Sign in or create your account to accept. Your invitation is waiting — it expires in 4 days.</p>
+            <button class="btn pri lg block">Create account &amp; accept</button>
+            <button class="btn lg block">I already have an account</button>
+          </div>
+        </div>
+        <div class="caption"><b>No session</b> — offer login / signup, callback back here</div>
+      </div>
+      <!-- Session, email matches -->
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <h3>Accept your invitation</h3>
+            <div class="invctx"><span class="av s32 g-jm">JM</span><div class="who"><div class="l1">Jane Mokoena invited you to</div><div class="l2">Module Demo App</div></div></div>
+            <div class="rowitem" style="border:none;padding:2px 0"><span class="av s28 g-ap">ST</span><div class="ri-main">Signed in as <b>sam.taylor@example.com</b><div class="ri-sub">This matches your invitation.</div></div></div>
+            <button class="btn pri lg block">Accept &amp; continue</button>
+            <div class="hint" style="text-align:center">Not you? <a class="btn link" href="#logout">Sign out</a></div>
+          </div>
+        </div>
+        <div class="caption"><b>Session · email matches</b> — one <code>AcceptInvitation</code> call</div>
+      </div>
+      <!-- Expired / mismatch / already member -->
+      <div>
+        <div class="authcard">
+          <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="authbody">
+            <div class="result">
+              <div class="ric" style="background:var(--warn-bg);color:var(--warn-fg)">⌛</div>
+              <div class="rt">This invitation has expired</div>
+              <div class="rs">Ask Jane Mokoena to send a fresh invitation, then open the new link.</div>
+            </div>
+          </div>
+        </div>
+        <div class="caption" style="margin-bottom:14px"><b>Expired</b> — recovery is re-invite (admin side)</div>
+        <div class="authcard">
+          <div class="authbody" style="padding-top:22px">
+            <div class="result" style="padding-top:0">
+              <div class="ric" style="background:var(--ok-bg);color:var(--ok-fg)">✓</div>
+              <div class="rt">You're already a member</div>
+              <div class="rs">Your account already has access to Module Demo App.</div>
+            </div>
+            <button class="btn pri lg block">Go to app</button>
+          </div>
+        </div>
+        <div class="caption"><b>Already a member</b> · (mismatch shows the equivalent message)</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- =========================================================== WORKSPACE (CHOSEN) -->
+<div class="section-head" id="workspace">
+  <span class="opt-tag">Option A</span><span class="chosen">✓ Chosen direction</span>
+  <h2 class="dh" style="margin-top:10px">Account workspace — sections that save themselves</h2>
+  <p>One <code>view</code> page replaces today's view + edit (Decision 5). Each section edits through its own modal and its own write pathway, so a profile save (a change-stamped contact request) never rides the same Save button as half a dozen session-gated auth calls. <b>Profile</b> and <b>Security</b> settings on the left; <b>Sessions</b> and <b>Linked accounts</b> on the right. Security uses a settings-row grammar rather than admin's description lists — this is the person editing their own account, not an operator reading someone else's.</p>
+</div>
+<div class="wrap">
+<div class="frame">
+  <div class="appbar">
+    <div class="brand"><span class="mark">M</span> Module Demo App</div>
+    <div class="topmenu"><a href="#workspace">Dashboard</a><a href="#workspace">Contacts</a><a href="#workspace">Activity</a><a href="#workspace" class="on">Account</a></div>
+    <div class="right"><span title="Theme" style="font-size:15px">◐</span><span class="bell"></span><span class="profilemenu"><span class="av s28 g-jm">JM</span><span class="chev">▾</span></span></div>
+  </div>
+  <div class="canvas">
+    <div class="crumbs"><a href="#workspace">Home</a><span class="sep">/</span><span class="cur">Account</span></div>
+    <div class="titleblock">
+      <div class="tcol">
+        <div class="eyebrow">Your account</div>
+        <h1>Account</h1>
+        <div class="sub">Manage your profile, sign-in, and active sessions</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- MAIN -->
+      <div class="col main"><div class="stack">
+        <div class="idhead">
+          <span class="av s72 g-jm">JM</span>
+          <div class="who">
+            <div class="nm">Jane Mokoena</div>
+            <div class="em">jane.mokoena@example.com</div>
+            <div class="meta"><span class="tag ok">✓ Email verified</span><span class="tag violet">MFA on</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chead"><span class="ch-ic">👤</span><h3>Profile</h3><span class="spacer"></span><button class="btn sm">Edit</button></div>
+          <div class="cbody pad">
+            <dl class="desc"><dt>Name</dt><dd>Jane Mokoena</dd><dt>Email</dt><dd>jane.mokoena@example.com</dd><dt>Phone</dt><dd>+27 82 555 0142</dd><dt>Job title</dt><dd>Operations Lead</dd></dl>
+            <div class="hint">Saved as a contact request over the app connection, change-stamped — then name &amp; avatar sync to your sign-in identity. Email isn't editable here.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chead"><span class="ch-ic">🛡️</span><h3>Security</h3></div>
+          <div class="cbody">
+            <div class="setrow">
+              <span class="sr-ic">🔑</span>
+              <div class="sr-main"><div class="sr-t">Password</div><div class="sr-s">Last changed 3 months ago</div></div>
+              <div class="sr-act"><button class="btn sm">Change</button></div>
+            </div>
+            <div class="setrow">
+              <span class="sr-ic">📱</span>
+              <div class="sr-main"><div class="sr-t">Two-factor authentication <span class="tag ok">On</span></div><div class="sr-s">Authenticator app · 8 backup codes left</div></div>
+              <div class="sr-act"><button class="btn sm">Manage</button><button class="btn sm danger">Turn off</button></div>
+            </div>
+            <div class="setrow">
+              <span class="sr-ic">⚿</span>
+              <div class="sr-main"><div class="sr-t">Passkeys</div><div class="sr-s">MacBook Pro · iPhone</div></div>
+              <div class="sr-act"><button class="btn sm">Add passkey</button></div>
+            </div>
+            <div class="setrow">
+              <span class="sr-ic">🔗</span>
+              <div class="sr-main"><div class="sr-t">Linked accounts</div><div class="sr-s">Google · connected</div></div>
+              <div class="sr-act"><span class="tag">View only</span></div>
+            </div>
+            <div class="hint" style="padding:0 16px 4px">Every control here is a BetterAuth client action on your own session. 2FA and passkeys appear only when the app enables them (<code>two_factor</code>, <code>passkeys</code> vars). Linked accounts is visibility, not management.</div>
+          </div>
+        </div>
+      </div></div>
+
+      <!-- SIDEBAR -->
+      <div class="col side"><div class="stack">
+        <div class="card">
+          <div class="chead"><span class="ch-ic">🖥️</span><h3>Active sessions</h3><span class="spacer"></span><button class="btn sm danger">Sign out others</button></div>
+          <div class="cbody pad">
+            <div class="listcaps">
+              <div class="rowitem"><span class="ri-ic">💻</span><div class="ri-main">Chrome · macOS<div class="ri-sub">41.203.11.8 · Johannesburg · expires in 6 days</div></div><span class="tag ok">This device</span></div>
+              <div class="rowitem"><span class="ri-ic">📱</span><div class="ri-main">Safari · iPhone<div class="ri-sub">102.54.9.2 · Cape Town · expires in 2 days</div></div></div>
+              <div class="rowitem"><span class="ri-ic">💻</span><div class="ri-main">Firefox · Windows<div class="ri-sub">196.25.8.14 · expires in 5 days</div></div></div>
+            </div>
+            <div class="hint">Read natively from <code>user-sessions</code> (token projected out). One action: <b>sign out other sessions</b> via <code>RevokeOtherSessions</code>. Per-session revoke is deferred — it needs a token-free pathway.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chead"><span class="ch-ic">🔗</span><h3>Linked accounts</h3></div>
+          <div class="cbody pad">
+            <div class="listcaps">
+              <div class="rowitem"><span class="ri-ic">G</span><div class="ri-main">Google<div class="ri-sub">jane.mokoena@gmail.com</div></div><span class="tag ok">Connected</span></div>
+              <div class="rowitem"><span class="ri-ic">✉</span><div class="ri-main">Email &amp; password<div class="ri-sub">Primary sign-in</div></div><span class="tag">Active</span></div>
+            </div>
+            <div class="hint">From <code>user-accounts</code> — read-only, mirroring user-admin's auth-methods tile. Linking / unlinking is a non-goal until a concrete need appears.</div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- =========================================================== WORKSPACE B (alt) -->
+<div class="section-head faded" id="workspace-alt">
+  <span class="opt-tag b">Option B</span>
+  <h2 class="dh" style="margin-top:10px">Separate tiles per concern <span style="font-size:14px;color:var(--text-3);font-weight:400">— alternative, not chosen</span></h2>
+  <p>Resolves the design's open question the other way: Profile / Password / Two-factor / Passkeys / Sessions / Linked accounts as six sibling tiles in a masonry grid. Honest to the write pathways (each tile = one routine), but noisier — every security control demands equal weight, and the page stops fitting one glance. Chosen A folds password/2FA/passkeys/linked into one Security tile because they're all "how you sign in," and gives Sessions its own tile because it's the one thing you act on often.</p>
+</div>
+<div class="wrap faded">
+<div class="frame">
+  <div class="appbar">
+    <div class="brand"><span class="mark">M</span> Module Demo App</div>
+    <div class="topmenu"><a href="#workspace-alt">Dashboard</a><a href="#workspace-alt">Contacts</a><a href="#workspace-alt">Activity</a><a href="#workspace-alt" class="on">Account</a></div>
+    <div class="right"><span style="font-size:15px">◐</span><span class="bell"></span><span class="profilemenu"><span class="av s28 g-jm">JM</span><span class="chev">▾</span></span></div>
+  </div>
+  <div class="canvas">
+    <div class="titleblock"><div class="tcol"><div class="eyebrow">Your account</div><h1>Account</h1></div></div>
+    <div class="card"><div class="cbody pad" style="text-align:center;color:var(--text-3);font-size:13px;padding:26px">Six equal tiles — Profile · Password · Two-factor · Passkeys · Sessions · Linked accounts. Kept for the record; superseded by Option A's consolidated Security tile.</div></div>
+  </div>
+</div>
+</div>
+
+<!-- =========================================================== ENROLMENT / CHANGE PW (signature moment) -->
+<div class="section-head" id="enrol">
+  <div class="kicker">Signature moment · modals</div>
+  <h2 class="dh">Section edits happen in place</h2>
+  <p>Each Security row opens its own modal — a single client action behind each. TOTP enrolment renders the <code>totpURI</code> as a QR code (the new plugin block, with a copyable text fallback), confirms with a code, then hands over one-time backup codes. Change password offers "sign out other sessions" inline.</p>
+</div>
+<div class="wrap">
+  <div class="frame" style="box-shadow:none">
+  <div class="modalstage" style="gap:20px;flex-wrap:wrap">
+
+    <div class="modal">
+      <div class="mhead"><span class="mic">📱</span><h4>Set up two-factor authentication</h4></div>
+      <div class="mbody">
+        <div>Scan this with your authenticator app, then enter the 6-digit code to confirm.</div>
+        <div class="qrwrap">
+          <svg class="qr" viewBox="0 0 116 116" role="img" aria-label="Authenticator QR code">
+            <rect width="116" height="116" fill="#fff"/>
+            <!-- finder patterns -->
+            <g fill="#1a1a1a">
+              <rect x="0" y="0" width="28" height="28"/><rect x="88" y="0" width="28" height="28"/><rect x="0" y="88" width="28" height="28"/>
+            </g>
+            <g fill="#fff">
+              <rect x="4" y="4" width="20" height="20"/><rect x="92" y="4" width="20" height="20"/><rect x="4" y="92" width="20" height="20"/>
+            </g>
+            <g fill="#1a1a1a">
+              <rect x="8" y="8" width="12" height="12"/><rect x="96" y="8" width="12" height="12"/><rect x="8" y="96" width="12" height="12"/>
+              <!-- data modules (module=4) -->
+              <rect x="36" y="4" width="4" height="4"/><rect x="44" y="4" width="4" height="4"/><rect x="52" y="8" width="4" height="4"/><rect x="60" y="4" width="4" height="4"/><rect x="72" y="8" width="4" height="4"/>
+              <rect x="32" y="16" width="4" height="4"/><rect x="40" y="12" width="4" height="4"/><rect x="56" y="16" width="4" height="4"/><rect x="64" y="12" width="4" height="4"/><rect x="76" y="16" width="4" height="4"/>
+              <rect x="36" y="24" width="4" height="4"/><rect x="48" y="24" width="4" height="4"/><rect x="60" y="24" width="4" height="4"/><rect x="72" y="24" width="4" height="4"/>
+              <rect x="4" y="36" width="4" height="4"/><rect x="16" y="36" width="4" height="4"/><rect x="28" y="36" width="4" height="4"/><rect x="40" y="36" width="4" height="4"/><rect x="52" y="36" width="4" height="4"/><rect x="64" y="36" width="4" height="4"/><rect x="80" y="36" width="4" height="4"/><rect x="92" y="36" width="4" height="4"/><rect x="104" y="36" width="4" height="4"/>
+              <rect x="8" y="44" width="4" height="4"/><rect x="24" y="44" width="4" height="4"/><rect x="44" y="44" width="4" height="4"/><rect x="56" y="44" width="4" height="4"/><rect x="72" y="44" width="4" height="4"/><rect x="88" y="44" width="4" height="4"/><rect x="100" y="44" width="4" height="4"/>
+              <rect x="16" y="52" width="4" height="4"/><rect x="36" y="52" width="4" height="4"/><rect x="48" y="52" width="4" height="4"/><rect x="64" y="52" width="4" height="4"/><rect x="80" y="52" width="4" height="4"/><rect x="96" y="52" width="4" height="4"/><rect x="108" y="52" width="4" height="4"/>
+              <rect x="4" y="60" width="4" height="4"/><rect x="28" y="60" width="4" height="4"/><rect x="44" y="60" width="4" height="4"/><rect x="60" y="60" width="4" height="4"/><rect x="72" y="60" width="4" height="4"/><rect x="92" y="60" width="4" height="4"/>
+              <rect x="36" y="72" width="4" height="4"/><rect x="48" y="72" width="4" height="4"/><rect x="56" y="72" width="4" height="4"/><rect x="68" y="72" width="4" height="4"/><rect x="84" y="72" width="4" height="4"/><rect x="100" y="72" width="4" height="4"/>
+              <rect x="36" y="88" width="4" height="4"/><rect x="48" y="84" width="4" height="4"/><rect x="60" y="88" width="4" height="4"/><rect x="72" y="84" width="4" height="4"/><rect x="88" y="88" width="4" height="4"/><rect x="104" y="88" width="4" height="4"/>
+              <rect x="40" y="100" width="4" height="4"/><rect x="52" y="104" width="4" height="4"/><rect x="64" y="100" width="4" height="4"/><rect x="80" y="104" width="4" height="4"/><rect x="96" y="100" width="4" height="4"/><rect x="108" y="104" width="4" height="4"/>
+              <rect x="36" y="108" width="4" height="4"/><rect x="56" y="108" width="4" height="4"/><rect x="72" y="108" width="4" height="4"/><rect x="88" y="108" width="4" height="4"/>
+            </g>
+          </svg>
+          <div style="flex:1 1 auto;min-width:0">
+            <div class="subeyebrow">Can't scan?</div>
+            <div class="inp" style="height:auto;padding:8px 10px"><input readonly value="otpauth://totp/…JBSWY3DP" style="font-family:var(--mono);font-size:12px"/><span class="aff">⧉</span></div>
+            <div class="frow" style="margin-top:12px"><label>Confirmation code</label><div class="otp" style="justify-content:flex-start"><span class="cell" style="width:30px;height:38px;font-size:16px">2</span><span class="cell" style="width:30px;height:38px;font-size:16px">4</span><span class="cell" style="width:30px;height:38px;font-size:16px">8</span><span class="cell on" style="width:30px;height:38px;font-size:16px">1</span><span class="cell empty" style="width:30px;height:38px;font-size:16px">·</span><span class="cell empty" style="width:30px;height:38px;font-size:16px">·</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="mfoot"><button class="btn">Cancel</button><button class="btn pri">Confirm &amp; enable</button></div>
+    </div>
+
+    <div class="modal">
+      <div class="mhead"><span class="mic" style="background:var(--ok-bg);color:var(--ok-fg)">🔐</span><h4>Save your backup codes</h4></div>
+      <div class="mbody">
+        <div>Two-factor is on. Store these one-time codes somewhere safe — each works once if you lose your authenticator.</div>
+        <div class="backupgrid">
+          <span class="bc">7F3K-9QP2</span><span class="bc">L2M8-XR4V</span>
+          <span class="bc">B6N1-TW5H</span><span class="bc">C9D4-ZK7Q</span>
+          <span class="bc">R3S8-VM2P</span><span class="bc">J5W6-YB1N</span>
+        </div>
+        <div class="authalert warn"><span class="ai">⚠</span><div class="ax">You won't see these again. Download or copy them before closing.</div></div>
+      </div>
+      <div class="mfoot"><button class="btn">Copy</button><button class="btn pri">I've saved them</button></div>
+    </div>
+
+    <div class="modal">
+      <div class="mhead"><span class="mic">🔑</span><h4>Change password</h4></div>
+      <div class="mbody">
+        <div class="frow"><label>Current password</label><div class="inp"><input type="password" value="············"/><span class="aff">👁</span></div></div>
+        <div class="frow"><label>New password</label><div class="inp"><input type="password" value="············"/><span class="aff">👁</span></div><div class="hint">At least 8 characters.</div></div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2)"><input type="checkbox" checked style="accent-color:var(--violet);width:15px;height:15px"/> Sign out my other sessions</label>
+      </div>
+      <div class="mfoot"><button class="btn">Cancel</button><button class="btn pri">Update password</button></div>
+    </div>
+
+  </div>
+  </div>
+</div>
+
+<!-- =========================================================== ONBOARDING -->
+<div class="section-head" id="onboarding">
+  <div class="kicker">Page · onboarding</div>
+  <h2 class="dh">Onboarding — chrome-less first-login completion</h2>
+  <p>The old <code>new</code> page becomes <code>onboarding</code> (Decision 5). By first session the contact already exists (Decision 7 — merge-on-signup), so the page only <b>updates</b> it: a friendly avatar + name + a couple of profile fields, no app shell around it. Routing users here is app/router territory.</p>
+</div>
+<div class="wrap">
+<div class="frame">
+  <div class="authbg">
+    <div class="authcard" style="max-width:400px">
+      <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+      <div class="authbody">
+        <h3>Welcome — let's set up your profile</h3>
+        <p class="lead">This is how teammates will see you across the app.</p>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin:2px 0 4px">
+          <span class="av s72 g-ap">ST</span>
+          <button class="btn sm" style="border-radius:20px"><span class="ic">⟳</span> Change colour</button>
+        </div>
+        <div class="frow"><label>First name <span class="req">*</span></label><div class="inp"><input value="Sam"/></div></div>
+        <div class="frow"><label>Last name <span class="req">*</span></label><div class="inp"><input value="Taylor"/></div></div>
+        <div class="frow"><label>Job title</label><div class="inp"><input class="placeholder" placeholder="Optional"/></div></div>
+        <button class="btn pri lg block">Save &amp; continue</button>
+      </div>
+    </div>
+    <div class="caption">Same auth chrome, no nav — the extension <code>fields.profile</code> slot lands here too.</div>
+  </div>
+</div>
+</div>
+
+<!-- =========================================================== LOGOUT -->
+<div class="section-head" id="logout">
+  <div class="kicker">Page · logout</div>
+  <h2 class="dh">Logout — a clean, deliberate end</h2>
+  <p>A confirmation landing after sign-out, with a single way back in. Same chrome as every other auth page, so the door you leave by looks like the door you came in.</p>
+</div>
+<div class="wrap">
+<div class="frame">
+  <div class="authbg" style="min-height:300px">
+    <div class="authcard" style="max-width:360px">
+      <div class="authcover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+      <div class="authbody">
+        <div class="result">
+          <div class="rt">You're signed out</div>
+          <div class="rs">Thanks for stopping by. Your session on this device has ended.</div>
+        </div>
+        <button class="btn pri lg block">Sign in again</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="foot">
+  Static HTML mockups for <code>designs/user-account-better-auth/design.md</code>. Public auth pages use the real <code>layout/auth-page</code> chrome (gradient cover + 360px card); the account workspace uses the <code>layout/page</code> app shell. Palette and components inherited from the <code>user-admin-better-auth</code> deck so the two modules read as one product. Option A is the chosen workspace direction; B kept as a recorded alternative.
+</div>
+
+</body>
+</html>
