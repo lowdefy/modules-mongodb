@@ -148,7 +148,7 @@ The platform-side changes this design depends on are specified in **[upstream-as
 ## Non-goals
 
 - **Multi-tenant administration** (`policy: tenant` — org switching, tenant creation, seat management). Separate module, designed after this one lands.
-- **`user-account` redesign** — the self-service side (own profile, own sessions, passkey enrolment, MFA setup). Follow-on design.
+- **`user-account` redesign** — the self-service side (own profile, own sessions, passkey enrolment, MFA setup). Designed in [user-account-better-auth](../user-account-better-auth/design.md), which also owns the auth pages (login, signup, accept, verify).
 - **Auth pages** — login, signup, invitation accept, verify. Auth-page modules own these.
 - **Contact administration** beyond what the invite flow needs — the `contacts` module owns pure contacts.
 - **Role-type management** — the module assigns catalog roles; minting role names is out of scope platform-wide.
