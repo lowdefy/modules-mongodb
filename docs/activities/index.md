@@ -119,6 +119,34 @@ hooks:
             _state: activity_id
 ```
 
+## Form option requests
+
+`fields.attributes` / `fields.attributes_by_type` blocks can be request-backed — e.g. a `Selector` whose `options` come from an app collection. Such a block needs its option request available on the page. `form_requests` is a list of request definitions the module splices into the new and edit page request lists and fires on page init:
+
+```yaml
+form_requests:
+  - id: discussion_options
+    type: MongoDBAggregation
+    connectionId: discussions
+    properties:
+      pipeline:
+        - $project: { _id: 0, value: $_id, label: $topic }
+fields:
+  attributes:
+    - id: references.discussion_ids
+      type: MultipleSelector
+      # Hidden in the capture modal, where form_requests aren't loaded.
+      visible:
+        _eq:
+          - _state: activity_form_context
+          - page
+      properties:
+        options:
+          _request: discussion_options
+```
+
+`form_requests` are **not** added to the `capture_activity` modal — a modal can't own page requests. The pages set a `state.activity_form_context` marker so request-backed fields can gate themselves to the full-page form: `page` on the new/edit pages, `view` on the detail page, `modal` in the capture modal. Gate on `activity_form_context == page` (as above) to keep such a field out of the modal and the detail view; if the field is wanted in a modal, the host page embedding `capture_activity` must supply the request itself.
+
 ## Agenda topics
 
 Activity types flagged `agenda: true` (the built-in `meeting`, plus any consumer type that sets the flag) carry an Agenda Topics section in the form. Topics are stored as task documents in the `actions` collection (`kind: task`), stamped `metadata.task_type: agenda` to distinguish them from adhoc tasks, and linked back via `activity_ids`. See the `lookup_collections.actions` var if your app maps `actions-collection` to a non-default collection name. Any host-app per-workflow uniqueness index on `actions` must be **partial** (`partialFilterExpression: { type: { $exists: true } }`) to exclude untyped task docs.
