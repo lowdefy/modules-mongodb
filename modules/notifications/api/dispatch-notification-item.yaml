@@ -179,14 +179,16 @@ routine:
             properties:
               to:
                 _state: email
+              # Empty arrays (not null) when absent: SMTPMailSend's schema
+              # accepts an address list but not null for cc/bcc.
               cc:
                 _if_none:
                   - _payload: item.cc
-                  - null
+                  - []
               bcc:
                 _if_none:
                   - _payload: item.bcc
-                  - null
+                  - []
               subject:
                 _step: render.subject
               text:

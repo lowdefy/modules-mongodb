@@ -28,18 +28,21 @@ events:
         pageId:
           _if_none:
             - _request: get_notification_for_link.0.data.links.button.pageId
-            - _request: get_notification_for_link.0.links.button.pageId
-            - _module.pageId: all
+            - _if_none:
+                - _request: get_notification_for_link.0.links.button.pageId
+                - _module.pageId: all
         urlQuery:
           _if_none:
             - _request: get_notification_for_link.0.data.links.button.urlQuery
-            - _request: get_notification_for_link.0.links.button.urlQuery
-            - {}
+            - _if_none:
+                - _request: get_notification_for_link.0.links.button.urlQuery
+                - {}
         input:
           _if_none:
             - _request: get_notification_for_link.0.data.links.button.input
-            - _request: get_notification_for_link.0.links.button.input
-            - {}
+            - _if_none:
+                - _request: get_notification_for_link.0.links.button.input
+                - {}
     # Break if a pre-auth link was followed
     - id: break_invite
       type: Throw

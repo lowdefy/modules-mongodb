@@ -115,5 +115,6 @@ blocks:
                         description:
                           _if_none:
                             - _state: list.$.description
-                            - _state: list.$.preview
-                            - ''
+                            - _if_none:
+                                - _state: list.$.preview
+                                - ''
