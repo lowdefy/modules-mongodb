@@ -386,7 +386,10 @@ _ref:
                                 default: true
                             - _state: action.buttons.progress
                         properties:
-                          title: Save Draft
+                          title:
+                            _var:
+                              key: page_config.buttons.progress.title
+                              default: Save Draft
                           type: default
                           disabled:
                             _or:
@@ -447,7 +450,10 @@ _ref:
                                 default: true
                             - _state: action.buttons.submit
                         properties:
-                          title: Submit
+                          title:
+                            _var:
+                              key: page_config.buttons.submit.title
+                              default: Submit
                           type: primary
                           disabled:
                             _or:
