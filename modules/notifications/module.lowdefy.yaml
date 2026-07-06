@@ -42,8 +42,10 @@ vars:
       SMTP transport for notification emails. Ignored when the app remaps the
       notifications-email connection to its own email connection.
     properties:
+      # host/user/pass/from are untyped: apps commonly source them from a
+      # _secret operator, which stays an unevaluated object at build time and
+      # cannot satisfy a `type: string` check. port/secure are never secrets.
       host:
-        type: string
         default: null
         description: SMTP host.
       port:
@@ -55,17 +57,17 @@ vars:
         default: true
         description: Use TLS.
       user:
-        type: string
         default: null
         description: SMTP auth user.
       pass:
         default:
           _secret: NOTIFICATIONS_SMTP_PASS
         description: >
-          SMTP auth password. Defaults to the NOTIFICATIONS_SMTP_PASS secret;
-          pass e.g. `_secret: SENDGRID_API_KEY` to reuse an existing secret.
+          SMTP auth password, read from the NOTIFICATIONS_SMTP_PASS secret. Set
+          that env var to your provider key (e.g. a SendGrid API key). To use a
+          secret you already have under a different name, remap the
+          notifications-email connection to an app connection instead.
       from:
-        type: string
         default: null
         description: From address/header for notification emails.
 

@@ -26,7 +26,7 @@ Master list of every secret read by modules in this repo. Bucket names, keys, an
 
 **MongoDB.** Every module declares `MONGODB_URI`. A single connection serves the whole app — modules don't need separate URIs.
 
-**Email (SMTP).** `NOTIFICATIONS_SMTP_PASS` is the default of the notifications module's `email.pass` var. The var accepts any secret operator, so apps reusing an existing credential (e.g. `_secret: SENDGRID_API_KEY` for SendGrid's SMTP relay) don't need to define it. Apps that remap the `notifications-email` connection to their own email connection skip it entirely.
+**Email (SMTP).** `NOTIFICATIONS_SMTP_PASS` is the notifications module's SMTP password secret (the default of its `email.pass` var). Set it to your provider key — a SendGrid API key, for example, since the module's SMTP connection works with any relay. A module can only reference secrets it declares, so to use a credential you already hold under a different name, remap the `notifications-email` connection to an app connection with its own secrets rather than pointing the var at it.
 
 **File storage (S3).** Used by `files`. Two buckets: a private one (signed URLs, default for new uploads) and a public one (for assets served without auth).
 
