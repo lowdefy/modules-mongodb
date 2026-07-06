@@ -269,6 +269,11 @@ _ref:
             contacts: []
             companies: []
             type: null
+            # Form context marker — `view` here so consumer fields.* blocks
+            # that gate on state.activity_form_context resolve cleanly on the
+            # detail page (see new.yaml / module.lowdefy.yaml). Page-only form
+            # inputs (e.g. request-backed selectors) stay hidden on view.
+            activity_form_context: view
       onMount:
         - id: fetch
           type: Request

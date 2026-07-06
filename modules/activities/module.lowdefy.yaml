@@ -156,6 +156,18 @@ vars:
   filter_requests:
     default: []
     description: Additional requests for the custom filters section
+  form_requests:
+    default: []
+    description: >-
+      Request configs spliced into the new and edit page request lists and
+      fired on page init, so request-backed consumer `fields.*` blocks (e.g. a
+      Selector whose options come from an app collection) have their option
+      sources available. Each entry is a full request definition with an `id`.
+      NOT added to the capture_activity modal — a modal can't own page
+      requests. Blocks that depend on these should gate on
+      `state.activity_form_context` (`page` on the new/edit pages, `modal` in
+      the capture modal) so they don't render broken in the modal; the host
+      page must supply the requests itself if such a field is wanted there.
   lookup_collections:
     type: object
     description: >-

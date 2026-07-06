@@ -96,8 +96,30 @@ _ref:
             # Runtime behaviour unchanged — `_if_none` defaults take over.
             cycle_check_self_id: null
             cycle_check_ids: []
+            # Form context marker (see new.yaml / module.lowdefy.yaml).
+            activity_form_context: page
+        # Fire consumer form_requests (option sources for request-backed
+        # `fields.*` blocks). Build-time skip when unset.
+        - id: fire_form_requests
+          type: Request
+          skip:
+            _build.eq:
+              - _build.array.length:
+                  _module.var: form_requests
+              - 0
+          params:
+            _build.array.map:
+              on:
+                _module.var: form_requests
+              callback:
+                _build.function:
+                  __build.args: 0.id
+    # get_activity plus consumer form_requests (option sources for
+    # request-backed `fields.*` blocks).
     requests:
-      - _ref: requests/get_activity.yaml
+      _build.array.concat:
+        - - _ref: requests/get_activity.yaml
+        - _module.var: form_requests
     blocks:
       - id: card
         type: Card
