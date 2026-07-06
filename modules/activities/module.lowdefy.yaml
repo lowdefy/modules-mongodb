@@ -165,8 +165,9 @@ vars:
       sources available. Each entry is a full request definition with an `id`.
       NOT added to the capture_activity modal — a modal can't own page
       requests. Blocks that depend on these should gate on
-      `state.activity_form_context` (`page` on the new/edit pages, `modal` in
-      the capture modal) so they don't render broken in the modal; the host
+      `state.activity_form_context` (`page` on the new/edit pages, `view` on
+      the detail page, `modal` in the capture modal) so they don't render
+      broken in the modal; the host
       page must supply the requests itself if such a field is wanted there.
   lookup_collections:
     type: object
