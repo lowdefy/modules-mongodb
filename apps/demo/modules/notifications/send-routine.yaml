@@ -1,9 +1,12 @@
-# Demo dispatch routine for the notifications module's send-notification endpoint.
-# Two aggregation branches on the events collection, each $merge-ing production-shaped
-# notification docs (minus email fields) into the notifications collection.
-# An empty $match merges nothing, so every other event type is a silent no-op.
+# Demo dispatch routine for the notifications module's send-notification
+# endpoint. Two aggregation branches on the events collection shape
+# notification ITEMS (recipient contact + template data + page links), then
+# CallApi the module's dispatch-notifications pipeline, which renders the
+# app's `notifications:` template, stores the record with dedup, and sends
+# the email. An empty $match shapes nothing, so every other event type is a
+# silent no-op (dispatch-notifications loops zero items).
 # See designs/demo-notifications/design.md.
-- id: notify_quote_approved
+- id: shape_quote_approved
   type: MongoDBAggregation
   connectionId:
     _module.connectionId:
@@ -56,16 +59,18 @@
                           - $$entry.stage
                           - in-review
               in: $$submit_entry.created.user.id
-      # ── shape the notification doc ──
+      # ── embed the recipient contact ──
+      - $lookup:
+          from: user-contacts
+          localField: recipient_id
+          foreignField: _id
+          as: recipient_contact
+      - $set:
+          recipient_contact:
+            $first: $recipient_contact
+      # ── shape the notification item ──
       - $project:
-          _id:
-            $function:
-              body: |
-                function(){
-                  return UUID().toString().split('"')[1]
-                }
-              args: []
-              lang: js
+          _id: 0
           key:
             $concat:
               - $_id
@@ -74,40 +79,32 @@
               - ":"
               - $dateToString:
                   date: $created.timestamp
-          popup:
-            $literal: false
-          contact_id: $recipient_id
-          title: Quote approved
-          description:
-            $concat:
-              - $created.user.name
-              - " approved your quote."
-          body: "<p>Your quote was approved.</p>"
+          contact:
+            _id: $recipient_contact._id
+            email: $recipient_contact.email
+            profile:
+              name: $recipient_contact.profile.name
+          approver_name: $created.user.name
           links:
             button:
               pageId: lead-view
               urlQuery:
                 _id:
                   $first: $lead_ids
-          type: quote-approved
-          event_type: action-approve
-          event_id: $_id
-          created:
-            _ref:
-              module: events
-              component: change_stamp
-          read:
-            $literal: false
-          priority:
-            $literal: 50
-      - $merge:
-          into: notifications
-          on: _id
-          whenMatched: keepExisting # uuids never collide; defensive
-          whenNotMatched: insert
+- id: dispatch_quote_approved
+  type: CallApi
+  properties:
+    endpointId:
+      _module.endpointId:
+        id: dispatch-notifications
+        module: notifications
+    payload:
+      notification_id: quote-approved
+      items:
+        _step: shape_quote_approved
 
-# Invite mock — the inbox notification stands in for the production invite email.
-- id: notify_invite
+# Invite notification — inbox record + invite email for invited users.
+- id: shape_invite
   type: MongoDBAggregation
   connectionId:
     _module.connectionId:
@@ -126,15 +123,18 @@
       - $set:
           recipient_id:
             $first: $contact_ids
+      # ── embed the recipient contact ──
+      - $lookup:
+          from: user-contacts
+          localField: recipient_id
+          foreignField: _id
+          as: recipient_contact
+      - $set:
+          recipient_contact:
+            $first: $recipient_contact
+      # ── shape the notification item ──
       - $project:
-          _id:
-            $function:
-              body: |
-                function(){
-                  return UUID().toString().split('"')[1]
-                }
-              args: []
-              lang: js
+          _id: 0
           key:
             $concat:
               - $_id
@@ -143,37 +143,25 @@
               - ":"
               - $dateToString:
                   date: $created.timestamp
-          popup:
-            $literal: false
-          contact_id: $recipient_id
-          title:
-            $cond:
-              - $eq:
-                  - $type
-                  - invite-user
-              - "You've been invited to the demo app"
-              - "Your demo app invite was resent"
-          description: Sign in with your email address to get started.
-          body: "<p>You've been invited to the demo app. Sign in with your email address to get started.</p>"
+          contact:
+            _id: $recipient_contact._id
+            email: $recipient_contact.email
+            profile:
+              name: $recipient_contact.profile.name
           links:
             button:
               pageId:
                 _module.pageId:
                   id: login
                   module: user-account
-          type: user-invite
-          event_type: $type
-          event_id: $_id
-          created:
-            _ref:
-              module: events
-              component: change_stamp
-          read:
-            $literal: false
-          priority:
-            $literal: 50
-      - $merge:
-          into: notifications
-          on: _id
-          whenMatched: keepExisting
-          whenNotMatched: insert
+- id: dispatch_invite
+  type: CallApi
+  properties:
+    endpointId:
+      _module.endpointId:
+        id: dispatch-notifications
+        module: notifications
+    payload:
+      notification_id: user-invite
+      items:
+        _step: shape_invite

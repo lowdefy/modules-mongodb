@@ -99,6 +99,27 @@ auth:
       user-admin:
         - user-admin/*
 
+# Notification email templates — rendered by the notifications module's
+# dispatch pipeline (RenderNotification). Properties are nunjucks data
+# templates interpolated against each dispatched item.
+notifications:
+  - id: quote-approved
+    type: NotificationEmail
+    properties:
+      subject: Your quote was approved
+      title: Quote approved
+      message: "{{ approver_name }} approved your quote."
+      button:
+        label: View lead
+  - id: user-invite
+    type: NotificationEmail
+    properties:
+      subject: You've been invited to the demo app
+      title: You've been invited
+      message: Sign in with your email address to get started.
+      button:
+        label: Sign in
+
 modules:
   _ref: modules.yaml
 

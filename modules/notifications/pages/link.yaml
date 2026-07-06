@@ -9,33 +9,49 @@ events:
     - id: get_notification
       type: Request
       params: get_notification_for_link
-    # If invite-user, navigate directly to the notification's link (login page with hint)
+    # Pre-auth types (public_link_types var) navigate directly to the
+    # notification's link (e.g. the login page with an invite hint). Legacy
+    # records store the resolved target at top-level links.button; pipeline
+    # records keep the original { pageId, urlQuery } in data.links.button.
     - id: link_invite
       type: Link
       skip:
-        _ne:
-          - _request: get_notification_for_link.0.event_type
-          - invite-user
+        _not:
+          _array.includes:
+            on:
+              _module.var: public_link_types
+            value:
+              _if_none:
+                - _request: get_notification_for_link.0.event_type
+                - _request: get_notification_for_link.0.type
       params:
         pageId:
           _if_none:
+            - _request: get_notification_for_link.0.data.links.button.pageId
             - _request: get_notification_for_link.0.links.button.pageId
             - _module.pageId: all
         urlQuery:
           _if_none:
+            - _request: get_notification_for_link.0.data.links.button.urlQuery
             - _request: get_notification_for_link.0.links.button.urlQuery
             - {}
         input:
           _if_none:
+            - _request: get_notification_for_link.0.data.links.button.input
             - _request: get_notification_for_link.0.links.button.input
             - {}
-    # Break if invite link was followed
+    # Break if a pre-auth link was followed
     - id: break_invite
       type: Throw
       skip:
-        _ne:
-          - _request: get_notification_for_link.0.event_type
-          - invite-user
+        _not:
+          _array.includes:
+            on:
+              _module.var: public_link_types
+            value:
+              _if_none:
+                - _request: get_notification_for_link.0.event_type
+                - _request: get_notification_for_link.0.type
       messages:
         error: false
       params:

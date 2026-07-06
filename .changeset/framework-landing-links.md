@@ -2,6 +2,14 @@
 '@lowdefy/modules-mongodb-notifications': minor
 ---
 
-Accept Lowdefy framework notification links on the `link` page. Lowdefy's built-in `notifications:` config section (Lowdefy ≥ 5.4) composes email links as `?_id=<record>&option=<dataPath>`, where `option` is a dot-path into the record's `data` (e.g. `links.button`, `actions.0.link`). The link page now resolves the redirect target from `data` at the `option` path, falling back to the legacy top-level `links.button` for Lambda-produced records, and follows absolute URL targets directly. Set `app.notificationLandingPage: /notifications/link` in the consuming app to route framework notification emails through this page for mark-as-read tracking; leave it unset and framework email links go directly to their target pages.
+The notifications module now owns the full notification dispatch pipeline. Lowdefy's framework (≥ 5.4) renders notification emails from the app's `notifications:` config section via the `RenderNotification` step; this module composes everything around the render.
 
-The inbox list also falls back to the framework record's `preview` field when `description` is absent, so framework-created notifications render in the inbox without changes.
+**Dispatch pipeline.** New exported `dispatch-notifications` InternalApi (payload `{ notification_id, items }`): per item it mints the record id, renders the app's template, inserts the notification record **before** sending (claiming the dedup `key` so concurrent dispatches cannot double-send; duplicate key → skip), sends over the new `notifications-email` SMTP connection, and records the send result. A send failure never fails the dispatch — the record stays `sent: false` with `send_attempts` bumped. `send_routine` remains the app's event-shaping hook (unchanged `{ event_ids }` contract) and now typically ends in a `CallApi` to `dispatch-notifications`.
+
+**New vars.** `server_url` (origin for email link URLs), `email` (SMTP transport for `notifications-email` — or remap the connection to an app email connection), `public_link_types` (pre-auth link types, replacing the hardcoded invite checks). New secret `NOTIFICATIONS_SMTP_PASS` (default of `email.pass`).
+
+**Required index.** Dedup depends on an app-managed unique partial index on `key` (`notification_key_unique`, partial on `key: { $type: 'string' }`) — documented in the module docs; the guarantee does not exist without it.
+
+**Unified record convention.** Pipeline records write `type` (the notification config id), `preview`, and rendered `subject`/`body`/`text`; the inbox, badges, filters, and link page coalesce legacy Lambda-era fields on read (`description ?? preview`, `event_type ?? type`, top-level `links.button` fallback). The link page resolves framework landing links (`?_id=<record>&option=<dataPath>`) from the record's `data` at the `option` dot-path — records store the original `{ pageId, urlQuery }` link objects.
+
+The demo app is the reference implementation: `notifications:` template configs, SMTP vars reusing the SendGrid relay, and a send_routine that shapes events into items and dispatches through the pipeline.

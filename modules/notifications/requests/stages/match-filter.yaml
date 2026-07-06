@@ -30,9 +30,13 @@ $match:
                 _payload: filter.status
             - 0
         then:
-          event_type:
+          # Legacy records store event_type; pipeline records store type.
+          $expr:
             $in:
-              _if_none:
-                - _payload: filter.status
-                - []
+              - $ifNull:
+                  - $event_type
+                  - $type
+              - _if_none:
+                  - _payload: filter.status
+                  - []
         else: {}

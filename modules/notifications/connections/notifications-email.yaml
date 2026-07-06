@@ -1,0 +1,23 @@
+# SMTP transport for notification emails, configured through the module's
+# email.* vars. Apps with an existing email connection remap it instead:
+#   modules:
+#     - source: ...notifications
+#       connections:
+#         notifications-email: my-app-smtp
+# A remap suppresses this connection entirely, so the email vars are ignored.
+id: notifications-email
+type: SMTP
+properties:
+  host:
+    _module.var: email.host
+  port:
+    _module.var: email.port
+  secure:
+    _module.var: email.secure
+  auth:
+    user:
+      _module.var: email.user
+    pass:
+      _module.var: email.pass
+  from:
+    _module.var: email.from

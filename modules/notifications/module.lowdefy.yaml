@@ -1,6 +1,6 @@
 name: Notifications
 version: 0.9.2
-description: Notification bell, inbox, and deep-link routing
+description: Notification dispatch pipeline, bell, inbox, and deep-link routing
 
 dependencies:
   - id: layout
@@ -17,11 +17,61 @@ vars:
     type: array
     default: []
     description: >
-      API routine steps for dispatching notifications. Receives event_ids
-      in the payload. Default is an empty routine (no-op).
+      API routine steps that shape app events into notification items and
+      dispatch them (typically ending in a CallApi to dispatch-notifications).
+      Receives event_ids in the payload. Default is an empty routine (no-op).
+  server_url:
+    type: string
+    default: null
+    description: >
+      Absolute origin used to compose email link URLs (e.g.
+      https://app.example.com). Required when notification items carry page
+      links — there is no framework fallback.
+  public_link_types:
+    type: array
+    default:
+      - invite-user
+      - resend-user-invite
+      - user-invite
+    description: >
+      Notification type values whose landing links resolve without a session
+      (pre-auth flows such as user invites). Matched against both the
+      legacy event_type field and the pipeline's type field.
+  email:
+    description: >
+      SMTP transport for notification emails. Ignored when the app remaps the
+      notifications-email connection to its own email connection.
+    properties:
+      host:
+        type: string
+        default: null
+        description: SMTP host.
+      port:
+        type: number
+        default: 465
+        description: SMTP port.
+      secure:
+        type: boolean
+        default: true
+        description: Use TLS.
+      user:
+        type: string
+        default: null
+        description: SMTP auth user.
+      pass:
+        default:
+          _secret: NOTIFICATIONS_SMTP_PASS
+        description: >
+          SMTP auth password. Defaults to the NOTIFICATIONS_SMTP_PASS secret;
+          pass e.g. `_secret: SENDGRID_API_KEY` to reuse an existing secret.
+      from:
+        type: string
+        default: null
+        description: From address/header for notification emails.
 
 connections:
   - _ref: connections/notifications-collection.yaml
+  - _ref: connections/notifications-email.yaml
   - _ref: connections/notifications-files-bucket-public.yaml
 
 pages:
@@ -43,10 +93,14 @@ exports:
   connections:
     - id: notifications-collection
       description: MongoDB connection for notifications collection
+    - id: notifications-email
+      description: SMTP connection for notification emails — configure via email vars, or remap to an app connection
     - id: notifications-files-bucket-public
       description: Public S3 bucket for notification attachment downloads
   api:
     - id: send-notification
+    - id: dispatch-notifications
+      description: Generic dispatch pipeline — render, store with dedup, send, record the result; payload { notification_id, items }
   components:
     - id: notification-config
       description: Notification bell config for PageHeaderMenu — count, icon, and link
@@ -55,6 +109,8 @@ exports:
 
 api:
   - _ref: api/send-notification.yaml
+  - _ref: api/dispatch-notifications.yaml
+  - _ref: api/dispatch-notification-item.yaml
 
 components:
   - id: notification-config
@@ -67,6 +123,8 @@ components:
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
+  - name: NOTIFICATIONS_SMTP_PASS
+    description: SMTP password for notification emails (default of the email.pass var)
   - name: FILES_S3_ACCESS_KEY_ID
     description: AWS access key for the file-download bucket
   - name: FILES_S3_SECRET_ACCESS_KEY

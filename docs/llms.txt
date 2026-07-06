@@ -60,7 +60,7 @@
 
 ## notifications
 
-- docs/notifications/index.md: Notifications — In-app notifications — bell counter, inbox page, deep-link routing, and a configurable send routine. Notification documents are scoped per app via `app_name` so multiple apps can share a single MongoDB collection.
+- docs/notifications/index.md: Notifications — Notification dispatch and in-app display — a render/store/send pipeline, bell counter, inbox page, and deep-link routing. Notification documents are scoped per app via `app_name` so multiple apps can share a single MongoDB collection.
 - docs/notifications/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## release-notes

@@ -10,3 +10,13 @@ action-approve:
   color: "#52c41a"
   title: Action Approved
   icon: AiOutlineCheckCircle
+# Notification pipeline types — badges for records the notifications module's
+# dispatch pipeline writes (record.type = notification config id).
+quote-approved:
+  color: "#52c41a"
+  title: Quote Approved
+  icon: AiOutlineCheckCircle
+user-invite:
+  color: "#1890ff"
+  title: User Invited
+  icon: AiOutlineUserAdd

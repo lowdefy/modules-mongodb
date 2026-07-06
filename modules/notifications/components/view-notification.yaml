@@ -27,10 +27,16 @@ blocks:
               _global:
                 _string.concat:
                   - enums.event_types.
-                  - _get:
-                      key: event_type
-                      from:
-                        _var: notification
+                  # Legacy records store event_type; pipeline records store type.
+                  - _if_none:
+                      - _get:
+                          key: event_type
+                          from:
+                            _var: notification
+                      - _get:
+                          key: type
+                          from:
+                            _var: notification
   - id: divider
     type: Divider
     properties:
@@ -41,7 +47,14 @@ blocks:
       marginBottom: 2em
     properties:
       html:
-        _get:
-          key: body
-          from:
-            _var: notification
+        # body is the rendered HTML on both record shapes; fall back to the
+        # pipeline records' plain text if body is ever absent.
+        _if_none:
+          - _get:
+              key: body
+              from:
+                _var: notification
+          - _get:
+              key: text
+              from:
+                _var: notification

@@ -14,4 +14,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
 | `app_name` | string |  | Yes | App identifier used to scope notifications. Matches created.app_name on notification documents.  |
-| `send_routine` | array | `[]` |  | API routine steps for dispatching notifications. Receives event_ids in the payload. Default is an empty routine (no-op).  |
+| `send_routine` | array | `[]` |  | API routine steps that shape app events into notification items and dispatch them (typically ending in a CallApi to dispatch-notifications). Receives event_ids in the payload. Default is an empty routine (no-op).  |
+| `server_url` | string |  |  | Absolute origin used to compose email link URLs (e.g. https://app.example.com). Required when notification items carry page links — there is no framework fallback.  |
+| `public_link_types` | array | `["invite-user","resend-user-invite","user-invite"]` |  | Notification type values whose landing links resolve without a session (pre-auth flows such as user invites). Matched against both the legacy event_type field and the pipeline's type field.  |
+| `email` |  |  |  | SMTP transport for notification emails. Ignored when the app remaps the notifications-email connection to its own email connection.  |

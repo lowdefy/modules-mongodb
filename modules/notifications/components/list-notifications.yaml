@@ -75,7 +75,11 @@ blocks:
                           _global:
                             _string.concat:
                               - enums.event_types.
-                              - _state: list.$.event_type
+                              # Legacy records store event_type; pipeline
+                              # records store type.
+                              - _if_none:
+                                  - _state: list.$.event_type
+                                  - _state: list.$.type
               - id: list.$.time_ago
                 type: Html
                 layout:
