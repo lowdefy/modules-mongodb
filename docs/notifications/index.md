@@ -131,6 +131,7 @@ The `file-download` page is a redirector for notification attachments: params `_
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
+- [Email transport](email-transport.md) — why the pipeline sends over SMTP, and how to use SendGrid (via its SMTP relay)
 
 ## Shared idioms
 
