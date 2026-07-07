@@ -41,7 +41,7 @@
 
 ## contacts
 
-- docs/contacts/index.md: Contacts — Contact management — list, detail, edit, and create pages over the shared `user-contacts` collection, plus a rich contact selector with inline add/edit/verify and a basic dropdown selector.
+- docs/contacts/index.md: Contacts — Contact management — list, detail, edit, and create pages over the shared `user-contacts` collection, plus a rich contact selector with inline add/edit/verify, a basic dropdown selector, and a role-scoped selector (`role-contact-selector`, single or multiple) that stores a view-renderable denorma...
 - docs/contacts/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## events

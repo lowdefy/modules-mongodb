@@ -141,6 +141,8 @@ exports:
       description: Rich ContactSelector block — search, add, edit, remove, optional verify UI
     - id: basic-contact-selector
       description: Simple Selector/MultipleSelector dropdown over all active contacts (read-only picker)
+    - id: role-contact-selector
+      description: Selector/MultipleSelector of contacts scoped to given roles, storing a denormalized (view-renderable) contact value
   menus:
     - id: default
       description: Contacts navigation link
@@ -165,6 +167,9 @@ components:
   - id: basic-contact-selector
     component:
       _ref: components/basic-contact-selector.yaml
+  - id: role-contact-selector
+    component:
+      _ref: components/role-contact-selector.yaml
 
 menus:
   - _ref: menus.yaml

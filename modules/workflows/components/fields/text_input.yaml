@@ -23,6 +23,9 @@ vars:
   label_span:
     type: number
     required: false
+  on_change:
+    type: array
+    default: []
 
 config:
   id:
@@ -63,3 +66,8 @@ config:
       _var: title
     placeholder:
       _var: placeholder
+  events:
+    onChange:
+      _var:
+        key: on_change
+        default: []

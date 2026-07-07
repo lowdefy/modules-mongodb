@@ -55,6 +55,14 @@ form:
   - key: form.po_document
     component: file_upload
     title: PO document
+  # Role-scoped multi-select — a dropdown of contacts holding any of the given
+  # app roles; the block value is an array of denormalized (view-renderable) values.
+  - key: form.reviewers
+    component: role_contact_multiple
+    title: Reviewers
+    roles:
+      - admin
+      - manager
 # Per-verb page chrome — exercises the form-action formHeader / formFooter slots
 # (the only demo action that does). formHeader renders above the form fields
 # (below the authored description lead-in); formFooter renders below the comment.
