@@ -85,7 +85,7 @@ form_requests:
 hooks:
   on_created:
     - id: activity_created_toast
-      type: Message
+      type: DisplayMessage
       params:
         status: info
         content:
