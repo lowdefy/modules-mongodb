@@ -8,7 +8,7 @@ type: index
 
 Notification dispatch and in-app display — a render/store/send pipeline, bell counter, inbox page, and deep-link routing. Notification documents are scoped per app via `app_name` so multiple apps can share a single MongoDB collection.
 
-The Lowdefy framework renders notification emails (the `notifications:` config section and the `RenderNotification` step, Lowdefy ≥ 5.4); this module owns everything around the render: the dispatch pipeline (insert with dedup, send, retry bookkeeping), the record convention, and the read paths (bell, inbox, deep links). Apps shape their events into notification items inside `send_routine` and hand them to the pipeline.
+The Lowdefy framework renders notification emails (the `notifications:` config section and the `RenderNotification` step, Lowdefy ≥ 5.4); this module owns everything around the render: the dispatch pipeline (insert with dedup, send, retry bookkeeping), the record convention, and the read paths (bell, inbox, deep links). Apps shape their events into notification items inside `send_routine` and hand them to the pipeline. Modules can also ship their own templates and dispatch directly (the user-admin module's invites do — no app-side template or send_routine branch needed).
 
 ## Dependencies
 
@@ -127,7 +127,7 @@ Partial rather than sparse because records store explicit `key: null`, and a spa
 
 ## Deep-link and file-download pages
 
-The `link` page resolves a notification id to its target page, marks the record read, and forwards the user. Pre-auth notification types (the `public_link_types` var, default `invite-user` / `resend-user-invite` / `user-invite`) can be resolved without a session, for flows where the recipient is not yet logged in.
+The `link` page resolves a notification id to its target page, marks the record read, and forwards the user. Pre-auth notification types (the `public_link_types` var, default `invite-user` / `resend-user-invite` / `user-invite` plus the user-admin module's scoped `user-admin/invite-user` / `user-admin/resend-user-invite`) can be resolved without a session, for flows where the recipient is not yet logged in.
 
 Email links composed by the pipeline arrive as `?_id=<record>&option=<dataPath>`, where `option` is a dot-path into the record's `data` (e.g. `links.button`, `actions.0.link`). Absolute URL targets in `data` are followed as-is; legacy records resolve from their top-level `links.button`.
 

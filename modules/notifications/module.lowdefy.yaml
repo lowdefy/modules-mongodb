@@ -33,10 +33,16 @@ vars:
       - invite-user
       - resend-user-invite
       - user-invite
+      # Module-shipped invite templates under the user-admin module's
+      # conventional entry id — apps installing it under a different entry id
+      # override this var with their scoped types.
+      - user-admin/invite-user
+      - user-admin/resend-user-invite
     description: >
       Notification type values whose landing links resolve without a session
       (pre-auth flows such as user invites). Matched against both the
-      legacy event_type field and the pipeline's type field.
+      legacy event_type field and the pipeline's type field. Includes the
+      user-admin module's shipped invite types under its conventional entry id.
   transport:
     type: string
     default: smtp
