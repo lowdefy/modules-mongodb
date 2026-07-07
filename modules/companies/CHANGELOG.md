@@ -1,5 +1,27 @@
 # @lowdefy/modules-mongodb-companies
 
+## 0.10.0
+
+### Patch Changes
+
+- [#93](https://github.com/lowdefy/modules-mongodb/pull/93) [`cd5373f`](https://github.com/lowdefy/modules-mongodb/commit/cd5373fe86aaa28f2b41a2baf64114b99fd065d2) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Company selector now consumes `request_stages.selector`. The stages are injected into the company-selector aggregation after the base active-company `$match` and before the label projection, so consumer stages can filter or derive on raw document fields — e.g. excluding app-specific soft-delete markers from pickers. Previously the var was documented in the manifest but never applied.
+
+- [#96](https://github.com/lowdefy/modules-mongodb/pull/96) [`5742843`](https://github.com/lowdefy/modules-mongodb/commit/5742843c5be12cb2a67325efad52516bde5b1fc3) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Standardise soft-delete reads on the `deleted` change-stamp shape.
+
+  The regular-MongoDB requests (`get_company`, `get_company_children`, `get_descendant_company_ids`, `get_companies_for_selector`) matched live companies with `deleted: { $ne: true }`, which only excludes a boolean `deleted: true` and would let soft-deleted docs through once `deleted` is a change-stamp object. They now use `deleted.timestamp: { $exists: false }`, matching the Atlas Search reads and the rest of the repo. See the [soft-delete convention](https://github.com/lowdefy/modules-mongodb/blob/main/docs/shared/soft-delete.md).
+
+  Migration is only needed if a host app previously wrote a boolean `deleted: true`; promote those to a change stamp:
+
+  ```js
+  db.companies.updateMany({ deleted: true }, [
+    {
+      $set: {
+        deleted: { timestamp: "$updated.timestamp", user: "$updated.user" },
+      },
+    },
+  ]);
+  ```
+
 ## 0.9.2
 
 ## 0.9.1

@@ -1,5 +1,39 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.10.0
+
+### Patch Changes
+
+- [#94](https://github.com/lowdefy/modules-mongodb/pull/94) [`18d8876`](https://github.com/lowdefy/modules-mongodb/commit/18d8876916b21bad8690861ddf60f6c1d02bfeb6) Thanks [@Yianni99](https://github.com/Yianni99)! - Make action edit-page button titles configurable
+
+  The edit page's progress ("Save Draft") and submit ("Submit") button titles can
+  now be overridden per action via `page_config.buttons.progress.title` /
+  `page_config.buttons.submit.title` (defaults unchanged). This lets an app relabel
+  e.g. a perpetual-log action's "Save Draft" button to "Save".
+
+- [#94](https://github.com/lowdefy/modules-mongodb/pull/94) [`466e976`](https://github.com/lowdefy/modules-mongodb/commit/466e976d9cdc31d63585cd4a825c9cd8d9b7cc93) Thanks [@Yianni99](https://github.com/Yianni99)! - Add `on_change` event support to workflow form field components
+
+  The `button_selector`, `number`, `radio_selector`, `checkbox_selector`,
+  `checkbox_switch`, `text_input`, `text_area`, `enum_selector`, `date_selector`,
+  `date_range_selector`, and `tiptap_input` field components now accept an
+  `on_change` var (mirroring `selector` / `yes_no_selector`) that wires to the
+  block's `events.onChange`. Previously these fields silently dropped any authored
+  field-level change handler, so form logic like "clear dependent field when this
+  one changes" only worked on a handful of field types.
+
+- [#94](https://github.com/lowdefy/modules-mongodb/pull/94) [`f1d8f6c`](https://github.com/lowdefy/modules-mongodb/commit/f1d8f6cefa4cee19f838795d91403851fea4027d) Thanks [@Yianni99](https://github.com/Yianni99)! - Add a role-filtered simple contact selector
+
+  New `role-contact-selector` contacts component: a Selector (or MultipleSelector
+  via `mode`) of active contacts scoped to one or more roles (matched against
+  `apps.<app_name>.roles`), storing a denormalized `{ contact_id, name, email }`
+  value — object in single mode, array in multiple — so read-only views render it
+  as a contact (name + link). New `role_contact` and `role_contact_multiple`
+  workflows form fields wrap the single- and multiple-select cases. A lighter
+  alternative to the rich contact picker (`contact`) when a form only needs to pick
+  existing contacts in a given role.
+
+- [#94](https://github.com/lowdefy/modules-mongodb/pull/94) [`c93ad39`](https://github.com/lowdefy/modules-mongodb/commit/c93ad39a0a0c65c2a4ee21e4e49d013f037a7681) Thanks [@Yianni99](https://github.com/Yianni99)! - Edit-page Save Draft now sends the `comment` / `comment_visibility` inputs with the progress call and clears them after a successful save, matching the check page's progress reseed — so a draft comment is no longer folded into a later event on the next Save Draft.
+
 ## 0.9.2
 
 ### Patch Changes
