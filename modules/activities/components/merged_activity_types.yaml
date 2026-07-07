@@ -1,0 +1,9 @@
+# Merged activity-type enum — the built-in types (enums/activity_types.yaml)
+# overlaid with the consumer `activity_types` var, by top-level key. Single
+# source of truth for the merged map, evaluated at build time. Used to
+# populate the type tabs (form_activity.yaml) and, via `_get`, to resolve
+# each type's behavior flags (agenda / duration / direction / contact_label)
+# at runtime in form_activity.yaml and activity_meta_fields.yaml.
+_build.object.assign:
+  - _ref: enums/activity_types.yaml
+  - _module.var: activity_types

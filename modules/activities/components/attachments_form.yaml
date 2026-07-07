@@ -1,0 +1,24 @@
+# Default block array for the `components.form_attachments` slot in
+# `form_activity.yaml` — a divider plus the files module's file-manager.
+# Requires the host app to register the files module; apps without it set
+# `components.form_attachments` to their own blocks (or `[]`).
+#
+# The wrapping page/modal seeds `activity_id` in state (reused as the
+# create _id), so files link to the activity before it exists.
+- id: divider_attachments
+  type: Divider
+  properties:
+    title: Attachments
+    style:
+      margin: 4
+- _ref:
+    module: files
+    component: file-manager
+    vars:
+      block_id: activity_files
+      entity_type: activity
+      entity_id:
+        _state: activity_id
+      file_category: activity-attachment
+      single_file: false
+      hint: Click or drag to attach a file

@@ -16,13 +16,15 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `app_name` |  |  | Yes | App identifier used to key event_display titles when no override is supplied. |
 | `label` |  | `Activity` |  | Singular display label |
 | `label_plural` |  | `Activities` |  | Plural display label |
-| `activity_types` | object | `{}` |  | App-level additions to the built-in activity-type enum. Same shape as event_types — keys are type strings, values have title, color, icon, default_stage. |
+| `activity_types` | object | `{}` |  | App-level additions to the built-in activity-type enum. Same shape as event_types — keys are type strings, values have title, color, icon, default_stage, plus optional behavior flags: `agenda: true` renders the Agenda Topics section in the form, `duration: true` / `direction: true` show those meta fields, and `contact_label` titles the linked-contacts selector (default "Participants"). The built-in `meeting` type carries `agenda`, `duration`, and `contact_label: Attendees` as its defaults. Merging is by top-level key — overriding a built-in type replaces its whole entry, flags included. |
 | `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge. |
 | `filter_requests` |  | `[]` |  | Additional requests for the custom filters section |
+| `form_requests` |  | `[]` |  | Request configs spliced into the new and edit page request lists and fired on page init, so request-backed consumer `fields.*` blocks (e.g. a Selector whose options come from an app collection) have their option sources available. Each entry is a full request definition with an `id`. NOT added to the capture_activity modal — a modal can't own page requests. Blocks that depend on these should gate on `state.activity_form_context` (`page` on the new/edit pages, `view` on the detail page, `modal` in the capture modal) so they don't render broken in the modal; the host page must supply the requests itself if such a field is wanted there. |
 | `disable_company_edit` | boolean | `false` |  | Render the linked-companies selector read-only (disabled) on the edit page, so linked companies stay visible but can't be changed after creation. The new page and quick-capture prefill still set companies, and display-only company chips on the detail page are unaffected. |
 | `company_name_field` |  | `name` |  | Field on company docs used as the display name in linked-company chips (company_list_items) and the list-table company tags (table_activities). Mirrors the companies module's `name_field` var — set both to the same value when an app stores its company display name under a non-default field (e.g. `trading_name`). The `lookup_companies` stage projects this field under the stable alias `name`, so templates always read `company.name` regardless of the source field. |
 | `fields` | object |  |  | Field block arrays rendered in the edit form and SmartDescriptions view |
-| `components` | object |  |  | Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns |
+| `components` | object |  |  | Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, form_attachments, view_attachments |
+| `hooks` | object |  |  | Action-list extension points spliced into built-in flows: on_created |
 | `request_stages` | object |  |  | Pipeline overrides |
 | `lookup_collections` | object |  |  | Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts, companies, and agenda tasks on activity detail/list pages. Override when an app points its connections at differently-named collections. |
 
@@ -35,10 +37,11 @@ Field block arrays rendered in the edit form and SmartDescriptions view
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
 | `attributes` |  | `[]` |  | Custom field blocks appended after the built-in sections in the form and view. Block ids must be prefixed with `attributes.` so they bind to `state.attributes.*`. |
+| `attributes_by_type` | object | `{}` |  | Per-type custom field blocks, keyed by activity type id — same block shape as `attributes`. A type with an entry renders that list instead of the global `attributes` array (in both the form and the view); types without an entry fall back to `attributes`. |
 
 ### `components`
 
-Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns
+Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, form_attachments, view_attachments
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
@@ -49,6 +52,16 @@ Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download
 | `download_columns` |  | `[]` |  | Extra columns appended to the Excel export. |
 | `contact_card_extra_fields` | array | `[]` |  | Extra `{ label, value }` rows rendered under each linked contact's name/email on the activity-detail contact chips. `value` is a top-level key on the projected contact doc — extend `lookup_contacts.yaml`'s `$project` to surface nested source fields. |
 | `company_card_extra_fields` | array | `[]` |  | Extra `{ label, value }` rows rendered under each linked company's name on the activity-detail company chips. `value` is a top-level key on the projected company doc — extend `lookup_companies.yaml`'s `$project` to surface additional fields. |
+| `form_attachments` |  | `{"_ref":"components/attachments_form.yaml"}` |  | Block array for the attachments section at the bottom of the activity form (new / edit / capture modal). Defaults to a divider plus the files module's file-manager; apps that don't wire the files module supply their own blocks (`state.activity_id` holds the activity id, minted before create) or `[]` to drop the section. |
+| `view_attachments` |  | `{"_ref":"components/attachments_view.yaml"}` |  | Block array for the attachments tile at the top of the activity-detail sidebar. Defaults to the files module's file-card; apps that don't wire the files module supply their own blocks (the activity id is at `_url_query: _id`) or `[]` to drop the tile. |
+
+### `hooks`
+
+Action-list extension points spliced into built-in flows: on_created
+
+| Name | Type | Default | Required | Description |
+|---|---|---|---|---|
+| `on_created` |  | `[]` |  | Actions run after a successful create — in both the new page's save flow and the capture_activity modal — with the new activity's id at `_state: activity_id` and the captured fields (`type`, `title`, `contacts`, `company_ids`, `attributes`, `references`) still in state. On the new page the built-in tail (form reset + navigate to the view page) runs after the hook; set `state.on_created_handled: true` in a hook action to skip it (e.g. when routing somewhere else with a Link). |
 
 ### `request_stages`
 

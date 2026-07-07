@@ -164,7 +164,11 @@ vars:
           Excel export aggregations.
       selector:
         default: []
-        description: Pipeline stages appended to the company-selector aggregation.
+        description: >-
+          Pipeline stages injected into the company-selector aggregation after
+          the base active-company $match and BEFORE the label projection, so
+          stages can filter or derive on raw document fields (e.g. exclude
+          app-specific soft-delete markers from pickers).
       write:
         default: []
         description: >-

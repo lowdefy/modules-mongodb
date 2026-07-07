@@ -81,5 +81,5 @@ Pipeline overrides: get_all_companies, selector, filter_match, write. write stag
 |---|---|---|---|---|
 | `filter_match` |  | `[]` |  | Atlas Search compound clauses appended to the list-page `$search` query. Used to add custom filter conditions to the companies list. |
 | `get_all_companies` |  | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the companies list and Excel export aggregations. |
-| `selector` |  | `[]` |  | Pipeline stages appended to the company-selector aggregation. |
+| `selector` |  | `[]` |  | Pipeline stages injected into the company-selector aggregation after the base active-company $match and BEFORE the label projection, so stages can filter or derive on raw document fields (e.g. exclude app-specific soft-delete markers from pickers). |
 | `write` |  | `[]` |  | Pipeline update stages appended to both create-company and update-company flows. On create, runs as a follow-up update on the newly inserted document; skipped at build time when empty. |
