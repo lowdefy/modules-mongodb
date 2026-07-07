@@ -67,21 +67,16 @@ mustNot:
 
 ## Migration
 
-`files` is the only collection whose stored data changes. Its `removed: true` docs already recorded who/when on the sibling `updated` stamp at delete time, so the migration promotes that stamp into `deleted` rather than inventing one:
+`files` is the only collection whose stored data changes. Its `removed: true` docs already recorded who/when on the sibling `updated` stamp at delete time, so the migration promotes that stamp into `deleted` rather than inventing one. It must run as a **single per-document pipeline** — splitting it into "migrate deleted" + "migrate live" statements is unsafe, because a `{ removed: { $ne: true } }` filter also matches documents that no longer have a `removed` field (Mongo's `$ne` matches missing fields), so a second pass would overwrite the `deleted` stamps the first pass just wrote. Keying on `{ removed: { $exists: true } }` also makes the migration idempotent:
 
 ```js
-// Deleted docs: adopt the existing updated stamp as the delete stamp, drop `removed`.
-db.files.updateMany(
-  { removed: true },
-  [{ $set: { deleted: "$updated" } }, { $unset: "removed" }]
-);
-
-// Live docs: initialise `deleted: null`, drop `removed`.
-db.files.updateMany(
-  { removed: { $ne: true } },
-  { $set: { deleted: null }, $unset: { removed: "" } }
-);
+db.files.updateMany({ removed: { $exists: true } }, [
+  { $set: { deleted: { $cond: [{ $eq: ["$removed", true] }, "$updated", null] } } },
+  { $unset: "removed" },
+]);
 ```
+
+(Every file doc carries an `updated` stamp — `save-file` always sets it and `delete-file` set it alongside `removed` — so the `$updated` promotion is always populated for deleted docs.)
 
 For `companies` / `contacts` / `user-admin`, a migration is only needed if a host app previously wrote a **boolean** `deleted: true`. Promote those to a stamp so the `deleted.timestamp` reads exclude them:
 

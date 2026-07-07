@@ -62,4 +62,4 @@ mustNot:
 
 ## Which modules use it
 
-`activities` and `files` delete their own documents in-module. `companies`, `contacts`, and `user-admin` filter on `deleted` in their reads but expect the host app to write the delete stamp. All use the same field name, shape, and read predicate.
+`activities` and `files` delete their own documents in-module. `companies` and `user-admin` filter on `deleted` in their reads but expect the host app to write the delete stamp. `contacts` applies the same predicate when it looks up companies, but does not currently filter its own contact reads on `deleted`. Wherever a module reads `deleted`, it uses the same field name, shape, and read predicate.
