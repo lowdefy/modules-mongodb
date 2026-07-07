@@ -29,6 +29,7 @@ Single-line text input. Renders a `TextInput`.
 | `validate`     | array   | `[]`               | Caller-supplied validate rules                  |
 | `label_inline` | boolean | `false`            |                                                 |
 | `label_span`   | number  | —                  | When set, adds `span` + `align: right` to label |
+| `on_change`    | array   | `[]`               | Actions wired to the block's onChange           |
 
 ```yaml
 - component: text_input
@@ -61,6 +62,7 @@ Rich-text editor. Renders a `TiptapInput`. Required-validation fires when `_stri
 | `label_inline`          | boolean | `false`            |
 | `label_span`            | number  | —                  |
 | `s3PostPolicyRequestId` | string  | `upload_files`     |
+| `on_change`             | array   | `[]`               |
 
 ```yaml
 - component: tiptap_input
@@ -88,6 +90,7 @@ Numeric input. Renders a `NumberInput`.
 | `extra`        | string  | —                  |
 | `precision`    | number  | `0`                |
 | `min`          | number  | `0`                |
+| `on_change`    | array   | `[]`               |
 
 ```yaml
 - component: number
@@ -112,6 +115,7 @@ Single date picker. Renders a `DateSelector` with `format: DD MMMM YYYY`.
 | `required`     | boolean | `false`            |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
+| `on_change`    | array   | `[]`               |
 
 ```yaml
 - component: date_selector
@@ -197,6 +201,7 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 | `options`        | array   | `[]`               |
 | `extra`          | string  | —                  |
 | `label_disabled` | boolean | `false`            |
+| `on_change`      | array   | `[]`               |
 
 ```yaml
 - component: radio_selector
@@ -219,6 +224,7 @@ Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `s
 | `required` | boolean | `false`            |
 | `options`  | array   | `[]`               |
 | `extra`    | string  | —                  |
+| `on_change` | array  | `[]`               |
 
 ```yaml
 - component: checkbox_selector
@@ -244,6 +250,7 @@ Button-group selector. Renders a `ButtonSelector`.
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
 | `colon`        | boolean | `true`             |
+| `on_change`    | array   | `[]`               |
 
 ```yaml
 - component: button_selector
@@ -270,6 +277,7 @@ Toggle switch. Renders a `CheckboxSwitch`.
 | `extra`          | string  | —                  |
 | `label_disabled` | boolean | `false`            |
 | `description`    | string  | —                  |
+| `on_change`      | array   | `[]`               |
 
 ```yaml
 - component: checkbox_switch
@@ -312,6 +320,7 @@ Selector sourced from an enum map. Renders a `Selector`. The enum object (`slug 
 | `visible`  | boolean | `true`             |
 | `required` | boolean | `false`            |
 | `enum`     | object  | `{}`               |
+| `on_change` | array  | `[]`               |
 
 ```yaml
 - component: enum_selector
@@ -323,7 +332,7 @@ Selector sourced from an enum map. Renders a `Selector`. The enum object (`slug 
 
 ## Contact
 
-Both contact components wrap the contacts module's `contact-selector` export. They require the `contacts` module dependency to be wired. The block value is an array of denormalized `{ contact_id, name, email, verified }` objects.
+The `contact` and `multiple_contact` components wrap the contacts module's `contact-selector` export (the rich search / add / edit picker); `role_contact` wraps the lighter `role-contact-selector`. All require the `contacts` module dependency. For `contact` / `multiple_contact` the block value is an array of denormalized `{ contact_id, name, email, verified }` objects; `role_contact` stores a single such object (minus `verified`).
 
 ### `contact`
 
@@ -366,6 +375,30 @@ Multiple contacts. Same as `contact` but uncapped; set `max` to limit selections
   key: form.stakeholders
   title: Stakeholders
   max: 5
+```
+
+### `role_contact`
+
+Single contact scoped to one or more roles. Wraps the contacts module's `role-contact-selector` export — a plain `Selector` of contacts holding any of `roles` (matched against `apps.<app_name>.roles`), not the rich search/add/edit picker. Stores a denormalized `{ contact_id, name, email }` object (view-renderable). Use when a form only needs to pick an existing contact in a role (e.g. an internal agent).
+
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `roles`        | array   | required           |
+| `title`        | string  | —                  |
+| `placeholder`  | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
+
+```yaml
+- component: role_contact
+  key: form.technical_support_id
+  title: Technical Support
+  roles:
+    - technical-services-agent
+  required: true
 ```
 
 ## Files
