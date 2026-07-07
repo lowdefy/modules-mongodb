@@ -18,6 +18,7 @@
     "./connections": "./dist/connections.js",
     "./fsm": "./dist/connections/shared/fsm/tables.js",
     "./metas": "./dist/metas.js",
+    "./operators/server": "./dist/operators/server.js",
     "./types": "./dist/types.js"
   },
   "files": [
@@ -34,12 +35,12 @@
     "dompurify": "^3"
   },
   "peerDependencies": {
-    "@lowdefy/block-utils": "0.0.0-experimental-20260611102401",
-    "@lowdefy/blocks-antd": "0.0.0-experimental-20260611102401",
-    "@lowdefy/blocks-basic": "0.0.0-experimental-20260611102401",
+    "@lowdefy/block-utils": "0.0.0-experimental-20260707071904",
+    "@lowdefy/blocks-antd": "0.0.0-experimental-20260707071904",
+    "@lowdefy/blocks-basic": "0.0.0-experimental-20260707071904",
     "@lowdefy/community-plugin-mongodb": "^3",
-    "@lowdefy/helpers": "0.0.0-experimental-20260611102401",
-    "@lowdefy/nunjucks": "0.0.0-experimental-20260611102401",
+    "@lowdefy/helpers": "0.0.0-experimental-20260707071904",
+    "@lowdefy/nunjucks": "0.0.0-experimental-20260707071904",
     "@lowdefy/plugin-aws": ">=4.0.0",
     "antd": ">=6",
     "mongodb": "^6",
