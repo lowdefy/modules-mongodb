@@ -14,6 +14,9 @@ vars:
   title:
     type: string
     required: false
+  placeholder:
+    type: string
+    required: false
   visible:
     type: boolean
     default: true
@@ -46,6 +49,8 @@ config:
           default: true
       title:
         _var: title
+      placeholder:
+        _var: placeholder
       label:
         _build.object.assign:
           - inline:

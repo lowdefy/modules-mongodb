@@ -4,9 +4,10 @@
 # contact in a role (e.g. an internal agent). Requires a `contacts` module entry.
 #
 # Vars (passed via `_ref: { module: contacts, component: role-contact-selector, vars }`):
-#   field_id (string, default "contact") — block id / state key.
-#   roles    (array, required) — role values matched against apps.<app_name>.roles.
-#   title    (string) — field title; defaults to the module `label` var.
+#   field_id    (string, default "contact") — block id / state key.
+#   roles       (array, required) — role values matched against apps.<app_name>.roles.
+#   title       (string) — field title; defaults to the module `label` var.
+#   placeholder (string) — select placeholder; defaults to "Select <title>".
 #   required (boolean, default false) — required validation.
 #   visible  (runtime, default true) — block visibility.
 #   label    (object) — Form.Item Label config passed to the Selector's Label wrapper.
@@ -40,11 +41,13 @@ properties:
       - _var: title
       - _module.var: label
   placeholder:
-    _string.concat:
-      - "Select "
-      - _if_none:
-          - _var: title
-          - _module.var: label
+    _if_none:
+      - _var: placeholder
+      - _string.concat:
+          - "Select "
+          - _if_none:
+              - _var: title
+              - _module.var: label
   options:
     _request: get_role_contacts_for_selector
   label:
