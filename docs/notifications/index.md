@@ -48,7 +48,7 @@ modules:
       # transport: sendgrid
       # sendgrid:
       #   from: "My App <notify@my-app.example.com>"
-      #   # api_key defaults to the NOTIFICATIONS_SENDGRID_KEY secret
+      #   # api_key defaults to the SENDGRID_API_KEY secret
       send_routine:
         _ref: modules/notifications/send-routine.yaml
 ```
@@ -141,4 +141,4 @@ The `file-download` page is a redirector for notification attachments: params `_
 ## Shared idioms
 
 - [App name scoping](../shared/app-name.md) — how `app_name` scopes notifications
-- [Secrets](../shared/secrets.md) — `MONGODB_URI`, `NOTIFICATIONS_SMTP_PASS`, `NOTIFICATIONS_SENDGRID_KEY`, `FILES_S3_*` connection secrets
+- [Secrets](../shared/secrets.md) — `MONGODB_URI`, `NOTIFICATIONS_SMTP_PASS`, `SENDGRID_API_KEY`, `FILES_S3_*` connection secrets

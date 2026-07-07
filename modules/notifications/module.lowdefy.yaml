@@ -90,9 +90,9 @@ vars:
       # cannot satisfy a `type: string` check.
       api_key:
         default:
-          _secret: NOTIFICATIONS_SENDGRID_KEY
+          _secret: SENDGRID_API_KEY
         description: >
-          SendGrid API key, read from the NOTIFICATIONS_SENDGRID_KEY secret.
+          SendGrid API key, read from the SENDGRID_API_KEY secret.
           To use a secret you already have under a different name, remap the
           notifications-email-sendgrid connection to an app connection instead.
       from:
@@ -175,7 +175,7 @@ secrets:
     description: MongoDB connection URI
   - name: NOTIFICATIONS_SMTP_PASS
     description: SMTP password for notification emails (default of the email.pass var)
-  - name: NOTIFICATIONS_SENDGRID_KEY
+  - name: SENDGRID_API_KEY
     description: SendGrid API key for notification emails (default of the sendgrid.api_key var)
   - name: FILES_S3_ACCESS_KEY_ID
     description: AWS access key for the file-download bucket

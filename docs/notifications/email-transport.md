@@ -35,7 +35,7 @@ modules:
       transport: sendgrid
       sendgrid:
         from: My App <notify@example.com>
-        # api_key defaults to the NOTIFICATIONS_SENDGRID_KEY secret — set that
+        # api_key defaults to the SENDGRID_API_KEY secret — set that
         # env var to your SendGrid API key.
 ```
 
