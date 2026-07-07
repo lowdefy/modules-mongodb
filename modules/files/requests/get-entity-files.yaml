@@ -17,8 +17,8 @@ properties:
           _var: entity_type
         doc_id:
           _payload: entity_id
-        removed:
-          $ne: true
+        deleted.timestamp:
+          $exists: false
     - _build.if:
         test:
           _build.ne:

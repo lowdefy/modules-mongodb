@@ -92,7 +92,8 @@ properties:
                               - null
 
     - $match:
-        deleted: null
+        deleted.timestamp:
+          $exists: false
     - $match:
         _object.assign:
           - _if:
