@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260706093008
+lowdefy: 0.0.0-experimental-20260707143804
 name: Module Demo App
 slug: demo
 
@@ -101,7 +101,10 @@ auth:
 
 # Notification email templates — rendered by the notifications module's
 # dispatch pipeline (RenderNotification). Properties are nunjucks data
-# templates interpolated against each dispatched item.
+# templates interpolated against each dispatched item. Invite emails are NOT
+# defined here: the user-admin module ships its own invite-user /
+# resend-user-invite templates (scoped user-admin/*) and dispatches them
+# directly from its invite endpoints.
 notifications:
   - id: quote-approved
     type: NotificationEmail
@@ -111,14 +114,6 @@ notifications:
       message: "{{ approver_name }} approved your quote."
       button:
         label: View lead
-  - id: user-invite
-    type: NotificationEmail
-    properties:
-      subject: You've been invited to the demo app
-      title: You've been invited
-      message: Sign in with your email address to get started.
-      button:
-        label: Sign in
 
 modules:
   _ref: modules.yaml

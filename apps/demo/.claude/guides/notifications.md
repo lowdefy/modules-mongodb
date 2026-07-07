@@ -103,11 +103,12 @@ App API routine (e.g., invite-user, quote approval)
 
 **App wiring (this demo app):**
 
-- `apps/demo/lowdefy.yaml` — the `notifications:` template config section (`quote-approved`, `user-invite`)
+- `apps/demo/lowdefy.yaml` — the `notifications:` template config section (`quote-approved`; invites are module-shipped)
 - `apps/demo/modules/notifications/vars.yaml` — `server_url` + `transport: sendgrid` with `sendgrid` vars (SendGrid HTTP API)
-- `apps/demo/modules/notifications/send-routine.yaml` — two shape → dispatch branches (quote approval, user invite)
-- `apps/demo/modules/events/event_types.yaml` — enum entries for `quote-approved` / `user-invite` badges
-- `modules/user-admin/api/invite-user.yaml` — example of triggering send-notification from an API routine
+- `apps/demo/modules/notifications/send-routine.yaml` — one shape → dispatch branch (quote approval); invites no longer shaped here
+- `apps/demo/modules/events/event_types.yaml` — enum entries for `quote-approved` + scoped `user-admin/*` invite badges
+- `modules/user-admin/notifications/` — module-shipped invite templates (scoped `user-admin/invite-user`)
+- `modules/user-admin/api/invite-user.yaml` — direct dispatch to dispatch-notifications with `_module.notificationId`
 
 ## Template
 

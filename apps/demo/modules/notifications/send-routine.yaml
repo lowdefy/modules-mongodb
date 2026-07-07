@@ -103,65 +103,7 @@
       items:
         _step: shape_quote_approved
 
-# Invite notification — inbox record + invite email for invited users.
-- id: shape_invite
-  type: MongoDBAggregation
-  connectionId:
-    _module.connectionId:
-      id: events-collection
-      module: events
-  properties:
-    pipeline:
-      - $match:
-          _id:
-            $in:
-              _payload: event_ids
-          type:
-            $in:
-              - invite-user
-              - resend-user-invite
-      - $set:
-          recipient_id:
-            $first: $contact_ids
-      # ── embed the recipient contact ──
-      - $lookup:
-          from: user-contacts
-          localField: recipient_id
-          foreignField: _id
-          as: recipient_contact
-      - $set:
-          recipient_contact:
-            $first: $recipient_contact
-      # ── shape the notification item ──
-      - $project:
-          _id: 0
-          key:
-            $concat:
-              - $_id
-              - ":"
-              - $recipient_id
-              - ":"
-              - $dateToString:
-                  date: $created.timestamp
-          contact:
-            _id: $recipient_contact._id
-            email: $recipient_contact.email
-            profile:
-              name: $recipient_contact.profile.name
-          links:
-            button:
-              pageId:
-                _module.pageId:
-                  id: login
-                  module: user-account
-- id: dispatch_invite
-  type: CallApi
-  properties:
-    endpointId:
-      _module.endpointId:
-        id: dispatch-notifications
-        module: notifications
-    payload:
-      notification_id: user-invite
-      items:
-        _step: shape_invite
+# Invite notifications are no longer shaped here: the user-admin module ships
+# its own invite-user / resend-user-invite templates and dispatches them
+# directly from its invite endpoints (_module.notificationId). Records carry
+# the scoped type user-admin/invite-user.

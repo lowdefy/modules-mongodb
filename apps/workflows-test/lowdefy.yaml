@@ -1,5 +1,6 @@
-lowdefy: 0.0.0-experimental-20260706093008
+lowdefy: 0.0.0-experimental-20260707143804
 name: Workflows Test App
+slug: workflows-test
 
 config:
   homePageId: things
