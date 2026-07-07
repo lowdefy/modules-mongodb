@@ -420,6 +420,16 @@ _ref:
                                         _state: action.key
                                       form:
                                         _state: form
+                                      comment:
+                                        _state: comment
+                                      comment_visibility:
+                                        _if:
+                                          test:
+                                            _eq:
+                                              - _state: comment_internal
+                                              - true
+                                          then: internal
+                                          else: shared
                                 # Progress succeeded (CallAPI halts the chain on
                                 # error): refetch the action so status/key reflect
                                 # the saved draft, then confirm with a toast.
@@ -431,6 +441,12 @@ _ref:
                                   params:
                                     action:
                                       _request: get_workflow_action
+                                    # Clear the comment inputs after a successful
+                                    # draft-save so the same comment is not folded
+                                    # into another event on the next Save Draft
+                                    # (parity with the check page's progress reseed).
+                                    comment: null
+                                    comment_internal: false
                                 - id: progress_success_message
                                   type: DisplayMessage
                                   params:
