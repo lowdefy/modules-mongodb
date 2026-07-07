@@ -21,7 +21,8 @@
 #   mode          — `modal | page`. Default `modal`.
 #   on_created    — action sequence run after a successful create
 #                   (used by `tile_activities` to refetch its timeline).
-#                   Default `[]`.
+#                   Default `[]`. The module-level `hooks.on_created` var
+#                   runs first — see `module.lowdefy.yaml`.
 #
 # Modal mechanics: the button opens the modal with the Modal block's own
 # `toggleOpen` method (no args) so each instance carries independent
@@ -181,6 +182,10 @@ blocks:
                     # ConfigWarning on hosts that don't otherwise declare it.
                     cycle_check_self_id: null
                     cycle_check_ids: []
+                    # Form context marker — `modal` here so consumer fields.*
+                    # blocks that need page-only form_requests can gate
+                    # themselves out of the modal (see module.lowdefy.yaml).
+                    activity_form_context: modal
               onOk:
                 _build.array.concat:
                   - - id: validate
@@ -234,6 +239,13 @@ blocks:
                           _string.concat:
                             - _module.var: label
                             - " created."
+                  # Module-level post-create hook — runs right after a
+                  # successful create, before this instance's `on_created`
+                  # actions, with the new activity's id at
+                  # `_state: activity_id` and the captured fields still in
+                  # state (the onClose reset only fires once the modal
+                  # closes, after this chain completes).
+                  - _module.var: hooks.on_created
                   - _var:
                       key: on_created
                       default: []
@@ -254,6 +266,7 @@ blocks:
                     references: {}
                     cycle_check_self_id: null
                     cycle_check_ids: []
+                    activity_form_context: null
             slots:
               content:
                 blocks:

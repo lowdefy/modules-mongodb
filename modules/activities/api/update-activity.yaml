@@ -24,6 +24,12 @@ routine:
                       - __args: 0._id
                       - __uuid: true
                   kind: task
+                  # Origin marker in the workflows-module `metadata` bag —
+                  # distinguishes agenda-topic tasks from adhoc tasks host
+                  # apps create directly, without adding a top-level field to
+                  # the shared actions-collection schema.
+                  metadata:
+                    task_type: agenda
                   # No parent workflow, but the (workflow_id, type, key)
                   # unique index treats null as a value — standalone tasks
                   # would all collide on (null, null, null). Mint a unique
@@ -283,7 +289,14 @@ routine:
           update:
             $set:
               _object.assign:
-                - title:
+                # `metadata.task_type` in $set (not $setOnInsert), dotted
+                # so agenda tasks created before the marker existed get
+                # backfilled the next time their activity is saved without
+                # clobbering other metadata — every row in this loop is an
+                # agenda topic.
+                - metadata.task_type:
+                    _item: task.metadata.task_type
+                  title:
                     _item: task.title
                   description:
                     _item: task.description

@@ -19,46 +19,51 @@ payload:
       - []
 properties:
   pipeline:
-    - $match:
-        deleted.timestamp:
-          $exists: false
-        # Exclude self entirely. When cycle_check_self_id is null (every
-        # consumer that doesn't set it), $ne: null is true for all docs and
-        # the filter passes everything — backward compatible.
-        _id:
-          $ne:
-            _payload: cycle_check_self_id
-    - $project:
-        label:
-          $cond:
-            if:
-              $in:
-                - "$_id"
-                - _payload: cycle_check_ids
-            then:
-              $concat:
-                - _build.string.concat:
-                    - "$"
-                    - _module.var: name_field
-                - " ("
-                - "$_id"
-                - ") (child of this company)"
-            else:
-              $concat:
-                - _build.string.concat:
-                    - "$"
-                    - _module.var: name_field
-                - " ("
-                - "$_id"
-                - ")"
-        value: "$_id"
-        disabled:
-          $cond:
-            if:
-              $in:
-                - "$_id"
-                - _payload: cycle_check_ids
-            then: true
-            else: false
-    - $sort:
-        label: 1
+    _build.array.concat:
+      - - $match:
+            deleted.timestamp:
+              $exists: false
+            # Exclude self entirely. When cycle_check_self_id is null (every
+            # consumer that doesn't set it), $ne: null is true for all docs
+            # and the filter passes everything — backward compatible.
+            _id:
+              $ne:
+                _payload: cycle_check_self_id
+      # Consumer stages (request_stages.selector, default []) run BEFORE the
+      # label projection so they can filter/derive on raw document fields —
+      # e.g. excluding app-specific soft-delete markers from pickers.
+      - _module.var: request_stages.selector
+      - - $project:
+            label:
+              $cond:
+                if:
+                  $in:
+                    - "$_id"
+                    - _payload: cycle_check_ids
+                then:
+                  $concat:
+                    - _build.string.concat:
+                        - "$"
+                        - _module.var: name_field
+                    - " ("
+                    - "$_id"
+                    - ") (child of this company)"
+                else:
+                  $concat:
+                    - _build.string.concat:
+                        - "$"
+                        - _module.var: name_field
+                    - " ("
+                    - "$_id"
+                    - ")"
+            value: "$_id"
+            disabled:
+              $cond:
+                if:
+                  $in:
+                    - "$_id"
+                    - _payload: cycle_check_ids
+                then: true
+                else: false
+        - $sort:
+            label: 1

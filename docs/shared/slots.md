@@ -17,7 +17,9 @@ Modules that ship list / detail / edit pages expose **slots** so consumers can e
 - `components` — block arrays appended to specific page regions (table columns, filters, sidebar tiles, etc.).
 - `request_stages` — MongoDB pipeline stages spliced into the module's read or write pipelines.
 
-Used by `companies`, `contacts`, `user-account`, and `user-admin`.
+Used by `activities`, `companies`, `contacts`, `user-account`, and `user-admin`.
+
+Some modules also expose a `hooks` var — named action lists spliced into built-in event flows (e.g. the activities module's `hooks.on_created`, run after a successful create).
 
 ## Why slots
 
