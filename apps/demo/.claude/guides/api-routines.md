@@ -240,7 +240,7 @@ MongoDBAggregation query → `:set_state:` counters → `:for:` each row → `:t
 - `modules/contacts/api/update-contact.yaml` — canonical update: optimistic concurrency via `updated.timestamp`, is_user guard, event logging
 - `modules/user-account/api/create-profile.yaml` — validation with `:reject:`, read-back for event template via `_result: updated_user`
 - `modules/files/api/save-file.yaml` — `$set` + `$setOnInsert` pattern, conditional event logging via `_module.var: log_events`
-- `modules/files/api/delete-file.yaml` — soft delete: sets `removed: true`
+- `modules/files/api/delete-file.yaml` — soft delete: sets `deleted` to a `change_stamp`
 - `modules/user-admin/api/invite-user.yaml` — complex upsert with dynamic app-scoped fields via `_object.defineProperty`, notification dispatch
 - `modules/user-admin/api/resend-invite.yaml` — event-only routine (no document mutation)
 - `modules/events/api/new-event.yaml` — the event logging endpoint all routines call (`_object.assign` merges display + references + core fields)
@@ -477,4 +477,4 @@ routine:
 - [ ] Endpoint registered in module manifest under `api:` with matching `exports.api` entry
 - [ ] Page calls via `CallAPI` with `endpointId: { _module.endpointId: ... }` and `payload:` mapping
 - [ ] Status arrays use `$push` with `$each` + `$position: 0` (prepend, newest first)
-- [ ] Soft deletes set `removed: true` (or `removed: change_stamp`) — never hard delete
+- [ ] Soft deletes set `deleted` to a `change_stamp` (read live docs via `deleted.timestamp: { $exists: false }`) — never hard delete

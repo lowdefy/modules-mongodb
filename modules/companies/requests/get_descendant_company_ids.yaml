@@ -21,8 +21,8 @@ properties:
     - $match:
         _id:
           _payload: root_id
-        deleted:
-          $ne: true
+        deleted.timestamp:
+          $exists: false
     - $graphLookup:
         from:
           _ref:

@@ -14,7 +14,7 @@ Every mutable document has these layers:
 2. **Domain data** — nested objects grouping related fields (`profile`, `class`, `address`, `contact`)
 3. **References** — arrays of foreign key IDs linking to other collections (`company_ids`, `contact_ids`)
 4. **Status** — array of `{ stage, created: change_stamp }` entries, newest first (current = `status[0]`)
-5. **Audit** — `created` and `updated` change stamps on every document; `hidden`/`disabled`/`removed` for soft lifecycle
+5. **Audit** — `created`/`updated`/`deleted` change stamps on every document (`deleted` is null when live; see `docs/shared/soft-delete.md`); `hidden`/`disabled` booleans for soft lifecycle
 6. **Per-app config** — `apps.{app_name}` for multi-app entities like contacts (roles, invite, access)
 
 ### Field naming
@@ -23,7 +23,7 @@ Every mutable document has these layers:
 
 - Singular for single values: `company_id`, `author`, `description`
 - Plural `_ids` suffix for reference arrays: `company_ids`, `contact_ids`, `ticket_ids`, `device_ids`
-- Boolean flags: `is_user`, `disabled`, `hidden`, `verified`, `removed`, `active`, `archive`
+- Boolean flags: `is_user`, `disabled`, `hidden`, `verified`, `active`, `archive` (soft-delete is **not** a boolean — use the `deleted` change stamp, see `docs/shared/soft-delete.md`)
 - Computed/derived fields: `lowercase_email` (from `email`), `profile.name` (from `given_name` + `family_name`)
 
 ## ID Patterns
@@ -265,7 +265,7 @@ examples:
 - [ ] Status stored as array with `{ stage, created }` entries, prepended with `$position: 0`
 - [ ] Status enum file exists at `shared/enums/{entity}_statuses.yaml`
 - [ ] Reference arrays use plural `_ids` suffix; singular references use singular `_id`
-- [ ] Soft lifecycle field chosen: `hidden`, `disabled`, `removed`, or `archive`
+- [ ] Soft lifecycle field chosen: `hidden`, `disabled`, or `archive` (soft-delete uses the `deleted` change stamp)
 - [ ] Connection has `changeLog` with `collection: log-changes`
 - [ ] Schema documented in `docs/data-design/` with examples
 - [ ] Indexes planned for: unique keys, foreign key arrays, `status.0.stage`, `created.timestamp`
