@@ -1,0 +1,52 @@
+# One-shot surface: run the reporting assistant headlessly to completion
+# (CallAgent — no streaming, no conversation), read the new report's id from
+# the generate_report tool result. Both onFinish hooks no-op headlessly
+# (no conversationId).
+id: generate-oneshot
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to generate a report.
+  - id: run
+    type: CallAgent
+    properties:
+      agentId:
+        _module.agentId: reporting-assistant
+      prompt:
+        _string.concat:
+          - >
+            Generate a report for the following request. Explore the data with
+            query_data as needed, then call generate_report exactly once.
+            Request:
+          - " "
+          - _payload: request
+  - :set_state:
+      report_result:
+        _mql.expr:
+          on:
+            results:
+              _step: run.toolResults
+          expr:
+            $arrayElemAt:
+              - $filter:
+                  input: $results
+                  cond:
+                    $eq:
+                      - $$this.toolName
+                      - generate_report
+              - -1
+  - :if:
+      _eq:
+        - _state: report_result
+        - null
+    :then:
+      - :reject: The assistant did not generate a report — try rephrasing the request.
+  - :return:
+      reportId:
+        _state: report_result.output.reportId
+      url:
+        _state: report_result.output.url

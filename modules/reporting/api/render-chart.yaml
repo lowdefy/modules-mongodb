@@ -1,0 +1,59 @@
+# Chart tool: validates the chart spec against the data dictionary and acks.
+# Tool results are model context (re-sent every later step and turn), so this
+# returns only the small validated spec — the emit-data-parts onFinish hook
+# reads it from the hook payload's toolResults, runs the query once at turn
+# end, and emits the chart dataPart.
+id: render-chart
+type: Api
+description: >
+  Render a chart in the results panel beside the chat. Validates the chart
+  spec; the chart appears when the turn completes. Chart kinds: bar, line,
+  pie. The query must select at least one dimension (x-axis) and one measure.
+payloadSchema:
+  type: object
+  required:
+    - chart
+    - title
+    - query
+  properties:
+    chart:
+      type: string
+      enum:
+        - bar
+        - line
+        - pie
+      description: Chart kind.
+    title:
+      type: string
+      description: Chart title shown in the panel.
+    query:
+      type: object
+      description: Query spec producing the chart's data (same shape as query_data).
+routine:
+  # Validation throws on an invalid spec — the tool call fails with the
+  # validator's actionable message.
+  - :set_state:
+      validated:
+        _analytics.validateChartSpec:
+          spec:
+            chart:
+              _payload: chart
+            title:
+              _payload: title
+            query:
+              _payload: query
+          datasets:
+            _module.var: datasets
+          roles:
+            _user: roles
+  - :return:
+      ok: true
+      title:
+        _payload: title
+      spec:
+        chart:
+          _payload: chart
+        title:
+          _payload: title
+        query:
+          _payload: query

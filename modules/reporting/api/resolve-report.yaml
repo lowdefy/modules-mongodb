@@ -1,0 +1,63 @@
+# The Dynamic block's resolver: load the report spec (userId-scoped), run each
+# query-backed section's query inside :try (a failed section renders as an
+# Alert card while the rest of the report renders), compile spec + rows to
+# blocks server-side.
+id: resolve-report
+type: InternalApi
+routine:
+  - id: load_report
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      query:
+        _id:
+          _payload: urlQuery.reportId
+        userId:
+          _user: id
+  - :if:
+      _eq:
+        - _step: load_report
+        - null
+    # Whole-report failure — the Dynamic block renders its fallback slot.
+    :then:
+      - :reject: Report not found.
+  - :for: section
+    :in:
+      _analytics.querySections:
+        spec:
+          _step: load_report.spec
+        datasets:
+          _module.var: datasets
+        roles:
+          _user: roles
+    :do:
+      - :try:
+          - id: run_query
+            type: AnalyticsQuery
+            connectionId:
+              _module.connectionId: reporting-data
+            properties:
+              datasets:
+                _module.var: datasets
+              spec:
+                _item: section.query
+              roles:
+                _user: roles
+        # Leave the failed iteration's step result unset — compileReport
+        # renders the sparse entry as an Alert card.
+        :catch:
+          - :log: A report section query failed against the current data dictionary.
+  - :return:
+      blocks:
+        _analytics.compileReport:
+          spec:
+            _step: load_report.spec
+          results:
+            _step: run_query
+          datasets:
+            _module.var: datasets
+          roles:
+            _user: roles
+          endpointId:
+            _module.endpointId: query-data

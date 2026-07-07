@@ -1,0 +1,89 @@
+# onFinish hook: upsert the full conversation keyed by conversationId, scoped
+# by userId. No-ops headlessly (CallAgent runs have no conversationId). The
+# title is derived from the first user message on insert.
+id: save-conversation
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _payload: conversationId
+        - null
+    :then:
+      - :return:
+          skipped: true
+  - id: save
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: conversations-store
+    properties:
+      filter:
+        _id:
+          _payload: conversationId
+        userId:
+          _payload: userId
+      update:
+        $set:
+          messages:
+            _payload: messages
+          userId:
+            _payload: userId
+          agentId:
+            _payload: agentId
+          updatedAt:
+            _date: now
+        $setOnInsert:
+          createdAt:
+            _date: now
+          title:
+            _mql.expr:
+              on:
+                messages:
+                  _payload: messages
+              expr:
+                $let:
+                  vars:
+                    firstUserText:
+                      $arrayElemAt:
+                        - $map:
+                            input:
+                              $filter:
+                                input: $messages
+                                cond:
+                                  $eq:
+                                    - $$this.role
+                                    - user
+                            in:
+                              $reduce:
+                                input: $$this.parts
+                                initialValue: ""
+                                in:
+                                  $cond:
+                                    - $eq:
+                                        - $$this.type
+                                        - text
+                                    - $concat:
+                                        - $$value
+                                        - $$this.text
+                                    - $$value
+                        - 0
+                  in:
+                    $cond:
+                      - $gt:
+                          - $strLenCP:
+                              $ifNull:
+                                - $$firstUserText
+                                - ""
+                          - 60
+                      - $concat:
+                          - $substrCP:
+                              - $$firstUserText
+                              - 0
+                              - 60
+                          - "…"
+                      - $ifNull:
+                          - $$firstUserText
+                          - New conversation
+      options:
+        upsert: true
+  - :return:
+      ok: true

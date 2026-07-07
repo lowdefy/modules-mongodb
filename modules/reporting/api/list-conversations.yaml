@@ -1,0 +1,26 @@
+# Conversation list for the chat page's sidebar, most recent first. Messages
+# are included so selecting a conversation restores it without another fetch;
+# the list is capped to keep the payload bounded.
+id: list-conversations
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :return: []
+  - id: find_conversations
+    type: MongoDBFind
+    connectionId:
+      _module.connectionId: conversations-store
+    properties:
+      query:
+        userId:
+          _user: id
+      options:
+        sort:
+          updatedAt: -1
+        limit: 30
+  - :return:
+      _step: find_conversations

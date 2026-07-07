@@ -1,0 +1,24 @@
+# userId-scoped delete from the reports-list page.
+id: delete-report
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to delete a report.
+  - id: delete
+    type: MongoDBDeleteOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      filter:
+        _id:
+          _payload: reportId
+        userId:
+          _user: id
+  - :return:
+      ok: true
+      deletedCount:
+        _step: delete.deletedCount

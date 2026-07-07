@@ -1,0 +1,81 @@
+# onFinish hook: read the validated chart/export specs from the turn's
+# toolResults, run each chart's query once (bounded, inside :try — a failed
+# query skips its chart), and return chart + download dataParts for the chat
+# page's adjacent panel. Tools cannot write to the stream — dataParts are
+# written only from onFinish hook responses. No-ops headlessly.
+id: emit-data-parts
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _payload: conversationId
+        - null
+    :then:
+      - :return: {}
+  # The validated chart specs, in tool-call order, capped at 8 per turn.
+  - :set_state:
+      chart_specs:
+        _mql.expr:
+          on:
+            results:
+              _payload: toolResults
+          expr:
+            $slice:
+              - $map:
+                  input:
+                    $filter:
+                      input: $results
+                      cond:
+                        $eq:
+                          - $$this.toolName
+                          - render_chart
+                  in: $$this.output.spec
+              - 8
+      download_specs:
+        _mql.expr:
+          on:
+            results:
+              _payload: toolResults
+          expr:
+            $slice:
+              - $map:
+                  input:
+                    $filter:
+                      input: $results
+                      cond:
+                        $eq:
+                          - $$this.toolName
+                          - export_data
+                  in: $$this.output.spec
+              - 8
+  - :for: chart
+    :in:
+      _state: chart_specs
+    :do:
+      - :try:
+          - id: chart_rows
+            type: AnalyticsQuery
+            connectionId:
+              _module.connectionId: reporting-data
+            properties:
+              datasets:
+                _module.var: datasets
+              spec:
+                _item: chart.query
+              roles:
+                _user: roles
+        :catch:
+          - :log: A chart query failed at turn end — its chart is skipped.
+  - :return:
+      dataParts:
+        _analytics.buildDataParts:
+          charts:
+            _state: chart_specs
+          results:
+            _step: chart_rows
+          downloads:
+            _state: download_specs
+          datasets:
+            _module.var: datasets
+          roles:
+            _user: roles

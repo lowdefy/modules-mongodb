@@ -1,0 +1,46 @@
+# The report renderer: a Dynamic block resolved server-side by resolve-report.
+# The compiled output's block/action/operator types must be declared in
+# properties.types so they ship in the client bundle. The fallback slot covers
+# whole-report failures (missing report, unauthorized user); per-section
+# failures render as Alert cards inside the compiled report.
+id: report
+type: Box
+properties:
+  style:
+    padding: 16px
+blocks:
+  - id: report_dynamic
+    type: Dynamic
+    properties:
+      endpointId:
+        _module.endpointId: resolve-report
+      types:
+        blocks:
+          - Title
+          - Paragraph
+          - Statistic
+          - EChart
+          - AgGridAlpine
+          - Selector
+          - DateRangeSelector
+          - Button
+          - Alert
+          - Markdown
+        actions:
+          - CallAPI
+          - SetState
+          - DownloadCsv
+        operators:
+          - _state
+          - _api
+          - _if_none
+    slots:
+      fallback:
+        blocks:
+          - id: report_missing
+            type: Result
+            properties:
+              status: 404
+              title: Report not found
+              subTitle: >
+                The report does not exist or you do not have access to it.

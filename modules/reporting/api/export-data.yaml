@@ -1,0 +1,40 @@
+# Export tool: validates the export spec and acks. The emit-data-parts hook
+# turns it into a download dataPart; the panel button runs the query and
+# builds the CSV client-side (DownloadCsv action).
+id: export-data
+type: Api
+description: >
+  Offer the user a CSV download of a query's results. Validates the export
+  spec; a download button appears in the panel beside the chat when the turn
+  completes.
+payloadSchema:
+  type: object
+  required:
+    - query
+  properties:
+    label:
+      type: string
+      description: Button label (defaults to "Download CSV").
+    query:
+      type: object
+      description: Query spec producing the rows to export (same shape as query_data).
+routine:
+  - :set_state:
+      validated:
+        _analytics.validateExportSpec:
+          spec:
+            label:
+              _payload: label
+            query:
+              _payload: query
+          datasets:
+            _module.var: datasets
+          roles:
+            _user: roles
+  - :return:
+      ok: true
+      spec:
+        label:
+          _payload: label
+        query:
+          _payload: query

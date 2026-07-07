@@ -1,0 +1,230 @@
+# Conversational surface: conversations sidebar, AgentChat, and an adjacent
+# results panel that accumulates the charts and downloads the emit-data-parts
+# hook streams back as dataParts at each turn's end.
+id: chat
+type: Box
+properties:
+  style:
+    padding: 16px
+events:
+  onInit:
+    - id: init_state
+      type: SetState
+      params:
+        conversationId:
+          _uuid: true
+        charts: []
+        downloads: []
+  onMountAsync:
+    - id: load_conversations
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: list-conversations
+    - id: set_conversations
+      type: SetState
+      params:
+        conversations:
+          _api:
+            _build.string.concat:
+              - _module.endpointId: list-conversations
+              - ".response"
+layout:
+  gap: 16
+blocks:
+  - id: conversations_panel
+    type: Box
+    layout:
+      span: 5
+    blocks:
+      - id: conversations
+        type: AgentConversations
+        properties:
+          items:
+            _array.map:
+              - _if_none:
+                  - _state: conversations
+                  - []
+              - _function:
+                  key:
+                    __args: 0._id
+                  label:
+                    __args: 0.title
+          activeKey:
+            _state: conversationId
+          creation:
+            label: New chat
+        events:
+          onNew:
+            - id: new_conversation
+              type: SetState
+              params:
+                conversationId:
+                  _uuid: true
+                messages: []
+                charts: []
+                downloads: []
+          onSelect:
+            - id: select_conversation
+              type: SetState
+              params:
+                conversationId:
+                  _event: key
+                charts: []
+                downloads: []
+                messages:
+                  _mql.expr:
+                    on:
+                      conversations:
+                        _state: conversations
+                      selected:
+                        _event: key
+                    expr:
+                      $let:
+                        vars:
+                          match:
+                            $arrayElemAt:
+                              - $filter:
+                                  input: $conversations
+                                  cond:
+                                    $eq:
+                                      - $$this._id
+                                      - $selected
+                              - 0
+                        in:
+                          $ifNull:
+                            - $$match.messages
+                            - []
+  - id: chat_panel
+    type: Box
+    layout:
+      span: 12
+    blocks:
+      - id: chat
+        type: AgentChat
+        properties:
+          agentId:
+            _module.agentId: reporting-assistant
+          conversationId:
+            _state: conversationId
+          messages:
+            _state: messages
+          height: 75vh
+          welcome:
+            title: Ask about your data
+            description: >
+              Ask questions in natural language. Charts and downloads appear
+              in the panel on the right; say "turn this into a report" to
+              save a navigable report.
+        events:
+          onDataPart:
+            - id: append_chart
+              type: SetState
+              skip:
+                _not:
+                  _eq:
+                    - _event: type
+                    - data-report-chart
+              params:
+                charts:
+                  _array.concat:
+                    - _if_none:
+                        - _state: charts
+                        - []
+                    - - _event: data
+            - id: append_download
+              type: SetState
+              skip:
+                _not:
+                  _eq:
+                    - _event: type
+                    - data-report-download
+              params:
+                downloads:
+                  _array.concat:
+                    - _if_none:
+                        - _state: downloads
+                        - []
+                    - - _event: data
+          onMessageComplete:
+            - id: refresh_conversations
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: list-conversations
+            - id: update_conversations
+              type: SetState
+              params:
+                conversations:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: list-conversations
+                      - ".response"
+  - id: results_panel
+    type: Box
+    layout:
+      span: 7
+    blocks:
+      - id: results_title
+        type: Title
+        properties:
+          content: Results
+          level: 4
+        visible:
+          _or:
+            - _gt:
+                - _array.length:
+                    _if_none:
+                      - _state: charts
+                      - []
+                - 0
+            - _gt:
+                - _array.length:
+                    _if_none:
+                      - _state: downloads
+                      - []
+                - 0
+      - id: charts_list
+        type: List
+        blocks:
+          - id: charts_list.$.chart_title
+            type: Title
+            properties:
+              content:
+                _state: charts.$.title
+              level: 5
+          - id: charts_list.$.chart
+            type: EChart
+            properties:
+              height: 300
+              option:
+                _state: charts.$.option
+      - id: downloads_list
+        type: List
+        blocks:
+          - id: downloads_list.$.download
+            type: Button
+            properties:
+              title:
+                _state: downloads.$.label
+              icon: AiOutlineDownload
+              type: default
+            events:
+              onClick:
+                - id: run_download_query
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _module.endpointId: query-data
+                    payload:
+                      spec:
+                        _state: downloads.$.spec
+                - id: download_csv
+                  type: DownloadCsv
+                  params:
+                    data:
+                      _api:
+                        _build.string.concat:
+                          - _module.endpointId: query-data
+                          - ".response"
+                    filename: export.csv

@@ -1,0 +1,11 @@
+# The AI provider for the reporting assistant. Apps that already declare a
+# provider connection can remap this one instead of supplying the secret:
+#   modules:
+#     - id: reporting
+#       connections:
+#         ai: my-anthropic-connection
+id: ai
+type: Anthropic
+properties:
+  apiKey:
+    _secret: ANTHROPIC_API_KEY
