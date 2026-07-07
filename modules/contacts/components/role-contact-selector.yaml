@@ -1,11 +1,13 @@
-# Simple Selector of contacts scoped to one or more roles, storing a
-# denormalized { contact_id, name, email } value (view-renderable). Use when the
-# rich ContactSelector is overkill and selection is limited to an existing
-# contact in a role (e.g. an internal agent). Requires a `contacts` module entry.
+# Selector (or MultipleSelector) of contacts scoped to one or more roles, storing
+# a denormalized { contact_id, name, email } value — an object in single mode, an
+# array of them in multiple mode — so it stays view-renderable. Use when the rich
+# ContactSelector is overkill and selection is limited to an existing contact in a
+# role (e.g. an internal agent). Requires a `contacts` module entry.
 #
 # Vars (passed via `_ref: { module: contacts, component: role-contact-selector, vars }`):
 #   field_id    (string, default "contact") — block id / state key.
 #   roles       (array, required) — role values matched against apps.<app_name>.roles.
+#   mode        (string, default "Selector") — "Selector" or "MultipleSelector".
 #   title       (string) — field title; defaults to the module `label` var.
 #   placeholder (string) — select placeholder; defaults to "Select <title>".
 #   required (boolean, default false) — required validation.
@@ -15,7 +17,10 @@ id:
   _var:
     key: field_id
     default: contact
-type: Selector
+type:
+  _var:
+    key: mode
+    default: Selector
 required:
   _var:
     key: required

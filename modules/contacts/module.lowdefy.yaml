@@ -142,7 +142,7 @@ exports:
     - id: basic-contact-selector
       description: Simple Selector/MultipleSelector dropdown over all active contacts (read-only picker)
     - id: role-contact-selector
-      description: Simple Selector of contacts scoped to given roles, storing a denormalized (view-renderable) contact value
+      description: Selector/MultipleSelector of contacts scoped to given roles, storing a denormalized (view-renderable) contact value
   menus:
     - id: default
       description: Contacts navigation link
