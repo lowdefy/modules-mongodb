@@ -27,9 +27,7 @@
     _eq:
       - _get:
           from:
-            _build.object.assign:
-              - _ref: enums/activity_types.yaml
-              - _module.var: activity_types
+            _ref: components/merged_activity_types.yaml
           key:
             _string.concat:
               - _state: type
@@ -57,9 +55,7 @@
     _eq:
       - _get:
           from:
-            _build.object.assign:
-              - _ref: enums/activity_types.yaml
-              - _module.var: activity_types
+            _ref: components/merged_activity_types.yaml
           key:
             _string.concat:
               - _state: type

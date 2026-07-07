@@ -52,12 +52,12 @@ Defaults work out of the box. To point the module at a different MongoDB collect
 
 Form behavior is driven by optional flags on each activity-type enum entry (built-in or registered via `activity_types`), not by hard-coded type ids:
 
-| Flag | Effect | Default |
-| --- | --- | --- |
-| `agenda: true` | Render the Agenda Topics section in the form | off |
-| `duration: true` | Show the Duration meta field (form + view) | off |
-| `direction: true` | Show the Direction meta field (form + view) | off |
-| `contact_label` | Title of the linked-contacts selector | `Participants` |
+| Flag              | Effect                                       | Default        |
+| ----------------- | -------------------------------------------- | -------------- |
+| `agenda: true`    | Render the Agenda Topics section in the form | off            |
+| `duration: true`  | Show the Duration meta field (form + view)   | off            |
+| `direction: true` | Show the Direction meta field (form + view)  | off            |
+| `contact_label`   | Title of the linked-contacts selector        | `Participants` |
 
 The built-ins carry their previous behavior as defaults — `call` has `duration`, `email` has `direction` and `contact_label: CC`, and `meeting` has `agenda`, `duration`, and `contact_label: Attendees`. A consumer type gets meeting-like behavior by setting the same flags:
 
@@ -94,6 +94,8 @@ fields:
         properties:
           title: Site Ref
 ```
+
+Block ids must be distinct from those in the global `attributes` list. When `attributes_by_type` is set, the module emits the global blocks (in a fallback box) and every per-type list side by side — they're mutually exclusive only at runtime via `visible`, so reusing an id across the global array and a per-type entry fails the build with a duplicate-id error.
 
 ## Attachment slots
 

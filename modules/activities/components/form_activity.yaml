@@ -52,9 +52,7 @@ blocks:
             _build.array.map:
               on:
                 _build.object.entries:
-                  _build.object.assign:
-                    - _ref: enums/activity_types.yaml
-                    - _module.var: activity_types
+                  _ref: components/merged_activity_types.yaml
               callback:
                 _build.function:
                   value:
@@ -110,9 +108,7 @@ blocks:
               title:
                 _get:
                   from:
-                    _build.object.assign:
-                      - _ref: enums/activity_types.yaml
-                      - _module.var: activity_types
+                    _ref: components/merged_activity_types.yaml
                   key:
                     _string.concat:
                       - _state: type
@@ -222,9 +218,7 @@ blocks:
           _eq:
             - _get:
                 from:
-                  _build.object.assign:
-                    - _ref: enums/activity_types.yaml
-                    - _module.var: activity_types
+                  _ref: components/merged_activity_types.yaml
                 key:
                   _string.concat:
                     - _state: type
@@ -244,9 +238,7 @@ blocks:
           _eq:
             - _get:
                 from:
-                  _build.object.assign:
-                    - _ref: enums/activity_types.yaml
-                    - _module.var: activity_types
+                  _ref: components/merged_activity_types.yaml
                 key:
                   _string.concat:
                     - _state: type
