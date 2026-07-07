@@ -332,7 +332,7 @@ Selector sourced from an enum map. Renders a `Selector`. The enum object (`slug 
 
 ## Contact
 
-The `contact` and `multiple_contact` components wrap the contacts module's `contact-selector` export (the rich search / add / edit picker); `role_contact` wraps the lighter `role-contact-selector`. All require the `contacts` module dependency. For `contact` / `multiple_contact` the block value is an array of denormalized `{ contact_id, name, email, verified }` objects; `role_contact` stores a single such object (minus `verified`).
+The `contact` and `multiple_contact` components wrap the contacts module's `contact-selector` export (the rich search / add / edit picker); `role_contact` / `role_contact_multiple` wrap the lighter `role-contact-selector`. All require the `contacts` module dependency. For `contact` / `multiple_contact` the block value is an array of denormalized `{ contact_id, name, email, verified }` objects; `role_contact` stores a single such object (minus `verified`) and `role_contact_multiple` an array of them.
 
 ### `contact`
 
@@ -394,11 +394,23 @@ Single contact scoped to one or more roles. Wraps the contacts module's `role-co
 
 ```yaml
 - component: role_contact
-  key: form.technical_support_id
-  title: Technical Support
+  key: form.account_manager_id
+  title: Account Manager
   roles:
-    - technical-services-agent
+    - account-manager
   required: true
+```
+
+### `role_contact_multiple`
+
+Multiple contacts scoped to one or more roles — `role_contact` in `MultipleSelector` mode. The block value is an array of `{ contact_id, name, email }` objects. Same vars as `role_contact`.
+
+```yaml
+- component: role_contact_multiple
+  key: form.reviewers
+  title: Reviewers
+  roles:
+    - reviewer
 ```
 
 ## Files
