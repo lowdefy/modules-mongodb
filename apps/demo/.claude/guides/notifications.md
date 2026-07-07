@@ -8,9 +8,9 @@ The notification system spans three layers: the **framework** (email template re
 
 **Framework layer**: The app's `notifications:` config section defines email templates: `{ id, type, properties }` where the type is a React Email template (`NotificationEmail`, `DigestEmail`, `AlertEmail`, or a custom plugin). Properties are nunjucks data templates (`{{ approver_name }} approved your quote.`) interpolated against each dispatched item — interpolated values are inert and can never inject markup. The `RenderNotification` routine step renders one item and returns `{ subject, title, preview, html, text, data }`; the module's pipeline calls it for you.
 
-**Module layer**: The `notifications` module provides the dispatch pipeline plus inbox, bell badge, and deep-link pages. `dispatch-notifications` (exported InternalApi) takes `{ notification_id, items }` and, per item: renders the template, inserts the notification record (with dedup on `key`), sends the email over the module's `notifications-email` SMTP connection, and records the send result. A send failure never fails the dispatch — the record stays `sent: false` with `send_attempts` bumped.
+**Module layer**: The `notifications` module provides the dispatch pipeline plus inbox, bell badge, and deep-link pages. `dispatch-notifications` (exported InternalApi) takes `{ notification_id, items }` and, per item: renders the template, inserts the notification record (with dedup on `key`), sends the email over the transport selected by the `transport` var (`smtp` default via the `notifications-email` connection, or `sendgrid` via the `notifications-email-sendgrid` SendGrid HTTP API connection), and records the send result. A send failure never fails the dispatch — the record stays `sent: false` with `send_attempts` bumped.
 
-**App layer**: The app supplies module vars (`app_name`, `server_url`, `email` SMTP credentials or a connection remap, `send_routine`) and the `send_routine` — API routine steps that shape app events into notification items and `CallApi` `dispatch-notifications`.
+**App layer**: The app supplies module vars (`app_name`, `server_url`, `email` SMTP credentials or `transport: sendgrid` + `sendgrid` credentials — or a connection remap — and `send_routine`) and the `send_routine` — API routine steps that shape app events into notification items and `CallApi` `dispatch-notifications`.
 
 **Triggering flow**: An API routine creates an event, then calls the notifications module's `send-notification` endpoint with `event_ids`. The app's `send_routine` aggregates those events into items (recipient contact, template data, page links) and dispatches them.
 
@@ -27,7 +27,7 @@ App API routine (e.g., invite-user, quote approval)
       → RenderNotification: interpolate + render the app's template config
       → Insert record { contact_id, type, subject, title, preview, body, text, data, sent: false, ... }
         (duplicate key → already dispatched → skip)
-      → Send via notifications-email SMTP → mark sent + email_result
+      → Send via the selected transport (SMTP or SendGrid API) → mark sent + email_result
         (failure → $inc send_attempts, record stays for a drain retry)
   → User sees notification in inbox (filtered by contact_id + app_name)
   → Bell badge shows unread count
@@ -91,10 +91,11 @@ App API routine (e.g., invite-user, quote approval)
 
 **Module:**
 
-- `modules/notifications/module.lowdefy.yaml` — module manifest with vars (`server_url`, `email`, `public_link_types`), exports, dependencies
+- `modules/notifications/module.lowdefy.yaml` — module manifest with vars (`server_url`, `transport`, `email`, `sendgrid`, `public_link_types`), exports, dependencies
 - `modules/notifications/api/dispatch-notifications.yaml` — batch entry point: validate → `:for` items → CallApi per item
 - `modules/notifications/api/dispatch-notification-item.yaml` — the per-item pipeline: render → insert with dedup → send → bookkeeping
 - `modules/notifications/connections/notifications-email.yaml` — SMTP connection fed by the `email.*` vars (remappable)
+- `modules/notifications/connections/notifications-email-sendgrid.yaml` — SendGrid HTTP API connection fed by the `sendgrid.*` vars (remappable, used when `transport: sendgrid`)
 - `modules/notifications/pages/all.yaml` — two-column inbox: list (span 10) + detail (span 14), filters, pagination
 - `modules/notifications/pages/link.yaml` — deep-link router: fetch → pre-auth check → auth check → mark read → redirect via `data` at the `option` dot-path
 - `modules/notifications/components/notification-config.yaml` — bell badge config (count, icon, link)
@@ -103,7 +104,7 @@ App API routine (e.g., invite-user, quote approval)
 **App wiring (this demo app):**
 
 - `apps/demo/lowdefy.yaml` — the `notifications:` template config section (`quote-approved`, `user-invite`)
-- `apps/demo/modules/notifications/vars.yaml` — `server_url` + `email` SMTP vars (SendGrid relay, reusing auth secrets)
+- `apps/demo/modules/notifications/vars.yaml` — `server_url` + `transport: sendgrid` with `sendgrid` vars (SendGrid HTTP API)
 - `apps/demo/modules/notifications/send-routine.yaml` — two shape → dispatch branches (quote approval, user invite)
 - `apps/demo/modules/events/event_types.yaml` — enum entries for `quote-approved` / `user-invite` badges
 - `modules/user-admin/api/invite-user.yaml` — example of triggering send-notification from an API routine
@@ -142,7 +143,7 @@ notifications:
 
 ## Checklist
 
-- [ ] Module vars: `app_name`, `server_url`, and `email` SMTP credentials (or a `notifications-email` connection remap) set in the app's module config
+- [ ] Module vars: `app_name`, `server_url`, and transport credentials — `email` SMTP vars, or `transport: sendgrid` + `sendgrid` vars (or a connection remap) — set in the app's module config
 - [ ] `notifications:` config section defines a template per notification type, `subject` required
 - [ ] send_routine branch: `$match` events → embed recipient `contact` (`_id`, `email`, `profile.name`) → project `key` + template data + `links` → CallApi `dispatch-notifications`
 - [ ] Links use `pageId` + `urlQuery` objects (not hardcoded URLs) — the render step resolves them per environment via `server_url`

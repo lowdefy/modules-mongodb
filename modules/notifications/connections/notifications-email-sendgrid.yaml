@@ -1,0 +1,29 @@
+# SendGrid HTTP API transport for notification emails, used when the module's
+# transport var is "sendgrid" and configured through the sendgrid.* vars.
+# Registered unconditionally but inert under transport: smtp — connection
+# properties are only validated when a request targets the connection.
+# Apps with an existing SendGridMail connection remap it instead:
+#   modules:
+#     - source: ...notifications
+#       connections:
+#         notifications-email-sendgrid: my-app-sendgrid
+# A remap suppresses this connection entirely, so the sendgrid vars are ignored.
+id: notifications-email-sendgrid
+type: SendGridMail
+properties:
+  apiKey:
+    _module.var: sendgrid.api_key
+  from:
+    _module.var: sendgrid.from
+  # Folds to sendgrid.from at build when reply_to is unset — the SendGridMail
+  # schema does not accept null for replyTo.
+  replyTo:
+    _if_none:
+      - _module.var: sendgrid.reply_to
+      - _module.var: sendgrid.from
+  filter:
+    _module.var: sendgrid.filter
+  mailSettings:
+    sandboxMode:
+      enable:
+        _module.var: sendgrid.sandbox

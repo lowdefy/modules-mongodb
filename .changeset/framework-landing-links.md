@@ -8,8 +8,10 @@ The notifications module now owns the full notification dispatch pipeline. Lowde
 
 **New vars.** `server_url` (origin for email link URLs), `email` (SMTP transport for `notifications-email` — or remap the connection to an app email connection), `public_link_types` (pre-auth link types, replacing the hardcoded invite checks). New secret `NOTIFICATIONS_SMTP_PASS` (default of `email.pass`).
 
+**Selectable email transport.** A new `transport` var (`smtp` default | `sendgrid`) switches the pipeline's send step between `SMTPMailSend` over `notifications-email` and `SendGridMailSend` over the new exported `notifications-email-sendgrid` connection (SendGrid HTTP API). The SendGrid transport is configured via the new `sendgrid` vars (`api_key` defaulting to the new `NOTIFICATIONS_SENDGRID_KEY` secret, `from`, `reply_to`, `filter`, `sandbox`) or by remapping the connection. Notification records now include `email_result.transport`; `email_result.messageId` is SMTP-only. Existing consumers need no changes — the default transport and SMTP behavior are unchanged.
+
 **Required index.** Dedup depends on an app-managed unique partial index on `key` (`notification_key_unique`, partial on `key: { $type: 'string' }`) — documented in the module docs; the guarantee does not exist without it.
 
 **Unified record convention.** Pipeline records write `type` (the notification config id), `preview`, and rendered `subject`/`body`/`text`; the inbox, badges, filters, and link page coalesce legacy Lambda-era fields on read (`description ?? preview`, `event_type ?? type`, top-level `links.button` fallback). The link page resolves framework landing links (`?_id=<record>&option=<dataPath>`) from the record's `data` at the `option` dot-path — records store the original `{ pageId, urlQuery }` link objects.
 
-The demo app is the reference implementation: `notifications:` template configs, SMTP vars reusing the SendGrid relay, and a send_routine that shapes events into items and dispatches through the pipeline.
+The demo app is the reference implementation: `notifications:` template configs, `transport: sendgrid` with the SendGrid HTTP API vars, and a send_routine that shapes events into items and dispatches through the pipeline.

@@ -1,78 +1,86 @@
 ---
-title: Email transport (why SMTP)
+title: Email transport (SMTP or SendGrid)
 module: notifications
 type: reference
 ---
 
-# Email transport — why SMTP, and using SendGrid
+# Email transport — SMTP or SendGrid
 
-The dispatch pipeline sends email with a single, fixed step — the `SMTPMailSend` request over the module's `notifications-email` connection. That connection must be an **`SMTP`-type** connection. This page explains why, and how to use a provider like SendGrid within that constraint.
+The dispatch pipeline sends email over one of two transports, selected by the `transport` var:
 
-## Requests are bound to a connection type
+- `transport: smtp` (default) — an `SMTPMailSend` request over the module's `notifications-email` connection (`SMTP` type), configured via the `email.*` vars.
+- `transport: sendgrid` — a `SendGridMailSend` request over the module's `notifications-email-sendgrid` connection (`SendGridMail` type, the SendGrid HTTP API), configured via the `sendgrid.*` vars.
 
-In Lowdefy a request type belongs to a specific connection type — the connection plugin declares which requests it provides, and a request's resolver is looked up from that connection's own request set:
+Any other value throws on dispatch.
+
+## Why a switch, not a remap
+
+In Lowdefy a request type belongs to a specific connection type — the connection plugin declares which requests it provides:
 
 - `@lowdefy/connection-smtp` → connection `SMTP`, request `SMTPMailSend`
 - `@lowdefy/connection-sendgrid` → connection `SendGridMail`, request `SendGridMailSend`
 
-`SMTPMailSend` exists only on an `SMTP` connection. `SendGridMailSend` exists only on a `SendGridMail` connection. Their request schemas differ too — `SMTPMailSend` takes a plain mail object (`to`/`cc`/`bcc`/`subject`/`text`/`html`), while `SendGridMailSend` takes SendGrid-specific fields (`dynamicTemplateData`, `templateId`, `sendAt`). They are not interchangeable.
+`SMTPMailSend` exists only on an `SMTP` connection, and `SendGridMailSend` only on a `SendGridMail` connection. Remapping a module connection (`connections: { notifications-email: my-conn }`) only changes **which connection instance** a step uses, never the request **type** the step issues — so a remap alone can never switch transports. The `transport` var switches the send step itself; the module ships both steps and the build keeps only the selected branch live.
 
-## The pipeline hardcodes `SMTPMailSend`
+Both transports send the same thing: the pipeline's `RenderNotification` step produces the final HTML and text, and the send step is a pure transport for the rendered message. `email_result.transport` on the notification record says which one delivered it (`messageId` is recorded for SMTP; SendGrid's API does not return one through the request).
 
-The module's `dispatch-notification-item` routine has a fixed send step:
-
-```yaml
-- id: send_mail
-  type: SMTPMailSend                      # the request type is baked into the routine
-  connectionId:
-    _module.connectionId: notifications-email
-```
-
-Because the step issues `SMTPMailSend`, the `notifications-email` connection it targets **must be an `SMTP` connection** — that is the only connection type that provides that request.
-
-## Why remapping to a SendGrid connection does not work
-
-Remapping the module connection (`connections: { notifications-email: my-app-conn }`) only changes **which connection instance** the step uses. It does **not** change the request **type** the step issues — the routine still says `type: SMTPMailSend`. Point it at a `SendGridMail` connection and you would be asking a SendGrid connection to run a request it does not have, which fails. The request type and the connection type are two ends of one binding; only the module's YAML controls the request type, so an app cannot swap it from config.
-
-## SendGrid still works — over its SMTP relay
-
-This constraint is about the SendGrid **connection type**, not about SendGrid. SendGrid (like SES, Postmark, Mailgun, Resend, and self-hosted servers) offers an **SMTP relay**, so you keep your SendGrid account, authenticated domain, and deliverability — you just reach it through an `SMTP` connection instead of the `SendGridMail` connection:
+## Using SendGrid over its HTTP API
 
 ```yaml
-# An app SMTP connection pointed at SendGrid's relay, remapped onto the module.
-connections:
-  - id: app-smtp
-    type: SMTP
-    properties:
-      host: smtp.sendgrid.net
-      port: 465
-      secure: true
-      auth:
-        user: apikey
-        pass:
-          _secret: SENDGRID_API_KEY
-      from: My App <notify@example.com>
-
 modules:
   - id: notifications
     source: ...
-    connections:
-      notifications-email: app-smtp        # must be an SMTP-type connection
+    vars:
+      app_name: my-app
+      transport: sendgrid
+      sendgrid:
+        from: My App <notify@example.com>
+        # api_key defaults to the NOTIFICATIONS_SENDGRID_KEY secret — set that
+        # env var to your SendGrid API key.
 ```
 
-Or, without a remap, set the module's `email.*` vars to the same relay values (`host: smtp.sendgrid.net`, `user: apikey`) and put your SendGrid key in the `NOTIFICATIONS_SMTP_PASS` secret.
+Optional `sendgrid.*` vars:
 
-## What you give up, and when it matters
+- `reply_to` — reply-to address, defaults to `from`.
+- `filter` — a SendGridMail recipient filter (`{ replaceAddress, allowlist, regex }`) to redirect or restrict outgoing mail in non-production environments.
+- `sandbox` — enable SendGrid sandbox mode; SendGrid validates the send without delivering. Useful for testing the pipeline end to end.
 
-Reaching SendGrid over SMTP forgoes the HTTP-API-only features — server-side dynamic templates, and event/analytics that tie to API sends. In practice that rarely matters here: the framework's `RenderNotification` step already produces the final HTML and text, so SendGrid's server-side templating is redundant — the pipeline just needs a transport for the rendered message, and SMTP is that transport.
+Apps with an existing `SendGridMail` connection (for example one whose API key lives under a different secret name) remap the connection instead of setting the vars:
 
-## Why the pipeline is SMTP-only (and how to change it)
+```yaml
+modules:
+  - id: notifications
+    source: ...
+    vars:
+      transport: sendgrid
+    connections:
+      notifications-email-sendgrid: my-app-sendgrid
+```
 
-One neutral transport — SMTP — reaches every provider, so a single send step serves everyone. Choosing `SendGridMailSend` instead would have made the pipeline SendGrid-only. The cost is exactly this page's topic: you cannot route sending through a provider's HTTP API from app config.
+Note `transport: sendgrid` is still required — the remap picks the connection instance, the var picks the send step.
 
-If a provider's HTTP API is genuinely required, the fix is a module change, not an app one: make the send step a configurable slot (a module var, like `send_routine` already is) so the app injects `SendGridMailSend` — or any send request — and the module orchestrates around it. The framework already ships both request types; only the module's hardcoded `SMTPMailSend` is the limiter.
+## Using SendGrid over its SMTP relay
+
+The default SMTP transport reaches SendGrid (and SES, Postmark, Mailgun, Resend, or a self-hosted server) through its SMTP relay — no `transport` var needed:
+
+```yaml
+modules:
+  - id: notifications
+    source: ...
+    vars:
+      email:
+        host: smtp.sendgrid.net
+        port: 465
+        secure: true
+        user: apikey
+        # pass defaults to the NOTIFICATIONS_SMTP_PASS secret — set that env
+        # var to the SendGrid API key.
+        from: My App <notify@example.com>
+```
+
+Or remap `notifications-email` to an existing app `SMTP` connection. The relay and the HTTP API deliver the same rendered message; prefer the HTTP API when outbound SMTP ports are blocked in your environment, or when you want SendGrid features tied to API sends (event webhooks, categories).
 
 ## See also
 
 - [Notifications](index.md) — the dispatch pipeline, record convention, and required indexes
-- [Vars](reference/vars.md) — the `email` SMTP vars and connection remap
+- [Vars](reference/vars.md) — the `transport`, `email.*`, and `sendgrid.*` vars and connection remaps

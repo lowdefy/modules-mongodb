@@ -27,6 +27,21 @@ routine:
     :then:
       - :throw: dispatch-notification-item requires item.contact with an _id.
 
+  # Transport guard — outside the send :try so a misconfigured transport var
+  # throws loudly instead of being swallowed into retry bookkeeping. The
+  # _module.var resolves at build, so this condition folds to a literal.
+  - :if:
+      _not:
+        _or:
+          - _eq:
+              - _module.var: transport
+              - smtp
+          - _eq:
+              - _module.var: transport
+              - sendgrid
+    :then:
+      - :throw: 'notifications: the transport var must be "smtp" or "sendgrid".'
+
   # Mint the record id before rendering — landing-page link URLs embed it.
   - :set_state:
       record_id:
@@ -172,29 +187,62 @@ routine:
             - true
     :then:
       - :try:
-          - id: send_mail
-            type: SMTPMailSend
-            connectionId:
-              _module.connectionId: notifications-email
-            properties:
-              to:
-                _state: email
-              # Empty arrays (not null) when absent: SMTPMailSend's schema
-              # accepts an address list but not null for cc/bcc.
-              cc:
-                _if_none:
-                  - _payload: item.cc
-                  - []
-              bcc:
-                _if_none:
-                  - _payload: item.bcc
-                  - []
-              subject:
-                _step: render.subject
-              text:
-                _step: render.text
-              html:
-                _step: render.html
+          # Transport switch — the _module.var resolves at build, so this :if
+          # condition is a literal in the built routine and only one branch
+          # ever runs. Both send steps throw into the same :catch below.
+          - :if:
+              _eq:
+                - _module.var: transport
+                - sendgrid
+            :then:
+              - id: send_mail_sendgrid
+                type: SendGridMailSend
+                connectionId:
+                  _module.connectionId: notifications-email-sendgrid
+                properties:
+                  to:
+                    _state: email
+                  # Empty arrays (not null) when absent: like SMTPMailSend,
+                  # SendGridMailSend's schema accepts an address list but not
+                  # null for cc/bcc.
+                  cc:
+                    _if_none:
+                      - _payload: item.cc
+                      - []
+                  bcc:
+                    _if_none:
+                      - _payload: item.bcc
+                      - []
+                  subject:
+                    _step: render.subject
+                  text:
+                    _step: render.text
+                  html:
+                    _step: render.html
+            :else:
+              - id: send_mail_smtp
+                type: SMTPMailSend
+                connectionId:
+                  _module.connectionId: notifications-email
+                properties:
+                  to:
+                    _state: email
+                  # Empty arrays (not null) when absent: SMTPMailSend's schema
+                  # accepts an address list but not null for cc/bcc.
+                  cc:
+                    _if_none:
+                      - _payload: item.cc
+                      - []
+                  bcc:
+                    _if_none:
+                      - _payload: item.bcc
+                      - []
+                  subject:
+                    _step: render.subject
+                  text:
+                    _step: render.text
+                  html:
+                    _step: render.html
           - id: mark_sent
             type: MongoDBUpdateOne
             connectionId:
@@ -207,8 +255,13 @@ routine:
                 $set:
                   sent: true
                   email_result:
+                    transport:
+                      _module.var: transport
+                    # SMTP (nodemailer) reports a messageId; SendGridMailSend
+                    # returns only a response string, so this is null for
+                    # sendgrid (_step on a step that never ran returns null).
                     messageId:
-                      _step: send_mail.results.0.messageId
+                      _step: send_mail_smtp.results.0.messageId
                     timestamp:
                       _date: now
         :catch:

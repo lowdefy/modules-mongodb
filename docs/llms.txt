@@ -60,7 +60,7 @@
 
 ## notifications
 
-- docs/notifications/email-transport.md: Email transport (why SMTP) — The dispatch pipeline sends email with a single, fixed step — the `SMTPMailSend` request over the module's `notifications-email` connection. That connection must be an **`SMTP`-type** connection. This page explains why, and how to use a provider like SendGrid within that constraint.
+- docs/notifications/email-transport.md: Email transport (SMTP or SendGrid) — The dispatch pipeline sends email over one of two transports, selected by the `transport` var:
 - docs/notifications/index.md: Notifications — Notification dispatch and in-app display — a render/store/send pipeline, bell counter, inbox page, and deep-link routing. Notification documents are scoped per app via `app_name` so multiple apps can share a single MongoDB collection.
 - docs/notifications/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 

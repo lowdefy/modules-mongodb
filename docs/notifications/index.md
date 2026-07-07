@@ -44,13 +44,18 @@ modules:
         user: my-user
         from: "My App <notify@my-app.example.com>"
         # pass defaults to the NOTIFICATIONS_SMTP_PASS secret
+      # Or send over SendGrid's HTTP API instead of SMTP:
+      # transport: sendgrid
+      # sendgrid:
+      #   from: "My App <notify@my-app.example.com>"
+      #   # api_key defaults to the NOTIFICATIONS_SENDGRID_KEY secret
       send_routine:
         _ref: modules/notifications/send-routine.yaml
 ```
 
 `app_name` is required. `server_url` is the origin used to compose email link URLs — required when notification items carry page links. `send_routine` is an array of API routine steps that receives `{ event_ids }` in the payload — leave it empty to skip dispatch.
 
-Apps with an existing email connection can remap `notifications-email` instead of setting the `email` vars:
+Apps with an existing email connection can remap `notifications-email` instead of setting the `email` vars (or `notifications-email-sendgrid` instead of the `sendgrid` vars when `transport: sendgrid`):
 
 ```yaml
 modules:
@@ -77,7 +82,7 @@ items: # one notification per item (or `item`, a single object)
       button: { pageId: lead-view, urlQuery: { _id: L-1 } }
 ```
 
-Per item the pipeline: mints the record id → `RenderNotification` (interpolates and renders the app's template; `{ pageId, urlQuery }` links resolve to landing URLs `{server_url}/{link page}?_id=<record>&option=<dataPath>`) → inserts the record — **before** sending, so the dedup key is claimed and concurrent dispatches cannot double-send (duplicate key → skip) → sends over `notifications-email` → marks `sent` + `email_result`. A send failure never fails the dispatch: the record stays `sent: false` with `send_attempts` bumped and `last_attempt` set, ready for a drain retry.
+Per item the pipeline: mints the record id → `RenderNotification` (interpolates and renders the app's template; `{ pageId, urlQuery }` links resolve to landing URLs `{server_url}/{link page}?_id=<record>&option=<dataPath>`) → inserts the record — **before** sending, so the dedup key is claimed and concurrent dispatches cannot double-send (duplicate key → skip) → sends over `notifications-email` (or `notifications-email-sendgrid` when `transport: sendgrid`) → marks `sent` + `email_result`. A send failure never fails the dispatch: the record stays `sent: false` with `send_attempts` bumped and `last_attempt` set, ready for a drain retry.
 
 The typical `send_routine` is one aggregation per event type that shapes items (recipient contact embed, template data, links) followed by a `CallApi` to `dispatch-notifications` — see the demo app's `apps/demo/modules/notifications/send-routine.yaml` for the reference implementation.
 
@@ -131,9 +136,9 @@ The `file-download` page is a redirector for notification attachments: params `_
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
-- [Email transport](email-transport.md) — why the pipeline sends over SMTP, and how to use SendGrid (via its SMTP relay)
+- [Email transport](email-transport.md) — SMTP (default) or the SendGrid HTTP API, selected by the `transport` var
 
 ## Shared idioms
 
 - [App name scoping](../shared/app-name.md) — how `app_name` scopes notifications
-- [Secrets](../shared/secrets.md) — `MONGODB_URI`, `NOTIFICATIONS_SMTP_PASS`, `FILES_S3_*` connection secrets
+- [Secrets](../shared/secrets.md) — `MONGODB_URI`, `NOTIFICATIONS_SMTP_PASS`, `NOTIFICATIONS_SENDGRID_KEY`, `FILES_S3_*` connection secrets

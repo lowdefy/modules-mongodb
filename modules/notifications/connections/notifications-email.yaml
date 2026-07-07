@@ -1,5 +1,7 @@
-# SMTP transport for notification emails, configured through the module's
-# email.* vars. Apps with an existing email connection remap it instead:
+# SMTP transport for notification emails, used when the module's transport
+# var is "smtp" (the default) and configured through the email.* vars. For
+# SendGrid's HTTP API see the notifications-email-sendgrid sibling.
+# Apps with an existing email connection remap it instead:
 #   modules:
 #     - source: ...notifications
 #       connections:

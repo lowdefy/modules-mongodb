@@ -37,10 +37,19 @@ vars:
       Notification type values whose landing links resolve without a session
       (pre-auth flows such as user invites). Matched against both the
       legacy event_type field and the pipeline's type field.
+  transport:
+    type: string
+    default: smtp
+    description: >
+      Email transport for the dispatch pipeline. "smtp" (default) sends
+      SMTPMailSend over the notifications-email connection; "sendgrid" sends
+      SendGridMailSend over the notifications-email-sendgrid connection
+      (SendGrid HTTP API). Any other value throws on dispatch.
   email:
     description: >
-      SMTP transport for notification emails. Ignored when the app remaps the
-      notifications-email connection to its own email connection.
+      SMTP transport for notification emails, used when transport is "smtp"
+      (the default). Ignored when the app remaps the notifications-email
+      connection to its own email connection.
     properties:
       # host/user/pass/from are untyped: apps commonly source them from a
       # _secret operator, which stays an unevaluated object at build time and
@@ -70,10 +79,47 @@ vars:
       from:
         default: null
         description: From address/header for notification emails.
+  sendgrid:
+    description: >
+      SendGrid HTTP API transport for notification emails, used when transport
+      is "sendgrid". Ignored when the app remaps the
+      notifications-email-sendgrid connection to its own connection.
+    properties:
+      # api_key/from/reply_to are untyped: apps commonly source them from a
+      # _secret operator, which stays an unevaluated object at build time and
+      # cannot satisfy a `type: string` check.
+      api_key:
+        default:
+          _secret: NOTIFICATIONS_SENDGRID_KEY
+        description: >
+          SendGrid API key, read from the NOTIFICATIONS_SENDGRID_KEY secret.
+          To use a secret you already have under a different name, remap the
+          notifications-email-sendgrid connection to an app connection instead.
+      from:
+        default: null
+        description: >
+          From address for notification emails. Required by SendGrid when
+          transport is "sendgrid".
+      reply_to:
+        default: null
+        description: Reply-to address. Defaults to sendgrid.from.
+      filter:
+        type: object
+        default: null
+        description: >
+          SendGridMail recipient filter ({ replaceAddress, allowlist, regex })
+          to redirect or restrict outgoing mail in non-production environments.
+      sandbox:
+        type: boolean
+        default: false
+        description: >
+          Enable SendGrid sandbox mode (mailSettings.sandboxMode.enable) —
+          SendGrid validates the send without delivering the mail.
 
 connections:
   - _ref: connections/notifications-collection.yaml
   - _ref: connections/notifications-email.yaml
+  - _ref: connections/notifications-email-sendgrid.yaml
   - _ref: connections/notifications-files-bucket-public.yaml
 
 pages:
@@ -97,6 +143,8 @@ exports:
       description: MongoDB connection for notifications collection
     - id: notifications-email
       description: SMTP connection for notification emails — configure via email vars, or remap to an app connection
+    - id: notifications-email-sendgrid
+      description: SendGrid HTTP API connection for notification emails — configure via the transport/sendgrid vars, or remap to an app connection
     - id: notifications-files-bucket-public
       description: Public S3 bucket for notification attachment downloads
   api:
@@ -127,6 +175,8 @@ secrets:
     description: MongoDB connection URI
   - name: NOTIFICATIONS_SMTP_PASS
     description: SMTP password for notification emails (default of the email.pass var)
+  - name: NOTIFICATIONS_SENDGRID_KEY
+    description: SendGrid API key for notification emails (default of the sendgrid.api_key var)
   - name: FILES_S3_ACCESS_KEY_ID
     description: AWS access key for the file-download bucket
   - name: FILES_S3_SECRET_ACCESS_KEY

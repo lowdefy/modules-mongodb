@@ -113,6 +113,9 @@ importers:
       '@lowdefy/community-plugin-xlsx':
         specifier: 1.1.0
         version: 1.1.0
+      '@lowdefy/connection-sendgrid':
+        specifier: 0.0.0-experimental-20260706093008
+        version: 0.0.0-experimental-20260706093008
       '@lowdefy/connection-smtp':
         specifier: 0.0.0-experimental-20260706093008
         version: 0.0.0-experimental-20260706093008
@@ -298,6 +301,9 @@ importers:
       '@lowdefy/community-plugin-xlsx':
         specifier: 1.1.0
         version: 1.1.0
+      '@lowdefy/connection-sendgrid':
+        specifier: 0.0.0-experimental-20260706093008
+        version: 0.0.0-experimental-20260706093008
       '@lowdefy/connection-smtp':
         specifier: 0.0.0-experimental-20260706093008
         version: 0.0.0-experimental-20260706093008
@@ -1435,6 +1441,9 @@ packages:
   '@lowdefy/connection-mongodb@4.7.3':
     resolution: {integrity: sha512-rLFMWgxU+MEonL4rCwJQtkd3CwaoaO1kk/lMCu3DpsJBD4gfqgYL9v0EzY1MVq+83Me7ytDDstDMhX4ry+v+ng==}
 
+  '@lowdefy/connection-sendgrid@0.0.0-experimental-20260706093008':
+    resolution: {integrity: sha512-DlmXPPMxFGDoJW1EsIMoQ5wDoueyeujOlBqXtTmRaUgCWYXQMhfpTtantvzpZ3eYdSw+cpwcFSDlAyvivaJnmQ==}
+
   '@lowdefy/connection-smtp@0.0.0-experimental-20260706093008':
     resolution: {integrity: sha512-9n5BNowhC+sVpy1rTxX9Ab7uGi/zr+AleN+ZRxUBwbeavLA2MZ4JaKd6rEQVvFMVjQHUEDhbadc+NGVmWMN0RQ==}
 
@@ -2393,6 +2402,18 @@ packages:
 
   '@selderee/plugin-htmlparser2@0.11.0':
     resolution: {integrity: sha512-P33hHGdldxGabLFjPPpaTxVolMrzrcegejx+0GxjrIb9Zv48D8yAIA/QTDR2dFl7Uz7urX8aX6+5bCZslr+gWQ==}
+
+  '@sendgrid/client@7.7.0':
+    resolution: {integrity: sha512-SxH+y8jeAQSnDavrTD0uGDXYIIkFylCo+eDofVmZLQ0f862nnqbC3Vd1ej6b7Le7lboyzQF6F7Fodv02rYspuA==}
+    engines: {node: 6.* || 8.* || >=10.*}
+
+  '@sendgrid/helpers@7.7.0':
+    resolution: {integrity: sha512-3AsAxfN3GDBcXoZ/y1mzAAbKzTtUZ5+ZrHOmWQ279AuaFXUNCh9bPnRpN504bgveTqoW+11IzPg3I0WVgDINpw==}
+    engines: {node: '>= 6.0.0'}
+
+  '@sendgrid/mail@7.7.0':
+    resolution: {integrity: sha512-5+nApPE9wINBvHSUxwOxkkQqM/IAAaBYoP9hw7WwgDNQPxraruVqHizeTitVtKGiqWCKm2mnjh4XGN3fvFLqaw==}
+    engines: {node: 6.* || 8.* || >=10.*}
 
   '@sentry-internal/browser-utils@10.57.0':
     resolution: {integrity: sha512-tXObp954rMTSYKlbftjVXHtNl4t/6ssks3jkqyzmKb+PDPWzabGQO7sWwqVuTjT8Kx/8A3FmriS1bGmqxiJy3A==}
@@ -3573,6 +3594,9 @@ packages:
   available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
+
+  axios@0.26.1:
+    resolution: {integrity: sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==}
 
   axios@1.15.2:
     resolution: {integrity: sha512-wLrXxPtcrPTsNlJmKjkPnNPK2Ihe0hn0wGSaTEiHRPxwjvJwT3hKmXF4dpqxmPO9SoNb2FsYXj/xEo0gHN+D5A==}
@@ -8833,6 +8857,13 @@ snapshots:
       - snappy
       - socks
 
+  '@lowdefy/connection-sendgrid@0.0.0-experimental-20260706093008':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260706093008
+      '@sendgrid/mail': 7.7.0
+    transitivePeerDependencies:
+      - debug
+
   '@lowdefy/connection-smtp@0.0.0-experimental-20260706093008':
     dependencies:
       '@lowdefy/helpers': 0.0.0-experimental-20260706093008
@@ -9786,6 +9817,24 @@ snapshots:
     dependencies:
       domhandler: 5.0.3
       selderee: 0.11.0
+
+  '@sendgrid/client@7.7.0':
+    dependencies:
+      '@sendgrid/helpers': 7.7.0
+      axios: 0.26.1
+    transitivePeerDependencies:
+      - debug
+
+  '@sendgrid/helpers@7.7.0':
+    dependencies:
+      deepmerge: 4.3.1
+
+  '@sendgrid/mail@7.7.0':
+    dependencies:
+      '@sendgrid/client': 7.7.0
+      '@sendgrid/helpers': 7.7.0
+    transitivePeerDependencies:
+      - debug
 
   '@sentry-internal/browser-utils@10.57.0':
     dependencies:
@@ -11174,6 +11223,12 @@ snapshots:
   available-typed-arrays@1.0.7:
     dependencies:
       possible-typed-array-names: 1.1.0
+
+  axios@0.26.1:
+    dependencies:
+      follow-redirects: 1.16.0(debug@4.4.3)
+    transitivePeerDependencies:
+      - debug
 
   axios@1.15.2:
     dependencies:
