@@ -1,0 +1,66 @@
+# Single-contact form field scoped to one or more roles. Wraps the contacts
+# module's `role-contact-selector` — a plain Selector of role-matched contacts
+# that stores a denormalized `{ contact_id, name, email }` object at `key`
+# (rendered read-only by the DataDescriptions `contact` field type). Lighter than
+# `contact` (the rich search/add/edit picker); use when the user only picks an
+# existing contact in a role. Requires the host app to wire a `contacts` entry.
+vars:
+  key:
+    type: string
+    required: true
+  roles:
+    type: array
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
+
+config:
+  _ref:
+    module: contacts
+    component: role-contact-selector
+    vars:
+      field_id:
+        _var: key
+      roles:
+        _var: roles
+      required:
+        _var:
+          key: required
+          default: false
+      visible:
+        _var:
+          key: visible
+          default: true
+      title:
+        _var: title
+      label:
+        _build.object.assign:
+          - inline:
+              _var:
+                key: label_inline
+                default: false
+          - _build.if:
+              test:
+                _build.ne:
+                  - _var:
+                      key: label_span
+                      default: null
+                  - null
+              then:
+                span:
+                  _var: label_span
+                align: right
+              else: {}
