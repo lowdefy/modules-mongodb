@@ -35,5 +35,11 @@ export default {
         fileDoc: "The full file document being deleted.",
       },
     },
+    onDownload: {
+      description: "Triggered when a file download is initiated.",
+      event: {
+        fileDoc: "The full file document being downloaded.",
+      },
+    },
   },
 };
