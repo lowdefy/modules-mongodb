@@ -62,9 +62,9 @@ const downloadFile = async ({ fileDoc, methods }) => {
     name: "__getS3DownloadPolicy",
     event: { file: fileDoc.file },
   });
-  window.open(
-    s3DownloadPolicy?.responses?.__getS3DownloadPolicy?.response?.[0],
-  );
+  const url = s3DownloadPolicy?.responses?.__getS3DownloadPolicy?.response?.[0];
+  if (!url) return;
+  window.open(url);
   methods.triggerEvent({ name: "onDownload", event: { fileDoc } });
 };
 

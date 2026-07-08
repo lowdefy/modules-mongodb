@@ -140,12 +140,14 @@ Form state is validated (regex-anchored to `^{blockId}\.form\.`) before `onSave`
 
 ## Events
 
-| Event      | When                                                    | Payload                                                                                                                |
-| ---------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `onChange` | Dragger upload state changes (start, progress, error).  | —                                                                                                                      |
-| `onSave`   | Upload completes (and the form is valid, when present). | `{ file: { name, key, bucket, size, type, thumbnail } }`. The consumer is expected to persist this and any form state. |
-| `onDelete` | Per-row delete is confirmed.                            | `{ fileDoc }` — the full file document being deleted.                                                                  |
-| `onDownload` | A download is initiated (download link or button clicked). | `{ fileDoc }` — the full file document being downloaded.                                                            |
+| Event        | When                                                       | Payload                                                                                                                |
+| ------------ | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `onChange`   | Dragger upload state changes (start, progress, error).     | —                                                                                                                     |
+| `onSave`     | Upload completes (and the form is valid, when present).    | `{ file: { name, key, bucket, size, type, thumbnail } }`. The consumer is expected to persist this and any form state. |
+| `onDelete`   | Per-row delete is confirmed.                               | `{ fileDoc }` — the full file document being deleted.                                                                 |
+| `onDownload` | A download is initiated (after the presigned URL opens).   | `{ fileDoc }` — the full file document being downloaded.                                                              |
+
+`onDownload` fires only once the presigned GET URL has resolved and the download has actually been opened, so it is safe to use for download audit logging. Note that download logging is emitted **client-side** from this event (unlike upload/delete auditing, which the `files` module records **server-side** in its `save-file` / `delete-file` API routines) — there is no download API to hang it off, so the `file-manager` / `file-card` components call the events module's `new-event` endpoint directly from `onDownload`.
 
 For the form-fields modal, the consumer can return `{ success: false }` from the `onSave` action chain to keep the modal open (e.g. on validation or API failure).
 
