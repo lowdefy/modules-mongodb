@@ -33,7 +33,9 @@ properties:
         _var:
           key: menu
           default:
-            _module.var: menu
+            _build.if_none:
+              - _module.var: menu
+              - _menu: default
       # Built-in header features — gated by per-page hide flags
       profile:
         _build.if:

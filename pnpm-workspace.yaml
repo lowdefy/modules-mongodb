@@ -3,3 +3,14 @@ packages:
   - "plugins/*"
   - "modules/*"
   - "apps/*/.lowdefy/*"
+
+# Force a single dayjs copy across the tree. antd@6 resolves dayjs ^1.11.11
+# (→ 1.11.19) while @lowdefy/blocks-antd pins dayjs 1.11.20 exactly, so pnpm
+# installs two physical copies. blocks-antd calls dayjs.extend(utc) on its own
+# copy, but antd builds the DatePicker's calendar-cell date objects with its
+# copy; dayjs(cellDate) clones same-family instances, so blocks-antd's
+# disabledDate closure gets an antd-copy clone that never had utc extended —
+# "dayjs(...).utc is not a function" the moment a date picker opens. Deduping to
+# one copy (satisfies both ranges) makes the utc plugin registration shared.
+overrides:
+  dayjs: 1.11.20
