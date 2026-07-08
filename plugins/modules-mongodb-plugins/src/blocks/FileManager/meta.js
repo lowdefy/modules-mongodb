@@ -1,5 +1,8 @@
 export default {
   category: "container",
+  slots: {
+    form: "Fields rendered in the post-upload modal. Field ids must be nested under `{blockId}.form.*`; their state is passed through to onSave.",
+  },
   icons: [
     "AiFillCheckCircle",
     "AiFillCloseCircle",
