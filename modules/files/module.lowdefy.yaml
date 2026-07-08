@@ -1,5 +1,5 @@
 name: Files
-version: 0.10.1
+version: 0.11.0
 description: File attachment management — upload, download, list, S3 integration
 
 dependencies:
@@ -100,4 +100,4 @@ secrets:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.10.1"
+    version: "^0.11.0"

@@ -1,5 +1,16 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.11.0
+
+### Minor Changes
+
+- [#100](https://github.com/lowdefy/modules-mongodb/pull/100) [`dd309b8`](https://github.com/lowdefy/modules-mongodb/commit/dd309b83299d3f37d2fb2fd380ed288e42bdf97f) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Log file downloads for parity with upload/delete auditing. The `FileManager`
+  block now fires an `onDownload` event (payload `{ fileDoc }`) when a download is
+  initiated. The `file-manager` / `file-card` components expose a new `on_download`
+  var (action list, default `[]`) for consumer-supplied handlers, and — when
+  `log_events` is on — record a `download-file` event via the events module,
+  matching how uploads and deletes are logged.
+
 ## 0.10.1
 
 ## 0.10.0
