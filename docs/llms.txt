@@ -68,6 +68,11 @@
 - docs/release-notes/index.md: Release Notes — Single-page Markdown renderer for `CHANGELOG.md`. Drops a release-notes link into your menu and renders whatever Markdown you pass in via the `content` var.
 - docs/release-notes/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
+## reporting
+
+- docs/reporting/index.md: AI Chat Reporting — Chat to your data and generate saved, navigable reports. The module ships a reporting agent (chat and one-shot surfaces), a constrained query engine over an app-supplied data dictionary, and report pages compiled server-side from AI-generated report specs.
+- docs/reporting/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
+
 ## user-account
 
 - docs/user-account/index.md: User Account — Self-service account pages — passwordless login, email-verification confirmation, profile view/edit, first-time profile creation, and logout. The end-user side of the user/contact schema; the operator side lives in [`user-admin`](../user-admin/index.md).
