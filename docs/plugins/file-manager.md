@@ -63,24 +63,26 @@ The pre-wired `file-card` component on the `files` module sets all of this up �
 
 ### Form-fields modal
 
-When the block has a `form` content slot, completing an upload opens a modal with the slot rendered inside it. State written under `{blockId}.form.*` is sent through to `onSave` along with the file:
+When the block has a `form` slot, completing an upload opens a modal with the slot rendered inside it. State written under `{blockId}.form.*` is sent through to `onSave` along with the file:
 
 ```yaml
 - id: lot_files
   type: FileManager
   properties:
     # ...
-  blocks:
-    - id: lot_files.form.file_title
-      type: TextInput
-      properties:
-        title: Title
-        required: true
-    - id: lot_files.form.category
-      type: Selector
-      properties:
-        title: Category
-        options: [contract, drawing, photo]
+  slots:
+    form:
+      blocks:
+        - id: lot_files.form.file_title
+          type: TextInput
+          properties:
+            title: Title
+            required: true
+        - id: lot_files.form.category
+          type: Selector
+          properties:
+            title: Category
+            options: [contract, drawing, photo]
   events:
     onSave:
       - id: save
@@ -138,11 +140,14 @@ Form state is validated (regex-anchored to `^{blockId}\.form\.`) before `onSave`
 
 ## Events
 
-| Event      | When                                                    | Payload                                                                                                                |
-| ---------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `onChange` | Dragger upload state changes (start, progress, error).  | —                                                                                                                      |
-| `onSave`   | Upload completes (and the form is valid, when present). | `{ file: { name, key, bucket, size, type, thumbnail } }`. The consumer is expected to persist this and any form state. |
-| `onDelete` | Per-row delete is confirmed.                            | `{ fileDoc }` — the full file document being deleted.                                                                  |
+| Event        | When                                                       | Payload                                                                                                                |
+| ------------ | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `onChange`   | Dragger upload state changes (start, progress, error).     | —                                                                                                                     |
+| `onSave`     | Upload completes (and the form is valid, when present).    | `{ file: { name, key, bucket, size, type, thumbnail } }`. The consumer is expected to persist this and any form state. |
+| `onDelete`   | Per-row delete is confirmed.                               | `{ fileDoc }` — the full file document being deleted.                                                                 |
+| `onDownload` | A download is initiated (after the presigned URL opens).   | `{ fileDoc }` — the full file document being downloaded.                                                              |
+
+`onDownload` fires only once the presigned GET URL has resolved and the download has actually been opened, so it is safe to use for download audit logging. Note that download logging is emitted **client-side** from this event (unlike upload/delete auditing, which the `files` module records **server-side** in its `save-file` / `delete-file` API routines) — there is no download API to hang it off, so the `file-manager` / `file-card` components call the events module's `new-event` endpoint directly from `onDownload`.
 
 For the form-fields modal, the consumer can return `{ success: false }` from the `onSave` action chain to keep the modal open (e.g. on validation or API failure).
 

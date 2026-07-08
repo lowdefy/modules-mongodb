@@ -48,6 +48,14 @@ exports:
       description: Layout card wrapping file-manager for easy embedding
     - id: file-list
       description: Lightweight read-only file list using standard Lowdefy blocks (no plugin needed)
+    - id: download-policy
+      description: >-
+        Presigned S3 GET request on the files-bucket connection, for consumers
+        that render downloadable files outside file-manager/file-list (e.g. the
+        events module's EventsTimeline). _ref it inside a page's `requests:` list
+        with vars: { block_id: <id> }; the instantiated request id is
+        `download_policy_<block_id>`, which you pass as the consumer's
+        s3GetPolicyRequestId.
 
 connections:
   - _ref: connections/files-collection.yaml
@@ -68,6 +76,15 @@ components:
   - id: file-list
     component:
       _ref: components/file-list.yaml
+  - id: download-policy
+    component:
+      _ref:
+        path: requests/download-policy.yaml
+        vars:
+          block_id:
+            _var:
+              key: block_id
+              default: file_download
 
 secrets:
   - name: MONGODB_URI

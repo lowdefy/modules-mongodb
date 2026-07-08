@@ -22,7 +22,9 @@ routine:
           file_title:
             _payload: file_title
           file_category:
-            _payload: file_category
+            _if_none:
+              - _payload: metadata.file_category
+              - _payload: file_category
           metadata:
             _payload: metadata
           updated:
@@ -57,7 +59,9 @@ routine:
           file_name:
             _payload: file.name
           file_category:
-            _payload: file_category
+            _if_none:
+              - _payload: metadata.file_category
+              - _payload: file_category
           file_key:
             _payload: file.key
 

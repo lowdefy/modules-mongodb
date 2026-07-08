@@ -48,6 +48,14 @@ _ref:
                 _id:
                   _payload: _id
             - $limit: 1
+      # E4 demo: the files module's exported download-policy request, consumed
+      # here (outside file-manager/file-list) so the events-timeline below can
+      # download file attachments. Instantiated request id: download_policy_lead_view.
+      - _ref:
+          module: files
+          component: download-policy
+          vars:
+            block_id: lead_view
     blocks:
       - id: lead_view_row
         type: Box
@@ -124,6 +132,52 @@ _ref:
                             - id: contact
                               properties:
                                 title: Contact
+              # E1 demo: file-card with an upload-modal form slot. After each
+              # upload, the injected fields render in a modal; the category
+              # Selector (id `<block_id>.form.file_category`) sets the saved
+              # file's top-level file_category, and available_to_client is
+              # persisted into metadata.
+              - _ref:
+                  module: files
+                  component: file-card
+                  vars:
+                    block_id: lead_documents
+                    title: Documents
+                    entity_type: leads
+                    entity_id:
+                      _url_query: _id
+                    modal_title: File details
+                    ok_text: Save file
+                    form_fields:
+                      - id: lead_documents.form.file_category
+                        type: Selector
+                        required: true
+                        properties:
+                          title: Category
+                          options:
+                            - label: Proposal
+                              value: proposal
+                            - label: Contract
+                              value: contract
+                            - label: Correspondence
+                              value: correspondence
+                      - id: lead_documents.form.available_to_client
+                        type: Switch
+                        properties:
+                          title: Available to client
+                    # E3 demo: consumer-facing onDownload hook. (The built-in
+                    # log_events download-file event is also recorded and shows
+                    # up in the Activity timeline below.)
+                    on_download:
+                      - id: notify_download
+                        type: DisplayMessage
+                        params:
+                          content:
+                            _nunjucks:
+                              template: "Downloading {{ fileDoc.file.name }}"
+                              on:
+                                fileDoc:
+                                  _event: fileDoc
               - _ref:
                   module: layout
                   component: card
@@ -138,6 +192,9 @@ _ref:
                             reference_value:
                               _url_query: _id
                             contact_page_url: "/contacts/view?_id={id}"
+                            # E4 demo: download file attachments in the timeline
+                            # via the files module's exported download-policy.
+                            s3GetPolicyRequestId: download_policy_lead_view
       # Page owns the single check-action modal drop and its on_complete (Part
       # 55 D1): refresh every co-present surface after a successful signal — the
       # action steps (actions-on-entity) and the Activity timeline
