@@ -1,5 +1,17 @@
 # @lowdefy/modules-mongodb-contacts
 
+## 0.10.1
+
+### Patch Changes
+
+- [#98](https://github.com/lowdefy/modules-mongodb/pull/98) [`b7ec1d8`](https://github.com/lowdefy/modules-mongodb/commit/b7ec1d812137bea57cb6e324dce2fb0bb9e6f062) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Fix stable-Lowdefy build failure on the contacts new/edit forms. Both pages
+  render the company selector (`get_companies_for_selector`), which reads
+  `state.cycle_check_self_id` / `state.cycle_check_ids`, but neither page
+  initialised those state keys — so the build failed with 4 `_state`
+  "no input block with this id exists" errors. Initialise both keys (to `null`
+  and `[]`, plain-picker defaults) in each page's mount `SetState`, matching the
+  pattern already used on contacts/view and companies new/edit/view.
+
 ## 0.10.0
 
 ### Patch Changes
