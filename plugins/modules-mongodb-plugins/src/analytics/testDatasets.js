@@ -21,7 +21,10 @@ const testDatasets = [
       {
         id: "total",
         type: "number",
-        description: "Order total (USD)",
+        description: "Order total (ZAR)",
+        format: "currency",
+        currency: "ZAR",
+        locale: "en-ZA",
         aggregations: ["sum", "avg", "min", "max"],
       },
       { id: "count", type: "count", description: "Number of orders" },

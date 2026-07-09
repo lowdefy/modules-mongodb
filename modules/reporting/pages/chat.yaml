@@ -48,8 +48,14 @@ blocks:
               - _function:
                   key:
                     __args: 0._id
+                  # Fall back when a stored title is missing or empty, so the
+                  # item never renders as a blank grey block.
                   label:
-                    __args: 0.title
+                    _nunjucks:
+                      template: "{{ title or 'New conversation' }}"
+                      on:
+                        title:
+                          __args: 0.title
           activeKey:
             _state: conversationId
           creation:
@@ -65,8 +71,15 @@ blocks:
                 charts: []
                 downloads: []
           onSelect:
+            # Re-selecting the conversation already open is a no-op — otherwise
+            # it would wipe the live charts/downloads (which are ephemeral and
+            # not restored on select) and blank out the Results panel.
             - id: select_conversation
               type: SetState
+              skip:
+                _eq:
+                  - _event: key
+                  - _state: conversationId
               params:
                 conversationId:
                   _event: key

@@ -44,7 +44,14 @@ test("validates the design example and assigns positional ids", () => {
   const result = validateReportSpec({ spec: designExampleSpec, datasets: testDatasets, roles });
   expect(result.sections.map((s) => s.id)).toEqual(["s0", "s1", "s2", "s3", "s4"]);
   expect(result.sections[0].valueKey).toBe("total_sum");
-  expect(result.sections[3].columns).toEqual(["region", "status", "total_sum", "count_count"]);
+  // Table columns are descriptors: enum dimensions (with `values`) tag, measures
+  // carry type/format so the renderer can format them.
+  expect(result.sections[3].columns).toEqual([
+    { key: "region", tag: false },
+    { key: "status", tag: true },
+    { key: "total_sum", measure: true, type: "number", format: "currency", currency: "ZAR", locale: "en-ZA" },
+    { key: "count_count", measure: true, type: "count", format: null, currency: null, locale: null },
+  ]);
   // Select filter without explicit options resolves them from dimension values.
   expect(result.sections[2].options).toEqual(["pending", "paid", "shipped", "cancelled"]);
 });

@@ -20,8 +20,16 @@ test("valid spec normalizes with measure keys and default limit", () => {
   });
   expect(result.dataset.id).toBe("orders");
   expect(result.measures).toEqual([
-    { id: "total", agg: "sum", key: "total_sum", type: "number" },
-    { id: "count", agg: "count", key: "count_count", type: "count" },
+    {
+      id: "total",
+      agg: "sum",
+      key: "total_sum",
+      type: "number",
+      format: "currency",
+      currency: "ZAR",
+      locale: "en-ZA",
+    },
+    { id: "count", agg: "count", key: "count_count", type: "count", format: null, currency: null, locale: null },
   ]);
   expect(result.limit).toBe(100);
   expect(result.sort).toEqual([{ field: "total_sum", dir: "desc" }]);

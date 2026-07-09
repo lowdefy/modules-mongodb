@@ -67,22 +67,32 @@ routine:
                                     - $$value
                         - 0
                   in:
-                    $cond:
-                      - $gt:
-                          - $strLenCP:
-                              $ifNull:
-                                - $$firstUserText
-                                - ""
-                          - 60
-                      - $concat:
-                          - $substrCP:
-                              - $$firstUserText
-                              - 0
-                              - 60
-                          - "…"
-                      - $ifNull:
-                          - $$firstUserText
-                          - New conversation
+                    $let:
+                      vars:
+                        text:
+                          $ifNull:
+                            - $$firstUserText
+                            - ""
+                      in:
+                        $switch:
+                          branches:
+                            - case:
+                                $eq:
+                                  - $$text
+                                  - ""
+                              then: New conversation
+                            - case:
+                                $gt:
+                                  - $strLenCP: $$text
+                                  - 60
+                              then:
+                                $concat:
+                                  - $substrCP:
+                                      - $$text
+                                      - 0
+                                      - 60
+                                  - "…"
+                          default: $$text
       options:
         upsert: true
   - :return:

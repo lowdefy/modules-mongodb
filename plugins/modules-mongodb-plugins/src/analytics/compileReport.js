@@ -1,3 +1,4 @@
+import { REPORT_CURRENCY, REPORT_DECIMALS, REPORT_LOCALE } from "./constants.js";
 import buildEChartsOption from "./buildEChartsOption.js";
 import validateReportSpec from "./validateReportSpec.js";
 
@@ -111,6 +112,91 @@ function dataBinding(section, rows) {
   return { __if_none: [{ __state: `sections.${section.id}.rows` }, rows] };
 }
 
+// How a measure's numeric values display: counts are whole numbers, currency
+// measures carry a symbol and two decimals, every other number is a grouped
+// decimal. Currency/locale come from the measure's dictionary entry (default
+// en-US/USD) so an app can localise (e.g. ZAR / en-ZA) without engine changes.
+function numberDisplay({ type, format, currency, locale }) {
+  const loc = locale || REPORT_LOCALE;
+  if (type === "count") return { style: "decimal", decimals: 0, locale: loc };
+  if (format === "currency") {
+    return { style: "currency", decimals: REPORT_DECIMALS, currency: currency || REPORT_CURRENCY, locale: loc };
+  }
+  return { style: "decimal", decimals: REPORT_DECIMALS, locale: loc };
+}
+
+// Intl.NumberFormat options for a display descriptor.
+function numberFormatOptions(display) {
+  const base = { minimumFractionDigits: display.decimals, maximumFractionDigits: display.decimals };
+  return display.style === "currency"
+    ? { style: "currency", currency: display.currency, ...base }
+    : { style: "decimal", ...base };
+}
+
+// The grouping/decimal separators and currency symbol a locale actually uses,
+// resolved at compile time (Node ships full ICU). Lets the KPI Statistic format
+// its live numeric value natively while matching the table's runtime _intl
+// output — e.g. en-ZA yields "R", a space group and a comma decimal.
+function intlSeparators(display) {
+  const parts = new Intl.NumberFormat(display.locale, numberFormatOptions(display)).formatToParts(
+    11111.11
+  );
+  const find = (type) => parts.find((p) => p.type === type)?.value;
+  return {
+    symbol: find("currency") ?? "",
+    group: find("group") ?? ",",
+    decimal: find("decimal") ?? ".",
+  };
+}
+
+// Runtime value formatter for a table measure cell. Deferred through the Dynamic
+// block, so operators inside the cell's `_function` are triple-escaped (`___`):
+// one level for the Dynamic-block unescape, one for the function body.
+function measureCellRenderer(display) {
+  return {
+    __function: {
+      "___intl.numberFormat": {
+        on: { ___args: "0.value" },
+        options: numberFormatOptions(display),
+        locale: display.locale,
+      },
+    },
+  };
+}
+
+// Enum dimension values render as a subtle pill instead of the raw key. Theme
+// tokens keep it consistent in light and dark; an empty cell stays empty.
+const TAG_TEMPLATE =
+  '{% if v %}<span style="display:inline-block;padding:1px 8px;border-radius:10px;' +
+  "font-size:12px;line-height:18px;background:var(--ant-color-fill-secondary);" +
+  'border:1px solid var(--ant-color-border-secondary);color:var(--ant-color-text)">' +
+  "{{ v }}</span>{% endif %}";
+
+function tagCellRenderer() {
+  return {
+    __function: {
+      ___nunjucks: {
+        template: TAG_TEMPLATE,
+        on: { v: { ___args: "0.value" } },
+      },
+    },
+  };
+}
+
+function tableColumnDef(column) {
+  if (column.measure) {
+    return {
+      field: column.key,
+      type: "numericColumn",
+      cellRenderer: measureCellRenderer(numberDisplay(column)),
+    };
+  }
+  if (column.tag) {
+    return { field: column.key, cellRenderer: tagCellRenderer() };
+  }
+  return { field: column.key };
+}
+
 // EChart and AgGridAlpine have no `title` property (their schemas set
 // additionalProperties: false), so a section's label renders as a preceding
 // Title block — the same pattern the chat results panel uses for charts.
@@ -168,17 +254,21 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
     sections.filter((s) => s.type === "filter").map((s) => [s.field, s])
   );
 
-  const blocks = [];
+  // Filter controls collect into a single row at the top of the report,
+  // regardless of where their sections sit in the spec; everything else keeps
+  // spec order in the body below.
+  const header = [];
+  const filterBlocks = [];
+  const bodyBlocks = [];
 
-  // Title block for the report header.
-  blocks.push({
+  header.push({
     id: "report_title",
     type: "Title",
     layout: { span: 24 },
     properties: { content: validated.title, level: 3 },
   });
   if (validated.description) {
-    blocks.push({
+    header.push({
       id: "report_description",
       type: "Paragraph",
       layout: { span: 24 },
@@ -190,7 +280,7 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
     if (["kpi", "chart", "table"].includes(section.type)) {
       const rows = rowsBySectionId.get(section.id);
       if (rows === null || rows === undefined) {
-        blocks.push(failedSectionBlock(section));
+        bodyBlocks.push(failedSectionBlock(section));
         continue;
       }
 
@@ -205,11 +295,30 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
                   inlined,
                 ],
               };
-        blocks.push({
+        // Statistic formats its live numeric value natively; separators/symbol
+        // come from the measure's locale so it matches the table's _intl output.
+        const display = numberDisplay({
+          type: section.valueType,
+          format: section.valueFormat,
+          currency: section.valueCurrency,
+          locale: section.valueLocale,
+        });
+        const seps = intlSeparators(display);
+        const properties = {
+          title: section.label,
+          value,
+          precision: display.decimals,
+          groupSeparator: seps.group,
+          decimalSeparator: seps.decimal,
+        };
+        if (display.style === "currency") {
+          properties.prefix = `${seps.symbol} `;
+        }
+        bodyBlocks.push({
           id: section.id,
           type: "Statistic",
           layout: { span: 6 },
-          properties: { title: section.label, value },
+          properties,
         });
       }
 
@@ -221,8 +330,8 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
           rows: [],
         });
         option.dataset.source = dataBinding(section, rows);
-        blocks.push(sectionHeading(section));
-        blocks.push({
+        bodyBlocks.push(sectionHeading(section));
+        bodyBlocks.push({
           id: section.id,
           type: "EChart",
           layout: { span: 24 },
@@ -231,14 +340,14 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
       }
 
       if (section.type === "table") {
-        blocks.push(sectionHeading(section));
-        blocks.push({
+        bodyBlocks.push(sectionHeading(section));
+        bodyBlocks.push({
           id: section.id,
           type: "AgGridAlpine",
           layout: { span: 24 },
           properties: {
             rowData: dataBinding(section, rows),
-            columnDefs: section.columns.map((column) => ({ field: column })),
+            columnDefs: section.columns.map(tableColumnDef),
             defaultColDef: { sortable: true, resizable: true },
           },
         });
@@ -255,7 +364,7 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
         endpointId,
       });
       if (section.control === "daterange") {
-        blocks.push({
+        filterBlocks.push({
           id: filterStateKey(section.field),
           type: "DateRangeSelector",
           layout: { span: 6 },
@@ -263,7 +372,7 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
           events: { onChange },
         });
       } else {
-        blocks.push({
+        filterBlocks.push({
           id: filterStateKey(section.field),
           type: "Selector",
           layout: { span: 6 },
@@ -278,7 +387,7 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
     }
 
     if (section.type === "markdown") {
-      blocks.push({
+      bodyBlocks.push({
         id: section.id,
         type: "Markdown",
         layout: { span: 24 },
@@ -287,7 +396,7 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
     }
 
     if (section.type === "download") {
-      blocks.push({
+      bodyBlocks.push({
         id: section.id,
         type: "Button",
         layout: { span: 6 },
@@ -313,7 +422,20 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
     }
   }
 
-  return blocks;
+  // Filters sit in their own full-width row so they stay together at the top
+  // and don't interleave with KPIs (which share the same span).
+  const filterRow = filterBlocks.length
+    ? [
+        {
+          id: "report_filters",
+          type: "Box",
+          layout: { span: 24, contentGutter: 16 },
+          blocks: filterBlocks,
+        },
+      ]
+    : [];
+
+  return [...header, ...filterRow, ...bodyBlocks];
 }
 
 export default compileReport;

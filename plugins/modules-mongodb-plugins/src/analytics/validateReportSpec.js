@@ -82,6 +82,10 @@ function validateReportSpec({ spec, datasets, roles }) {
         label,
         query: section.query,
         valueKey: measures[0].key,
+        valueType: measures[0].type,
+        valueFormat: measures[0].format ?? null,
+        valueCurrency: measures[0].currency ?? null,
+        valueLocale: measures[0].locale ?? null,
         filterBy: section.filterBy ?? [],
       };
     }
@@ -108,12 +112,30 @@ function validateReportSpec({ spec, datasets, roles }) {
     if (section.type === "table") {
       const label = validateLabel(section, index);
       const { select, measures } = validateQuerySpec({ spec: section.query, datasets, roles });
+      const dataset = datasets.find((d) => d?.id === section.query?.dataset);
+      const dimensionsById = new Map((dataset?.dimensions ?? []).map((d) => [d.id, d]));
+      // Column descriptors drive rendering: enum dimensions (those declaring
+      // `values`) render as tags; measures render right-aligned and formatted.
+      const columns = [
+        ...select.map((dimId) => ({
+          key: dimId,
+          tag: (dimensionsById.get(dimId)?.values?.length ?? 0) > 0,
+        })),
+        ...measures.map((m) => ({
+          key: m.key,
+          measure: true,
+          type: m.type,
+          format: m.format ?? null,
+          currency: m.currency ?? null,
+          locale: m.locale ?? null,
+        })),
+      ];
       return {
         id,
         type: "table",
         label,
         query: section.query,
-        columns: [...select, ...measures.map((m) => m.key)],
+        columns,
         filterBy: section.filterBy ?? [],
       };
     }

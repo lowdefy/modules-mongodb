@@ -8,6 +8,7 @@ import {
   MAX_MEASURES,
   MAX_SELECT,
   MAX_SORT,
+  MEASURE_FORMATS,
   OPS_BY_TYPE,
 } from "./constants.js";
 
@@ -131,10 +132,30 @@ function validateQuerySpec({ spec, datasets, roles }) {
         `measure "${entry.id}" does not allow aggregation "${agg}". Allowed: ${allowed.join(", ")}.`
       );
     }
+    if (measure.format !== undefined && !MEASURE_FORMATS.includes(measure.format)) {
+      fail(
+        `measure "${entry.id}" declares format "${measure.format}" which is not one of ` +
+          `${MEASURE_FORMATS.join(", ")}.`
+      );
+    }
+    if (measure.currency !== undefined && typeof measure.currency !== "string") {
+      fail(`measure "${entry.id}" currency must be an ISO currency code string (e.g. "ZAR").`);
+    }
+    if (measure.locale !== undefined && typeof measure.locale !== "string") {
+      fail(`measure "${entry.id}" locale must be a BCP 47 locale string (e.g. "en-ZA").`);
+    }
     const key = `${entry.id}_${agg}`;
     if (seenMeasureKeys.has(key)) fail(`measure "${key}" is requested twice.`);
     seenMeasureKeys.add(key);
-    measures.push({ id: entry.id, agg, key, type: measure.type });
+    measures.push({
+      id: entry.id,
+      agg,
+      key,
+      type: measure.type,
+      format: measure.format ?? null,
+      currency: measure.currency ?? null,
+      locale: measure.locale ?? null,
+    });
   }
 
   if (select.length === 0 && measures.length === 0) {

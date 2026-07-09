@@ -36,6 +36,10 @@
     - id: total
       type: number
       description: Order total (USD)
+      # Money measure: rendered with a currency symbol and two decimals in KPIs,
+      # tables and reports. Defaults to USD / en-US; set `currency` + `locale` to
+      # localise (e.g. currency: ZAR, locale: en-ZA).
+      format: currency
       aggregations: [sum, avg, min, max]
     - id: quantity
       type: number

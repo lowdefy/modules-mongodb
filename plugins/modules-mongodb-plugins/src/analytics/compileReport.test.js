@@ -56,9 +56,13 @@ test("compiles the full report to blocks", () => {
 
   expect(byId.report_title.properties.content).toBe("Q2 Revenue by Region");
 
-  // KPI: unfiltered → value inlined at resolve time.
+  // KPI: unfiltered → value inlined at resolve time. `total` is a ZAR currency
+  // measure, so the Statistic formats natively with 2 decimals and a rand
+  // prefix; separators come from the en-ZA locale.
   expect(byId.s0.type).toBe("Statistic");
   expect(byId.s0.properties.value).toBe(4200);
+  expect(byId.s0.properties.precision).toBe(2);
+  expect(byId.s0.properties.prefix).toMatch(/^R/);
 
   // Chart: unfiltered → rows inlined into the ECharts dataset source. EChart
   // and AgGridAlpine reject a `title` property (additionalProperties: false),
@@ -82,8 +86,22 @@ test("compiles the full report to blocks", () => {
     __if_none: [{ __state: "sections.s3.rows" }, results[2]],
   });
 
-  // Filter control: CallAPI re-query for the bound section, then SetState from __api.
-  const filter = byId.filter_status;
+  // Table columns: enum dimension (status has `values`) renders as a tag,
+  // plain dimension (region has none) is bare, measure is right-aligned and
+  // formatted via _intl.
+  const cols = Object.fromEntries(byId.s3.properties.columnDefs.map((c) => [c.field, c]));
+  expect(cols.region.cellRenderer).toBeUndefined();
+  expect(cols.status.cellRenderer.__function.___nunjucks).toBeDefined();
+  expect(cols.total_sum.type).toBe("numericColumn");
+  expect(cols.total_sum.cellRenderer.__function["___intl.numberFormat"].options).toMatchObject({
+    style: "currency",
+    currency: "ZAR",
+  });
+
+  // Filter control: moved into the top filter row (report_filters Box). CallAPI
+  // re-query for the bound section, then SetState from __api.
+  expect(byId.report_filters.type).toBe("Box");
+  const filter = byId.report_filters.blocks.find((b) => b.id === "filter_status");
   expect(filter.type).toBe("Selector");
   expect(filter.properties.options).toEqual(["pending", "paid", "shipped", "cancelled"]);
   const [call, set] = filter.events.onChange;

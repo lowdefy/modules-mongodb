@@ -25,6 +25,20 @@ export const FILTER_CONTROLS = ['select', 'daterange'];
 
 export const AGGREGATIONS = ['sum', 'avg', 'min', 'max', 'count'];
 
+// Optional display format a measure can declare in the data dictionary. Drives
+// how the report renderer formats the measure's values (KPI Statistic, table
+// cells). `currency` renders with a symbol and two decimals; the default
+// (unset) renders as a grouped decimal.
+export const MEASURE_FORMATS = ['currency'];
+
+// Number display defaults for the report renderer. Currency is USD/`$` — the
+// single concrete need today; a dictionary-level locale/currency override can
+// be added when a second currency actually appears.
+export const REPORT_LOCALE = 'en-US';
+export const REPORT_CURRENCY = 'USD';
+export const REPORT_CURRENCY_SYMBOL = '$';
+export const REPORT_DECIMALS = 2;
+
 // Allowed filter operators per dimension/measure type.
 export const OPS_BY_TYPE = {
   string: ['eq', 'neq', 'in', 'nin', 'contains'],
