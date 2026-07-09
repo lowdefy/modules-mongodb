@@ -104,3 +104,15 @@ test("the connection cannot write: executing a spec never mutates data", async (
   const after = await mongo.db.collection("orders").countDocuments();
   expect(after).toBe(before);
 });
+
+// meta — the request pipeline dereferences requestResolver.meta.checkRead /
+// .checkWrite; missing statics threw at runtime for every query.
+describe("handler meta", () => {
+  test("has schema and read-only meta", () => {
+    expect(AnalyticsQuery.schema).toEqual({});
+    expect(AnalyticsQuery.meta).toEqual({
+      checkRead: true,
+      checkWrite: false,
+    });
+  });
+});

@@ -36,4 +36,15 @@ async function AnalyticsQuery({ request = {}, connection }) {
   return rows;
 }
 
+// The request pipeline reads these statics (checkConnectionRead/Write access
+// requestResolver.meta.*); without them every execution throws "Cannot read
+// properties of undefined (reading 'checkRead')". The spec is validated by
+// validateQuerySpec, so no property schema is needed. Read-only by
+// construction — the compiler emits no write stages.
+AnalyticsQuery.schema = {};
+AnalyticsQuery.meta = {
+  checkRead: true,
+  checkWrite: false,
+};
+
 export default AnalyticsQuery;
