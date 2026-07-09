@@ -5,7 +5,9 @@ import testDatasets from "./testDatasets.js";
 const roles = ["analyst"];
 
 function compile(spec) {
-  return compileMongo(validateQuerySpec({ spec, datasets: testDatasets, roles }));
+  return compileMongo(
+    validateQuerySpec({ spec, datasets: testDatasets, roles }),
+  );
 }
 
 test("compiles the design example to match/group/project/sort/limit", () => {
@@ -40,7 +42,9 @@ test("compiles the design example to match/group/project/sort/limit", () => {
         count_count: { $sum: 1 },
       },
     },
-    { $project: { _id: 0, region: "$_id.region", total_sum: 1, count_count: 1 } },
+    {
+      $project: { _id: 0, region: "$_id.region", total_sum: 1, count_count: 1 },
+    },
     { $sort: { total_sum: -1 } },
     { $limit: 100 },
   ]);
@@ -77,7 +81,58 @@ test("no select groups on null (grand total)", () => {
     dataset: "orders",
     measures: [{ id: "total", agg: "sum" }],
   });
-  expect(pipeline[0]).toEqual({ $group: { _id: null, total_sum: { $sum: "$total" } } });
+  expect(pipeline[0]).toEqual({
+    $group: { _id: null, total_sum: { $sum: "$total" } },
+  });
+});
+
+test("dotted field paths compile to their source path, output keyed by id", () => {
+  const pipeline = compile({
+    dataset: "activities",
+    select: ["stage", "channel"],
+    measures: [{ id: "count", agg: "count" }],
+    filters: [{ field: "stage", op: "eq", value: "open" }],
+    sort: [{ field: "count_count", dir: "desc" }],
+  });
+  expect(pipeline).toEqual([
+    { $match: { $and: [{ "status.stage": { $eq: "open" } }] } },
+    {
+      $group: {
+        _id: { stage: "$status.stage", channel: "$source.channel" },
+        count_count: { $sum: 1 },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        stage: "$_id.stage",
+        channel: "$_id.channel",
+        count_count: 1,
+      },
+    },
+    { $sort: { count_count: -1 } },
+    { $limit: 100 },
+  ]);
+});
+
+test("a bucketed date dimension groups on $dateTrunc (no new stage)", () => {
+  const pipeline = compile({
+    dataset: "activities",
+    select: ["created"],
+    measures: [{ id: "count", agg: "count" }],
+  });
+  expect(pipeline[0]).toEqual({
+    $group: {
+      _id: {
+        created: { $dateTrunc: { date: "$created.timestamp", unit: "month" } },
+      },
+      count_count: { $sum: 1 },
+    },
+  });
+  const allowed = new Set(["$match", "$group", "$project", "$sort", "$limit"]);
+  for (const stage of pipeline) {
+    for (const key of Object.keys(stage)) expect(allowed.has(key)).toBe(true);
+  }
 });
 
 test("contains filter escapes regex metacharacters", () => {

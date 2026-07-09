@@ -8,10 +8,49 @@ let mongo;
 beforeAll(async () => {
   mongo = await inMemoryMongo();
   await mongo.db.collection("orders").insertMany([
-    { region: "EU", status: "paid", total: 100, createdAt: new Date("2026-04-10") },
-    { region: "EU", status: "paid", total: 150, createdAt: new Date("2026-05-01") },
-    { region: "US", status: "paid", total: 200, createdAt: new Date("2026-04-20") },
-    { region: "US", status: "pending", total: 50, createdAt: new Date("2026-03-01") },
+    {
+      region: "EU",
+      status: "paid",
+      total: 100,
+      createdAt: new Date("2026-04-10"),
+    },
+    {
+      region: "EU",
+      status: "paid",
+      total: 150,
+      createdAt: new Date("2026-05-01"),
+    },
+    {
+      region: "US",
+      status: "paid",
+      total: 200,
+      createdAt: new Date("2026-04-20"),
+    },
+    {
+      region: "US",
+      status: "pending",
+      total: 50,
+      createdAt: new Date("2026-03-01"),
+    },
+  ]);
+  // Nested/embedded docs for the `activities` dataset — exercises dotted-path
+  // grouping and $dateTrunc bucketing against a real MongoDB aggregation.
+  await mongo.db.collection("activities_report").insertMany([
+    {
+      status: { stage: "open" },
+      source: { channel: "manual" },
+      created: { timestamp: new Date("2026-04-05") },
+    },
+    {
+      status: { stage: "open" },
+      source: { channel: "email" },
+      created: { timestamp: new Date("2026-04-25") },
+    },
+    {
+      status: { stage: "done" },
+      source: { channel: "manual" },
+      created: { timestamp: new Date("2026-05-02") },
+    },
   ]);
 });
 
@@ -58,7 +97,7 @@ test("rejects a user without the dataset's roles", async () => {
         roles: ["viewer"],
       },
       connection: { databaseUri: mongo.uri },
-    })
+    }),
   ).rejects.toThrow(/not authorized/);
 });
 
@@ -71,7 +110,7 @@ test("rejects fields outside the dictionary allowlist", async () => {
         roles: ["analyst"],
       },
       connection: { databaseUri: mongo.uri },
-    })
+    }),
   ).rejects.toThrow(/references dimension "creditCard"/);
 });
 
@@ -103,6 +142,46 @@ test("the connection cannot write: executing a spec never mutates data", async (
   });
   const after = await mongo.db.collection("orders").countDocuments();
   expect(after).toBe(before);
+});
+
+test("groups by a dotted-path dimension end to end", async () => {
+  const rows = await AnalyticsQuery({
+    request: {
+      datasets: testDatasets,
+      spec: {
+        dataset: "activities",
+        select: ["stage"],
+        measures: [{ id: "count", agg: "count" }],
+        sort: [{ field: "count_count", dir: "desc" }],
+      },
+      roles: [],
+    },
+    connection: { databaseUri: mongo.uri },
+  });
+  expect(rows).toEqual([
+    { stage: "open", count_count: 2 },
+    { stage: "done", count_count: 1 },
+  ]);
+});
+
+test("buckets a date dimension by month end to end", async () => {
+  const rows = await AnalyticsQuery({
+    request: {
+      datasets: testDatasets,
+      spec: {
+        dataset: "activities",
+        select: ["created"],
+        measures: [{ id: "count", agg: "count" }],
+        sort: [{ field: "created", dir: "asc" }],
+      },
+      roles: [],
+    },
+    connection: { databaseUri: mongo.uri },
+  });
+  expect(rows).toEqual([
+    { created: new Date("2026-04-01"), count_count: 2 },
+    { created: new Date("2026-05-01"), count_count: 1 },
+  ]);
 });
 
 // meta — the request pipeline dereferences requestResolver.meta.checkRead /

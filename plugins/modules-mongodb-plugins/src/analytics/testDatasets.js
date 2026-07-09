@@ -15,7 +15,11 @@ const testDatasets = [
         values: ["pending", "paid", "shipped", "cancelled"],
       },
       { id: "region", type: "string", description: "Customer region" },
-      { id: "createdAt", type: "date", description: "When the order was placed" },
+      {
+        id: "createdAt",
+        type: "date",
+        description: "When the order was placed",
+      },
     ],
     measures: [
       {
@@ -37,6 +41,38 @@ const testDatasets = [
     source: { collection: "signups" },
     dimensions: [{ id: "plan", type: "string", description: "Plan" }],
     measures: [{ id: "count", type: "count", description: "Signups" }],
+  },
+  {
+    // Exercises author-declared dotted `field` paths (embedded sub-documents,
+    // reached via a flattening view in the demo) and a date `bucket`.
+    id: "activities",
+    label: "Activities",
+    description: "Activity records at activity grain (view).",
+    source: { collection: "activities_report" },
+    dimensions: [
+      {
+        id: "stage",
+        type: "string",
+        field: "status.stage",
+        description: "Current stage",
+      },
+      {
+        id: "channel",
+        type: "string",
+        field: "source.channel",
+        description: "Channel",
+      },
+      {
+        id: "created",
+        type: "date",
+        field: "created.timestamp",
+        bucket: "month",
+        description: "Month created",
+      },
+    ],
+    measures: [
+      { id: "count", type: "count", description: "Number of activities" },
+    ],
   },
 ];
 
