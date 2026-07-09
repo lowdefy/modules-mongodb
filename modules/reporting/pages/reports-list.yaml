@@ -38,23 +38,23 @@ blocks:
         - 0
     properties:
       content: No saved reports yet — generate one from the chat or generate page.
-  - id: reports_grid
+  - id: reports
     type: List
     blocks:
-      - id: reports_grid.$.report_card
+      - id: reports.$.report_card
         type: Card
         properties:
           title:
             _state: reports.$.title
         blocks:
-          - id: reports_grid.$.report_description
+          - id: reports.$.report_description
             type: Paragraph
             properties:
               content:
                 _if_none:
                   - _state: reports.$.description
                   - ""
-          - id: reports_grid.$.open_report
+          - id: reports.$.open_report
             type: Button
             layout:
               span: 6
@@ -71,7 +71,7 @@ blocks:
                     urlQuery:
                       reportId:
                         _state: reports.$._id
-          - id: reports_grid.$.delete_report
+          - id: reports.$.delete_report
             type: Button
             layout:
               span: 6

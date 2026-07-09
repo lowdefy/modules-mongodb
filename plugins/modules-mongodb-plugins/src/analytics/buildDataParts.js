@@ -42,8 +42,8 @@ function buildDataParts({ charts = [], results = [], downloads = [], datasets, r
 
   (downloads ?? []).forEach((spec) => {
     if (budget <= 0) return;
-    const { label, query } = validateExportSpec({ spec, datasets, roles });
-    parts.push({ type: "data-report-download", data: { label, spec: query } });
+    const { label, description, query } = validateExportSpec({ spec, datasets, roles });
+    parts.push({ type: "data-report-download", data: { label, description, spec: query } });
     budget -= 1;
   });
 

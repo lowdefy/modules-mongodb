@@ -36,8 +36,22 @@ test("builds chart and download parts", () => {
   });
   expect(parts[1]).toEqual({
     type: "data-report-download",
-    data: { label: "Orders export", spec: exportSpec.query },
+    data: { label: "Orders export", description: "", spec: exportSpec.query },
   });
+});
+
+test("carries the export description through to the download part", () => {
+  const parts = buildDataParts({
+    downloads: [{ ...exportSpec, description: "Revenue by region" }],
+    datasets: testDatasets,
+    roles,
+  });
+  expect(parts).toEqual([
+    {
+      type: "data-report-download",
+      data: { label: "Orders export", description: "Revenue by region", spec: exportSpec.query },
+    },
+  ]);
 });
 
 test("skips charts whose query failed (sparse results)", () => {

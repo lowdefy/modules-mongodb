@@ -15,6 +15,9 @@ payloadSchema:
     label:
       type: string
       description: Button label (defaults to "Download CSV").
+    description:
+      type: string
+      description: Short secondary line shown under the button describing what the file contains.
     query:
       type: object
       description: Query spec producing the rows to export (same shape as query_data).
@@ -25,6 +28,8 @@ routine:
           spec:
             label:
               _payload: label
+            description:
+              _payload: description
             query:
               _payload: query
           datasets:
@@ -36,5 +41,7 @@ routine:
       spec:
         label:
           _payload: label
+        description:
+          _payload: description
         query:
           _payload: query

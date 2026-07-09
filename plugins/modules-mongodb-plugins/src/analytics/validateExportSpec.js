@@ -3,7 +3,7 @@ import validateQuerySpec from "./validateQuerySpec.js";
 
 /**
  * Validates an export spec (the export_data tool's input, and the download
- * section shape inside report specs): { label?, query }.
+ * section shape inside report specs): { label?, description?, query }.
  */
 function validateExportSpec({ spec, datasets, roles }) {
   if (!spec || typeof spec !== "object" || Array.isArray(spec)) {
@@ -13,8 +13,12 @@ function validateExportSpec({ spec, datasets, roles }) {
   if (typeof label !== "string" || label.length > MAX_LABEL_LENGTH) {
     throw new Error(`Invalid export spec: label must be a string of at most ${MAX_LABEL_LENGTH} characters.`);
   }
+  const description = spec.description ?? "";
+  if (typeof description !== "string" || description.length > MAX_LABEL_LENGTH) {
+    throw new Error(`Invalid export spec: description must be a string of at most ${MAX_LABEL_LENGTH} characters.`);
+  }
   validateQuerySpec({ spec: spec.query, datasets, roles });
-  return { label, query: spec.query };
+  return { label, description, query: spec.query };
 }
 
 export default validateExportSpec;

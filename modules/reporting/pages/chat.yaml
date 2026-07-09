@@ -5,7 +5,7 @@ id: chat
 type: Box
 properties:
   style:
-    padding: 16px
+    padding: 32px 24px 24px 24px
 events:
   onInit:
     - id: init_state
@@ -184,47 +184,140 @@ blocks:
                       - _state: downloads
                       - []
                 - 0
-      - id: charts_list
-        type: List
-        blocks:
-          - id: charts_list.$.chart_title
-            type: Title
-            properties:
-              content:
-                _state: charts.$.title
-              level: 5
-          - id: charts_list.$.chart
-            type: EChart
-            properties:
-              height: 300
-              option:
-                _state: charts.$.option
-      - id: downloads_list
-        type: List
-        blocks:
-          - id: downloads_list.$.download
-            type: Button
-            properties:
+      # Charts and downloads accumulate independently; tabs keep each on its own
+      # pane so a long chart list never buries the download buttons.
+      - id: results_tabs
+        type: Tabs
+        visible:
+          _or:
+            - _gt:
+                - _array.length:
+                    _if_none:
+                      - _state: charts
+                      - []
+                - 0
+            - _gt:
+                - _array.length:
+                    _if_none:
+                      - _state: downloads
+                      - []
+                - 0
+        properties:
+          tabs:
+            - key: charts
               title:
-                _state: downloads.$.label
-              icon: AiOutlineDownload
-              type: default
-            events:
-              onClick:
-                - id: run_download_query
-                  type: CallAPI
-                  params:
-                    endpointId:
-                      _module.endpointId: query-data
-                    payload:
-                      spec:
-                        _state: downloads.$.spec
-                - id: download_csv
-                  type: DownloadCsv
-                  params:
-                    data:
-                      _api:
-                        _build.string.concat:
-                          - _module.endpointId: query-data
-                          - ".response"
-                    filename: export.csv
+                _nunjucks:
+                  template: "Charts ({{ n }})"
+                  on:
+                    n:
+                      _array.length:
+                        _if_none:
+                          - _state: charts
+                          - []
+            - key: downloads
+              title:
+                _nunjucks:
+                  template: "Downloads ({{ n }})"
+                  on:
+                    n:
+                      _array.length:
+                        _if_none:
+                          - _state: downloads
+                          - []
+        slots:
+          charts:
+            blocks:
+              - id: charts_empty
+                type: Paragraph
+                visible:
+                  _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: charts
+                          - []
+                    - 0
+                properties:
+                  content: No charts yet — ask the assistant to chart something.
+              - id: charts
+                type: List
+                layout:
+                  gap: 24
+                blocks:
+                  - id: charts.$.chart_title
+                    type: Title
+                    properties:
+                      content:
+                        _state: charts.$.title
+                      level: 5
+                  - id: charts.$.chart
+                    type: EChart
+                    properties:
+                      height: 300
+                      option:
+                        _state: charts.$.option
+          downloads:
+            blocks:
+              - id: downloads_empty
+                type: Paragraph
+                visible:
+                  _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: downloads
+                          - []
+                    - 0
+                properties:
+                  content: No downloads yet — ask the assistant to export data.
+              - id: downloads
+                type: List
+                layout:
+                  gap: 16
+                blocks:
+                  - id: downloads.$.item
+                    type: Box
+                    layout:
+                      gap: 2
+                    blocks:
+                      - id: downloads.$.download
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        properties:
+                          title:
+                            _state: downloads.$.label
+                          icon: AiOutlineDownload
+                          type: default
+                        events:
+                          onClick:
+                            - id: run_download_query
+                              type: CallAPI
+                              params:
+                                endpointId:
+                                  _module.endpointId: query-data
+                                payload:
+                                  spec:
+                                    _state: downloads.$.spec
+                            - id: download_csv
+                              type: DownloadCsv
+                              params:
+                                data:
+                                  _api:
+                                    _build.string.concat:
+                                      - _module.endpointId: query-data
+                                      - ".response"
+                                filename: export.csv
+                      - id: downloads.$.desc
+                        type: Paragraph
+                        visible:
+                          _ne:
+                            - _if_none:
+                                - _state: downloads.$.description
+                                - ""
+                            - ""
+                        properties:
+                          content:
+                            _state: downloads.$.description
+                          style:
+                            fontSize: 12px
+                            color: var(--ant-color-text-secondary)
+                            marginBottom: 0
