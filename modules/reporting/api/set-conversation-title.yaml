@@ -1,0 +1,48 @@
+# Persists the AI-generated conversation title (from the AgentChat block's
+# onTitleGenerated event) onto the conversation doc, scoped by userId
+# (sub ?? id, matching the other conversation APIs). $set overrides the derived
+# fallback title save-conversation writes on insert; upsert covers the title
+# arriving (during streaming) before that onFinish hook has created the doc.
+id: set-conversation-title
+type: Api
+routine:
+  - :if:
+      _or:
+        - _eq:
+            - _payload: conversationId
+            - null
+        - _eq:
+            - _if_none:
+                - _payload: title
+                - ""
+            - ""
+    :then:
+      - :return:
+          skipped: true
+  - id: set_title
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: conversations-store
+    properties:
+      filter:
+        _id:
+          _payload: conversationId
+        userId:
+          _if_none:
+            - _user: sub
+            - _user: id
+      update:
+        $set:
+          title:
+            _payload: title
+        $setOnInsert:
+          userId:
+            _if_none:
+              - _user: sub
+              - _user: id
+          createdAt:
+            _date: now
+      options:
+        upsert: true
+  - :return:
+      ok: true

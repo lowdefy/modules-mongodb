@@ -66,8 +66,8 @@ routine:
                 _user: roles
         :catch:
           - :log: A chart query failed at turn end — its chart is skipped.
-  - :return:
-      dataParts:
+  - :set_state:
+      data_parts:
         _analytics.buildDataParts:
           charts:
             _state: chart_specs
@@ -79,3 +79,35 @@ routine:
             _module.var: datasets
           roles:
             _user: roles
+  # Snapshot this turn's built parts onto the conversation doc so reopening it
+  # restores the Results panel. save-conversation (the prior onFinish hook)
+  # owns the doc lifecycle (messages, title, createdAt); this hook only appends
+  # `dataParts` per turn, mirroring the live panel's onDataPart accumulation.
+  # upsert is false: the prior hook has already created the doc, and creating it
+  # here would leave a title-less, createdAt-less doc if that hook had failed.
+  - :if:
+      _gt:
+        - _array.length:
+            _state: data_parts
+        - 0
+    :then:
+      - id: persist_results
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: conversations-store
+        properties:
+          filter:
+            _id:
+              _payload: conversationId
+            userId:
+              _payload: userId
+          update:
+            $push:
+              dataParts:
+                $each:
+                  _state: data_parts
+          options:
+            upsert: false
+  - :return:
+      dataParts:
+        _state: data_parts

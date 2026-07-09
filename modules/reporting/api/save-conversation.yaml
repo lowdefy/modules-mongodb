@@ -44,17 +44,22 @@ routine:
                   vars:
                     firstUserText:
                       $arrayElemAt:
+                        # Alias the map/filter variable as `msg`: the inner
+                        # $reduce rebinds $$this to each part, so referencing the
+                        # message as $$this.parts here would resolve empty.
                         - $map:
+                            as: msg
                             input:
                               $filter:
+                                as: msg
                                 input: $messages
                                 cond:
                                   $eq:
-                                    - $$this.role
+                                    - $$msg.role
                                     - user
                             in:
                               $reduce:
-                                input: $$this.parts
+                                input: $$msg.parts
                                 initialValue: ""
                                 in:
                                   $cond:

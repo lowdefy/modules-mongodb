@@ -1,0 +1,69 @@
+# Fetches a conversation's persisted result parts (charts + downloads) for the
+# chat page's Results panel, scoped by userId. The conversation list omits
+# dataParts to stay light; the page calls this on select to repopulate the
+# panel. Returns the parts already split by type, matching the charts/downloads
+# state keys. Charts carry a baked ECharts option (a snapshot of the data as of
+# the turn); downloads carry a query spec that re-runs live on click.
+id: get-conversation-results
+type: Api
+routine:
+  # Scope by sub ?? id to match the write key: the agent hooks store userId as
+  # _payload.userId, which the framework derives as user.sub ?? user.id.
+  - :if:
+      _eq:
+        - _if_none:
+            - _user: sub
+            - _user: id
+        - null
+    :then:
+      - :return:
+          charts: []
+          downloads: []
+  - id: load
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: conversations-store
+    properties:
+      query:
+        _id:
+          _payload: conversationId
+        userId:
+          _if_none:
+            - _user: sub
+            - _user: id
+      options:
+        projection:
+          dataParts: 1
+  - :return:
+      _mql.expr:
+        on:
+          parts:
+            _if_none:
+              - _step: load.dataParts
+              - []
+        expr:
+          $let:
+            vars:
+              charts:
+                $map:
+                  input:
+                    $filter:
+                      input: $parts
+                      cond:
+                        $eq:
+                          - $$this.type
+                          - data-report-chart
+                  in: $$this.data
+              downloads:
+                $map:
+                  input:
+                    $filter:
+                      input: $parts
+                      cond:
+                        $eq:
+                          - $$this.type
+                          - data-report-download
+                  in: $$this.data
+            in:
+              charts: $$charts
+              downloads: $$downloads

@@ -49,13 +49,20 @@ blocks:
                   key:
                     __args: 0._id
                   # Fall back when a stored title is missing or empty, so the
-                  # item never renders as a blank grey block.
+                  # item never renders as a blank grey block. Operators inside a
+                  # _function callback take the __ prefix so they resolve in the
+                  # callback's __args scope.
                   label:
-                    _nunjucks:
-                      template: "{{ title or 'New conversation' }}"
-                      on:
-                        title:
-                          __args: 0.title
+                    __if:
+                      test:
+                        __eq:
+                          - __if_none:
+                              - __args: 0.title
+                              - ""
+                          - ""
+                      then: New conversation
+                      else:
+                        __args: 0.title
           activeKey:
             _state: conversationId
           creation:
@@ -71,15 +78,13 @@ blocks:
                 charts: []
                 downloads: []
           onSelect:
-            # Re-selecting the conversation already open is a no-op — otherwise
-            # it would wipe the live charts/downloads (which are ephemeral and
-            # not restored on select) and blank out the Results panel.
+            # Switch first (atomic, infallible) and clear the panel as the
+            # loading state, so a failed results fetch can never strand the user
+            # on the previous conversation. Then repopulate from the fetched
+            # snapshot; on fetch failure the chain stops here leaving an empty
+            # panel, which matches a conversation that has no saved results.
             - id: select_conversation
               type: SetState
-              skip:
-                _eq:
-                  - _event: key
-                  - _state: conversationId
               params:
                 conversationId:
                   _event: key
@@ -108,6 +113,27 @@ blocks:
                           $ifNull:
                             - $$match.messages
                             - []
+            - id: load_results
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: get-conversation-results
+                payload:
+                  conversationId:
+                    _event: key
+            - id: set_results
+              type: SetState
+              params:
+                charts:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: get-conversation-results
+                      - ".response.charts"
+                downloads:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: get-conversation-results
+                      - ".response.downloads"
   - id: chat_panel
     type: Box
     layout:
@@ -166,6 +192,33 @@ blocks:
                 endpointId:
                   _module.endpointId: list-conversations
             - id: update_conversations
+              type: SetState
+              params:
+                conversations:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: list-conversations
+                      - ".response"
+          # The agent generates a title on the first turn; persist it, then
+          # refresh the sidebar so the item shows the AI title (not the derived
+          # fallback). Persist runs first so the refetch reads the saved title.
+          onTitleGenerated:
+            - id: persist_title
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: set-conversation-title
+                payload:
+                  conversationId:
+                    _state: conversationId
+                  title:
+                    _event: title
+            - id: refresh_conversations_after_title
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: list-conversations
+            - id: update_conversations_after_title
               type: SetState
               params:
                 conversations:

@@ -87,6 +87,8 @@ api:
   - _ref: api/save-conversation.yaml
   - _ref: api/emit-data-parts.yaml
   - _ref: api/list-conversations.yaml
+  - _ref: api/get-conversation-results.yaml
+  - _ref: api/set-conversation-title.yaml
   - _ref: api/list-reports.yaml
   - _ref: api/delete-report.yaml
 

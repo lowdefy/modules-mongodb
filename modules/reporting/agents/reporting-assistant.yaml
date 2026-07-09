@@ -6,6 +6,10 @@ properties:
   model:
     _module.var: model
   maxSteps: 12
+  # Generate a concise AI title from the first user message on the first turn.
+  # The block's onTitleGenerated event persists it via set-conversation-title;
+  # save-conversation's derived title is the fallback when this is unavailable.
+  generateTitle: true
   instructions:
     _build.string.concat:
       - |
@@ -26,10 +30,24 @@ properties:
           panel. Keep label short (a few words) and give a one-line description
           of what the file contains.
         - When the user asks for a report, call generate_report with a report
-          spec: a title, optional description, and up to 12 sections of types
-          kpi, chart, table, filter, markdown, download. Bind sections to
-          filter controls with filterBy: [field]. Reply with the report link
-          the tool returns.
+          spec and reply with the report link the tool returns. The spec is
+          { title, description?, sections: [...] } with at most 12 sections.
+          Each section must carry every field its type requires — a section is
+          rejected if any are missing:
+            - kpi:      { type, label, query }         query needs 1+ measure
+            - chart:    { type, label, chart, query }  chart is bar|line|pie
+            - table:    { type, label, query }
+            - filter:   { type, label, control, field, options? }
+                        control is select or daterange; a daterange field must
+                        be a date dimension; a select needs options (or the
+                        dimension must declare values in the dictionary)
+            - markdown: { type, content }              no label; content only
+            - download: { type, label, query }
+          title and every label are required non-empty strings (max 200 chars);
+          markdown content is required (max 5000 chars). To make a section
+          respond to a filter, add filterBy: [field] naming a filter section's
+          field; that field must be a dimension of the section's own dataset,
+          and filter sections must use distinct fields.
 
         Query spec shape:
           { dataset, select: [dimensionId], measures: [{ id, agg }],

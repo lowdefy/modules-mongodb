@@ -1,12 +1,18 @@
 # Conversation list for the chat page's sidebar, most recent first. Messages
-# are included so selecting a conversation restores it without another fetch;
-# the list is capped to keep the payload bounded.
+# are included so selecting a conversation restores the transcript without
+# another fetch; dataParts (the persisted chart/download snapshots) are
+# excluded to keep the payload light and fetched on select via
+# get-conversation-results. The list is capped to keep the payload bounded.
 id: list-conversations
 type: Api
 routine:
+  # Scope by sub ?? id to match the write key: the agent hooks store userId as
+  # _payload.userId, which the framework derives as user.sub ?? user.id.
   - :if:
       _eq:
-        - _user: id
+        - _if_none:
+            - _user: sub
+            - _user: id
         - null
     :then:
       - :return: []
@@ -17,10 +23,14 @@ routine:
     properties:
       query:
         userId:
-          _user: id
+          _if_none:
+            - _user: sub
+            - _user: id
       options:
         sort:
           updatedAt: -1
         limit: 30
+        projection:
+          dataParts: 0
   - :return:
       _step: find_conversations
