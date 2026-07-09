@@ -1,0 +1,46 @@
+# Data dictionary for the reporting demo. Describes the `demo_orders` collection
+# seeded by the reporting-seed-orders API. Dimension/measure ids are the exact
+# field names in the collection (the analytics engine groups on `$<id>` and
+# there is no date bucketing — so a pre-bucketed `month` string is the time
+# dimension, while the real `createdAt` date is for range filters). No `roles`
+# means any authenticated user may query it.
+- id: orders
+  label: Orders
+  description: Synthetic customer orders — totals, quantities, and status.
+  source:
+    collection: demo_orders
+  dimensions:
+    - id: region
+      type: string
+      description: Customer region
+      values: [North, South, East, West]
+    - id: category
+      type: string
+      description: Product category
+      values: [Electronics, Clothing, Home, Toys, Sports]
+    - id: status
+      type: string
+      description: Order status
+      values: [pending, paid, shipped, cancelled]
+    - id: channel
+      type: string
+      description: Sales channel
+      values: [online, retail, partner]
+    - id: month
+      type: string
+      description: Order month, "YYYY-MM" (use this to group a time series)
+    - id: createdAt
+      type: date
+      description: When the order was placed (use for date-range filters)
+  measures:
+    - id: total
+      type: number
+      description: Order total (USD)
+      aggregations: [sum, avg, min, max]
+    - id: quantity
+      type: number
+      description: Units ordered
+      aggregations: [sum, avg, min, max]
+    - id: count
+      type: count
+      description: Number of orders

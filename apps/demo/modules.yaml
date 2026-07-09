@@ -57,3 +57,15 @@
   source: "file:../../modules/user-admin"
   vars:
     _ref: modules/user-admin/vars.yaml
+
+- id: reporting
+  source: "file:../../modules/reporting"
+  # Remap the module's storage + data connections onto MONGODB_URI-backed app
+  # connections so the demo needs no REPORTING_MONGODB_URI / REPORTING_DATA_MONGODB_URI
+  # secrets. (ai keeps its bundled Anthropic connection → ANTHROPIC_API_KEY.)
+  connections:
+    reports-store: reporting-reports
+    conversations-store: reporting-conversations
+    reporting-data: reporting-analytics
+  vars:
+    _ref: modules/reporting/vars.yaml

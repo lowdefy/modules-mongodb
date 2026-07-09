@@ -112,3 +112,12 @@ _ref:
                   _module.pageId:
                     module: release-notes
                     id: view
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: reporting
+                icon: AiOutlineBarChart
+                title: AI Chat Reporting
+                description: Chat to your data; generate saved, navigable reports.
+                note: Seed the demo dataset first, then open a surface.
+                pageId: reporting-demo

@@ -1,0 +1,9 @@
+# Reporting module config for the demo. `datasets` is the required data
+# dictionary; the collection names and model use the module defaults. The
+# reports-store, conversations-store and reporting-data connections are remapped
+# onto MONGODB_URI-backed app connections on the module entry (see modules.yaml),
+# so no REPORTING_MONGODB_URI / REPORTING_DATA_MONGODB_URI secrets are needed.
+# The `ai` connection keeps the module's bundled Anthropic connection
+# (ANTHROPIC_API_KEY).
+datasets:
+  _ref: modules/reporting/datasets.yaml
