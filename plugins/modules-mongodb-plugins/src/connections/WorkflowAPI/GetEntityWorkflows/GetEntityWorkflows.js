@@ -6,6 +6,7 @@ import { selectVisibleActions } from "../../shared/render/resolveActionAccess.js
 import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
 import buildEntityLink from "../../shared/render/buildEntityLink.js";
 import collectActionGroups from "../../shared/render/collectActionGroups.js";
+import pruneFormData from "../../shared/render/pruneFormData.js";
 import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js";
 
 /**
@@ -21,6 +22,8 @@ import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js
  *
  * Response: { workflows: [...] }
  *   Each workflow: { _id, workflow_type, status, groups: [...], ...doc fields }
+ *     (form_data is pruned to view-visible actions — same policy as
+ *     GetWorkflowOverview, so denied slices never ship)
  *   Each group: { id, order, title, icon, link, action_group, workflow_type, workflow_id, actions: [...] }
  *   Each action card: { _id, kind, type, status, allowed, message, link }
  */
@@ -123,6 +126,9 @@ async function GetEntityWorkflows(lowdefyContext) {
         entityConfig: wfConfig?.entity,
         entityId: wfDoc.entity?.id ?? null,
       }),
+      // Pruned to view-visible actions — denied slices never ship (same
+      // policy as GetWorkflowOverview / GetWorkflowActionGroupOverview).
+      form_data: pruneFormData({ formData: wfDoc.form_data, visibleActions }),
       groups,
     };
   });
