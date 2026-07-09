@@ -1,5 +1,66 @@
 # @lowdefy/modules-mongodb-files
 
+## 0.11.0
+
+### Minor Changes
+
+- [#100](https://github.com/lowdefy/modules-mongodb/pull/100) [`dd309b8`](https://github.com/lowdefy/modules-mongodb/commit/dd309b83299d3f37d2fb2fd380ed288e42bdf97f) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Log file downloads for parity with upload/delete auditing. The `FileManager`
+  block now fires an `onDownload` event (payload `{ fileDoc }`) when a download is
+  initiated. The `file-manager` / `file-card` components expose a new `on_download`
+  var (action list, default `[]`) for consumer-supplied handlers, and — when
+  `log_events` is on — record a `download-file` event via the events module,
+  matching how uploads and deletes are logged.
+
+- [#100](https://github.com/lowdefy/modules-mongodb/pull/100) [`dd309b8`](https://github.com/lowdefy/modules-mongodb/commit/dd309b83299d3f37d2fb2fd380ed288e42bdf97f) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Export the files module's download-policy request as a named component so it can
+  be consumed outside the `file-manager` / `file-list` components. Consumers that
+  render downloadable files themselves — such as the events module's
+  `EventsTimeline` — can now `_ref` it inside a page's `requests:` list:
+
+  ```yaml
+  requests:
+    - _ref:
+        { module: files, component: download-policy, vars: { block_id: <id> } }
+  ```
+
+  This yields a presigned-GET request with id `download_policy_<block_id>` on the
+  module's `files-bucket` connection, which the consumer passes as its
+  `s3GetPolicyRequestId`. Previously the only module-owned download policy lived
+  inside `file-manager` / `file-list`, forcing consuming apps to keep their own
+  copies.
+
+- [#100](https://github.com/lowdefy/modules-mongodb/pull/100) [`dd309b8`](https://github.com/lowdefy/modules-mongodb/commit/dd309b83299d3f37d2fb2fd380ed288e42bdf97f) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Expose the FileManager upload-modal form slot on the `file-manager` and
+  `file-card` components. Consumers can now pass a `form_fields` block list
+  (with field ids `<block_id>.form.*`) that renders in a post-upload modal;
+  the entered values are persisted to the file document's `metadata`. Adds an
+  `ok_text` var (modal confirm-button label) alongside the existing
+  `modal_title`. When the injected form includes a `<block_id>.form.file_category`
+  field, its value sets the saved document's top-level `file_category`; the
+  build-time `file_category` var is used as the fallback, so existing consumers
+  that pass no form are unaffected.
+
+## 0.10.1
+
+## 0.10.0
+
+### Minor Changes
+
+- [#96](https://github.com/lowdefy/modules-mongodb/pull/96) [`5742843`](https://github.com/lowdefy/modules-mongodb/commit/5742843c5be12cb2a67325efad52516bde5b1fc3) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Soft-delete now uses a `deleted` change stamp instead of a `removed` boolean (breaking).
+
+  The soft-delete marker on file docs is renamed `removed` → `deleted` and changed from a boolean to a [change stamp](https://github.com/lowdefy/modules-mongodb/blob/main/docs/shared/soft-delete.md) object, matching the convention used by `activities` and the rest of the repo. `delete-file` sets `deleted` to a change stamp (capturing who/when), `save-file` initialises `deleted: null`, and `get-entity-files` reads live files with `deleted.timestamp: { $exists: false }`.
+
+  Existing data needs a migration. Deleted docs already recorded who/when on their `updated` stamp, so promote it into `deleted`. Run it as a single per-document pipeline (a separate `{ removed: { $ne: true } }` pass would match already-migrated docs — `$ne` matches missing fields — and clobber the new stamps):
+
+  ```js
+  db.files.updateMany({ removed: { $exists: true } }, [
+    {
+      $set: {
+        deleted: { $cond: [{ $eq: ["$removed", true] }, "$updated", null] },
+      },
+    },
+    { $unset: "removed" },
+  ]);
+  ```
+
 ## 0.9.2
 
 ## 0.9.1

@@ -20,6 +20,9 @@ vars:
   label_span:
     type: number
     required: false
+  on_change:
+    type: array
+    default: []
 
 config:
   id:
@@ -71,3 +74,8 @@ config:
               align: right
             else: {}
     format: DD MMMM YYYY
+  events:
+    onChange:
+      _var:
+        key: on_change
+        default: []

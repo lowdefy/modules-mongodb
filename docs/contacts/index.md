@@ -6,7 +6,7 @@ type: index
 
 # Contacts
 
-Contact management — list, detail, edit, and create pages over the shared `user-contacts` collection, plus a rich contact selector with inline add/edit/verify and a basic dropdown selector.
+Contact management — list, detail, edit, and create pages over the shared `user-contacts` collection, plus a rich contact selector with inline add/edit/verify, a basic dropdown selector, and a role-scoped selector (`role-contact-selector`, single or multiple) that stores a view-renderable denormalized contact value.
 
 User records (`apps.{app_name}.is_user === true`, managed by `user-admin` and `user-account`) are excluded from the contact list and are not editable through this module.
 

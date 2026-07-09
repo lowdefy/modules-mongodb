@@ -82,6 +82,15 @@ _ref:
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
+                id: files
+                icon: AiOutlinePaperClip
+                title: Files
+                description: Entity attachments — file-card, file-manager, file-list.
+                note: Showcases the files module components, form slot, and download logging.
+                pageId: files-demo
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
                 id: notifications
                 icon: AiOutlineBell
                 title: Notifications

@@ -1,0 +1,52 @@
+# Role-filtered contact options for a simple Selector. Returns active contacts
+# holding any of `roles` (matched against apps.<app_name>.roles), projecting a
+# denormalized { contact_id, name, email } value so read-only views can render
+# name + link (the workflows DataDescriptions `contact` field type detects it).
+id: get_role_contacts_for_selector
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: contacts-collection
+properties:
+  pipeline:
+    - $match:
+        hidden:
+          $ne: true
+        disabled:
+          $ne: true
+        # app_name is build-time, so the field path resolves to a literal before
+        # Mongo sees it; $setIntersection avoids a runtime dot-notation key.
+        $expr:
+          $gt:
+            - $size:
+                $setIntersection:
+                  - $ifNull:
+                      - _string.concat:
+                          - "$apps."
+                          - _module.var: app_name
+                          - ".roles"
+                      - []
+                  - _var: roles
+            - 0
+    - $project:
+        _id: 0
+        value:
+          contact_id: "$_id"
+          name: "$profile.name"
+          email:
+            $ifNull:
+              - "$email"
+              - "$lowercase_email"
+        label:
+          $concat:
+            - $ifNull:
+                - "$profile.name"
+                - ""
+            - " ("
+            - $ifNull:
+                - "$email"
+                - $ifNull:
+                    - "$lowercase_email"
+                    - "no email"
+            - ")"
+    - $sort:
+        label: 1

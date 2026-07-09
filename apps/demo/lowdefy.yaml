@@ -10,7 +10,7 @@ theme:
   antd:
     algorithm: compact
     token:
-      colorPrimary: '#7c3aed'
+      colorPrimary: "#7c3aed"
 
 config:
   homePageId: router
@@ -23,13 +23,13 @@ global:
         component: event_types
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
+  - name: "@lowdefy/community-plugin-mongodb"
     version: 3.0.0
-  - name: '@lowdefy/community-plugin-xlsx'
+  - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
-  - name: '@lowdefy/community-plugin-nodemailer'
+  - name: "@lowdefy/community-plugin-nodemailer"
     version: 1.1.4
-  - name: '@lowdefy/modules-mongodb-plugins'
+  - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
 
 auth:
@@ -38,7 +38,7 @@ auth:
     verifyRequest: /user-account/verify-email-request
     error: /user-account/login
   theme:
-    brandColor: '#7c3aed'
+    brandColor: "#7c3aed"
   adapter:
     id: mdb_adapter
     type: MultiAppMongoDBAdapter
@@ -84,7 +84,7 @@ auth:
   pages:
     protected: true
     public:
-      - '404'
+      - "404"
       - notifications-invalid
       - notifications-link
       - router
@@ -176,3 +176,4 @@ pages:
   # App-owned working surface for the send-quote custom action (Part 28).
   - _ref: pages/leads/quote-builder.yaml
   - _ref: pages/reporting/reporting-demo.yaml
+  - _ref: pages/files/files-demo.yaml

@@ -11,7 +11,10 @@ routine:
           _payload: file_id
       update:
         $set:
-          removed: true
+          deleted:
+            _ref:
+              module: events
+              component: change_stamp
           updated:
             _ref:
               module: events

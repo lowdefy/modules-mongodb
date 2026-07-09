@@ -32,6 +32,9 @@ vars:
   min:
     type: number
     default: 0
+  on_change:
+    type: array
+    default: []
 
 config:
   id:
@@ -84,3 +87,8 @@ config:
       _var:
         key: min
         default: 0
+  events:
+    onChange:
+      _var:
+        key: on_change
+        default: []

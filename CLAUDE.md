@@ -49,6 +49,8 @@ Agents almost always want to **verify config compiles**, not run a live server. 
 - **A build check is not a smoke test.** Running the app (dev server, e2e) needs real secrets (`MONGODB_URI`, etc.) and a reachable MongoDB — that's a human or `/r:dev-test` step, not part of an autonomous build gate.
 - **`pnpm build` at the repo root does _not_ build the demo.** It's `pnpm -r --filter '!@lowdefy/modules-demo' run build` — module/plugin bundles only. To build the app, use `ldf:b`.
 
+**Always add a demo consumer when adding module functionality.** Any new consumer-facing capability — a component or export, a new var/slot, a new block behaviour — must ship with at least one real example consumer in `apps/demo/` that exercises it, in the same change. This gives every capability a build-verified reference and a worked example authors can copy, and it's how you validate the feature actually resolves end-to-end (`ldf:b`, then inspect the generated `.lowdefy/server/build/pages/**` artifacts). This does not contradict "absence of a caller is not absence of need" above: that rule forbids _deleting_ capability because the demo lacks a caller; this rule requires _adding_ a caller when you add capability. Prefer wiring the example into an existing demo page/flow over a throwaway page.
+
 ## Documentation
 
 Consumer-facing documentation lives in `docs/`. Source-side READMEs (`modules/{name}/README.md`, `plugins/modules-mongodb-plugins/README.md`, block READMEs) are stubs that point into `docs/` — do not add content to them.

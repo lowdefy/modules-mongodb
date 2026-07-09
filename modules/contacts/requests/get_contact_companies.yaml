@@ -15,8 +15,8 @@ properties:
             _if_none:
               - _payload: company_ids
               - []
-        deleted:
-          $ne: true
+        deleted.timestamp:
+          $exists: false
     - $addFields:
         display_name:
           $getField:

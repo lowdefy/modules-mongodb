@@ -1,0 +1,203 @@
+# Files module showcase — demonstrates the three exported components
+# (file-card, file-manager, file-list) plus the E1 upload-modal form slot and
+# the E3 onDownload hook. All surfaces key files by { collection: entity_type,
+# doc_id: entity_id }; the file-card and file-list below share one entity so the
+# list mirrors what the card manages.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: files-demo
+    title: Files
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Files
+    blocks:
+      - id: intro
+        type: Paragraph
+        properties:
+          content: >
+            The files module manages entity attachments — S3 upload/download,
+            a MongoDB metadata record, and audit events. It exports three
+            components: **file-card** (the pre-wired card most consumers use),
+            **file-manager** (the raw drag-drop block), and **file-list** (a
+            lightweight read-only list). Files are keyed by an entity
+            (`entity_type` + `entity_id`); the card and list below share one
+            entity, so the list is a read-only view of the card's files.
+
+      # ── file-card ───────────────────────────────────────────────────────
+      - id: file_card_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: file-card
+      - id: file_card_note
+        type: Paragraph
+        properties:
+          type: secondary
+          content: >
+            The recommended component: a titled card wrapping file-manager. This
+            instance uses an upload-modal form slot (E1) — after each upload a
+            modal collects a category (which sets the file's `file_category`) and
+            an "available to client" flag (stored in `metadata`) — and an
+            `on_download` hook (E3) that shows a message on download.
+      - _ref:
+          module: files
+          component: file-card
+          vars:
+            block_id: demo_file_card
+            title: Documents
+            entity_type: files-demo
+            entity_id: showcase
+            modal_title: File details
+            ok_text: Save file
+            form_fields:
+              - id: demo_file_card.form.file_category
+                type: Selector
+                required: true
+                properties:
+                  title: Category
+                  options:
+                    - label: Contract
+                      value: contract
+                    - label: Drawing
+                      value: drawing
+                    - label: Photo
+                      value: photo
+              - id: demo_file_card.form.available_to_client
+                type: Switch
+                properties:
+                  title: Available to client
+            on_download:
+              - id: notify_download
+                type: DisplayMessage
+                params:
+                  content:
+                    _nunjucks:
+                      template: "Downloading {{ fileDoc.file.name }}"
+                      on:
+                        fileDoc:
+                          _event: fileDoc
+
+      # ── file-manager ────────────────────────────────────────────────────
+      - id: file_manager_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: file-manager
+      - id: file_manager_note
+        type: Paragraph
+        properties:
+          type: secondary
+          content: >
+            The raw block, without a card wrapper. Left: the default multi-file
+            manager. Right: single-file mode (`single_file: true`) restricted to
+            images — the dragger hides once a file is present.
+      - id: file_manager_row
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - id: file_manager_multi_col
+            type: Box
+            layout:
+              span: 12
+              sm:
+                span: 24
+            blocks:
+              - _ref:
+                  module: files
+                  component: file-manager
+                  vars:
+                    block_id: demo_file_manager
+                    entity_type: files-demo
+                    entity_id: showcase-manager
+                    label:
+                      title: Attachments
+                    hint: Click or drag to attach files
+          - id: file_manager_single_col
+            type: Box
+            layout:
+              span: 12
+              sm:
+                span: 24
+            blocks:
+              - _ref:
+                  module: files
+                  component: file-manager
+                  vars:
+                    block_id: demo_file_manager_single
+                    entity_type: files-demo
+                    entity_id: showcase-avatar
+                    file_category: avatar
+                    single_file: true
+                    accept: image/*
+                    label:
+                      title: Avatar (single image)
+                    hint: Click or drag one image
+
+      # ── file-list ───────────────────────────────────────────────────────
+      - id: file_list_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: file-list (deprecated)
+      - id: file_list_note
+        type: Alert
+        properties:
+          type: warning
+          showIcon: true
+          message: file-list is deprecated
+          description: >
+            A lightweight read-only list built from standard Lowdefy blocks (no
+            plugin). It is kept for backwards compatibility — prefer a read-only
+            (`view_only: true`) file-card or file-manager going forward, which
+            render richer file rows (icons, thumbnails, uploader/date). Both a
+            preferred read-only file-card and the deprecated file-list are shown
+            below, pointed at the same entity as the file-card at the top of the
+            page. They fetch on mount, so reload the page after uploading via
+            that card to see new files here.
+      - id: file_list_compare_row
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          # Preferred replacement for file-list: a read-only file-card.
+          - id: preferred_readonly_col
+            type: Box
+            layout:
+              span: 12
+              sm:
+                span: 24
+            blocks:
+              - _ref:
+                  module: files
+                  component: file-card
+                  vars:
+                    block_id: demo_readonly_card
+                    title: Documents (read-only file-card — preferred)
+                    entity_type: files-demo
+                    entity_id: showcase
+                    view_only: true
+          # Deprecated file-list, for comparison.
+          - id: deprecated_list_col
+            type: Box
+            layout:
+              span: 12
+              sm:
+                span: 24
+            blocks:
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    title: Documents (file-list — deprecated)
+                    blocks:
+                      - _ref:
+                          module: files
+                          component: file-list
+                          vars:
+                            block_id: demo_file_list
+                            entity_type: files-demo
+                            entity_id: showcase
