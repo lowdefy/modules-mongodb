@@ -60,8 +60,15 @@ test("compiles the full report to blocks", () => {
   expect(byId.s0.type).toBe("Statistic");
   expect(byId.s0.properties.value).toBe(4200);
 
-  // Chart: unfiltered → rows inlined into the ECharts dataset source.
+  // Chart: unfiltered → rows inlined into the ECharts dataset source. EChart
+  // and AgGridAlpine reject a `title` property (additionalProperties: false),
+  // so the label renders as a preceding Title block instead.
   expect(byId.s1.type).toBe("EChart");
+  expect(byId.s1.properties.title).toBeUndefined();
+  expect(byId.s1_heading.type).toBe("Title");
+  expect(byId.s1_heading.properties.content).toBe("Revenue by Region");
+  expect(byId.s3.properties.title).toBeUndefined();
+  expect(byId.s3_heading.type).toBe("Title");
   expect(byId.s1.properties.option.dataset.source).toEqual(results[1]);
   expect(byId.s1.properties.option.series[0]).toEqual({
     type: "bar",

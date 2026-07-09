@@ -111,6 +111,18 @@ function dataBinding(section, rows) {
   return { __if_none: [{ __state: `sections.${section.id}.rows` }, rows] };
 }
 
+// EChart and AgGridAlpine have no `title` property (their schemas set
+// additionalProperties: false), so a section's label renders as a preceding
+// Title block — the same pattern the chat results panel uses for charts.
+function sectionHeading(section) {
+  return {
+    id: `${section.id}_heading`,
+    type: "Title",
+    layout: { span: 24 },
+    properties: { content: section.label, level: 5 },
+  };
+}
+
 function failedSectionBlock(section) {
   return {
     id: section.id,
@@ -209,21 +221,22 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
           rows: [],
         });
         option.dataset.source = dataBinding(section, rows);
+        blocks.push(sectionHeading(section));
         blocks.push({
           id: section.id,
           type: "EChart",
           layout: { span: 24 },
-          properties: { title: section.label, height: 400, option },
+          properties: { height: 400, option },
         });
       }
 
       if (section.type === "table") {
+        blocks.push(sectionHeading(section));
         blocks.push({
           id: section.id,
           type: "AgGridAlpine",
           layout: { span: 24 },
           properties: {
-            title: section.label,
             rowData: dataBinding(section, rows),
             columnDefs: section.columns.map((column) => ({ field: column })),
             defaultColDef: { sortable: true, resizable: true },
