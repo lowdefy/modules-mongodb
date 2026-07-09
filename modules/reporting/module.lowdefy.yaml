@@ -39,7 +39,12 @@ vars:
       The data dictionary — a declarative description of queryable datasets
       (dimensions, measures, types, allowed aggregations, roles). Feeds the
       agent's instructions at build time and is the allowlist the query
-      builder validates every spec against.
+      builder validates every spec against. A dimension/measure may set an
+      author-declared `field` (a dotted path into an embedded sub-document,
+      defaulting to its id), and a date dimension may set `bucket`
+      (year|month|week|day) for time-series grouping. For arrays, object-arrays
+      and cross-collection joins, point a dataset's source.collection at a
+      read-only MongoDB view — see the "reporting over complex data" guide.
   reports_collection:
     type: string
     default: report_layouts

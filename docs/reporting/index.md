@@ -21,12 +21,12 @@ Add `reporting` to an app whose users need to explore data conversationally and 
 
 Surfaces exported as pages:
 
-| Page          | Surface                                                          |
-| ------------- | --------------------------------------------------------------- |
-| `chat`        | Conversational — `AgentChat` with an adjacent charts/downloads panel |
-| `generate`    | One-shot — describe a report, get its URL                       |
-| `reports-list`| Saved reports with open and delete                              |
-| `report`      | Report renderer (`Dynamic` block over `resolve-report`)         |
+| Page           | Surface                                                              |
+| -------------- | -------------------------------------------------------------------- |
+| `chat`         | Conversational — `AgentChat` with an adjacent charts/downloads panel |
+| `generate`     | One-shot — describe a report, get its URL                            |
+| `reports-list` | Saved reports with open and delete                                   |
+| `report`       | Report renderer (`Dynamic` block over `resolve-report`)              |
 
 ## Quickstart
 
@@ -42,25 +42,31 @@ modules:
 
 `datasets` is required — it is the data dictionary the agent reasons over and the query engine validates against. See [Vars](reference/vars.md) for the optional collection-name and model overrides.
 
+Each dataset targets one collection of scalar fields. Dimensions and measures may declare a dotted `field` path into embedded sub-documents (defaulting to the id), and a `date` dimension may declare a `bucket` (`year`/`month`/`week`/`day`) for time series. For arrays, object-arrays, or cross-collection links, point a dataset at a read-only MongoDB view — see [Reporting over complex data](how-to/complex-data.md).
+
 ### Connections
 
 The module bundles four connections; only two point at data you must supply:
 
-| Connection            | What it is                                                      |
-| --------------------- | -------------------------------------------------------------- |
-| `reports-store`       | MongoDB collection for saved report specs                      |
-| `conversations-store` | MongoDB collection for chat conversations                      |
-| `reporting-data`      | Read-only `ReportingData` connection over the app's own data   |
+| Connection            | What it is                                                              |
+| --------------------- | ----------------------------------------------------------------------- |
+| `reports-store`       | MongoDB collection for saved report specs                               |
+| `conversations-store` | MongoDB collection for chat conversations                               |
+| `reporting-data`      | Read-only `ReportingData` connection over the app's own data            |
 | `ai`                  | AI gateway provider connection (the `model` var selects provider/model) |
 
 To reuse an existing gateway connection instead of the bundled one, remap `ai`:
 
 ```yaml
-    connections:
-      ai: my-gateway-connection
+connections:
+  ai: my-gateway-connection
 ```
 
 When `ai` is remapped, `AI_GATEWAY_API_KEY` is not needed.
+
+## How-to
+
+- [Reporting over complex data](how-to/complex-data.md) — dotted paths, date buckets, and the MongoDB-view pattern for arrays, object-arrays, and joins
 
 ## Reference
 

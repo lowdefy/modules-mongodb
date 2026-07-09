@@ -18,10 +18,11 @@ _ref:
         properties:
           content: >
             Chat to your data and generate saved, navigable reports. Seed the
-            demo dataset below, then open one of the surfaces. The reporting
-            agent can only query what the data dictionary declares — here, a
-            synthetic `orders` dataset (region, category, status, channel,
-            month; totals and quantities).
+            demo data below, then open one of the surfaces. The reporting agent
+            can only query what the data dictionary declares — here, a flat
+            synthetic `orders` dataset plus four view-backed datasets over
+            realistic linked data (activities, actions, assignees, contact
+            companies) that exercise joins, arrays and object-arrays.
 
       - id: secrets_note
         type: Alert
@@ -81,6 +82,44 @@ _ref:
                   on:
                     n:
                       _state: seeded_count
+
+      - id: linked_card
+        type: Card
+        properties:
+          title: Linked demo data (joins, arrays, object-arrays)
+        blocks:
+          - id: linked_help
+            type: Paragraph
+            properties:
+              content: >
+                The richer datasets are backed by read-only MongoDB views over a
+                seeded, linked domain (companies, contacts, activities,
+                workflows, actions). Views can't be created from the app — they
+                are database DDL — so seed them with a one-off script that also
+                inserts the source data. Requires MONGODB_URI (pulled from
+                Infisical by the script).
+          - id: linked_cmd
+            type: Paragraph
+            properties:
+              content: "pnpm --filter @lowdefy/modules-demo reporting:seed"
+              style:
+                fontFamily: monospace
+                background: var(--ant-color-fill-tertiary)
+                padding: 8px 12px
+                borderRadius: 6px
+          - id: linked_note
+            type: Paragraph
+            properties:
+              content: >
+                Then ask the chat things like "how many activities per month",
+                "actions by workflow type", "workload per assignee", or
+                "contacts per company". Each view fixes its grain so the counts
+                are always exact. See docs/reporting/how-to/complex-data.md for
+                the pattern.
+              style:
+                fontSize: 12px
+                color: var(--ant-color-text-secondary)
+                marginBottom: 0
 
       - id: surfaces_divider
         type: Divider
