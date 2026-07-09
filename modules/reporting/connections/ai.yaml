@@ -1,0 +1,13 @@
+# The AI provider for the reporting assistant — an AI gateway, so the `model`
+# var selects the provider/model (e.g. anthropic/claude-sonnet-4.5). Apps that
+# already declare a gateway connection can remap this one instead of supplying
+# the secret:
+#   modules:
+#     - id: reporting
+#       connections:
+#         ai: my-gateway-connection
+id: ai
+type: AIGateway
+properties:
+  apiKey:
+    _secret: AI_GATEWAY_API_KEY

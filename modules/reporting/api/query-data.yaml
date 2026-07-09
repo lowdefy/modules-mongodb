@@ -1,0 +1,106 @@
+# The constrained query builder — one endpoint, three consumers: the agent's
+# query_data tool, report filter re-queries (CallAPI), and panel downloads.
+# The AnalyticsQuery request is the single security boundary: validate the
+# spec against the data dictionary and the user's roles, compile to a
+# read-only aggregation, execute.
+id: query-data
+type: Api
+description: >
+  Run a constrained analytics query against the data dictionary. Composes a
+  validated aggregation — never raw database queries. Returns result rows;
+  aggregated measures appear as {measureId}_{agg}.
+payloadSchema:
+  type: object
+  required:
+    - spec
+  properties:
+    spec:
+      type: object
+      description: The structured query spec.
+      required:
+        - dataset
+      properties:
+        dataset:
+          type: string
+          description: Dataset id from the data dictionary.
+        select:
+          type: array
+          items:
+            type: string
+          description: Dimension ids to group by.
+        measures:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - agg
+            properties:
+              id:
+                type: string
+              agg:
+                type: string
+                enum:
+                  - sum
+                  - avg
+                  - min
+                  - max
+                  - count
+          description: Measures to aggregate.
+        filters:
+          type: array
+          items:
+            type: object
+            required:
+              - field
+              - op
+              - value
+            properties:
+              field:
+                type: string
+              op:
+                type: string
+                enum:
+                  - eq
+                  - neq
+                  - gt
+                  - gte
+                  - lt
+                  - lte
+                  - in
+                  - nin
+                  - contains
+              value: {}
+          description: Row filters applied before aggregation.
+        sort:
+          type: array
+          items:
+            type: object
+            required:
+              - field
+            properties:
+              field:
+                type: string
+              dir:
+                type: string
+                enum:
+                  - asc
+                  - desc
+          description: Sort on output columns (dimensions or {measureId}_{agg}).
+        limit:
+          type: number
+          description: Max rows (default 100, capped at 1000).
+routine:
+  - id: run_query
+    type: AnalyticsQuery
+    connectionId:
+      _module.connectionId: reporting-data
+    properties:
+      datasets:
+        _module.var: datasets
+      spec:
+        _payload: spec
+      roles:
+        _user: roles
+  - :return:
+      _step: run_query

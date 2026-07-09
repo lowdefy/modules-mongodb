@@ -1,0 +1,105 @@
+# Saved reports: open or delete (delete is userId-scoped server-side).
+id: reports-list
+type: Box
+properties:
+  style:
+    padding: 16px
+    maxWidth: 900px
+    margin: 0 auto
+events:
+  onMountAsync:
+    - id: load_reports
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: list-reports
+    - id: set_reports
+      type: SetState
+      params:
+        reports:
+          _api:
+            _build.string.concat:
+              - _module.endpointId: list-reports
+              - ".response"
+blocks:
+  - id: reports_title
+    type: Title
+    properties:
+      content: Reports
+      level: 3
+  - id: reports_empty
+    type: Paragraph
+    visible:
+      _eq:
+        - _array.length:
+            _if_none:
+              - _state: reports
+              - []
+        - 0
+    properties:
+      content: No saved reports yet — generate one from the chat or generate page.
+  - id: reports
+    type: List
+    blocks:
+      - id: reports.$.report_card
+        type: Card
+        properties:
+          title:
+            _state: reports.$.title
+        blocks:
+          - id: reports.$.report_description
+            type: Paragraph
+            properties:
+              content:
+                _if_none:
+                  - _state: reports.$.description
+                  - ""
+          - id: reports.$.open_report
+            type: Button
+            layout:
+              span: 6
+            properties:
+              title: Open
+              icon: AiOutlineFileText
+            events:
+              onClick:
+                - id: open
+                  type: Link
+                  params:
+                    pageId:
+                      _module.pageId: report
+                    urlQuery:
+                      reportId:
+                        _state: reports.$._id
+          - id: reports.$.delete_report
+            type: Button
+            layout:
+              span: 6
+            properties:
+              title: Delete
+              icon: AiOutlineDelete
+              type: default
+              danger: true
+            events:
+              onClick:
+                - id: delete
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _module.endpointId: delete-report
+                    payload:
+                      reportId:
+                        _state: reports.$._id
+                - id: reload_reports
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _module.endpointId: list-reports
+                - id: reset_reports
+                  type: SetState
+                  params:
+                    reports:
+                      _api:
+                        _build.string.concat:
+                          - _module.endpointId: list-reports
+                          - ".response"

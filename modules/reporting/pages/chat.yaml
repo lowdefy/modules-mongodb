@@ -1,0 +1,389 @@
+# Conversational surface: conversations sidebar, AgentChat, and an adjacent
+# results panel that accumulates the charts and downloads the emit-data-parts
+# hook streams back as dataParts at each turn's end.
+id: chat
+type: Box
+properties:
+  style:
+    padding: 32px 24px 24px 24px
+events:
+  onInit:
+    - id: init_state
+      type: SetState
+      params:
+        conversationId:
+          _uuid: true
+        charts: []
+        downloads: []
+  onMountAsync:
+    - id: load_conversations
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: list-conversations
+    - id: set_conversations
+      type: SetState
+      params:
+        conversations:
+          _api:
+            _build.string.concat:
+              - _module.endpointId: list-conversations
+              - ".response"
+layout:
+  gap: 16
+blocks:
+  - id: conversations_panel
+    type: Box
+    layout:
+      span: 5
+    blocks:
+      - id: conversations
+        type: AgentConversations
+        properties:
+          items:
+            _array.map:
+              - _if_none:
+                  - _state: conversations
+                  - []
+              - _function:
+                  key:
+                    __args: 0._id
+                  # Fall back when a stored title is missing or empty, so the
+                  # item never renders as a blank grey block. Operators inside a
+                  # _function callback take the __ prefix so they resolve in the
+                  # callback's __args scope.
+                  label:
+                    __if:
+                      test:
+                        __eq:
+                          - __if_none:
+                              - __args: 0.title
+                              - ""
+                          - ""
+                      then: New conversation
+                      else:
+                        __args: 0.title
+          activeKey:
+            _state: conversationId
+          creation:
+            label: New chat
+        events:
+          onNew:
+            - id: new_conversation
+              type: SetState
+              params:
+                conversationId:
+                  _uuid: true
+                messages: []
+                charts: []
+                downloads: []
+          onSelect:
+            # Switch first (atomic, infallible) and clear the panel as the
+            # loading state, so a failed results fetch can never strand the user
+            # on the previous conversation. Then repopulate from the fetched
+            # snapshot; on fetch failure the chain stops here leaving an empty
+            # panel, which matches a conversation that has no saved results.
+            - id: select_conversation
+              type: SetState
+              params:
+                conversationId:
+                  _event: key
+                charts: []
+                downloads: []
+                messages:
+                  _mql.expr:
+                    on:
+                      conversations:
+                        _state: conversations
+                      selected:
+                        _event: key
+                    expr:
+                      $let:
+                        vars:
+                          match:
+                            $arrayElemAt:
+                              - $filter:
+                                  input: $conversations
+                                  cond:
+                                    $eq:
+                                      - $$this._id
+                                      - $selected
+                              - 0
+                        in:
+                          $ifNull:
+                            - $$match.messages
+                            - []
+            - id: load_results
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: get-conversation-results
+                payload:
+                  conversationId:
+                    _event: key
+            - id: set_results
+              type: SetState
+              params:
+                charts:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: get-conversation-results
+                      - ".response.charts"
+                downloads:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: get-conversation-results
+                      - ".response.downloads"
+  - id: chat_panel
+    type: Box
+    layout:
+      span: 12
+    blocks:
+      - id: chat
+        type: AgentChat
+        properties:
+          agentId:
+            _module.agentId: reporting-assistant
+          conversationId:
+            _state: conversationId
+          messages:
+            _state: messages
+          height: 75vh
+          welcome:
+            title: Ask about your data
+            description: >
+              Ask questions in natural language. Charts and downloads appear
+              in the panel on the right; say "turn this into a report" to
+              save a navigable report.
+        events:
+          onDataPart:
+            - id: append_chart
+              type: SetState
+              skip:
+                _not:
+                  _eq:
+                    - _event: type
+                    - data-report-chart
+              params:
+                charts:
+                  _array.concat:
+                    - _if_none:
+                        - _state: charts
+                        - []
+                    - - _event: data
+            - id: append_download
+              type: SetState
+              skip:
+                _not:
+                  _eq:
+                    - _event: type
+                    - data-report-download
+              params:
+                downloads:
+                  _array.concat:
+                    - _if_none:
+                        - _state: downloads
+                        - []
+                    - - _event: data
+          onMessageComplete:
+            - id: refresh_conversations
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: list-conversations
+            - id: update_conversations
+              type: SetState
+              params:
+                conversations:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: list-conversations
+                      - ".response"
+          # The agent generates a title on the first turn; persist it, then
+          # refresh the sidebar so the item shows the AI title (not the derived
+          # fallback). Persist runs first so the refetch reads the saved title.
+          onTitleGenerated:
+            - id: persist_title
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: set-conversation-title
+                payload:
+                  conversationId:
+                    _state: conversationId
+                  title:
+                    _event: title
+            - id: refresh_conversations_after_title
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: list-conversations
+            - id: update_conversations_after_title
+              type: SetState
+              params:
+                conversations:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: list-conversations
+                      - ".response"
+  - id: results_panel
+    type: Box
+    layout:
+      span: 7
+    blocks:
+      - id: results_title
+        type: Title
+        properties:
+          content: Results
+          level: 4
+        visible:
+          _or:
+            - _gt:
+                - _array.length:
+                    _if_none:
+                      - _state: charts
+                      - []
+                - 0
+            - _gt:
+                - _array.length:
+                    _if_none:
+                      - _state: downloads
+                      - []
+                - 0
+      # Charts and downloads accumulate independently; tabs keep each on its own
+      # pane so a long chart list never buries the download buttons.
+      - id: results_tabs
+        type: Tabs
+        visible:
+          _or:
+            - _gt:
+                - _array.length:
+                    _if_none:
+                      - _state: charts
+                      - []
+                - 0
+            - _gt:
+                - _array.length:
+                    _if_none:
+                      - _state: downloads
+                      - []
+                - 0
+        properties:
+          tabs:
+            - key: charts
+              title:
+                _nunjucks:
+                  template: "Charts ({{ n }})"
+                  on:
+                    n:
+                      _array.length:
+                        _if_none:
+                          - _state: charts
+                          - []
+            - key: downloads
+              title:
+                _nunjucks:
+                  template: "Downloads ({{ n }})"
+                  on:
+                    n:
+                      _array.length:
+                        _if_none:
+                          - _state: downloads
+                          - []
+        slots:
+          charts:
+            blocks:
+              - id: charts_empty
+                type: Paragraph
+                visible:
+                  _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: charts
+                          - []
+                    - 0
+                properties:
+                  content: No charts yet — ask the assistant to chart something.
+              - id: charts
+                type: List
+                layout:
+                  gap: 24
+                blocks:
+                  - id: charts.$.chart_title
+                    type: Title
+                    properties:
+                      content:
+                        _state: charts.$.title
+                      level: 5
+                  - id: charts.$.chart
+                    type: EChart
+                    properties:
+                      height: 300
+                      option:
+                        _state: charts.$.option
+          downloads:
+            blocks:
+              - id: downloads_empty
+                type: Paragraph
+                visible:
+                  _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: downloads
+                          - []
+                    - 0
+                properties:
+                  content: No downloads yet — ask the assistant to export data.
+              - id: downloads
+                type: List
+                layout:
+                  gap: 16
+                blocks:
+                  - id: downloads.$.item
+                    type: Box
+                    layout:
+                      gap: 2
+                    blocks:
+                      - id: downloads.$.download
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        properties:
+                          title:
+                            _state: downloads.$.label
+                          icon: AiOutlineDownload
+                          type: default
+                        events:
+                          onClick:
+                            - id: run_download_query
+                              type: CallAPI
+                              params:
+                                endpointId:
+                                  _module.endpointId: query-data
+                                payload:
+                                  spec:
+                                    _state: downloads.$.spec
+                            - id: download_csv
+                              type: DownloadCsv
+                              params:
+                                data:
+                                  _api:
+                                    _build.string.concat:
+                                      - _module.endpointId: query-data
+                                      - ".response"
+                                filename: export.csv
+                      - id: downloads.$.desc
+                        type: Paragraph
+                        visible:
+                          _ne:
+                            - _if_none:
+                                - _state: downloads.$.description
+                                - ""
+                            - ""
+                        properties:
+                          content:
+                            _state: downloads.$.description
+                          style:
+                            fontSize: 12px
+                            color: var(--ant-color-text-secondary)
+                            marginBottom: 0

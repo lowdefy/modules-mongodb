@@ -70,9 +70,9 @@ vars:
           `.logo` cssKey on the page block).
   menu:
     type: object
-    default:
-      _menu: default
-    description: Menu config passed to the page block. Defaults to _menu default.
+    description: >-
+      Menu config passed to the page block. When unset, the page falls back to
+      the app's "default" menu (resolved client-side via `_menu`).
   header:
     type: object
     default: {}

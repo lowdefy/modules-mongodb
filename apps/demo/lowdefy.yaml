@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260611102401
+lowdefy: 0.0.0-experimental-20260707145139
 name: Module Demo App
 slug: demo
 
@@ -10,7 +10,7 @@ theme:
   antd:
     algorithm: compact
     token:
-      colorPrimary: '#7c3aed'
+      colorPrimary: "#7c3aed"
 
 config:
   homePageId: router
@@ -23,13 +23,13 @@ global:
         component: event_types
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
+  - name: "@lowdefy/community-plugin-mongodb"
     version: 3.0.0
-  - name: '@lowdefy/community-plugin-xlsx'
+  - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
-  - name: '@lowdefy/community-plugin-nodemailer'
+  - name: "@lowdefy/community-plugin-nodemailer"
     version: 1.1.4
-  - name: '@lowdefy/modules-mongodb-plugins'
+  - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
 
 auth:
@@ -38,7 +38,7 @@ auth:
     verifyRequest: /user-account/verify-email-request
     error: /user-account/login
   theme:
-    brandColor: '#7c3aed'
+    brandColor: "#7c3aed"
   adapter:
     id: mdb_adapter
     type: MultiAppMongoDBAdapter
@@ -84,7 +84,7 @@ auth:
   pages:
     protected: true
     public:
-      - '404'
+      - "404"
       - notifications-invalid
       - notifications-link
       - router
@@ -124,10 +124,45 @@ connections:
         meta:
           user:
             _user: true
+  # Write side of the reporting demo dataset — seeded by reporting-seed-orders.
+  # The reporting module reads the same collection through reporting-analytics
+  # (below), which its reporting-data connection is remapped to.
+  - id: demo-orders
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: demo_orders
+      write: true
+  # The reporting module's own connections default to REPORTING_MONGODB_URI /
+  # REPORTING_DATA_MONGODB_URI so an app can keep reporting storage and its
+  # analytics source on separate databases. The demo has one database, so we
+  # remap all three module connections (on the reporting module entry) to these
+  # MONGODB_URI-backed connections instead of introducing new secrets.
+  - id: reporting-reports # module reports-store — saved report specs
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: report_layouts
+      write: true
+  - id: reporting-conversations # module conversations-store — chat conversations
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: conversations
+      write: true
+  - id: reporting-analytics # module reporting-data — read-only analytics source
+    type: ReportingData
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
 
 api:
   - _ref: api/leads-create.yaml
   - _ref: api/leads-update.yaml
+  - _ref: api/reporting-seed-orders.yaml
 
 pages:
   - _ref: pages/router.yaml
@@ -140,4 +175,5 @@ pages:
   - _ref: pages/leads/lead-view.yaml
   # App-owned working surface for the send-quote custom action (Part 28).
   - _ref: pages/leads/quote-builder.yaml
+  - _ref: pages/reporting/reporting-demo.yaml
   - _ref: pages/files/files-demo.yaml

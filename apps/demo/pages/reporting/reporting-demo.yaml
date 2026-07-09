@@ -1,0 +1,182 @@
+# App-owned landing page for testing the reporting module. Seeds the demo_orders
+# collection the data dictionary describes, then links out to the module's own
+# surfaces (chat, one-shot generate, saved reports). The surfaces themselves are
+# standalone pages exported by the reporting module.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: reporting-demo
+    title: AI Chat Reporting
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Reporting
+    blocks:
+      - id: intro
+        type: Paragraph
+        properties:
+          content: >
+            Chat to your data and generate saved, navigable reports. Seed the
+            demo data below, then open one of the surfaces. The reporting agent
+            can only query what the data dictionary declares — here, a flat
+            synthetic `orders` dataset plus four view-backed datasets over
+            realistic linked data (activities, actions, assignees, contact
+            companies) that exercise joins, arrays and object-arrays.
+
+      - id: secrets_note
+        type: Alert
+        properties:
+          type: info
+          showIcon: true
+          message: Configuration required
+          description: >
+            The module's storage and analytics connections are remapped onto the
+            demo's MONGODB_URI, so the only extra secret needed is
+            AI_GATEWAY_API_KEY (the AI gateway that backs the reporting agent).
+            Add it before the chat and generate surfaces will work.
+
+      - id: seed_card
+        type: Card
+        properties:
+          title: Demo data
+        blocks:
+          - id: seed_help
+            type: Paragraph
+            properties:
+              content: >
+                Inserts 120 synthetic orders spread across ~8 months (clears the
+                collection first, so it is safe to re-run).
+          - id: seed_btn
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Seed demo orders
+              icon: AiOutlineDatabase
+              type: primary
+            events:
+              onClick:
+                - id: seed
+                  type: CallAPI
+                  params:
+                    endpointId: reporting-seed-orders
+                  messages:
+                    success: Demo orders seeded.
+                    error: Seed failed — check the REPORTING/MONGODB secrets.
+                - id: store_count
+                  type: SetState
+                  params:
+                    seeded_count:
+                      _api: reporting-seed-orders.response.inserted
+          - id: seeded_result
+            type: Paragraph
+            visible:
+              _gt:
+                - _state: seeded_count
+                - 0
+            properties:
+              content:
+                _nunjucks:
+                  template: "✓ {{ n }} orders in the demo_orders collection."
+                  on:
+                    n:
+                      _state: seeded_count
+
+      - id: linked_card
+        type: Card
+        properties:
+          title: Linked demo data (joins, arrays, object-arrays)
+        blocks:
+          - id: linked_help
+            type: Paragraph
+            properties:
+              content: >
+                The richer datasets are backed by read-only MongoDB views over a
+                seeded, linked domain (companies, contacts, activities,
+                workflows, actions). Views can't be created from the app — they
+                are database DDL — so seed them with a one-off script that also
+                inserts the source data. Requires MONGODB_URI (pulled from
+                Infisical by the script).
+          - id: linked_cmd
+            type: Paragraph
+            properties:
+              content: "pnpm --filter @lowdefy/modules-demo reporting:seed"
+              style:
+                fontFamily: monospace
+                background: var(--ant-color-fill-tertiary)
+                padding: 8px 12px
+                borderRadius: 6px
+          - id: linked_note
+            type: Paragraph
+            properties:
+              content: >
+                Then ask the chat things like "how many activities per month",
+                "actions by workflow type", "workload per assignee", or
+                "contacts per company". Each view fixes its grain so the counts
+                are always exact. See docs/reporting/how-to/complex-data.md for
+                the pattern.
+              style:
+                fontSize: 12px
+                color: var(--ant-color-text-secondary)
+                marginBottom: 0
+
+      - id: surfaces_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: Surfaces
+
+      - id: surface_buttons
+        type: Box
+        layout:
+          gap: 12
+        blocks:
+          - id: open_chat
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Chat
+              icon: AiOutlineMessage
+            events:
+              onClick:
+                - id: go_chat
+                  type: Link
+                  params:
+                    pageId:
+                      _module.pageId:
+                        module: reporting
+                        id: chat
+          - id: open_generate
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Generate a report
+              icon: AiOutlineRobot
+            events:
+              onClick:
+                - id: go_generate
+                  type: Link
+                  params:
+                    pageId:
+                      _module.pageId:
+                        module: reporting
+                        id: generate
+          - id: open_reports
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Saved reports
+              icon: AiOutlineFileText
+            events:
+              onClick:
+                - id: go_reports
+                  type: Link
+                  params:
+                    pageId:
+                      _module.pageId:
+                        module: reporting
+                        id: reports-list

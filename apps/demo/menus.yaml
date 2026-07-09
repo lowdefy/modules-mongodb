@@ -22,6 +22,46 @@
           - _ref:
               module: activities
               menu: default
+    - id: reporting-group
+      type: MenuGroup
+      properties:
+        title: Reporting
+        icon: AiOutlineBarChart
+      links:
+        - id: reporting-home
+          type: MenuLink
+          pageId: reporting-demo
+          properties:
+            title: Overview
+            icon: AiOutlineDashboard
+        - id: reporting-chat
+          type: MenuLink
+          pageId:
+            _module.pageId:
+              module: reporting
+              id: chat
+          properties:
+            title: Chat
+            icon: AiOutlineMessage
+        - id: reporting-generate
+          type: MenuLink
+          pageId:
+            _module.pageId:
+              module: reporting
+              id: generate
+          properties:
+            title: Generate
+            icon: AiOutlineRobot
+        - id: reporting-reports
+          type: MenuLink
+          pageId:
+            _module.pageId:
+              module: reporting
+              id: reports-list
+          properties:
+            title: Saved reports
+            icon: AiOutlineFileText
+
     - id: admin-group
       type: MenuGroup
       properties:

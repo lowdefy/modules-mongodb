@@ -1,0 +1,107 @@
+name: AI Chat Reporting
+version: 0.9.2
+description: >
+  Chat to your data and generate saved, navigable reports. Ships a reporting
+  agent (chat + one-shot surfaces), a constrained query engine over an
+  app-supplied data dictionary, and report pages compiled server-side from
+  AI-generated report specs.
+
+exports:
+  pages:
+    - id: chat
+      description: Conversational surface — AgentChat with charts/downloads panel
+    - id: generate
+      description: One-shot surface — describe a report, get its URL
+    - id: reports-list
+      description: Saved reports with open and delete
+    - id: report
+      description: Report renderer (Dynamic block over resolve-report)
+  api:
+    - id: query-data
+      description: Constrained analytics query (agent tool + report re-queries)
+    - id: generate-report
+      description: Validate and persist a report spec (agent tool)
+  connections:
+    - id: reports-store
+      description: MongoDB collection for saved report specs
+    - id: conversations-store
+      description: MongoDB collection for chat conversations
+    - id: reporting-data
+      description: Read-only ReportingData connection over the app's data
+    - id: ai
+      description: AI gateway provider connection (remap to reuse an existing one)
+
+vars:
+  datasets:
+    type: array
+    required: true
+    description: >
+      The data dictionary — a declarative description of queryable datasets
+      (dimensions, measures, types, allowed aggregations, roles). Feeds the
+      agent's instructions at build time and is the allowlist the query
+      builder validates every spec against. A dimension/measure may set an
+      author-declared `field` (a dotted path into an embedded sub-document,
+      defaulting to its id), and a date dimension may set `bucket`
+      (year|month|week|day) for time-series grouping. For arrays, object-arrays
+      and cross-collection joins, point a dataset's source.collection at a
+      read-only MongoDB view — see the "reporting over complex data" guide.
+  reports_collection:
+    type: string
+    default: report_layouts
+    description: Collection name for saved report specs.
+  conversations_collection:
+    type: string
+    default: conversations
+    description: Collection name for chat conversations.
+  model:
+    type: string
+    default: anthropic/claude-sonnet-4.5
+    description: >
+      Gateway model id (provider/model) for the reporting assistant, e.g.
+      anthropic/claude-sonnet-4.5 or anthropic/claude-haiku-4.5.
+
+secrets:
+  - name: REPORTING_MONGODB_URI
+    description: MongoDB URI for report and conversation storage.
+  - name: REPORTING_DATA_MONGODB_URI
+    description: MongoDB URI for the app data the data dictionary describes.
+  - name: AI_GATEWAY_API_KEY
+    description: >
+      API key for the bundled ai gateway connection. Not needed when the
+      app remaps the ai connection to its own provider connection.
+
+plugins:
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^3"
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.9.2"
+
+connections:
+  - _ref: connections/reports-store.yaml
+  - _ref: connections/conversations-store.yaml
+  - _ref: connections/reporting-data.yaml
+  - _ref: connections/ai.yaml
+
+api:
+  - _ref: api/query-data.yaml
+  - _ref: api/render-chart.yaml
+  - _ref: api/export-data.yaml
+  - _ref: api/generate-report.yaml
+  - _ref: api/generate-oneshot.yaml
+  - _ref: api/resolve-report.yaml
+  - _ref: api/save-conversation.yaml
+  - _ref: api/emit-data-parts.yaml
+  - _ref: api/list-conversations.yaml
+  - _ref: api/get-conversation-results.yaml
+  - _ref: api/set-conversation-title.yaml
+  - _ref: api/list-reports.yaml
+  - _ref: api/delete-report.yaml
+
+agents:
+  - _ref: agents/reporting-assistant.yaml
+
+pages:
+  - _ref: pages/chat.yaml
+  - _ref: pages/generate.yaml
+  - _ref: pages/reports-list.yaml
+  - _ref: pages/report.yaml

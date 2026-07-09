@@ -1,0 +1,93 @@
+# Report tool: validate the report spec against the data dictionary and the
+# allow-listed section types, persist it raw (the durable contract — blocks
+# are compiled from it at every resolve), return the report's URL.
+id: generate-report
+type: Api
+description: >
+  Save the conversation's findings as a navigable report. Takes a report
+  spec — title, optional description, and up to 12 sections of types kpi,
+  chart (bar|line|pie), table, filter (select|daterange), markdown, download.
+  Query-backed sections carry a query spec (same shape as query_data); bind
+  sections to filter controls with filterBy: [field]. Returns the report URL
+  to share with the user.
+payloadSchema:
+  type: object
+  required:
+    - spec
+  properties:
+    spec:
+      type: object
+      description: The report spec.
+      required:
+        - title
+        - sections
+      properties:
+        title:
+          type: string
+          description: Report title (max 200 characters).
+        description:
+          type: string
+          description: Short report description.
+        sections:
+          type: array
+          description: >
+            Report sections in render order. kpi/chart/table/download carry a
+            query; filter carries { control, field, label }; markdown carries
+            { content }.
+          items:
+            type: object
+            required:
+              - type
+routine:
+  # Reports are per-user; an unauthenticated context cannot save one.
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to save a report.
+  # Validation throws on an invalid spec — the tool call fails with the
+  # validator's actionable message. The raw spec is what gets stored.
+  - :set_state:
+      validated:
+        _analytics.validateReportSpec:
+          spec:
+            _payload: spec
+          datasets:
+            _module.var: datasets
+          roles:
+            _user: roles
+  - id: insert_report
+    type: MongoDBInsertOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      doc:
+        _id:
+          _uuid: true
+        userId:
+          _user: id
+        title:
+          _payload: spec.title
+        description:
+          _payload: spec.description
+        spec:
+          _payload: spec
+        # Tool endpoints receive only the tool input as payload — the agent
+        # context (conversationId) does not reach them in the current agent
+        # system, so the source conversation is not linked in v1.
+        sourceConversationId: null
+        createdAt:
+          _date: now
+        updatedAt:
+          _date: now
+  - :return:
+      ok: true
+      reportId:
+        _step: insert_report.insertedId
+      url:
+        _string.concat:
+          - "/"
+          - _module.id: true
+          - "/report?reportId="
+          - _step: insert_report.insertedId

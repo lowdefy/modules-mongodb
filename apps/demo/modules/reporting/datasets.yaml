@@ -1,0 +1,191 @@
+# Data dictionary for the reporting demo. No `roles` on any dataset means any
+# authenticated user may query it.
+#
+# Two flavours of dataset are shown:
+#   1. `orders` — a single flat collection (demo_orders), seeded by the
+#      reporting-seed-orders API. Dimension/measure ids are the exact top-level
+#      field names.
+#   2. The view-backed datasets (`activities`, `actions`, `action_assignees`,
+#      `contact_companies`) — realistic linked/array/object-array data. Each
+#      points at a read-only MongoDB view created by the seed-reporting-domain
+#      script (see apps/demo/scripts/), which bakes in the $lookup/$unwind and
+#      current-status extraction at a fixed grain so counts are always exact.
+#      The engine stays flat; it just reads the view. These demonstrate:
+#        - dotted `field` paths into embedded sub-documents (source.channel,
+#          workflow.workflow_type, assignees.name, company.name)
+#        - a date `bucket` for time-series without a pre-bucketed string
+#        - the two view "formulas" (see docs/reporting/how-to/complex-data.md).
+- id: orders
+  label: Orders
+  description: Synthetic customer orders — totals, quantities, and status.
+  source:
+    collection: demo_orders
+  dimensions:
+    - id: region
+      type: string
+      description: Customer region
+      values: [North, South, East, West]
+    - id: category
+      type: string
+      description: Product category
+      values: [Electronics, Clothing, Home, Toys, Sports]
+    - id: status
+      type: string
+      description: Order status
+      values: [pending, paid, shipped, cancelled]
+    - id: channel
+      type: string
+      description: Sales channel
+      values: [online, retail, partner]
+    - id: month
+      type: string
+      description: Order month, "YYYY-MM" (use this to group a time series)
+    - id: createdAt
+      type: date
+      description: When the order was placed (use for date-range filters)
+  measures:
+    - id: total
+      type: number
+      description: Order total (USD)
+      # Money measure: rendered with a currency symbol and two decimals in KPIs,
+      # tables and reports. Defaults to USD / en-US; set `currency` + `locale` to
+      # localise (e.g. currency: ZAR, locale: en-ZA).
+      format: currency
+      aggregations: [sum, avg, min, max]
+    - id: quantity
+      type: number
+      description: Units ordered
+      aggregations: [sum, avg, min, max]
+    - id: count
+      type: count
+      description: Number of orders
+
+# ── View-backed datasets (linked / array / object-array data) ────────────────
+
+# Grain: one row per activity. `current_stage` is the newest status stage,
+# extracted in the view; `source.channel` and `created.timestamp` are read
+# in place via dotted field paths.
+- id: activities
+  label: Activities
+  description: >
+    Customer activities (calls, meetings, emails, notes). One row per activity —
+    counts are exact. Backed by the demo_activities_report view.
+  source:
+    collection: demo_activities_report
+  dimensions:
+    - id: type
+      type: string
+      description: Activity type
+      values: [call, meeting, email, note]
+    - id: stage
+      type: string
+      field: current_stage
+      description: Current status stage
+      values: [open, done, cancelled]
+    - id: channel
+      type: string
+      field: source.channel
+      description: How the activity was captured
+      values: [manual, email, import]
+    - id: created
+      type: date
+      field: created.timestamp
+      bucket: month
+      description: Month the activity was created (grouped time series)
+  measures:
+    - id: count
+      type: count
+      description: Number of activities
+
+# Grain: one row per action. Its parent workflow is joined many-to-one in the
+# view (no fan-out), so `workflow_type` is available alongside action fields.
+- id: actions
+  label: Actions
+  description: >
+    Workflow actions (form / check / tracker), with their parent workflow's type
+    joined in. One row per action — counts are exact. Backed by the
+    demo_actions_report view.
+  source:
+    collection: demo_actions_report
+  dimensions:
+    - id: kind
+      type: string
+      description: Action kind
+      values: [form, check, tracker]
+    - id: stage
+      type: string
+      field: current_stage
+      description: Current status stage
+      values:
+        [
+          action-required,
+          in-progress,
+          in-review,
+          changes-required,
+          done,
+          not-required,
+        ]
+    - id: workflow_type
+      type: string
+      field: workflow.workflow_type
+      description: Parent workflow type
+      values: [onboarding, renewal, support]
+    - id: created
+      type: date
+      field: created.timestamp
+      bucket: month
+      description: Month the action was created (grouped time series)
+  measures:
+    - id: count
+      type: count
+      description: Number of actions
+
+# Grain: one row per (action, assignee) — the assignees object-array is unwound
+# in the view. `count` here is the number of assignments, not distinct actions.
+- id: action_assignees
+  label: Action assignees
+  description: >
+    Actions exploded to one row per assignee (workload view). `count` is the
+    number of assignments. Backed by the demo_action_assignees view.
+  source:
+    collection: demo_action_assignees
+  dimensions:
+    - id: assignee
+      type: string
+      field: assignees.name
+      description: Assigned person
+    - id: kind
+      type: string
+      description: Action kind
+      values: [form, check, tracker]
+    - id: stage
+      type: string
+      field: current_stage
+      description: Current status stage
+  measures:
+    - id: count
+      type: count
+      description: Number of assignments
+
+# Grain: one row per (contact, company) — the contact's company_ids scalar array
+# is unwound and the company joined in. `count` is the number of memberships.
+- id: contact_companies
+  label: Contact companies
+  description: >
+    People linked to companies, one row per membership. `count` is the number of
+    contact↔company links. Backed by the demo_contact_companies view.
+  source:
+    collection: demo_contact_companies
+  dimensions:
+    - id: company
+      type: string
+      field: company.name
+      description: Company the contact belongs to
+    - id: family_name
+      type: string
+      field: profile.family_name
+      description: Contact surname
+  measures:
+    - id: count
+      type: count
+      description: Number of contact-company memberships

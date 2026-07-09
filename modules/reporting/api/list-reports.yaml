@@ -1,0 +1,30 @@
+# Saved reports for the reports-list page, most recent first. The spec stays
+# server-side — the list only needs display fields.
+id: list-reports
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :return: []
+  - id: find_reports
+    type: MongoDBFind
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      query:
+        userId:
+          _user: id
+      options:
+        sort:
+          updatedAt: -1
+        limit: 200
+        projection:
+          title: 1
+          description: 1
+          createdAt: 1
+          updatedAt: 1
+  - :return:
+      _step: find_reports

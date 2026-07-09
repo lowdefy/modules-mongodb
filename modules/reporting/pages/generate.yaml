@@ -1,0 +1,53 @@
+# One-shot surface: describe the report, the agent generates it headlessly
+# (CallAgent), navigate straight to the finished report.
+id: generate
+type: Box
+properties:
+  style:
+    maxWidth: 720px
+    margin: 40px auto
+blocks:
+  - id: generate_title
+    type: Title
+    properties:
+      content: Generate a report
+      level: 3
+  - id: generate_help
+    type: Paragraph
+    properties:
+      content: >
+        Describe the report you want — the data to include, charts, filters
+        and downloads. The assistant explores the data and builds it in one
+        pass.
+  - id: request
+    type: TextArea
+    properties:
+      placeholder: Revenue by region for Q2, filterable by status, with a CSV download.
+      rows: 4
+  - id: generate_button
+    type: Button
+    properties:
+      title: Generate report
+      icon: AiOutlineRobot
+      block: true
+    events:
+      onClick:
+        - id: run_oneshot
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: generate-oneshot
+            payload:
+              request:
+                _state: request
+        - id: open_report
+          type: Link
+          params:
+            pageId:
+              _module.pageId: report
+            urlQuery:
+              reportId:
+                _api:
+                  _build.string.concat:
+                    - _module.endpointId: generate-oneshot
+                    - ".response.reportId"
