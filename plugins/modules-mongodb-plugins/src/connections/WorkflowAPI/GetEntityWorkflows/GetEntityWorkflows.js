@@ -1,10 +1,11 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
-import {
-  computeAllowed,
-  collapseLink,
-} from "../../shared/render/resolveActionAccess.js";
+import collectionNames from "../../shared/collectionNames.js";
+import findWorkflowConfig from "../../shared/findWorkflowConfig.js";
+import { selectVisibleActions } from "../../shared/render/resolveActionAccess.js";
 import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
+import buildEntityLink from "../../shared/render/buildEntityLink.js";
+import collectActionGroups from "../../shared/render/collectActionGroups.js";
 import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js";
 
 /**
@@ -30,13 +31,12 @@ async function GetEntityWorkflows(lowdefyContext) {
   const app_name = connection.app_name;
   const entry_id = connection.entry_id;
   const userRoles = context.user?.roles;
-  const workflowsCollection = connection.workflowsCollection ?? "workflows";
-  const actionsCollection = connection.actionsCollection ?? "actions";
+  const collections = collectionNames(connection);
 
   // ── Load: all workflows for the entity, sorted by display_order asc, created desc ──
   const workflowDocs = await findDocs({
     mongoDb,
-    collection: workflowsCollection,
+    collection: collections.workflows,
     query: { "entity.connection_id": connection_id, "entity.id": id },
     options: { sort: { display_order: 1, "created.timestamp": -1 } },
   });
@@ -49,7 +49,7 @@ async function GetEntityWorkflows(lowdefyContext) {
   const workflowIds = workflowDocs.map((w) => w._id);
   const allActions = await findDocs({
     mongoDb,
-    collection: actionsCollection,
+    collection: collections.actions,
     query: { workflow_id: { $in: workflowIds } },
   });
 
@@ -63,60 +63,29 @@ async function GetEntityWorkflows(lowdefyContext) {
     actionsByWorkflowId.get(key).push(action);
   }
 
-  // Helper: look up workflow config for a given workflow_type.
-  function findWorkflowConfig(workflow_type) {
-    return (workflowsConfig ?? []).find((wc) => wc.type === workflow_type);
-  }
-
   // Shared declaration-order comparator (reads denormalised indices off the doc).
   const compareOrder = makeWorkflowOrderComparator();
 
-  // Helper: build the group-overview page link (matches computeEngineLinks scoped convention).
-  function buildGroupLink(workflow_id, group_id) {
-    return {
-      pageId: `${entry_id}/workflow-group-overview`,
-      urlQuery: { workflow_id, group_id },
-    };
-  }
-
   const workflows = workflowDocs.map((wfDoc) => {
     const rawActions = actionsByWorkflowId.get(String(wfDoc._id)) ?? [];
-    const wfConfig = findWorkflowConfig(wfDoc.workflow_type);
+    const wfConfig = findWorkflowConfig(workflowsConfig, wfDoc.workflow_type);
 
-    // ── Access filter + link collapse per action ──
-    const visibleActions = [];
-    for (const action of rawActions) {
-      const allowed = computeAllowed({
-        access: action.access,
-        app_name,
-        userRoles,
-      });
-      if (!allowed.view && !allowed.edit && !allowed.review && !allowed.error) {
-        continue; // drop: no verb accessible
-      }
-      const link = collapseLink({ links: action[app_name]?.links, allowed });
-      const message = action[app_name]?.message ?? null;
-      const status = action.status?.[0]?.stage ?? null;
-      visibleActions.push({ action, allowed, link, message, status });
-    }
-
-    // ── Sort: declaration order (group, not-required sink, action, key, _id) ──
+    // ── Access filter + link collapse, then declaration-order sort ──
+    const visibleActions = selectVisibleActions({
+      actions: rawActions,
+      app_name,
+      userRoles,
+    });
     visibleActions.sort((a, b) => compareOrder(a.action, b.action));
 
-    // ── Group actions by action_group ──
-    // Preserve declaration order from config's action_groups, then append unseen groups.
-    const configGroups = wfConfig?.action_groups ?? [];
-    const groupOrderMap = new Map(configGroups.map((g, i) => [g.id, i]));
-
-    // Collect actions per group_id.
-    const groupMap = new Map(); // group_id → { actions, firstSeen order }
-    for (const { action, allowed, link, message, status } of visibleActions) {
-      const groupId = action.action_group ?? null;
-      const groupIdKey = String(groupId);
-      if (!groupMap.has(groupIdKey)) {
-        groupMap.set(groupIdKey, { group_id: groupId, actions: [] });
-      }
-      groupMap.get(groupIdKey).actions.push({
+    // ── Group actions by action_group, in config declaration order ──
+    // Part 66: each group's runtime `status` is derived on read from ALL of the
+    // group's raw actions (objective, per-viewer-independent), replacing the
+    // dropped `groups[]` cache.
+    const groups = collectActionGroups({
+      visibleActions,
+      configGroups: wfConfig?.action_groups ?? [],
+      makeCard: ({ action, allowed, link, message, status }) => ({
         _id: action._id,
         kind: action.kind,
         type: action.type,
@@ -124,75 +93,37 @@ async function GetEntityWorkflows(lowdefyContext) {
         allowed,
         message,
         link,
-      });
-    }
-
-    // Build group entries with display config from wfConfig.
-    // Unseen groups (not in configGroups) get an insertion index so they sort
-    // AFTER all declared groups, stably.
-    let unseenInsertionIndex = 0;
-    const groupEntries = [];
-    for (const [groupIdKey, { group_id, actions: groupActions }] of groupMap) {
-      let configGroupIndex;
-      if (groupOrderMap.has(groupIdKey)) {
-        configGroupIndex = groupOrderMap.get(groupIdKey);
-      } else {
-        // Unseen group: sort after all declared config groups.
-        configGroupIndex = configGroups.length + unseenInsertionIndex;
-        unseenInsertionIndex += 1;
-      }
-
-      // Find the display config for this group from workflowConfig.
-      const configGroup = configGroups.find((g) => g.id === group_id);
-      const title = configGroup?.title ?? null;
-      const icon = configGroup?.icon ?? null;
-
-      // Part 66: derive the group's runtime `status` on read from ALL of the
-      // group's raw actions (objective, per-viewer-independent), replacing the
-      // dropped `groups[]` cache. `summary` is dropped — ActionSteps.js
-      // recomputes per-action display from `actions` and never read it.
-      const groupRawActions = rawActions.filter(
-        (act) => (act.action_group ?? null) === group_id,
-      );
-
-      const groupLink =
-        group_id != null ? buildGroupLink(wfDoc._id, group_id) : null;
-
-      groupEntries.push({
-        id: group_id,
-        order: configGroupIndex,
-        title,
-        icon,
-        link: groupLink,
-        action_group: group_id,
-        workflow_type: wfDoc.workflow_type,
-        workflow_id: wfDoc._id,
-        status: deriveGroupStatus(groupRawActions),
-        actions: groupActions,
-      });
-    }
-
-    // Sort groups by declaration order.
-    groupEntries.sort((a, b) => a.order - b.order);
-
-    // ── Workflow title from config ──
-    const title = wfConfig?.title ?? null;
-
-    // ── entity_link ──
-    const entityConfig = wfConfig?.entity;
-    const entity_link = entityConfig
-      ? {
-          pageId: entityConfig.page_id,
-          urlQuery: { [entityConfig.id_query_key]: wfDoc.entity.id },
-          title: entityConfig.title ?? null,
-        }
-      : null;
+      }),
+    }).map(({ group_id, order, configGroup, cards }) => ({
+      id: group_id,
+      order,
+      title: configGroup?.title ?? null,
+      icon: configGroup?.icon ?? null,
+      // The group-overview page link (matches computeEngineLinks scoped convention).
+      link:
+        group_id != null
+          ? {
+              pageId: `${entry_id}/workflow-group-overview`,
+              urlQuery: { workflow_id: wfDoc._id, group_id },
+            }
+          : null,
+      action_group: group_id,
+      workflow_type: wfDoc.workflow_type,
+      workflow_id: wfDoc._id,
+      status: deriveGroupStatus(
+        rawActions.filter((act) => (act.action_group ?? null) === group_id),
+      ),
+      actions: cards,
+    }));
 
     return {
       ...wfDoc,
-      title,
-      entity_link,
-      groups: groupEntries,
+      title: wfConfig?.title ?? null,
+      entity_link: buildEntityLink({
+        entityConfig: wfConfig?.entity,
+        entityId: wfDoc.entity?.id ?? null,
+      }),
+      groups,
     };
   });
 

@@ -1,6 +1,8 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import applyRenderConfig from "../../shared/phases/applyRenderConfig.js";
 import findDocs from "../../mongo/findDocs.js";
+import collectionNames from "../../shared/collectionNames.js";
+import findWorkflowConfig from "../../shared/findWorkflowConfig.js";
 import planActionTransition from "../../shared/phases/planners/planActionTransition.js";
 import planWorkflowRecompute from "../../shared/phases/planners/planWorkflowRecompute.js";
 import planEventDispatch from "../../shared/phases/planners/planEventDispatch.js";
@@ -61,8 +63,9 @@ async function StartWorkflow(lowdefyContext) {
     });
   }
 
-  const workflowConfig = (workflowsConfig ?? []).find(
-    (w) => w.type === params.workflow_type,
+  const workflowConfig = findWorkflowConfig(
+    workflowsConfig,
+    params.workflow_type,
   );
   if (!workflowConfig) {
     throw new WorkflowEngineError(
@@ -124,10 +127,9 @@ async function StartWorkflow(lowdefyContext) {
   // ── Load: optional parent action (tracker-child start) ───────────────────
   let parent = null;
   if (params.parent_action_id) {
-    const actionsCollection = connection?.actionsCollection ?? "actions";
     [parent] = await findDocs({
       mongoDb: context.mongoDb,
-      collection: actionsCollection,
+      collection: collectionNames(connection).actions,
       query: { _id: params.parent_action_id },
     });
     if (!parent) {

@@ -1,6 +1,8 @@
 import findDocs from "../../mongo/findDocs.js";
 import { WorkflowEngineError } from "../errors.js";
 import applyRenderConfig from "./applyRenderConfig.js";
+import collectionNames from "../collectionNames.js";
+import findWorkflowConfig from "../findWorkflowConfig.js";
 
 /**
  * The accepted verbs for each user signal (Part 34 D6 / design D16; arrays
@@ -115,8 +117,8 @@ async function loadWorkflowState(
   { workflowId, actionId, signal, verb },
 ) {
   const { mongoDb, connection } = context;
-  const workflowsCollection = connection?.workflowsCollection ?? "workflows";
-  const actionsCollection = connection?.actionsCollection ?? "actions";
+  const { workflows: workflowsCollection, actions: actionsCollection } =
+    collectionNames(connection);
   // Action-targeted modes: Submit (`signal`) and Fields (`verb`). They share
   // the read path; only the gating differs. `signal`/`verb` are mutually
   // exclusive — a transition and a signal-less operation can't both apply.
@@ -163,8 +165,9 @@ async function loadWorkflowState(
     query: { workflow_id: workflowId },
   });
 
-  const workflowConfig = (context.workflowsConfig ?? []).find(
-    (w) => w.type === workflow.workflow_type,
+  const workflowConfig = findWorkflowConfig(
+    context.workflowsConfig,
+    workflow.workflow_type,
   );
   if (!workflowConfig) {
     throw new WorkflowEngineError(
