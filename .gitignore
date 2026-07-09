@@ -4,6 +4,7 @@
 **/node_modules/**
 **/dist/**
 **/coverage/**
+**/node-compile-cache/**
 
 temp.md
 # E2E Testing

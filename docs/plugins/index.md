@@ -8,6 +8,8 @@ type: index
 
 Custom Lowdefy blocks and actions used by the modules in this repo. The package is a regular Lowdefy plugin — modules declare it under their `plugins:` and consumers register it in their app's `lowdefy.yaml`. You only need to add it yourself if you are wiring blocks or the `FetchRequest` action directly into app YAML outside of a module.
 
+The workflow engine behind the `WorkflowAPI` and `EventsTimeline` connections lives in `@lowdefy/mongodb-workflows-sdk` (`packages/mongodb-workflows-sdk`); this plugin wraps it for Lowdefy apps. Non-Lowdefy services (e.g. Lambda microservices) can consume the SDK directly — see the SDK package's README. Nothing changes for Lowdefy consumers: the connections, request types, and YAML surface are identical.
+
 ## Blocks
 
 | Block                                      | Category          | Purpose                                                                                                                                               |

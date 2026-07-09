@@ -35,7 +35,8 @@ Never move design folders into `_completed/` unless the user explicitly requests
 ```
 apps/demo/          — Demo app that imports all modules
 modules/            — Reusable Lowdefy modules
-plugins/            — Custom Lowdefy plugins
+packages/           — Framework-agnostic packages (mongodb-workflows-sdk — the workflow engine)
+plugins/            — Custom Lowdefy plugins (thin wrappers over packages/ where applicable)
 docs/               — Repo-level docs (shared idioms, per-module references)
 ```
 

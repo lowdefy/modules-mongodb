@@ -1,0 +1,45 @@
+{
+  "name": "@lowdefy/mongodb-workflows-sdk",
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lowdefy/modules-mongodb.git",
+    "directory": "packages/mongodb-workflows-sdk"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./fsm": "./dist/shared/fsm/tables.js",
+    "./testing": "./dist/shared/inMemoryMongo.js"
+  },
+  "files": [
+    "dist/*"
+  ],
+  "scripts": {
+    "build": "swc src --out-dir dist --config-file ../../.swcrc --delete-dir-on-start --copy-files --strip-leading-paths",
+    "build:watch": "swc src --out-dir dist --config-file ../../.swcrc --copy-files --strip-leading-paths --watch",
+    "clean": "rm -rf dist",
+    "prepare": "pnpm build"
+  },
+  "dependencies": {
+    "@lowdefy/nunjucks": "0.0.0-experimental-20260611102401",
+    "mongodb": "^6"
+  },
+  "peerDependencies": {
+    "mongodb-memory-server": ">=10"
+  },
+  "peerDependenciesMeta": {
+    "mongodb-memory-server": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@swc/cli": "0.6.0",
+    "@swc/core": "1.11.24",
+    "mongodb-memory-server": "^10.1.2"
+  }
+}

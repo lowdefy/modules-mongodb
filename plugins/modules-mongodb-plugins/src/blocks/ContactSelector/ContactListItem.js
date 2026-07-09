@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Avatar, Button, Space, theme } from "antd";
 import { renderHtml } from "@lowdefy/block-utils";
 
-import parseNunjucks from "../../connections/shared/render/parseNunjucks.js";
+import parseNunjucks from "../shared/parseNunjucks.js";
 
 const ContactListItem = ({
   className,

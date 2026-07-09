@@ -12,6 +12,16 @@ const config = {
       },
     ],
   },
+  // Resolve the workflows SDK to its src/ (not the unbuilt dist/) so plugin
+  // tests can import the published entry points without a prior build.
+  moduleNameMapper: {
+    "^@lowdefy/mongodb-workflows-sdk$":
+      "<rootDir>/packages/mongodb-workflows-sdk/src/index.js",
+    "^@lowdefy/mongodb-workflows-sdk/fsm$":
+      "<rootDir>/packages/mongodb-workflows-sdk/src/shared/fsm/tables.js",
+    "^@lowdefy/mongodb-workflows-sdk/testing$":
+      "<rootDir>/packages/mongodb-workflows-sdk/src/shared/inMemoryMongo.js",
+  },
   testPathIgnorePatterns: [
     "/node_modules/",
     "/dist/",
