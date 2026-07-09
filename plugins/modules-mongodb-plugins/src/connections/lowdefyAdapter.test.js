@@ -216,7 +216,8 @@ test("SubmitWorkflowAction: hook endpointId leaves are invoked via callApi", asy
     "hooks/qualify-post",
   ]);
   // The pre-hook payload carries the loaded workflow + action + user.
-  expect(hookCalls[0].payload.workflow._id).toBe(start.workflow_id);
+  expect(hookCalls[0].payload.workflow_id).toBe(start.workflow_id);
+  expect(hookCalls[0].payload.context.workflow._id).toBe(start.workflow_id);
   expect(hookCalls[0].payload.user).toEqual(user);
   expect(result.event_id).toBeDefined();
 });
