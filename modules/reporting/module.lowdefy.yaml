@@ -29,7 +29,7 @@ exports:
     - id: reporting-data
       description: Read-only ReportingData connection over the app's data
     - id: ai
-      description: Anthropic provider connection (remap to reuse an existing one)
+      description: AI gateway provider connection (remap to reuse an existing one)
 
 vars:
   datasets:
@@ -50,17 +50,19 @@ vars:
     description: Collection name for chat conversations.
   model:
     type: string
-    default: claude-sonnet-4-5
-    description: Model id for the reporting assistant.
+    default: anthropic/claude-sonnet-4.5
+    description: >
+      Gateway model id (provider/model) for the reporting assistant, e.g.
+      anthropic/claude-sonnet-4.5 or anthropic/claude-haiku-4.5.
 
 secrets:
   - name: REPORTING_MONGODB_URI
     description: MongoDB URI for report and conversation storage.
   - name: REPORTING_DATA_MONGODB_URI
     description: MongoDB URI for the app data the data dictionary describes.
-  - name: ANTHROPIC_API_KEY
+  - name: AI_GATEWAY_API_KEY
     description: >
-      Anthropic API key for the bundled ai connection. Not needed when the
+      API key for the bundled ai gateway connection. Not needed when the
       app remaps the ai connection to its own provider connection.
 
 plugins:

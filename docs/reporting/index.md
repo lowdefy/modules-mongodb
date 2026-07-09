@@ -51,16 +51,16 @@ The module bundles four connections; only two point at data you must supply:
 | `reports-store`       | MongoDB collection for saved report specs                      |
 | `conversations-store` | MongoDB collection for chat conversations                      |
 | `reporting-data`      | Read-only `ReportingData` connection over the app's own data   |
-| `ai`                  | Anthropic provider connection                                  |
+| `ai`                  | AI gateway provider connection (the `model` var selects provider/model) |
 
-To reuse an existing provider connection instead of the bundled one, remap `ai`:
+To reuse an existing gateway connection instead of the bundled one, remap `ai`:
 
 ```yaml
     connections:
-      ai: my-anthropic-connection
+      ai: my-gateway-connection
 ```
 
-When `ai` is remapped, `ANTHROPIC_API_KEY` is not needed.
+When `ai` is remapped, `AI_GATEWAY_API_KEY` is not needed.
 
 ## Reference
 
@@ -68,4 +68,4 @@ When `ai` is remapped, `ANTHROPIC_API_KEY` is not needed.
 
 ## Shared idioms
 
-- [Secrets](../shared/secrets.md) — `REPORTING_MONGODB_URI`, `REPORTING_DATA_MONGODB_URI`, and `ANTHROPIC_API_KEY`
+- [Secrets](../shared/secrets.md) — `REPORTING_MONGODB_URI`, `REPORTING_DATA_MONGODB_URI`, and `AI_GATEWAY_API_KEY`

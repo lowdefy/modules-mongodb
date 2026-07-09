@@ -16,4 +16,4 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `datasets` | array |  | Yes | The data dictionary — a declarative description of queryable datasets (dimensions, measures, types, allowed aggregations, roles). Feeds the agent's instructions at build time and is the allowlist the query builder validates every spec against.  |
 | `reports_collection` | string | `report_layouts` |  | Collection name for saved report specs. |
 | `conversations_collection` | string | `conversations` |  | Collection name for chat conversations. |
-| `model` | string | `claude-sonnet-4-5` |  | Model id for the reporting assistant. |
+| `model` | string | `anthropic/claude-sonnet-4.5` |  | Gateway model id (provider/model) for the reporting assistant, e.g. anthropic/claude-sonnet-4.5 or anthropic/claude-haiku-4.5.  |

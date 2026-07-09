@@ -32,8 +32,8 @@ _ref:
           description: >
             The module's storage and analytics connections are remapped onto the
             demo's MONGODB_URI, so the only extra secret needed is
-            ANTHROPIC_API_KEY. Add it before the chat and generate surfaces will
-            work.
+            AI_GATEWAY_API_KEY (the AI gateway that backs the reporting agent).
+            Add it before the chat and generate surfaces will work.
 
       - id: seed_card
         type: Card

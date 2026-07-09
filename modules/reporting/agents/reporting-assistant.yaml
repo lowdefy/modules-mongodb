@@ -1,5 +1,5 @@
 id: reporting-assistant
-type: ClaudeAgent
+type: AIGatewayAgent
 connectionId:
   _module.connectionId: ai
 properties:
