@@ -1,3 +1,7 @@
+# Phone-number form field. Wraps the PhoneNumberInput block — the form-side
+# counterpart to the `phoneNumber` field type the view renderer already knows
+# (SmartDescriptions/fieldTypes/blockTypeMap.js maps PhoneNumberInput →
+# phoneNumber). The block value is stored at the `key` state path.
 vars:
   key:
     type: string
@@ -23,10 +27,7 @@ vars:
   label_span:
     type: number
     required: false
-  disabled:
-    type: boolean
-    default: false
-  extra:
+  default_region:
     type: string
     required: false
   on_change:
@@ -36,7 +37,7 @@ vars:
 config:
   id:
     _var: key
-  type: TextInput
+  type: PhoneNumberInput
   visible:
     _var:
       key: visible
@@ -50,18 +51,12 @@ config:
       key: validate
       default: []
   properties:
-    disabled:
-      _var:
-        key: disabled
-        default: false
     label:
       _build.object.assign:
         - inline:
             _var:
               key: label_inline
               default: false
-          extra:
-            _var: extra
         - _build.if:
             test:
               _build.ne:
@@ -78,6 +73,8 @@ config:
       _var: title
     placeholder:
       _var: placeholder
+    defaultRegion:
+      _var: default_region
   events:
     onChange:
       _var:
