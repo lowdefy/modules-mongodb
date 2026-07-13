@@ -9,8 +9,9 @@
 # Stale-URL allowlist: [error]. Only renders during recovery; any other
 # stage redirects to -view.
 #
-# Outer-card suppression checks action_config.form_error[0].form (not
-# `form` — error has its own form schema).
+# Outer-card suppression checks action_config.form_error[0].component == section
+# (not `form` — error has its own form schema). `section` is the only structural
+# component that renders its own Card; all other first entries get the outer card.
 #
 # The `resolve_error` button is the only interaction button whose `title`
 # is overridable per app (default "Resolve").
@@ -215,13 +216,19 @@ _ref:
                               _state: action.changes_requested
                     - _build.if:
                         test:
-                          _build.ne:
+                          _build.eq:
                             - _var:
-                                key: action_config.form_error.0.form
+                                key: action_config.form_error.0.component
                                 default: null
-                            - null
+                            - section
                         then:
-                          # First form entry owns outer chrome — render directly.
+                          # First form_error entry is a `section` — the only
+                          # structural component that renders its own Card. It owns
+                          # the outer chrome, so drop the outer error_card to avoid
+                          # double-card nesting. Other structural components
+                          # (controlled_list, box, label, file_upload) emit only a
+                          # Box/Label with no card, so they fall through to the else
+                          # branch and get wrapped like any other field.
                           # The description lead-in is prepended here too (it must
                           # land inside whichever container holds the form).
                           _build.array.concat:
