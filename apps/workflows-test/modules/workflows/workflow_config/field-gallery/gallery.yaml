@@ -77,6 +77,12 @@ form:
     component: text_input
     title: Text input
     required: true
+  # Exercises text_input's disabled + extra vars (read-only field with helper).
+  - key: form.text_readonly
+    component: text_input
+    title: Read-only text
+    disabled: true
+    extra: Disabled input with extra helper text.
   - key: form.text_area
     component: text_area
     title: Text area
@@ -88,6 +94,13 @@ form:
   - key: form.number
     component: number
     title: Number
+
+  # ── Phone ────────────────────────────────────────────────────────────────────
+  - key: form.phone
+    component: phone
+    title: Phone number
+    default_region: ZA
+    placeholder: 82 123 4567
 
   # ── Date ─────────────────────────────────────────────────────────────────────
   - key: form.date_selector
@@ -130,9 +143,12 @@ form:
         value: email
       - label: SMS
         value: sms
+  # Exercises button_selector's theme var (custom checked colour).
   - key: form.button_selector
     component: button_selector
     title: Buttons
+    theme:
+      buttonSolidCheckedBg: "#52c41a"
     options:
       - label: Low
         value: low
