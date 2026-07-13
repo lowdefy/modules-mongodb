@@ -4,7 +4,7 @@
   "license": "MIT",
   "private": true,
   "description": "Lowdefy MongoDB Modules",
-  "packageManager": "pnpm@10.6.2",
+  "packageManager": "pnpm@11.12.0",
   "type": "module",
   "scripts": {
     "build": "pnpm -r --filter '!@lowdefy/modules-demo' run build",
@@ -25,17 +25,5 @@
     "mongodb": "^6.10.0",
     "mongodb-memory-server": "^10.1.2",
     "prettier": "^3.8.4"
-  },
-  "pnpm": {
-    "packageExtensions": {
-      "@lowdefy/client": {
-        "dependencies": {
-          "antd": "6.3.1"
-        }
-      }
-    },
-    "onlyBuiltDependencies": [
-      "mongodb-memory-server"
-    ]
   }
 }

@@ -3,3 +3,11 @@ packages:
   - "plugins/*"
   - "modules/*"
   - "apps/*/.lowdefy/*"
+
+packageExtensions:
+  "@lowdefy/client":
+    dependencies:
+      antd: "6.3.1"
+
+onlyBuiltDependencies:
+  - mongodb-memory-server
