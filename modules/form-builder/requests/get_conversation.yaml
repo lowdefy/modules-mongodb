@@ -1,0 +1,14 @@
+id: get_conversation
+type: MongoDBFindOne
+connectionId:
+  _module.connectionId: conversations-collection
+payload:
+  conversation_id:
+    _string.concat:
+      - _url_query: id
+      - ":"
+      - _state: selected_block.blockId
+properties:
+  query:
+    _id:
+      _payload: conversation_id

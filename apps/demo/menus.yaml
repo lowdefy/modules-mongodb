@@ -22,6 +22,22 @@
           - _ref:
               module: activities
               menu: default
+    - id: form-builder-group
+      type: MenuGroup
+      properties:
+        title: Form Builder
+        icon: AiOutlineForm
+      links:
+        _build.array.concat:
+          - _ref:
+              module: form-builder
+              menu: default
+          - - id: dynamic-element-demo
+              type: MenuLink
+              pageId: dynamic-element-demo
+              properties:
+                title: Dynamic Element Demo
+                icon: AiOutlineAppstore
     - id: admin-group
       type: MenuGroup
       properties:

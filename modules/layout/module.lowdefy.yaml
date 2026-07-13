@@ -69,10 +69,11 @@ vars:
           Inline style object applied to the header logo (mapped to the
           `.logo` cssKey on the page block).
   menu:
-    type: object
+    # Untyped: the default is a runtime operator, and typed vars must hold
+    # concrete values (build validateVarTypes).
     default:
       _menu: default
-    description: Menu config passed to the page block. Defaults to _menu default.
+    description: Menu config (object) passed to the page block. Defaults to _menu default.
   header:
     type: object
     default: {}

@@ -1,0 +1,9 @@
+id: lowdefy-docs
+type: AxiosHttp
+properties:
+  baseURL:
+    _module.var: docs.base_url
+  method: get
+  # Docs pages are served as raw markdown, so read the response as text
+  # rather than parsing it as JSON.
+  responseType: text

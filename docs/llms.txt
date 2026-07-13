@@ -53,6 +53,11 @@
 - docs/files/index.md: Files — File attachments backed by S3 — drag-drop upload with thumbnails, downloads, deletes, and category filters. Every file is stamped onto a parent entity (`{ collection, doc_id }`), so the same component drops onto contact pages, company pages, or any entity page.
 - docs/files/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
+## form-builder
+
+- docs/form-builder/index.md: Form Builder — Visual form builder for dynamic page content. App users build parts of a form — a workflow step, extra profile fields, a custom company section — as Lowdefy block config, stored in MongoDB (default collection `dynamic-elements`) and rendered back into consumer pages through Lowdefy's server-resol...
+- docs/form-builder/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
+
 ## layout
 
 - docs/layout/index.md: Layout — Page layout module — header / sider / menu chrome, profile dropdown, notification bell, dark mode toggle, plus a centered auth-page wrapper for login flows.

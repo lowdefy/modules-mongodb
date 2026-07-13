@@ -1,0 +1,10 @@
+elements:
+  - id: profile-fields
+    title: Profile Fields
+    description: Extra fields rendered on the user profile page.
+  - id: workflow-step-review
+    title: Workflow Step — Review
+    description: Custom fields for the review step of a workflow.
+  - id: company-extra-fields
+    title: Company Extra Fields
+    description: Additional attributes section on the company edit form.

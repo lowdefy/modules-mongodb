@@ -1,0 +1,22 @@
+id: set-block-config
+type: InternalApi
+description: Set the full Lowdefy block config for the currently selected form block.
+payloadSchema:
+  type: object
+  required:
+    - config
+  properties:
+    config:
+      type: object
+      description: >-
+        The complete block config for the selected block: id, type,
+        properties, events, and any nested blocks.
+    summary:
+      type: string
+      description: One-line description of the change.
+# The agent loop halts on this tool call (stopOnToolCall) and hands the
+# input to the client, so this routine's return value is never used in
+# practice — it exists only to satisfy the tool-endpoint contract.
+routine:
+  - :return:
+      _payload: true

@@ -1,0 +1,19 @@
+id: resolve-element
+type: InternalApi
+routine:
+  - id: get_element
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: dynamic-elements-collection
+    properties:
+      query:
+        _id:
+          _payload: params.elementId
+  # The stored blocks are step data, so operators inside them are not
+  # evaluated here — they pass through to the client and evaluate against
+  # page state as normal runtime operators.
+  - :return:
+      blocks:
+        _if_none:
+          - _step: get_element.config.blocks
+          - []

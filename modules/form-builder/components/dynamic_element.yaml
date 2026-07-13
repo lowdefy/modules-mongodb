@@ -1,0 +1,33 @@
+# Preconfigured Dynamic block — the consumption story for built elements.
+# Consumers embed it with:
+#   _ref:
+#     module: form-builder
+#     component: dynamic-element
+#     vars:
+#       id: profile_custom
+#       elementId: user-profile-fields
+#       types: { blocks: [TextInput, Selector, Box] }
+#       fallback: []
+# `types` determines the consumer's client bundle — dynamic content may only
+# use block/action/operator types present in the bundle, so consumers should
+# pass the types their element uses.
+id:
+  _var: id
+type: Dynamic
+properties:
+  endpointId:
+    _module.endpointId: resolve-element
+  params:
+    elementId:
+      _var: elementId
+  types:
+    _var:
+      key: types
+      default:
+        _module.var: palette
+slots:
+  fallback:
+    blocks:
+      _var:
+        key: fallback
+        default: []
