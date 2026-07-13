@@ -1,5 +1,12 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.12.0
+
+### Patch Changes
+
+- [#105](https://github.com/lowdefy/modules-mongodb/pull/105) [`70622be`](https://github.com/lowdefy/modules-mongodb/commit/70622be1ff6e42e50f8e39474a520e9120aa4570) Thanks [@Saiby100](https://github.com/Saiby100)! - Center the ContactSelector row actions (verify/edit buttons) within their
+  fixed-width container instead of right-aligning them.
+
 ## 0.11.0
 
 ### Minor Changes
