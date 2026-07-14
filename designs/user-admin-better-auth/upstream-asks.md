@@ -2,7 +2,7 @@
 
 Platform-side changes the [user-admin design](design.md) depends on. Each ask names the design it lands in, why the module needs it, and its status.
 
-**Status (verified against the current auth-upgrade designs):** asks **1, 2, 3, 4, and 5 are resolved upstream**, and **ask 6 is dropped** — the invite email now rides `auth.email` (design Decision 7), so there is no binding to wire. Ask **3** (impersonation access control) is now **resolved in design** — the engine design's *The user-admin role* section adds an `auth.userAdminRole` config key that gates the whole user-administration surface (every auth admin step plus the impersonation client action), implemented in phase 9. Impersonation stays in the design behind its var, now backed by a working capability. Each ask below carries a **Resolved** / **Dropped** note with the upstream citation; the original ask text is kept underneath for history.
+**Status (verified against the current auth-upgrade designs):** asks **1, 2, 3, 4, and 5 are resolved upstream**, and **ask 6 is dropped** — the invite email now rides `auth.email` (design Decision 7), so there is no binding to wire. Ask **3** (impersonation access control) is now **resolved in design** — the engine design's _The user-admin role_ section adds an `auth.userAdminRole` config key that gates the whole user-administration surface (every auth admin step plus the impersonation client action), implemented in phase 9. Impersonation stays in the design behind its var, now backed by a working capability. Each ask below carries a **Resolved** / **Dropped** note with the upstream citation; the original ask text is kept underneath for history.
 
 ---
 
@@ -35,7 +35,7 @@ Note the related module consequence (admin Decision 1 territory): with no mirror
 
 ## 3. Impersonation access control under the new role model — RESOLVED
 
-> **Resolved upstream.** Landed in the engine design's *Capabilities wired at startup → The user-admin role* section (implemented in phase 9). The auth config takes an **`auth.userAdminRole`** key naming the member role that administers users — one role that gates the **whole user-administration surface**, not just impersonation:
+> **Resolved upstream.** Landed in the engine design's _Capabilities wired at startup → The user-admin role_ section (implemented in phase 9). The auth config takes an **`auth.userAdminRole`** key naming the member role that administers users — one role that gates the **whole user-administration surface**, not just impersonation:
 >
 > - **Every auth admin step** (`InviteMember`, `UpdateMemberRoles`, `UpdateMemberAttributes`, `RemoveMember`, `CancelInvitation`, `ListMembers`, `UpdateUserProfile`) mechanically checks that the resolved caller holds the configured role — an engine-enforced floor, with the module's endpoint role gates composing on top (defense in depth). System contexts (hooks) are exempt; `UpdateUserProfile` allows self-targeting without the role; an unconfigured key makes the admin steps refuse user-initiated calls.
 > - **Impersonation** is the client-action case that needed a bridge: it is governed by BetterAuth's own user-level admin-plugin check (`user.role`, never `member.role`), so the engine maintains `user.role` as an **internal denormalization** — synced at `UpdateMemberRoles`, invitation accept, and `RemoveMember`, never an authoring surface — and registers a **custom admin-plugin access control** granting the role exactly `user: ['impersonate']`: curated, not the full admin statement set, so identity-mutation endpoints stay unreachable (admin Decision 1) and `impersonate-admins` is excluded so a user-admin cannot impersonate another user-admin.
@@ -68,7 +68,7 @@ Note the related module consequence (admin Decision 1 territory): with no mirror
 
 ## 5. Attributes stored as native BSON — RESOLVED
 
-> **Resolved upstream.** mongodb Decision 5 and its open question are settled: "Resolved: native sub-documents." A pnpm patch adds a `supportsJSON` passthrough to `@better-auth/mongo-adapter` and `MongoDBAuthAdapter` passes `true`; the change is authored, committed, and pushed to the fork branch (`feat/mongo-adapter-supports-json`) — only the upstream PR filing remains. The module's native attribute reads are safe on the settled sub-document shape.
+> **Resolved upstream.** mongodb Decision 5 and its open question are settled: "Resolved: native sub-documents, via a vendored adapter." Mechanism (revised in phase 8): the adapter is **vendored** into `@lowdefy/connection-mongodb` with `supportsJSON: true` plus a legacy string-parse on read. The earlier pnpm-patch on `@better-auth/mongo-adapter` was abandoned because `patchedDependencies` does not ship in the published `@lowdefy/server` tarball — consumer installs would get the unpatched adapter and silently fall back to string storage. The upstream PR to the fork (`feat/mongo-adapter-supports-json`) is now optional goodwill, not a release dependency. The module's native attribute reads are safe on the settled sub-document shape.
 
 **Lands in**: [mongodb](../../../lowdefy-design/designs/auth-upgrade/mongodb/design.md) Decision 5 / its open question.
 
