@@ -29,6 +29,9 @@ vars:
   description:
     type: string
     required: false
+  on_change:
+    type: array
+    default: []
 
 config:
   id:
@@ -75,3 +78,8 @@ config:
             else: {}
     description:
       _var: description
+  events:
+    onChange:
+      _var:
+        key: on_change
+        default: []

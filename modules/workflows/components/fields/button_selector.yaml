@@ -26,6 +26,15 @@ vars:
   colon:
     type: boolean
     default: true
+  disabled:
+    type: boolean
+    default: false
+  theme:
+    type: object
+    required: false
+  on_change:
+    type: array
+    default: []
 
 config:
   id:
@@ -42,6 +51,12 @@ config:
   properties:
     title:
       _var: title
+    disabled:
+      _var:
+        key: disabled
+        default: false
+    theme:
+      _var: theme
     label:
       _build.object.assign:
         - inline:
@@ -69,4 +84,9 @@ config:
     options:
       _var:
         key: options
+        default: []
+  events:
+    onChange:
+      _var:
+        key: on_change
         default: []

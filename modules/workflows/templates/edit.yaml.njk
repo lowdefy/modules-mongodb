@@ -9,9 +9,12 @@
 # Stale-URL allowlist: [action-required, in-progress, changes-required].
 # Escape hatch: review's Edit-link sets _input: skip_status_redirect=true.
 #
-# Outer-card suppression rule (v0 parity): if action_config.form[0].form is
-# truthy at build time, the first form entry owns its own outer chrome — drop the
-# outer layout.card wrap to avoid the double-card nesting.
+# Outer-card suppression rule: if action_config.form[0].component is `section`
+# at build time, the first form entry renders its own Card (section is the only
+# structural component that does) — drop the outer layout.card wrap to avoid the
+# double-card nesting. All other first entries (including the other structural
+# components controlled_list / box / label / file_upload, which emit no card) get
+# the outer form_card, so the description, form body, and comment share one card.
 #
 # Layout (Part 56 addendum; Part 64): universal-fields chips + ✎ ride the title
 # bar's page_actions; a bare workflow-closed banner sits above the working
@@ -183,8 +186,8 @@ _ref:
         # Three-tier shell: left (entity workflows) + middle (closed banner +
         # form body with description lead-in + floating action bar) + RHS
         # (Details? above History). The middle body is wrapped in a Card unless
-        # the first form entry owns its own outer chrome (outer-card suppression
-        # on form[0].form).
+        # the first form entry is a `section` (which renders its own Card —
+        # outer-card suppression on form[0].component == section).
         - - _ref:
               path: components/action-workspace.yaml
               vars:
@@ -222,13 +225,19 @@ _ref:
                               _state: action.changes_requested
                     - _build.if:
                         test:
-                          _build.ne:
+                          _build.eq:
                             - _var:
-                                key: action_config.form.0.form
+                                key: action_config.form.0.component
                                 default: null
-                            - null
+                            - section
                         then:
-                          # First form entry owns outer chrome — render directly.
+                          # First form entry is a `section` — the only structural
+                          # component that renders its own Card. It owns the outer
+                          # chrome, so drop the outer form_card to avoid double-card
+                          # nesting. Other structural components (controlled_list,
+                          # box, label, file_upload) emit only a Box/Label with no
+                          # card, so they fall through to the else branch and get
+                          # wrapped like any other field.
                           # The description lead-in is prepended here too (it must
                           # land inside whichever container holds the form).
                           _build.array.concat:
@@ -386,7 +395,10 @@ _ref:
                                 default: true
                             - _state: action.buttons.progress
                         properties:
-                          title: Save Draft
+                          title:
+                            _var:
+                              key: page_config.buttons.progress.title
+                              default: Save Draft
                           type: default
                           disabled:
                             _or:
@@ -417,6 +429,16 @@ _ref:
                                         _state: action.key
                                       form:
                                         _state: form
+                                      comment:
+                                        _state: comment
+                                      comment_visibility:
+                                        _if:
+                                          test:
+                                            _eq:
+                                              - _state: comment_internal
+                                              - true
+                                          then: internal
+                                          else: shared
                                 # Progress succeeded (CallAPI halts the chain on
                                 # error): refetch the action so status/key reflect
                                 # the saved draft, then confirm with a toast.
@@ -428,6 +450,12 @@ _ref:
                                   params:
                                     action:
                                       _request: get_workflow_action
+                                    # Clear the comment inputs after a successful
+                                    # draft-save so the same comment is not folded
+                                    # into another event on the next Save Draft
+                                    # (parity with the check page's progress reseed).
+                                    comment: null
+                                    comment_internal: false
                                 - id: progress_success_message
                                   type: DisplayMessage
                                   params:
@@ -447,7 +475,10 @@ _ref:
                                 default: true
                             - _state: action.buttons.submit
                         properties:
-                          title: Submit
+                          title:
+                            _var:
+                              key: page_config.buttons.submit.title
+                              default: Submit
                           type: primary
                           disabled:
                             _or:

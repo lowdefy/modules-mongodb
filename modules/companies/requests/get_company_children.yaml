@@ -10,8 +10,8 @@ properties:
     - $match:
         parent_ids:
           _payload: parent_id
-        deleted:
-          $ne: true
+        deleted.timestamp:
+          $exists: false
     - $addFields:
         display_name:
           $getField:

@@ -4,18 +4,22 @@
 #   - Type picker rendered as a SegmentedSelector (Call / Email / Meeting
 #     tabs), options + icons sourced from the merged activity_types enum
 #     (built-ins + consumer-registered types).
-#   - A Date + (Duration | Direction) row. Duration shows for call and
-#     meeting; Direction shows for email. Both write to `attributes.*`.
+#   - A Date + (Duration | Direction) row. Duration / Direction show per
+#     the type's enum flags (see `enums/activity_types.yaml`). Both write
+#     to `attributes.*`.
 #   - Subject (title) and Notes (description).
-#   - Linked contacts, relabelled per type (Participants / CC / Attendees).
+#   - Linked contacts, relabelled per the type's `contact_label` flag
+#     (Participants / CC / Attendees for the built-ins).
 #   - Linked companies — gated behind the `show_company` component var
 #     (default true) so full new/edit pages keep company linking while
 #     consumers that seed the company via prefill can hide it. The edit
 #     page passes `disable_company` (from the module-level
 #     `disable_company_edit` var) to render the selector read-only.
-#   - A consumer-extension hook (`fields.attributes`) for app-level fields.
-#   - Agenda topics (meeting only) — saved as tasks in the actions
-#     collection by the create/update APIs, not on the activity doc.
+#   - Consumer-extension fields (`fields.attributes`, with per-type
+#     overrides via `fields.attributes_by_type`) for app-level fields.
+#   - Agenda topics (types flagged `agenda: true`, e.g. meeting) — saved
+#     as tasks in the actions collection by the create/update APIs, not
+#     on the activity doc.
 #
 # The form is stateless: it doesn't know whether it's creating or updating
 # an activity. The wrapping page or modal seeds initial state, runs
@@ -48,9 +52,7 @@ blocks:
             _build.array.map:
               on:
                 _build.object.entries:
-                  _build.object.assign:
-                    - _ref: enums/activity_types.yaml
-                    - _module.var: activity_types
+                  _ref: components/merged_activity_types.yaml
               callback:
                 _build.function:
                   value:
@@ -93,7 +95,9 @@ blocks:
         type: TiptapInput
         properties:
           title: Notes
-      # Linked contacts — Participants / CC / Attendees by type.
+      # Linked contacts — relabelled per type via the merged enum's
+      # `contact_label` flag (Participants / CC / Attendees for the
+      # built-ins; consumer types default to Participants).
       - _ref:
           module: contacts
           component: contact-selector
@@ -102,20 +106,14 @@ blocks:
             keyword: contact
             label:
               title:
-                _if:
-                  test:
-                    _eq:
+                _get:
+                  from:
+                    _ref: components/merged_activity_types.yaml
+                  key:
+                    _string.concat:
                       - _state: type
-                      - meeting
-                  then: Attendees
-                  else:
-                    _if:
-                      test:
-                        _eq:
-                          - _state: type
-                          - email
-                      then: CC
-                      else: Participants
+                      - .contact_label
+                  default: Participants
     # Linked companies — optional, on by default; consumers that seed the
     # company via prefill can hide it.
     - _build.if:
@@ -136,18 +134,80 @@ blocks:
                     key: disable_company
                     default: false
         else: []
-    # Consumer-defined attribute fields (only when provided).
+    # Consumer-defined attribute fields (only when provided). Per-type
+    # lists (`fields.attributes_by_type.<type_id>`) win over the global
+    # `fields.attributes` array; types without a per-type entry fall back
+    # to the global array. Type selection is runtime (the type tabs), so
+    # each list renders inside a Box gated on `_state: type`; when no
+    # per-type lists are configured the global array splices in flat,
+    # exactly as before.
     - _build.if:
         test:
           _build.gt:
             - _build.array.length:
-                _module.var: fields.attributes
+                _build.object.entries:
+                  _module.var: fields.attributes_by_type
             - 0
         then:
-          _module.var: fields.attributes
-        else: []
-    # Agenda topics — meeting only. Topics are not stored on the activity:
-    # create-activity / update-activity persist each one as a task doc in
+          _build.array.concat:
+            - _build.if:
+                test:
+                  _build.gt:
+                    - _build.array.length:
+                        _module.var: fields.attributes
+                    - 0
+                then:
+                  - id: attributes_fallback
+                    type: Box
+                    layout:
+                      gap: 16
+                    visible:
+                      _not:
+                        _array.includes:
+                          - _build.array.map:
+                              on:
+                                _build.object.entries:
+                                  _module.var: fields.attributes_by_type
+                              callback:
+                                _build.function:
+                                  __build.args: "0.0"
+                          - _state: type
+                    blocks:
+                      _module.var: fields.attributes
+                else: []
+            - _build.array.map:
+                on:
+                  _build.object.entries:
+                    _module.var: fields.attributes_by_type
+                callback:
+                  _build.function:
+                    id:
+                      __build.string.concat:
+                        - attributes_by_type_
+                        - __build.args: "0.0"
+                    type: Box
+                    layout:
+                      gap: 16
+                    visible:
+                      _eq:
+                        - _state: type
+                        - __build.args: "0.0"
+                    blocks:
+                      __build.args: "0.1"
+        else:
+          _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _module.var: fields.attributes
+                - 0
+            then:
+              _module.var: fields.attributes
+            else: []
+    # Agenda topics — types with `agenda: true` in the merged enum
+    # (built-in `meeting`, plus any consumer type that sets the flag).
+    # Topics are not stored on the activity: create-activity /
+    # update-activity persist each one as a task doc in
     # the actions collection (kind: task, activity_ids link). Items seeded
     # by the edit page carry a hidden `_id` (the task _id) that round-trips
     # through the ControlledList so saves update the right task; items
@@ -156,8 +216,15 @@ blocks:
         type: Alert
         visible:
           _eq:
-            - _state: type
-            - meeting
+            - _get:
+                from:
+                  _ref: components/merged_activity_types.yaml
+                key:
+                  _string.concat:
+                    - _state: type
+                    - .agenda
+                default: false
+            - true
         properties:
           type: warning
           showIcon: false
@@ -169,8 +236,15 @@ blocks:
         type: ControlledList
         visible:
           _eq:
-            - _state: type
-            - meeting
+            - _get:
+                from:
+                  _ref: components/merged_activity_types.yaml
+                key:
+                  _string.concat:
+                    - _state: type
+                    - .agenda
+                default: false
+            - true
         layout:
           gap: 8
         properties:
@@ -227,24 +301,10 @@ blocks:
               span: 12
             properties:
               title: Due Date
-    # Attachments — upload files against the activity. The wrapping page/modal
-    # seeds `activity_id` in state (reused as the create _id), so files link to
-    # the activity before it exists. Requires the host app to register the
-    # files module.
-    - - id: divider_attachments
-        type: Divider
-        properties:
-          title: Attachments
-          style:
-            margin: 4
-      - _ref:
-          module: files
-          component: file-manager
-          vars:
-            block_id: activity_files
-            entity_type: activity
-            entity_id:
-              _state: activity_id
-            file_category: activity-attachment
-            single_file: false
-            hint: Click or drag to attach a file
+    # Attachments — the `components.form_attachments` slot. Defaults to the
+    # files module's file-manager (`components/attachments_form.yaml`); apps
+    # that don't wire the files module supply their own block array (or `[]`
+    # to drop the section). The wrapping page/modal seeds `activity_id` in
+    # state (reused as the create _id), so attachment blocks can link files
+    # to the activity before it exists.
+    - _module.var: components.form_attachments

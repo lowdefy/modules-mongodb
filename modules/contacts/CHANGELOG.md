@@ -1,5 +1,40 @@
 # @lowdefy/modules-mongodb-contacts
 
+## 0.12.0
+
+## 0.11.0
+
+## 0.10.1
+
+### Patch Changes
+
+- [#98](https://github.com/lowdefy/modules-mongodb/pull/98) [`b7ec1d8`](https://github.com/lowdefy/modules-mongodb/commit/b7ec1d812137bea57cb6e324dce2fb0bb9e6f062) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Fix stable-Lowdefy build failure on the contacts new/edit forms. Both pages
+  render the company selector (`get_companies_for_selector`), which reads
+  `state.cycle_check_self_id` / `state.cycle_check_ids`, but neither page
+  initialised those state keys — so the build failed with 4 `_state`
+  "no input block with this id exists" errors. Initialise both keys (to `null`
+  and `[]`, plain-picker defaults) in each page's mount `SetState`, matching the
+  pattern already used on contacts/view and companies new/edit/view.
+
+## 0.10.0
+
+### Patch Changes
+
+- [#94](https://github.com/lowdefy/modules-mongodb/pull/94) [`f1d8f6c`](https://github.com/lowdefy/modules-mongodb/commit/f1d8f6cefa4cee19f838795d91403851fea4027d) Thanks [@Yianni99](https://github.com/Yianni99)! - Add a role-filtered simple contact selector
+
+  New `role-contact-selector` contacts component: a Selector (or MultipleSelector
+  via `mode`) of active contacts scoped to one or more roles (matched against
+  `apps.<app_name>.roles`), storing a denormalized `{ contact_id, name, email }`
+  value — object in single mode, array in multiple — so read-only views render it
+  as a contact (name + link). New `role_contact` and `role_contact_multiple`
+  workflows form fields wrap the single- and multiple-select cases. A lighter
+  alternative to the rich contact picker (`contact`) when a form only needs to pick
+  existing contacts in a given role.
+
+- [#96](https://github.com/lowdefy/modules-mongodb/pull/96) [`5742843`](https://github.com/lowdefy/modules-mongodb/commit/5742843c5be12cb2a67325efad52516bde5b1fc3) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Standardise the soft-delete read on the `deleted` change-stamp shape.
+
+  `get_contact_companies` filtered the companies lookup with `deleted: { $ne: true }`, which would let soft-deleted companies through once `deleted` is a change-stamp object. It now uses `deleted.timestamp: { $exists: false }`, matching the [soft-delete convention](https://github.com/lowdefy/modules-mongodb/blob/main/docs/shared/soft-delete.md).
+
 ## 0.9.2
 
 ## 0.9.1

@@ -3,3 +3,17 @@ packages:
   - "plugins/*"
   - "modules/*"
   - "apps/*/.lowdefy/*"
+
+packageExtensions:
+  "@lowdefy/client":
+    dependencies:
+      antd: "6.3.1"
+
+# pnpm 11 replaced onlyBuiltDependencies/ignoredBuiltDependencies with allowBuilds
+# (package -> boolean) and fails install on any un-reviewed build script.
+# mongodb-memory-server needs its postinstall; @swc/core and sharp ship prebuilt
+# binaries via optional deps, so their install scripts are intentionally skipped.
+allowBuilds:
+  mongodb-memory-server: true
+  "@swc/core": false
+  sharp: false

@@ -11,8 +11,8 @@ properties:
       - - $match:
             _id:
               _payload: _id
-            deleted:
-              $ne: true
+            deleted.timestamp:
+              $exists: false
       # Resolve parent docs by name when hierarchy is enabled. localField
       # parent_ids + foreignField _id natively handles multikey expansion
       # (each element of the array matches a foreign _id). The sub-pipeline
@@ -32,8 +32,8 @@ properties:
                 foreignField: _id
                 pipeline:
                   - $match:
-                      deleted:
-                        $ne: true
+                      deleted.timestamp:
+                        $exists: false
                   - $project:
                       _build.object.fromEntries:
                         - - _id

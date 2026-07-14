@@ -24,6 +24,11 @@ _ref:
         - id: init_state
           type: SetState
           params:
+            # The company selector on this form reads _state.cycle_check_* via
+            # get_companies_for_selector; initialise them so the build's _state
+            # validation passes (this form never cycle-checks — plain picker).
+            cycle_check_self_id: null
+            cycle_check_ids: []
             global_attributes: {}
             profile.avatar_color:
               _get:

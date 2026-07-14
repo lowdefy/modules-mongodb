@@ -17,6 +17,7 @@
 - docs/shared/event-display.md: Event display — Modules that write to the `log-events` collection store **per-app display titles** alongside each event document. The `event_display` var on each module is a map from `app_name → { event_type → Nunjucks template }`. The events module renders the template that matches the current `display_key`.
 - docs/shared/secrets.md: Secrets — Master list of every secret read by modules in this repo. Bucket names, keys, and connection strings live in secrets so they stay out of version control.
 - docs/shared/slots.md: Slots — Modules that ship list / detail / edit pages expose **slots** so consumers can extend each page without forking the YAML. Three slot vars are conventional:
+- docs/shared/soft-delete.md: Soft delete — Modules that soft-delete documents never remove them from the collection — they mark them with a `deleted` field and filter them out of reads. The marker doubles as an audit record: it is a [change stamp](./change-stamps.md), so it captures **when** the document was deleted and **who** deleted it.
 
 ## plugins
 
@@ -40,7 +41,7 @@
 
 ## contacts
 
-- docs/contacts/index.md: Contacts — Contact management — list, detail, edit, and create pages over the shared `user-contacts` collection, plus a rich contact selector with inline add/edit/verify and a basic dropdown selector.
+- docs/contacts/index.md: Contacts — Contact management — list, detail, edit, and create pages over the shared `user-contacts` collection, plus a rich contact selector with inline add/edit/verify, a basic dropdown selector, and a role-scoped selector (`role-contact-selector`, single or multiple) that stores a view-renderable denorma...
 - docs/contacts/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## events

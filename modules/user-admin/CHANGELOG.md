@@ -1,5 +1,19 @@
 # @lowdefy/modules-mongodb-user-admin
 
+## 0.12.0
+
+## 0.11.0
+
+## 0.10.1
+
+## 0.10.0
+
+### Patch Changes
+
+- [#96](https://github.com/lowdefy/modules-mongodb/pull/96) [`5742843`](https://github.com/lowdefy/modules-mongodb/commit/5742843c5be12cb2a67325efad52516bde5b1fc3) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Standardise the soft-delete read on the `deleted` change-stamp shape.
+
+  `get_all_users` and `get_user_excel_data` matched live users with `deleted: null`. They now use `deleted.timestamp: { $exists: false }` so every module reads soft-delete identically (see the [soft-delete convention](https://github.com/lowdefy/modules-mongodb/blob/main/docs/shared/soft-delete.md)). Behaviour is unchanged — both predicates treat `null`/absent as live and exclude a real delete stamp.
+
 ## 0.9.2
 
 ## 0.9.1
