@@ -18,9 +18,33 @@ form:
         value: won
       - label: Lost
         value: lost
+    # Clear a stale reason when the outcome flips so the filtered list re-applies.
+    on_change:
+      - id: reset_reason_on_outcome_change
+        type: SetState
+        params:
+          form.reason: null
+  # Reason filtered by the chosen outcome. Values are the module's
+  # outcome_reasons slugs (so the deals badge resolves them); the map is inlined
+  # because the workflow config can't read the deals module's outcome_reasons var.
   - key: form.reason
-    component: text_input
+    component: selector
     title: Reason
+    required: true
+    options:
+      _js:
+        fn: |
+          const reasons = args.reasons;
+          const oc = state('form.outcome_type');
+          return Object.keys(reasons)
+            .filter((k) => (oc ? reasons[k].outcome === oc : true))
+            .map((k) => ({ label: reasons[k].title, value: k }));
+        args:
+          reasons:
+            price-accepted: { title: Price accepted, outcome: won }
+            best-fit: { title: Best fit, outcome: won }
+            no-budget: { title: No budget, outcome: lost }
+            lost-to-competitor: { title: Lost to competitor, outcome: lost }
 # Post-submit stamps the deal's `outcome` field (type + reason). The deals
 # module's outcome surface reads deal.outcome.* (not the workflow form_data),
 # so this hook is what makes the Won/Lost badge appear.
