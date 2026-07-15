@@ -47,7 +47,10 @@ exports:
     - id: file-card
       description: Layout card wrapping file-manager for easy embedding
     - id: file-list
-      description: Lightweight read-only file list using standard Lowdefy blocks (no plugin needed)
+      description: >-
+        Lightweight read-only file list using standard Lowdefy blocks (no
+        plugin needed). Vars: block_id, entity_type, entity_id, file_category,
+        and `empty_text` (default "No files" — the empty-state message).
     - id: download-policy
       description: >-
         Presigned S3 GET request on the files-bucket connection, for consumers

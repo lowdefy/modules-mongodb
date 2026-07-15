@@ -210,7 +210,10 @@ exports:
       description: Update company with contact reconciliation and event logging
   components:
     - id: company-selector
-      description: Selector/MultipleSelector for picking companies
+      description: >-
+        Selector/MultipleSelector for picking companies. Vars: field_id, mode,
+        title, label, disabled, and `required` (default false — sets the block
+        required so a page-level Validate flags an empty selection).
   menus:
     - id: default
       description: Companies navigation link
