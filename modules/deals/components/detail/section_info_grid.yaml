@@ -1,0 +1,20 @@
+id: detail_section_info_grid
+type: Box
+layout:
+  gap: 6
+  justify: stretch
+blocks:
+  _build.array.concat:
+    - - _ref: components/detail/section_company.yaml
+      - _ref: components/detail/section_people.yaml
+      - id: detail_info_grid_divider
+        type: Divider
+        layout:
+          span: 24
+        style:
+          .element:
+            margin: 4px 0
+    # App-injected info-grid tiles (default []) — the shipped grid has no
+    # product tile; host apps re-inject one (e.g. section_product) here.
+    - _module.var: components.info_grid_slots
+    - - _ref: components/detail/section_files.yaml

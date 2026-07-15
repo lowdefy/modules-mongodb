@@ -1,0 +1,208 @@
+id: deal_outcome_modal
+type: Modal
+properties:
+  title: Record Deal Outcome
+  okText: Submit
+  cancelText: Cancel
+  width: 600
+events:
+  onOpen:
+    # Derive the outcome action (id + stage + workflow) from the phase-view
+    # state so submit/cancel can target it. Action type comes from the module's
+    # `outcome_action_type` var, passed in as a _js arg (never a literal).
+    - id: derive_deal_outcome_action
+      type: SetState
+      params:
+        deal_outcome_action:
+          _js:
+            fn: |
+              const wfs = state('entity_workflows') || [];
+              for (const w of wfs) {
+                for (const g of (w.groups || [])) {
+                  const a = (g.actions || []).find((x) => x.type === args.outcome_action_type);
+                  if (a) return { _id: a._id, stage: a.status, workflow_id: w._id };
+                }
+              }
+              return null;
+            args:
+              outcome_action_type:
+                _module.var: outcome_action_type
+        deal_outcome_actionable:
+          _js:
+            fn: |
+              const wfs = state('entity_workflows') || [];
+              for (const w of wfs) {
+                for (const g of (w.groups || [])) {
+                  const a = (g.actions || []).find((x) => x.type === args.outcome_action_type);
+                  // Card status is the collapsed stage string, not a status[] array.
+                  if (a) return (a.status === 'action-required');
+                }
+              }
+              return false;
+            args:
+              outcome_action_type:
+                _module.var: outcome_action_type
+    # Pre-fill the Outcome toggle from the reason chosen in the header selector —
+    # but never pre-select Won unless the outcome step is actionable.
+    - id: prefill_outcome_type
+      type: SetState
+      params:
+        form.outcome_type:
+          _js:
+            fn: |
+              const reasons = args.reasons || {};
+              const r = state('form.reason');
+              const oc = r && reasons[r] ? reasons[r].outcome : null;
+              if (oc === 'won' && !state('deal_outcome_actionable')) return null;
+              return oc;
+            args:
+              reasons:
+                _module.var: outcome_reasons
+  onOk:
+    - id: validate_outcome_form
+      type: Validate
+      params:
+        regex:
+          - ^form\.
+    # Won → submit the outcome action through the engine (runs the win hooks:
+    # stamp deal won, push to Fulfilling, unblock Order Confirmation). Guarded
+    # on the action being actionable — the header selector + Outcome toggle
+    # already hide Won until then, this is the belt-and-braces check.
+    # Endpoint is derived at build time from the module's `workflow_type` var
+    # ({workflow_type}-submit in the workflows namespace) — never a literal.
+    - id: submit_win
+      type: CallAPI
+      skip:
+        _or:
+          - _ne:
+              - _state: form.outcome_type
+              - won
+          - _not:
+              _state: deal_outcome_actionable
+      params:
+        endpointId:
+          _module.endpointId:
+            id:
+              _build.string.concat:
+                - _module.var: workflow_type
+                - "-submit"
+            module: workflows
+        payload:
+          action_id:
+            _state: deal_outcome_action._id
+          signal: submit
+          current_key: null
+          form:
+            outcome_type: won
+            reason:
+              _state: form.reason
+            notes:
+              _state: form.notes
+    # Lost → stamp the deal + cancel the workflow (works at any stage).
+    - id: record_loss
+      type: CallAPI
+      skip:
+        _ne:
+          - _state: form.outcome_type
+          - lost
+      params:
+        endpointId:
+          _module.endpointId: record-loss
+        payload:
+          deal_id:
+            _state: selected_deal_id
+          workflow_id:
+            _state: deal_outcome_action.workflow_id
+          reason:
+            _state: form.reason
+          notes:
+            _state: form.notes
+    - id: refetch_after_outcome
+      type: Request
+      params:
+        - get_selected_deal
+        - get_active_deals
+        - get_last_contact
+        - get-events
+    # Refresh the phase view (actions-on-entity reads entity_workflows state).
+    - id: refetch_entity_workflows_after_outcome
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId:
+            id: get-entity-workflows
+            module: workflows
+        payload:
+          entity:
+            id:
+              _state: selected_deal_id
+            connection_id: deals
+    - id: set_entity_workflows_after_outcome
+      type: SetState
+      params:
+        entity_workflows:
+          _actions: refetch_entity_workflows_after_outcome.response.response.workflows
+    - id: reset_outcome_form
+      type: SetState
+      params:
+        form: null
+  onCancel:
+    - id: reset_outcome_form_cancel
+      type: SetState
+      params:
+        form: null
+  onClose:
+    - id: reset_outcome_form_close
+      type: SetState
+      params:
+        form: null
+blocks:
+  - id: outcome_divider
+    type: Divider
+  - id: form.outcome_type
+    type: ButtonSelector
+    required: true
+    properties:
+      title: Outcome
+      # Won only offered once the outcome step is actionable.
+      options:
+        _if:
+          test:
+            _state: deal_outcome_actionable
+          then:
+            - label: Won
+              value: won
+            - label: Lost
+              value: lost
+          else:
+            - label: Lost
+              value: lost
+    events:
+      # Clear a stale reason when the outcome changes (prevents a mismatched
+      # outcome/reason). onChange fires on user input only, not the onOpen prefill.
+      onChange:
+        - id: reset_reason_on_outcome_change
+          type: SetState
+          params:
+            form.reason: null
+  - id: form.reason
+    type: Selector
+    required: true
+    properties:
+      title: Outcome Reason
+      placeholder: Select reason
+      options:
+        _js:
+          fn: |
+            const reasons = args.reasons || {};
+            const oc = state('form.outcome_type');
+            return Object.keys(reasons)
+              .filter((k) => (oc ? reasons[k].outcome === oc : true))
+              .map((k) => ({ label: reasons[k].title, value: k }));
+          args:
+            reasons:
+              _module.var: outcome_reasons
+  - id: form.notes
+    type: TextArea
+    properties:
+      title: Notes

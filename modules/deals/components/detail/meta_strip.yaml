@@ -1,0 +1,71 @@
+id: detail_meta_strip
+type: Descriptions
+style:
+  .element:
+    background: var(--ant-color-fill-quaternary)
+    border: 1px solid var(--ant-color-border-secondary)
+    borderRadius: 6px
+    padding: 4px 0
+  .label:
+    fontSize: 10px
+    lineHeight: 1.2
+    fontWeight: 600
+    textTransform: uppercase
+    letterSpacing: 0.05em
+    color: var(--ant-color-text-tertiary)
+    padding: 2px 10px 0
+  .content:
+    fontSize: 13px
+    lineHeight: 1.25
+    fontWeight: 700
+    color: var(--ant-color-text)
+    padding: 0 10px 2px
+    whiteSpace: nowrap
+    overflow: hidden
+    textOverflow: ellipsis
+properties:
+  bordered: false
+  colon: false
+  size: small
+  column:
+    xs: 2
+    sm: 2
+    md: 3
+    lg: 3
+    xl: 3
+    xxl: 5
+  layout: vertical
+  theme:
+    itemPaddingBottom: 0
+    itemPaddingEnd: 0
+    labelColor: var(--ant-color-text-tertiary)
+    contentColor: var(--ant-color-text)
+  items:
+    _array.concat:
+      - - label: Value
+          value:
+            _if_none:
+              - _request: get_selected_deal.0.value_label
+              - "—"
+        - label: Commercialisation Date
+          value:
+            _if_none:
+              - _request: get_selected_deal.0.close_label
+              - "—"
+        - label: Owner
+          value:
+            _if_none:
+              - _request: get_selected_deal.0.created.user.name
+              - "—"
+        - label: Days open
+          value:
+            _if_none:
+              - _request: get_selected_deal.0.days_open_label
+              - "—"
+        - label: Last contact
+          value:
+            _if_none:
+              - _request: get_last_contact.0.last_contact_label
+              - "—"
+      # App-injected extra meta fields (default []).
+      - _module.var: meta_fields

@@ -1,0 +1,62 @@
+id: update-people
+type: Api
+routine:
+  - id: update_deal_people
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: deals-collection
+    properties:
+      filter:
+        _id:
+          _payload: deal_id
+        removed: null
+      update:
+        # People are stored as the picker's captured array of contact snapshots
+        # ({ contact_id, name, email }). The legacy scalar *_id fields are
+        # dropped on save (read-side enrichment now keys off the embedded
+        # contact_id).
+        $set:
+          main_point_of_contact:
+            _payload: main_point_of_contact
+          decision_maker:
+            _payload: decision_maker
+          finance_contact:
+            _payload: finance_contact
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
+
+  - id: log_people_event
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: update-deal-people
+        display:
+          _build.object.fromEntries:
+            - - _module.var: app_name
+              - title:
+                  _nunjucks:
+                    template: |
+                      <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> updated deal people.
+                    on:
+                      user:
+                        _user: true
+                description: null
+        references:
+          deal_ids:
+            - _payload: deal_id
+        metadata:
+          main_point_of_contact:
+            _payload: main_point_of_contact
+          decision_maker:
+            _payload: decision_maker
+          finance_contact:
+            _payload: finance_contact
+
+  - :return:
+      ok: true

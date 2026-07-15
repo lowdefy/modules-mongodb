@@ -1,0 +1,106 @@
+id: detail_add_note_modal
+type: Modal
+properties:
+  title: Add Note
+  okText: Save
+  cancelText: Cancel
+events:
+  onOpen:
+    - id: fetch_mentionable_users
+      type: Request
+      params: get_mentionable_users
+  onOk:
+    - id: validate
+      type: Validate
+      params: detail_panel.note_content
+    - id: insert_note_event
+      type: CallAPI
+      skip:
+        _or:
+          - _eq:
+              - _state: detail_panel.note_content.text
+              - null
+          - _eq:
+              - _state: detail_panel.note_content.html
+              - <p></p>
+      params:
+        endpointId:
+          _module.endpointId:
+            id: new-event
+            module: events
+        payload:
+          type: deal-note
+          # App-keyed event display read by the host app — the app key resolves
+          # at build time from _module.var: app_name.
+          display:
+            _build.object.fromEntries:
+              - - - _module.var: app_name
+                  - title:
+                      _nunjucks:
+                        template: |
+                          <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> added a note.
+                        on:
+                          user:
+                            _user: true
+                    description:
+                      _state: detail_panel.note_content.html
+          references:
+            deal_ids:
+              - _state: selected_deal_id
+            company_ids:
+              - _request: get_selected_deal.0.company_id
+            contact_ids:
+              _array.map:
+                on:
+                  _if_none:
+                    - _state: detail_panel.note_content.mentions
+                    - []
+                callback:
+                  _function:
+                    __args: 0.contact_id
+          metadata:
+            text:
+              _state: detail_panel.note_content.text
+            html:
+              _state: detail_panel.note_content.html
+            mentions:
+              _state: detail_panel.note_content.mentions
+    - id: refetch_after_note
+      type: Request
+      params:
+        - get-events
+        - get_last_contact
+    - id: clear_note_text
+      type: SetState
+      params:
+        detail_panel.note_content: null
+  onClose:
+    - id: clear_note_text_on_close
+      type: SetState
+      params:
+        detail_panel.note_content: null
+blocks:
+  - id: detail_panel.note_content
+    type: TiptapMentionInput
+    required: true
+    validate:
+      - message: Note cannot be blank.
+        status: error
+        pass:
+          _ne:
+            - _state: detail_panel.note_content.text
+            - null
+    properties:
+      title: Note
+      placeholder: Write a note about this deal. Use @ to mention a teammate.
+      label:
+        disabled: true
+      style: "min-height: 120px; max-height: 320px; overflow-y: auto;"
+      mentions:
+        getHref:
+          _function:
+            __string.concat:
+              - /contacts/view?_id=
+              - __args: 0.value.contact_id
+        options:
+          _request: get_mentionable_users

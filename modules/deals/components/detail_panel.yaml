@@ -1,0 +1,84 @@
+id: detail_panel
+type: Box
+layout:
+  gap: 8
+blocks:
+  _build.array.concat:
+    - - _ref: components/detail/outcome_status.yaml
+      - _ref: components/detail/meta_strip.yaml
+      - _ref: components/detail/section_actions.yaml
+      - id: detail_divider_actions
+        type: Divider
+        style:
+          .element:
+            margin: 4px 0
+      - _ref: components/detail/section_info_grid.yaml
+      - id: detail_divider_related
+        type: Divider
+        style:
+          .element:
+            margin: 4px 0
+      - _ref: components/detail/section_related_deals.yaml
+      - id: detail_divider_timeline
+        type: Divider
+        style:
+          .element:
+            margin: 4px 0
+      - id: detail_timeline_tabs
+        type: Tabs
+        properties:
+          size: small
+          defaultActiveKey: activities
+          # Render the `extra` slot in the tab bar's top-right corner.
+          extraAreaKey: extra
+          tabs:
+            - key: activities
+              title: Activities
+              titleStyle:
+                fontSize: 12
+            - key: events
+              title: Events
+              titleStyle:
+                fontSize: 12
+        events:
+          onChange:
+            - id: set_timeline_tab
+              type: SetState
+              params:
+                detail_panel.timeline_tab:
+                  _event: activeKey
+        slots:
+          # Top-right corner of the tab bar. Only show the capture button on the
+          # Activities tab (defaults to visible before the first tab change).
+          activities:
+            blocks:
+              - _ref:
+                  module: activities
+                  component: activities-timeline
+                  vars:
+                    reference_field: deal_ids
+                    reference_value:
+                      _state: selected_deal_id
+          events:
+            blocks:
+              - _ref:
+                  module: events
+                  component: events-timeline
+                  vars:
+                    reference_field: deal_ids
+                    reference_value:
+                      _state: selected_deal_id
+                    display_key:
+                      _module.var: app_name
+                    reverse: false
+                    compact: true
+    # App-injected blocks appended to the main detail column (default []).
+    - _module.var: components.main_slots
+    - - _ref: components/detail/add_note_modal.yaml
+      # deal_outcome_modal restored: the header Deal Status selector opens it to
+      # record won/lost. Won routes through the module's outcome action's submit
+      # (engine win hooks, only once that step is actionable); Lost stamps the deal +
+      # cancels the workflow at any stage via record-loss.
+      - _ref: components/detail/deal_outcome_modal.yaml
+      - _ref: components/detail/people_modal.yaml
+      - _ref: components/detail/task_modal.yaml

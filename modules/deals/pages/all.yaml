@@ -1,0 +1,64 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: all
+    title: Deals
+    content_width: 1100
+    events:
+      # Seed filter + pagination defaults before first render so the outcome
+      # Segmented shows "Open" immediately and the request has valid paging.
+      onInit:
+        - id: init_filter
+          type: SetState
+          params:
+            filter:
+              outcome: open
+              # Default the salesperson filter to the logged-in user when they
+              # hold the app-configured `salesperson_role` (unset = no default).
+              # Filter values are salesperson.name (see get_deals_list_options),
+              # which matches the user's profile name.
+              salesperson:
+                _if:
+                  test:
+                    _and:
+                      - _ne:
+                          - _module.var: salesperson_role
+                          - null
+                      - _user.hasRole:
+                          _module.var: salesperson_role
+                  then:
+                    - _user: profile.name
+                  else: null
+            pagination:
+              current: 1
+              skip: 0
+              pageSize: 20
+      onMount:
+        - id: fetch_options
+          type: Request
+          params:
+            - get_deals_list_options
+        - id: fetch_deals_list
+          type: Request
+          params:
+            - get_deals_list
+        - id: set_deals_list_results
+          type: SetState
+          params:
+            deals_list_results:
+              _if_none:
+                - _request: get_deals_list.0.results
+                - []
+    requests:
+      - _ref: requests/get_deals_list.yaml
+      - _ref: requests/get_deals_list_options.yaml
+    blocks:
+      # --- Filter bar ---
+      - _ref: components/filter.yaml
+
+      # --- Results (skeleton while the request is in flight) ---
+      - _ref: components/results_list.yaml
+
+      # --- Pagination ---
+      - _ref: components/pagination.yaml

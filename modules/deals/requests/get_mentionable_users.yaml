@@ -1,0 +1,50 @@
+id: get_mentionable_users
+type: MongoDBAggregation
+# Contacts module's exported connection (deals already depends on `contacts`),
+# not a raw literal contacts-collection connectionId — same pattern as
+# companies/get_company_contacts.
+connectionId:
+  _module.connectionId:
+    id: contacts-collection
+    module: contacts
+properties:
+  pipeline:
+    # App-scoped user flags are dot-notation keys parameterised by the host
+    # app_name, so build the $match object at build time.
+    - $match:
+        _build.object.fromEntries:
+          - - removed
+            - null
+          - - _build.string.concat:
+                - "apps."
+                - _module.var: app_name
+                - ".is_user"
+            - true
+          - - _build.string.concat:
+                - "apps."
+                - _module.var: app_name
+                - ".disabled"
+            - $ne: true
+    - $project:
+        label:
+          $concat:
+            - $profile.name
+            - '<br/><small style="color: var(--ant-color-text-tertiary);">'
+            - $cond:
+                - $regexMatch:
+                    input:
+                      $ifNull:
+                        - $lowercase_email
+                        - ""
+                    regex: "@"
+                - $lowercase_email
+                - "No email"
+            - "</small>"
+        value:
+          contact_id: $_id
+          name: $profile.name
+          email: $lowercase_email
+        tag:
+          title: $profile.name
+    - $sort:
+        value.name: 1

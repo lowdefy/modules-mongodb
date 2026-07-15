@@ -1,0 +1,17 @@
+id: deal_status_chip
+type: Html
+properties:
+  html:
+    _nunjucks:
+      on:
+        stage:
+          _var: stage
+        stages:
+          _module.var: stages
+      template: |
+        {% set p = stages[stage] %}
+        {% if p %}
+          <span style="display: inline-block; font-size: 11px; font-weight: 500; padding: 4px 8px; border-radius: 10px; background: transparent; color: {{ p.fg }}; border: 1px solid {{ p.bd }};">{{ p.title }}</span>
+        {% else %}
+          <span style="display: inline-block; font-size: 11px; font-weight: 500; padding: 4px 8px; border-radius: 10px; background: transparent; color: var(--ant-color-text-secondary); border: 1px solid var(--ant-color-border);">—</span>
+        {% endif %}

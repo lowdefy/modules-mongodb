@@ -1,0 +1,108 @@
+# Filter bar for the deals list page: search (line 1), app-injected filter
+# controls (line 2 — see `filters` var, e.g. stage/product/outcome), and the
+# generic company/salesperson filters + Clear (line 3).
+# Fixed controls ref the shared deals_list_filter action to reset paging and
+# refetch; app-injected `filters` blocks are self-contained (own onChange).
+id: deals_filter_bar
+type: Box
+layout:
+  gap: 8
+blocks:
+  # Line 1 — search
+  - id: deals_filter_search_row
+    type: Box
+    layout:
+      span: 24
+    blocks:
+      - id: filter.search
+        type: TextInput
+        layout:
+          flex: 1 1 auto
+        properties:
+          placeholder: Search by deal name or code
+          label:
+            disabled: true
+          allowClear: true
+        events:
+          onPressEnter:
+            _ref: actions/deals_list_filter.yaml
+          onChange:
+            try:
+              _ref: actions/deals_list_filter.yaml
+            debounce:
+              ms: 500
+  # Line 2 — app-injected filter controls (default []). Each block is
+  # self-contained: its own state id, options, and onChange (host apps trigger
+  # the same reset-paging + refetch sequence as deals_list_filter.yaml, since
+  # module-internal actions aren't a cross-module export).
+  - id: deals_filter_custom_row
+    type: Box
+    layout:
+      span: 24
+      gap: 8
+    blocks:
+      _module.var: filters
+  # Line 3 — company/salesperson (generic, request-driven) + clear
+  - id: deals_filter_utility_row
+    type: Box
+    layout:
+      span: 24
+      gap: 8
+      align: center
+    blocks:
+      - id: filter.company_id
+        type: MultipleSelector
+        layout:
+          flex: 1 1 200px
+        properties:
+          placeholder: Company
+          label:
+            disabled: true
+          allowClear: true
+          renderTags: true
+          showSearch: true
+          options:
+            _if_none:
+              - _request: get_deals_list_options.0.companies
+              - []
+        events:
+          onChange:
+            _ref: actions/deals_list_filter.yaml
+      - id: filter.salesperson
+        type: MultipleSelector
+        layout:
+          flex: 1 1 170px
+        properties:
+          placeholder: Salesperson
+          label:
+            disabled: true
+          allowClear: true
+          showSearch: true
+          options:
+            _if_none:
+              - _request: get_deals_list_options.0.salespeople
+              - []
+        events:
+          onChange:
+            _ref: actions/deals_list_filter.yaml
+      - id: filter.clear
+        type: Button
+        layout:
+          flex: 1 0 auto
+        style:
+          textAlign: right
+        properties:
+          title: Clear
+          icon: AiOutlineClear
+          type: default
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: reset_filters
+                  type: Reset
+                - id: reset_outcome
+                  type: SetState
+                  params:
+                    filter:
+                      outcome: open
+              - _ref: actions/deals_list_filter.yaml

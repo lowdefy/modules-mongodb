@@ -1,0 +1,22 @@
+{# Work + mobile phone inputs for a ContactSelector add/edit modal (via
+   `form_extra_blocks`). Ids must use the selector's derived state key so they
+   save into the contact profile.
+   Vars: key_prefix — the selector's state key, e.g.
+     selected_deal_people_main_point_of_contact_contact
+#}
+- id: {{ key_prefix }}.profile.work_phone
+  type: PhoneNumberInput
+  layout:
+    span: 12
+  properties:
+    title: Work Number
+    defaultRegion: ZA
+    placeholder: 11 001 2233
+- id: {{ key_prefix }}.profile.mobile_phone
+  type: PhoneNumberInput
+  layout:
+    span: 12
+  properties:
+    title: Mobile Number
+    defaultRegion: ZA
+    placeholder: 82 111 2222

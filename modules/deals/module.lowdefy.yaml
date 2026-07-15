@@ -1,0 +1,231 @@
+name: Deals
+version: 0.12.0
+description: >-
+  Deal (opportunity) pipeline — list, detail, and the single sales-pipeline
+  workflow, orchestrating companies, contacts, activities, files, and events
+  rather than reimplementing them.
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper
+  - id: events
+    description: Audit event logging, event timeline, and change stamp
+  - id: activities
+    description: Deal-linked activities (calls, meetings, tasks)
+  - id: files
+    description: File attachments on the deal
+  - id: companies
+    description: Company link and selector on the deal
+  - id: contacts
+    description: Contact roles and selector on the deal
+  - id: workflows
+    description: Sales-pipeline workflow engine rendering deal stage/action transitions
+
+vars:
+  app_name:
+    type: string
+    required: true
+    description: App identifier for per-app access flags and event display.
+  workflow_type:
+    type: string
+    default: sales-pipeline
+    description: >-
+      The workflows-module workflow `type` this module renders on the deal
+      detail page. This is a single-workflow re-platform — there is no
+      multi-workflow support.
+  outcome_action_type:
+    type: string
+    default: deal-outcome
+    description: >-
+      Action `type` slug used when recording a deal's won/lost outcome
+      through the workflows/activities action pipeline.
+  salesperson_role:
+    type: string
+    default: null
+    description: >-
+      Role slug that, when held by the logged-in user, defaults the deals-list
+      salesperson filter to them (matched against salesperson.name). Leave
+      unset (null) to ship no per-user default.
+  stages:
+    type: object
+    required: true
+    description: >-
+      Deal stage (status) display config, keyed by stage slug — title/fg/bd
+      per stage. REQUIRED: the host app must supply an entry for every stage
+      slug its sales-pipeline workflow config can write to
+      `deals.status[].stage`, or stage chips render blank.
+  outcomes:
+    type: object
+    default: {}
+    description: >-
+      Per-outcome display overrides (title/fg/bd) for the shipped won/lost
+      outcome enum (defaults/outcomes.yaml). Merged via `_build.object.assign`
+      onto the shipped enum and exposed as the deal-status-chip component for
+      UI consumption only.
+  outcome_reasons:
+    type: object
+    default: {}
+    description: >-
+      Per-reason display overrides (title + outcome discriminator) merged via
+      `_build.object.assign` over the module's minimal other-won/other-lost
+      default (defaults/outcome_reasons.yaml). Host apps typically fully
+      replace this with their own won/lost reason taxonomy.
+  contact_roles:
+    type: object
+    default: {}
+    description: >-
+      Deal-contact role display config, keyed by role slug (e.g.
+      main_point_of_contact, decision_maker, finance_contact) — title/color/bg/border.
+  action_groups:
+    type: object
+    default: {}
+    description: >-
+      Sales-pipeline action_group display config, keyed by group slug — title/order/icon.
+      Consumed by the workflows ActionSteps surface.
+  company_fields:
+    type: array
+    default: []
+    description: Extra field blocks rendered on the deal's company section.
+  meta_fields:
+    type: array
+    default: []
+    description: Extra field blocks rendered in the deal's meta/info section.
+  filters:
+    type: array
+    default: []
+    description: Extra filter blocks rendered on the deals list page.
+  card_fields:
+    type: array
+    default: []
+    description: Extra fields rendered on the deal card (e.g. kanban/board views).
+  components:
+    type: object
+    description: "Component slot overrides: main_slots, info_grid_slots, sidebar_slots, card_slots"
+    properties:
+      main_slots:
+        default: []
+        description: Extra blocks appended to the main column on the deal detail page.
+      info_grid_slots:
+        default: []
+        description: Extra blocks appended to the deal's info grid.
+      sidebar_slots:
+        default: []
+        description: Extra blocks appended to the sidebar column on the deal detail page.
+      card_slots:
+        default: []
+        description: Extra blocks appended to the deal card.
+  request_stages:
+    type: object
+    description: "Pipeline overrides: get_deals_list, get_active_deals, get_selected_deal"
+    properties:
+      get_deals_list:
+        default: []
+        description: Extra pipeline stages appended to the deals list aggregation.
+      get_active_deals:
+        default: []
+        description: Extra pipeline stages appended to the active-deals aggregation.
+      get_selected_deal:
+        default: []
+        description: Extra pipeline stages appended to the get-selected-deal aggregation.
+  customer_types:
+    type: object
+    required: true
+    description: >-
+      Customer-type taxonomy for the deal-create form's Customer Type field,
+      keyed by slug — { title, definition }. `definition` powers the field's
+      info-modal text. Host app supplies via `_ref` to its own enum file
+      (e.g. apps/shared/enums/deal/customer_types.yaml).
+  products:
+    type: object
+    default: {}
+    description: >-
+      Coarse product taxonomy for the deal-create form's optional Product
+      field, keyed by slug — { title }. Host app supplies via `_ref` to its
+      own enum file.
+  sectors:
+    type: object
+    required: true
+    description: >-
+      Sector taxonomy for the deal-create form's Sector field, keyed by
+      slug — { title }. Host app supplies via `_ref` to its own enum file.
+  sub_sectors:
+    type: object
+    required: true
+    description: >-
+      Sub-sector taxonomy for the deal-create form's Sub-sector field, keyed
+      by slug — { title, sector }. `sector` is the parent sector slug the
+      field's options are filtered by; entries without a `sector` (e.g.
+      `other`) appear under every sector. Host app supplies via `_ref` to its
+      own enum file.
+  product_hierarchy:
+    type: object
+    required: true
+    description: >-
+      Material/SKU → product-hierarchy lookup for the deal-create form's
+      Material field (issue #22), keyed by material code — { title, l2, l3,
+      l4 }. `title` is the Material Description; l2/l3/l4 are its 1:1
+      hierarchy branch, persisted onto the deal alongside `material_code`.
+      Host app supplies via `_ref` to its own enum file.
+
+exports:
+  pages:
+    - id: all
+      description: Deal list with filtering, sorting, and pagination
+    - id: view
+      description: Deal detail page — sales-pipeline workflow, info grid, sidebar tiles
+    - id: new
+      description: Create a new deal
+  connections:
+    - id: deals-collection
+      description: MongoDB connection for deal records
+    - id: actions-collection
+      description: MongoDB connection for deal-linked actions/tasks
+    - id: events-collection
+      description: MongoDB connection for the audit event log (read-only usage)
+  api:
+    - id: create-deal
+      description: Create a new deal
+    - id: update-people
+      description: Update a deal's contact roles / people
+    - id: create-task
+      description: Create a task on a deal
+    - id: update-task
+      description: Update a task on a deal
+    - id: record-loss
+      description: Record a deal's lost outcome and reason
+  components:
+    - id: deal-status-chip
+      description: Status/outcome chip rendering the merged stages/outcomes enums
+  menus:
+    - id: default
+      description: Deals navigation link
+
+connections:
+  - _ref: connections/deals-collection.yaml
+  - _ref: connections/actions-collection.yaml
+  - _ref: connections/events-collection.yaml
+
+api:
+  - _ref: api/create-deal.yaml
+  - _ref: api/update-people.yaml
+  - _ref: api/create-task.yaml
+  - _ref: api/update-task.yaml
+  - _ref: api/record-loss.yaml
+
+pages:
+  - _ref: pages/all.yaml
+  - _ref: pages/new.yaml
+  - _ref: pages/view.yaml
+
+menus:
+  - _ref: menus.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+
+plugins:
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^3"
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.10.1"

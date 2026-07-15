@@ -1,0 +1,150 @@
+id: create-task
+type: Api
+routine:
+  - :set_state:
+      task_id:
+        _uuid: true
+
+  - :if:
+      _or:
+        - _eq:
+            - _payload: title
+            - null
+        - _eq:
+            - _payload: title
+            - ""
+    :then:
+      - :throw: Task name is required.
+
+  - :if:
+      _not:
+        _array.includes:
+          - - action-required
+            - done
+          - _payload: stage
+    :then:
+      - :throw: Invalid task status.
+
+  # Log the event first — new-event generates its own _id, so the returned
+  # eventId is needed for the task's status entry.
+  - id: log_task_event
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: deal-task-created
+        display:
+          _build.object.fromEntries:
+            - - _module.var: app_name
+              - title:
+                  _nunjucks:
+                    template: |
+                      <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> created task — {{ title }}.
+                    on:
+                      user:
+                        _user: true
+                      title:
+                        _payload: title
+                description:
+                  _if_none:
+                    - _payload: description
+                    - null
+        references:
+          deal_ids:
+            - _payload: deal_id
+          company_ids:
+            - _payload: company_id
+          action_ids:
+            - _state: task_id
+        metadata:
+          task_id:
+            _state: task_id
+          stage:
+            _payload: stage
+          due_date:
+            _if_none:
+              - _payload: due_date
+              - null
+
+  - id: insert_task
+    type: MongoDBInsertOne
+    connectionId:
+      _module.connectionId: actions-collection
+    properties:
+      doc:
+        _object.assign:
+          - _id:
+              _state: task_id
+            kind: task
+            # Standalone tasks have no parent workflow, but the
+            # (workflow_id, type, key) unique index treats null as a value —
+            # so every task would collide on (null, null, null). Mint a
+            # unique workflow_id per task to keep the tuple unique without
+            # changing the index.
+            workflow_id:
+              _uuid: true
+            title:
+              _payload: title
+            description:
+              _if_none:
+                - _payload: description
+                - null
+            status:
+              - stage:
+                  _payload: stage
+                event_id:
+                  _step: log_task_event.eventId
+                created:
+                  _ref:
+                    module: events
+                    component: change_stamp
+            assignees:
+              _if:
+                test:
+                  _eq:
+                    - _payload: assignee
+                    - null
+                then: []
+                else:
+                  - contact_id:
+                      _payload: assignee.contact_id
+                    name:
+                      _payload: assignee.name
+            due_date:
+              _if_none:
+                - _payload: due_date
+                - null
+            completed_date:
+              _if:
+                test:
+                  _eq:
+                    - _payload: stage
+                    - done
+                then:
+                  _date: now
+                else: null
+            deal_ids:
+              - _payload: deal_id
+            company_ids:
+              - _payload: company_id
+            created:
+              _ref:
+                module: events
+                component: change_stamp
+            updated:
+              _ref:
+                module: events
+                component: change_stamp
+          # App-keyed task message read by host-app open-actions cards —
+          # the app key resolves at build time from _module.var: app_name.
+          - _build.object.fromEntries:
+              - - _module.var: app_name
+                - message:
+                    _payload: title
+
+  - :return:
+      task_id:
+        _state: task_id

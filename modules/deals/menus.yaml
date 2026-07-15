@@ -1,0 +1,11 @@
+id: default
+links:
+  - id: deals
+    type: MenuLink
+    pageId:
+      _module.pageId: all
+    properties:
+      title: Deals
+      icon:
+        name: AiOutlineFund
+        size: 14

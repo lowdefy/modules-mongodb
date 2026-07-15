@@ -1,0 +1,100 @@
+id: detail_outcome_status
+type: Box
+blocks:
+  # Once an outcome is recorded, show it as a tag. Otherwise show the Deal Status
+  # selector to set one — only one of the two is ever visible.
+  - id: detail_outcome_tag
+    type: Tag
+    visible:
+      _not:
+        _eq:
+          - _request: get_selected_deal.0.outcome.reason
+          - null
+    style:
+      .element:
+        fontSize: 14px
+        lineHeight: 24px
+        padding: 2px 12px
+    properties:
+      # antd Tag preset name (success/error) for the light status style; the
+      # `outcomes` var's fg is a raw CSS var, which would force a solid-fill tag.
+      color:
+        _if:
+          test:
+            _eq:
+              - _request: get_selected_deal.0.outcome.type
+              - won
+          then: success
+          else: error
+      # Reason display title from the module's `outcome_reasons` var, keyed by
+      # the stored reason slug — falls back to the raw slug when unset.
+      title:
+        _if_none:
+          - _get:
+              from:
+                _get:
+                  from:
+                    _module.var: outcome_reasons
+                  key:
+                    _request: get_selected_deal.0.outcome.reason
+              key: title
+          - _request: get_selected_deal.0.outcome.reason
+  # Deal Status selector — selecting a reason opens the Record Deal Outcome modal
+  # pre-filled with that reason. Won reasons only appear once the outcome
+  # step (module's `outcome_action_type` var) is actionable (action-required);
+  # Lost reasons are always available so a deal can be lost at any stage
+  # ("lose anytime, win at step"). Reactive on entity_workflows (the
+  # actions-on-entity phase-view state).
+  - id: form.reason
+    type: Selector
+    visible:
+      _eq:
+        - _request: get_selected_deal.0.outcome.reason
+        - null
+    properties:
+      label:
+        disabled: true
+      placeholder: Deal Status
+      size: small
+      allowClear: true
+      style:
+        width: 320px
+      options:
+        _js:
+          fn: |
+            const reasons = args.reasons || {};
+            const wfs = state('entity_workflows') || [];
+            let actionable = false;
+            for (const w of wfs) {
+              for (const g of (w.groups || [])) {
+                const a = (g.actions || []).find((x) => x.type === args.outcome_action_type);
+                // GetEntityWorkflows collapses each action card's status to the
+                // stage string (status[0].stage) — compare the string directly.
+                if (a) actionable = (a.status === 'action-required');
+              }
+            }
+            return Object.keys(reasons)
+              .filter((k) => actionable || reasons[k].outcome === 'lost')
+              .map((k) => ({ label: reasons[k].title, value: k }));
+          args:
+            reasons:
+              _module.var: outcome_reasons
+            outcome_action_type:
+              _module.var: outcome_action_type
+    events:
+      onChange:
+        - id: open_outcome_modal
+          type: CallMethod
+          skip:
+            _eq:
+              - _state: form.reason
+              - null
+          params:
+            blockId: deal_outcome_modal
+            method: toggleOpen
+  - id: detail_divider_outcome
+    type: Divider
+    properties:
+      style:
+        marginTop: -4
+        marginBottom: 2

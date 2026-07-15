@@ -1,0 +1,317 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: new
+    title: New Deal
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Deals
+        pageId:
+          _module.pageId: view
+      - label: New Deal
+    events:
+      onInit:
+        - id: init_state
+          type: SetState
+          params:
+            # Init the company-selector's cycle-check keys so its
+            # get_companies_for_selector request doesn't fire a ConfigWarning
+            # for unreferenced _state — this form never cycle-checks (plain
+            # picker); the request's _if_none defaults take over at runtime.
+            cycle_check_self_id: null
+            cycle_check_ids: []
+    blocks:
+      - id: content
+        type: Box
+        layout:
+          gap: 8
+        properties:
+          style:
+            maxWidth: 800
+            margin: "0 auto"
+        blocks:
+          - id: deal_new_card
+            type: Card
+            layout:
+              gap: 12
+            blocks:
+              - id: section_company_product
+                type: Html
+                properties:
+                  html: '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8c8c8c; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; margin: 0 0 14px;">Company & Product</div>'
+              # Company: the companies module's exported picker. Stores the
+              # bare company _id at form.company_id — matches the doc shape the
+              # deal insert expects with no extraction step. `required` makes the
+              # save-button Validate block an empty selection.
+              - _ref:
+                  module: companies
+                  component: company-selector
+                  vars:
+                    field_id: form.company_id
+                    title: Company
+                    required: true
+                    label:
+                      span: 6
+                      align: right
+              # Material/SKU is the product identity (issue #22): the single input
+              # the L2/L3/L4 hierarchy derives from.
+              - id: form.material_code
+                type: Selector
+                required: true
+                properties:
+                  title: Material
+                  label:
+                    span: 6
+                    align: right
+                    extra:
+                      _if:
+                        test:
+                          _ne:
+                            - _state: form.material_code
+                            - null
+                        then:
+                          _nunjucks:
+                            template: "Hierarchy: {{ m.l2 }} › {{ m.l3 }} › {{ m.l4 }}"
+                            on:
+                              m:
+                                _get:
+                                  from:
+                                    _module.var: product_hierarchy
+                                  key:
+                                    _state: form.material_code
+                        else: Search by material / SKU — its product hierarchy (L2 › L3 › L4) fills in automatically.
+                  showSearch: true
+                  placeholder: Search material / SKU
+                  options:
+                    _ref:
+                      path: components/new/options_enum.yaml
+                      vars:
+                        enum:
+                          _module.var: product_hierarchy
+                events:
+                  onChange:
+                    - id: prefill_deal_name
+                      type: SetState
+                      skip:
+                        _or:
+                          - _eq:
+                              - _state: form.company_id
+                              - null
+                          - _eq:
+                              - _state: form.material_code
+                              - null
+                      params:
+                        form.name:
+                          _ref:
+                            path: components/new/prefill_deal_name.yaml
+              # Coarse product label — optional now that Material is the identity.
+              - id: form.product
+                type: Selector
+                properties:
+                  title: Product
+                  label:
+                    span: 6
+                    align: right
+                    extra: Optional — a coarse label. The Material above is the definitive product.
+                  placeholder: Select product (optional)
+                  options:
+                    _ref:
+                      path: components/new/options_enum.yaml
+                      vars:
+                        enum:
+                          _module.var: products
+                events:
+                  onChange:
+                    - id: prefill_deal_name
+                      type: SetState
+                      skip:
+                        _or:
+                          - _eq:
+                              - _state: form.company_id
+                              - null
+                          - _eq:
+                              - _state: form.product
+                              - null
+                      params:
+                        form.name:
+                          _ref:
+                            path: components/new/prefill_deal_name.yaml
+              - id: form.name
+                type: TextInput
+                required: true
+                properties:
+                  title: Deal Name
+                  label:
+                    span: 6
+                    align: right
+                  placeholder: "[Company] — [Product]"
+              - id: form.description
+                type: TextInput
+                properties:
+                  title: Description
+                  label:
+                    span: 6
+                    align: right
+              - id: form.project_type
+                type: ButtonSelector
+                required: true
+                properties:
+                  title: Project Type
+                  label:
+                    span: 6
+                    align: right
+                  options:
+                    - label: Project
+                      value: project
+                    - label: Additional Volume
+                      value: additional-volume
+              - id: form.customer_type
+                type: ButtonSelector
+                required: true
+                properties:
+                  title: Customer Type
+                  label:
+                    span: 6
+                    align: right
+                    extra:
+                      _if:
+                        test:
+                          _ne:
+                            - _state: form.customer_type
+                            - null
+                        then:
+                          _get:
+                            from:
+                              _module.var: customer_types
+                            key:
+                              _string.concat:
+                                - _state: form.customer_type
+                                - .definition
+                        else: Select an option to see its definition.
+                  options:
+                    _ref:
+                      path: components/new/options_enum.yaml
+                      vars:
+                        enum:
+                          _module.var: customer_types
+              - id: form.sector
+                type: Selector
+                required: true
+                properties:
+                  title: Sector
+                  label:
+                    span: 6
+                    align: right
+                  options:
+                    _ref:
+                      path: components/new/options_enum.yaml
+                      vars:
+                        enum:
+                          _module.var: sectors
+                events:
+                  onChange:
+                    - id: reset_sub_sector
+                      type: SetState
+                      params:
+                        form.sub_sector: null
+              - id: form.sub_sector
+                type: Selector
+                required: true
+                properties:
+                  title: Sub-sector
+                  label:
+                    span: 6
+                    align: right
+                  options:
+                    _ref:
+                      path: components/new/options_enum_parented.yaml.njk
+                      vars:
+                        enum:
+                          _module.var: sub_sectors
+                        parent_key: sector
+                        parent:
+                          _state: form.sector
+              - id: form.package
+                type: ButtonSelector
+                required: true
+                properties:
+                  title: Package
+                  label:
+                    span: 6
+                    align: right
+                  options:
+                    - label: 25 kg bags
+                      value: 25-kg-bags
+                    - label: 20 kg bags
+                      value: 20-kg-bags
+                    - label: 300 kg drums
+                      value: 300-kg-drums
+                    - label: Bulk
+                      value: bulk
+
+          - _ref:
+              module: layout
+              component: floating-actions
+              vars:
+                actions:
+                  - id: cancel_button
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Cancel
+                      type: default
+                    events:
+                      onClick:
+                        - id: go_back
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: view
+                  - id: save_button
+                    type: Button
+                    layout:
+                      flex: 1 0 auto
+                    style:
+                      textAlign: right
+                    properties:
+                      title: Save deal
+                      type: primary
+                      icon: AiOutlineCheck
+                    events:
+                      onClick:
+                        - id: validate
+                          type: Validate
+                        - id: submit
+                          type: CallAPI
+                          messages:
+                            success: Deal created.
+                            error: Failed to create deal.
+                          params:
+                            endpointId:
+                              _module.endpointId: create-deal
+                            payload:
+                              form:
+                                _state: form
+                        # Gate on the created deal_id, not form.company_id — Reset
+                        # clears company_id before the redirect's skip, self-skipping nav.
+                        - id: reset
+                          type: Reset
+                          skip:
+                            _eq:
+                              - _actions: submit.response.response.deal_id
+                              - null
+                        - id: redirect
+                          type: Link
+                          skip:
+                            _eq:
+                              - _actions: submit.response.response.deal_id
+                              - null
+                          params:
+                            pageId:
+                              _module.pageId: view
+                            urlQuery:
+                              _id:
+                                _actions: submit.response.response.deal_id

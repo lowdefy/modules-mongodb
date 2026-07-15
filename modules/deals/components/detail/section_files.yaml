@@ -1,0 +1,48 @@
+id: detail_cell_files
+type: Box
+layout:
+  span: 12
+  sm:
+    span: 24
+  gap: 6
+blocks:
+  - id: detail_files_header
+    type: Html
+    properties:
+      html: |
+        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary);">Files</div>
+  - id: detail_files_list_scroll
+    type: Box
+    style:
+      maxHeight: 200px
+      overflowY: auto
+    blocks:
+      - _ref:
+          module: files
+          component: file-list
+          vars:
+            block_id: detail_files_list
+            entity_type: deals
+            entity_id:
+              _state: selected_deal_id
+            file_category: deal-attachment
+  - id: detail_files_upload_btn
+    type: Button
+    style:
+      .element:
+        marginTop: 4px
+    properties:
+      title: Upload file
+      icon: AiOutlinePlus
+      size: small
+      block: true
+      # type: default
+      variant: dashed
+    events:
+      onClick:
+        - id: open_files_upload_modal
+          type: CallMethod
+          params:
+            blockId: detail_files_upload_modal
+            method: toggleOpen
+  - _ref: components/detail/files_upload_modal.yaml

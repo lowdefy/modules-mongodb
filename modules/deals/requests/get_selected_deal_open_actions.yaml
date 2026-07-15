@@ -1,0 +1,97 @@
+id: get_selected_deal_open_actions
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: actions-collection
+payload:
+  selected_deal_id:
+    _state: selected_deal_id
+properties:
+  # Open work items for the Actions section — adhoc tasks and the module's
+  # workflow (workflow_type var) actions in one ordered list.
+  #
+  # Shape-split: standalone `kind: task` docs still key on `deal_ids`;
+  # migrated workflow actions key on the nested `entity` pointer
+  # (entity.connection_id + entity.id), and their per-app display lives at
+  # {app}.message / {app}.links (plural) — the app key resolves at build
+  # time from _module.var: app_name, not a literal. `sort_order` was dropped
+  # in the module grammar, so workflow actions order by creation time.
+  pipeline:
+    - $match:
+        $or:
+          - kind: task
+            deal_ids:
+              _payload: selected_deal_id
+          - workflow_type:
+              _module.var: workflow_type
+            entity.connection_id: deals
+            entity.id:
+              _payload: selected_deal_id
+    - $addFields:
+        stage:
+          $arrayElemAt:
+            - $status.stage
+            - 0
+    - $match:
+        stage:
+          $in:
+            - action-required
+            - in-progress
+    - $addFields:
+        overdue:
+          $cond:
+            - $and:
+                - $eq:
+                    - $kind
+                    - task
+                - $ne:
+                    - $due_date
+                    - null
+                - $lt:
+                    - $due_date
+                    - $$NOW
+            - true
+            - false
+        has_due:
+          $cond:
+            - $eq:
+                - $due_date
+                - null
+            - 1
+            - 0
+        group_sort:
+          $cond:
+            - $ne:
+                - $kind
+                - task
+            - 0
+            - 1
+    # Open workflow actions (by creation) → tasks (by due date, so overdue
+    # first, none last).
+    - $sort:
+        group_sort: 1
+        has_due: 1
+        due_date: 1
+        created.timestamp: 1
+    - $project:
+        kind: 1
+        stage: 1
+        title: 1
+        description: 1
+        due_date: 1
+        assignees: 1
+        overdue: 1
+        action_group: 1
+        message:
+          _build.string.concat:
+            - "$"
+            - _module.var: app_name
+            - .message
+        # The engine stores per-verb links as an OBJECT keyed by verb
+        # ({view, edit, review, error}, each {pageId, urlQuery} or null), not an
+        # array. Open cards (action-required/in-progress) navigate via the edit
+        # page; the card reads link.pageId (null → onClick is skipped).
+        link:
+          _build.string.concat:
+            - "$"
+            - _module.var: app_name
+            - .links.edit

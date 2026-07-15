@@ -1,0 +1,588 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: view
+    title: Sales Pipeline
+    hide_title: true
+    events:
+      onMount:
+        - id: set_pagination
+          type: SetState
+          params:
+            deals_pagination:
+              current: 1
+              skip: 0
+              pageSize: 20
+        - id: fetch_deals
+          type: Request
+          params:
+            - get_active_deals
+        - id: set_deals_list
+          type: SetState
+          params:
+            deals_list:
+              _if_none:
+                - _request: get_active_deals.0.results
+                - []
+        - id: set_initial_selected
+          type: SetState
+          params:
+            selected_deal_id:
+              _if_none:
+                - _url_query: _id
+                - _request: get_active_deals.0.results.0._id
+        - id: fetch_selected
+          skip:
+            _eq:
+              - _state: selected_deal_id
+              - null
+          type: Request
+          params:
+            - get_selected_deal
+            - get_selected_deal_open_actions
+            - get_last_contact
+            - get_entity_files_detail_files_list
+        # Phase view is the workflows module's actions-on-entity widget, which
+        # reads `entity_workflows` state. It self-fetches on mount, but this is a
+        # master-detail page (deal selected via state, not URL), so refetch it
+        # for the initially-selected deal too. (Inlined rather than the
+        # entity-workflows-refetch component, which returns an action list that
+        # can't carry a per-step skip guard.)
+        - id: refetch_entity_workflows_initial
+          type: CallAPI
+          skip:
+            _eq:
+              - _state: selected_deal_id
+              - null
+          params:
+            endpointId:
+              _module.endpointId:
+                id: get-entity-workflows
+                module: workflows
+            payload:
+              entity:
+                id:
+                  _state: selected_deal_id
+                connection_id: deals
+        - id: set_entity_workflows_initial
+          type: SetState
+          skip:
+            _eq:
+              - _state: selected_deal_id
+              - null
+          params:
+            entity_workflows:
+              _actions: refetch_entity_workflows_initial.response.response.workflows
+        - id: set_related_deals
+          type: SetState
+          params:
+            related_deals:
+              _if_none:
+                - _request: get_selected_deal.0.related_deals
+                - []
+        - _ref: actions/set_deal_people.yaml
+        - _ref: actions/compute_open_actions.yaml
+    requests:
+      - _ref: requests/get_active_deals.yaml
+      - _ref: requests/get_selected_deal.yaml
+      - _ref: requests/get_selected_deal_open_actions.yaml
+      - _ref: requests/get_last_contact.yaml
+      - _ref: requests/get_mentionable_users.yaml
+      - _ref: requests/get_task_assignee_options.yaml
+    blocks:
+      - id: deals_layout
+        type: Box
+        layout:
+          gap: 16
+          justify: stretch
+        blocks:
+          - id: deal_list_col
+            type: Box
+            layout:
+              span: 5
+              sm:
+                span: 24
+            blocks:
+              - id: deal_list_card
+                type: Card
+                style:
+                  .element:
+                    height: calc(100vh - 110px)
+                    display: flex
+                    flex-direction: column
+                  .body:
+                    padding: 0
+                    flex: 1 1 auto
+                    min-height: 0
+                    overflow-y: auto
+                properties:
+                  size: small
+                  title: '<div style="font-size: 12px; font-weight: 600; color: #8c8c8c; text-transform: uppercase; letter-spacing: 0.05em;">Active Deals</div>'
+                slots:
+                  extra:
+                    blocks:
+                      - id: new_deal_button
+                        type: Button
+                        properties:
+                          title: New Deal
+                          icon: AiOutlinePlus
+                          type: primary
+                          size: small
+                        events:
+                          onClick:
+                            - id: go_new_deal
+                              type: Link
+                              params:
+                                pageId:
+                                  _module.pageId: new
+                blocks:
+                  - id: deal_search
+                    type: TextInput
+                    layout:
+                      span: 24
+                    style:
+                      padding: 8px 12px
+                    properties:
+                      placeholder: Search deals...
+                      allowClear: true
+                      size: small
+                      label:
+                        disabled: true
+                    events:
+                      # Native trailing-edge debounce: each keystroke cancels the
+                      # previous pending run, so one get_active_deals fetch fires
+                      # after typing settles (~350ms), not per keystroke.
+                      onChange:
+                        debounce:
+                          ms: 350
+                        try:
+                          - id: reset_pagination
+                            type: SetState
+                            params:
+                              deals_pagination:
+                                current: 1
+                                skip: 0
+                                pageSize: 20
+                          - id: fetch_deals
+                            type: Request
+                            params: get_active_deals
+                          - id: set_deals_list
+                            type: SetState
+                            params:
+                              deals_list:
+                                _if_none:
+                                  - _request: get_active_deals.0.results
+                                  - []
+                  - id: deals_list_empty
+                    type: Result
+                    visible:
+                      _eq:
+                        - _array.length:
+                            _if_none:
+                              - _state: deals_list
+                              - []
+                        - 0
+                    properties:
+                      icon:
+                        name: AiOutlineContainer
+                        color: "#d9d9d9"
+                      subTitle: No active deals. Create one to get started.
+                  # ListSelector's card template only gets `item`/`index` (no
+                  # state/global), so enum colours/labels are pre-computed per deal below.
+                  # Stage/outcome/reason display config come from the module's
+                  # stages/outcomes/outcome_reasons vars (via _js args), not app globals.
+                  - id: selected_deal_id
+                    type: ListSelector
+                    visible:
+                      _gt:
+                        - _array.length:
+                            _if_none:
+                              - _state: deals_list
+                              - []
+                        - 0
+                    style:
+                      padding: 8px 12px
+                    properties:
+                      valueKey: _id
+                      primaryKey: _id
+                      allowDeselect: false
+                      bordered: true
+                      hoverable: true
+                      size: small
+                      gap: 6
+                      height: calc(100vh - 232px)
+                      data:
+                        _js:
+                          fn: |
+                            const deals = state('deals_list') || [];
+                            const stages = args.stages || {};
+                            const outcomes = args.outcomes || {};
+                            const reasons = args.reasons || {};
+                            return deals.map((deal) => {
+                              const stage = deal.status && deal.status[0] ? deal.status[0].stage : null;
+                              const outcomeType = deal.outcome ? deal.outcome.type : null;
+                              const reasonKey = deal.outcome ? deal.outcome.reason : null;
+                              const dv = deal.deal_value || 0;
+                              let valueLabel = '';
+                              if (dv >= 1000000) valueLabel = 'R' + (Math.round(dv / 100000) / 10) + 'm';
+                              else if (dv >= 1000) valueLabel = 'R' + (Math.round(dv / 100) / 10) + 'k';
+                              else if (dv > 0) valueLabel = 'R' + Math.round(dv);
+                              return Object.assign({}, deal, {
+                                stage_display: stage ? stages[stage] : null,
+                                outcome_display: outcomeType ? outcomes[outcomeType] : null,
+                                reason_display: reasonKey ? reasons[reasonKey] : null,
+                                value_label: valueLabel,
+                              });
+                            });
+                          args:
+                            stages:
+                              _module.var: stages
+                            outcomes:
+                              _module.var: outcomes
+                            reasons:
+                              _module.var: outcome_reasons
+                      html: |
+                        {% set stage_p = item.stage_display %}
+                        {% set outcome_p = item.outcome_display %}
+                        {% set reason_p = item.reason_display %}
+                        {% set outcome_type = item.outcome.type %}
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 6px; margin-bottom: 3px;">
+                          <span style="font-size: 11px; font-weight: 600; color: var(--ant-color-primary); letter-spacing: 0.02em;">{{ item._id }}</span>
+                          {% if item.updated.timestamp %}<span style="font-size: 10px; color: var(--ant-color-text-tertiary);">{{ item.updated.timestamp | date('MMM D') }}</span>{% endif %}
+                        </div>
+                        <div style="font-size: 13px; font-weight: 600; color: var(--ant-color-text); line-height: 1.35; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ item.name | safe }}</div>
+                        <div style="font-size: 11px; color: var(--ant-color-text-secondary); line-height: 1.35; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ item.company_name | default('—') }}</div>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin-bottom: 6px;">
+                          {% if stage_p %}
+                            <span style="display: inline-block; font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 10px; background: transparent; color: {{ stage_p.fg }}; border: 1px solid {{ stage_p.bd }};">{{ stage_p.title }}</span>
+                          {% else %}
+                            <span style="display: inline-block; font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 10px; background: transparent; color: var(--ant-color-text-secondary); border: 1px solid var(--ant-color-border);">—</span>
+                          {% endif %}
+                          {% if outcome_p %}
+                            <span style="display: inline-block; font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 10px; background: transparent; color: {{ outcome_p.fg }}; border: 1px solid {{ outcome_p.bd }};">{{ outcome_p.title }}</span>
+                          {% endif %}
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--ant-color-text-secondary); line-height: 1.4;">
+                          {% if item.salesperson_name %}<span>{{ item.salesperson_name }}</span>{% endif %}
+                          {% if item.annual_volume_ton %}{% if item.salesperson_name %}<span>·</span>{% endif %}<span>{{ item.annual_volume_ton | round }} t/yr</span>{% endif %}
+                          {% if item.value_label %}<span>·</span><span style="color: var(--ant-color-success); font-weight: 500;">{{ item.value_label }}</span>{% endif %}
+                          {% if item.expected_close_date %}<span>·</span><span>close {{ item.expected_close_date | date('MMM YYYY') }}</span>{% endif %}
+                        </div>
+                        {% if outcome_type == 'lost' and item.outcome.reason %}
+                          <div style="font-size: 11px; margin-top: 4px; font-style: italic; color: var(--ant-color-error);">{{ reason_p.title | default('Lost · ' ~ (item.outcome.reason | replace('-', ' '))) }}</div>
+                        {% endif %}
+                    events:
+                      onChange:
+                        - id: reset_form
+                          type: SetState
+                          params:
+                            form: null
+                        - id: update_query
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: view
+                            urlQuery:
+                              _id:
+                                _state: selected_deal_id
+                        - id: refetch_selected
+                          type: Request
+                          params:
+                            - get_selected_deal
+                            - get_selected_deal_open_actions
+                            - get_last_contact
+                            - get-events
+                            - get_activities_for_entity
+                            - get_entity_files_detail_files_list
+                        # Re-seed the panel: file-list seeds its rows into state only on its onMount.
+                        - id: reseed_deal_files_panel
+                          type: SetState
+                          params:
+                            detail_files_list_items:
+                              _request: get_entity_files_detail_files_list
+                        - id: refetch_entity_workflows
+                          type: CallAPI
+                          params:
+                            endpointId:
+                              _module.endpointId:
+                                id: get-entity-workflows
+                                module: workflows
+                            payload:
+                              entity:
+                                id:
+                                  _state: selected_deal_id
+                                connection_id: deals
+                        - id: set_entity_workflows
+                          type: SetState
+                          params:
+                            entity_workflows:
+                              _actions: refetch_entity_workflows.response.response.workflows
+                        - id: refresh_related_deals
+                          type: SetState
+                          params:
+                            related_deals:
+                              _if_none:
+                                - _request: get_selected_deal.0.related_deals
+                                - []
+                        - _ref: actions/set_deal_people.yaml
+                        - _ref: actions/compute_open_actions.yaml
+                  - id: deals_pagination
+                    type: Pagination
+                    style:
+                      padding: 8px 12px
+                      textAlign: end
+                    properties:
+                      size: small
+                      simple: true
+                      hideOnSinglePage: true
+                      showSizeChanger: false
+                      pageSizeOptions: []
+                      total:
+                        _if_none:
+                          - _request: get_active_deals.0.count.0.count
+                          - 0
+                    events:
+                      onChange:
+                        - id: fetch_deals
+                          type: Request
+                          params: get_active_deals
+                        - id: set_deals_list
+                          type: SetState
+                          params:
+                            deals_list:
+                              _if_none:
+                                - _request: get_active_deals.0.results
+                                - []
+
+          - id: workspace_col
+            type: Box
+            layout:
+              span: 19
+              sm:
+                span: 24
+              gap: 12
+            blocks:
+              - id: deal_topbar
+                type: Box
+                visible:
+                  _ne:
+                    - _state: selected_deal_id
+                    - null
+                layout:
+                  span: 24
+                  gap: 12
+                style:
+                  background: var(--ant-color-bg-container)
+                  border: 1px solid var(--ant-color-border-secondary)
+                  borderRadius: var(--ant-border-radius-lg)
+                  padding: 12
+                blocks:
+                  - id: topbar_company
+                    type: Html
+                    layout:
+                      flex: 1 1 auto
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: |
+                            <div style="font-size: 14px; font-weight: 700; color: var(--ant-color-text);">{{ company_name | default('—') }}</div>
+                          on:
+                            company_name:
+                              _if_none:
+                                - _request: get_selected_deal.0.company.short_name
+                                - _request: get_selected_deal.0.company.name
+                  - id: status_container
+                    type: Box
+                    layout:
+                      flex: 0 1 auto
+                    blocks:
+                      - _ref:
+                          path: components/deal_status_chip.yaml
+                          vars:
+                            stage:
+                              _request: get_selected_deal.0.status.0.stage
+                  - _ref: components/detail/action_bar.yaml
+                  - id: topbar_score_button
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Score
+                      type: primary
+                      size: small
+              - id: workspace_row
+                type: Box
+                layout:
+                  span: 24
+                  gap: 12
+                  justify: stretch
+                blocks:
+                  - id: pipeline_col
+                    type: Box
+                    layout:
+                      span: 11
+                      sm:
+                        span: 24
+                    blocks:
+                      _build.array.concat:
+                        -
+                          - id: pipeline_empty
+                            type: Card
+                            visible:
+                              _eq:
+                                - _state: selected_deal_id
+                                - null
+                            style:
+                              .element:
+                                height: calc(100vh - 172px)
+                                display: flex
+                                flex-direction: column
+                              .body:
+                                flex: 1 1 auto
+                                min-height: 0
+                                overflow-y: auto
+                            properties:
+                              size: small
+                            blocks:
+                              - id: pipeline_empty_result
+                                type: Result
+                                properties:
+                                  icon:
+                                    name: AiOutlineRightCircle
+                                    color: "#d9d9d9"
+                                  subTitle: Select a deal to view its pipeline.
+
+                          - id: pipeline_card
+                            type: Card
+                            visible:
+                              _ne:
+                                - _state: selected_deal_id
+                                - null
+                            loading:
+                              _or:
+                                - _request_details: get_selected_deal.0.loading
+                                - _not:
+                                    _request: get_selected_deal
+                            style:
+                              .element:
+                                height: calc(100vh - 172px)
+                                display: flex
+                                flex-direction: column
+                              .body:
+                                flex: 1 1 auto
+                                min-height: 0
+                                overflow-y: auto
+                            properties:
+                              size: small
+                            slots:
+                              title:
+                                blocks:
+                                  - id: pipeline_header
+                                    type: Html
+                                    properties:
+                                      html:
+                                        _nunjucks:
+                                          template: |
+                                            <style>
+                                              .pipeline-header-title { color: rgba(0, 0, 0, 0.88); }
+                                              .pipeline-header-description { color: rgba(0, 0, 0, 0.45); }
+                                              @media (prefers-color-scheme: dark) {
+                                                .pipeline-header-title { color: rgba(255, 255, 255, 0.88); }
+                                                .pipeline-header-description { color: rgba(255, 255, 255, 0.45); }
+                                              }
+                                            </style>
+                                            <div style="padding: 4px 0;">
+                                              <div class="pipeline-header-title" style="font-size: 16px; font-weight: 700;">{{ name | default('—') }}</div>
+                                              <div class="pipeline-header-description" style="font-size: 12px; margin-top: 2px;">{{ description | default('—') }}{% if product_name %} · {{ product_name }}{% endif %}</div>
+                                            </div>
+                                          on:
+                                            name:
+                                              _request: get_selected_deal.0.name
+                                            description:
+                                              _request: get_selected_deal.0.description
+                                            product_name:
+                                              _if_none:
+                                                - _get:
+                                                    from:
+                                                      _get:
+                                                        from:
+                                                          _module.var: products
+                                                        key:
+                                                          _request: get_selected_deal.0.product
+                                                    key: title
+                                                - _if_none:
+                                                    - _request: get_selected_deal.0.product_name_freetext
+                                                    - _request: get_selected_deal.0.product
+                            blocks:
+                              # Phase view — the workflows module's actions-on-entity
+                              # widget (replaces the custom ActionSteps stepper, #7).
+                              # entity_id is the state-selected deal; the widget reads
+                              # `entity_workflows` state (refetched on selection).
+                              - _ref:
+                                  module: workflows
+                                  component: actions-on-entity
+                                  vars:
+                                    entity_id:
+                                      _state: selected_deal_id
+                                    entity_connection_id: deals
+                        - _module.var: components.sidebar_slots
+
+                  - id: detail_col
+                    type: Box
+                    layout:
+                      span: 13
+                      sm:
+                        span: 24
+                    blocks:
+                      - id: detail_empty
+                        type: Card
+                        visible:
+                          _eq:
+                            - _state: selected_deal_id
+                            - null
+                        style:
+                          .element:
+                            height: calc(100vh - 172px)
+                            display: flex
+                            flex-direction: column
+                          .body:
+                            flex: 1 1 auto
+                            min-height: 0
+                            overflow-y: auto
+                        properties:
+                          size: small
+                        blocks:
+                          - id: detail_empty_result
+                            type: Result
+                            properties:
+                              icon:
+                                name: AiOutlineRightCircle
+                                color: "#d9d9d9"
+                              subTitle: Select a deal to view its details.
+
+                      - id: detail_card
+                        type: Card
+                        visible:
+                          _ne:
+                            - _state: selected_deal_id
+                            - null
+                        loading:
+                          _or:
+                            - _request_details: get_selected_deal.0.loading
+                            - _not:
+                                _request: get_selected_deal
+                        style:
+                          .element:
+                            height: calc(100vh - 172px)
+                            display: flex
+                            flex-direction: column
+                          .body:
+                            padding: 8px
+                            flex: 1 1 auto
+                            min-height: 0
+                            overflow-y: auto
+                        properties:
+                          size: small
+                        blocks:
+                          - _ref: components/detail_panel.yaml

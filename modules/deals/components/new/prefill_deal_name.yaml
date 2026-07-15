@@ -1,0 +1,31 @@
+# Auto-suggests the deal name "<Company> - <Label>". form.company_id is now
+# the bare company _id from the companies module's company-selector (not the
+# {_id, name, size} object the old app-owned picker stored) — look the display
+# name up from that same selector's already-fetched options instead of
+# issuing a second companies query. Label prefers the product title, else the
+# Material Description (product is optional; Material is the identity).
+# Runs on the material/product onChange handlers on pages/new.yaml — the
+# company-selector export has no onChange hook to also trigger from, so this
+# only re-fires when material/product change, not when company changes last.
+_js:
+  fn: |
+    const companyId = state('form.company_id');
+    const companyOptions = args.companyOptions || [];
+    const companyMatch = companyOptions.find(function (o) { return o.value === companyId; });
+    const companyName = companyMatch ? String(companyMatch.label).replace(/\s*\([^)]*\)\s*$/, '') : '';
+    const slug = state('form.product');
+    const products = args.products || {};
+    const productTitle = slug && products[slug] ? products[slug].title : '';
+    const code = state('form.material_code');
+    const hierarchy = args.hierarchy || {};
+    const materialTitle = code && hierarchy[code] ? hierarchy[code].title : '';
+    const label = productTitle || materialTitle;
+    if (!companyName || !label) return state('form.name') || null;
+    return companyName + ' - ' + label;
+  args:
+    companyOptions:
+      _request: get_companies_for_selector
+    products:
+      _module.var: products
+    hierarchy:
+      _module.var: product_hierarchy

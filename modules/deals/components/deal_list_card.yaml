@@ -1,0 +1,117 @@
+id: deal_list_card
+type: Box
+# Full-width browse card for the deals list page. Wrapped in a plain <a href> so
+# the whole card navigates to the deal workspace (full page load). The narrow
+# in-page sidebar variant is the ListSelector on the deal workspace page.
+#
+# All derived values (palettes, value_label) are computed in the `on:` mapping /
+# request projection and passed in as vars — the template stays presentational.
+# `card_fields` (host app var) drives the bottom meta line;
+# `components.card_slots` (default []) appends
+# extra blocks below the card via `_build.array.concat`.
+blocks:
+  _build.array.concat:
+    - - id: deal_list_card_html
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              on:
+                deal:
+                  _var: deal
+                card_fields:
+                  _module.var: card_fields
+                # Stage display config, looked up from the module's `stages`
+                # var by the deal's current stage. Null when the stage is
+                # unknown.
+                stage_p:
+                  _get:
+                    from:
+                      _module.var: stages
+                    key:
+                      _get:
+                        from:
+                          _var: deal
+                        key: status.0.stage
+                # Won/Lost palette from the module's `outcomes` var, keyed by
+                # outcome type. Null for open deals (no enum entry).
+                outcome_p:
+                  _get:
+                    from:
+                      _module.var: outcomes
+                    key:
+                      _get:
+                        from:
+                          _var: deal
+                        key: outcome.type
+                # Product display name: resolve the stored enum slug to its title, falling
+                # back to the free-text product name, then the raw slug. Null when neither
+                # is set.
+                product_label:
+                  _if_none:
+                    - _get:
+                        from:
+                          _get:
+                            from:
+                              _module.var: products
+                            key:
+                              _get:
+                                from:
+                                  _var: deal
+                                key: product
+                        key: title
+                    - _if_none:
+                        - _get:
+                            from:
+                              _var: deal
+                            key: product_name_freetext
+                        - _get:
+                            from:
+                              _var: deal
+                            key: product
+                # Won/Lost reason display config from the module's
+                # `outcome_reasons` var, keyed by the stored reason slug. Null
+                # when no reason is recorded.
+                reason_p:
+                  _get:
+                    from:
+                      _module.var: outcome_reasons
+                    key:
+                      _get:
+                        from:
+                          _var: deal
+                        key: outcome.reason
+              template: |
+                <a href="/deals/view?_id={{ deal._id }}" style="display: block; text-decoration: none; color: inherit;">
+                  <div style="display: flex; gap: 16px; align-items: stretch; padding: 14px 16px; margin-bottom: 10px; background: var(--ant-color-bg-container); border: 1px solid var(--ant-color-border-secondary); border-left: 4px solid {{ stage_p.bd | default('var(--ant-color-border)') }}; border-radius: 10px; transition: box-shadow 0.15s, border-color 0.15s;">
+                    <div style="flex: 1 1 auto; min-width: 0;">
+                      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px;">
+                        <span style="font-size: 11px; font-weight: 600; color: var(--ant-color-primary); letter-spacing: 0.02em;">{{ deal._id }}</span>
+                        {% if deal.updated.timestamp %}<span style="font-size: 10px; color: var(--ant-color-text-tertiary);">{{ deal.updated.timestamp | date('MMM D, YYYY') }}</span>{% endif %}
+                      </div>
+                      <div style="font-size: 15px; font-weight: 600; color: var(--ant-color-text); line-height: 1.35; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ deal.name | safe }}</div>
+                      <div style="font-size: 12px; color: var(--ant-color-text-secondary); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ deal.company_name | default('—') }}</div>
+                      {% if product_label %}<div style="font-size: 11px; color: var(--ant-color-text-tertiary); line-height: 1.35; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ product_label }}</div>{% endif %}
+                    </div>
+                    <div style="flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 8px; text-align: right;">
+                      <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
+                        {% if stage_p %}
+                          <span style="display: inline-block; font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 10px; background: transparent; color: {{ stage_p.fg }}; border: 1px solid {{ stage_p.bd }};">{{ stage_p.title }}</span>
+                        {% endif %}
+                        {% if outcome_p %}
+                          <span style="display: inline-block; font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 10px; background: transparent; color: {{ outcome_p.fg }}; border: 1px solid {{ outcome_p.bd }};">{{ reason_p.title | default(outcome_p.title) }}</span>
+                        {% endif %}
+                      </div>
+                      <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; font-size: 11px; color: var(--ant-color-text-secondary); line-height: 1.4;">
+                        {% for f in card_fields %}
+                          {% set v = deal[f.path] %}
+                          {% if v %}
+                            {% if not loop.first %}<span>·</span>{% endif %}
+                            <span{% if f.highlight %} style="color: var(--ant-color-success); font-weight: 500;"{% endif %}>{{ f.prefix | default('') }}{% if f.date_format %}{{ v | date(f.date_format) }}{% elif f.round %}{{ v | round }}{% else %}{{ v }}{% endif %}{{ f.suffix | default('') }}</span>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                </a>
+    - _module.var: components.card_slots

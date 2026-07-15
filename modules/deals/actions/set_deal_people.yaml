@@ -1,0 +1,21 @@
+id: set_deal_people
+type: SetState
+params:
+  # Picker-bound state for the Assign People modal. The deal stores each role as
+  # an array of captured contact snapshots ({ contact_id, name, email }) — the
+  # exact ContactSelector value shape — so we bind directly with no transform.
+  # Referenced wherever get_selected_deal is (re)fetched: deal load, deal switch,
+  # post-save, and modal cancel (to discard unsaved picker edits).
+  selected_deal_people:
+    main_point_of_contact:
+      _if_none:
+        - _request: get_selected_deal.0.main_point_of_contact
+        - []
+    decision_maker:
+      _if_none:
+        - _request: get_selected_deal.0.decision_maker
+        - []
+    finance_contact:
+      _if_none:
+        - _request: get_selected_deal.0.finance_contact
+        - []

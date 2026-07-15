@@ -1,0 +1,174 @@
+id: get_selected_deal
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: deals-collection
+payload:
+  selected_deal_id:
+    _state: selected_deal_id
+properties:
+  pipeline:
+    _array.concat:
+      - - $match:
+            _id:
+              _payload: selected_deal_id
+            removed: null
+        - $lookup:
+            from: companies
+            localField: company_id
+            foreignField: _id
+            as: company
+        # People are stored as arrays of captured snapshots ({ contact_id, name,
+        # email }). Enrich each via the embedded contact_id so the detail card shows
+        # fresh profile fields (name, job_title). The raw stored arrays are left
+        # intact for the Assign People picker to bind to; enrichment lands in
+        # separate *_view arrays read by section_people (via *_view.0).
+        # Collect every referenced contact_id into one array, then a single
+        # localField/foreignField lookup fetches them with one indexed _id match.
+        # $filter splits the result back into the per-role *_view arrays.
+        - $addFields:
+            contact_ids:
+              - $first: $main_point_of_contact.contact_id
+              - $first: $decision_maker.contact_id
+              - $first: $finance_contact.contact_id
+        - $lookup:
+            from: user-contacts
+            localField: contact_ids
+            foreignField: _id
+            as: contacts_view
+        - $addFields:
+            main_point_of_contact_view:
+              $filter:
+                input: $contacts_view
+                as: c
+                cond:
+                  $eq:
+                    - $$c._id
+                    - $first: $main_point_of_contact.contact_id
+            decision_maker_view:
+              $filter:
+                input: $contacts_view
+                as: c
+                cond:
+                  $eq:
+                    - $$c._id
+                    - $first: $decision_maker.contact_id
+            finance_contact_view:
+              $filter:
+                input: $contacts_view
+                as: c
+                cond:
+                  $eq:
+                    - $$c._id
+                    - $first: $finance_contact.contact_id
+        - $unset:
+            - contact_ids
+            - contacts_view
+        - $lookup:
+            from: deals
+            localField: company_id
+            foreignField: company_id
+            let:
+              deal_id: $_id
+            pipeline:
+              - $match:
+                  $expr:
+                    $ne:
+                      - $_id
+                      - $$deal_id
+                  removed: null
+              - $sort:
+                  updated.timestamp: -1
+              - $limit: 20
+              - $project:
+                  _id: 1
+                  name: 1
+                  status: 1
+                  outcome: 1
+            as: related_deals
+        # Form data now lives on the workflow doc (form_data.{type}), not
+        # deal.workflows.*. Look up the deal's workflow (module workflow_type var)
+        # and alias its form_data back onto `workflows` so every downstream read (deal_value,
+        # close_date, the monthly_volume_ton $set, section_product) is unchanged.
+        # Matches both entity fields so the workflows {entity.connection_id,
+        # entity.id} index is used.
+        - $lookup:
+            from: workflows
+            let:
+              deal_id: $_id
+            as: workflow
+            pipeline:
+              - $match:
+                  $expr:
+                    $and:
+                      - $eq:
+                          - $entity.connection_id
+                          - deals
+                      - $eq:
+                          - $entity.id
+                          - $$deal_id
+                      - $eq:
+                          - $workflow_type
+                          # Module workflow_type var.
+                          - _module.var: workflow_type
+              - $limit: 1
+              - $project:
+                  form_data: 1
+        - $addFields:
+            workflows:
+              $first: $workflow.form_data
+        - $unset: workflow
+        - $addFields:
+            company:
+              $first: $company
+            deal_value:
+              $multiply:
+                - $ifNull:
+                    - $workflows.pricing-qualification.pricing_r_ton
+                    - 0
+                - $ifNull:
+                    - $workflows.volumes.annual_volume_ton
+                    - 0
+            close_date:
+              $ifNull:
+                - $workflows.order-confirmation.commercialisation_date
+                - $expected_close_date
+            days_open_label:
+              $concat:
+                - $toString:
+                    $dateDiff:
+                      startDate: $created.timestamp
+                      endDate: $$NOW
+                      unit: day
+                - d
+        - $addFields:
+            close_label:
+              $cond:
+                if:
+                  $eq:
+                    - $close_date
+                    - null
+                then: "—"
+                else:
+                  $dateToString:
+                    format: "%d %b %Y"
+                    date: $close_date
+            value_label:
+              $cond:
+                if:
+                  $gt:
+                    - $deal_value
+                    - 0
+                then:
+                  $concat:
+                    - "R"
+                    - $toString: $deal_value
+                else: "—"
+        - $set:
+            workflows.volumes.monthly_volume_ton:
+              $round:
+                - $workflows.volumes.monthly_volume_ton
+                - 2
+        - $limit: 1
+      # App-injected pipeline stages (default []) — splice point for
+      # request_stages.get_selected_deal.
+      - _module.var: request_stages.get_selected_deal

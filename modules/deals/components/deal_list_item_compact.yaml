@@ -1,0 +1,103 @@
+id: deal_list_item_compact
+type: Card
+layout:
+  flex: 0 1 auto
+properties:
+  size: small
+  hoverable: true
+  style:
+    margin: 2
+events:
+  onClick:
+    - id: select_deal
+      type: SetState
+      params:
+        selected_deal_id:
+          _get:
+            from:
+              _var: deal
+            key: _id
+        form: null
+    - id: update_query
+      type: Link
+      params:
+        pageId:
+          _module.pageId: view
+        urlQuery:
+          _id:
+            _get:
+              from:
+                _var: deal
+              key: _id
+    - id: refetch_selected
+      type: Request
+      params:
+        - get_selected_deal
+        - get_selected_deal_open_actions
+        - get_last_contact
+        - get-events
+        - get_activities_for_entity
+        - get_entity_files_detail_files_list
+    # Refetch the actions-on-entity phase view for the newly-selected deal
+    # (master-detail: the widget self-fetches only on mount).
+    - id: refetch_entity_workflows
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId:
+            id: get-entity-workflows
+            module: workflows
+        payload:
+          entity:
+            id:
+              _state: selected_deal_id
+            connection_id: deals
+    - id: set_entity_workflows
+      type: SetState
+      params:
+        entity_workflows:
+          _actions: refetch_entity_workflows.response.response.workflows
+    - id: refresh_related_deals
+      type: SetState
+      params:
+        related_deals:
+          _if_none:
+            - _request: get_selected_deal.0.related_deals
+            - []
+    - _ref: actions/set_deal_people.yaml
+    - _ref: actions/compute_open_actions.yaml
+blocks:
+  - id: deal_list_item_compact_html
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          on:
+            deal:
+              _var: deal
+            selected_deal_id:
+              _state: selected_deal_id
+            stages:
+              _module.var: stages
+          template: |
+            {% set outcome_palette = {
+              "won":  {"fg": "var(--ant-color-success)", "bd": "var(--ant-color-success-border)", "label": "Won"},
+              "lost": {"fg": "var(--ant-color-error)",   "bd": "var(--ant-color-error-border)",   "label": "Lost"}
+            } %}
+            {% set stage = deal.status[0].stage %}
+            {% set outcome_type = deal.outcome.type %}
+            {% set stage_p = stages[stage] %}
+            {% set outcome_p = outcome_palette[outcome_type] %}
+            {% set selected = deal._id == selected_deal_id %}
+            <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 6px; margin-bottom: 2px;">
+              <span style="font-size: 10px; font-weight: 600; color: var(--ant-color-primary); letter-spacing: 0.02em;">{{ deal._id }}</span>
+              <span style="display: flex; gap: 6px; flex-shrink: 0;">
+                {% if stage_p %}
+                  <span style="display: inline-block; font-size: 10px; font-weight: 500; padding: 0 6px; border-radius: 8px; background: transparent; color: {{ stage_p.fg }}; border: 1px solid {{ stage_p.bd }}; line-height: 1.5;">{{ stage_p.title }}</span>
+                {% endif %}
+                {% if outcome_p %}
+                  <span style="display: inline-block; font-size: 10px; font-weight: 500; padding: 0 6px; border-radius: 8px; background: transparent; color: {{ outcome_p.fg }}; border: 1px solid {{ outcome_p.bd }}; line-height: 1.5;">{{ outcome_p.label }}</span>
+                {% endif %}
+              </span>
+            </div>
+            <div style="font-size: 12px; font-weight: 600; color: {{ 'var(--ant-color-primary)' if selected else 'var(--ant-color-text)' }}; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ deal.name | safe }}</div>

@@ -1,0 +1,252 @@
+id: action_card_wrap_{{ index }}
+type: Box
+visible:
+  _ne:
+    - _state: open_actions.{{ index }}
+    - null
+layout:
+  span: 8
+blocks:
+  # ── Workflow action variant — links to the action's page ──
+  - id: action_card_{{ index }}
+    type: Card
+    visible:
+      _ne:
+        - _state: open_actions.{{ index }}.kind
+        - task
+    properties:
+      style:
+        border:
+          _string.concat:
+            - '1px solid '
+            - _if_none:
+                - _get:
+                    from:
+                      _ref:
+                        module: workflows
+                        component: action_statuses
+                    key:
+                      _string.concat:
+                        - _state: open_actions.{{ index }}.stage
+                        - '.borderColor'
+                - 'var(--ant-color-primary-border)'
+        background:
+          _string.concat:
+            - 'color-mix(in srgb, '
+            - _if_none:
+                - _get:
+                    from:
+                      _ref:
+                        module: workflows
+                        component: action_statuses
+                    key:
+                      _string.concat:
+                        - _state: open_actions.{{ index }}.stage
+                        - '.borderColor'
+                - 'var(--ant-color-primary-border)'
+            - ' 18%, transparent)'
+        height: 100
+      size: small
+      hoverable: true
+    events:
+      onClick:
+        - id: open_action_link_{{ index }}
+          type: Link
+          skip:
+            _eq:
+              - _state: open_actions.{{ index }}.link.pageId
+              - null
+          params:
+            pageId:
+              _state: open_actions.{{ index }}.link.pageId
+            urlQuery:
+              action_id:
+                _state: open_actions.{{ index }}._id
+    blocks:
+      - id: action_card_text_{{ index }}
+        type: Html
+        properties:
+          html:
+            _string.concat:
+              - '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: '
+              - _if_none:
+                  - _get:
+                      from:
+                        _ref:
+                          module: workflows
+                          component: action_statuses
+                      key:
+                        _string.concat:
+                          - _state: open_actions.{{ index }}.stage
+                          - '.borderColor'
+                  - 'var(--ant-color-primary)'
+              - '; margin-bottom: 4px;">'
+              - _if_none:
+                  - _get:
+                      from:
+                        _module.var: action_groups
+                      key:
+                        _string.concat:
+                          - _state: open_actions.{{ index }}.action_group
+                          - '.title'
+                  - _state: open_actions.{{ index }}.action_group
+              - '</div><div style="font-size: 11px; color: var(--ant-color-text); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">'
+              - _state: open_actions.{{ index }}.message
+              - '</div>'
+
+  # ── Task variant — body opens the edit modal ──
+  # Reads the task doc fields directly (kind, title, stage, overdue,
+  # assignees); overdue borrows the `error` enum styling. Tasks read as a
+  # different family from workflow action cards: plain background with a
+  # 4px colored left stripe + dashed outline + ✓ label glyph, vs the
+  # actions' solid tinted fill. Completing a task is done via the modal.
+  - id: task_card_{{ index }}
+    type: Card
+    visible:
+      _eq:
+        - _state: open_actions.{{ index }}.kind
+        - task
+    properties:
+      style:
+        border:
+          _string.concat:
+            - '1px dashed '
+            - _if:
+                test:
+                  _eq:
+                    - _state: open_actions.{{ index }}.overdue
+                    - true
+                then:
+                  _get:
+                    from:
+                      _ref:
+                        module: workflows
+                        component: action_statuses
+                    key: error.borderColor
+                else:
+                  _if_none:
+                    - _get:
+                        from:
+                          _ref:
+                            module: workflows
+                            component: action_statuses
+                        key:
+                          _string.concat:
+                            - _state: open_actions.{{ index }}.stage
+                            - '.borderColor'
+                    - 'var(--ant-color-primary-border)'
+        borderLeft:
+          _string.concat:
+            - '4px solid '
+            - _if:
+                test:
+                  _eq:
+                    - _state: open_actions.{{ index }}.overdue
+                    - true
+                then:
+                  _get:
+                    from:
+                      _ref:
+                        module: workflows
+                        component: action_statuses
+                    key: error.borderColor
+                else:
+                  _if_none:
+                    - _get:
+                        from:
+                          _ref:
+                            module: workflows
+                            component: action_statuses
+                        key:
+                          _string.concat:
+                            - _state: open_actions.{{ index }}.stage
+                            - '.borderColor'
+                    - 'var(--ant-color-primary-border)'
+        background: var(--ant-color-bg-container)
+        height: 100
+      size: small
+      hoverable: true
+    # onClick lives on the Card (not an inner box) so the whole card surface —
+    # title, footer/due-date row, and padding — opens the modal. Mirrors the
+    # workflow-action variant above.
+    events:
+      onClick:
+        - id: select_task_{{ index }}
+          type: SetState
+          params:
+            selected_task:
+              _state: open_actions.{{ index }}
+        - id: open_task_modal_{{ index }}
+          type: CallMethod
+          params:
+            blockId: deal_task_modal
+            method: toggleOpen
+    blocks:
+      - id: task_card_body_{{ index }}
+        type: Box
+        blocks:
+          - id: task_card_text_{{ index }}
+            type: Html
+            properties:
+              html:
+                _string.concat:
+                  - '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: '
+                  - _if:
+                      test:
+                        _eq:
+                          - _state: open_actions.{{ index }}.overdue
+                          - true
+                      then:
+                        _get:
+                          from:
+                            _ref:
+                              module: workflows
+                              component: action_statuses
+                          key: error.borderColor
+                      else:
+                        _if_none:
+                          - _get:
+                              from:
+                                _ref:
+                                  module: workflows
+                                  component: action_statuses
+                              key:
+                                _string.concat:
+                                  - _state: open_actions.{{ index }}.stage
+                                  - '.borderColor'
+                          - 'var(--ant-color-primary)'
+                  - '; margin-bottom: 4px;">&#10003;&nbsp;'
+                  - _if:
+                      test:
+                        _eq:
+                          - _state: open_actions.{{ index }}.overdue
+                          - true
+                      then: Overdue Task
+                      else: Task
+                  - '</div><div style="font-size: 11px; color: var(--ant-color-text); line-height: 1.4; min-height: 2.8em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">'
+                  - _state: open_actions.{{ index }}.title
+                  - '</div>'
+      - id: task_card_foot_{{ index }}
+        type: Box
+        style:
+          .element:
+            margin-top: 4px
+        blocks:
+          - id: task_card_due_{{ index }}
+            type: Html
+            properties:
+              html:
+                _if:
+                  test:
+                    _eq:
+                      - _state: open_actions.{{ index }}.due_date
+                      - null
+                  then: ''
+                  else:
+                    _string.concat:
+                      - '<div style="font-size: 10px; color: var(--ant-color-text-tertiary);">Due '
+                      - _dayjs.format:
+                          on:
+                            _state: open_actions.{{ index }}.due_date
+                          format: 'D MMM YYYY'
+                      - '</div>'
