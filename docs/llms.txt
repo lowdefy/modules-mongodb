@@ -44,6 +44,11 @@
 - docs/contacts/index.md: Contacts — Contact management — list, detail, edit, and create pages over the shared `user-contacts` collection, plus a rich contact selector with inline add/edit/verify, a basic dropdown selector, and a role-scoped selector (`role-contact-selector`, single or multiple) that stores a view-renderable denorma...
 - docs/contacts/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
+## deals
+
+- docs/deals/index.md: Deals — A workflow-driven deal (opportunity) workspace — a list page, a create form, and a master-detail workspace where a deal's pipeline actions, people, notes, files, tasks, and won/lost outcome are managed in one place. Deals are stored in their own collection with auto-generated consecutive IDs (`D-...
+- docs/deals/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
+
 ## events
 
 - docs/events/index.md: Events — Audit event log shared by every other module — a `new-event` API for logging, a timeline panel for rendering, and the `change_stamp` and `event_types` components consumed across the repo.
