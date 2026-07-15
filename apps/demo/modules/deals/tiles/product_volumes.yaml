@@ -1,10 +1,5 @@
-# Demo app-injected product tile for the deals module's `info_grid_slots`
-# (see apps/demo/modules/deals/vars.yaml), rendered on the module's deals/view
-# workspace. Demonstrates the info-grid slot extension point.
-#
-# Slot-state contract — runs inside the module page, so it reads:
-#   - `_request: get_selected_deal.0.*` — the module's get_selected_deal (deal
-#     doc + workflow form_data aliased onto `workflows` by that request's lookup).
+# Demo product tile injected via the deals module's `info_grid_slots`. Runs on
+# deals/view, so it reads the module's `get_selected_deal` request.
 id: detail_cell_product
 type: Descriptions
 layout:
