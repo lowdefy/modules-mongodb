@@ -5,6 +5,20 @@ _ref:
     id: all
     title: Deals
     content_width: 1100
+    page_actions:
+      - id: new_deal_button
+        type: Button
+        properties:
+          title: New Deal
+          icon: AiOutlinePlus
+          type: primary
+        events:
+          onClick:
+            - id: go_new_deal
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: new
     events:
       # Seed filter + pagination defaults before first render so the outcome
       # Segmented shows "Open" immediately and the request has valid paging.
@@ -18,17 +32,23 @@ _ref:
               # hold the app-configured `salesperson_role` (unset = no default).
               # Filter values are salesperson.name (see get_deals_list_options),
               # which matches the user's profile name.
+              # Build-time gate: only emit the _user.hasRole check when the app
+              # configured a salesperson_role. Unset (null) → no default, and
+              # crucially no _user.hasRole operator with a null param (invalid).
               salesperson:
-                _if:
+                _build.if:
                   test:
-                    _and:
-                      - _ne:
-                          - _module.var: salesperson_role
-                          - null
-                      - _user.hasRole:
-                          _module.var: salesperson_role
+                    _build.ne:
+                      - _module.var: salesperson_role
+                      - null
                   then:
-                    - _user: profile.name
+                    _if:
+                      test:
+                        _user.hasRole:
+                          _module.var: salesperson_role
+                      then:
+                        - _user: profile.name
+                      else: null
                   else: null
             pagination:
               current: 1

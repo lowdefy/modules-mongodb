@@ -34,16 +34,16 @@ events:
           # at build time from _module.var: app_name.
           display:
             _build.object.fromEntries:
-              - - - _module.var: app_name
-                  - title:
-                      _nunjucks:
-                        template: |
-                          <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> added a note.
-                        on:
-                          user:
-                            _user: true
-                    description:
-                      _state: detail_panel.note_content.html
+              - - _module.var: app_name
+                - title:
+                    _nunjucks:
+                      template: |
+                        <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> added a note.
+                      on:
+                        user:
+                          _user: true
+                  description:
+                    _state: detail_panel.note_content.html
           references:
             deal_ids:
               - _state: selected_deal_id
