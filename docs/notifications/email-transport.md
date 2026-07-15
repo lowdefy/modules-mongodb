@@ -22,7 +22,15 @@ In Lowdefy a request type belongs to a specific connection type — the connecti
 
 `SMTPMailSend` exists only on an `SMTP` connection, and `SendGridMailSend` only on a `SendGridMail` connection. Remapping a module connection (`connections: { notifications-email: my-conn }`) only changes **which connection instance** a step uses, never the request **type** the step issues — so a remap alone can never switch transports. The `transport` var switches the send step itself; the module ships both steps and the build keeps only the selected branch live.
 
-Both transports send the same thing: the pipeline's `RenderNotification` step produces the final HTML and text, and the send step is a pure transport for the rendered message. `email_result.transport` on the notification record says which one delivered it (`messageId` is recorded for SMTP; SendGrid's API does not return one through the request).
+Both transports send the same thing: the pipeline's `RenderNotification` step produces the final HTML and text, and the send step is a pure transport for the rendered message. `email_result` on the notification record captures the delivery outcome:
+
+- `transport` — which transport delivered it (`smtp` or `sendgrid`).
+- `messageId` — the provider message id.
+- `to` — the post-filter address mail actually went to. When a `filter.replaceAddress` redirect is active this differs from the record's `email` (the intended recipient), making the redirect visible in the data.
+- `filtered` — `true` when the filter (`allowlist`/`regex`) dropped the send entirely and nothing was delivered.
+- `timestamp` — when the send completed.
+
+On Lowdefy versions where the mail send requests do not yet return per-message results, `messageId` and `to` are null and `filtered` is false.
 
 ## Using SendGrid over its HTTP API
 
@@ -42,7 +50,7 @@ modules:
 Optional `sendgrid.*` vars:
 
 - `reply_to` — reply-to address, defaults to `from`.
-- `filter` — a SendGridMail recipient filter (`{ replaceAddress, allowlist, regex }`) to redirect or restrict outgoing mail in non-production environments.
+- `filter` — a SendGridMail recipient filter (`{ replaceAddress, allowlist, regex }`) to redirect or restrict outgoing mail in non-production environments. The record's `email_result.to` shows where mail actually went after the filter.
 - `sandbox` — enable SendGrid sandbox mode; SendGrid validates the send without delivering. Useful for testing the pipeline end to end.
 
 Apps with an existing `SendGridMail` connection (for example one whose API key lives under a different secret name) remap the connection instead of setting the vars:

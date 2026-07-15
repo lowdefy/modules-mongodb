@@ -100,7 +100,7 @@ The pipeline writes this shape; the inbox, bell, and link pages read it. Everyth
 | `subject`, `title`, `preview`, `body`, `text`      | Render outputs (`body` = HTML) — retries and drains never re-render      |
 | `data`                                             | The ORIGINAL item — link targets stay as `{ pageId, urlQuery }` objects  |
 | `send_email`, `cc`, `bcc`                          | Delivery inputs                                                          |
-| `sent`, `send_attempts`, `last_attempt`, `email_result` | Delivery lifecycle                                                  |
+| `sent`, `send_attempts`, `last_attempt`, `email_result` | Delivery lifecycle — `email_result.to` records the post-filter address mail actually went to (differs from `email` under a `replaceAddress` redirect); `filtered: true` = dropped by the filter |
 | `read`                                             | Inbox state (mark-as-read)                                               |
 | `created.timestamp`, `created.app_name`            | Ordering and app scoping                                                 |
 

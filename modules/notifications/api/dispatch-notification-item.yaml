@@ -254,14 +254,33 @@ routine:
               update:
                 $set:
                   sent: true
+                  # Only one send step ran (transport switch above); _step on
+                  # the step that never ran returns null, so _if_none picks the
+                  # live transport's result. On Lowdefy versions before the mail
+                  # plugins returned per-message results, messageId and to are
+                  # null and filtered folds to false.
                   email_result:
                     transport:
                       _module.var: transport
-                    # SMTP (nodemailer) reports a messageId; SendGridMailSend
-                    # returns only a response string, so this is null for
-                    # sendgrid (_step on a step that never ran returns null).
                     messageId:
-                      _step: send_mail_smtp.results.0.messageId
+                      _if_none:
+                        - _step: send_mail_sendgrid.results.0.messageId
+                        - _step: send_mail_smtp.results.0.messageId
+                    # The post-filter address mail actually went to — differs
+                    # from the record's email when the connection filter's
+                    # replaceAddress redirect is active.
+                    to:
+                      _if_none:
+                        - _step: send_mail_sendgrid.results.0.to
+                        - _step: send_mail_smtp.results.0.to
+                    # true when the filter (allowlist/regex) dropped the send
+                    # entirely — nothing was delivered.
+                    filtered:
+                      _if_none:
+                        - _step: send_mail_sendgrid.results.0.filtered
+                        - _if_none:
+                            - _step: send_mail_smtp.results.0.filtered
+                            - false
                     timestamp:
                       _date: now
         :catch:
