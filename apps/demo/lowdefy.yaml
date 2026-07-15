@@ -112,6 +112,22 @@ connections:
       databaseUri:
         _secret: MONGODB_URI
       collection: user-contacts
+  # The sales-pipeline workflow's entity connection. The deals module also
+  # reads/writes this collection via its own `deals-collection`; this app-level
+  # `deals` connection is the logical id the module's GetEntityWorkflows queries
+  # match on (entity.connection_id: deals).
+  - id: deals
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: deals
+      write: true
+      changeLog:
+        collection: log-changes
+        meta:
+          user:
+            _user: true
 
 api: []
 

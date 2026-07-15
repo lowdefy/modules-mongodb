@@ -3,8 +3,10 @@ type: sales-pipeline
 # Cross-module entity: the deal lives in the deals module's collection and its
 # workspace/list are the deals module's scoped pages (deals/view, deals/all).
 entity:
-  connection_id:
-    _module.connectionId: { id: deals-collection, module: deals }
+  # Literal `deals` (a real app connection, see lowdefy.yaml) — the deals module
+  # hardcodes this string as the workflow entity connection_id in its
+  # GetEntityWorkflows queries, so the workflow doc must store it too.
+  connection_id: deals
   ref_key: deal_ids
   page_id: deals/view
   title: Deal
@@ -14,8 +16,7 @@ entity:
     routine:
       - id: load_deal
         type: MongoDBAggregation
-        connectionId:
-          _module.connectionId: { id: deals-collection, module: deals }
+        connectionId: deals
         payload:
           entity_id:
             _payload: entity_id
