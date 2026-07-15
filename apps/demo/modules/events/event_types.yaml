@@ -1,11 +1,7 @@
-create-lead:
+create-deal:
   color: "#1890ff"
-  title: Lead Created
-  icon: AiOutlineUserAdd
-convert-lead:
-  color: "#7c3aed"
-  title: Lead Converted
-  icon: AiOutlineShop
+  title: Deal Created
+  icon: AiOutlineFileAdd
 action-approve:
   color: "#52c41a"
   title: Action Approved

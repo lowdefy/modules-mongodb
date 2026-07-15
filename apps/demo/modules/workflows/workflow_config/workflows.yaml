@@ -1,2 +1,2 @@
-- _ref: modules/workflows/workflow_config/onboarding/onboarding.yaml
+- _ref: modules/workflows/workflow_config/sales-pipeline/sales-pipeline.yaml
 - _ref: modules/workflows/workflow_config/company-setup/company-setup.yaml

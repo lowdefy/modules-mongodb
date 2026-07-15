@@ -1,0 +1,28 @@
+type: pricing-qualification
+kind: form
+action_group: prospecting
+description: |
+  Qualify the pricing for this deal. Price per ton × annual volume drives the
+  deal value shown on the deal workspace.
+access:
+  demo:
+    view: true
+    edit: true
+form:
+  - key: form.pricing_r_ton
+    component: number
+    title: Price per ton
+    required: true
+  - key: form.qualified
+    component: yes_no_selector
+    title: Qualified?
+status_map:
+  action-required:
+    demo:
+      message: Qualify pricing.
+  in-progress:
+    demo:
+      message: Qualifying pricing.
+  done:
+    demo:
+      message: Pricing qualified.

@@ -1,0 +1,64 @@
+type: sales-pipeline
+# title omitted — derives to "Sales Pipeline" via humanizeSlug.
+# Cross-module entity: the deal lives in the deals module's collection and its
+# workspace/list are the deals module's scoped pages (deals/view, deals/all).
+entity:
+  connection_id:
+    _module.connectionId: { id: deals-collection, module: deals }
+  ref_key: deal_ids
+  page_id: deals/view
+  title: Deal
+  # Inline routine → the sales-pipeline-entity-data InternalApi. Deal _id is a
+  # string consecutive id (no ObjectId coercion), so $match compares directly.
+  data:
+    routine:
+      - id: load_deal
+        type: MongoDBAggregation
+        connectionId:
+          _module.connectionId: { id: deals-collection, module: deals }
+        payload:
+          entity_id:
+            _payload: entity_id
+        properties:
+          pipeline:
+            - $match:
+                _id:
+                  _payload: entity_id
+      - :return:
+          name:
+            _step: load_deal.0.name
+          description:
+            _step: load_deal.0.description
+          sector:
+            _step: load_deal.0.sector
+          status:
+            _step: load_deal.0.status.0.stage
+  list_page_id: deals/all
+  list_title: Deals
+
+entity_view:
+  slot:
+    _ref: modules/workflows/workflow_config/sales-pipeline/deal-detail-slot.yaml
+
+display_order: 1
+
+starting_actions:
+  - type: volumes
+    status: action-required
+  - type: pricing-qualification
+    status: action-required
+  - type: deal-outcome
+    status: action-required
+
+action_groups:
+  - id: prospecting
+    title: Prospecting
+    icon: AiOutlineSearch
+  - id: closing
+    title: Closing
+    icon: AiOutlineFileDone
+
+actions:
+  - _ref: modules/workflows/workflow_config/sales-pipeline/volumes.yaml
+  - _ref: modules/workflows/workflow_config/sales-pipeline/pricing-qualification.yaml
+  - _ref: modules/workflows/workflow_config/sales-pipeline/deal-outcome.yaml

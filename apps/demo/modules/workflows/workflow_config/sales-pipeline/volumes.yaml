@@ -1,0 +1,31 @@
+type: volumes
+kind: form
+action_group: prospecting
+description: |
+  Capture the expected volume for this deal. Drives the deal value and the
+  product tile on the deal workspace.
+access:
+  demo:
+    view: true
+    edit: true
+# No persist hook — the engine stores form values under the workflow doc's
+# form_data.volumes, which the deals module reads via get_selected_deal's
+# workflow lookup (workflows.volumes.*).
+form:
+  - key: form.annual_volume_ton
+    component: number
+    title: Annual volume (t/yr)
+    required: true
+  - key: form.monthly_volume_ton
+    component: number
+    title: Monthly volume (t)
+status_map:
+  action-required:
+    demo:
+      message: Record expected volumes.
+  in-progress:
+    demo:
+      message: Recording volumes.
+  done:
+    demo:
+      message: Volumes recorded.

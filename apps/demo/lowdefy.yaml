@@ -112,22 +112,8 @@ connections:
       databaseUri:
         _secret: MONGODB_URI
       collection: user-contacts
-  - id: leads-collection
-    type: MongoDBCollection
-    properties:
-      databaseUri:
-        _secret: MONGODB_URI
-      collection: leads
-      write: true
-      changeLog:
-        collection: log-changes
-        meta:
-          user:
-            _user: true
 
-api:
-  - _ref: api/leads-create.yaml
-  - _ref: api/leads-update.yaml
+api: []
 
 pages:
   - _ref: pages/router.yaml
@@ -135,9 +121,4 @@ pages:
   - _ref: pages/user-components-demo.yaml
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml
-  - _ref: pages/leads/lead-list.yaml
-  - _ref: pages/leads/lead-new.yaml
-  - _ref: pages/leads/lead-view.yaml
-  # App-owned working surface for the send-quote custom action (Part 28).
-  - _ref: pages/leads/quote-builder.yaml
   - _ref: pages/files/files-demo.yaml

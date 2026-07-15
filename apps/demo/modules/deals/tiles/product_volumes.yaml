@@ -1,0 +1,80 @@
+# Demo app-injected product tile for the deals module's `info_grid_slots`
+# (see apps/demo/modules/deals/vars.yaml), rendered on the module's deals/view
+# workspace. Demonstrates the info-grid slot extension point.
+#
+# Slot-state contract — runs inside the module page, so it reads:
+#   - `_request: get_selected_deal.0.*` — the module's get_selected_deal (deal
+#     doc + workflow form_data aliased onto `workflows` by that request's lookup).
+id: detail_cell_product
+type: Descriptions
+layout:
+  span: 12
+  sm:
+    span: 24
+properties:
+  bordered: false
+  size: small
+  column: 1
+  layout: horizontal
+  colon: false
+  title: '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary); margin-bottom: 4px;">Product</div>'
+  items:
+    - label: Product
+      value:
+        _if_none:
+          - _request: get_selected_deal.0.product_name_freetext
+          - _if_none:
+              - _request: get_selected_deal.0.product
+              - "—"
+    - label: Material
+      value:
+        _if_none:
+          - _request: get_selected_deal.0.attributes.material_description
+          - _if_none:
+              - _request: get_selected_deal.0.attributes.material_code
+              - "—"
+    - label: Hierarchy
+      value:
+        _if:
+          test:
+            _ne:
+              - _request: get_selected_deal.0.attributes.product_hier_l2
+              - null
+          then:
+            _string.concat:
+              - _request: get_selected_deal.0.attributes.product_hier_l2
+              - " › "
+              - _request: get_selected_deal.0.attributes.product_hier_l3
+              - " › "
+              - _request: get_selected_deal.0.attributes.product_hier_l4
+          else: "—"
+    - label: Annual volume
+      value:
+        _if:
+          test:
+            _gt:
+              - _if_none:
+                  - _request: get_selected_deal.0.workflows.volumes.annual_volume_ton
+                  - 0
+              - 0
+          then:
+            _string.concat:
+              - ""
+              - _request: get_selected_deal.0.workflows.volumes.annual_volume_ton
+              - " t/yr"
+          else: "—"
+    - label: Monthly volume
+      value:
+        _if:
+          test:
+            _gt:
+              - _if_none:
+                  - _request: get_selected_deal.0.workflows.volumes.monthly_volume_ton
+                  - 0
+              - 0
+          then:
+            _string.concat:
+              - ""
+              - _request: get_selected_deal.0.workflows.volumes.monthly_volume_ton
+              - " t"
+          else: "—"

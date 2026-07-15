@@ -28,12 +28,12 @@ _ref:
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
-                id: leads
-                icon: AiOutlineUserAdd
-                title: Leads
-                description: Lead pipeline — capture, qualify, and convert.
-                note: Demonstrates the Workflows module — action lifecycle & status transitions.
-                pageId: lead-list
+                id: deals
+                icon: AiOutlineFundProjectionScreen
+                title: Deals
+                description: Deal pipeline — capture, progress, and win or lose.
+                note: Demonstrates the Deals module orchestrating Workflows, Companies, Contacts, Files & Activities.
+                pageId: deals/all
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:

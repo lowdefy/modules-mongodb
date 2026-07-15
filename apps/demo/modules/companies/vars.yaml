@@ -48,34 +48,6 @@ on_create_routine:
             _step: insert.insertedId
         parent_action_id:
           _payload: url_query.action_id
-  - ":if":
-      _ne:
-        - _payload: url_query.entity_id
-        - null
-    ":then":
-      - id: log_convert_lead
-        type: CallApi
-        properties:
-          endpointId:
-            _module.endpointId: { id: new-event, module: events }
-          payload:
-            type: convert-lead
-            display:
-              demo:
-                title:
-                  _nunjucks:
-                    template: "{{ user.profile.name }} converted lead {{ target.name }} to a customer"
-                    on:
-                      user:
-                        _user: true
-                      target:
-                        name:
-                          _payload: name
-            references:
-              lead_ids:
-                - _payload: url_query.entity_id
-              company_ids:
-                - _step: insert.insertedId
 components:
   sidebar_slots:
     - _ref:
