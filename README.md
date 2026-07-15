@@ -13,20 +13,20 @@ Add modules to the `modules` array in your app's `lowdefy.yaml`, pinning each to
 ```yaml
 modules:
   - id: events
-    source: "github:lowdefy/modules-mongodb/modules/events@v0.12.0"
+    source: "github:lowdefy/modules-mongodb/modules/events@v0.13.0"
     vars:
       display_key: my-app
 
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v0.12.0"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v0.13.0"
 
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.12.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.13.0"
     vars:
       app_name: my-app
 
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.12.0"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.13.0"
     vars:
       app_name: my-app
 ```
