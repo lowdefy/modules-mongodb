@@ -1,5 +1,5 @@
 import schema from './schema.js';
-import GetEventsTimeline from '../WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js';
+import GetEventsTimeline from './GetEventsTimeline/GetEventsTimeline.js';
 
 const EventsTimeline = {
   schema,

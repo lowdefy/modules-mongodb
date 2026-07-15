@@ -1,7 +1,9 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
+import collectionNames from "../../shared/collectionNames.js";
 import {
   computeAllowed,
   collapseLink,
+  hasAnyVerb,
 } from "../../shared/render/resolveActionAccess.js";
 import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
 
@@ -35,9 +37,7 @@ async function GetEventsTimeline(lowdefyContext) {
   const { reference_field, reference_value } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
-  const eventsCollection = connection.eventsCollection ?? "log-events";
-  const actionsCollection = connection.actionsCollection ?? "actions";
-  const contactsCollection = connection.contactsCollection ?? "user-contacts";
+  const collections = collectionNames(connection);
 
   // ── Step 1: Events $match + actions $lookup in ONE aggregation ──
   //
@@ -73,7 +73,7 @@ async function GetEventsTimeline(lowdefyContext) {
     // This is a verbatim port of the $lookup in timeline_action_lookup.yaml.
     {
       $lookup: {
-        from: actionsCollection,
+        from: collections.actions,
         localField: "action_ids",
         foreignField: "_id",
         as: "actions",
@@ -215,7 +215,7 @@ async function GetEventsTimeline(lowdefyContext) {
     // A user IS a contact — shared collection, shared _id space.
     {
       $lookup: {
-        from: contactsCollection,
+        from: collections.contacts,
         localField: "created.user.id",
         foreignField: "_id",
         as: "author_contact",
@@ -233,7 +233,7 @@ async function GetEventsTimeline(lowdefyContext) {
   ];
 
   const rawEvents = await mongoDb
-    .collection(eventsCollection)
+    .collection(collections.events)
     .aggregate(pipeline)
     .toArray();
 
@@ -256,49 +256,34 @@ async function GetEventsTimeline(lowdefyContext) {
 
     const enrichedActions = [];
     for (const action of rawActions) {
-      let card;
-
+      // Workflow cards get the access gate + link collapse; non-workflow cards
+      // (workflow_id null) pass through with status + message only — the
+      // safety valve for future task-kind docs.
+      let link = null;
       if (action.workflow_id != null) {
-        // ── Workflow card: apply access gate + link collapse ──
         const allowed = computeAllowed({
           access: action.access,
           app_name,
           userRoles,
         });
-        if (
-          !allowed.view &&
-          !allowed.edit &&
-          !allowed.review &&
-          !allowed.error
-        ) {
+        if (!hasAnyVerb(allowed)) {
           // Drop: user holds no verb on this card.
           continue;
         }
-        const links = action[app_name]?.links ?? null;
-        const link = collapseLink({ links, allowed });
-        const message = action[app_name]?.message ?? null;
-        card = {
-          _id: action._id,
-          kind: action.kind ?? null,
-          status: action.status ?? null,
-          link,
-          message,
-          updated: action.updated ?? null,
-        };
-      } else {
-        // ── Non-workflow card (workflow_id null): pass through ──
-        // No access/link logic. Expose status + app_name.message only.
-        card = {
-          _id: action._id,
-          kind: action.kind ?? null,
-          status: action.status ?? null,
-          link: null,
-          message: action[app_name]?.message ?? null,
-          updated: action.updated ?? null,
-        };
+        link = collapseLink({
+          links: action[app_name]?.links ?? null,
+          allowed,
+        });
       }
 
-      enrichedActions.push(card);
+      enrichedActions.push({
+        _id: action._id,
+        kind: action.kind ?? null,
+        status: action.status ?? null,
+        link,
+        message: action[app_name]?.message ?? null,
+        updated: action.updated ?? null,
+      });
     }
 
     return {

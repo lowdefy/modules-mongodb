@@ -63,6 +63,48 @@ export function computeAllowed({ access, app_name, userRoles }) {
 }
 
 /**
+ * True when the user holds at least one verb on the action — the shared
+ * "drop the card entirely" gate used by every read surface.
+ *
+ * @param {{ view: boolean, edit: boolean, review: boolean, error: boolean }} allowed
+ * @returns {boolean}
+ */
+export function hasAnyVerb(allowed) {
+  return allowed.view || allowed.edit || allowed.review || allowed.error;
+}
+
+/**
+ * Apply the per-user access policy to a list of raw action docs: compute the
+ * `allowed` bag, drop actions where the user holds no verb, and annotate each
+ * survivor with its collapsed navigation link, per-app message, and scalar
+ * current stage. This is the shared first step of every read handler that
+ * renders action cards (GetEntityWorkflows, GetWorkflowOverview,
+ * GetWorkflowActionGroupOverview). Preserves input order — callers sort.
+ *
+ * @param {{ actions: object[], app_name: string, userRoles?: string[] }}
+ * @returns {Array<{ action: object, allowed: object, link: object | null, message: string | null, status: string | null }>}
+ */
+export function selectVisibleActions({ actions, app_name, userRoles }) {
+  const visible = [];
+  for (const action of actions) {
+    const allowed = computeAllowed({
+      access: action.access,
+      app_name,
+      userRoles,
+    });
+    if (!hasAnyVerb(allowed)) continue; // drop: no verb accessible
+    visible.push({
+      action,
+      allowed,
+      link: collapseLink({ links: action[app_name]?.links, allowed }),
+      message: action[app_name]?.message ?? null,
+      status: action.status?.[0]?.stage ?? null,
+    });
+  }
+  return visible;
+}
+
+/**
  * Default action-card button label per winning verb. The CTA names the action
  * the user takes when they click, so the label follows the *resolved verb* (not
  * the status): a user with only `view` access on an `action-required` action

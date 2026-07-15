@@ -2,7 +2,8 @@ import findOneAndUpdateDoc from "../../mongo/findOneAndUpdateDoc.js";
 import insertOneDoc from "../../mongo/insertOneDoc.js";
 import bulkWriteActions from "../../mongo/bulkWriteActions.js";
 import insertManyDocs from "../../mongo/insertManyDocs.js";
-import dispatchNotifications from "../../WorkflowAPI/SubmitWorkflowAction/dispatchNotifications.js";
+import dispatchNotifications from "./dispatchNotifications.js";
+import collectionNames from "../collectionNames.js";
 import { ConcurrentSubmitError } from "../errors.js";
 
 /**
@@ -57,9 +58,8 @@ function buildActionOperations(actions) {
  * @param {import('mongodb').ClientSession | undefined} session
  */
 async function commitWorkflowAndActions(context, plan, session) {
-  const workflowsCollection =
-    context.connection?.workflowsCollection ?? "workflows";
-  const actionsCollection = context.connection?.actionsCollection ?? "actions";
+  const { workflows: workflowsCollection, actions: actionsCollection } =
+    collectionNames(context.connection);
 
   // Workflow-less plan (Part 24 UpdateActionFields): no workflow doc is written
   // — summary/groups/form_data are unaffected by action metadata. Skip step 1
