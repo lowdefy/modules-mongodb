@@ -1,5 +1,11 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.13.0
+
+### Minor Changes
+
+- [#109](https://github.com/lowdefy/modules-mongodb/pull/109) [`ee7ee3c`](https://github.com/lowdefy/modules-mongodb/commit/ee7ee3c6371452876025e81b110f4df09fcfe626) Thanks [@Saiby100](https://github.com/Saiby100)! - Add the `require` signal: a narrow, pre-hook-only cascade that reopens a `not-required` form/check action back to `action-required`. It is the `not-required` counterpart of `unblock` (which narrowly reopens `blocked`) and is kept distinct from the broad `activate` so a cascade can re-enable a skipped action without accidentally reopening completed (`done`) work. Enables patterns like a boolean form field that toggles a dependent action between `action-required` and `not-required` indefinitely.
+
 ## 0.12.0
 
 ### Patch Changes

@@ -69,10 +69,11 @@ actions:
   - { type: send-quote, signal: unblock } # was: { type: send-quote, status: action-required }
   - { type: upload-po, signal: not_required } # was: { type: upload-po, status: not-required }
   - { type: flagged-action, signal: activate } # was: { ..., status: action-required, force: true }
+  - { type: skipped-action, signal: require } # reopen a not-required action
   - { type: failed-action, signal: error } # was: { ..., status: error }
 ```
 
-Use `activate` to push an action back to `action-required` from any state.
+Use `activate` to push an action back to `action-required` from any state **except** `not-required`. To reopen a `not-required` action, use the dedicated narrow `require` signal (see [Terminal states](#terminal-states-and-re-fires) below).
 
 **Important:** a pre-hook cannot re-signal the current action. The current action always lands per the signal the user fired. If you need conditional landing (e.g., "sometimes this submit should skip to done"), model it as a separate thin action with its own button.
 
@@ -80,7 +81,7 @@ Use `activate` to push an action back to `action-required` from any state.
 
 `done` and `not-required` are terminal for the normal path, but not strictly terminal in the FSM. `done` accepts `submit`, `request_changes`, and `activate` — these are the re-open/revise/re-edit flows that previously needed `force: true`.
 
-`not-required` on form and check actions has no outgoing transitions — once a form action is marked not required, the only recovery is a direct DB write (out-of-band admin action). Tracker actions are different: they accept `internal_mirror_child_*` signals from `done` and `not-required` so a parent can recover when a child re-activates.
+`not-required` on form and check actions is sticky from the user's side — no button undoes it, and `activate` deliberately excludes it. Its one outgoing transition is the dedicated narrow `require` signal (`not-required → action-required`), which only pre-hooks emit. `require` is the `not-required` counterpart of `unblock`: it accepts only `not-required`, so a cascade can reopen a skipped action without reopening a completed (`done`) sibling. A common use is a boolean form field whose pre-hook fires `not_required` when off and `require` when on, toggling a dependent action indefinitely. Tracker actions are different again: they accept `internal_mirror_child_*` signals from `done` and `not-required` so a parent can recover when a child re-activates.
 
 ## The `allow_not_required` guard
 
