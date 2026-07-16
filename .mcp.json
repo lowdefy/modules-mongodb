@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lowdefy-docs": {
+      "type": "http",
+      "url": "http://localhost:3000/lowdefy-docs/mcp"
+    }
+  }
+}

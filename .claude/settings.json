@@ -24,5 +24,6 @@
     "filesystem": {
       "allowWrite": ["~/Library/pnpm", "~/Library/Caches/pnpm"]
     }
-  }
+  },
+  "enabledMcpjsonServers": ["lowdefy-docs"]
 }
