@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260714122106
+lowdefy: 0.0.0-experimental-20260716132211
 name: Module Demo App
 slug: demo
 
@@ -60,23 +60,23 @@ auth:
     signIn: /user-account/login
     verifyEmail: /user-account/verify-email-request
     error: /user-account/login
-  pages:
-    protected: true
-    public:
-      - "404"
-      - notifications-invalid
-      - notifications-link
-      - router
-      - user-account/login
-      - user-account/verify-email-request
-    roles:
-      user-admin:
-        - user-admin/*
-  api:
-    protected: true
-    roles:
-      user-admin:
-        - user-admin/*
+  # pages:
+  #   protected: true
+  #   public:
+  #     - "404"
+  #     - notifications-invalid
+  #     - notifications-link
+  #     - router
+  #     - user-account/login
+  #     - user-account/verify-email-request
+  #   roles:
+  #     user-admin:
+  #       - user-admin/*
+  # api:
+  #   protected: true
+  #   roles:
+  #     user-admin:
+  #       - user-admin/*
 
 modules:
   _ref: modules.yaml
