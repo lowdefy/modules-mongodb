@@ -2,7 +2,7 @@
 
 Platform-side changes the [user-admin design](design.md) depends on. Each ask names the design it lands in, why the module needs it, and its status.
 
-**Status (verified against the current auth-upgrade designs):** asks **1, 2, 3, 4, and 5 are resolved upstream**, **ask 6 is dropped** — the invite email now rides `auth.email` (design Decision 7), so there is no binding to wire — and **ask 7 (explicit role catalog) is newly open** (surfaced by review-1 #10). Ask **3** (impersonation access control) is now **resolved in design** — the engine design's _The user-admin role_ section adds an `auth.userAdminRole` config key that gates the whole user-administration surface (every auth admin step plus the impersonation client action), implemented in phase 9. Impersonation stays in the design behind its var, now backed by a working capability. Each ask below carries a **Resolved** / **Dropped** note with the upstream citation; the original ask text is kept underneath for history.
+**Status (verified against the current auth-upgrade designs):** asks **1, 2, 3, 4, 5, and 7 are resolved upstream** and **ask 6 is dropped** — the invite email now rides `auth.email` (design Decision 7), so there is no binding to wire. This design now has **no open platform dependency**. Ask **7 (explicit role catalog)** is delivered by the [role-catalog](../../../lowdefy-design/designs/auth-upgrade/features/role-catalog/design.md) design (authored `auth.roles` catalog, exposed via `_build.authConfig.roles`). Ask **3** (impersonation access control) is resolved by the engine design's _The user-admin role_ section, which adds an `auth.userAdminRole` config key that gates the whole user-administration surface (every auth admin step plus the impersonation client action), implemented in phase 9; impersonation stays behind its var, now backed by a working capability. Each ask below carries a **Resolved** / **Dropped** note with the upstream citation; the original ask text is kept underneath for history.
 
 ---
 
@@ -76,7 +76,7 @@ At 1.6.23 the Mongo adapter stringifies `json` additionalFields, which would bre
 
 ## 6. Module-exported `auth.hooks` bindings — DROPPED
 
-> **Dropped (no longer needed).** The module no longer ships the `invitation.send` dispatch endpoint: the invite email is sent by BetterAuth through `auth.email`, the same unified send path as verification and password-reset emails (design Decision 7). With no module-shipped hook endpoint, there is no `auth.hooks` binding to export or hand-write, so this ask falls away entirely. It may resurface if the Lowdefy email redesign reintroduces a module-shipped dispatch endpoint. The gap it named is still real (there is no manifest mechanism for a module to contribute an `auth.hooks` entry) — just not one this module needs. See design finding #5.
+> **Dropped (no longer needed).** The module no longer ships the `invitation.send` dispatch endpoint: the invite email is sent by BetterAuth through `auth.email`, the same unified send path as verification, password-reset, and magic-link emails (design Decision 7). With no module-shipped hook endpoint, there is no `auth.hooks` binding to export or hand-write, so this ask falls away entirely. The Lowdefy email redesign has since landed ([auth-emails](../../../lowdefy-design/designs/auth-upgrade/_completed/auth-emails/design.md)) and **removes the `invitation.send` hook point outright** (branded invites are now `auth.email.templates.invitation`), so it does not resurface via that path. The gap it named is still real (there is no manifest mechanism for a module to contribute an `auth.hooks` entry) — just not one this module needs. See design finding #5.
 
 **Lands in**: [hooks](../../../lowdefy-design/designs/auth-upgrade/hooks/design.md) (binding model / build plumbing), touching the module-system build where scoped ids resolve.
 
@@ -86,9 +86,9 @@ At 1.6.23 the Mongo adapter stringifies `json` additionalFields, which would bre
 
 **Fallback if declined**: a documented consumer setup step — the app hand-writes the `auth.hooks` entry with the module-scoped endpoint id.
 
-## 7. Explicit role catalog — authored `{ id, label }`, gate-independent — OPEN
+## 7. Explicit role catalog — authored `{ id, label, description }`, gate-independent — RESOLVED
 
-> **Open.** Surfaced by [review-1 #10](review/review-1.md). The app should declare its roles as an authored catalog with display metadata; page gates _reference_ the catalog rather than _defining_ it.
+> **Resolved upstream.** Delivered by the [role-catalog](../../../lowdefy-design/designs/auth-upgrade/features/role-catalog/design.md) design. `auth.roles` becomes an authored `{ id, label, description }` catalog (Decision 1): every declared `id` registers in the org plugin's AC — so gate-less, display-only roles are assignable (the capability this ask needed) — `label` defaults to `id`, `description` is optional help text, `userAdminRole` is declared in the catalog like any role (Decision 6.2), gate references are build-validated against it (Decision 6.1), and it is exposed to modules through the `_build.authConfig.roles` projection (Decision 7). This retires the module's `roles` var and is the single source of truth for the assignable set, labels, and orphaned-role handling (role-catalog Decision 8 mirrors design Decision 8). The role-catalog design also fixes two deeper issues it surfaced — a built-in-role privilege-escalation hole and the `['member']`-vs-`[]` wart — neither of which changes this module's surface. The original ask text is kept below for history.
 
 **Lands in**: [config-schema](../../../lowdefy-design/designs/auth-upgrade/concepts/config-schema/design.md) (`auth.roles` shape), the build (`buildRoleCatalog` / `_build.authConfig` projection), [user-model](../../../lowdefy-design/designs/auth-upgrade/concepts/user-model/design.md) Decision 5 (AC registration source).
 
