@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>Accept invitation — user-account</title>
+<link rel="stylesheet" href="mock.css" />
+<style>
+  .auth-page{width:400px}
+  #ai_nosession:checked ~ .stage .layer[data-layer=nosession]{display:block}
+  #ai_signedin:checked  ~ .stage .layer[data-layer=signedin]{display:block}
+  #ai_member:checked    ~ .stage .layer[data-layer=member]{display:block}
+  #ai_expired:checked   ~ .stage .layer[data-layer=expired]{display:block}
+  #ai_nosession:checked ~ .statebar label[for=ai_nosession],
+  #ai_signedin:checked  ~ .statebar label[for=ai_signedin],
+  #ai_member:checked    ~ .statebar label[for=ai_member],
+  #ai_expired:checked   ~ .statebar label[for=ai_expired]{background:var(--violet);color:#fff}
+</style>
+</head>
+<body>
+<div class="mock">
+  <input type="radio" name="accept_state" id="ai_nosession" checked />
+  <input type="radio" name="accept_state" id="ai_signedin" />
+  <input type="radio" name="accept_state" id="ai_member" />
+  <input type="radio" name="accept_state" id="ai_expired" />
+  <div class="statebar">
+    <span class="lbl">Accept states</span>
+    <label for="ai_nosession">No session (resting)</label>
+    <label for="ai_signedin">Signed in — email matches</label>
+    <label for="ai_member">Already a member</label>
+    <label for="ai_expired">Expired</label>
+  </div>
+  <div class="stage">
+
+    <!-- ============ Layer: no session — offer login / signup ============ -->
+    <div class="layer" data-layer="nosession">
+      <div class="auth-page" id="accept_page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3 id="accept_title">You're invited</h3>
+            <div class="invctx" id="accept_invite_context"><span class="av s32 g-jm">JM</span><div class="who"><div class="l1">Jane Mokoena invited you to</div><div class="l2">Module Demo App</div></div></div>
+            <p class="lead" style="margin-top:0">To accept, sign in or create your account with <b>sam.taylor@example.com</b>. Your invitation expires in 4 days.</p>
+            <button class="btn pri lg block" id="accept_signup">Create account &amp; accept</button>
+            <button class="btn lg block" id="accept_login">Sign in &amp; accept</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Layer: signed in, email matches ============ -->
+    <div class="layer" data-layer="signedin">
+      <div class="auth-page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3>Accept your invitation</h3>
+            <div class="invctx"><span class="av s32 g-jm">JM</span><div class="who"><div class="l1">Jane Mokoena invited you to</div><div class="l2">Module Demo App</div></div></div>
+            <div class="rowitem" id="accept_signed_in_as" style="border:none;padding:2px 0"><span class="av s28 g-ap">ST</span><div class="ri-main">Signed in as <b>sam.taylor@example.com</b><div class="ri-sub">This matches your invitation.</div></div></div>
+            <button class="btn pri lg block" id="accept_continue">Accept &amp; continue</button>
+            <div class="hint" style="text-align:center">Not you? <a class="btn link" href="logout.html">Sign out</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Layer: already a member ============ -->
+    <div class="layer" data-layer="member">
+      <div class="auth-page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <div class="result" id="accept_already_member"><div class="ric" style="background:var(--ok-bg);color:var(--ok-fg)">&#10003;</div><div class="rt">You're already a member</div><div class="rs">Your account already has access to Module Demo App.</div></div>
+            <button class="btn pri lg block" id="accept_go_to_app">Go to app</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Layer: expired / mismatch ============ -->
+    <div class="layer" data-layer="expired">
+      <div class="auth-page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <div class="result" id="accept_expired"><div class="ric" style="background:var(--warn-bg);color:var(--warn-fg)">&#9203;</div><div class="rt">This invitation has expired</div><div class="rs">Ask Jane Mokoena to send a fresh invitation, then open the new link.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
