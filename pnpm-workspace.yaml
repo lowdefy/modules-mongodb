@@ -11,9 +11,19 @@ packageExtensions:
 
 # pnpm 11 replaced onlyBuiltDependencies/ignoredBuiltDependencies with allowBuilds
 # (package -> boolean) and fails install on any un-reviewed build script.
-# mongodb-memory-server needs its postinstall; @swc/core and sharp ship prebuilt
-# binaries via optional deps, so their install scripts are intentionally skipped.
+# mongodb-memory-server needs its postinstall; @swc/core, sharp and @sentry/cli
+# ship prebuilt binaries via optional deps, so their install scripts (which just
+# re-download those binaries) are intentionally skipped.
 allowBuilds:
   mongodb-memory-server: true
   "@swc/core": false
   sharp: false
+  "@sentry/cli": false
+
+# Lowdefy ships as pinned experimental builds that we intentionally install the
+# day they publish, so exempt the whole scope (plus the unscoped `lowdefy` CLI)
+# from pnpm's default new-package cooldown. Patterns, not version pins, so this
+# never churns on version bumps.
+minimumReleaseAgeExclude:
+  - "@lowdefy/*"
+  - lowdefy
