@@ -73,6 +73,10 @@ phase 3's live-app validation assumes it is up.)
 - No theme derivation from the mock — a module doesn't own the app theme
   (phase 3).
 - No request/data wiring — that is the wire task the markers hand off to.
+- No block authoring — the pipeline builds on existing blocks. If a slot needs
+  genuine React behaviour no block provides (imperative/ephemeral state, a
+  third-party lib lifecycle), phase 3 flags it and hands off to a block-authoring
+  skill; see phase 3, "When no block fits — authoring a custom block".
 - No grading scaffolding — no region tags, no `er_` ids, no forced placeholder
   palette. Ids are real descriptive snake_case block ids; slots inherit the app
   theme.
