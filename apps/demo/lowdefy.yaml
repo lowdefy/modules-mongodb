@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260611102401
+lowdefy: 0.0.0-experimental-20260714122106
 name: Module Demo App
 slug: demo
 
@@ -10,7 +10,7 @@ theme:
   antd:
     algorithm: compact
     token:
-      colorPrimary: '#7c3aed'
+      colorPrimary: "#7c3aed"
 
 config:
   homePageId: router
@@ -23,68 +23,47 @@ global:
         component: event_types
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
+  - name: "@lowdefy/community-plugin-mongodb"
     version: 3.0.0
-  - name: '@lowdefy/community-plugin-xlsx'
+  - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
-  - name: '@lowdefy/community-plugin-nodemailer'
+  - name: "@lowdefy/community-plugin-nodemailer"
     version: 1.1.4
-  - name: '@lowdefy/modules-mongodb-plugins'
+  - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
 
 auth:
+  secret:
+    _secret: AUTH_SECRET
+  database:
+    id: mdb_adapter
+    type: MongoDBAuthAdapter
+    properties:
+      uri:
+        _secret: MONGODB_URI
+  magicLink:
+    enabled: true
+    expiresIn: 1800
+  email:
+    from:
+      _secret: AUTH_FROM_ADDRESS
+    provider:
+      type: smtp
+      properties:
+        host: smtp.sendgrid.net
+        port: 465
+        auth:
+          user: apikey
+          pass:
+            _secret: SENDGRID_API_KEY
   authPages:
     signIn: /user-account/login
-    verifyRequest: /user-account/verify-email-request
+    verifyEmail: /user-account/verify-email-request
     error: /user-account/login
-  theme:
-    brandColor: '#7c3aed'
-  adapter:
-    id: mdb_adapter
-    type: MultiAppMongoDBAdapter
-    properties:
-      invite:
-        required: true
-      databaseUri:
-        _secret: MONGODB_URI
-      appName:
-        _ref:
-          path: app_config.yaml
-          key: app_name
-      verificationTokens:
-        uses: 5
-      collections:
-        accounts: user-accounts
-        contacts: user-contacts
-        sessions: user-sessions
-        verificationTokens: user-verification-tokens
-  providers:
-    - id: email
-      type: EmailProvider
-      properties:
-        maxAge: 1800
-        server:
-          host: smtp.sendgrid.net
-          port: 465
-          auth:
-            user: apikey
-            pass:
-              _secret: SENDGRID_API_KEY
-        from:
-          _secret: AUTH_FROM_ADDRESS
-        templateVariables:
-          appName: Lowdefy Modules MongoDB Demo
-          logoHeight: 80px
-  userFields:
-    id: user.id
-    profile: user.profile
-    app_attributes: user.app_attributes
-    global_attributes: user.global_attributes
-    roles: user.roles
   pages:
     protected: true
     public:
-      - '404'
+      - "404"
       - notifications-invalid
       - notifications-link
       - router
