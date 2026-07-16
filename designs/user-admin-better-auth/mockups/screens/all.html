@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Users list</title>
+<title>Users list — user-admin</title>
 <style>
   :root{
     --violet:#7c3aed;--violet-hover:#6d28d9;--violet-active:#5b21b6;--violet-bg:#f4ecff;--violet-border:#d6bbfb;
@@ -11,46 +11,56 @@
     --text:rgba(0,0,0,.88);--text-2:rgba(0,0,0,.62);--text-3:rgba(0,0,0,.42);
     --border:#f0f0f0;--border-strong:#d9d9d9;
     --shadow-card:0 1px 2px 0 rgba(0,0,0,.03),0 1px 6px -1px rgba(0,0,0,.03),0 2px 4px 0 rgba(0,0,0,.02);
+    --shadow-pop:0 6px 16px 0 rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05);
     --ok-bg:#f6ffed;--ok-bd:#b7eb8f;--ok-fg:#389e0d;--info-bg:#e6f7ff;--info-bd:#91d5ff;--info-fg:#096dd9;
-    --err-bg:#fff1f0;--err-bd:#ffa39e;--err-fg:#cf1322;--neutral-bg:#fafafa;--neutral-bd:#d9d9d9;--neutral-fg:#595959;
+    --err-bg:#fff1f0;--err-bd:#ffa39e;--err-fg:#cf1322;--warn-bg:#fffbe6;--warn-bd:#ffe58f;--warn-fg:#d48806;
+    --neutral-bg:#fafafa;--neutral-bd:#d9d9d9;--neutral-fg:#595959;
     --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:var(--font);color:var(--text);background:var(--bg-layout);font-size:14px;line-height:1.5714;-webkit-font-smoothing:antialiased}
+  body{margin:0;font-family:var(--font);color:var(--text);background:#e9e9ec;font-size:14px;line-height:1.5714;-webkit-font-smoothing:antialiased}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
   code{font-size:12px}
+  [hidden]{display:none!important}
 
-  .appbar{display:flex;align-items:center;gap:18px;background:var(--bg-container);padding:0 22px;height:52px;border-bottom:1px solid var(--border)}
-  .brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px}
+  /* ── page shell (layout `page` component) ───────────────────── */
+  .app{width:1440px;margin:0 auto;background:var(--bg-layout);min-height:100vh}
+  .appbar{display:flex;align-items:center;gap:16px;background:var(--bg-container);padding:0 24px;height:56px;border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
   .brand .mark{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--violet),#4527a0);display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800}
-  .topmenu{display:flex;gap:2px;align-items:center;height:100%}
-  .topmenu a{height:100%;display:flex;align-items:center;padding:0 14px;font-size:13.5px;color:var(--text-2);text-decoration:none;border-bottom:2px solid transparent}
+  .topmenu{display:flex;gap:4px;align-items:center;height:100%}
+  .topmenu a{height:100%;display:flex;align-items:center;padding:0 16px;font-size:14px;color:var(--text-2);text-decoration:none;border-bottom:2px solid transparent}
   .topmenu a.on{color:var(--violet);border-bottom-color:var(--violet);font-weight:500}
-  .appbar .right{margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--text-2)}
+  .appbar .right{margin-left:auto;display:flex;align-items:center;gap:16px;color:var(--text-2)}
   .bell{width:16px;height:16px;border:2px solid currentColor;border-bottom:none;border-radius:8px 8px 0 0;position:relative;display:inline-block}
   .bell::after{content:"";position:absolute;left:-3px;bottom:-2px;width:20px;height:2px;background:currentColor;border-radius:2px}
   .badge-dot{position:relative}
   .badge-dot::after{content:"7";position:absolute;top:-8px;right:-9px;background:#cf1322;color:#fff;font-size:9px;line-height:1;padding:2px 4px;border-radius:8px;font-weight:600}
 
-  .canvas{padding:22px 24px 34px;max-width:1200px;margin:0 auto}
-  .crumbs{font-size:12.5px;color:var(--text-3);margin-bottom:12px;display:flex;gap:7px;align-items:center}
-  .crumbs a{color:var(--text-3);text-decoration:none}.crumbs .cur{color:var(--text-2)}.crumbs .sep{opacity:.5}
+  .canvas{padding:24px 32px 40px;max-width:1200px;margin:0 auto}
+  .crumbs{font-size:12px;color:var(--text-3);margin-bottom:12px;display:flex;gap:8px;align-items:center}
+  .crumbs a{color:var(--text-3);text-decoration:none;display:inline-flex;align-items:center}.crumbs .cur{color:var(--text-2)}.crumbs .sep{opacity:.5}
+  .crumbs a svg{width:14px;height:14px;fill:currentColor;display:block}
 
-  .titleblock{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+  /* ── title-block (shared layout `title-block`) ──────────────── */
+  .titleblock{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
   .titleblock .tcol{flex:1 1 0;min-width:0}
-  .titleblock .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);line-height:1.2}
-  .titleblock h1{font-size:24px;font-weight:600;margin:2px 0 2px;letter-spacing:-.01em}
-  .titleblock .sub{font-size:13px;color:var(--text-2)}
+  .titleblock h1{font-size:24px;font-weight:600;margin:0;letter-spacing:-.01em}
   .titleblock .actions{flex:0 0 auto;display:flex;gap:8px;align-self:center}
 
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:13.5px;line-height:1;border-radius:6px;padding:7px 13px;border:1px solid var(--border-strong);background:#fff;color:var(--text);cursor:pointer;transition:.15s;white-space:nowrap}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;font-family:inherit;font-size:14px;line-height:1;border-radius:6px;padding:0 16px;border:1px solid var(--border-strong);background:#fff;color:var(--text);cursor:pointer;transition:.15s;white-space:nowrap}
   .btn:hover{color:var(--violet);border-color:var(--violet)}
   .btn.pri{background:var(--violet);border-color:var(--violet);color:#fff}
   .btn.pri:hover{background:var(--violet-hover);border-color:var(--violet-hover);color:#fff}
   .btn.danger{color:var(--err-fg);border-color:var(--err-bd)}
   .btn.danger:hover{background:var(--err-fg);border-color:var(--err-fg);color:#fff}
-  .btn.ghost{border-color:transparent;background:transparent;color:var(--text-2);padding:7px 8px}
-  .btn.sm{padding:4px 9px;font-size:12.5px}.btn .ic{font-size:14px;line-height:1}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--text-2);padding:0 8px}
+  .btn.sm{height:24px;padding:0 8px;font-size:12px}.btn .ic{font-size:14px;line-height:1}
+  .btn svg{width:16px;height:16px;fill:currentColor;display:block}
+  .btn.iconbtn{padding:0;width:32px;background:var(--violet);border-color:var(--violet);color:#fff}
+  .btn.iconbtn:hover{background:var(--violet-hover);border-color:var(--violet-hover);color:#fff}
+  .btn.clearbtn{border-color:transparent;background:transparent;color:var(--text-3);gap:6px}
+  .btn.clearbtn:hover{color:var(--violet);background:var(--violet-bg)}
 
   .av{border-radius:50%;color:#fff;display:inline-grid;place-items:center;font-weight:600;flex:0 0 auto;overflow:hidden}
   .av.s24{width:24px;height:24px;font-size:10px}.av.s28{width:28px;height:28px;font-size:11px}
@@ -58,108 +68,244 @@
   .g-ap{background:linear-gradient(135deg,#ef6c00,#d84315)}.g-dc{background:linear-gradient(135deg,#283593,#00838f)}
   .g-ld{background:linear-gradient(135deg,#00695c,#2e7d32)}
 
-  .tag{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:4px;font-size:12px;line-height:20px;border:1px solid var(--neutral-bd);background:var(--neutral-bg);color:var(--neutral-fg)}
+  .tag{display:inline-flex;align-items:center;gap:4px;padding:0 8px;border-radius:4px;font-size:12px;line-height:20px;border:1px solid var(--neutral-bd);background:var(--neutral-bg);color:var(--neutral-fg)}
   .tag.ok{background:var(--ok-bg);border-color:var(--ok-bd);color:var(--ok-fg)}
   .tag.info{background:var(--info-bg);border-color:var(--info-bd);color:var(--info-fg)}
   .tag.err{background:var(--err-bg);border-color:var(--err-bd);color:var(--err-fg)}
   .tag.neutral{background:var(--neutral-bg);border-color:var(--neutral-bd);color:var(--neutral-fg)}
   .tag.violet{background:var(--violet-bg);border-color:var(--violet-border);color:var(--violet-active)}
+  .tag.warn{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn-fg)}
+  .tag .flag{font-size:11px}
 
-  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:14px}
-  .tabs .t{padding:9px 14px;font-size:14px;color:var(--text-2);border-bottom:2px solid transparent;cursor:pointer;display:flex;align-items:center;gap:7px}
+  /* ── tabs block (two slots; the tab strip is the base-layout trigger) ── */
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .tabs .t{padding:10px 16px;font-size:14px;color:var(--text-2);border-bottom:2px solid transparent;cursor:pointer;display:flex;align-items:center;gap:8px}
   .tabs .t.on{color:var(--violet);border-bottom-color:var(--violet);font-weight:500}
-  .cbadge{background:var(--err-fg);color:#fff;font-size:10px;font-weight:600;border-radius:9px;padding:1px 6px;line-height:1.5}
+  .tabs .t .tic{display:inline-flex;font-size:16px;line-height:0}
+  .tabs .t .tic svg{width:1em;height:1em;fill:currentColor}
+  /* count badge — primary accent (a pending count is not an error, so not red) */
+  .cbadge{background:var(--violet);color:#fff;font-size:10px;font-weight:600;border-radius:9px;padding:1px 6px;line-height:1.5}
   .cbadge.q{background:#bfbfbf}
 
+  /* ── filters (module filter blocks + consumer `filters` slot — per tab, own state) ── */
   .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-  .field{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid var(--border-strong);border-radius:6px;background:#fff;font-size:13px;color:var(--text-2);min-width:0}
-  .field.search{flex:1 1 260px;max-width:340px}
+  .field{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border:1px solid var(--border-strong);border-radius:6px;background:#fff;font-size:13px;color:var(--text-2);min-width:0}
+  .field.search{flex:1 1 240px;max-width:340px}
   .field input{border:none;outline:none;font:inherit;color:var(--text);background:transparent;width:100%}
   .field .val{color:var(--text)}.field .chev{color:var(--text-3);font-size:10px}.field .mag{color:var(--text-3)}
+  .filters .flabel{font-size:12px;color:var(--text-3);margin-left:4px}
+  .filters .sortby{margin-left:auto;display:inline-flex;align-items:center;gap:8px}  /* sort-filters: selector + direction toggle, right-aligned (justify:end) */
+  /* Role filter — multi-select whose options + labels come from the auth.roles catalog */
+  .field.sel{position:relative;cursor:pointer}
+  .rolemenu{position:absolute;top:calc(100% + 4px);left:0;min-width:236px;background:#fff;border:1px solid var(--border-strong);border-radius:6px;box-shadow:var(--shadow-pop);padding:4px;z-index:30}
+  .rolemenu .ghead{font-size:11px;color:var(--text-3);padding:6px 8px 4px;text-transform:uppercase;letter-spacing:.06em}
+  .rolemenu .opt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;font-size:13px;color:var(--text);cursor:pointer}
+  .rolemenu .opt:hover{background:var(--violet-bg)}
+  .rolemenu .opt .cb{width:14px;height:14px;border:1px solid var(--border-strong);border-radius:3px;flex:0 0 auto}
+  .rolemenu .opt.on .cb{background:var(--violet);border-color:var(--violet)}
+  /* SegmentedSelector (antd Segmented) */
+  .seg{display:inline-flex;align-items:center;gap:2px;height:32px;padding:2px;background:#f0f0f2;border-radius:6px}
+  .seg .opt{height:28px;display:inline-flex;align-items:center;padding:0 12px;font-size:13px;color:var(--text-2);border-radius:4px;cursor:pointer;white-space:nowrap}
+  .seg .opt.on{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.09),0 0 1px rgba(0,0,0,.12)}
 
+  /* ── table (AgGridBalham) ───────────────────────────────────── */
   .aggrid{border:1px solid var(--border-strong);border-radius:6px;overflow:hidden;background:#fff}
   table.grid-t{border-collapse:collapse;width:100%;font-size:13px}
   .grid-t thead th{background:#f7f7f8;text-align:left;font-weight:600;color:#54545c;font-size:12px;padding:8px 12px;border-bottom:1px solid var(--border-strong);border-right:1px solid #eee;white-space:nowrap}
   .grid-t thead th:last-child{border-right:none}
-  .grid-t td{padding:7px 12px;border-bottom:1px solid #f2f2f2;border-right:1px solid #f6f6f6;vertical-align:middle}
+  .grid-t td{padding:8px 12px;border-bottom:1px solid #f2f2f2;border-right:1px solid #f6f6f6;vertical-align:middle}
   .grid-t td:last-child{border-right:none}
   .grid-t tbody tr{cursor:pointer;transition:background .12s}.grid-t tbody tr:hover{background:#faf7ff}
   .cell-user{display:flex;align-items:center;gap:8px;min-width:0}
   .cell-user .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .rolewrap{display:flex;gap:4px;flex-wrap:wrap}.rowacts{display:flex;gap:6px}.muted{color:var(--text-3)}
-  .tbl-foot{display:flex;align-items:center;justify-content:space-between;padding:9px 4px 0;color:var(--text-3);font-size:12.5px}
+  .rolewrap{display:flex;gap:4px;flex-wrap:wrap}.rowacts{display:flex;gap:8px}.muted{color:var(--text-3)}
+  /* consumer `components.table_columns` slot — 0..N custom columns inject here,
+     between the built-in content columns and the audit-date columns (faint tint = slot) */
+  .grid-t th.slotcol{background:var(--violet-bg);color:var(--violet-active)}
+  .grid-t td.slotcol{background:#faf7ff}
+
+  /* ── pagination (shared layout `pagination`) — antd Pagination:
+       showTotal ("x-y of N items") + pages + size changer, right-aligned ── */
+  .tbl-foot{display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 4px 0;color:var(--text-3);font-size:12px}
   .pager{display:flex;gap:4px;align-items:center}
-  .pager .pg{min-width:26px;height:26px;border:1px solid var(--border-strong);border-radius:6px;display:grid;place-items:center;background:#fff;font-size:12.5px}
+  .pager .pg{min-width:24px;height:24px;border:1px solid var(--border-strong);border-radius:6px;display:grid;place-items:center;background:#fff;font-size:12px}
   .pager .pg.on{border-color:var(--violet);color:var(--violet)}
-  .sublabel{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:22px 0 8px}
-  @media (max-width:820px){.titleblock{flex-wrap:wrap}}
+  .pager .sz{margin-left:8px;height:24px;border:1px solid var(--border-strong);border-radius:6px;display:inline-flex;align-items:center;gap:4px;padding:0 8px;font-size:12px}
+
+  /* ── mock-only state switcher (chrome, ignored by pipeline) ─── */
+  .mockbar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:200;display:flex;gap:6px;align-items:center;background:#1f1f28;color:#fff;padding:8px 12px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-size:12px;flex-wrap:wrap;max-width:1120px}
+  .mockbar .lbl{opacity:.55;margin-right:4px}
+  .mockbar button{font:inherit;background:rgba(255,255,255,.1);color:#fff;border:1px solid transparent;border-radius:6px;padding:4px 10px;cursor:pointer}
+  .mockbar button.on{background:var(--violet);border-color:var(--violet)}
 </style>
 </head>
 <body>
-  <div class="appbar">
-    <div class="brand"><span class="mark">M</span> Module Demo App</div>
-    <div class="topmenu"><a href="#" class="on">Users</a><a href="#">Contacts</a><a href="#">Companies</a><a href="#">Activity</a></div>
-    <div class="right"><span title="Theme" style="font-size:15px">◐</span><span class="badge-dot"><span class="bell"></span></span><span class="av s28 g-dc" title="You">DC</span></div>
+  <!-- ═══ BASE SCREEN (resting) ═══ -->
+  <div class="app" data-ldf-component="page" id="users_list_page">
+    <div class="appbar">
+      <div class="brand"><span class="mark">M</span> Module Demo App</div>
+      <nav class="topmenu"><a href="#" class="on">Users</a><a href="#">Contacts</a><a href="#">Companies</a><a href="#">Activity</a></nav>
+      <div class="right"><span title="Theme" style="font-size:15px">◐</span><span class="badge-dot"><span class="bell"></span></span><span class="av s28 g-dc" title="You">DC</span></div>
+    </div>
+
+    <main class="canvas">
+      <div class="crumbs"><a href="#" title="Home" data-ldf-icon="AiOutlineHome"><svg viewBox="0 0 1024 1024" aria-hidden="true"><path d="M946.5 505L560.1 118.8l-25.9-25.9a31.5 31.5 0 0 0-44.4 0L77.5 505a63.9 63.9 0 0 0-18.8 46c.4 35.2 29.7 63.3 64.9 63.3h42.5V940h691.8V614.3h43.4c17.1 0 33.2-6.7 45.3-18.8a63.6 63.6 0 0 0 18.7-45.3c0-17-6.7-33.1-18.8-45.2zM568 868H456V664h112v204zm217.9-325.7V868H632V640c0-22.1-17.9-40-40-40H432c-22.1 0-40 17.9-40 40v228H238.1V542.3h-96l370-369.7 23.1 23.1L882 542.3h-96.1z"/></svg></a><span class="sep">/</span><span class="cur">Users</span></div>
+
+      <header class="titleblock" data-ldf-component="title-block" id="users_titlebar">
+        <!-- Title shows the default "Users". The consumer can override it via the
+             `app_title` var (design Decision 8 — app_title carries over), e.g. "Acme Users". -->
+        <div class="tcol">
+          <h1>Users</h1>
+        </div>
+        <div class="actions">
+          <!-- Download button excluded unless the `download` var is true (Decision 2) -->
+          <button class="btn"><span class="ic">⬇</span> Download Excel</button>
+          <button class="btn pri" onclick="location.href='invite.html'"><span class="ic">＋</span> Invite user</button>
+        </div>
+      </header>
+
+      <!-- Tabs block — one strip of triggers, two slots. Each slot holds that tab's
+           own filter + table + pagination blocks with independent state. -->
+      <nav class="tabs" id="users_tabs">
+        <div class="t on" data-tab="members_panel"><span class="tic" data-antd-icon="TeamOutlined"><svg viewBox="64 64 896 896" aria-hidden="true"><path d="M824.2 699.9a301.55 301.55 0 00-86.4-60.4C783.1 602.8 812 546.8 812 484c0-110.8-92.4-201.7-203.2-200-109.1 1.7-197 90.6-197 200 0 62.8 29 118.8 74.2 155.5a300.95 300.95 0 00-86.4 60.4C345 754.6 314 826.8 312 903.8a8 8 0 008 8.2h56c4.3 0 7.9-3.4 8-7.7 1.9-58 25.4-112.3 66.7-153.5A226.62 226.62 0 01612 684c60.9 0 118.2 23.7 161.3 66.8C814.5 792 838 846.3 840 904.3c.1 4.3 3.7 7.7 8 7.7h56a8 8 0 008-8.2c-2-77-33-149.2-87.8-203.9zM612 612c-34.2 0-66.4-13.3-90.5-37.5a126.86 126.86 0 01-37.5-91.8c.3-32.8 13.4-64.5 36.3-88 24-24.6 56.1-38.3 90.4-38.7 33.9-.3 66.8 12.9 91 36.6 24.8 24.3 38.4 56.8 38.4 91.4 0 34.2-13.3 66.3-37.5 90.5A127.3 127.3 0 01612 612zM361.5 510.4c-.9-8.7-1.4-17.5-1.4-26.4 0-15.9 1.5-31.4 4.3-46.5.7-3.6-1.2-7.3-4.5-8.8-13.6-6.1-26.1-14.5-36.9-25.1a127.54 127.54 0 01-38.7-95.4c.9-32.1 13.8-62.6 36.3-85.6 24.7-25.3 57.9-39.1 93.2-38.7 31.9.3 62.7 12.6 86 34.4 7.9 7.4 14.7 15.6 20.4 24.4 2 3.1 5.9 4.4 9.3 3.2 17.6-6.1 36.2-10.4 55.3-12.4 5.6-.6 8.8-6.6 6.3-11.6-32.5-64.3-98.9-108.7-175.7-109.9-110.9-1.7-203.3 89.2-203.3 199.9 0 62.8 28.9 118.8 74.2 155.5-31.8 14.7-61.1 35-86.5 60.4-54.8 54.7-85.8 126.9-87.8 204a8 8 0 008 8.2h56.1c4.3 0 7.9-3.4 8-7.7 1.9-58 25.4-112.3 66.7-153.5 29.4-29.4 65.4-49.8 104.7-59.7 3.9-1 6.5-4.7 6-8.7z"/></svg></span>Members <span class="cbadge q">5</span></div>
+        <div class="t" data-tab="invitations_panel"><span class="tic" data-antd-icon="MailOutlined"><svg viewBox="64 64 896 896" aria-hidden="true"><path d="M928 160H96c-17.7 0-32 14.3-32 32v640c0 17.7 14.3 32 32 32h832c17.7 0 32-14.3 32-32V192c0-17.7-14.3-32-32-32zm-40 110.8V792H136V270.8l-27.6-21.5 39.3-50.5 42.8 33.3h643.1l42.8-33.3 39.3 50.5-27.7 21.5zM833.6 232L512 482 190.4 232l-42.8-33.3-39.3 50.5 27.6 21.5 341.6 265.6a55.99 55.99 0 0068.7 0L888 270.8l27.6-21.5-39.3-50.5-42.7 33.2z"/></svg></span>Invitations <span class="cbadge">2</span></div>
+      </nav>
+
+      <!-- ── SLOT / LAYER: Members tab (resting) ── -->
+      <section data-tabpanel="members_panel" data-ldf-state="resting" id="members_panel">
+          <div class="filters" id="members_filters">
+            <span class="field search"><span class="mag">🔍</span><input placeholder="Search name or email" /></span>
+            <!-- Role filter — options AND display labels read from the auth.roles catalog
+                 ({ id, label } pairs, Decision 8); this retires the old module `roles` var. -->
+            <span class="field sel rolefilter" title="Role — from auth.roles catalog">Role <span class="val">All roles</span><span class="chev">▾</span>
+              <div class="rolemenu">
+                <div class="ghead">Roles · from auth.roles</div>
+                <div class="opt"><span class="cb"></span>Admin</div>
+                <div class="opt"><span class="cb"></span>Branch manager</div>
+                <div class="opt"><span class="cb"></span>Editor</div>
+                <div class="opt"><span class="cb"></span>Viewer</div>
+              </div>
+            </span>
+            <span class="flabel">Status</span>
+            <span class="seg" role="tablist" title="SegmentedSelector"><span class="opt on">All</span><span class="opt">Active</span><span class="opt">Suspended</span></span>
+            <!-- consumer `components.filters` slot: additional filter blocks inject here -->
+            <button class="btn clearbtn"><svg viewBox="0 0 1024 1024" aria-hidden="true" data-ldf-icon="AiOutlineClear"><path d="M899.1 869.6l-53-305.6H864c14.4 0 26-11.6 26-26V346c0-14.4-11.6-26-26-26H618V138c0-14.4-11.6-26-26-26H432c-14.4 0-26 11.6-26 26v182H160c-14.4 0-26 11.6-26 26v192c0 14.4 11.6 26 26 26h17.9l-53 305.6c-0.3 1.5-0.4 3-0.4 4.4 0 14.4 11.6 26 26 26h723c1.5 0 3-0.1 4.4-0.4 14.2-2.4 23.7-15.9 21.2-30zM204 390h272V182h72v208h272v104H204V390z m468 440V674c0-4.4-3.6-8-8-8h-48c-4.4 0-8 3.6-8 8v156H416V674c0-4.4-3.6-8-8-8h-48c-4.4 0-8 3.6-8 8v156H202.8l45.1-260H776l45.1 260H672z"/></svg>Clear</button>
+            <span class="sortby" data-ldf-component="sort-filters" title="sort-filters (shared)">
+              <span class="field">Sort by <span class="val">Date updated</span><span class="chev">▾</span></span>
+              <button class="btn iconbtn dirbtn" title="Sort descending — click to toggle">
+                <svg class="ic-desc" viewBox="0 0 1024 1024" aria-hidden="true" data-ldf-icon="AiOutlineSortDescending"><path d="M839.6 433.8L749 150.5a9.24 9.24 0 0 0-8.9-6.5h-77.4c-4.1 0-7.6 2.6-8.9 6.5l-91.3 283.3c-.3.9-.5 1.9-.5 2.9 0 5.1 4.2 9.3 9.3 9.3h56.4c4.2 0 7.8-2.8 9-6.8l17.5-61.6h89l17.3 61.5c1.1 4 4.8 6.8 9 6.8h61.2c1 0 1.9-.1 2.8-.4 2.4-.8 4.3-2.4 5.5-4.6 1.1-2.2 1.3-4.7.6-7.1zM663.3 325.5l32.8-116.9h6.3l32.1 116.9h-71.2zm143.5 492.9H677.2v-.4l132.6-188.9c1.1-1.6 1.7-3.4 1.7-5.4v-36.4c0-5.1-4.2-9.3-9.3-9.3h-204c-5.1 0-9.3 4.2-9.3 9.3v43c0 5.1 4.2 9.3 9.3 9.3h122.6v.4L587.7 828.9a9.35 9.35 0 0 0-1.7 5.4v36.4c0 5.1 4.2 9.3 9.3 9.3h211.4c5.1 0 9.3-4.2 9.3-9.3v-43a9.2 9.2 0 0 0-9.2-9.3zM310.3 167.1a8 8 0 0 0-12.6 0L185.7 309c-4.2 5.3-.4 13 6.3 13h76v530c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8V322h76c6.7 0 10.5-7.8 6.3-13l-112-141.9z"/></svg>
+                <svg class="ic-asc" viewBox="0 0 1024 1024" aria-hidden="true" data-ldf-icon="AiOutlineSortAscending" hidden><path d="M839.6 433.8L749 150.5a9.24 9.24 0 0 0-8.9-6.5h-77.4c-4.1 0-7.6 2.6-8.9 6.5l-91.3 283.3c-.3.9-.5 1.9-.5 2.9 0 5.1 4.2 9.3 9.3 9.3h56.4c4.2 0 7.8-2.8 9-6.8l17.5-61.6h89l17.3 61.5c1.1 4 4.8 6.8 9 6.8h61.2c1 0 1.9-.1 2.8-.4 2.4-.8 4.3-2.4 5.5-4.6 1.1-2.2 1.3-4.7.6-7.1zM663.3 325.5l32.8-116.9h6.3l32.1 116.9h-71.2zm143.5 492.9H677.2v-.4l132.6-188.9c1.1-1.6 1.7-3.4 1.7-5.4v-36.4c0-5.1-4.2-9.3-9.3-9.3h-204c-5.1 0-9.3 4.2-9.3 9.3v43c0 5.1 4.2 9.3 9.3 9.3h122.6v.4L587.7 828.9a9.35 9.35 0 0 0-1.7 5.4v36.4c0 5.1 4.2 9.3 9.3 9.3h211.4c5.1 0 9.3-4.2 9.3-9.3v-43a9.2 9.2 0 0 0-9.2-9.3zM416 702h-76V172c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v530h-76c-6.7 0-10.5 7.8-6.3 13l112 141.9a8 8 0 0 0 12.6 0l112-141.9c4.1-5.2.4-13-6.3-13z"/></svg>
+              </button>
+            </span>
+          </div>
+
+          <div class="aggrid" id="members_table">
+            <table class="grid-t">
+              <thead><tr>
+                <th style="min-width:220px">Name</th><th>Email</th><th>Roles</th>
+                <th style="width:120px">Status</th>
+                <!-- consumer `components.table_columns` slot: 0..N custom columns inject here -->
+                <th class="slotcol" data-ldf-slot="table_columns" style="width:140px">Department</th>
+                <th style="width:110px">Created</th><th style="width:110px">Updated</th><th style="width:110px">Signed up</th>
+              </tr></thead>
+              <tbody>
+                <tr onclick="location.href='view.html'"><td><span class="cell-user"><span class="av s24 g-jm">JM</span><span class="nm">Jane Mokoena</span></span></td><td>jane.mokoena@example.com</td><td><span class="rolewrap"><span class="tag violet">Admin</span><span class="tag">Editor</span></span></td><td><span class="tag ok">Active</span></td><td class="slotcol">Operations</td><td class="muted">2025-11-04</td><td class="muted">2026-06-28</td><td class="muted">2025-11-05</td></tr>
+                <tr onclick="location.href='view.html'"><td><span class="cell-user"><span class="av s24 g-tn">TN</span><span class="nm">Thabo Nkosi</span></span></td><td>thabo.nkosi@example.com</td><td><span class="rolewrap"><span class="tag">Editor</span><span class="tag warn" title="Role no longer in the app's role catalog"><span class="flag">⚑</span> legacy-ops</span></span></td><td><span class="tag ok">Active</span></td><td class="slotcol">Sales</td><td class="muted">2025-09-18</td><td class="muted">2026-05-10</td><td class="muted">2025-09-20</td></tr>
+                <tr onclick="location.href='view.html'"><td><span class="cell-user"><span class="av s24 g-ap">AP</span><span class="nm">Aisha Patel</span></span></td><td>aisha.patel@example.com</td><td><span class="rolewrap"><span class="tag">Viewer</span></span></td><td><span class="tag err">Suspended</span></td><td class="slotcol">Support</td><td class="muted">2025-06-02</td><td class="muted">2026-02-14</td><td class="muted">2025-06-03</td></tr>
+                <tr onclick="location.href='view.html'"><td><span class="cell-user"><span class="av s24 g-dc">DC</span><span class="nm">David Chen</span></span></td><td>david.chen@example.com</td><td><span class="rolewrap"><span class="tag violet">Admin</span></span></td><td><span class="tag ok">Active</span></td><td class="slotcol">Engineering</td><td class="muted">2024-12-11</td><td class="muted">2026-06-30</td><td class="muted">2024-12-12</td></tr>
+                <tr onclick="location.href='view.html'"><td><span class="cell-user"><span class="av s24 g-ld">LD</span><span class="nm">Lerato Dlamini</span></span></td><td>lerato.dlamini@example.com</td><td><span class="rolewrap"><span class="tag">Viewer</span></span></td><td><span class="tag ok">Active</span></td><td class="slotcol">Finance</td><td class="muted">2025-10-27</td><td class="muted">2026-06-25</td><td class="muted">2025-10-28</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="tbl-foot" data-ldf-component="pagination" id="members_pagination">
+            <span class="ptotal">1-5 of 5 items</span>
+            <div class="pager"><span class="pg">‹</span><span class="pg on">1</span><span class="pg">›</span><span class="sz">500 / page ▾</span></div>
+          </div>
+        </section>
+
+      <!-- ── SLOT / LAYER: Invitations tab (own filter + table blocks) ── -->
+      <section data-tabpanel="invitations_panel" data-ldf-state="alt" id="invitations_panel" hidden>
+          <div class="filters" id="invitations_filters">
+            <span class="field search"><span class="mag">🔍</span><input placeholder="Search invitation email" /></span>
+            <span class="flabel">Status</span>
+            <span class="seg" role="tablist" title="SegmentedSelector"><span class="opt on">All</span><span class="opt">Invited</span><span class="opt">Expired</span></span>
+            <button class="btn clearbtn"><svg viewBox="0 0 1024 1024" aria-hidden="true" data-ldf-icon="AiOutlineClear"><path d="M899.1 869.6l-53-305.6H864c14.4 0 26-11.6 26-26V346c0-14.4-11.6-26-26-26H618V138c0-14.4-11.6-26-26-26H432c-14.4 0-26 11.6-26 26v182H160c-14.4 0-26 11.6-26 26v192c0 14.4 11.6 26 26 26h17.9l-53 305.6c-0.3 1.5-0.4 3-0.4 4.4 0 14.4 11.6 26 26 26h723c1.5 0 3-0.1 4.4-0.4 14.2-2.4 23.7-15.9 21.2-30zM204 390h272V182h72v208h272v104H204V390z m468 440V674c0-4.4-3.6-8-8-8h-48c-4.4 0-8 3.6-8 8v156H416V674c0-4.4-3.6-8-8-8h-48c-4.4 0-8 3.6-8 8v156H202.8l45.1-260H776l45.1 260H672z"/></svg>Clear</button>
+            <span class="sortby" data-ldf-component="sort-filters" title="sort-filters (shared)">
+              <span class="field">Sort by <span class="val">Expiry</span><span class="chev">▾</span></span>
+              <button class="btn iconbtn dirbtn" title="Sort descending — click to toggle">
+                <svg class="ic-desc" viewBox="0 0 1024 1024" aria-hidden="true" data-ldf-icon="AiOutlineSortDescending"><path d="M839.6 433.8L749 150.5a9.24 9.24 0 0 0-8.9-6.5h-77.4c-4.1 0-7.6 2.6-8.9 6.5l-91.3 283.3c-.3.9-.5 1.9-.5 2.9 0 5.1 4.2 9.3 9.3 9.3h56.4c4.2 0 7.8-2.8 9-6.8l17.5-61.6h89l17.3 61.5c1.1 4 4.8 6.8 9 6.8h61.2c1 0 1.9-.1 2.8-.4 2.4-.8 4.3-2.4 5.5-4.6 1.1-2.2 1.3-4.7.6-7.1zM663.3 325.5l32.8-116.9h6.3l32.1 116.9h-71.2zm143.5 492.9H677.2v-.4l132.6-188.9c1.1-1.6 1.7-3.4 1.7-5.4v-36.4c0-5.1-4.2-9.3-9.3-9.3h-204c-5.1 0-9.3 4.2-9.3 9.3v43c0 5.1 4.2 9.3 9.3 9.3h122.6v.4L587.7 828.9a9.35 9.35 0 0 0-1.7 5.4v36.4c0 5.1 4.2 9.3 9.3 9.3h211.4c5.1 0 9.3-4.2 9.3-9.3v-43a9.2 9.2 0 0 0-9.2-9.3zM310.3 167.1a8 8 0 0 0-12.6 0L185.7 309c-4.2 5.3-.4 13 6.3 13h76v530c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8V322h76c6.7 0 10.5-7.8 6.3-13l-112-141.9z"/></svg>
+                <svg class="ic-asc" viewBox="0 0 1024 1024" aria-hidden="true" data-ldf-icon="AiOutlineSortAscending" hidden><path d="M839.6 433.8L749 150.5a9.24 9.24 0 0 0-8.9-6.5h-77.4c-4.1 0-7.6 2.6-8.9 6.5l-91.3 283.3c-.3.9-.5 1.9-.5 2.9 0 5.1 4.2 9.3 9.3 9.3h56.4c4.2 0 7.8-2.8 9-6.8l17.5-61.6h89l17.3 61.5c1.1 4 4.8 6.8 9 6.8h61.2c1 0 1.9-.1 2.8-.4 2.4-.8 4.3-2.4 5.5-4.6 1.1-2.2 1.3-4.7.6-7.1zM663.3 325.5l32.8-116.9h6.3l32.1 116.9h-71.2zm143.5 492.9H677.2v-.4l132.6-188.9c1.1-1.6 1.7-3.4 1.7-5.4v-36.4c0-5.1-4.2-9.3-9.3-9.3h-204c-5.1 0-9.3 4.2-9.3 9.3v43c0 5.1 4.2 9.3 9.3 9.3h122.6v.4L587.7 828.9a9.35 9.35 0 0 0-1.7 5.4v36.4c0 5.1 4.2 9.3 9.3 9.3h211.4c5.1 0 9.3-4.2 9.3-9.3v-43a9.2 9.2 0 0 0-9.2-9.3zM416 702h-76V172c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v530h-76c-6.7 0-10.5 7.8-6.3 13l112 141.9a8 8 0 0 0 12.6 0l112-141.9c4.1-5.2.4-13-6.3-13z"/></svg>
+              </button>
+            </span>
+          </div>
+
+          <div class="aggrid" id="invitations_table">
+            <table class="grid-t">
+              <thead><tr>
+                <th style="min-width:230px">Email</th><th>Invited by</th><th>Roles</th>
+                <th style="width:120px">Status</th><th style="width:130px">Expires</th><th style="width:170px">Actions</th>
+              </tr></thead>
+              <tbody>
+                <tr><td>sam.taylor@example.com</td><td class="muted"><span class="cell-user"><span class="av s24 g-jm">JM</span><span class="nm">Jane Mokoena</span></span></td><td><span class="rolewrap"><span class="tag">Editor</span></span></td><td><span class="tag info">Invited</span></td><td class="muted">in 4 days</td><td><span class="rowacts"><button class="btn sm">Resend</button><button class="btn sm danger">Cancel</button></span></td></tr>
+                <tr><td>priya.n@example.com</td><td class="muted"><span class="cell-user"><span class="av s24 g-dc">DC</span><span class="nm">David Chen</span></span></td><td><span class="rolewrap"><span class="tag">Viewer</span></span></td><td><span class="tag neutral">Expired</span></td><td class="muted">6 days ago</td><td><span class="rowacts"><button class="btn sm">Re-invite</button></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="tbl-foot" data-ldf-component="pagination" id="invitations_pagination">
+            <span class="ptotal">1-2 of 2 items</span>
+            <div class="pager"><span class="pg">‹</span><span class="pg on">1</span><span class="pg">›</span><span class="sz">500 / page ▾</span></div>
+          </div>
+        </section>
+    </main>
   </div>
-  <div class="canvas">
-    <div class="crumbs"><a href="#">Home</a><span class="sep">/</span><span class="cur">Users</span></div>
-    <div class="titleblock">
-      <div class="tcol">
-        <div class="eyebrow">Access administration</div>
-        <h1>Users</h1>
-        <div class="sub">People with access to Module Demo App</div>
-      </div>
-      <div class="actions">
-        <button class="btn"><span class="ic">⬇</span> Download Excel</button>
-        <button class="btn pri"><span class="ic">＋</span> Invite user</button>
-      </div>
-    </div>
 
-    <div class="tabs">
-      <div class="t on">Members <span class="cbadge q">5</span></div>
-      <div class="t">Invitations <span class="cbadge">2</span></div>
-    </div>
-
-    <div class="filters">
-      <span class="field search"><span class="mag">🔍</span><input placeholder="Search name or email" /></span>
-      <span class="field">Role <span class="val">All</span><span class="chev">▾</span></span>
-      <span class="field">Status <span class="val">All</span><span class="chev">▾</span></span>
-      <button class="btn ghost sm">Clear</button>
-    </div>
-
-    <div class="aggrid">
-      <table class="grid-t">
-        <thead><tr>
-          <th style="min-width:220px">Name</th><th>Email</th><th>Roles</th>
-          <th style="width:120px">Status</th><th style="width:130px">Last active</th><th style="width:110px">Created</th>
-        </tr></thead>
-        <tbody>
-          <tr><td><span class="cell-user"><span class="av s24 g-jm">JM</span><span class="nm">Jane Mokoena</span></span></td><td>jane.mokoena@example.com</td><td><span class="rolewrap"><span class="tag violet">Admin</span><span class="tag">Editor</span></span></td><td><span class="tag ok">Active</span></td><td class="muted">2 hours ago</td><td class="muted">2025-11-04</td></tr>
-          <tr><td><span class="cell-user"><span class="av s24 g-tn">TN</span><span class="nm">Thabo Nkosi</span></span></td><td>thabo.nkosi@example.com</td><td><span class="rolewrap"><span class="tag">Editor</span></span></td><td><span class="tag ok">Active</span></td><td class="muted">Yesterday</td><td class="muted">2025-09-18</td></tr>
-          <tr><td><span class="cell-user"><span class="av s24 g-ap">AP</span><span class="nm">Aisha Patel</span></span></td><td>aisha.patel@example.com</td><td><span class="rolewrap"><span class="tag">Viewer</span></span></td><td><span class="tag err">Suspended</span></td><td class="muted">12 days ago</td><td class="muted">2025-06-02</td></tr>
-          <tr><td><span class="cell-user"><span class="av s24 g-dc">DC</span><span class="nm">David Chen</span></span></td><td>david.chen@example.com</td><td><span class="rolewrap"><span class="tag violet">Admin</span></span></td><td><span class="tag ok">Active</span></td><td class="muted">5 minutes ago</td><td class="muted">2024-12-11</td></tr>
-          <tr><td><span class="cell-user"><span class="av s24 g-ld">LD</span><span class="nm">Lerato Dlamini</span></span></td><td>lerato.dlamini@example.com</td><td><span class="rolewrap"><span class="tag">Viewer</span></span></td><td><span class="tag ok">Active</span></td><td class="muted">3 days ago</td><td class="muted">2025-10-27</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="tbl-foot">
-      <span>5 members</span>
-      <div class="pager"><span class="pg">‹</span><span class="pg on">1</span><span class="pg">2</span><span class="pg">›</span></div>
-    </div>
-
-    <div class="sublabel">Invitations tab — <em>illustrative:</em> the live <code>all</code> page shows Members and Invitations as the two tabs above (Decision 2); this static mockup renders both tables stacked because it can't switch tabs. (Tabs-vs-separate-page remains the design's open question.)</div>
-    <div class="aggrid">
-      <table class="grid-t">
-        <thead><tr>
-          <th style="min-width:230px">Email</th><th>Invited by</th><th>Roles</th>
-          <th style="width:120px">Status</th><th style="width:120px">Expires</th><th style="width:150px">Actions</th>
-        </tr></thead>
-        <tbody>
-          <tr><td>sam.taylor@example.com</td><td class="muted"><span class="cell-user"><span class="av s24 g-jm">JM</span><span class="nm">Jane Mokoena</span></span></td><td><span class="rolewrap"><span class="tag">Editor</span></span></td><td><span class="tag info">Invited</span></td><td class="muted">in 4 days</td><td><span class="rowacts"><button class="btn sm">Resend</button><button class="btn sm danger">Cancel</button></span></td></tr>
-          <tr><td>priya.n@example.com</td><td class="muted"><span class="cell-user"><span class="av s24 g-dc">DC</span><span class="nm">David Chen</span></span></td><td><span class="rolewrap"><span class="tag">Viewer</span></span></td><td><span class="tag neutral">Expired</span></td><td class="muted">6 days ago</td><td><span class="rowacts"><button class="btn sm">Re-invite</button></span></td></tr>
-        </tbody>
-      </table>
-    </div>
+  <!-- mock-only: switch the resting tab layer (real trigger is the tab bar above) -->
+  <div class="mockbar" data-mock-chrome>
+    <span class="lbl">Tab layer:</span>
+    <button data-tab="members_panel" class="on">Members (resting)</button>
+    <button data-tab="invitations_panel">Invitations</button>
   </div>
+
+  <script>
+    // Tab / mock-switcher toggling — chrome only, not part of the config.
+    function showTab(id){
+      document.querySelectorAll('[data-tabpanel]').forEach(function(p){p.hidden=(p.getAttribute('data-tabpanel')!==id);});
+      document.querySelectorAll('.tabs [data-tab]').forEach(function(t){t.classList.toggle('on',t.getAttribute('data-tab')===id);});
+      document.querySelectorAll('.mockbar [data-tab]').forEach(function(t){t.classList.toggle('on',t.getAttribute('data-tab')===id);});
+    }
+    document.querySelectorAll('[data-tab]').forEach(function(t){
+      t.addEventListener('click',function(){showTab(t.getAttribute('data-tab'));});
+    });
+    // SegmentedSelector option toggle (per-tab, independent state)
+    document.querySelectorAll('.seg').forEach(function(seg){
+      seg.addEventListener('click',function(e){
+        var o=e.target.closest('.opt'); if(!o) return;
+        seg.querySelectorAll('.opt').forEach(function(x){x.classList.toggle('on',x===o);});
+      });
+    });
+    // sort-filters direction toggle (desc ⇄ asc)
+    document.querySelectorAll('.dirbtn').forEach(function(b){
+      b.addEventListener('click',function(){
+        var d=b.querySelector('.ic-desc'), a=b.querySelector('.ic-asc');
+        var wasDesc=!d.hidden; d.hidden=wasDesc; a.hidden=!wasDesc;
+        b.title=(wasDesc?'Sort ascending':'Sort descending')+' — click to toggle';
+      });
+    });
+    // Role filter — multi-select of catalog role labels (open by default to show the labels)
+    document.querySelectorAll('.rolefilter').forEach(function(f){
+      var menu=f.querySelector('.rolemenu'), val=f.querySelector('.val');
+      f.addEventListener('click',function(e){
+        var opt=e.target.closest('.opt');
+        if(opt){
+          opt.classList.toggle('on');
+          var n=f.querySelectorAll('.opt.on').length;
+          val.textContent = n===0 ? 'All roles' : n+' selected';
+          e.stopPropagation();
+          return;
+        }
+        menu.hidden=!menu.hidden;
+      });
+    });
+  </script>
 </body>
 </html>
