@@ -70,9 +70,10 @@ vars:
           `.logo` cssKey on the page block).
   menu:
     type: object
-    default:
-      _menu: default
-    description: Menu config passed to the page block. Defaults to _menu default.
+    description: >-
+      Menu config passed to the page block, to override the menu for this
+      module entry. When omitted, the page block falls back to the app's
+      "default" menu (_menu default).
   header:
     type: object
     default: {}
