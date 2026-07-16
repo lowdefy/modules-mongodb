@@ -221,6 +221,42 @@ light/dark mode, charts drawn, pills intact, table widths, alignment) → fix.
 Also run `pnpm ldf:b` for a build-only compile check. Never deliver YAML you have
 reason to believe is broken; your final output must match what you verified.
 
+## When no block fits — authoring a custom block
+
+Custom blocks are a legitimate tool, not a failure — they're the right answer
+when a slot needs real React behaviour. One question decides it: **is the gap
+about how it _looks_, or about _behaviour_?**
+
+- **Looks** — layout, spacing, colour, a static or data-bound _visual_ → that is
+  config: `properties`, theme, composition of existing blocks, or `Html` +
+  `_nunjucks`. Never write a block for how something looks.
+- **Behaviour / state** → a custom block is fair game.
+
+Behaviour that earns a block is **imperative/ephemeral React that the
+declarative `_state` → re-parse cycle can't carry**: a `useRef`/`useEffect`, a
+high-frequency ephemeral value (drag coords, caret, scroll offset, animation
+frames), a subscription with cleanup (websocket, `IntersectionObserver`,
+interval), or a third-party React lib's own lifecycle (editor, map, `react-dnd`,
+canvas). "Needs state" alone is NOT it — which tab, which row, the filter value,
+a derived total are all `_state` and operators.
+
+Try the cheap rungs first (props → compose → `Html` + `_nunjucks` → an existing
+published plugin), and reach for a block only when none can express the
+_behaviour_. When you do, proceed inline — but leave a one-line note on the slot
+so the escalation is never invisible:
+
+```yaml
+# CUSTOM-BLOCK <slot_id>: "<what it does>" — no block fits: <the imperative-state / lib-lifecycle reason>
+```
+
+Then hand off to your project's block-authoring skill (e.g.
+`r:lowdefy-block-plugins`) to build it into the project's local plugin folder,
+and return to finish the slot. Keep it **bridged to Lowdefy**: config in via
+`properties`, results out via `setState`/`triggerEvent`, `methods` for imperative
+control — only the ephemeral/imperative bits stay internal, so app-meaningful
+state never hides inside the block. Build it as a reusable primitive if the
+pattern recurs; a clean one-off is fine if it doesn't.
+
 ## After the last slot
 
 1. Show the completed ledger: slot id → chosen block → data / enums / operator
