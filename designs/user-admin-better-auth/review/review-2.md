@@ -25,6 +25,8 @@ Consequences to resolve:
 
 ### 2. The Security-tile sessions read must project out the session `token`; Decision 5 doesn't say so
 
+> **Resolved.** Confirmed `token: z.string()` (bearer credential) on the session table in `@better-auth/core@1.6.23` (`db/schema/session.mjs`), alongside `expiresAt`/`ipAddress`/`userAgent`. Added to Decision 5's Sessions bullet that the native read `$project`s out `token` (and any other bearer/secret fields), with the rationale (admin views another user's sessions; returning `token` = replayable cookie) and a pointer to the sibling's matching treatment.
+
 Decision 5's Sessions bullet (design.md:95) describes the native read over `user-sessions` as "created, expiry, IP/user-agent" and does not mention excluding `token`. The `session` row carries a `token` field that is the bearer credential for the session (engine `Database collections`: "session … token …"; `user-sessions` per mongodb Decision 2). A `$project` that returns the whole row — or any implementation that forgets to drop `token` — ships live session tokens to an **admin** viewing **another user's** sessions, i.e. hands one user a credential to impersonate another by replaying the cookie. This is strictly more dangerous than the self-service case, where the sibling design already treats it as load-bearing: `user-account` Decision 5 explicitly projects "`token` projected out, it's a bearer credential" (`user-account-better-auth/design.md:86`).
 
 **Fix:** state in Decision 5 that the sessions native read projects `token` (and any other bearer/secret fields) out, matching the sibling module. Cheap to write now, easy to miss at implementation time, high blast radius if missed.

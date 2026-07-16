@@ -2,7 +2,7 @@
 
 Platform-side changes the [user-admin design](design.md) depends on. Each ask names the design it lands in, why the module needs it, and its status.
 
-**Status (verified against the current auth-upgrade designs):** asks **1, 2, 3, 4, and 5 are resolved upstream**, and **ask 6 is dropped** — the invite email now rides `auth.email` (design Decision 7), so there is no binding to wire. Ask **3** (impersonation access control) is now **resolved in design** — the engine design's _The user-admin role_ section adds an `auth.userAdminRole` config key that gates the whole user-administration surface (every auth admin step plus the impersonation client action), implemented in phase 9. Impersonation stays in the design behind its var, now backed by a working capability. Each ask below carries a **Resolved** / **Dropped** note with the upstream citation; the original ask text is kept underneath for history.
+**Status (verified against the current auth-upgrade designs):** asks **1, 2, 3, 4, and 5 are resolved upstream**, **ask 6 is dropped** — the invite email now rides `auth.email` (design Decision 7), so there is no binding to wire — and **ask 7 (explicit role catalog) is newly open** (surfaced by review-1 #10). Ask **3** (impersonation access control) is now **resolved in design** — the engine design's _The user-admin role_ section adds an `auth.userAdminRole` config key that gates the whole user-administration surface (every auth admin step plus the impersonation client action), implemented in phase 9. Impersonation stays in the design behind its var, now backed by a working capability. Each ask below carries a **Resolved** / **Dropped** note with the upstream citation; the original ask text is kept underneath for history.
 
 ---
 
@@ -85,3 +85,22 @@ At 1.6.23 the Mongo adapter stringifies `json` additionalFields, which would bre
 **Ask**: let a module manifest declare hook bindings for `InternalApi` endpoints it ships (e.g. `hooks: [{ point: invitation.send, endpoint: send-invitation-email }]`); the build resolves the scoped endpoint id and contributes the `auth.hooks` entry, subject to the existing one-binding-per-point validation. A module binding colliding with an app binding on the same point should be a build error (the hooks design's build-enforced uniqueness extends naturally).
 
 **Fallback if declined**: a documented consumer setup step — the app hand-writes the `auth.hooks` entry with the module-scoped endpoint id.
+
+## 7. Explicit role catalog — authored `{ id, label }`, gate-independent — OPEN
+
+> **Open.** Surfaced by [review-1 #10](review/review-1.md). The app should declare its roles as an authored catalog with display metadata; page gates _reference_ the catalog rather than _defining_ it.
+
+**Lands in**: [config-schema](../../../lowdefy-design/designs/auth-upgrade/concepts/config-schema/design.md) (`auth.roles` shape), the build (`buildRoleCatalog` / `_build.authConfig` projection), [user-model](../../../lowdefy-design/designs/auth-upgrade/concepts/user-model/design.md) Decision 5 (AC registration source).
+
+**Problem**: Roles can legitimately exist without gating any page — an app assigns a role purely to branch display-only UI off `_user.roles`, adding no page authorization. But the implemented catalog is _scraped_: `buildRoleCatalog` collects role names only from `auth.pages/api/websockets.roles` keys + `auth.userAdminRole`, then registers exactly those in the org plugin's access control. Registration is what makes `updateMemberRole` accept a role, so **a display-only role is never registered and `UpdateMemberRoles` rejects it (`ROLE_NOT_FOUND`) — the platform cannot express it.** There is also no authored-catalog input (`buildRoleCatalog` _overwrites_ `auth.roles`), and `_build.authConfig` allowlists `roles` out, so a module can't read the catalog either. The result is two drift-prone lists (the scraped catalog vs. the user-admin module's hand-authored `roles` var) and no home for a gate-less role.
+
+**Ask**:
+
+1. Make **`auth.roles`** an authored catalog of `{ id, label }` entries — `id` the role string stored in `member.role` and referenced by gates, `label` the display text. This is the single source of truth for "the app's roles."
+2. **Registration feeds from the catalog**, not the gate-scrape, so every declared id is assignable through the org plugin's member APIs (including display-only roles that gate nothing). Keep `userAdminRole` auto-included.
+3. **Build-validate** that every role referenced in `auth.pages/api/websockets.roles` (and `userAdminRole`) is declared in the catalog — an undeclared reference is a build error, closing config-vs-config drift.
+4. **Expose the catalog to modules** via the `_build.authConfig` projection (currently allowlisted out) so user-admin reads one source for its assignable set and labels — retiring the module's independent `roles` var.
+
+**Consequence for this design**: user-admin derives its assignable roles and labels from the catalog (Decision 8), and orphaned `member.role` values (held in data, absent from the catalog) are displayed as raw flagged chips and removable, never silently stripped — see Decision 8. Until the ask lands, a gate-less assignable role is not expressible, and the module cannot work around it from its side.
+
+**Fallback if declined**: keep the module's hand-authored `roles` var as the assignable/label source, accept that it can drift from the scraped catalog (extra id → write-time `ROLE_NOT_FOUND`; omitted id → unassignable), and accept that gate-less roles remain unsupported platform-wide.

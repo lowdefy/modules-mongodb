@@ -87,11 +87,15 @@ Decision 2 drops Atlas `$search` for plain regex `$match`, justified by _"A pinn
 
 ### 9. `suspension` defaults `true` — a suite-wide destructive capability on by default violates least-privilege
 
+> **Accepted (default stays `true`, premise documented).** User's call: the module's scope is pinned multi-app suites (e.g. team portal + customer portal) where a banned person _should_ be locked out everywhere — a global block is proper suspension, not over-reach. Confirmed via the org plugin schema that there's no per-org member status field, so a half-scoped suspend isn't native anyway (and would be a worse suspend); the admin already chooses scope by action — **Suspend** (global, reversible, keeps membership) vs **Remove from app** (app-scoped, destructive). Strengthened Decision 4 to state the trusted-operator-group premise explicitly as a deployment precondition and to frame `suspension` as the deployment-level switch for suites that don't match it. Per-org suspend explicitly not added (no concrete need; would need platform support).
+
 Decision 4 is admirably honest that suspend (`BanUser`) _"applies across every app in the suite — the one place the module's authority exceeds its app scope,"_ then defaults the gating `suspension` var to `true`. That means any deployment adding `user-admin` without reading the docs hands every app-admin the ability to ban a login across the entire suite. Least-privilege argues the safer default is `false` (a deployment opts _in_ to suite-wide authority). The "trusted operator group" rationale is legitimate, but it's a per-deployment trust assumption being encoded as the default for everyone.
 
 **Fix:** reconsider defaulting to `false`, or at minimum strengthen the justification for why suite-wide destructive authority should be the zero-config default rather than opt-in. This pairs with #11.
 
 ### 10. Two sources of truth for the role set — the `roles` display var can drift from the compiled catalog
+
+> **Resolved (widened → upstream ask 7 + design note).** Verified in code (`buildRoleCatalog.js`) that the compiled catalog is _scraped_ from `auth.pages/api/websockets.roles` + `userAdminRole`, does **not** include the module's `roles` var, and that `_build.authConfig` allowlists `roles` out — so the drift is real. Unpacking it with the user surfaced a deeper point: roles can legitimately exist without gating any page (assigned purely to branch display-only UI off `_user.roles`), and the scraped catalog **can't express such a role at all** — it's never AC-registered, so `UpdateMemberRoles` rejects it. So the fix isn't a reconciliation check; it's making the role catalog an **explicit authored `{ id, label }` surface** that is the single source of truth. Raised as **upstream ask 7** (authored `auth.roles`, feeds AC registration, build-validates gate references, exposed to modules). This design's Decision 8 now derives the assignable set + labels from that catalog and retires the module `roles` var. Also specified **orphaned-role handling** (the config-vs-data axis the user raised): a `member.role` value absent from the catalog is displayed as a raw flagged chip and is removable, never silently stripped, and a role save submits only catalog-valid ids so an untouched orphan can't fail the write. User to carry ask 7 upstream.
 
 Decision 8 keeps the `roles` var (author-supplied `[{label, value}]`) required for display, while stating validity is now core-owned (_"the build validates catalog roles and the steps reject unregistered names"_). But the display var and the compiled catalog are **separate** sources: if the author lists a role the catalog lacks, the UI offers a role the steps will reject at write time (a late, confusing failure); if the author omits a catalog role, it silently can't be assigned. "A typo fails loudly at both layers" addresses typos, not var-vs-catalog drift.
 
@@ -99,11 +103,15 @@ Decision 8 keeps the `roles` var (author-supplied `[{label, value}]`) required f
 
 ### 11. Cross-app disclosure (Decision 6) bakes in a trust precondition with no opt-out
 
+> **Accepted (premise documented, no gate).** Same trusted-operator-group premise as #9, now stated explicitly. Cross-app visibility is strictly weaker than the suite-wide ban already accepted as default-on (#9), so gating it would be a var on a guess (CLAUDE.md — no siloed-admin-team deployment in view). Annotated Decision 6 to tie the disclosure to the explicit premise and to note that the badges and the ban-dialog enumeration are the same disclosure and would share one opt-out gate _if_ a siloed-admin suite ever needs it — future seam, not built now.
+
 The no-var cross-app badges (workspace) and the ban dialog's enumeration of other memberships (Decision 4) both disclose, to any app's admin, which other apps a person belongs to — justified as _"the suite's admins are one trusted operator group."_ Under `pinned`, different apps are different orgs that may be administered by **different teams**; if a suite hosts apps with distinct admin populations, this leaks membership across a trust boundary with no way to turn it off. The "No var: uniform behaviour" choice is reasonable _if_ the single-trusted-operator-group premise always holds — but that premise is a deployment property, not a given.
 
 **Fix:** state the "one trusted operator group across the suite" premise as an explicit deployment precondition of this module, so consumers who don't satisfy it know not to use the cross-app surfaces. Reconsider (lightly) whether the ban-dialog enumeration and badges warrant a shared gate — they rise and fall together, so one var could cover both. (Weigh against CLAUDE.md's "don't add vars on a guess"; the point is to surface the precondition, not necessarily to add the knob.)
 
 ### 12. Partial-failure semantics within the multi-step routines are undefined
+
+> **Resolved (specified + accepted).** Confirmed the platform reality in `runRoutine.js`: routines are sequential and halt on first error with **no rollback** (adapter-direct steps, no cross-step transaction — mongodb Decision 5). Added a "Partial-failure semantics" paragraph to Decision 3: every step is an idempotent set/upsert so a halted routine is safe to retry and converges (retry = recovery path); the audit event is the routine's final step so it fires only on full success (no misleading event for a failed write); and the two named partial states (access-save roles-without-attributes; unknown-email invite orphan contact) are benign and recoverable. Noted that cross-step transaction support is planned platform-side and this module adopts it when it lands (then the routines become atomic) — out of scope now.
 
 Decision 3's per-section routines are the right call, but two of them chain multiple writes with no stated failure semantics:
 
@@ -123,6 +131,8 @@ Decision 1 correctly notes `member.role` is a CSV string and _"every pipeline…
 ## Minor
 
 ### 14. `all.html` mockup renders both tables stacked, which reads against the tabs decision
+
+> **Resolved.** The mockup already has the tabs UI (`Members` active / `Invitations`); it stacks both tables below only because a static HTML mockup can't switch tabs. Added a visible caption on the second table stating the live `all` page uses the tabs above (Decision 2) and both are shown inline only for the static mockup, and that tabs-vs-separate-page stays the open question. Chose the caption over rebuilding the mockup into JS tab-switching (minor, and the open question is still live).
 
 Decision 2 and the module surface commit to **tabs** (Members / Invitations) on the `all` page, and the open question is only tabs-vs-separate-page. But `mockups/screens/all.html` renders the Members table _and_ an "Invitations tab" section stacked below it on one screen (lines 118–162), which, taken literally, is neither tabs nor a separate page. It's clearly an illustrative "show both" mockup, but since the open question is explicitly about this presentation, align the mockup with the current lean (or annotate it as showing both states) so it isn't mistaken for the intended layout.
 </content>

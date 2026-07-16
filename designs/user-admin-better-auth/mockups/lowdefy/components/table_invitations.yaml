@@ -1,0 +1,84 @@
+# Invitations table (skill-3 content fill). AgGridBalham. Mock rows now; real
+# rows come from the requests step. No row click — actions live in the row.
+id: invitations_table
+type: AgGridBalham
+properties:
+  height: 70vh
+  overlayNoRowsTemplate: No pending invitations
+  # TODO(request-substitute) invitations_table: "pending invitations
+  #   (user-invitations, status=pending) — email, invitedBy (inviter user),
+  #   roles, derived status (Invited if expiresAt>now else Expired), expiresAt"
+  rowData:
+    - _id: i1
+      email: sam.taylor@example.com
+      invitedBy:
+        _id: u1
+        name: Jane Mokoena
+      roles:
+        - Editor
+      status:
+        text: Invited
+        color: "#096dd9"
+      expires: in 4 days
+    - _id: i2
+      email: priya.n@example.com
+      invitedBy:
+        _id: u4
+        name: David Chen
+      roles:
+        - Viewer
+      status:
+        text: Expired
+        color: "#595959"
+      expires: 6 days ago
+  defaultColDef:
+    sortable: true
+    resizable: true
+    filter: false
+    cellStyle:
+      display: flex
+      alignItems: center
+  columnDefs:
+    - headerName: Email
+      field: email
+      flex: 1
+      minWidth: 230
+    - headerName: Invited by
+      field: invitedBy.name
+      width: 200
+      cell:
+        type: avatar
+        nameField: invitedBy.name
+        idField: invitedBy._id
+    - headerName: Roles
+      field: roles
+      minWidth: 140
+      cellRenderer:
+        _function:
+          __array.join:
+            - __if_none:
+                - __args: 0.data.roles
+                - []
+            - ", "
+    - headerName: Status
+      field: status.text
+      width: 120
+      cell:
+        type: tag
+        colorFrom: status.color
+    - headerName: Expires
+      field: expires
+      width: 120
+    # TODO(request-substitute) invitations actions: real Button cells wired to
+    #   resend-invitation / cancel-invitation APIs (Re-invite when Expired,
+    #   else Resend + Cancel). Mock renders the labels only.
+    - headerName: Actions
+      width: 160
+      cellRenderer:
+        _function:
+          __if:
+            - __eq:
+                - __args: 0.data.status.text
+                - Expired
+            - Re-invite
+            - Resend · Cancel

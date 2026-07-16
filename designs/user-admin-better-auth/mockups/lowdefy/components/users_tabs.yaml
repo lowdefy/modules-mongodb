@@ -1,0 +1,29 @@
+# Members | Invitations, as a real Tabs block. Each tab is a self-contained
+# view: its own filter bar + table + pagination, with its own state and its own
+# request. Two independent filter sets (not one shared bar) — so each tab's
+# status filter has fixed options and each attaches to its own request.
+id: users_tabs
+type: Tabs
+properties:
+  tabs:
+    - key: members
+      title: Members
+    - key: invitations
+      title: Invitations
+slots:
+  members:
+    blocks:
+      - _ref: components/members_filters.yaml
+      - _ref: components/table_members.yaml
+      - _ref:
+          path: ../shared/layout/pagination.yaml
+          vars:
+            request_id: get_members
+  invitations:
+    blocks:
+      - _ref: components/invitations_filters.yaml
+      - _ref: components/table_invitations.yaml
+      - _ref:
+          path: ../shared/layout/pagination.yaml
+          vars:
+            request_id: get_invitations

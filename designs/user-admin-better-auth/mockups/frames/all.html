@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Frame — Users list (all)</title>
+<!--
+  Frame for the `all` page (Members + Invitations). Structural wireframe in the
+  Lowdefy-layout frame dialect; every content group is a grey .ph placeholder.
+  Each area renders its own id — point at one to prompt for a change.
+
+  ── SHARED COMPONENTS (final output must use these, not hand-rolled blocks) ──
+  The top zone is NOT authored per-page — it comes from the app layout:
+
+    shell        → the page is `_ref modules/layout/components/page.yaml`,
+                   which renders as PageHeaderMenu (nav / profile / notifications).
+    breadcrumb   → PageHeaderMenu chrome, fed by page.yaml's `breadcrumbs` var.
+                   NOT an authored block — do not emit an Html slot for it.
+    page_title   → page.yaml auto-renders modules/shared/layout/title-block.yaml.
+       title_text   = title-block's eyebrow+title+subtitle, fed by the
+                      `type` (eyebrow) / `title` / `description` (subtitle) vars.
+       page_actions = title-block's `page_actions` SLOT; the two buttons
+                      (download_excel_btn, invite_user_btn) are the blocks
+                      passed into it.
+
+  So in skill 2 this page = `_ref page.yaml` with vars
+  { title, type, description, breadcrumbs, page_actions:[…], blocks:[…] };
+  the CONSUMER BODY below (tabs, filters, tables, pagers) is page.yaml's `blocks`.
+
+  ── CONSUMER BODY ──
+    tabs      — view switcher (Members | Invitations), drives state.
+    members_group / invitations_group — each is a self-contained tab view:
+       *_filters    — its OWN filter bar (search + role + status). Two
+                      independent sets, each with its own state + request;
+                      status options are FIXED per tab (Active/Suspended for
+                      Members, Invited/Expired for Invitations) — no swapping.
+       *_table      — the table.
+       *_pagination — modules/shared/layout/pagination.yaml (right-aligned
+                      Pagination, showTotal). One per tab.
+  A static frame can't switch tabs, so both tab views render stacked here.
+-->
+<style>
+@property --s  { syntax: '<integer>'; inherits: false; initial-value: 24; }
+@property --sm { syntax: '<integer>'; inherits: false; initial-value: 24; }
+@property --g  { syntax: '<length>'; inherits: true; initial-value: 0px; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #101014; }
+.c {
+  min-height: 1px;
+  flex: 0 0 calc(var(--sm) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+  max-width:  calc(var(--sm) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+}
+@media (min-width: 768px) {
+  .c {
+    flex-basis: calc(var(--s) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+    max-width:  calc(var(--s) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+  }
+}
+.fi { flex: 0 1 auto; max-width: none; min-height: 1px; }
+.sp { flex: 1 0 auto; max-width: none; }
+.r { display: flex; flex-wrap: wrap; align-content: flex-start;
+     column-gap: var(--g, 0px); row-gap: var(--g, 0px); }
+.r.top { align-items: flex-start; }
+.r.mid { align-items: center; }
+.r.sb  { justify-content: space-between; }
+.r.ctr { justify-content: center; align-items: center; }
+.card { background: #1a1a1f; border-radius: 10px; }
+.ph   { background: #2b2b31; border-radius: 6px; }
+.shell { background: #202028; }
+.ovl { position: fixed; inset: 0; z-index: 9; display: flex;
+       align-items: center; justify-content: center; background: rgba(16,16,20,.55); }
+.ovl.right { justify-content: flex-end; align-items: stretch; }
+.ovl.left  { justify-content: flex-start; align-items: stretch; }
+.c[id], .fi[id] { position: relative; }
+.c[id]::before, .fi[id]::before {
+  content: attr(id); position: absolute; left: 4px; top: 4px; z-index: 2;
+  font: 500 9px/1 ui-monospace, Menlo, monospace; color: #8b8b94;
+  background: rgba(16,16,20,.75); padding: 2px 4px; border-radius: 3px;
+  pointer-events: none; white-space: nowrap;
+}
+.ph[id]::before {
+  inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #8b8b94; background: none; padding: 0;
+}
+</style>
+</head>
+<body>
+<div class="r"><div class="c" id="page"><div class="r">
+  <div class="c shell" id="shell" style="height:52px"></div>
+  <div class="c" id="content" style="max-width:1200px; margin:0 auto; padding:22px 24px 34px">
+    <div class="r" style="--g:13px">
+
+      <!-- LAYOUT-PROVIDED HEADER (page.yaml → PageHeaderMenu + title-block) -->
+      <div class="c ph" id="breadcrumb" style="height:20px"></div>
+
+      <div class="c" id="page_title">
+        <div class="r mid sb">
+          <div class="fi ph" id="title_text" style="width:280px; height:75px"></div>
+          <div class="fi" id="page_actions">
+            <div class="r" style="--g:8px">
+              <div class="fi ph" id="download_excel_btn" style="width:150px; height:30px"></div>
+              <div class="fi ph" id="invite_user_btn" style="width:108px; height:30px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONSUMER BODY (page.yaml `blocks`) -->
+      <div class="c" id="tabs">
+        <div class="r" style="--g:2px">
+          <div class="fi ph" id="members_tab" style="width:110px; height:43px"></div>
+          <div class="fi ph" id="invitations_tab" style="width:120px; height:43px"></div>
+        </div>
+      </div>
+
+      <div class="c" id="members_group">
+        <div class="r" style="--g:12px">
+          <div class="c" id="members_filters">
+            <div class="r mid" style="--g:8px">
+              <div class="fi ph" id="members_search" style="width:320px; height:32px"></div>
+              <div class="fi ph" id="members_role" style="width:72px; height:32px"></div>
+              <div class="fi ph" id="members_status" style="width:84px; height:32px"></div>
+              <div class="fi ph" id="members_clear" style="width:50px; height:28px"></div>
+            </div>
+          </div>
+          <div class="c" id="members_table_group">
+            <div class="r" style="--g:0px">
+              <div class="c ph" id="members_table" style="height:233px"></div>
+              <div class="c ph" id="members_pagination" style="height:35px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="c" id="invitations_group">
+        <div class="r" style="--g:12px">
+          <div class="c" id="invitations_filters">
+            <div class="r mid" style="--g:8px">
+              <div class="fi ph" id="invitations_search" style="width:320px; height:32px"></div>
+              <div class="fi ph" id="invitations_role" style="width:72px; height:32px"></div>
+              <div class="fi ph" id="invitations_status" style="width:84px; height:32px"></div>
+              <div class="fi ph" id="invitations_clear" style="width:50px; height:28px"></div>
+            </div>
+          </div>
+          <div class="c" id="invitations_table_group">
+            <div class="r" style="--g:0px">
+              <div class="c ph" id="invitations_table" style="height:116px"></div>
+              <div class="c ph" id="invitations_pagination" style="height:35px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div></div></div>
+</body>
+</html>

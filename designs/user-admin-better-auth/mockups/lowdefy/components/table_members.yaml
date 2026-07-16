@@ -1,0 +1,129 @@
+# Members table (skill-3 content fill). AgGridBalham per repo convention.
+# Hydrated with mock rows from the mock; real rows come from the requests step.
+id: members_table
+type: AgGridBalham
+properties:
+  height: 70vh
+  overlayNoRowsTemplate: No members
+  rowStyle:
+    cursor: pointer
+  # TODO(request-substitute) members_table: "org members (user-members) joined to
+  #   users + user-contacts by userId/contactId — name+picture (contact), email
+  #   (user), roles (split user-members.role CSV), status (user.banned ->
+  #   Active/Suspended), lastActive (latest user-session), created (member row)"
+  rowData:
+    - _id: u1
+      profile:
+        name: Jane Mokoena
+      email: jane.mokoena@example.com
+      roles:
+        - Admin
+        - Editor
+      status:
+        text: Active
+        color: "#389e0d"
+      lastActive: 2 hours ago
+      created: "2025-11-04"
+    - _id: u2
+      profile:
+        name: Thabo Nkosi
+      email: thabo.nkosi@example.com
+      roles:
+        - Editor
+      status:
+        text: Active
+        color: "#389e0d"
+      lastActive: Yesterday
+      created: "2025-09-18"
+    - _id: u3
+      profile:
+        name: Aisha Patel
+      email: aisha.patel@example.com
+      roles:
+        - Viewer
+      status:
+        text: Suspended
+        color: "#cf1322"
+      lastActive: 12 days ago
+      created: "2025-06-02"
+    - _id: u4
+      profile:
+        name: David Chen
+      email: david.chen@example.com
+      roles:
+        - Admin
+      status:
+        text: Active
+        color: "#389e0d"
+      lastActive: 5 minutes ago
+      created: "2024-12-11"
+    - _id: u5
+      profile:
+        name: Lerato Dlamini
+      email: lerato.dlamini@example.com
+      roles:
+        - Viewer
+      status:
+        text: Active
+        color: "#389e0d"
+      lastActive: 3 days ago
+      created: "2025-10-27"
+  defaultColDef:
+    sortable: true
+    resizable: true
+    filter: false
+    cellStyle:
+      cursor: pointer
+      display: flex
+      alignItems: center
+  columnDefs:
+    _build.array.concat:
+      - - headerName: Name
+          field: profile.name
+          flex: 1
+          minWidth: 220
+          cell:
+            type: avatar
+            nameField: profile.name
+            srcField: profile.picture
+            idField: _id
+        - headerName: Email
+          field: email
+          flex: 1
+          minWidth: 220
+        - headerName: Roles
+          field: roles
+          minWidth: 160
+          # TODO(request-substitute) members roles: display via role catalog
+          #   labels + flag orphaned roles (in data, not in catalog); mock joins.
+          cellRenderer:
+            _function:
+              __array.join:
+                - __if_none:
+                    - __args: 0.data.roles
+                    - []
+                - ", "
+        - headerName: Status
+          field: status.text
+          width: 120
+          cell:
+            type: tag
+            colorFrom: status.color
+        - headerName: Last active
+          field: lastActive
+          width: 130
+      # Consumer-injected columns (module `components.table_columns` slot).
+      - _module.var: components.table_columns
+      - - headerName: Created
+          field: created
+          width: 120
+events:
+  onRowClick:
+    - id: link_to_workspace
+      type: Link
+      params:
+        pageId:
+          _module.pageId: view
+        input:
+          user_id:
+            _event: row._id
