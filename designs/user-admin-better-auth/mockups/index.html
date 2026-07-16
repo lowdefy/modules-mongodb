@@ -248,9 +248,9 @@
   <b>User Admin · BetterAuth</b>
   <a href="#system">System</a>
   <a href="#list">List</a>
-  <a href="#wsA">Workspace A ✓</a>
-  <a href="#wsB">Workspace B</a>
-  <a href="#wsC">Workspace C</a>
+  <a href="#wsA">User detail A ✓</a>
+  <a href="#wsB">User detail B</a>
+  <a href="#wsC">User detail C</a>
   <a href="#invite">Invite</a>
   <a href="#dialog">Suspend dialog</a>
 </nav>
@@ -259,7 +259,7 @@
 <div class="section-head" id="system">
   <div class="kicker">Design system</div>
   <h2 class="dh">Built from the repo's own language</h2>
-  <p>Ant Design (<code>compact</code>) on a violet accent, wrapped in the <b>layout</b> module's app shell and title-block, using the <b>user-account</b> gradient avatar and identity header. Every screen below is the same shared chrome — only the workspace body differs across options A / B / C.</p>
+  <p>Ant Design (<code>compact</code>) on a violet accent, wrapped in the <b>layout</b> module's app shell and title-block, using the <b>user-account</b> gradient avatar and identity header. Every screen below is the same shared chrome — only the user-detail body differs across options A / B / C.</p>
 </div>
 <div class="wrap">
   <div class="swatches">
@@ -276,7 +276,7 @@
     <div class="syscard"><h4>Shared: title-block</h4><p>Eyebrow + 24px h2 + change-stamp subtitle + chunky status pill + page actions.</p></div>
     <div class="syscard"><h4>Shared: identity-header</h4><p><code>user-account</code> violet panel: 64px gradient avatar, name, email.</p></div>
     <div class="syscard"><h4>Shared: card tiles</h4><p><code>shared/layout/card.yaml</code> with loading skeletons and header buttons.</p></div>
-    <div class="syscard"><h4>Shared: AgGridBalham</h4><p>Avatar cell + Tag cell, compact rows, row-click to workspace.</p></div>
+    <div class="syscard"><h4>Shared: AgGridBalham</h4><p>Avatar cell + Tag cell, compact rows, row-click to user detail page.</p></div>
     <div class="syscard"><h4>New: status contract</h4><p>Active / Suspended / Invited / Expired reuse the three-colour bg·border·title pill.</p></div>
   </div>
 </div>
@@ -357,7 +357,7 @@
 </div>
 </div>
 
-<!-- =========================================================== WORKSPACE A (CHOSEN) -->
+<!-- =========================================================== USER DETAIL A (CHOSEN) -->
 <div class="section-head" id="wsA">
   <span class="opt-tag">Option A</span><span class="chosen">✓ Chosen direction</span>
   <h2 class="dh" style="margin-top:10px">Classic two-column console</h2>
@@ -375,7 +375,7 @@
     <div class="titleblock">
       <span class="pill ok">Active</span>
       <div class="tcol">
-        <div class="eyebrow">User workspace</div>
+        <div class="eyebrow">User detail</div>
         <h1>Jane Mokoena</h1>
         <div class="sub">Last modified by David Chen on Jun 28, 2026 4:12 PM</div>
       </div>
@@ -471,10 +471,10 @@
 </div>
 </div>
 
-<!-- =========================================================== WORKSPACE B (alternative) -->
+<!-- =========================================================== USER DETAIL B (alternative) -->
 <div class="section-head faded" id="wsB">
   <span class="opt-tag b">Option B</span>
-  <h2 class="dh" style="margin-top:10px">Lifecycle-rail workspace <span style="font-size:14px;color:var(--text-3);font-weight:400">— alternative, not chosen</span></h2>
+  <h2 class="dh" style="margin-top:10px">Lifecycle-rail layout <span style="font-size:14px;color:var(--text-3);font-weight:400">— alternative, not chosen</span></h2>
   <p>Kept for the record. Turns the design's ASCII lifecycle into a control spine carrying the primary action; detail lives in an even tile grid below. Superseded by A, which folds the same lifecycle controls into the Security card.</p>
 </div>
 <div class="wrap faded">
@@ -496,10 +496,10 @@
 </div>
 </div>
 
-<!-- =========================================================== WORKSPACE C (alternative) -->
+<!-- =========================================================== USER DETAIL C (alternative) -->
 <div class="section-head faded" id="wsC">
   <span class="opt-tag c">Option C</span>
-  <h2 class="dh" style="margin-top:10px">Tabbed workspace <span style="font-size:14px;color:var(--text-3);font-weight:400">— alternative, not chosen</span></h2>
+  <h2 class="dh" style="margin-top:10px">Tabbed layout <span style="font-size:14px;color:var(--text-3);font-weight:400">— alternative, not chosen</span></h2>
   <p>Kept for the record. Identity + status pinned, one tab per concern. Denser; best if field sets grow large. Not chosen — A keeps everything scannable on one scroll.</p>
 </div>
 <div class="wrap faded">
@@ -563,7 +563,7 @@
       </div></div>
       <div class="col side"><div class="stack">
         <div class="subeyebrow">The check resolves to one of four states</div>
-        <div class="callout ok"><span class="co-ic">✓</span><div class="co-b"><div class="co-t">Already a member</div><div class="co-s">Jane already has access.</div></div><div class="co-act"><button class="btn sm">Open workspace</button></div></div>
+        <div class="callout ok"><span class="co-ic">✓</span><div class="co-b"><div class="co-t">Already a member</div><div class="co-s">Jane already has access.</div></div><div class="co-act"><button class="btn sm">View user</button></div></div>
         <div class="callout warn"><span class="co-ic">✉️</span><div class="co-b"><div class="co-t">Invitation pending</div><div class="co-s">Sent 3 days ago · expires in 4.</div></div><div class="co-act"><button class="btn sm">Resend</button><button class="btn sm danger">Cancel</button></div></div>
         <div class="callout info"><span class="co-ic">👤</span><div class="co-b"><div class="co-t">Existing contact</div><div class="co-s">Known person, no access yet — profile fields prefill.</div></div></div>
         <div class="callout"><span class="co-ic">＋</span><div class="co-b"><div class="co-t">Unknown</div><div class="co-s">Blank form; the routine creates the contact.</div></div></div>

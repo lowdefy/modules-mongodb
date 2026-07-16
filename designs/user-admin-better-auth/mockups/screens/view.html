@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>User workspace — user-admin</title>
+<title>User detail — user-admin</title>
 <style>
   :root{
     --violet:#7c3aed;--violet-hover:#6d28d9;--violet-active:#5b21b6;--violet-bg:#f4ecff;--violet-border:#d6bbfb;
@@ -90,7 +90,7 @@
   .tag .flag{font-size:11px}
   .muted{color:var(--text-3)}
 
-  /* ── two-column workspace ───────────────────────────────────── */
+  /* ── two-column user detail page ────────────────────────────── */
   .grid{display:flex;gap:16px;align-items:flex-start}
   .col{min-width:0}.col.main{flex:1.4 1 0}.col.side{flex:1 1 0}
   .stack{display:flex;flex-direction:column;gap:16px}
@@ -183,7 +183,7 @@
 </head>
 <body>
   <!-- ═══ BASE SCREEN (resting) ═══ -->
-  <div class="app" data-ldf-component="page" data-ldf-state="resting" id="user_workspace_page">
+  <div class="app" data-ldf-component="page" data-ldf-state="resting" id="user_detail_page">
     <div class="appbar">
       <div class="brand"><span class="mark">M</span> Module Demo App</div>
       <nav class="topmenu"><a href="#" class="on">Users</a><a href="#">Contacts</a><a href="#">Companies</a><a href="#">Activity</a></nav>
@@ -200,7 +200,7 @@
            chunky status pill (left) · title column (h2 + subtitle) · page-actions
            (right). The avatar is a PROPOSED new title-block slot — kept for its
            placement. The separate violet identity-header is gone; name renders once. -->
-      <header class="pagehead" data-ldf-component="title-block" id="workspace_titlebar">
+      <header class="pagehead" data-ldf-component="title-block" id="user_detail_titlebar">
         <span class="av s48 g-jm">JM</span>
         <span class="pill ok">Active</span>
         <div class="tcol">
