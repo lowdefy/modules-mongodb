@@ -1,0 +1,116 @@
+# Shared create-or-link-contact fragment — one canonical spec, `_ref`'d by
+# relative path from BOTH user-account (merge-on-signup hook) and user-admin
+# (invite), so the match-and-write semantics can't drift. Runs in SYSTEM context
+# (a hook / system-context endpoint): `_user` is null and the auth floor is
+# waived, so the change stamp records a system write and UpdateUserProfile is
+# allowed against any user.
+#
+# An upsert keyed on the contact's `lowercase_email`:
+#   - match the contact by lowercased email;
+#   - link (contactId) when found;
+#   - insert BARE (change-stamped, no name, `profile.profile_created` unset —
+#     so first login routes through onboarding) when absent;
+#   - reconcile to the existing row on a duplicate-key error (the partial-unique
+#     `user-contacts.lowercase_email` index — see docs/user-account/reference/
+#     indexes.md — is the guard that closes the race with the user-admin invite).
+#
+# The contactId write-back branches on which binding point fired:
+#   - `user.create.before` (pre-write) — set profile.contactId inline by
+#     `:return`ing the mutated record (replaces what BetterAuth writes);
+#   - `email.verified` (synthetic post-write) — can't mutate inline, so write
+#     profile.contactId through the UpdateUserProfile step.
+#
+# Var-free — every input is an `_ref` var (NEVER `_module.var`):
+#   connection_id  — the caller's scoped user-contacts connection id
+#   user           — the auth user record (the hook payload's `user`)
+#   binding_point  — "user.create.before" | "email.verified" (which fired)
+#
+# YAML sequence of routine steps — splice with `_build.array.concat`.
+
+# Upsert the contact on lowercase_email. On a concurrent first-touch the
+# partial-unique index throws a duplicate-key error; catch it and fall through
+# to the read, which returns whichever row won.
+- :try:
+    - id: upsert_contact
+      type: MongoDBUpdateOne
+      connectionId:
+        _var: connection_id
+      properties:
+        filter:
+          lowercase_email:
+            _string.toLowerCase:
+              _string.trim:
+                _var: user.email
+        update:
+          # Document-style update: $setOnInsert only, so a matched (invited)
+          # contact is never overwritten — only a brand-new one is minted bare.
+          $setOnInsert:
+            _id:
+              _uuid: true
+            email:
+              _var: user.email
+            lowercase_email:
+              _string.toLowerCase:
+                _string.trim:
+                  _var: user.email
+            hidden: false
+            disabled: false
+            created:
+              _ref:
+                module: events
+                component: change_stamp
+            updated:
+              _ref:
+                module: events
+                component: change_stamp
+        options:
+          upsert: true
+  :catch:
+    - :log: create-or-link-contact — reconciling on duplicate lowercase_email (concurrent first-touch)
+
+# Read the canonical contact row (inserted, matched, or reconciled).
+- id: read_contact
+  type: MongoDBFindOne
+  connectionId:
+    _var: connection_id
+  properties:
+    query:
+      lowercase_email:
+        _string.toLowerCase:
+          _string.trim:
+            _var: user.email
+
+# Synthetic post-write point: write profile.contactId through UpdateUserProfile
+# (inline mutation is impossible after the user row is written).
+- :if:
+    _eq:
+      - _var: binding_point
+      - email.verified
+  :then:
+    - id: link_user
+      type: UpdateUserProfile
+      properties:
+        userId:
+          _var: user.id
+        profile:
+          contactId:
+            _step: read_contact._id
+
+# Pre-write point: replace the record inline with profile.contactId set. This
+# `:return` is the routine's terminal control (before hooks apply the returned
+# object as the record BetterAuth writes).
+- :if:
+    _eq:
+      - _var: binding_point
+      - user.create.before
+  :then:
+    - :return:
+        _object.assign:
+          - _var: user
+          - profile:
+              _object.assign:
+                - _if_none:
+                    - _var: user.profile
+                    - {}
+                - contactId:
+                    _step: read_contact._id

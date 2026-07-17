@@ -1,0 +1,13 @@
+# Stub — built out in task 17. Minimal valid protected page so `_ref`s resolve
+# and the module builds; real content added by the screen task.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: onboarding
+    title: Complete your profile
+    blocks:
+      - id: placeholder
+        type: Paragraph
+        properties:
+          content: TODO(screen) — Complete your profile page, built in task 17.
