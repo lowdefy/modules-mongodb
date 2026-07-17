@@ -16,7 +16,6 @@ Platform-side changes the [user-account design](design.md) depends on, resolved 
 
 | Action                  | Wraps                                | Notes                                                                              |
 | ----------------------- | ------------------------------------ | ---------------------------------------------------------------------------------- |
-| `UpdateUser`            | `updateUser`                         | `name` / `image` only — the self-service fields BetterAuth allows                  |
 | `ChangePassword`        | `changePassword`                     | `currentPassword`, `newPassword`, `revokeOtherSessions`                            |
 | `RequestPasswordReset`  | `requestPasswordReset`               | public; `redirectTo` the module's reset page                                       |
 | `ResetPassword`         | `resetPassword`                      | public; token from the emailed link                                                |
