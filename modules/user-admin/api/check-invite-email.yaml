@@ -1,0 +1,147 @@
+# check-invite-email — four-state email resolve (design Decision 7). A READ
+# routine: given an email, it discriminates the address into exactly one of four
+# outcomes the email-first invite form branches on:
+#   member   — the email already has a member row in THIS org (join user-members →
+#              users on the contact matched below).
+#   pending  — a still-live pending invitation exists for this org (status
+#              "pending" AND a future expiresAt). Routes the UI to Resend, never
+#              to a fresh invite (which is why invite.yaml only ever reconciles
+#              genuinely-stale expired rows).
+#   contact  — a contact exists on lowercase_email but has no member row here →
+#              the UI prefills the form from `contact.profile`.
+#   unknown  — nothing found → blank form.
+#
+# Reads user-invitations directly (bypassing the org-plugin helpers) so it can do
+# its own status/expiry filtering, preserving the one-contact-per-email invariant.
+# Role-gated app-side. Payload: { email }
+id: check-invite-email
+type: Api
+routine:
+  # 1) Resolve the contact by lowercase_email. Its _id anchors the member lookup
+  #    below and its profile is returned for form prefill in the "contact" state.
+  - id: find_contact
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: user-contacts-collection
+    properties:
+      query:
+        lowercase_email:
+          _string.toLowerCase:
+            _string.trim:
+              _if_none:
+                - _payload: email
+                - ""
+      options:
+        projection:
+          _id: 1
+          profile: 1
+          email: 1
+
+  # 2) Is this email already a member of the pinned org? Join member rows to their
+  #    user, then match on the contactId resolved above. The "__none__" sentinel
+  #    ensures a missing contact (no _id) never matches members that also lack a
+  #    contactId — no contact means no possible member match.
+  - id: find_member
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: user-members
+    properties:
+      pipeline:
+        - $match:
+            organizationId:
+              _organization: id
+        - $lookup:
+            from: users
+            localField: userId
+            foreignField: _id
+            as: user
+        - $unwind: "$user"
+        - $match:
+            "user.profile.contactId":
+              _if_none:
+                - _step: find_contact._id
+                - "__none__"
+        - $limit: 1
+        - $project:
+            _id: 1
+            userId: 1
+            role: 1
+            "user.email": 1
+            "user.name": 1
+            "user.banned": 1
+
+  # 3) Is there a live pending invitation for this org? "pending" status AND a
+  #    future expiresAt (an expired-but-pending row is derived-"Expired", handled
+  #    by invite.yaml's stale reconciliation, not here). Case-insensitive email
+  #    match via $expr/$toLower.
+  - id: find_invitation
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: user-invitations
+    properties:
+      query:
+        organizationId:
+          _organization: id
+        status: pending
+        $expr:
+          $eq:
+            - $toLower: "$email"
+            - _string.toLowerCase:
+                _string.trim:
+                  _if_none:
+                    - _payload: email
+                    - ""
+        expiresAt:
+          $gt:
+            _date: now
+      options:
+        projection:
+          _id: 1
+          email: 1
+          role: 1
+          inviterId: 1
+          expiresAt: 1
+          status: 1
+
+  # 4) Discriminated result. `state` is computed with the nested _if OPERATOR
+  #    (test/then/else) in priority order: member → pending → contact → unknown.
+  #    The raw rows ride along so the UI can prefill (contact.profile) and render
+  #    the member/invitation summaries without a second round-trip.
+  - :return:
+      email:
+        _string.toLowerCase:
+          _string.trim:
+            _if_none:
+              - _payload: email
+              - ""
+      state:
+        _if:
+          test:
+            _gt:
+              - _array.length:
+                  _if_none:
+                    - _step: find_member
+                    - []
+              - 0
+          then: member
+          else:
+            _if:
+              test:
+                _ne:
+                  - _step: find_invitation._id
+                  - null
+              then: pending
+              else:
+                _if:
+                  test:
+                    _ne:
+                      - _step: find_contact._id
+                      - null
+                  then: contact
+                  else: unknown
+      member:
+        _step: find_member.0
+      invitation:
+        _step: find_invitation
+      contact:
+        _step: find_contact

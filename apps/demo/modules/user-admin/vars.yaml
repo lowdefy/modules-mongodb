@@ -1,21 +1,18 @@
-app_name:
-  _ref:
-    path: app_config.yaml
-    key: app_name
-roles:
-  _ref: modules/user-admin/roles.yaml
+# user-admin module vars (BetterAuth rebuild). No app_name / roles / app_domain:
+# per-app scoping, the module role list, and app-built invite links all retired
+# (design Decisions 1, 7, 8). Roles now come from the app's auth.roles catalog.
+admin_roles:
+  - user-admin
+suspension: true
+impersonation: false
+download: true
 fields:
   show_honorific: true
   profile:
     _ref: modules/shared/profile/fields.yaml
-  global_attributes:
-    _ref: modules/user-admin/global_attributes_fields.yaml
-  app_attributes:
-    _ref: modules/user-admin/app_attributes_fields.yaml
+  user_attributes:
+    _ref: modules/user-admin/user_attributes_fields.yaml
+  member_attributes:
+    _ref: modules/user-admin/member_attributes_fields.yaml
 request_stages:
   write: []
-event_display:
-  demo:
-    invite-user: "{{ user.profile.name }} invited {{ target.name }} to the demo app"
-    update-user: "{{ user.profile.name }} updated user {{ target.name }}"
-    resend-user-invite: "{{ user.profile.name }} resent the invite for {{ target.name }}"

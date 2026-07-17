@@ -1,15 +1,16 @@
-# STUB — real body (Members + Invitations tabs, filters, export) is authored by
-# the mock-to-lowdefy pipeline tasks 6–9. This resolves so the module builds.
+# STUB — real body (email-first check-then-invite flow) is authored by the
+# mock-to-lowdefy pipeline tasks 14–17.
 _ref:
   module: layout
   component: page
   vars:
-    id: all
+    id: invite
     title:
       _build.string.trim:
         _build.string.concat:
+          - "Invite "
           - _module.var: app_title
-          - " User Admin"
+          - " User"
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -18,9 +19,12 @@ _ref:
             _build.string.concat:
               - _module.var: app_title
               - " User Admin"
+        pageId:
+          _module.pageId: all
+      - label: Invite
     blocks:
-      - id: all_stub
+      - id: invite_stub
         type: Title
         properties:
           level: 4
-          content: "Members + Invitations — built by pipeline tasks 6–9."
+          content: "Invite flow — built by pipeline tasks 14–17."

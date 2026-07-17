@@ -1,0 +1,11 @@
+# Read-only connection for the auth `users` collection (BetterAuth user rows).
+# Adapter-fixed collection name (mongodb Decision 2). Must resolve to the SAME
+# database as the app's auth.database adapter — see the co-location precondition
+# in module.lowdefy.yaml.
+id: users
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: users
+  write: false

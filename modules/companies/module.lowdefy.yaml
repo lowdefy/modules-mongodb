@@ -241,8 +241,6 @@ secrets:
     description: MongoDB connection URI
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^3"
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"

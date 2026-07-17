@@ -1,0 +1,135 @@
+# invite — submit the invite form (design Decision 7 + task-5 stale-expired
+# reconciliation). Reconcile any genuinely-stale invitation → create-or-link the
+# contact → InviteMember with profile.contactId + roles + member attributes →
+# audit. The invitation email itself is sent by BetterAuth via `auth.email`; this
+# module ships no email endpoint/hook/binding (Decision 7).
+#
+# Stale-expired reconciliation (verified against BetterAuth 1.6.23):
+# createInvitation's re-invite guard (findPendingInvitation) EXCLUDES expired rows
+# (expiresAt > now), and `resend: true` only refreshes a NON-expired row — so a
+# fresh InviteMember over an expired-but-pending row would leave a DUPLICATE
+# pending row. We therefore natively find pending rows with expiresAt < now for
+# the (lowercased email, org) and CancelInvitation each (cancel has no
+# expiry/status guard) before inviting. Non-expired pending never reaches submit —
+# check-invite-email routes it to Resend — so this only cancels genuinely-stale
+# rows. Cancel-then-invite is idempotent: with nothing stale the loop is a no-op.
+#
+# Partial-failure: the create-or-link → InviteMember chain is safe because
+# create-or-link reconciles on duplicate key, so retry converges; an unknown-email
+# invite that fails at InviteMember may leave an orphan contact the next check
+# resolves to "contact, no membership".
+#
+# Role-gated app-side. Payload: { email, roles (array of catalog ids),
+#                                 profile? (object), member_attributes? (object) }
+id: invite
+type: Api
+routine:
+  # 1) Find genuinely-stale rows: pending AND already expired, for this org and
+  #    email (case-insensitive). Non-expired pending is routed to Resend upstream,
+  #    so it never reaches here.
+  - id: find_stale
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: user-invitations
+    properties:
+      pipeline:
+        - $match:
+            organizationId:
+              _organization: id
+            status: pending
+            $expr:
+              $eq:
+                - $toLower: "$email"
+                - _string.toLowerCase:
+                    _string.trim:
+                      _if_none:
+                        - _payload: email
+                        - ""
+            expiresAt:
+              $lt:
+                _date: now
+        - $project:
+            _id: 1
+
+  # 2) Cancel each stale row by id so the fresh invite below can't leave a
+  #    duplicate pending row beside it. No-op when find_stale returned nothing.
+  - :for: stale
+    :in:
+      _step: find_stale
+    :do:
+      - id: cancel_stale
+        type: CancelInvitation
+        properties:
+          invitationId:
+            _item: stale._id
+
+  # 3) Create-or-link the contact (shared fragment, inlined by relative _ref). Its
+  #    two steps run here; the resolved contactId is `_step: link_contact_get._id`.
+  - _ref:
+      path: ../shared/contact/create-or-link-contact.yaml
+      vars:
+        connection_id:
+          _module.connectionId: user-contacts-collection
+        email:
+          _payload: email
+        profile:
+          _payload: profile
+
+  # 4) Invite the member. `role` is the catalog-id array joined to the
+  #    comma-separated string BetterAuth expects; member attributes ride the
+  #    invitation (applied to the minted member at accept by afterAcceptInvitation,
+  #    Decision 5); profile carries the linked contactId. organizationId defaults
+  #    to the pinned org.
+  - id: invite_member
+    type: InviteMember
+    properties:
+      email:
+        _payload: email
+      role:
+        _array.join:
+          - _if_none:
+              - _payload: roles
+              - []
+          - ","
+      profile:
+        contactId:
+          _step: link_contact_get._id
+      attributes:
+        _if_none:
+          - _payload: member_attributes
+          - {}
+
+  # 5) Audit event (FINAL step — fires only on full success).
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: member-invited
+        display:
+          title:
+            _nunjucks:
+              template:
+                _build.if_none:
+                  - _module.var: event_display.member-invited
+                  - _ref:
+                      path: defaults/event_display.yaml
+                      key: member-invited
+              on:
+                user:
+                  _user: true
+                target:
+                  email:
+                    _payload: email
+          description: null
+        references:
+          contact_ids:
+            - _step: link_contact_get._id
+
+  - :return:
+      success: true
+      contactId:
+        _step: link_contact_get._id

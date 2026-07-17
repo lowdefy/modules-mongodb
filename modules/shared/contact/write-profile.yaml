@@ -1,0 +1,58 @@
+# Shared fragment — profile write (design Decision 3, "Why profile save is
+# write-profile"). Pairs a change-stamped `contact` write over the app connection
+# WITH an `UpdateUserProfile` re-denorm of the TARGET's `user.profile` bag, in one
+# routine, so profile data can't be written without refreshing the denormalized
+# copy the target sees (header, avatar, menus via `_user.profile.*`).
+#
+# `modules/shared/` file `_ref`'d BY RELATIVE PATH from both this module and
+# user-account — NOT a module export, NOT a dependency. Carries NO `_module.*`:
+# all module-scoped values arrive via the `_var` interface. The `UpdateUserProfile`
+# step targets the EDITED user (never the admin), so it is floored by
+# `auth.userAdminRole` like every other admin write (its self-target exemption is
+# never hit here).
+#
+# _var interface (caller-injected):
+#   connection_id — the scoped contact connection id.
+#   user_id       — the TARGET user whose user.profile bag is re-denormed.
+#   contact_id    — the contact `_id` to write.
+#   profile       — the profile fields to set.
+#   write_stages  — (default []) pipeline update stages appended to the contact
+#                   write. THIS is the `request_stages.write` seam, passed in by
+#                   the caller (user-admin: `{ _module.var: request_stages.write }`;
+#                   user-account: omitted → []).
+
+- id: write_profile_contact
+  type: MongoDBUpdateOne
+  connectionId:
+    _var: connection_id
+  properties:
+    filter:
+      _id:
+        _var: contact_id
+    update:
+      _build.array.concat:
+        - - $set:
+              profile:
+                $mergeObjects:
+                  - $ifNull:
+                      - "$$ROOT.profile"
+                      - {}
+                  - _if_none:
+                      - _var: profile
+                      - {}
+              updated:
+                _ref:
+                  module: events
+                  component: change_stamp
+        # request_stages.write seam — consumer-appended update stages (default []).
+        - _var:
+            key: write_stages
+            default: []
+
+- id: write_profile_redenorm
+  type: UpdateUserProfile
+  properties:
+    userId:
+      _var: user_id
+    profile:
+      _var: profile

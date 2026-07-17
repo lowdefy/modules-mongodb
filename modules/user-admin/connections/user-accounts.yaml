@@ -1,0 +1,10 @@
+# Read-only connection for the auth `user-accounts` collection (linked providers,
+# passkeys, MFA enrolment). Adapter-fixed collection name (mongodb Decision 2).
+# Same-database co-location precondition applies (see module.lowdefy.yaml).
+id: user-accounts
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-accounts
+  write: false

@@ -133,7 +133,5 @@ secrets:
     description: MongoDB connection URI
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^3"
   - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.12.0"

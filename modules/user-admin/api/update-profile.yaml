@@ -1,0 +1,68 @@
+# update-profile — the shared write-profile fragment (change-stamped `contact`
+# write + `UpdateUserProfile` re-denorm of the TARGET's user.profile bag), then
+# the audit event (design Decision 3). Role-gated app-side; the re-denorm step is
+# floored by `auth.userAdminRole` (targets the edited user, never the admin, so
+# the self-target exemption is not hit).
+#
+# Payload: { user_id, contact_id, profile, email?, target_name? }
+# The audit event is the FINAL step, so it fires only on full success.
+id: update-profile
+type: Api
+routine:
+  # write-profile is a two-step fragment (contact write + UpdateUserProfile),
+  # inlined here as a nested routine array; runRoutine recurses into it.
+  - _ref:
+      path: ../shared/contact/write-profile.yaml
+      vars:
+        connection_id:
+          _module.connectionId: user-contacts-collection
+        user_id:
+          _payload: user_id
+        contact_id:
+          _payload: contact_id
+        profile:
+          _payload: profile
+        write_stages:
+          _module.var: request_stages.write
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: profile-updated
+        display:
+          title:
+            _nunjucks:
+              template:
+                _build.if_none:
+                  - _module.var: event_display.profile-updated
+                  - _ref:
+                      path: defaults/event_display.yaml
+                      key: profile-updated
+              on:
+                user:
+                  _user: true
+                target:
+                  name:
+                    _string.trim:
+                      _string.concat:
+                        - _if_none:
+                            - _payload: profile.given_name
+                            - ""
+                        - " "
+                        - _if_none:
+                            - _payload: profile.family_name
+                            - ""
+                  email:
+                    _payload: email
+          description: null
+        references:
+          user_ids:
+            - _payload: user_id
+          contact_ids:
+            - _payload: contact_id
+  - :return:
+      success: true

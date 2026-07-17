@@ -1,12 +1,46 @@
-invite-user:
+# Event display metadata (color / title / icon) for the module's audit events,
+# consumed by the events-timeline on the user detail page (Activity tile).
+profile-updated:
+  color: "#52c41a"
+  title: Profile Updated
+  icon: AiOutlineEdit
+access-updated:
+  color: "#1890ff"
+  title: Access Updated
+  icon: AiOutlineSafety
+user-attributes-updated:
+  color: "#1890ff"
+  title: Global Attributes Updated
+  icon: AiOutlineGlobal
+user-suspended:
+  color: "#f5222d"
+  title: Suspended
+  icon: AiOutlineStop
+user-reinstated:
+  color: "#52c41a"
+  title: Reinstated
+  icon: AiOutlineCheckCircle
+sessions-revoked:
+  color: "#faad14"
+  title: Sessions Revoked
+  icon: AiOutlineLogout
+member-removed:
+  color: "#fa8c16"
+  title: Removed From App
+  icon: AiOutlineUserDelete
+user-deleted:
+  color: "#a8071a"
+  title: Login Identity Deleted
+  icon: AiOutlineDelete
+member-invited:
   color: "#1890ff"
   title: User Invited
   icon: AiOutlineUserAdd
-update-user:
-  color: "#52c41a"
-  title: User Updated
-  icon: AiOutlineEdit
-resend-user-invite:
+invitation-cancelled:
+  color: "#8c8c8c"
+  title: Invitation Cancelled
+  icon: AiOutlineCloseCircle
+invitation-resent:
   color: "#faad14"
-  title: Invite Resent
+  title: Invitation Resent
   icon: AiOutlineSend

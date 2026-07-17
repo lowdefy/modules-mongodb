@@ -1,0 +1,98 @@
+# Shared fragment — generic email-keyed contact upsert (design Decision 7).
+#
+# Resolves an email to the existing `contact` or creates one, keyed on
+# `lowercase_email` (backed by the unique index), reconcile-on-duplicate-key.
+# Idempotent: safe to re-run so a halted routine converges (Decision 3
+# partial-failure semantics).
+#
+# This is a `modules/shared/` file `_ref`'d BY RELATIVE PATH from the consuming
+# module's routine (user-admin invite, user-account merge-on-signup) — NOT a
+# module export and NOT a dependency. It carries NO `_module.*` references: every
+# module-scoped value arrives through the `_var` interface below, so it resolves
+# in any consuming module that depends on `events` (for the change stamp).
+#
+# _var interface (caller-injected):
+#   connection_id  — the scoped contact connection id (caller resolves, e.g.
+#                     `{ _module.connectionId: user-contacts-collection }`).
+#   email          — the email to key on (lowercased here for lowercase_email).
+#   profile        — (optional) profile fields to set on the contact.
+#
+# Result: the caller reads the resolved contact via the `link_contact_get` step,
+#   `_step: link_contact_get._id` (contactId) and `_step: link_contact_get.profile`.
+#   `link_contact_get` runs in both the created and matched cases (the upsert's
+#   `upsertedId` is null on a match), so it is the reliable source of the id.
+
+- id: link_contact_upsert
+  type: MongoDBUpdateOne
+  connectionId:
+    _var: connection_id
+  properties:
+    options:
+      upsert: true
+    filter:
+      lowercase_email:
+        _string.toLowerCase:
+          _string.trim:
+            _if_none:
+              - _var: email
+              - ""
+    update:
+      - $set:
+          _object.assign:
+            - _id:
+                $ifNull:
+                  - "$_id"
+                  - _uuid: true
+              email:
+                $ifNull:
+                  - "$email"
+                  - _string.trim:
+                      _if_none:
+                        - _var: email
+                        - ""
+              lowercase_email:
+                _string.toLowerCase:
+                  _string.trim:
+                    _if_none:
+                      - _var: email
+                      - ""
+              profile:
+                $mergeObjects:
+                  - $ifNull:
+                      - "$$ROOT.profile"
+                      - {}
+                  - _if_none:
+                      - _var: profile
+                      - {}
+              deleted:
+                $ifNull:
+                  - "$deleted"
+                  - null
+              updated:
+                _ref:
+                  module: events
+                  component: change_stamp
+              created:
+                $ifNull:
+                  - "$created"
+                  - _ref:
+                      module: events
+                      component: change_stamp
+
+- id: link_contact_get
+  type: MongoDBFindOne
+  connectionId:
+    _var: connection_id
+  properties:
+    query:
+      lowercase_email:
+        _string.toLowerCase:
+          _string.trim:
+            _if_none:
+              - _var: email
+              - ""
+    options:
+      projection:
+        _id: 1
+        profile: 1
+        email: 1

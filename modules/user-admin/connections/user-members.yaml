@@ -1,0 +1,10 @@
+# Read-only connection for the auth `user-members` collection.
+# Adapter-fixed collection name (mongodb Decision 2). Same-database co-location
+# precondition applies (see module.lowdefy.yaml).
+id: user-members
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-members
+  write: false
