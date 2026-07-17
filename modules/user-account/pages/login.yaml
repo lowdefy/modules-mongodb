@@ -1,13 +1,167 @@
-# Stub — built out in task 09. Minimal valid auth page so `_ref`s resolve and
-# the module builds; real content added by the screen task.
+# Login page — task 09 (UI pipeline only; request/action wiring deferred).
+# Serves authPages.signIn and authPages.error. Two renders driven by the
+# `login_view` state key (signin | noaccess), both on one shared email/password
+# form. State SELECTION (read _url_query error, Login two-factor-required
+# routing, dispatch) is the wire task — see the TODO(request-substitute) markers.
 _ref:
   module: layout
   component: auth-page
   vars:
     id: login
-    title: Login
+    title: Sign in
+    events:
+      onInit:
+        # TODO(request-substitute) login_view: seed the render — signin at rest;
+        # switch to "noaccess" when _url_query.error maps to an access failure
+        # (MEMBERSHIP_REQUIRED etc.). Password errors map inline on the Login call.
+        - id: seed_login_view
+          type: SetState
+          params:
+            login_view: signin
     blocks:
-      - id: placeholder
-        type: Paragraph
+      # Lead copy (signin state) — from the login_message module var.
+      - id: login_lead
+        type: Html
+        visible:
+          _eq:
+            - _state: login_view
+            - signin
         properties:
-          content: TODO(screen) — Login page, built in task 09.
+          html:
+            _module.var: login_message
+        style:
+          marginTop: -8
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+
+      # No-access alert (authPages.error render) — the hard wall's "no access".
+      - id: login_error_alert
+        type: Alert
+        visible:
+          _eq:
+            - _state: login_view
+            - noaccess
+        properties:
+          type: error
+          showIcon: true
+          message: You don't have access to this app
+          # TODO(request-substitute) login_error_alert: description is the mapped
+          # message for _url_query.error (MEMBERSHIP_REQUIRED / EMAIL_NOT_VERIFIED
+          # / INVALID_EMAIL_OR_PASSWORD / default). Mock copy shown.
+          description: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
+
+      # Email — data path `email` (read by the Login action when wired).
+      - id: email
+        type: TextInput
+        properties:
+          type: email
+          size: large
+          suffixIcon: AiOutlineMail
+          label:
+            title: Email
+            colon: false
+            span: 24
+          placeholder: you@example.com
+
+      # Password label row: "Password" + right-aligned "Forgot?" nav link.
+      - id: login_password_label
+        type: Box
+        layout:
+          justify: space-between
+          align: middle
+          selfAlign: middle
+        blocks:
+          - id: login_password_label_text
+            type: Html
+            layout:
+              flex: 0 1 auto
+            properties:
+              html: Password
+            style:
+              fontSize: 13
+              fontWeight: 500
+              color: "var(--ant-color-text-secondary)"
+          - id: login_forgot_link
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Forgot?
+              variant: link
+              color: primary
+              size: small
+            events:
+              onClick:
+                - id: go_forgot_password
+                  type: Link
+                  params:
+                    pageId:
+                      _module.pageId: forgot-password
+      # Password — data path `password`. Built-in visibility toggle = the mock eye.
+      - id: password
+        type: PasswordInput
+        properties:
+          size: large
+          label:
+            disabled: true
+
+      # Primary submit. Dispatch is the wire task.
+      # TODO(request-substitute) login_submit: onClick → Login action (dispatch by
+      # parameter: email/password inline; magic-link / OAuth same action). Maps
+      # error codes inline; two-factor-required → Link to _module.pageId two-factor;
+      # success → Link to callbackUrl.
+      - id: login_submit
+        type: Button
+        properties:
+          title: Sign in
+          block: true
+          size: large
+          color: primary
+          variant: solid
+
+      # OAuth + passkey (signin state). Method enablement + the per-provider button
+      # set are the wire task; one Google button shown as the demo-enabled example.
+      - id: login_oauth_divider
+        type: Divider
+        visible:
+          _eq:
+            - _state: login_view
+            - signin
+        properties:
+          title: or
+          plain: true
+      # TODO(request-substitute) login_oauth_google: render one button per
+      # _build.authConfig.providers entry, label/icon/order from the `providers`
+      # var (id fallback); onClick → Login with the provider id. Google shown.
+      - id: login_oauth_google
+        type: Button
+        visible:
+          _eq:
+            - _state: login_view
+            - signin
+        properties:
+          title: Continue with Google
+          icon: AiOutlineGoogle
+          block: true
+          size: large
+          variant: outlined
+      # TODO(request-substitute) login_passkey: gate on _build.authConfig.passkey
+      # .enabled; onClick → PasskeySignIn (upstream ask 6 — NOT yet delivered).
+      # Fallback if undelivered at wire time: drop this button.
+      - id: login_passkey
+        type: Button
+        visible:
+          _eq:
+            - _state: login_view
+            - signin
+        properties:
+          title: Sign in with a passkey
+          icon: AiOutlineKey
+          block: true
+          size: large
+          variant: outlined
+    nav:
+      - id: login_footer
+        type: Html
+        properties:
+          html: New here? <a href="signup">Create an account</a>

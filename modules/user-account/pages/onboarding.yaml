@@ -1,13 +1,98 @@
-# Stub — built out in task 17. Minimal valid protected page so `_ref`s resolve
-# and the module builds; real content added by the screen task.
+# Onboarding page — task 17 (UI pipeline only; wiring deferred).
+# Chrome-less first-login profile completion (Decision 5 — the old `new` page).
+# Protected; renders on the auth-page shell (no app chrome). The contact already
+# exists by first login (Decision 7) — this page only updates it. The field
+# region is driven from the `fields.profile` module var (same blocks as the
+# profile tile), with the honorific selector gated on `fields.show_honorific`;
+# ids are `profile.`-prefixed so they bind `state.profile.*`. The save
+# (update-profile), the `profile.profile_created` marker, UpdateSession, and the
+# navigate into the app are the wire task — see the TODO(request-substitute)
+# marker.
 _ref:
   module: layout
-  component: page
+  component: auth-page
   vars:
     id: onboarding
-    title: Complete your profile
+    title: ""
     blocks:
-      - id: placeholder
-        type: Paragraph
-        properties:
-          content: TODO(screen) — Complete your profile page, built in task 17.
+      _build.array.concat:
+        - # ---- Header + avatar ----
+          - id: onboarding_title
+            type: Title
+            properties:
+              content: Welcome — let's set up your profile
+              level: 3
+          - id: onboarding_lead
+            type: Html
+            properties:
+              html: This is how teammates will see you across the app.
+            style:
+              marginTop: -8
+              fontSize: 13
+              color: "var(--ant-color-text-secondary)"
+          - id: onboarding_avatar
+            type: Box
+            layout:
+              gap: 8
+              justify: center
+            style:
+              flexDirection: column
+              alignItems: center
+              marginBottom: 4
+            blocks:
+              # TODO(request-substitute) onboarding_avatar_face: content = the
+              # caller's initials from state.profile (first/last name); color from
+              # the avatar_colors var. Mock initials shown.
+              - id: onboarding_avatar_face
+                type: Avatar
+                properties:
+                  content: ST
+                  size: large
+                  theme:
+                    containerSizeLG: 72
+                    textFontSizeLG: 26
+              # TODO(request-substitute) onboarding_avatar_color: onClick → cycle
+              # the avatar color across the avatar_colors var.
+              - id: onboarding_avatar_color
+                type: Button
+                properties:
+                  title: Change colour
+                  icon: AiOutlineReload
+                  size: small
+                  shape: round
+        # ---- Honorific selector (gated on the show_honorific module var) ----
+        - _build.if:
+            test:
+              _module.var: fields.show_honorific
+            then:
+              - id: profile.honorific
+                type: Selector
+                properties:
+                  size: large
+                  allowClear: true
+                  placeholder: Select title
+                  options:
+                    - Mr
+                    - Ms
+                    - Mrs
+                    - Dr
+                  label:
+                    title: Title
+                    colon: false
+                    span: 24
+            else: []
+        # ---- Deployment-configured profile field blocks ----
+        - _module.var: fields.profile
+        # ---- Submit ----
+        - # TODO(request-substitute) onboarding_submit: onClick → update-profile
+          # API (payload = the state.profile.* subtree against
+          # _user.profile.contactId) and set profile.profile_created: true; on the
+          # API's onDone fire UpdateSession, then navigate into the app.
+          - id: onboarding_submit
+            type: Button
+            properties:
+              title: Save & continue
+              block: true
+              size: large
+              color: primary
+              variant: solid

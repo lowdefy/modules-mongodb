@@ -1,0 +1,44 @@
+# Linked accounts tile (design Decision 5) — read-only visibility of the sign-in
+# methods linked to the caller's account, from a native read over user-accounts
+# (the same read that feeds the Security tile's credential-presence gate). This is
+# visibility, not management — link/unlink flows are a v1 non-goal.
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Linked accounts
+    blocks:
+      - id: linked_accounts_body
+        type: Box
+        layout:
+          gap: 12
+        blocks:
+          - id: linked_accounts_list
+            type: ListSelector
+            properties:
+              selectable: false
+              bordered: false
+              gap: 0
+              # TODO(request-substitute) linked_accounts_list: "the caller's linked accounts (native user-accounts read: providerId, accountId/email) — read-only (Decision 5)"
+              data:
+                - provider: Google
+                  detail: jane.mokoena@gmail.com
+                  status: Connected
+                - provider: Email & password
+                  detail: Primary sign-in
+                  status: Active
+              html: |
+                <div id="bl-{{ index }}.linked_account_item" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--ant-color-border-secondary); font-size:13px;">
+                  <span style="flex:1 1 auto; min-width:0;">
+                    <div style="color:var(--ant-color-text);">{{ item.provider }}</div>
+                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{{ item.detail }}</div>
+                  </span>
+                  <span style="flex:0 0 auto; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">{{ item.status }}</span>
+                </div>
+            style:
+              .body:
+                padding: "0"
+          - id: linked_accounts_hint
+            type: Html
+            properties:
+              html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Accounts you can use to sign in.</div>'

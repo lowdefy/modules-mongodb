@@ -1,0 +1,47 @@
+# Backup codes modal (design Decision 5) — shown once after TwoFactorEnable, the
+# one-time codes returned alongside the totpURI (read from _actions). Display only;
+# the codes are never fetched again. Opened from the enrol-2FA modal's confirm.
+id: modal_backupcodes
+type: Modal
+properties:
+  title: Save your backup codes
+  width: 480
+  okText: I've saved them
+  cancelText: Copy
+blocks:
+  - id: backupcodes_message
+    type: Html
+    layout:
+      span: 24
+    properties:
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Two-factor is on. Store these one-time codes somewhere safe — each works once if you lose your authenticator.</div>'
+  - id: backupcodes_grid
+    type: Html
+    layout:
+      span: 24
+    properties:
+      html:
+        _nunjucks:
+          # TODO(request-substitute) backupcodes_grid: "one-time backup codes from TwoFactorEnable (_actions) — shown once, never re-fetched"
+          template: |
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0 4px;">
+            {% for code in codes %}
+              <span style="font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border-secondary); border-radius:6px; padding:7px 10px; text-align:center; letter-spacing:0.04em;">{{ code }}</span>
+            {% endfor %}
+            </div>
+          on:
+            codes:
+              - 7F3K-9QP2
+              - L2M8-XR4V
+              - B6N1-TW5H
+              - C9D4-ZK7Q
+              - R3S8-VM2P
+              - J5W6-YB1N
+  - id: backupcodes_alert
+    type: Alert
+    layout:
+      span: 24
+    properties:
+      type: warning
+      showIcon: true
+      message: You won't see these again. Download or copy them before closing.

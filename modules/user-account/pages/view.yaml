@@ -1,13 +1,64 @@
-# Stub — built out in task 18. Minimal valid protected page so `_ref`s resolve
-# and the module builds; real content added by the screen task.
+# Account workspace (design Decision 5) — the signed-in self-service console that
+# replaces the old view + edit pages. Two-column layout: main (Profile, Security)
+# + side (Active sessions, Linked accounts), each tile editing through its own
+# modal and its own pathway. Built by the mock-to-lowdefy pipeline (task 18, UI
+# only); native reads + client-action wiring are the wire task
+# (TODO(request-substitute) markers).
+#
+# Open question (design.md) resolved: Security is ONE tile (sign-in rows —
+# password, 2FA, passkeys, verified badge), with Active sessions and Linked
+# accounts as their own tiles, matching the mock. Write pathways are fixed either
+# way (Decision 5).
 _ref:
   module: layout
   component: page
   vars:
     id: view
+    # Title-block: "Account" + subtitle. The mock's avatar is a proposed
+    # title-block slot the shared component does not offer today — not added
+    # here (a shared-component change is out of scope for this page), matching
+    # the user-admin view. Edits are section-scoped (Decision 5), so the
+    # page-actions slot stays empty.
     title: Account
+    description: Manage your profile, sign-in, and sessions
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Account
     blocks:
-      - id: placeholder
-        type: Paragraph
-        properties:
-          content: TODO(screen) — Account page, built in task 18.
+      - id: account_grid
+        type: Box
+        layout:
+          gap: 16
+          align: top
+          selfAlign: top
+        blocks:
+          - id: account_main_col
+            type: Box
+            layout:
+              span: 14
+              sm:
+                span: 24
+              gap: 16
+            blocks:
+              _build.array.concat:
+                - - _ref: components/view/tile_profile.yaml
+                  - _ref: components/view/tile_security.yaml
+                # Consumer extension surface (Decision 8) — extra main-column tiles.
+                - _module.var: components.main_slots
+          - id: account_side_col
+            type: Box
+            layout:
+              span: 10
+              sm:
+                span: 24
+              gap: 16
+            blocks:
+              - _ref: components/view/tile_sessions.yaml
+              - _ref: components/view/tile_linked_accounts.yaml
+      # ── Interaction-state layers: 4 modals (top-level siblings of the grid,
+      #    opened via CallMethod toggleOpen from their triggers) ──
+      - _ref: components/view/modal_profile.yaml
+      - _ref: components/view/modal_changepw.yaml
+      - _ref: components/view/modal_enroltotp.yaml
+      - _ref: components/view/modal_backupcodes.yaml

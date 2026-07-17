@@ -1,13 +1,105 @@
-# Stub — built out in task 13. Minimal valid auth page so `_ref`s resolve and
-# the module builds; real content added by the screen task.
+# Verify-email page — task 13 (UI pipeline only; wiring deferred).
+# Serves authPages.verifyEmail. One page, three renders via `verify_view`
+# (check | success | expired): the post-signup "check your email" prompt, and
+# the two landings after the emailed link (GET /api/auth/verify-email redirects
+# here with a success/error query). Render selection from _url_query, the resend
+# call, and the continue target are the wire task.
 _ref:
   module: layout
   component: auth-page
   vars:
     id: verify-email
-    title: Verify email
+    title: ""
+    events:
+      onInit:
+        # TODO(request-substitute) verify_view: check at rest (post-signup prompt);
+        # select "success" vs "expired" from _url_query on the emailed-link landing
+        # (map error codes, default → expired).
+        - id: seed_verify_view
+          type: SetState
+          params:
+            verify_view: check
     blocks:
-      - id: placeholder
-        type: Paragraph
+      # ---- Check your email (post-signup prompt) ----
+      # subTitle from the verify_email_message module var.
+      - id: verify_prompt
+        type: Result
+        visible:
+          _eq:
+            - _state: verify_view
+            - check
         properties:
-          content: TODO(screen) — Verify email page, built in task 13.
+          icon:
+            name: AiOutlineMail
+            color: "var(--ant-color-primary)"
+          status: info
+          title: Check your email
+          subTitle:
+            _module.var: verify_email_message
+      # TODO(request-substitute) verify_resend: onClick → SendVerificationEmail for
+      # the unverified email.
+      - id: verify_resend
+        type: Button
+        visible:
+          _eq:
+            - _state: verify_view
+            - check
+        properties:
+          title: Resend verification email
+          block: true
+          size: large
+          variant: outlined
+
+      # ---- Verified (callback success) ----
+      - id: verify_success
+        type: Result
+        visible:
+          _eq:
+            - _state: verify_view
+            - success
+        properties:
+          status: success
+          title: Email verified
+          subTitle: You're all set. Your email address has been confirmed.
+      # TODO(request-substitute) verify_continue: onClick → continue into the app
+      # (callbackUrl).
+      - id: verify_continue
+        type: Button
+        visible:
+          _eq:
+            - _state: verify_view
+            - success
+        properties:
+          title: Continue to app
+          block: true
+          size: large
+          color: primary
+          variant: solid
+
+      # ---- Expired (callback error) ----
+      - id: verify_expired
+        type: Result
+        visible:
+          _eq:
+            - _state: verify_view
+            - expired
+        properties:
+          icon:
+            name: AiOutlineClockCircle
+            color: "var(--ant-color-warning)"
+          status: warning
+          title: This link has expired
+          subTitle: Verification links are valid for a short time. Request a fresh one to continue.
+      # TODO(request-substitute) verify_resend_expired: onClick → SendVerificationEmail.
+      - id: verify_resend_expired
+        type: Button
+        visible:
+          _eq:
+            - _state: verify_view
+            - expired
+        properties:
+          title: Send a new link
+          block: true
+          size: large
+          color: primary
+          variant: solid

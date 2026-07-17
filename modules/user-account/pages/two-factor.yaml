@@ -1,13 +1,205 @@
-# Stub — built out in task 14. Minimal valid auth page so `_ref`s resolve and
-# the module builds; real content added by the screen task.
+# Two-factor page — task 14 (UI pipeline only; wiring deferred).
+# Module-internal 2FA sign-in challenge (Decision 2 — routed to by login; not an
+# authPages role). Two renders via the `tf_view` state key (auth | backup): the
+# authenticator-code state at rest and the backup-code alternate. The auth↔backup
+# toggle is a pure UI affordance (wired here with SetState). The verify call
+# (TwoFactorVerify) and success navigation are the wire task — see the
+# TODO(request-substitute) markers. No QR here (that's enrolment, task 18).
 _ref:
   module: layout
   component: auth-page
   vars:
     id: two-factor
-    title: Two-factor authentication
+    title: ""
+    events:
+      onInit:
+        # authenticator state at rest; trust-device pre-checked (mock default).
+        - id: seed_tf_view
+          type: SetState
+          params:
+            tf_view: auth
+            trust_device: true
     blocks:
-      - id: placeholder
-        type: Paragraph
+      # ---- Authenticator-code state ----
+      - id: tf_title
+        type: Title
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
         properties:
-          content: TODO(screen) — Two-factor authentication page, built in task 14.
+          content: Enter your code
+          level: 3
+      - id: tf_lead
+        type: Html
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        properties:
+          html: Open your authenticator app and enter the 6-digit code.
+        style:
+          marginTop: -8
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+      # 6-digit TOTP code — data path `code`. No dedicated OTP block exists, so a
+      # large centered TextInput carries the code.
+      - id: code
+        type: TextInput
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        required: true
+        properties:
+          size: large
+          maxLength: 6
+          placeholder: "000000"
+          label:
+            disabled: true
+        style:
+          .element:
+            textAlign: center
+            letterSpacing: 8
+            fontFamily: var(--mono)
+      - id: trust_device
+        type: CheckboxSwitch
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        properties:
+          description: Trust this device for 30 days
+      # TODO(request-substitute) tf_verify: onClick → TwoFactorVerify (the `code`
+      # value + `trust_device`; serves TOTP here). On success navigate to
+      # callbackUrl to complete sign-in; map invalid-code errors with a `default`
+      # fallback.
+      - id: tf_verify
+        type: Button
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        properties:
+          title: Verify
+          block: true
+          size: large
+          color: primary
+          variant: solid
+      # "Lost your device? Use a backup code" — UI toggle to the backup state.
+      - id: tf_use_backup_row
+        type: Box
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        layout:
+          justify: center
+          align: middle
+        blocks:
+          - id: tf_use_backup_text
+            type: Html
+            layout:
+              flex: 0 1 auto
+            properties:
+              html: Lost your device?
+            style:
+              fontSize: 13
+              color: "var(--ant-color-text-secondary)"
+          - id: tf_use_backup
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Use a backup code
+              variant: link
+              color: primary
+              size: small
+            events:
+              onClick:
+                - id: show_backup
+                  type: SetState
+                  params:
+                    tf_view: backup
+
+      # ---- Backup-code state ----
+      - id: tf_backup_title
+        type: Title
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        properties:
+          content: Use a backup code
+          level: 3
+      - id: tf_backup_lead
+        type: Html
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        properties:
+          html: Enter one of the single-use codes you saved when you set up two-factor authentication.
+        style:
+          marginTop: -8
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+      # Backup code — data path `backup_code`.
+      - id: backup_code
+        type: TextInput
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        required: true
+        properties:
+          size: large
+          placeholder: xxxx-xxxx
+          label:
+            title: Backup code
+            colon: false
+            span: 24
+        style:
+          .element:
+            fontFamily: var(--mono)
+      # TODO(request-substitute) tf_backup_verify: onClick → TwoFactorVerify (the
+      # `backup_code` value + `trust_device`; serves backup code here). On success
+      # navigate to callbackUrl; map invalid-code errors with a `default` fallback.
+      - id: tf_backup_verify
+        type: Button
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        properties:
+          title: Verify
+          block: true
+          size: large
+          color: primary
+          variant: solid
+      # Back to the authenticator state — UI toggle.
+      - id: tf_back_to_auth_row
+        type: Box
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        layout:
+          justify: center
+          align: middle
+        blocks:
+          - id: tf_back_to_auth
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: "← Back to authenticator code"
+              variant: link
+              color: primary
+              size: small
+            events:
+              onClick:
+                - id: show_auth
+                  type: SetState
+                  params:
+                    tf_view: auth

@@ -1,13 +1,173 @@
-# Stub — built out in task 10. Minimal valid auth page so `_ref`s resolve and
-# the module builds; real content added by the screen task.
+# Signup page — task 10 (UI pipeline only; request/action wiring deferred).
+# Serves authPages.signUp. Two renders driven by the `signup_view` state key
+# (form | check). Ships unconditionally; admission is engine policy. State
+# selection (no-session response → check), SignUp/Login dispatch, and the
+# per-provider button set are the wire task — see TODO(request-substitute).
 _ref:
   module: layout
   component: auth-page
   vars:
     id: signup
-    title: Sign up
+    title: ""
+    events:
+      onInit:
+        # TODO(request-substitute) signup_view: seed the render — form at rest;
+        # switch to "check" when the SignUp response carries no session
+        # (requireEmailVerification). Navigate to callbackUrl when it does.
+        - id: seed_signup_view
+          type: SetState
+          params:
+            signup_view: form
     blocks:
-      - id: placeholder
-        type: Paragraph
+      # ---- Form state ----
+      - id: signup_title
+        type: Title
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
         properties:
-          content: TODO(screen) — Sign up page, built in task 10.
+          content: Create your account
+          level: 3
+      - id: profile.first_name
+        type: TextInput
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
+        required: true
+        properties:
+          size: large
+          label:
+            title: First name
+            colon: false
+            span: 24
+      - id: profile.last_name
+        type: TextInput
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
+        required: true
+        properties:
+          size: large
+          label:
+            title: Last name
+            colon: false
+            span: 24
+      - id: email
+        type: TextInput
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
+        required: true
+        properties:
+          type: email
+          size: large
+          suffixIcon: AiOutlineMail
+          label:
+            title: Email
+            colon: false
+            span: 24
+      - id: password
+        type: PasswordInput
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
+        required: true
+        properties:
+          size: large
+          label:
+            title: Password
+            colon: false
+            span: 24
+            extra: At least 8 characters.
+      # TODO(request-substitute) signup_submit: onClick → SignUp (email/password).
+      - id: signup_submit
+        type: Button
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
+        properties:
+          title: Create account
+          block: true
+          size: large
+          color: primary
+          variant: solid
+      - id: signup_oauth_divider
+        type: Divider
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
+        properties:
+          title: or
+          plain: true
+      # TODO(request-substitute) signup_oauth_google: one button per
+      # _build.authConfig.providers entry (label/icon/order from the `providers`
+      # var, id fallback); onClick → Login with the provider id (social signup).
+      - id: signup_oauth_google
+        type: Button
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
+        properties:
+          title: Continue with Google
+          icon: AiOutlineGoogle
+          block: true
+          size: large
+          variant: outlined
+
+      # ---- Check-your-email state (requireEmailVerification) ----
+      # TODO(request-substitute) signup_check_email: subTitle carries the signed-up
+      # email address. Mock copy shown.
+      - id: signup_check_email
+        type: Result
+        visible:
+          _eq:
+            - _state: signup_view
+            - check
+        properties:
+          icon:
+            name: AiOutlineMail
+            color: "var(--ant-color-primary)"
+          status: info
+          title: Check your email
+          subTitle: We sent a verification link to <b>sam.taylor@example.com</b>. Open it to finish setting up your account.
+      # TODO(request-substitute) signup_resend: onClick → SendVerificationEmail.
+      - id: signup_resend
+        type: Button
+        visible:
+          _eq:
+            - _state: signup_view
+            - check
+        properties:
+          title: Resend link
+          block: true
+          size: large
+          variant: outlined
+      - id: signup_check_hint
+        type: Html
+        visible:
+          _eq:
+            - _state: signup_view
+            - check
+        properties:
+          html: Wrong address? <a href="signup">Start over</a>
+        style:
+          textAlign: center
+          fontSize: 12
+          color: "var(--ant-color-text-secondary)"
+    nav:
+      - id: signup_footer
+        type: Html
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
+        properties:
+          html: Already have an account? <a href="login">Sign in</a>

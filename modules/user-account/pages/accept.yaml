@@ -1,13 +1,207 @@
-# Stub — built out in task 15. Minimal valid auth page so `_ref`s resolve and
-# the module builds; real content added by the screen task.
+# Accept-invitation page — task 15 (UI pipeline only; wiring deferred).
+# Serves authPages.acceptInvitation. Public, thin, engine-trusting. Four renders
+# via `accept_view` (nosession | signedin | member | expired). The invitation is
+# read natively from user-invitations by _url_query.invitationId (display only);
+# that read, the AcceptInvitation call, and state selection are the wire task.
+# TODO(request-substitute) accept_invitation: org name, inviter, invited email,
+# expiry, and status all come from the native user-invitations read keyed on
+# _url_query.invitationId. Mock values shown throughout.
 _ref:
   module: layout
   component: auth-page
   vars:
     id: accept
-    title: Accept invitation
+    title: ""
+    events:
+      onInit:
+        # TODO(request-substitute) accept_view: select the render from session +
+        # invitation state (no session / email matches / already member / expired
+        # or mismatch). nosession shown at rest.
+        - id: seed_accept_view
+          type: SetState
+          params:
+            accept_view: nosession
     blocks:
-      - id: placeholder
-        type: Paragraph
+      # ---- No session — offer login / signup ----
+      - id: accept_title_nosession
+        type: Title
+        visible:
+          _eq:
+            - _state: accept_view
+            - nosession
         properties:
-          content: TODO(screen) — Accept invitation page, built in task 15.
+          content: You're invited
+          level: 3
+      - id: accept_invite_context
+        type: Box
+        visible:
+          _or:
+            - _eq:
+                - _state: accept_view
+                - nosession
+            - _eq:
+                - _state: accept_view
+                - signedin
+        layout:
+          align: middle
+          selfAlign: middle
+          gap: 11
+        style:
+          background: "var(--ant-color-primary-bg)"
+          border: "1px solid var(--ant-color-primary-border)"
+          borderRadius: 10
+          padding: 11px 13px
+        blocks:
+          - id: accept_invite_avatar
+            type: Avatar
+            layout:
+              flex: 0 1 auto
+            properties:
+              content: JM
+              color: "#7048e8"
+          - id: accept_invite_who
+            type: Html
+            layout:
+              flex: 1 1 auto
+            properties:
+              html: <div class="text-xs opacity-70">Jane Mokoena invited you to</div><div class="text-sm font-semibold">Module Demo App</div>
+      - id: accept_nosession_lead
+        type: Html
+        visible:
+          _eq:
+            - _state: accept_view
+            - nosession
+        properties:
+          html: To accept, sign in or create your account with <b>sam.taylor@example.com</b>. Your invitation expires in 4 days.
+        style:
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+      # TODO(request-substitute) accept_signup: onClick → Link to signup with a
+      # callbackUrl back to this accept page (invitationId preserved).
+      - id: accept_signup
+        type: Button
+        visible:
+          _eq:
+            - _state: accept_view
+            - nosession
+        properties:
+          title: Create account & accept
+          block: true
+          size: large
+          color: primary
+          variant: solid
+      # TODO(request-substitute) accept_login: onClick → Link to login with a
+      # callbackUrl back to this accept page (invitationId preserved).
+      - id: accept_login
+        type: Button
+        visible:
+          _eq:
+            - _state: accept_view
+            - nosession
+        properties:
+          title: Sign in & accept
+          block: true
+          size: large
+          variant: outlined
+
+      # ---- Signed in, email matches ----
+      - id: accept_title_signedin
+        type: Title
+        visible:
+          _eq:
+            - _state: accept_view
+            - signedin
+        properties:
+          content: Accept your invitation
+          level: 3
+      - id: accept_signed_in_as
+        type: Box
+        visible:
+          _eq:
+            - _state: accept_view
+            - signedin
+        layout:
+          align: middle
+          selfAlign: middle
+          gap: 10
+        blocks:
+          - id: accept_signed_in_avatar
+            type: Avatar
+            layout:
+              flex: 0 1 auto
+            properties:
+              content: ST
+              size: small
+              color: "#0e7490"
+          - id: accept_signed_in_text
+            type: Html
+            layout:
+              flex: 1 1 auto
+            properties:
+              html: <div class="text-sm">Signed in as <b>sam.taylor@example.com</b></div><div class="text-xs opacity-70">This matches your invitation.</div>
+      # TODO(request-substitute) accept_continue: onClick → AcceptInvitation client
+      # action; on success Link into the app (engine merges the profile fragment).
+      - id: accept_continue
+        type: Button
+        visible:
+          _eq:
+            - _state: accept_view
+            - signedin
+        properties:
+          title: Accept & continue
+          block: true
+          size: large
+          color: primary
+          variant: solid
+      - id: accept_not_you
+        type: Html
+        visible:
+          _eq:
+            - _state: accept_view
+            - signedin
+        properties:
+          html: Not you? <a href="logout">Sign out</a>
+        style:
+          textAlign: center
+          fontSize: 12
+          color: "var(--ant-color-text-secondary)"
+
+      # ---- Already a member ----
+      - id: accept_already_member
+        type: Result
+        visible:
+          _eq:
+            - _state: accept_view
+            - member
+        properties:
+          status: success
+          title: You're already a member
+          subTitle: Your account already has access to this app.
+      # TODO(request-substitute) accept_go_to_app: onClick → Link into the app.
+      - id: accept_go_to_app
+        type: Button
+        visible:
+          _eq:
+            - _state: accept_view
+            - member
+        properties:
+          title: Go to app
+          block: true
+          size: large
+          color: primary
+          variant: solid
+
+      # ---- Expired / mismatch ----
+      - id: accept_expired
+        type: Result
+        visible:
+          _eq:
+            - _state: accept_view
+            - expired
+        properties:
+          icon:
+            name: AiOutlineClockCircle
+            color: "var(--ant-color-warning)"
+          status: warning
+          title: This invitation has expired
+          subTitle: Ask the person who invited you to send a fresh invitation, then open the new link.

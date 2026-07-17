@@ -108,6 +108,27 @@ blocks:
                 test:
                   _build.gt:
                     - _build.array.length:
+                        _var:
+                          key: nav
+                          default: []
+                    - 0
+                then:
+                  - id: auth-nav
+                    type: Box
+                    style:
+                      marginTop: 18
+                      textAlign: center
+                      fontSize: 12
+                      color: "var(--ant-color-text-secondary)"
+                    blocks:
+                      _var:
+                        key: nav
+                        default: []
+                else: []
+            - _build.if:
+                test:
+                  _build.gt:
+                    - _build.array.length:
                         _module.var: footer
                     - 0
                 then:
