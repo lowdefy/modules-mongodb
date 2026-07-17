@@ -1,0 +1,26 @@
+# Remove-from-app confirm modal — RemoveMember (app-scoped, Decision 4). Deletes
+# this app's member row; sign-in, contact, and other apps are untouched. onOk
+# (CallAPI remove-member) is wired in task 13.
+id: modal_remove
+type: Modal
+properties:
+  # TODO(request-substitute) modal_remove.title: "Remove {target name} from {app_title} User Admin?"
+  title: Remove Jane Mokoena from this app?
+  width: 480
+  okText: Remove from app
+  cancelText: Cancel
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    # TODO(request-substitute) modal_remove onOk: "CallAPI remove-member (RemoveMember) — task 13"
+    - id: remove_todo
+      type: DisplayMessage
+      params:
+        status: info
+        content: Remove from app — wired in task 13.
+blocks:
+  - id: remove_message
+    type: Html
+    properties:
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">This removes the person from <b>this app only</b> — their roles and attributes here are cleared. Their sign-in, contact details, and access to other apps are untouched. To restore access, invite them again (their previous roles are not kept).</div>'

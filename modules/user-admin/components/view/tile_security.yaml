@@ -1,0 +1,192 @@
+# Security tile (design Decision 5) — "Access & sign-in". Suspend/reinstate
+# (behind the suspension var, Decision 4), Remove from app, Sign out everywhere,
+# Delete identity, and the impersonation affordance (behind the impersonation
+# var). Active sessions (token projected out) and read-only auth methods.
+#
+# Multi-app vs single-app degradation (Decision 6 — blast-radius copy, Delete
+# enablement, "suite"/"every app" phrasing) keys off the person's other-
+# membership count and is WIRED in task 13. This renders the multi-app variant.
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Security
+    blocks:
+      - id: security_body
+        type: Box
+        layout:
+          gap: 12
+        blocks:
+          - id: security_access_eyebrow
+            type: Html
+            properties:
+              html: '<div style="text-transform:uppercase; letter-spacing:0.08em; font-size:11px; color:var(--ant-color-text-tertiary);">Access &amp; sign-in</div>'
+          - id: security_actions
+            type: Box
+            layout:
+              direction: row
+              gap: 8
+            blocks:
+              _build.array.concat:
+                # Suspend — behind the suspension var (Decision 4). Permanent,
+                # suite-wide ban; opens the blast-radius confirm (modal_suspend).
+                - _build.if:
+                    test:
+                      _module.var: suspension
+                    then:
+                      - id: suspend_btn
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          title: Suspend access
+                          danger: true
+                        events:
+                          onClick:
+                            - id: open_suspend_modal
+                              type: CallMethod
+                              params:
+                                blockId: modal_suspend
+                                method: toggleOpen
+                    else: []
+                - - id: remove_btn
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Remove from app
+                    events:
+                      onClick:
+                        - id: open_remove_modal
+                          type: CallMethod
+                          params:
+                            blockId: modal_remove
+                            method: toggleOpen
+                  - id: revoke_btn
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Sign out everywhere
+                    events:
+                      onClick:
+                        - id: open_revoke_modal
+                          type: CallMethod
+                          params:
+                            blockId: modal_revoke
+                            method: toggleOpen
+                  # Delete identity — only when the person holds no other
+                  # memberships (Decision 4). Disabled in the multi-app variant;
+                  # task 13 flips `disabled` off the membership count.
+                  - id: delete_btn
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Delete identity
+                      danger: true
+                      # TODO(request-substitute) delete_btn.disabled: "false only when other-membership count is 0 (get_user_memberships)"
+                      disabled: true
+                    events:
+                      onClick:
+                        - id: open_delete_modal
+                          type: CallMethod
+                          params:
+                            blockId: modal_delete
+                            method: toggleOpen
+                # Impersonation — "View as user", behind the impersonation var
+                # (Decision 5). Off by default; works once auth.userAdminRole is
+                # configured and held. The client action is wired in task 13.
+                - _build.if:
+                    test:
+                      _module.var: impersonation
+                    then:
+                      - id: impersonate_btn
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          title: View as user
+                          icon: AiOutlineEye
+                        events:
+                          onClick:
+                            # TODO(request-substitute) impersonate_btn: "ImpersonateUser client action (BetterAuth admin plugin, session-scoped) — task 13"
+                            - id: impersonate_todo
+                              type: DisplayMessage
+                              params:
+                                status: info
+                                content: View as user — wired in task 13.
+                    else: []
+          - id: security_hint
+            type: Html
+            properties:
+              # TODO(request-substitute) security_hint: "single-app copy variant when other-membership count is 0 (Decision 6)"
+              html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Suspend blocks this person from every app in the suite and signs them out. Remove takes away access to this app only. Delete is available once they belong to no other apps.</div>'
+          - id: security_divider_sessions
+            type: Divider
+            properties:
+              margin: 4
+          - id: sessions_eyebrow
+            type: Html
+            properties:
+              html: '<div style="text-transform:uppercase; letter-spacing:0.08em; font-size:11px; color:var(--ant-color-text-tertiary);">Active sessions</div>'
+          - id: sessions_list
+            type: ListSelector
+            properties:
+              selectable: false
+              bordered: false
+              gap: 0
+              # TODO(request-substitute) sessions_list: "active sessions (get_user_sessions: device/user-agent, ip, city, expiresAt, current) — token $project-ed out (Decision 5)"
+              data:
+                - device: "Chrome · macOS"
+                  meta: "41.203.11.8 · Johannesburg · expires in 6 days"
+                  current: true
+                - device: "Safari · iPhone"
+                  meta: "102.54.9.2 · expires in 2 days"
+                  current: false
+              html: |
+                <div id="bl-{{ index }}.session_item" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--ant-color-border-secondary); font-size:13px;">
+                  <span style="flex:1 1 auto; min-width:0;">
+                    <div style="color:var(--ant-color-text);">{{ item.device }}</div>
+                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{{ item.meta }}</div>
+                  </span>
+                  {% if item.current %}
+                    <span style="flex:0 0 auto; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">Current</span>
+                  {% else %}
+                    <span style="flex:0 0 auto; color:var(--ant-color-primary); font-size:12px;">Revoke</span>
+                  {% endif %}
+                </div>
+            style:
+              .body:
+                padding: "0"
+          - id: security_divider_methods
+            type: Divider
+            properties:
+              margin: 4
+          - id: methods_eyebrow
+            type: Html
+            properties:
+              html: '<div style="text-transform:uppercase; letter-spacing:0.08em; font-size:11px; color:var(--ant-color-text-tertiary);">Auth methods</div>'
+          - id: auth_methods
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  # TODO(request-substitute) auth_methods: "email-verified (user.emailVerified), linked providers (get_user_accounts.providerId), passkeys, MFA enrolment"
+                  template: |
+                    <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                    {% for m in methods %}
+                      {% if m.ok %}
+                        <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">{{ m.label }}</span>
+                      {% else %}
+                        <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">{{ m.label }}</span>
+                      {% endif %}
+                    {% endfor %}
+                    </div>
+                  on:
+                    methods:
+                      - label: "✓ Email verified"
+                        ok: true
+                      - label: Google
+                      - label: Passkey
+                      - label: "MFA · TOTP"

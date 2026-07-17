@@ -1,0 +1,59 @@
+# Suspend confirm modal — BanUser (permanent, suite-wide, Decision 4). Enumerates
+# the person's other memberships so the admin sees the blast radius before
+# confirming. Multi-app variant shown here; the single-app variant (no list,
+# plain "Suspend" button, collapsed copy) keys off the other-membership count and
+# is WIRED in task 13. onOk (CallAPI suspend) is also task 13.
+id: modal_suspend
+type: Modal
+properties:
+  title: Suspend Jane Mokoena?
+  width: 480
+  # TODO(request-substitute) modal_suspend.okText: "Suspend across N apps (multi) / Suspend (single) — from other-membership count"
+  okText: Suspend across 4 apps
+  cancelText: Cancel
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    # TODO(request-substitute) modal_suspend onOk: "CallAPI suspend (BanUser) — task 13"
+    - id: suspend_todo
+      type: DisplayMessage
+      params:
+        status: info
+        content: Suspend — wired in task 13.
+blocks:
+  - id: suspend_message
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          # TODO(request-substitute) suspend_message: "target name + other memberships (user-members joined user-organizations) for the blast-radius list (Decision 4)"
+          template: |
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">
+              Suspending signs <b>{{ name }}</b> out everywhere immediately and blocks them from signing in. Because it applies to the person — not just this app — it blocks <b>every app they can reach</b>:
+              <div style="margin:12px 0 4px; display:flex; flex-direction:column; gap:8px;">
+              {% for m in memberships %}
+                <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--ant-color-border); border-radius:6px; background:var(--ant-color-fill-quaternary);">
+                  <span style="width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:var(--ant-color-fill-secondary); color:var(--ant-color-text-secondary); font-size:9px; font-weight:700;">{{ m.initial }}</span>
+                  <span>{{ m.app }}</span>
+                  <span style="margin-left:auto; color:var(--ant-color-text-tertiary);">{{ m.roles }}</span>
+                </div>
+              {% endfor %}
+              </div>
+              Reinstating later restores access everywhere. To remove {{ name }} from this app only, use <b>Remove from app</b> instead.
+            </div>
+          on:
+            name: Jane Mokoena
+            memberships:
+              - app: Module Demo App
+                initial: M
+                roles: "Admin, Editor"
+              - app: CRM
+                initial: C
+                roles: Editor
+              - app: Field Ops
+                initial: F
+                roles: Viewer
+              - app: Analytics
+                initial: A
+                roles: Viewer

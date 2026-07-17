@@ -1,0 +1,25 @@
+# Sign-out-everywhere confirm modal — RevokeUserSessions (Decision 5). Ends all
+# active sessions; the person can sign back in immediately (not a suspend/remove).
+# "suite"/this-app copy collapses on the other-membership count (Decision 6,
+# wired task 13). onOk (CallAPI revoke-sessions) is wired in task 13.
+id: modal_revoke
+type: Modal
+properties:
+  title: Sign Jane Mokoena out everywhere?
+  width: 480
+  okText: Sign out all sessions
+  cancelText: Cancel
+events:
+  onOk:
+    # TODO(request-substitute) modal_revoke onOk: "CallAPI revoke-sessions (RevokeUserSessions) — task 13"
+    - id: revoke_todo
+      type: DisplayMessage
+      params:
+        status: info
+        content: Sign out everywhere — wired in task 13.
+blocks:
+  - id: revoke_message
+    type: Html
+    properties:
+      # TODO(request-substitute) revoke_message: "active session count; 'across the suite' phrasing collapses to this app when single-app (Decision 6)"
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Signs this person out of all their active sessions across the suite. They can sign back in right away — this does not suspend or remove their access.</div>'

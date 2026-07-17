@@ -1,0 +1,36 @@
+# Global attributes tile (design Decision 3) — cross-app attributes on the user
+# row (fields.user_attributes). Edit opens modal_global (UpdateUserAttributes,
+# wired task 13). These apply to the person across every app in the suite.
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Global attributes
+    header_buttons:
+      - id: global_attrs_edit_btn
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Edit
+          icon: AiOutlineEdit
+          size: small
+        events:
+          onClick:
+            - id: open_global_modal
+              type: CallMethod
+              params:
+                blockId: modal_global
+                method: toggleOpen
+    blocks:
+      - id: global_attributes_view
+        type: SmartDescriptions
+        properties:
+          column: 1
+          size: small
+          # TODO(request-substitute) global_attributes_view: "target user attributes subdoc (get_user_detail.user.attributes)"
+          data:
+            user_attributes:
+              notes: Prefers email contact. Based in the Gauteng regional office.
+          fields:
+            _module.var: fields.user_attributes

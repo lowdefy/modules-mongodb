@@ -1,0 +1,43 @@
+# Edit profile modal — write-profile routine (change-stamped contact write +
+# UpdateUserProfile re-denorm, Decision 3). Fields bind state.profile.*; email is
+# the login identity and is locked. onOk wiring (CallAPI update-profile) is task 13.
+id: modal_profile
+type: Modal
+properties:
+  title: Edit profile
+  width: 560
+  okText: Save profile
+  cancelText: Cancel
+events:
+  onOpen:
+    - id: seed_profile
+      type: SetState
+      # TODO(request-substitute) modal_profile seed: "target contact profile subdoc + email (get_user_detail)"
+      params:
+        profile:
+          given_name: Jane
+          family_name: Mokoena
+          phone_number: "+27 82 555 0142"
+          job_title: Operations Lead
+          department: null
+        email: jane.mokoena@example.com
+  onOk:
+    # TODO(request-substitute) modal_profile onOk: "Validate + CallAPI update-profile (write-profile fragment) — task 13"
+    - id: save_profile_todo
+      type: DisplayMessage
+      params:
+        status: info
+        content: Save profile — wired in task 13.
+blocks:
+  _build.array.concat:
+    - _ref:
+        path: ../shared/profile/form_core.yaml
+        vars:
+          show_honorific:
+            _module.var: fields.show_honorific
+    - - id: email
+        type: TextInput
+        properties:
+          title: Email
+          disabled: true
+    - _module.var: fields.profile

@@ -1,0 +1,52 @@
+# Edit attributes modal — UpdateMemberRoles + UpdateMemberAttributes (Decision 3).
+# Role picker options/labels/descriptions come from the app role catalog
+# (_build.authConfig.roles, Decision 8) — wired task 13. An orphaned role (held
+# but no longer in the catalog) stays selected and can be removed, but is not an
+# option to re-add. Member attributes bind state.member_attributes.*.
+id: modal_access
+type: Modal
+properties:
+  title: Edit attributes
+  width: 560
+  okText: Save attributes
+  cancelText: Cancel
+events:
+  onOpen:
+    - id: seed_access
+      type: SetState
+      # TODO(request-substitute) modal_access seed: "member.role split (incl. orphans) + member attributes subdoc"
+      params:
+        roles:
+          - admin
+          - editor
+          - legacy-ops
+        member_attributes:
+          team: alpha
+  onOk:
+    # TODO(request-substitute) modal_access onOk: "Validate + CallAPI update-access (UpdateMemberRoles + UpdateMemberAttributes) — task 13"
+    - id: save_access_todo
+      type: DisplayMessage
+      params:
+        status: info
+        content: Save attributes — wired in task 13.
+blocks:
+  _build.array.concat:
+    - - id: roles
+        type: MultipleSelector
+        required: true
+        properties:
+          title: Roles
+          # TODO(request-substitute) roles.options: "_build.authConfig.roles catalog — { value: id, label, description-as-subtitle }; orphans excluded from options so they can be removed but not re-added"
+          options:
+            - value: admin
+              label: Admin
+            - value: editor
+              label: Editor
+            - value: branch-manager
+              label: Branch Manager
+      - id: access_roles_hint
+        type: Html
+        # TODO(request-substitute) access_roles_hint.visible: "true only when the member holds an orphaned role (Decision 8)"
+        properties:
+          html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary); margin-top:-8px;">A role shown here that is no longer in this app can be removed, but not added back.</div>'
+    - _module.var: fields.member_attributes

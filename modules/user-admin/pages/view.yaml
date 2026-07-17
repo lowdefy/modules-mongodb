@@ -1,16 +1,23 @@
-# STUB — real body (Profile / Attributes / Global attributes / Security / Apps /
-# Activity tiles) is authored by the mock-to-lowdefy pipeline tasks 10–13.
+# User detail page (design Decision 3) — the operator console for one person's
+# access lifecycle in this app. Two-column console: main (Profile, Attributes,
+# Global attributes) + sidebar (Security, Apps, Activity). Each editable tile
+# opens its own modal (7 total). Built by the mock-to-lowdefy pipeline
+# (tasks 10-12); data/request wiring is task 13 (TODO(request-substitute) markers).
 _ref:
   module: layout
   component: page
   vars:
     id: view
     page_type: sidebar
-    title:
-      _build.string.trim:
-        _build.string.concat:
-          - _module.var: app_title
-          - " User"
+    # Title-block: status pill (Active / Suspended) + name. The mock's avatar is
+    # a proposed title-block slot the shared component does not offer today — not
+    # added here (a shared-component change is out of scope for the view page).
+    # TODO(request-substitute) title: "target contact name (get_user_detail)"
+    title: Jane Mokoena
+    # TODO(request-substitute) status: "active | suspended, derived from user.banned"
+    status: active
+    status_enum:
+      _ref: enums/member_statuses.yaml
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -21,10 +28,50 @@ _ref:
               - " User Admin"
         pageId:
           _module.pageId: all
-      - label: User
+      # TODO(request-substitute) breadcrumb_name: "target contact name"
+      - label: Jane Mokoena
     blocks:
-      - id: view_stub
-        type: Title
-        properties:
-          level: 4
-          content: "User detail — built by pipeline tasks 10–13."
+      - id: user_detail_grid
+        type: Box
+        layout:
+          gap: 16
+          align: top
+          selfAlign: top
+        blocks:
+          - id: detail_main_col
+            type: Box
+            layout:
+              span: 14
+              sm:
+                span: 24
+              gap: 16
+            blocks:
+              _build.array.concat:
+                - - _ref: components/view/tile_profile.yaml
+                  - _ref: components/view/tile_attributes.yaml
+                  - _ref: components/view/tile_global_attrs.yaml
+                # Consumer extension surface (Decision 8) — extra main-column blocks.
+                - _module.var: components.main_slots
+          - id: detail_side_col
+            type: Box
+            layout:
+              span: 10
+              sm:
+                span: 24
+              gap: 16
+            blocks:
+              _build.array.concat:
+                - - _ref: components/view/tile_security.yaml
+                  - _ref: components/view/tile_apps.yaml
+                  - _ref: components/view/tile_activity.yaml
+                # Consumer extension surface (Decision 8) — extra sidebar blocks.
+                - _module.var: components.sidebar_slots
+      # ── Interaction-state layers: 7 tile / security modals (top-level siblings
+      #    of the grid, opened via CallMethod toggleOpen from their triggers) ──
+      - _ref: components/view/modal_profile.yaml
+      - _ref: components/view/modal_access.yaml
+      - _ref: components/view/modal_global.yaml
+      - _ref: components/view/modal_suspend.yaml
+      - _ref: components/view/modal_remove.yaml
+      - _ref: components/view/modal_revoke.yaml
+      - _ref: components/view/modal_delete.yaml

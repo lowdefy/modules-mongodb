@@ -1,0 +1,31 @@
+# Delete-login-identity confirm modal — DeleteUser (Decision 4). Only reachable
+# when the person holds no other memberships (the trigger button is disabled
+# otherwise); the routine re-checks. The contact record always survives. onOk
+# (CallAPI delete-user) is wired in task 13.
+id: modal_delete
+type: Modal
+properties:
+  title: Delete login identity?
+  width: 480
+  okText: Delete identity
+  cancelText: Cancel
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    # TODO(request-substitute) modal_delete onOk: "CallAPI delete-user (DeleteUser, re-checks no other memberships) — task 13"
+    - id: delete_todo
+      type: DisplayMessage
+      params:
+        status: info
+        content: Delete identity — wired in task 13.
+blocks:
+  - id: delete_message
+    type: Html
+    properties:
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Permanently deletes this person''s login. This is only possible when they belong to no other apps. Their contact record is kept.</div>'
+  - id: delete_precondition
+    type: Html
+    properties:
+      # TODO(request-substitute) delete_precondition: "confirm no other memberships (get_user_memberships) — Decision 4"
+      html: '<div style="margin-top:12px; padding:8px 12px; border:1px solid var(--ant-color-success-border); border-radius:6px; background:var(--ant-color-success-bg); font-size:13px; color:var(--ant-color-success-text);">✓ No other memberships — safe to delete.</div>'

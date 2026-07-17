@@ -1,0 +1,40 @@
+# Activity tile (design Decision 3) — the audit event timeline for this person.
+# Content phase renders the raw EventsTimeline block with mock events + the
+# module's event_types config; task 13 swaps the mock data for the events module's
+# request-backed `events-timeline` component (GetEventsTimeline over log-events).
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Activity
+    blocks:
+      - id: events_timeline
+        type: EventsTimeline
+        properties:
+          compact: false
+          reverse: false
+          # Mock data — no contact pages to link the actor avatars to.
+          disableContactLink: true
+          eventTypeConfig:
+            _ref: enums/event_types.yaml
+          # TODO(request-substitute) events_timeline: "log-events for this contact (events module events-timeline component: reference_field + reference_value)"
+          data:
+            - type: access-updated
+              title: Roles changed
+              description: "Added <b>Admin</b>; kept <b>Editor</b>."
+              created:
+                timestamp: "2026-06-29T09:12:00Z"
+                user:
+                  name: Dominic Carter
+            - type: profile-updated
+              title: Profile updated
+              created:
+                timestamp: "2026-06-17T14:40:00Z"
+                user:
+                  name: Jane Mokoena
+            - type: member-invited
+              title: Invitation accepted
+              created:
+                timestamp: "2025-11-17T08:05:00Z"
+                user:
+                  name: Jane Mokoena
