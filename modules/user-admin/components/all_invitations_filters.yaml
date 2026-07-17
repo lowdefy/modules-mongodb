@@ -1,0 +1,62 @@
+# Invitations filter row (content phase).
+# search (invitation email) · Status segmented (All/Invited/Expired) · Clear.
+# Filtering (the $match/refetch) is wired in task 9; search_action is a no-op here.
+# NOTE: the shared sort-filters reads `filter.search`, so this tab's search shares
+# that state key with the Members tab (only one tab is visible at a time); task 9
+# gives each tab fully independent filter state.
+id: invitations_filters
+type: Box
+layout:
+  gap: 8
+  align: middle
+  selfAlign: middle
+blocks:
+  - id: filter.search
+    type: TextInput
+    layout:
+      flex: 1 1 240px
+    style:
+      maxWidth: 340px
+    properties:
+      placeholder: Search invitation email
+      label:
+        disabled: true
+    events:
+      # TODO(request-substitute) invitations_search: "email regex $match — refetch get_all_invitations"
+      onPressEnter: []
+      onChange:
+        try: []
+        debounce:
+          ms: 500
+  - id: filter.invitation_status
+    type: SegmentedSelector
+    layout:
+      flex: 0 1 auto
+    properties:
+      label:
+        title: Status
+        inline: true
+        colon: false
+      options:
+        - label: All
+          value: all
+        - label: Invited
+          value: invited
+        - label: Expired
+          value: expired
+    events:
+      # TODO(request-substitute) invitations_status_seg: "status split — pending & expiresAt>now (Invited) / pending & expiresAt<now (Expired), Decision 2 — refetch get_all_invitations"
+      onChange: []
+  - id: invitations_clear
+    type: Button
+    layout:
+      flex: 0 1 auto
+    properties:
+      title: Clear
+      icon: AiOutlineClear
+      variant: borderless
+    events:
+      onClick:
+        # TODO(request-substitute) invitations_clear: "after Reset, refetch get_all_invitations"
+        - id: reset_invitations_filters
+          type: Reset

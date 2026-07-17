@@ -14,5 +14,12 @@ fields:
     _ref: modules/user-admin/user_attributes_fields.yaml
   member_attributes:
     _ref: modules/user-admin/member_attributes_fields.yaml
+components:
+  # Worked example of the `table_columns` slot: a custom column injected between
+  # the built-in content columns and the audit-date columns on the Members list.
+  table_columns:
+    - headerName: Department
+      field: department
+      width: 140
 request_stages:
   write: []

@@ -1,0 +1,146 @@
+# Members table (content phase — AgGridBalham with mock data).
+# Columns: Name (avatar) · Email · Roles (tags; orphaned roles flagged) ·
+# Status (Active/Suspended tag) · [consumer table_columns slot] · Created ·
+# Updated · Signed up (design Decision 2). Row click → user detail (view).
+# The real read (split roles, derive status, org scope, paginate) is task 9.
+id: members_table
+type: AgGridBalham
+properties:
+  height: 70vh
+  overlayNoRowsTemplate: No rows
+  rowStyle:
+    cursor: pointer
+  defaultColDef:
+    sortable: false
+    filter: false
+    resizable: true
+    cellStyle:
+      display: flex
+      alignItems: center
+  columnDefs:
+    _build.array.concat:
+      - - headerName: Name
+          field: name
+          flex: 2
+          minWidth: 220
+          cell:
+            type: avatar
+            nameField: name
+            srcField: picture
+            idField: userId
+        - headerName: Email
+          field: email
+          flex: 1
+          minWidth: 220
+        - headerName: Roles
+          field: roles
+          minWidth: 200
+          # Roles come split (Decision 1) with orphaned roles (held in data, absent
+          # from the catalog) flagged "no longer configured". Mock data below carries
+          # pre-resolved { label, orphan } items; task 9 authors the $split + catalog
+          # reconcile that produces them.
+          cellRenderer:
+            _function:
+              __nunjucks:
+                template: >
+                  <span style="display:inline-flex; gap:4px; flex-wrap:wrap; align-items:center">{% for r in roles %}{% if r.orphan %}<span title="Role no longer in the app's role catalog" style="display:inline-flex; align-items:center; gap:4px; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-gold-3); background:var(--ant-gold-1); color:var(--ant-gold-7)">⚑ {{ r.label }}</span>{% elif r.primary %}<span style="display:inline-flex; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-purple-3); background:var(--ant-purple-1); color:var(--ant-purple-7)">{{ r.label }}</span>{% else %}<span style="display:inline-flex; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-color-border); background:var(--ant-color-fill-quaternary); color:var(--ant-color-text-secondary)">{{ r.label }}</span>{% endif %}{% endfor %}</span>
+                on:
+                  roles:
+                    __args: 0.data.roles
+        - headerName: Status
+          field: status
+          width: 120
+          cell:
+            type: tag
+            colorMap:
+              Active: green
+              Suspended: red
+      # Consumer custom columns inject between content and audit-date columns.
+      - _module.var: components.table_columns
+      - - headerName: Created
+          field: created
+          width: 120
+          cell:
+            type: date
+            format: YYYY-MM-DD
+        - headerName: Updated
+          field: updated
+          width: 120
+          cell:
+            type: date
+            format: YYYY-MM-DD
+        - headerName: Signed up
+          field: signed_up
+          width: 120
+          cell:
+            type: date
+            format: YYYY-MM-DD
+  # TODO(request-substitute) members_table: "this pinned org's members — get_all_members
+  #   ($lookup users + user-contacts, split roles + flag orphans, derive Active/Suspended,
+  #   org-scoped, sorted/paginated). Replace rowData with _request: get_all_members."
+  rowData:
+    - userId: u_jane
+      name: Jane Mokoena
+      email: jane.mokoena@example.com
+      roles:
+        - label: Admin
+          primary: true
+        - label: Editor
+      status: Active
+      department: Operations
+      created: "2025-11-04"
+      updated: "2026-06-28"
+      signed_up: "2025-11-05"
+    - userId: u_thabo
+      name: Thabo Nkosi
+      email: thabo.nkosi@example.com
+      roles:
+        - label: Editor
+        - label: legacy-ops
+          orphan: true
+      status: Active
+      department: Sales
+      created: "2025-09-18"
+      updated: "2026-05-10"
+      signed_up: "2025-09-20"
+    - userId: u_aisha
+      name: Aisha Patel
+      email: aisha.patel@example.com
+      roles:
+        - label: Viewer
+      status: Suspended
+      department: Support
+      created: "2025-06-02"
+      updated: "2026-02-14"
+      signed_up: "2025-06-03"
+    - userId: u_david
+      name: David Chen
+      email: david.chen@example.com
+      roles:
+        - label: Admin
+          primary: true
+      status: Active
+      department: Engineering
+      created: "2024-12-11"
+      updated: "2026-06-30"
+      signed_up: "2024-12-12"
+    - userId: u_lerato
+      name: Lerato Dlamini
+      email: lerato.dlamini@example.com
+      roles:
+        - label: Viewer
+      status: Active
+      department: Finance
+      created: "2025-10-27"
+      updated: "2026-06-25"
+      signed_up: "2025-10-28"
+events:
+  onRowClick:
+    - id: link_to_view
+      type: Link
+      params:
+        pageId:
+          _module.pageId: view
+        urlQuery:
+          userId:
+            _event: row.userId

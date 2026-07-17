@@ -1,0 +1,12 @@
+# STUB — declared so the shared pagination + list bind and the page builds.
+# TODO(request-substitute) get_all_invitations: "this pinned org's pending
+#   invitations — user-invitations $match status:'pending', $lookup inviter,
+#   derive Invited/Expired on expiresAt vs now, filtered/sorted/paginated, with
+#   total_results facet (design Decision 2). Real pipeline authored in task 9."
+id: get_all_invitations
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-invitations
+properties:
+  pipeline:
+    - $limit: 0

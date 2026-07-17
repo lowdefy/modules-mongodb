@@ -1,0 +1,96 @@
+# Members filter row (content phase).
+# search (name/email) · Role multi-select (options from the auth.roles catalog,
+# design Decision 8) · Status segmented (All/Active/Suspended) · Clear.
+# Consumer `components.filters` blocks append after the built-ins.
+# Filtering itself (the $match/refetch) is wired in task 9 — search_action is a
+# no-op here and every filter-change site carries a TODO(request-substitute).
+id: members_filters
+type: Box
+layout:
+  gap: 8
+  align: middle
+  selfAlign: middle
+blocks:
+  - id: filter.search
+    type: TextInput
+    layout:
+      flex: 1 1 240px
+    style:
+      maxWidth: 340px
+    properties:
+      placeholder: Search name or email
+      label:
+        disabled: true
+    events:
+      # TODO(request-substitute) members_search: "name/email regex $match — refetch get_all_members"
+      onPressEnter: []
+      onChange:
+        try: []
+        debounce:
+          ms: 500
+  - id: filter.roles
+    type: MultipleSelector
+    layout:
+      flex: 0 1 auto
+    style:
+      minWidth: 160px
+      maxWidth: 260px
+    properties:
+      placeholder: All roles
+      allowClear: true
+      label:
+        disabled: true
+      # Options + labels come from the app's authored auth.roles catalog
+      # (design Decision 8), NOT a module var. The intended source is the
+      # `_build.authConfig: roles` projection mapped to { value: id, label }:
+      #     _build.array.map:
+      #       on: { _build.authConfig: roles }
+      #       callback: { _build.function: { value: {__build.args: 0.id}, label: {__build.args: 0.label} } }
+      # That projection is not resolvable in this page-build context yet (it
+      # throws "cannot be used inside the auth block"), so options are hardcoded
+      # to the demo catalog here.
+      # TODO(request-substitute) members_role_filter: "options from the auth.roles catalog via `_build.authConfig: roles` (mapped to {value:id,label}) once the projection resolves for module pages — Decision 8"
+      options:
+        - label: User Admin
+          value: user-admin
+        - label: Admin
+          value: admin
+        - label: Manager
+          value: manager
+        - label: User
+          value: user
+    events:
+      # TODO(request-substitute) members_role_filter: "match exact split-role elements ($in on the post-$split array, Decision 1) — refetch get_all_members"
+      onChange: []
+  - id: filter.status
+    type: SegmentedSelector
+    layout:
+      flex: 0 1 auto
+    properties:
+      label:
+        title: Status
+        inline: true
+        colon: false
+      options:
+        - label: All
+          value: all
+        - label: Active
+          value: active
+        - label: Suspended
+          value: suspended
+    events:
+      # TODO(request-substitute) members_status_seg: "status $match — banned!==true (Active) / banned===true (Suspended), Decision 2 — refetch get_all_members"
+      onChange: []
+  - id: members_clear
+    type: Button
+    layout:
+      flex: 0 1 auto
+    properties:
+      title: Clear
+      icon: AiOutlineClear
+      variant: borderless
+    events:
+      onClick:
+        # TODO(request-substitute) members_clear: "after Reset, refetch get_all_members"
+        - id: reset_members_filters
+          type: Reset

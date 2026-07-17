@@ -1,0 +1,88 @@
+# Invitations table (content phase — AgGridBalham with mock data).
+# Columns: Email · Invited by (avatar) · Roles · Status (Invited/Expired tag) ·
+# Expires · Actions (Resend/Cancel for Invited; Re-invite for Expired) —
+# design Decision 2 / 7. The real read (status derivation on expiresAt, org
+# scope, paginate) and the action wiring are task 9.
+id: invitations_table
+type: AgGridBalham
+properties:
+  height: 70vh
+  overlayNoRowsTemplate: No pending invitations
+  defaultColDef:
+    sortable: false
+    filter: false
+    resizable: true
+    cellStyle:
+      display: flex
+      alignItems: center
+  columnDefs:
+    - headerName: Email
+      field: email
+      flex: 2
+      minWidth: 230
+    - headerName: Invited by
+      field: inviter_name
+      flex: 1
+      minWidth: 180
+      cell:
+        type: avatar
+        nameField: inviter_name
+        idField: inviter_id
+    - headerName: Roles
+      field: roles
+      minWidth: 160
+      cellRenderer:
+        _function:
+          __nunjucks:
+            template: >
+              <span style="display:inline-flex; gap:4px; flex-wrap:wrap; align-items:center">{% for r in roles %}<span style="display:inline-flex; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-color-border); background:var(--ant-color-fill-quaternary); color:var(--ant-color-text-secondary)">{{ r.label }}</span>{% endfor %}</span>
+            on:
+              roles:
+                __args: 0.data.roles
+    - headerName: Status
+      field: status
+      width: 120
+      cell:
+        type: tag
+        colorMap:
+          Invited: blue
+          Expired: default
+    - headerName: Expires
+      field: expires_at
+      width: 140
+      cell:
+        type: date
+        relative: true
+    # Actions are rendered visually here; per-button click wiring (Resend →
+    # resend-invitation, Cancel → cancel-invitation, Re-invite → invite's
+    # cancel-then-invite) is funnelled through onCellClick in task 9.
+    - headerName: Actions
+      field: status
+      width: 180
+      cellRenderer:
+        _function:
+          __nunjucks:
+            template: >
+              <span style="display:inline-flex; gap:8px; align-items:center">{% if status == 'Invited' %}<span style="display:inline-flex; align-items:center; height:24px; padding:0 8px; border-radius:6px; font-size:12px; border:1px solid var(--ant-color-border); color:var(--ant-color-text)">Resend</span><span style="display:inline-flex; align-items:center; height:24px; padding:0 8px; border-radius:6px; font-size:12px; border:1px solid var(--ant-red-3); color:var(--ant-red-6)">Cancel</span>{% else %}<span style="display:inline-flex; align-items:center; height:24px; padding:0 8px; border-radius:6px; font-size:12px; border:1px solid var(--ant-color-border); color:var(--ant-color-text)">Re-invite</span>{% endif %}</span>
+            on:
+              status:
+                __args: 0.data.status
+  # TODO(request-substitute) invitations_table: "this pinned org's pending invitations —
+  #   get_all_invitations ($match status:'pending', $lookup inviter, derive Invited/Expired
+  #   on expiresAt vs now, org-scoped, sorted/paginated). Replace rowData with
+  #   _request: get_all_invitations, and wire onCellClick actions (resend/cancel/re-invite)."
+  rowData:
+    - inviter_id: u_jane
+      email: sam.taylor@example.com
+      inviter_name: Jane Mokoena
+      roles:
+        - label: Editor
+      status: Invited
+      expires_at: "2026-07-21"
+    - inviter_id: u_david
+      email: priya.n@example.com
+      inviter_name: David Chen
+      roles:
+        - label: Viewer
+      status: Expired
+      expires_at: "2026-07-11"

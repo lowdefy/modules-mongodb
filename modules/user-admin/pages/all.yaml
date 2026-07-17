@@ -1,15 +1,18 @@
-# STUB — real body (Members + Invitations tabs, filters, export) is authored by
-# the mock-to-lowdefy pipeline tasks 6–9. This resolves so the module builds.
+# `all` page — Users list: Members + Invitations tabs (design Decision 2).
+# Pipeline: frame (mockups/frames/all.html) → layout (this file) → content → wire.
+# Layout phase: shared page/title-block/sort-filters/pagination reused; leaves are
+# sized Html placeholder slots carrying the frame ids. No requests yet.
 _ref:
   module: layout
   component: page
   vars:
     id: all
+    content_width: 1200
     title:
       _build.string.trim:
         _build.string.concat:
           - _module.var: app_title
-          - " User Admin"
+          - " Users"
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -17,10 +20,108 @@ _ref:
           _build.string.trim:
             _build.string.concat:
               - _module.var: app_title
-              - " User Admin"
-    blocks:
-      - id: all_stub
-        type: Title
+              - " Users"
+    # Stub reads (real pipelines authored in the wire task, task 9). Declared so
+    # the shared pagination binds and the page builds.
+    requests:
+      - _ref: requests/get_all_members.yaml
+      - _ref: requests/get_all_invitations.yaml
+    events:
+      onInit:
+        # Seed defaults: sort updated-descending (Decision 2), status filters "all".
+        - id: init_all_filters
+          type: SetState
+          params:
+            sort:
+              by: updated.timestamp
+              order: -1
+            filter:
+              status: all
+              invitation_status: all
+    page_actions:
+      # Download Excel — present only when the `download` var is true (Decision 2).
+      # The merged members+invitations export pipeline is wired in task 9.
+      - id: download_excel_btn
+        type: Button
+        layout:
+          flex: 0 1 auto
+        visible:
+          _module.var: download
         properties:
-          level: 4
-          content: "Members + Invitations — built by pipeline tasks 6–9."
+          title: Download Excel
+          icon: AiOutlineDownload
+        events:
+          # TODO(request-substitute) download_excel_btn: "run the merged members+invitations Excel export (get_*_excel_data) and download"
+          onClick: []
+      - id: invite_user_btn
+        type: Button
+        layout:
+          flex: 0 1 auto
+        properties:
+          title: Invite user
+          icon: AiOutlinePlus
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            - id: link_to_invite
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: invite
+    blocks:
+      # Tabs — one strip, two panels. Each slot owns its own filter / table /
+      # pagination blocks (independent state; wired in task 9).
+      - id: users_tabs
+        type: Tabs
+        properties:
+          tabs:
+            - key: members_panel
+              title: Members
+              icon: AiOutlineTeam
+            - key: invitations_panel
+              title: Invitations
+              icon: AiOutlineMail
+        slots:
+          members_panel:
+            blocks:
+              - _ref: components/all_members_filters.yaml
+              - _ref:
+                  path: ../shared/layout/sort-filters.yaml
+                  vars:
+                    search_action: []
+                    sort_options:
+                      - label: Name
+                        value: name
+                      - label: Email
+                        value: email
+                      - label: Date Created
+                        value: created.timestamp
+                      - label: Date Updated
+                        value: updated.timestamp
+                      - label: Signed up
+                        value: signed_up
+              - _ref: components/all_members_table.yaml
+              - _ref:
+                  path: ../shared/layout/pagination.yaml
+                  vars:
+                    request_id: get_all_members
+          invitations_panel:
+            blocks:
+              - _ref: components/all_invitations_filters.yaml
+              - _ref:
+                  path: ../shared/layout/sort-filters.yaml
+                  vars:
+                    search_action: []
+                    sort_options:
+                      - label: Email
+                        value: email
+                      - label: Invited by
+                        value: inviter_name
+                      - label: Expiry
+                        value: expires_at
+              - _ref: components/all_invitations_table.yaml
+              - _ref:
+                  path: ../shared/layout/pagination.yaml
+                  vars:
+                    request_id: get_all_invitations

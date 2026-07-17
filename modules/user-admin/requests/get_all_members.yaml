@@ -1,0 +1,12 @@
+# STUB — declared so the shared pagination + list bind and the page builds.
+# TODO(request-substitute) get_all_members: "this pinned org's members —
+#   user-members $lookup users + user-contacts, filtered/sorted/paginated,
+#   split roles, derive Active/Suspended status, with total_results facet
+#   (design Decision 1/2). Real pipeline authored in the wire task (task 9)."
+id: get_all_members
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    - $limit: 0
