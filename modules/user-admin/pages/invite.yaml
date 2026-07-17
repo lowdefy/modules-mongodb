@@ -1,16 +1,38 @@
-# STUB — real body (email-first check-then-invite flow) is authored by the
-# mock-to-lowdefy pipeline tasks 14–17.
+# `invite` page — email-first check-then-invite flow (design Decision 7).
+# Pipeline: frame (mockups/frames/invite.html) → layout → content (this file) →
+# wire (task 17). The admin enters an email; Check resolves it (in-page) to one of
+# four outcomes before the invitation form opens.
+#
+# State machine: a single `invite_state` slug drives every layer's visibility
+#   resting   → pre-check hint (default)
+#   checking  → async resolve in flight
+#   unknown   → blank invitation form   ┐ both render the ONE `state_form` layer
+#   existing  → prefilled invitation form ┘ (blank vs prefilled = seeded state)
+#   member    → already-a-member panel (link to `view`)
+#   pending   → pending-invitation panel (resend / cancel)
+#
+# Why unknown + existing share one form layer: the form embeds the consumer's
+# `fields.member_attributes` blocks (fixed ids from `_module.var`) and the profile
+# fields — those cannot appear twice on one page. Design Decision 7 describes one
+# form (blank or prefilled), so the two outcomes collapse to `state_form`; prefill
+# is seeded state, wired in task 17.
+#
+# The check → outcome transitions, prefill, and submit are the WIRE task (17).
+# Here: mock-data layers + TODO(request-substitute) markers. To preview a layer
+# while reviewing, SetState invite_state to that slug.
 _ref:
   module: layout
   component: page
   vars:
     id: invite
+    content_width: 800
     title:
       _build.string.trim:
         _build.string.concat:
           - "Invite "
           - _module.var: app_title
           - " User"
+    description: Add someone to this app. We'll check for existing access first.
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -18,13 +40,151 @@ _ref:
           _build.string.trim:
             _build.string.concat:
               - _module.var: app_title
-              - " User Admin"
+              - " Users"
         pageId:
           _module.pageId: all
       - label: Invite
+    events:
+      onInit:
+        # Default the resolution slot to the resting (pre-check) layer.
+        - id: init_invite_state
+          type: SetState
+          params:
+            invite_state: resting
     blocks:
-      - id: invite_stub
-        type: Title
-        properties:
-          level: 4
-          content: "Invite flow — built by pipeline tasks 14–17."
+      # ── Area 1: email entry card ("Who are you inviting?") ──
+      - _ref: components/invite_email.yaml
+
+      # ── Area 2: resolution slot — one layer shown at a time, keyed off
+      #    invite_state (visibility, not tabs/modal — the outcomes are in-flow). ──
+      - id: invite_result
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          # LAYER: resting — light inline hint, no card chrome.
+          - id: state_resting
+            type: Html
+            visible:
+              _eq:
+                - _state: invite_state
+                - resting
+            properties:
+              html: >-
+                <div style="display:flex; gap:8px; align-items:baseline;
+                font-size:13px; color:var(--ant-color-text-tertiary); padding:0 2px;">
+                <span>Choose <b>Check</b> above. We resolve access status to one of
+                four outcomes before opening the form.</span></div>
+
+          # LAYER: checking — async resolve in flight.
+          - id: state_checking
+            type: Alert
+            visible:
+              _eq:
+                - _state: invite_state
+                - checking
+            properties:
+              type: info
+              icon: AiOutlineLoading
+              message: Checking access…
+              # TODO(request-substitute) state_checking.description: "resolved email — 'Looking up {email} across members and pending invitations.'"
+              description: Looking up this address across members and pending invitations.
+
+          # LAYER: form — invitation details (serves unknown + existing outcomes).
+          - _ref: components/invite_form.yaml
+
+          # LAYER: already a member — link to the user detail page.
+          - id: state_member
+            type: Alert
+            visible:
+              _eq:
+                - _state: invite_state
+                - member
+            properties:
+              type: success
+              icon: AiOutlineCheckCircle
+              message: Already a member
+              # TODO(request-substitute) state_member.description: "resolved contact name — '{name} already has access to this app.'"
+              description: This person already has access to this app.
+            slots:
+              action:
+                blocks:
+                  - id: member_view_btn
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: View user
+                      icon: AiOutlineUser
+                      color: primary
+                      variant: solid
+                      size: small
+                    events:
+                      onClick:
+                        # TODO(request-substitute) member_view_btn: "Link to view with the resolved user's id (urlQuery) — task 17"
+                        - id: link_to_member
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: view
+
+          # LAYER: pending invitation — resend / cancel.
+          - id: state_pending
+            type: Alert
+            visible:
+              _eq:
+                - _state: invite_state
+                - pending
+            properties:
+              type: warning
+              icon: AiOutlineMail
+              message: Invitation pending
+              # TODO(request-substitute) state_pending.description: "sent-by + expiry — 'Sent by {inviter} {sent_ago} · expires {expiry_rel}.'"
+              description: Sent by Jane Mokoena 3 days ago · expires in 4 days.
+            slots:
+              action:
+                blocks:
+                  - id: pending_actions
+                    type: Box
+                    layout:
+                      gap: 8
+                    blocks:
+                      - id: pending_resend_btn
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          title: Resend
+                          icon: AiOutlineSend
+                          variant: outlined
+                          size: small
+                        events:
+                          onClick:
+                            # TODO(request-substitute) pending_resend_btn: "CallAPI resend-invitation (InviteMember resend) — task 17"
+                            - id: resend_todo
+                              type: DisplayMessage
+                              params:
+                                status: info
+                                content: Resend invitation — wired in task 17.
+                      - id: pending_cancel_btn
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          title: Cancel invitation
+                          icon: AiOutlineClose
+                          color: danger
+                          variant: outlined
+                          size: small
+                        events:
+                          onClick:
+                            - id: open_cancel_modal
+                              type: CallMethod
+                              params:
+                                blockId: modal_cancel
+                                method: toggleOpen
+
+      # ── Interaction-state layer: confirm cancel invitation (Decision 7).
+      #    Top-level Modal sibling, opened via CallMethod toggleOpen from the
+      #    pending panel's Cancel button. ──
+      - _ref: components/modal_cancel.yaml

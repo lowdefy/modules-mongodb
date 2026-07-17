@@ -1,0 +1,33 @@
+# Cancel-invitation confirm modal (design Decision 7). Opened via CallMethod
+# toggleOpen from the pending panel's "Cancel invitation" button. Withdraws the
+# pending invitation (CancelInvitation) — the CallAPI onOk is the WIRE task (17).
+id: modal_cancel
+type: Modal
+properties:
+  title: Cancel this invitation?
+  width: 440
+  okText: Cancel invitation
+  cancelText: Keep invitation
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    # TODO(request-substitute) modal_cancel onOk: "CallAPI cancel-invitation (CancelInvitation) → refresh resolution to resting/unknown — task 17"
+    - id: cancel_invitation_todo
+      type: DisplayMessage
+      params:
+        status: info
+        content: Cancel invitation — wired in task 17.
+blocks:
+  - id: cancel_message
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          # TODO(request-substitute) cancel_message: "the pending invitation's email address"
+          template: >-
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">
+            The invitation to <b>{{ email }}</b> will be withdrawn. The link already
+            sent will stop working. You can invite them again later.</div>
+          on:
+            email: sam.taylor@example.com

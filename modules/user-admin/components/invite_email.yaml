@@ -1,0 +1,118 @@
+# Email entry card ("Who are you inviting?") — the check-then-invite entry point
+# (design Decision 7). Two layers keyed off invite_state:
+#   entry    → email input + Check (invite_state resting|checking, input open)
+#   resolved → email locked + "Use a different email" (any resolved outcome)
+# The real check API + branch to an outcome is the WIRE task (17); Check here just
+# advances the state to `checking` as a mock transition.
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Who are you inviting?
+    blocks:
+      # LAYER: entry — email + Check, shown before an outcome is resolved.
+      - id: email_entry
+        type: Box
+        visible:
+          _or:
+            - _eq:
+                - _state: invite_state
+                - resting
+            - _eq:
+                - _state: invite_state
+                - checking
+        layout:
+          gap: 8
+        blocks:
+          - id: email_input_row
+            type: Box
+            layout:
+              gap: 8
+              align: bottom
+              selfAlign: bottom
+            blocks:
+              - id: email
+                type: TextInput
+                required: true
+                layout:
+                  flex: 1 1 320px
+                style:
+                  maxWidth: 480px
+                properties:
+                  title: Email address
+                  size: large
+                  placeholder: name@company.com
+              - id: email_check_btn
+                type: Button
+                layout:
+                  flex: 0 0 auto
+                properties:
+                  title: Check
+                  icon: AiOutlineSearch
+                  color: primary
+                  variant: solid
+                  size: large
+                events:
+                  onClick:
+                    # TODO(request-substitute) email_check_btn: "Validate email + CallAPI check-invite-email; branch invite_state to unknown|existing|member|pending (Decision 7) — task 17"
+                    - id: check_email
+                      type: SetState
+                      params:
+                        invite_state: checking
+          - id: email_hint
+            type: Html
+            properties:
+              html: >-
+                <div style="display:flex; gap:6px; align-items:baseline;
+                font-size:12px; color:var(--ant-color-text-tertiary);">
+                <span>We'll check if this person already has access before you fill
+                anything in.</span></div>
+
+      # LAYER: resolved — email locked once the check resolves to an outcome.
+      - id: email_resolved
+        type: Box
+        visible:
+          _and:
+            - _ne:
+                - _state: invite_state
+                - resting
+            - _ne:
+                - _state: invite_state
+                - checking
+        layout:
+          gap: 8
+          align: middle
+          selfAlign: middle
+        blocks:
+          - id: resolved_email
+            type: Html
+            layout:
+              flex: 1 1 auto
+            properties:
+              html:
+                _nunjucks:
+                  # TODO(request-substitute) resolved_email: "the checked email address"
+                  template: >-
+                    <span style="display:inline-flex; align-items:center; gap:8px;
+                    font-size:15px; font-weight:500; color:var(--ant-color-text);">
+                    <span class="anticon" style="color:var(--ant-color-text-tertiary);">
+                    <svg viewBox="64 64 896 896" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M928 160H96c-17.7 0-32 14.3-32 32v640c0 17.7 14.3 32 32 32h832c17.7 0 32-14.3 32-32V192c0-17.7-14.3-32-32-32zm-40 110.8V792H136V270.8l-27.6-21.5 39.3-50.5 42.8 33.3h643.1l42.8-33.3 39.3 50.5-27.7 21.5zM833.6 232L512 482 190.4 232l-42.8-33.3-39.3 50.5 27.6 21.5 341.6 265.6a55.99 55.99 0 0068.7 0L888 270.8l27.6-21.5-39.3-50.5-42.7 33.2z"/></svg>
+                    </span>{{ email }}</span>
+                  on:
+                    email: sam.taylor@example.com
+          - id: email_change_btn
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Use a different email
+              icon: AiOutlineArrowLeft
+              variant: text
+              size: small
+            events:
+              onClick:
+                # TODO(request-substitute) email_change_btn: "reset the resolved email + any prefilled form state before re-opening entry — task 17"
+                - id: reopen_entry
+                  type: SetState
+                  params:
+                    invite_state: resting
