@@ -261,38 +261,29 @@ Rules and patterns for working with Lowdefy projects. These are practical conven
 - **Payload, not state**: requests receive state via `payload:` mapping, never inline `_state` in pipeline properties.
 - **`_build.*`** operators for build-time logic; `_if`/`_eq`/etc. for runtime.
 
-## Guides
+## Block & config knowledge — the `lowdefy-docs` MCP
 
-Read the relevant guide **before** writing code for that topic.
+Per-block schema, props, examples, and concept docs come from the **`lowdefy-docs` MCP**, served by the running dev server — release-exact for this project, including local plugins. It is the source of truth for anything block-, operator-, action-, or concept-specific; **never guess a type name or prop**. This MCP **supersedes the former per-topic guides and `r:lowdefy-*` skills** — reach for it for all Lowdefy lookups. Invoke the `/lowdefy-config` skill, or call the `lowdefy_*` tools directly:
 
-| When you are...                                              | Read                               |
-| ------------------------------------------------------------ | ---------------------------------- |
-| Building a list page with table and pagination               | `.claude/guides/list-pages.md`     |
-| Configuring an AgGrid table                                  | `.claude/guides/aggrid-tables.md`  |
-| Writing MongoDB aggregation pipelines                        | `.claude/guides/aggregations.md`   |
-| Adding search/filter controls to a page                      | `.claude/guides/filters.md`        |
-| Adding pagination to a list                                  | `.claude/guides/pagination.md`     |
-| Building a detail/view page                                  | `.claude/guides/detail-pages.md`   |
-| Building an edit/create form page                            | `.claude/guides/edit-pages.md`     |
-| Defining enums (colors, titles, options helpers)             | `.claude/guides/enums.md`          |
-| Working with status arrays, transitions, and history         | `.claude/guides/status-fields.md`  |
-| Adding created/updated audit stamps                          | `.claude/guides/change-stamps.md`  |
-| Wrapping content in page layout or cards                     | `.claude/guides/page-layouts.md`   |
-| Adding sidebar tiles (events, files, related)                | `.claude/guides/sidebar-tiles.md`  |
-| Logging audit events and displaying timelines                | `.claude/guides/events.md`         |
-| Building charts, reports, and KPI dashboards                 | `.claude/guides/charts.md`         |
-| Writing API routines (create/update endpoints)               | `.claude/guides/api-routines.md`   |
-| Working with contact fields or the user_contacts schema      | `.claude/guides/contact-fields.md` |
-| Designing data schemas, naming fields, or adding collections | `.claude/guides/data-schema.md`    |
-| Adding notifications (inbox, bell, emails, Lambda pipeline)  | `.claude/guides/notifications.md`  |
-| Using Lowdefy operators (build-time, runtime, functions)     | `.claude/guides/operators.md`      |
-| Writing inline JavaScript with the `_js` operator            | `.claude/guides/js-operator.md`    |
-| Rendering dynamic arrays with List or ControlledList         | `.claude/guides/lists.md`          |
-| Styling blocks with Tailwind, inline CSS, and theme tokens   | `.claude/guides/styling.md`        |
-| Deciding where new files go and naming them                  | `.claude/guides/file-structure.md` |
-| Authoring, wiring, or extending a Lowdefy module             | `.claude/guides/modules.md`        |
+- `lowdefy_overview` → `lowdefy_list_types` (blocks/operators/actions/connections/requests) — discover exact names first.
+- `lowdefy_get_schema` / `lowdefy_get_examples` — the exact contract + real YAML for a type.
+- `lowdefy_get_doc` / `lowdefy_search_docs` — concept docs.
+- Feedback loop after every edit: `lowdefy_build_status` → `lowdefy_get_page_config` → `lowdefy_screenshot_page`; `lowdefy_find_config` locates an id; `lowdefy_scaffold_page` creates a canonical page.
+- Live debugging: `lowdefy_inspect_state`, `lowdefy_eval_operator`, `lowdefy_run_request`.
 
-## Skills
+The MCP's `concepts/modules` and `concepts/module-authoring` docs are the authoritative reference for the **module system** (manifest, `_module.*`, scoping, exports, cross-module deps, dynamic defaults, publishing). The "Lowdefy Module System" section above is this repo's specific layer on top of them.
 
-- `/lowdefy-modules` — Module structure, manifests, operators, cross-module refs.
-- `/add-guide` — Discover a pattern in the codebase and create a new guide.
+> The `lowdefy-docs` MCP ships with the dev server. If it isn't reachable, ask the developer to start it (`pnpm ldf:d`). A build check (`pnpm ldf:b`) does not require it.
+
+## Repo-specific conventions
+
+Repo conventions the MCP does not cover — naming (snake/kebab case), change stamps, enum files, status arrays, contact/`user_contacts` fields, file structure, domain-driven page layout — live in the **"Lowdefy Project Rules"** section above and in **`docs/`** (the source of truth for consumer-observable module behavior). Consult those, not per-topic skills.
+
+## Repo skills
+
+Skills authored in this repo (`.claude/skills/`), for the mockup → Lowdefy pipeline:
+
+- `/lowdefy-config` — Look up type names, schemas, and examples from the running dev server (wraps the `lowdefy-docs` MCP).
+- `/lowdefy-mock` — Author a pipeline-ready HTML mockup in the app's Ant Design look.
+- `/mock-to-lowdefy` — Convert a mockup into Lowdefy page config (frame → layout → content).
+- `/design-tasks-ui` — Break a mockup-driven design into an ordered implementation task set.
