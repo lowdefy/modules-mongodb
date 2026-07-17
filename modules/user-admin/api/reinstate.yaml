@@ -1,0 +1,54 @@
+# reinstate — UnbanUser (design Decision 4). Reversible counterpart to suspend;
+# clears the user-level ban. Behind the `suspension` var (default true): when
+# false, the routine is a bare reject. Role-gated app-side; step-floored by
+# `auth.userAdminRole`.
+#
+# Payload: { user_id, target_name?, target_email? }
+id: reinstate
+type: Api
+routine:
+  _build.array.concat:
+    - _build.if:
+        test:
+          _build.not:
+            _module.var: suspension
+        then:
+          - - :reject: Suspension is disabled for this deployment (the "suspension" var is false).
+        else: []
+    - - id: unban
+        type: UnbanUser
+        properties:
+          userId:
+            _payload: user_id
+      - id: audit
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type: user-reinstated
+            display:
+              title:
+                _nunjucks:
+                  template:
+                    _build.if_none:
+                      - _module.var: event_display.user-reinstated
+                      - _ref:
+                          path: defaults/event_display.yaml
+                          key: user-reinstated
+                  on:
+                    user:
+                      _user: true
+                    target:
+                      name:
+                        _payload: target_name
+                      email:
+                        _payload: target_email
+              description: null
+            references:
+              user_ids:
+                - _payload: user_id
+      - :return:
+          success: true

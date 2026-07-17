@@ -1,3 +1,14 @@
-invite-user: "{{ user.profile.name }} invited {{ target.name }}"
-update-user: "{{ user.profile.name }} updated user {{ target.name }}"
-resend-user-invite: "{{ user.profile.name }} resent invite to {{ target.name }}"
+# Default event-title templates (Nunjucks), keyed by event type. Each receives
+# `user` (the acting admin) and `target` (the edited/invited user). Overridable
+# per-type via the `event_display` module var (design Decision 8).
+profile-updated: "{{ user.profile.name }} updated {{ target.name }}'s profile"
+access-updated: "{{ user.profile.name }} updated {{ target.name }}'s access"
+user-attributes-updated: "{{ user.profile.name }} updated {{ target.name }}'s global attributes"
+user-suspended: "{{ user.profile.name }} suspended {{ target.name }}"
+user-reinstated: "{{ user.profile.name }} reinstated {{ target.name }}"
+sessions-revoked: "{{ user.profile.name }} signed {{ target.name }} out everywhere"
+member-removed: "{{ user.profile.name }} removed {{ target.name }} from this app"
+user-deleted: "{{ user.profile.name }} deleted {{ target.name }}'s login identity"
+member-invited: "{{ user.profile.name }} invited {{ target.email }}"
+invitation-cancelled: "{{ user.profile.name }} cancelled the invitation for {{ target.email }}"
+invitation-resent: "{{ user.profile.name }} resent the invitation for {{ target.email }}"

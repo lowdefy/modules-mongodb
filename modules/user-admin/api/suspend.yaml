@@ -1,0 +1,64 @@
+# suspend — BanUser, PERMANENT (design Decision 4). No ban duration is passed, so
+# `banExpires` is never set (timed bans are out of scope). Ban is user-level, so
+# it blocks sign-in across EVERY app in the suite and revokes sessions.
+#
+# Behind the `suspension` var (default true): when false, the routine is a bare
+# reject (the UI surface is also excluded — task 13). Role-gated app-side via
+# `auth.api.roles` (admin_roles var), and BanUser is floored by the engine's
+# `auth.userAdminRole` before it runs.
+#
+# Payload: { user_id, ban_reason?, target_name?, target_email? }
+# The audit event is the FINAL step, so it fires only on full success.
+id: suspend
+type: Api
+routine:
+  _build.array.concat:
+    - _build.if:
+        test:
+          _build.not:
+            _module.var: suspension
+        then:
+          - - :reject: Suspension is disabled for this deployment (the "suspension" var is false).
+        else: []
+    - - id: ban
+        type: BanUser
+        properties:
+          userId:
+            _payload: user_id
+          banReason:
+            _payload: ban_reason
+      - id: audit
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type: user-suspended
+            display:
+              title:
+                _nunjucks:
+                  template:
+                    _build.if_none:
+                      - _module.var: event_display.user-suspended
+                      - _ref:
+                          path: defaults/event_display.yaml
+                          key: user-suspended
+                  on:
+                    user:
+                      _user: true
+                    target:
+                      name:
+                        _payload: target_name
+                      email:
+                        _payload: target_email
+              description: null
+            references:
+              user_ids:
+                - _payload: user_id
+            metadata:
+              ban_reason:
+                _payload: ban_reason
+      - :return:
+          success: true

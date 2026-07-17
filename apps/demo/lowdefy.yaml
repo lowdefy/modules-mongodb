@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260716132211
+lowdefy: 0.0.0-experimental-20260717123930
 name: Module Demo App
 slug: demo
 
@@ -23,8 +23,11 @@ global:
         component: event_types
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: 3.0.0
+  # @lowdefy/community-plugin-mongodb dropped (design task 1): the built-in
+  # @lowdefy/connection-mongodb (vendored, supportsJSON) now serves every MongoDB
+  # connection/request in the demo — including the companies module's
+  # MongoDBInsertConsecutiveId — plus the auth.database MongoDBAuthAdapter. The
+  # community plugin is fully superseded; the built-in is auto-included (no pin).
   - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
   - name: "@lowdefy/community-plugin-nodemailer"
@@ -41,9 +44,31 @@ auth:
     properties:
       uri:
         _secret: MONGODB_URI
+  # Full method matrix so every _build.authConfig-gated branch in the login
+  # page and account workspace resolves and builds into a demo artifact (task
+  # 01). No real OAuth secrets are needed — ldf:b reads only the config
+  # projection.
+  emailAndPassword:
+    enabled: true
+    requireEmailVerification: true
+    minPasswordLength: 8
   magicLink:
     enabled: true
     expiresIn: 1800
+  twoFactor:
+    enabled: true
+  passkey:
+    enabled: true
+    rpId: localhost
+    rpName: Module Demo App
+  providers:
+    - id: google
+      type: Google
+      properties:
+        clientId:
+          _secret: GOOGLE_CLIENT_ID
+        clientSecret:
+          _secret: GOOGLE_CLIENT_SECRET
   email:
     from:
       _secret: AUTH_FROM_ADDRESS
@@ -56,27 +81,42 @@ auth:
           user: apikey
           pass:
             _secret: SENDGRID_API_KEY
-  authPages:
-    signIn: /user-account/login
-    verifyEmail: /user-account/verify-email-request
-    error: /user-account/login
-  # pages:
-  #   protected: true
-  #   public:
-  #     - "404"
-  #     - notifications-invalid
-  #     - notifications-link
-  #     - router
-  #     - user-account/login
-  #     - user-account/verify-email-request
-  #   roles:
-  #     user-admin:
-  #       - user-admin/*
-  # api:
-  #   protected: true
-  #   roles:
-  #     user-admin:
-  #       - user-admin/*
+  # authPages and pages.public are contributed by the user-account module
+  # manifest (auth.pages / auth.public); app config would win on collision.
+  # Pinned-org policy (design Decision 1): one deployment = one pinned org.
+  # The engine ensures this org by slug at startup; the user-admin module's
+  # native reads $match on it via `_organization: id`, and org-scoped admin
+  # steps default their organizationId to it.
+  organizations:
+    policy: pinned
+    org: demo
+  # The member role that administers users across the suite. Enforced by the
+  # engine as a step-level floor before every auth-owned admin step, and named
+  # by the user-admin module's `admin_roles` var for the endpoint gate below.
+  userAdminRole: user-admin
+  # Authored role catalog (role-catalog design) — the single source of truth for
+  # assignable roles, their labels, and help text. Every gate reference and
+  # `userAdminRole` must be declared here.
+  roles:
+    - id: user-admin
+      label: User Admin
+      description: Administers users across the pinned suite (ban, invite, roles, sessions).
+    - id: admin
+      label: Admin
+      description: Application administrator.
+    - id: manager
+      label: Manager
+      description: Team manager.
+    - id: user
+      label: User
+      description: Standard application user.
+  # Defense-in-depth endpoint gate (design Decision 3): the user-admin routine
+  # endpoints require the user-admin role. Other endpoints stay as-is (no global
+  # `protected` flip). Composes on top of the engine's userAdminRole step-floor.
+  api:
+    roles:
+      user-admin:
+        - user-admin/*
 
 modules:
   _ref: modules.yaml

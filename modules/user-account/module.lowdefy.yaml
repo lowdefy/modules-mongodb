@@ -1,32 +1,66 @@
 name: User Account
-version: 0.12.0
-description: User account pages — login, email verification, profile view/edit/create
+version: 1.0.0
+description: >-
+  Self-service auth pages (login, signup, password reset, email verification,
+  2FA challenge, invitation accept, logout) and the signed-in account workspace
+  (profile, security, sessions) for the BetterAuth auth engine.
 
 dependencies:
   - id: layout
-    description: Page layout wrapper
+    description: Page layout wrapper (page + auth-page shells)
   - id: events
     description: Audit event logging and change stamp
 
 vars:
-  app_name:
-    required: true
-    description: App name for event metadata
   login_message:
-    default: <p>Welcome. Please provide your work email to sign in.</p>
-    description: HTML message shown on the login page
+    default: <p>Welcome. Please sign in to continue.</p>
+    description: HTML message shown on the login page.
+  signup_message:
+    default: <p>Create your account to get started.</p>
+    description: HTML message shown on the signup page.
   verify_email_message:
-    default: A sign in link has been sent to your email. Follow the link to sign in.
-    description: Message shown on the verify email request page
+    default: A verification link has been sent to your email. Follow the link to verify your address.
+    description: Message shown on the verify-email page (post-signup "check your email" state).
   event_display:
-    description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge."
+    description: >-
+      Event display templates — a flat map of event type to a Nunjucks title
+      template. Templates receive `user` (the acting user). When unset, the
+      module's `defaults/event_display.yaml` renders. When set, the override
+      fully replaces the defaults — no merge. (Per-app keying is retired with
+      `app_name`.)
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
     description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
+  providers:
+    default: []
+    description: >-
+      OAuth provider display metadata layered over `_build.authConfig.providers`
+      (which carries only `{ id, type }`). The login/signup pages render a
+      button for each provider the auth config reports enabled, drawing
+      label/icon/order from this var (a configured provider with no metadata
+      entry falls back to its id). Method *enablement* is read from
+      `_build.authConfig`, never from a var.
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          required: true
+          description: Provider id, matched against `_build.authConfig.providers[].id`.
+        label:
+          type: string
+          description: Display label for the provider button.
+        icon:
+          type: string
+          description: Icon name for the provider button.
+        order:
+          type: number
+          description: Sort order among provider buttons (ascending).
   fields:
     type: object
-    description: "Field block arrays: profile. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
+    description: "Field block arrays: profile. Same blocks used for the profile edit modal, onboarding, and view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
     properties:
       show_honorific:
         type: boolean
@@ -35,8 +69,8 @@ vars:
       profile:
         default: []
         description: >-
-          Profile field blocks rendered in the user-account profile form and
-          view. Block ids must be prefixed with `profile.` so they bind to
+          Profile field blocks rendered in the profile edit modal, onboarding,
+          and view. Block ids must be prefixed with `profile.` so they bind to
           `state.profile.*`.
   components:
     type: object
@@ -44,72 +78,41 @@ vars:
     properties:
       main_slots:
         default: []
-        description: Extra blocks appended to the main column on the profile page.
+        description: Extra tiles appended to the main column on the account workspace page.
   request_stages:
     type: object
-    description: "MongoDB pipeline stage overrides: write. write stages are appended to both create and update profile flows."
+    description: "MongoDB pipeline stage overrides: write. write stages are appended to the profile write flow."
     properties:
       write:
         default: []
         description: >-
-          Pipeline update stages appended to both create-profile and
-          update-profile flows. Used for derived fields or extra transforms
-          beyond the built-in profile write.
+          Pipeline update stages appended to the profile contact write (via the
+          shared write-profile fragment). Used for derived fields or extra
+          transforms beyond the built-in profile write.
 
 connections:
   - _ref: connections/user-contacts-collection.yaml
+  - _ref: connections/users.yaml
+  - _ref: connections/user-sessions.yaml
+  - _ref: connections/user-accounts.yaml
+  - _ref: connections/user-passkeys.yaml
+  - _ref: connections/user-invitations.yaml
 
 api:
-  - _ref: api/create-profile.yaml
   - _ref: api/update-profile.yaml
+  - _ref: api/link-contact-on-signup.yaml
 
 pages:
   - _ref: pages/login.yaml
-  - _ref: pages/verify-email-request.yaml
-  - _ref: pages/view.yaml
-  - _ref: pages/edit.yaml
-  - _ref: pages/new.yaml
+  - _ref: pages/signup.yaml
+  - _ref: pages/forgot-password.yaml
+  - _ref: pages/reset-password.yaml
+  - _ref: pages/verify-email.yaml
+  - _ref: pages/two-factor.yaml
+  - _ref: pages/accept.yaml
   - _ref: pages/logout.yaml
-
-exports:
-  pages:
-    - id: login
-      description: Email-based passwordless login page
-    - id: verify-email-request
-      description: Confirmation page after sign-in link is sent
-    - id: view
-      description: View user profile details
-    - id: edit
-      description: Edit user profile fields
-    - id: new
-      description: First-time profile creation after sign-up
-    - id: logout
-      description: Logout page — logs user out and shows login link
-  connections:
-    - id: user-contacts-collection
-      description: MongoDB connection for user contact records
-  api:
-    - id: create-profile
-      description: Create a new user profile record
-    - id: update-profile
-      description: Update existing user profile fields
-  components:
-    - id: profile-avatar
-      description: Avatar config for PageHeaderMenu profile — user picture with first-letter fallback
-    - id: user-selector
-      description: Single-select autocomplete for picking one app user
-    - id: user-multi-selector
-      description: Multi-select picker for an array of app users
-    - id: user-avatar
-      description: Inline avatar + name chip rendered from a user-contacts doc
-  menus:
-    - id: default
-      description: User account navigation links
-    - id: profile-default
-      description: >
-        Default profile dropdown (Profile + Divider + Logout). Drop into the
-        app's `id: profile` menu for zero-config use, or define your own menu
-        inline when you need custom links.
+  - _ref: pages/view.yaml
+  - _ref: pages/onboarding.yaml
 
 components:
   - id: profile-avatar
@@ -124,16 +127,107 @@ components:
   - id: user-avatar
     component:
       _ref: components/user-avatar.yaml
+
 menus:
   - _ref: menu.yaml
   - _ref: menus/profile-default.yaml
+
+# Module-contributed auth wiring (upstream ask 2/4, delivered). The build
+# contributes auth.authPages.* and pages.public from these declarations and
+# binds the signup hook endpoint; app config wins on collision.
+auth:
+  pages:
+    signIn: login
+    signUp: signup
+    forgotPassword: forgot-password
+    resetPassword: reset-password
+    verifyEmail: verify-email
+    # No dedicated error page — the login page serves the error role,
+    # rendering the failure as a login-page state (Decision 2).
+    error: login
+    # The invitation-accept page serves the acceptInvitation role (Decisions 1
+    # & 4). The engine RUNTIME already consumes authConfig.authPages.
+    # acceptInvitation (getBetterAuthConfig builds the invitation-email accept
+    # URL from it); only the build-side schema/role registration is pending,
+    # landing in the next experimental release. Until then `ldf:b` errors on
+    # this unknown role — accepted deliberately. Do NOT route around it with a
+    # plain auth.public entry: the accept page stays public + AcceptInvitation
+    # action, but it earns public via THIS role, not auth.public.
+    acceptInvitation: accept
+  # Public pages beyond the authPages roles (role pages — including accept via
+  # acceptInvitation — are auto-public): the 2FA challenge runs pre-full-session;
+  # logout must render when signed out.
+  public:
+    - two-factor
+    - logout
+  hooks:
+    - point: user.create.before
+      endpoint: link-contact-on-signup
+    - point: email.verified
+      endpoint: link-contact-on-signup
+
+exports:
+  pages:
+    - id: login
+      description: Sign-in page (email/password, magic link, OAuth); also serves the authPages error role.
+    - id: signup
+      description: Account signup page.
+    - id: forgot-password
+      description: Request a password-reset email.
+    - id: reset-password
+      description: Set a new password from a reset link.
+    - id: verify-email
+      description: Post-signup "check your email" prompt and the emailed-link landing.
+    - id: two-factor
+      description: Two-factor (TOTP / backup code) sign-in challenge; module-internal routing.
+    - id: accept
+      description: Public invitation-accept page (AcceptInvitation client action).
+    - id: logout
+      description: Sign the user out and offer a sign-in link.
+    - id: view
+      description: Account workspace — profile, security, and session tiles.
+    - id: onboarding
+      description: First-login profile completion.
+  connections:
+    - id: user-contacts-collection
+      description: Read-write MongoDB connection for the app-owned contact records.
+    - id: users
+      description: Read-only native read of the BetterAuth users collection.
+    - id: user-sessions
+      description: Read-only native read of the sessions collection.
+    - id: user-accounts
+      description: Read-only native read of the linked-accounts collection.
+    - id: user-passkeys
+      description: Read-only native read of the passkeys collection.
+    - id: user-invitations
+      description: Read-only native read of the invitations collection.
+  api:
+    - id: update-profile
+      description: Update the caller's contact profile and re-denormalize onto their session user.
+    - id: link-contact-on-signup
+      description: Merge-on-signup hook endpoint — link or create the contact for a new signup.
+  components:
+    - id: profile-avatar
+      description: Avatar config for the PageHeaderMenu profile — user image with first-letter fallback.
+    - id: user-selector
+      description: Single-select autocomplete for picking one app user.
+    - id: user-multi-selector
+      description: Multi-select picker for an array of app users.
+    - id: user-avatar
+      description: Inline avatar + name chip rendered from a user-contacts doc.
+  menus:
+    - id: default
+      description: Account navigation link.
+    - id: profile-default
+      description: >
+        Default profile dropdown (Profile + Divider + Logout). Drop into the
+        app's `id: profile` menu for zero-config use, or define your own menu
+        inline when you need custom links.
 
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^3"
   - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.12.0"

@@ -1,0 +1,11 @@
+# Read-only connection for the auth `user-organizations` collection (used to
+# resolve org names for cross-app badges and the ban blast-radius enumeration).
+# Adapter-fixed collection name (mongodb Decision 2). Same-database co-location
+# precondition applies (see module.lowdefy.yaml).
+id: user-organizations
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-organizations
+  write: false

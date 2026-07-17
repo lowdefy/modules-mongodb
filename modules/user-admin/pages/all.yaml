@@ -1,3 +1,5 @@
+# STUB — real body (Members + Invitations tabs, filters, export) is authored by
+# the mock-to-lowdefy pipeline tasks 6–9. This resolves so the module builds.
 _ref:
   module: layout
   component: page
@@ -16,68 +18,9 @@ _ref:
             _build.string.concat:
               - _module.var: app_title
               - " User Admin"
-    page_actions:
-      - _ref: components/excel_download.yaml
-      - _ref: components/button_new_invite.yaml
-    events:
-      onInit:
-        - id: set_sort_filter
-          type: SetState
-          params:
-            sort:
-              by: updated.timestamp
-              order: -1
-      onMountAsync:
-        - id: set_pagination
-          type: SetState
-          params:
-            pagination:
-              current: 1
-              skip: 0
-              pageSize: 500
-        - id: get_all
-          type: Request
-          params:
-            - get_all_users
-    requests:
-      - _ref: requests/get_all_users.yaml
-      - _ref: requests/get_user_excel_data.yaml
     blocks:
-      - _ref: components/users_filter.yaml
-      - id: custom_filters_box
-        type: Box
-        layout:
-          gap: 8
-        requests:
-          _module.var: filter_requests
-        style:
-          maxWidth: 1200
-          margin: auto
-          marginTop: 4
-        blocks:
-          _module.var: components.filters
-      - _ref:
-          path: ../shared/layout/sort-filters.yaml
-          vars:
-            search_action:
-              _ref: actions/search.yaml
-            sort_options:
-              - label: Name
-                value: profile.name
-              - label: Email
-                value: email
-              - label: Date Updated
-                value: updated.timestamp
-              - label: Date Created
-                value: created.timestamp
-              - label: Date Signed Up
-                value:
-                  _string.concat:
-                    - "apps."
-                    - _module.var: app_name
-                    - ".sign_up"
-      - _ref: components/table_users.yaml
-      - _ref:
-          path: ../shared/layout/pagination.yaml
-          vars:
-            request_id: get_all_users
+      - id: all_stub
+        type: Title
+        properties:
+          level: 4
+          content: "Members + Invitations — built by pipeline tasks 6–9."

@@ -1,0 +1,13 @@
+# Stub — built out in task 13. Minimal valid auth page so `_ref`s resolve and
+# the module builds; real content added by the screen task.
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: verify-email
+    title: Verify email
+    blocks:
+      - id: placeholder
+        type: Paragraph
+        properties:
+          content: TODO(screen) — Verify email page, built in task 13.

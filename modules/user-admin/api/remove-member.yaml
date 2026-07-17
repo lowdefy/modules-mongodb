@@ -1,0 +1,47 @@
+# remove-member — RemoveMember (design Decision 4). Deletes THIS app's member row
+# only; the person keeps other apps and their contact survives. Restore is a
+# re-invite (roles/attributes are not retained — membership is the row's
+# existence). organizationId defaults to the pinned org. Role-gated app-side;
+# step-floored by `auth.userAdminRole`. Audit event is the final step.
+#
+# Payload: { member_id (member row id or email), user_id?, target_name?, target_email? }
+id: remove-member
+type: Api
+routine:
+  - id: remove
+    type: RemoveMember
+    properties:
+      memberIdOrEmail:
+        _payload: member_id
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: member-removed
+        display:
+          title:
+            _nunjucks:
+              template:
+                _build.if_none:
+                  - _module.var: event_display.member-removed
+                  - _ref:
+                      path: defaults/event_display.yaml
+                      key: member-removed
+              on:
+                user:
+                  _user: true
+                target:
+                  name:
+                    _payload: target_name
+                  email:
+                    _payload: target_email
+          description: null
+        references:
+          user_ids:
+            - _payload: user_id
+  - :return:
+      success: true

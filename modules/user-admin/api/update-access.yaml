@@ -1,0 +1,75 @@
+# update-access — this app's access: UpdateMemberRoles + UpdateMemberAttributes
+# (both SET, not append — idempotent, design Decision 3). Roles submitted must be
+# catalog-valid ids only (Decision 8): an untouched orphaned role held in data
+# but absent from the catalog must NOT be re-submitted (it can't fail the write
+# with ROLE_NOT_FOUND); the admin may remove an orphan. The UI submits only
+# catalog-valid ids — the routine passes them straight through.
+#
+# `role` is a comma-separated string on the member row (user-model Decision 5);
+# the role picker yields an array, joined to CSV here. organizationId defaults to
+# the pinned org. Role-gated app-side; both steps floored by `auth.userAdminRole`.
+#
+# Payload: { member_id, roles (array of catalog ids), member_attributes (object)?,
+#            user_id?, target_name?, target_email? }
+# The two-step chain's benign partial state (new roles, old attributes) is
+# resolved by retry. Audit event is the FINAL step.
+id: update-access
+type: Api
+routine:
+  - id: set_roles
+    type: UpdateMemberRoles
+    properties:
+      memberId:
+        _payload: member_id
+      role:
+        _array.join:
+          - _if_none:
+              - _payload: roles
+              - []
+          - ","
+  - id: set_member_attributes
+    type: UpdateMemberAttributes
+    properties:
+      memberId:
+        _payload: member_id
+      attributes:
+        _if_none:
+          - _payload: member_attributes
+          - {}
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: access-updated
+        display:
+          title:
+            _nunjucks:
+              template:
+                _build.if_none:
+                  - _module.var: event_display.access-updated
+                  - _ref:
+                      path: defaults/event_display.yaml
+                      key: access-updated
+              on:
+                user:
+                  _user: true
+                target:
+                  name:
+                    _payload: target_name
+                  email:
+                    _payload: target_email
+          description: null
+        references:
+          user_ids:
+            - _payload: user_id
+        metadata:
+          roles:
+            _if_none:
+              - _payload: roles
+              - []
+  - :return:
+      success: true

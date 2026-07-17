@@ -1,0 +1,45 @@
+# revoke-sessions — RevokeUserSessions ("sign out everywhere", design Decision 5).
+# Does not suspend or remove; the person can sign back in immediately. Role-gated
+# app-side; step-floored by `auth.userAdminRole`. Audit event is the final step.
+#
+# Payload: { user_id, target_name?, target_email? }
+id: revoke-sessions
+type: Api
+routine:
+  - id: revoke
+    type: RevokeUserSessions
+    properties:
+      userId:
+        _payload: user_id
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: sessions-revoked
+        display:
+          title:
+            _nunjucks:
+              template:
+                _build.if_none:
+                  - _module.var: event_display.sessions-revoked
+                  - _ref:
+                      path: defaults/event_display.yaml
+                      key: sessions-revoked
+              on:
+                user:
+                  _user: true
+                target:
+                  name:
+                    _payload: target_name
+                  email:
+                    _payload: target_email
+          description: null
+        references:
+          user_ids:
+            - _payload: user_id
+  - :return:
+      success: true

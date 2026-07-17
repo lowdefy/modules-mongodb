@@ -1,0 +1,30 @@
+# STUB — real body (email-first check-then-invite flow) is authored by the
+# mock-to-lowdefy pipeline tasks 14–17.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: invite
+    title:
+      _build.string.trim:
+        _build.string.concat:
+          - "Invite "
+          - _module.var: app_title
+          - " User"
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _build.string.trim:
+            _build.string.concat:
+              - _module.var: app_title
+              - " User Admin"
+        pageId:
+          _module.pageId: all
+      - label: Invite
+    blocks:
+      - id: invite_stub
+        type: Title
+        properties:
+          level: 4
+          content: "Invite flow — built by pipeline tasks 14–17."

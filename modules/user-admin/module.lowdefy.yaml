@@ -1,108 +1,175 @@
 name: User Admin
-version: 0.12.0
-description: User administration — list, edit, invite users
+version: 0.13.0
+description: >-
+  User administration on the BetterAuth engine — the operator console for a
+  person's access lifecycle in one pinned org. Native $lookup reads over the
+  auth collections joined to user-contacts; per-concern write routines driven
+  through the sanctioned admin-step surface.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Same-database co-location precondition (design Decision 1)
+# ─────────────────────────────────────────────────────────────────────────────
+# Every native read is a single aggregation that $lookup-joins the auth
+# collections to `user-contacts`, and MongoDB's $lookup cannot cross databases.
+# So the BetterAuth adapter's database (app `auth.database`), the `user-contacts`
+# connection, and every read-only connection below MUST all resolve to ONE
+# MongoDB database — the natural shape being a single shared `_secret`
+# (e.g. MONGODB_URI). The failure mode is SILENT: a cross-database $lookup treats
+# the missing collection as empty rather than erroring, so a divergent deployment
+# shows blank contact data everywhere instead of failing loudly. There is no
+# clean home for a build/startup check, so the precondition is documented here
+# and in the consumer docs (task 18); the blank-data symptom surfaces in dev/test.
 
 dependencies:
   - id: layout
     description: Page layout wrapper
   - id: events
     description: Audit event logging and change stamp
-  - id: notifications
-    description: Notification dispatch
 
 vars:
-  app_name:
-    required: true
-    description: App name for MongoDB field paths (e.g., example-app)
   app_title:
+    type: string
     default: ""
-    description: "Optional display prefix (e.g., Team). When set: Team User Admin, Invite Team User. When not set: User Admin, Invite User."
-  roles:
-    required: true
-    description: List of available user roles [{label, value}]
+    description: >-
+      Optional display prefix (e.g., Team). When set: "Team User Admin",
+      "Invite Team User". When not set: "User Admin", "Invite User".
+  admin_roles:
+    type: array
+    default:
+      - user-admin
+    description: >-
+      Catalog role id(s) that gate every routine endpoint's `auth.api.roles`
+      (design Decision 3). Should name the same administering role as the app's
+      `auth.userAdminRole`, which the engine additionally enforces as a
+      step-level floor before every auth-owned write (defense in depth). Each id
+      must be a declared `auth.roles` catalog id.
+  suspension:
+    type: boolean
+    default: true
+    description: >-
+      Gates the suspend/reinstate surface (design Decision 4). Suspend issues a
+      permanent, user-level (suite-wide) ban via BanUser. Default true rests on
+      the deployment premise that the pinned suite is administered by one trusted
+      operator group; set false to limit app-admins to app-scoped RemoveMember.
+  impersonation:
+    type: boolean
+    default: false
+    description: >-
+      Gates the "View as user" (ImpersonateUser) client action on the Security
+      tile (design Decision 5). Off by default; the action only works once the
+      app configures `auth.userAdminRole` and the caller holds that role.
+  download:
+    type: boolean
+    default: false
+    description: >-
+      Gates the Excel export on the `all` page (design Decision 2). When false,
+      the download button and its merged export pipeline are excluded.
   event_display:
-    description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive user (current) and target (edited/invited user). When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge."
-  app_domain:
-    description: App domain URL for invite links (falls back to current origin)
+    type: object
+    description: >-
+      Event display templates mapping event type -> Nunjucks title template.
+      Templates receive `user` (acting admin) and `target` (edited/invited
+      user). When unset the module defaults render (defaults/event_display.yaml);
+      when set, the override fully replaces the defaults — no merge.
   fields:
     type: object
-    description: "Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
+    description: >-
+      Field block arrays reused for tile display and edit modals. `profile`
+      binds contact fields to `state.profile.*`; `user_attributes` (global
+      attributes on the `user` row) binds `state.user_attributes.*`;
+      `member_attributes` (this app's attributes on the `member` row) binds
+      `state.member_attributes.*`. `show_honorific` toggles the honorific/title
+      selector (Mr/Ms/Dr) in the profile form.
     properties:
       show_honorific:
         type: boolean
         default: false
         description: Show the honorific/title selector (Mr/Ms/Dr) in the profile form.
       profile:
+        type: array
         default: []
         description: >-
-          Profile field blocks rendered in the user edit/invite form and view.
-          Block ids must be prefixed with `profile.` so they bind to
-          `state.profile.*`.
-      global_attributes:
+          Profile field blocks (contact data). Block ids must be prefixed with
+          `profile.` so they bind to `state.profile.*`.
+      user_attributes:
+        type: array
         default: []
         description: >-
-          Cross-app attribute field blocks rendered in the user form and view.
-          Block ids must be prefixed with `global_attributes.` so they bind
-          to `state.global_attributes.*`.
-      app_attributes:
+          Global (cross-app) attribute field blocks written to the `user` row
+          via UpdateUserAttributes. Block ids must be prefixed with
+          `user_attributes.` so they bind to `state.user_attributes.*`.
+          (Was `global_attributes` in the pre-BetterAuth module.)
+      member_attributes:
+        type: array
         default: []
         description: >-
-          Per-app attribute field blocks scoped to `app_name`. Block ids must
-          be prefixed with `app_attributes.` so they bind to
-          `state.app_attributes.*` and write to `app_attributes.{app_name}`
-          on save.
+          This app's attribute field blocks written to the `member` row via
+          UpdateMemberAttributes (no longer scoped by an `apps.{app}` path —
+          per-app scoping dies with that map, Decision 1). Block ids must be
+          prefixed with `member_attributes.` so they bind to
+          `state.member_attributes.*`. (Was `app_attributes`.)
   components:
     type: object
-    description: "Component overrides: view_access_tile, table_columns, download_columns, filters, main_slots, sidebar_slots"
+    description: >-
+      Component overrides appended to the built-in surfaces: table_columns,
+      download_columns, filters, main_slots, sidebar_slots. Tile-body overrides
+      for the user detail page are added by the view pipeline tasks once the
+      tiles exist.
     properties:
-      download_columns:
-        default: []
-        description: Extra columns appended to the Excel export.
       table_columns:
+        type: array
         default: []
-        description: Extra column definitions appended to the users list table.
+        description: Extra column definitions appended to the Members list table.
+      download_columns:
+        type: array
+        default: []
+        description: Extra columns appended to the Excel export (merged members + invitations).
       filters:
+        type: array
         default: []
         description: >-
-          Extra filter blocks rendered below the built-in search bar on the
-          users list page. Pair with `filter_requests` for custom data sources.
+          Extra filter blocks rendered alongside the built-in search on the
+          `all` page. Pair with `filter_requests` for custom data sources.
       main_slots:
+        type: array
         default: []
-        description: Extra blocks appended to the main column on the users-view page.
+        description: Extra blocks appended to the main column on the `view` page.
       sidebar_slots:
+        type: array
         default: []
-        description: Extra blocks appended to the sidebar column on the users-view page.
-      view_access_tile:
-        default:
-          _ref: components/view_access.yaml
-        description: >-
-          Override for the access tile rendered on the users-view page. Defaults
-          to the built-in roles/access summary; replace with custom blocks to
-          show app-specific access information.
+        description: Extra blocks appended to the sidebar column on the `view` page.
   request_stages:
     type: object
-    description: "MongoDB pipeline stage overrides: get_all_users, write, filter_match. write stages are appended to both update and invite write flows."
+    description: >-
+      MongoDB pipeline stage overrides for reads (list pipeline, filter match,
+      export) and for the contact write. The auth-side write seam is routine
+      steps, not pipeline stages — no slot re-creates one.
     properties:
       filter_match:
+        type: array
         default: []
         description: >-
-          Atlas Search compound clauses appended to the list-page `$search`
-          query. Used to add custom filter conditions to the users list.
+          Plain $match clauses appended to the members/invitations list filter
+          (Decision 2 — Atlas $search is gone from this module; this extends the
+          post-$lookup regex filter, it is NOT a path to reintroduce $search).
       get_all_users:
+        type: array
         default:
           - $addFields: {}
         description: >-
-          Pipeline stages appended after filtering on the users list and
+          Pipeline stages appended after filtering on the `all` list and the
           Excel export aggregations.
       write:
+        type: array
         default: []
         description: >-
-          Pipeline update stages appended to both update-user and invite-user
-          flows. Used for derived fields or extra transforms beyond the
-          built-in profile/attribute writes.
+          Pipeline update stages appended to the contact write on the profile
+          routine (passed to the shared write-profile fragment's `write_stages`
+          _var). Used for derived fields beyond the built-in profile write.
   filter_requests:
+    type: array
     default: []
-    description: Additional requests for the custom filters section
+    description: Additional requests backing the custom filters section.
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
@@ -111,54 +178,100 @@ vars:
 exports:
   pages:
     - id: all
-      description: User administration list with filtering, sorting, pagination, and Excel download
+      description: Members + Invitations tabs — filter, sort, paginate; Excel export behind the `download` var
     - id: view
-      description: Read-only user detail with profile, attributes, and access sidebar
-    - id: edit
-      description: Edit existing user profile and access settings
-    - id: new
-      description: Invite a new user with profile and access settings
-    - id: check
-      description: Verify email availability before sending invite
+      description: User detail — Profile, Attributes, Global attributes, Security, Apps, Activity tiles
+    - id: invite
+      description: Email-first invite flow (check-then-invite)
   connections:
     - id: user-contacts-collection
-      description: MongoDB connection for user contact records
+      description: App connection for the user-contacts (contact) records — writable
+    - id: users
+      description: Read-only connection for the auth `users` collection
+    - id: user-members
+      description: Read-only connection for the auth `user-members` collection
+    - id: user-invitations
+      description: Read-only connection for the auth `user-invitations` collection
+    - id: user-sessions
+      description: Read-only connection for the auth `user-sessions` collection
+    - id: user-accounts
+      description: Read-only connection for the auth `user-accounts` collection
+    - id: user-organizations
+      description: Read-only connection for the auth `user-organizations` collection
   api:
-    - id: invite-user
-      description: Create user invite with profile, access, and notification
-    - id: update-user
-      description: Update existing user profile and access settings
-    - id: resend-invite
-      description: Resend pending user invitation email
+    - id: invite
+      description: Create invitation (reconcile stale expired → create-or-link contact → InviteMember)
+    - id: check-invite-email
+      description: Resolve an email to one of four invite states
+    - id: cancel-invitation
+      description: Cancel a pending invitation
+    - id: resend-invitation
+      description: Resend a pending invitation via InviteMember(resend)
+    - id: update-profile
+      description: Change-stamped contact write + UpdateUserProfile re-denorm (write-profile fragment)
+    - id: update-access
+      description: UpdateMemberRoles + UpdateMemberAttributes for this app
+    - id: update-user-attributes
+      description: UpdateUserAttributes (global/user attributes)
+    - id: suspend
+      description: BanUser — permanent, suite-wide (behind the `suspension` var)
+    - id: reinstate
+      description: UnbanUser (behind the `suspension` var)
+    - id: revoke-sessions
+      description: RevokeUserSessions — sign out everywhere
+    - id: remove-member
+      description: RemoveMember — delete this app's member row
+    - id: delete-user
+      description: DeleteUser — hard-delete the login identity (guarded on no other memberships)
   menus:
     - id: default
       description: User admin navigation link
 
 connections:
   - _ref: connections/user-contacts-collection.yaml
+  - _ref: connections/users.yaml
+  - _ref: connections/user-members.yaml
+  - _ref: connections/user-invitations.yaml
+  - _ref: connections/user-sessions.yaml
+  - _ref: connections/user-accounts.yaml
+  - _ref: connections/user-organizations.yaml
 
 api:
-  - _ref: api/invite-user.yaml
-  - _ref: api/update-user.yaml
-  - _ref: api/resend-invite.yaml
+  - _ref: api/invite.yaml
+  - _ref: api/check-invite-email.yaml
+  - _ref: api/cancel-invitation.yaml
+  - _ref: api/resend-invitation.yaml
+  - _ref: api/update-profile.yaml
+  - _ref: api/update-access.yaml
+  - _ref: api/update-user-attributes.yaml
+  - _ref: api/suspend.yaml
+  - _ref: api/reinstate.yaml
+  - _ref: api/revoke-sessions.yaml
+  - _ref: api/remove-member.yaml
+  - _ref: api/delete-user.yaml
 
 pages:
   - _ref: pages/all.yaml
   - _ref: pages/view.yaml
-  - _ref: pages/edit.yaml
-  - _ref: pages/new.yaml
-  - _ref: pages/check.yaml
+  - _ref: pages/invite.yaml
 
 menus:
   - _ref: menu.yaml
 
 secrets:
   - name: MONGODB_URI
-    description: MongoDB connection URI
+    description: >-
+      MongoDB connection URI. Must resolve to the SAME database as the app's
+      `auth.database` adapter (see the co-location precondition above).
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^3"
+  # No @lowdefy/community-plugin-mongodb pin (design task 1). The built-in
+  # @lowdefy/connection-mongodb (the vendored adapter, supportsJSON for native-BSON
+  # attributes — mongodb Decision 5) provides MongoDBCollection, MongoDBAuthAdapter,
+  # and every MongoDB* request type (including MongoDBInsertConsecutiveId), so the
+  # community plugin is fully superseded and dropped app-wide. The built-in is
+  # auto-included and needs no pin. The module's read connections and the app's
+  # auth.database adapter both resolve from it.
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"

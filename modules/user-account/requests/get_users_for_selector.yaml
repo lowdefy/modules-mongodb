@@ -1,28 +1,27 @@
 # Options request for the user-selector / user-multi-selector components.
-# Scopes the dropdown to the current app's users via `apps.{slug}.is_user`.
 #
-# The app identifier comes from `_app: slug`, NOT `_module.var: app_name`:
-# `_module.var` does not resolve through a cross-module component `_ref` (it
-# yields null → `apps.null.is_user` → zero results), and these components are
-# only ever consumed cross-module. `_app: slug` resolves at runtime from appMeta
-# (the root `slug:` on lowdefy.yaml), independent of module-var resolution.
-# Consuming apps must set `slug:` to match the `app_name` user-admin writes with.
+# Split-model (BetterAuth) shape: the person record lives on `user-contacts`
+# and the auth user lives on the `users` collection, linked back by
+# `users.profile.contactId`. A contact is an "app user" when a `users` row
+# points at it. We source from `user-contacts` (given_name / family_name /
+# email live there) and $lookup `users` to keep only contacts that have become
+# users. The old fused `apps.{slug}.is_user` guard is retired along with
+# per-app scoping (app_name is gone — one deployment, one org; see the
+# migration guide).
 id: get_users_for_selector
 type: MongoDBAggregation
 connectionId:
   _module.connectionId: user-contacts-collection
 properties:
   pipeline:
+    - $lookup:
+        from: users
+        localField: _id
+        foreignField: profile.contactId
+        as: linked_user
     - $match:
-        _object.defineProperty:
-          on: {}
-          key:
-            _string.concat:
-              - "apps."
-              - _app: slug
-              - ".is_user"
-          descriptor:
-            value: true
+        linked_user.0:
+          $exists: true
     - $project:
         label:
           $concat:

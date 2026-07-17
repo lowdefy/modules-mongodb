@@ -1,0 +1,43 @@
+# cancel-invitation — CancelInvitation (design Decision 7). Cancels a pending
+# invitation by id. Role-gated app-side; step-floored by `auth.userAdminRole`.
+# Audit event is the final step.
+#
+# Payload: { invitation_id, email? }
+id: cancel-invitation
+type: Api
+routine:
+  - id: cancel
+    type: CancelInvitation
+    properties:
+      invitationId:
+        _payload: invitation_id
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: invitation-cancelled
+        display:
+          title:
+            _nunjucks:
+              template:
+                _build.if_none:
+                  - _module.var: event_display.invitation-cancelled
+                  - _ref:
+                      path: defaults/event_display.yaml
+                      key: invitation-cancelled
+              on:
+                user:
+                  _user: true
+                target:
+                  email:
+                    _payload: email
+          description: null
+        metadata:
+          invitation_id:
+            _payload: invitation_id
+  - :return:
+      success: true

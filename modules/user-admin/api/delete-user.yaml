@@ -1,0 +1,72 @@
+# delete-user — DeleteUser (design Decision 4). Hard-deletes the login identity
+# (user row + its member/invitation/session/account rows); the contact ALWAYS
+# survives (contact soft-delete stays the contacts-side convention).
+#
+# GUARDED: offered only when the user holds NO OTHER memberships, and the routine
+# RE-CHECKS server-side before deleting — app A's admin must not destroy an
+# identity app B depends on. The check counts member rows in OTHER orgs (any
+# organizationId other than the pinned org resolved by `_organization: id`).
+#
+# Role-gated app-side; step-floored by `auth.userAdminRole`. Audit is the final step.
+# Payload: { user_id, target_name?, target_email? }
+id: delete-user
+type: Api
+routine:
+  - id: other_memberships
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: user-members
+    properties:
+      pipeline:
+        - $match:
+            userId:
+              _payload: user_id
+            organizationId:
+              $ne:
+                _organization: id
+        - $count: count
+  - :if:
+      _gt:
+        - _if_none:
+            - _step: other_memberships.0.count
+            - 0
+        - 0
+    :then:
+      - :reject: This user belongs to other apps in the suite; their login identity cannot be deleted from here. Remove them from this app instead.
+  - id: delete
+    type: DeleteUser
+    properties:
+      userId:
+        _payload: user_id
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: user-deleted
+        display:
+          title:
+            _nunjucks:
+              template:
+                _build.if_none:
+                  - _module.var: event_display.user-deleted
+                  - _ref:
+                      path: defaults/event_display.yaml
+                      key: user-deleted
+              on:
+                user:
+                  _user: true
+                target:
+                  name:
+                    _payload: target_name
+                  email:
+                    _payload: target_email
+          description: null
+        references:
+          user_ids:
+            - _payload: user_id
+  - :return:
+      success: true

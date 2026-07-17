@@ -1,103 +1,88 @@
 id: update-profile
 type: Api
+# Save the caller's own contact profile and re-denormalize it onto their session
+# user, in one routine (Decisions 5 & 6). Built on the shared write-profile
+# fragment (change-stamped contact write + UpdateUserProfile re-denorm), wrapped
+# with this module's audit event and `request_stages.write` append.
+#
+# NB: the `_user` refresh (UpdateSession) that makes the header/avatar/menus pick
+# up the new profile without a reload is fired by the CONSUMING PAGE after this
+# API returns (onboarding / account workspace) — UpdateSession is a client
+# action and cannot run inside a server routine (Decision 6).
 routine:
-  - :if:
-      _or:
-        - _eq:
-            - _payload: profile.given_name
-            - null
-        - _eq:
-            - _payload: profile.family_name
-            - null
-    :then:
-      :reject: Missing required profile fields.
+  _build.array.concat:
+    # Baseline required-field guard (deployment-specific required fields are
+    # validated client-side by the profile form).
+    - - :if:
+          _or:
+            - _eq:
+                - _payload: profile.given_name
+                - null
+            - _eq:
+                - _payload: profile.family_name
+                - null
+        :then:
+          :reject: Missing required profile fields.
 
-  - id: update
-    type: MongoDBUpdateOne
-    connectionId:
-      _module.connectionId: user-contacts-collection
-    properties:
-      filter:
-        _id:
-          _user: id
-      update:
-        _build.array.concat:
-          # Stage 1: Merge profile
-          - - $set:
-                profile:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.profile"
-                        - {}
-                    - _payload: profile
-                updated:
-                  _ref:
-                    module: events
-                    component: change_stamp
-          # Stage 2: Compute derived fields (sees merged profile from stage 1)
-          - - $set:
-                profile.name:
-                  $concat:
-                    - $trim:
-                        input: "$profile.given_name"
-                    - " "
-                    - $trim:
-                        input: "$profile.family_name"
-          # Consumer pipeline stages
-          - _module.var: request_stages.write
+    # Shared write-profile fragment: contact write (change-stamped) + the
+    # UpdateUserProfile re-denorm onto the caller's user row. `_ref`'d by
+    # relative path — not a manifest export (Decision 8).
+    - _ref:
+        path: ../shared/contact/write-profile.yaml
+        vars:
+          connection_id:
+            _module.connectionId: user-contacts-collection
+          contact_id:
+            _user: profile.contactId
+          user_id:
+            _user: id
+          profile:
+            _payload: profile
+          write_stages:
+            _build.array.concat:
+              # Consumer-supplied write-stage extensions.
+              - _module.var: request_stages.write
+              # Onboarding-completion marker — set only when the caller requests
+              # it (the onboarding page passes set_profile_created: true on a
+              # successful save, Decision 5). Left untouched otherwise.
+              - - $set:
+                    profile.profile_created:
+                      _if:
+                        test:
+                          _payload: set_profile_created
+                        then: true
+                        else:
+                          $ifNull:
+                            - "$profile.profile_created"
+                            - "$$REMOVE"
 
-  - id: updated_user
-    type: MongoDBFindOne
-    connectionId:
-      _module.connectionId: user-contacts-collection
-    properties:
-      query:
-        _id:
-          _user: id
-  - id: new-event
-    type: CallApi
-    properties:
-      endpointId:
-        _module.endpointId:
-          id: new-event
-          module: events
-      payload:
-        type: update-profile
-        display:
-          _build.object.fromEntries:
-            _build.array.map:
-              on:
-                _build.array.filter:
+    # Audit event through the events dependency (flat event_display — app_name
+    # keying is retired). The template renders against the freshly-written
+    # contact (profile.name).
+    - - id: new-event
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type: update-profile
+            display:
+              title:
+                _nunjucks:
+                  template:
+                    _if_none:
+                      - _module.var: event_display.update-profile
+                      - _ref:
+                          path: defaults/event_display.yaml
+                          key: update-profile
                   on:
-                    _build.object.entries:
-                      _build.if_none:
-                        - _module.var: event_display
-                        - _build.object.fromEntries:
-                            - - _module.var: app_name
-                              - _ref: defaults/event_display.yaml
-                  callback:
-                    _build.function:
-                      __build.ne:
-                        - __build.if_none:
-                            - __build.args: 0.1.update-profile
-                            - null
-                        - null
-              callback:
-                _build.function:
-                  - __build.args: "0.0"
-                  - title:
-                      _nunjucks:
-                        template:
-                          __build.args: 0.1.update-profile
-                        on:
-                          user:
-                            _step: updated_user
-                    description: null
-        references:
-          contact_ids:
-            - _user: id
-        metadata:
-          app_name:
-            _module.var: app_name
-  - :return:
-      success: true
+                    user:
+                      _step: read_contact
+              description: null
+            references:
+              contact_ids:
+                - _user: profile.contactId
+      - :return:
+          success: true

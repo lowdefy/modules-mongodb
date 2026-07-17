@@ -75,7 +75,3 @@ secrets:
     description: AWS region for the file-download bucket
   - name: FILES_S3_BUCKET_PUB
     description: Public S3 bucket name for notification attachments
-
-plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^3"
