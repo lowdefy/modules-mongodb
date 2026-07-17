@@ -1,0 +1,12 @@
+# Read-only native read of the BetterAuth-managed `users` collection (same
+# MongoDB deployment as user-contacts). The workspace and hooks aggregate over
+# these; all writes to auth-owned data go through BetterAuth client actions or
+# engine steps, never this connection.
+id: users
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: users
+  read: true
+  write: false

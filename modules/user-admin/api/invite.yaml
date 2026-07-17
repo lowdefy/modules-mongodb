@@ -20,7 +20,9 @@
 # resolves to "contact, no membership".
 #
 # Role-gated app-side. Payload: { email, roles (array of catalog ids),
-#                                 profile? (object), member_attributes? (object) }
+#                                 member_attributes? (object) }
+# The contact is minted bare on create (no profile copied from the invite form);
+# the invitee fills their profile at onboarding on first login (Decision 5/7).
 id: invite
 type: Api
 routine:
@@ -63,17 +65,22 @@ routine:
           invitationId:
             _item: stale._id
 
-  # 3) Create-or-link the contact (shared fragment, inlined by relative _ref). Its
-  #    two steps run here; the resolved contactId is `_step: link_contact_get._id`.
+  # 3) Create-or-link the contact (shared fragment, inlined by relative _ref).
+  #    The canonical fragment keys on `user.email` and resolves the row into the
+  #    `read_contact` step, so the contactId is `_step: read_contact._id`. We pass
+  #    NO `binding_point`: the fragment's write-back branches (inline `:return` /
+  #    `UpdateUserProfile`) are for the signup hook only — here `invite_member`
+  #    below carries `profile.contactId` itself. The contact is minted BARE (no
+  #    name; `profile.profile_created` unset) so the invitee routes through
+  #    onboarding on first login (Decision 5/7).
   - _ref:
       path: ../shared/contact/create-or-link-contact.yaml
       vars:
         connection_id:
           _module.connectionId: user-contacts-collection
-        email:
-          _payload: email
-        profile:
-          _payload: profile
+        user:
+          email:
+            _payload: email
 
   # 4) Invite the member. `role` is the catalog-id array joined to the
   #    comma-separated string BetterAuth expects; member attributes ride the
@@ -93,7 +100,7 @@ routine:
           - ","
       profile:
         contactId:
-          _step: link_contact_get._id
+          _step: read_contact._id
       attributes:
         _if_none:
           - _payload: member_attributes
@@ -127,9 +134,9 @@ routine:
           description: null
         references:
           contact_ids:
-            - _step: link_contact_get._id
+            - _step: read_contact._id
 
   - :return:
       success: true
       contactId:
-        _step: link_contact_get._id
+        _step: read_contact._id

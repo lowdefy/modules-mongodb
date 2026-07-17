@@ -17,9 +17,17 @@ The contact already exists by first login (Decision 7) — this page only update
 2. **Wire it**: save → the **`update-profile`** API (task 07), sending the
    `state.profile.*` subtree as payload against the caller's own contact
    (`_user.profile.contactId`). On a successful save, set **`profile.profile_created:
-true`** (the onboarding-complete marker) via the same API call. After save,
-   navigate into the app; the app router reads `_user.profile.profile_created` to stop
-   routing here (app-side, not this page's job).
+true`** (the onboarding-complete marker) via the same API call. On success, fire
+   the **`UpdateSession`** client action, then navigate into the app; the app router
+   reads `_user.profile.profile_created` to stop routing here (app-side, not this
+   page's job).
+
+   **`UpdateSession` is a client action, not a server step** — it cannot run inside
+   the `update-profile` routine, so this page fires it (in the API's `onDone`) after
+   the save returns. It is what refreshes the caller's `_user` (the new
+   `profile.*` bag **and** `profile.profile_created`) so the router sees the completed
+   marker without a reload. Sequence the navigate _after_ `UpdateSession` so the
+   router reads the refreshed session.
 
 **Acceptance Criteria**:
 

@@ -1,0 +1,41 @@
+id: link-contact-on-signup
+# Merge-on-signup hook endpoint (Decision 7, upstream ask 4). InternalApi so it
+# is never HTTP-callable; the engine invokes it in system context, bound at BOTH
+# `user.create.before` (verified-provider OAuth) and `email.verified`
+# (email/password signups) — see the module manifest's `auth.hooks`.
+#
+# The mechanism injects the firing point as a reserved envelope field on every
+# hook payload (`_payload.point`), so this one endpoint — bound to both points —
+# reads the fact directly and hands it to the shared fragment, which branches on
+# it to pick the write-back mechanic (a synthetic post-write point can't mutate
+# inline, so it must UpdateUserProfile; a database before point sets contactId
+# via an inline `:return`). NB: `_payload.point` injection lands in the next
+# experimental release; until then it resolves null and the write-back no-ops
+# (the upsert still runs) — accepted deliberately.
+#
+# Match only on a VERIFIED email (user-model: an unverified match is an
+# account-takeover vector). So:
+#   - user.create.before + unverified (email/password pre-verification) → skip;
+#     the email.verified firing links it once the address is verified.
+#   - user.create.before + verified (verified-provider OAuth) → link inline.
+#   - email.verified → link via UpdateUserProfile.
+type: InternalApi
+routine:
+  - :if:
+      _or:
+        - _eq:
+            - _payload: point
+            - email.verified
+        - _eq:
+            - _payload: user.emailVerified
+            - true
+    :then:
+      _ref:
+        path: ../shared/contact/create-or-link-contact.yaml
+        vars:
+          connection_id:
+            _module.connectionId: user-contacts-collection
+          user:
+            _payload: user
+          binding_point:
+            _payload: point

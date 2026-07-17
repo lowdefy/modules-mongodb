@@ -1,27 +1,28 @@
-# Shared fragment — profile write (design Decision 3, "Why profile save is
-# write-profile"). Pairs a change-stamped `contact` write over the app connection
-# WITH an `UpdateUserProfile` re-denorm of the TARGET's `user.profile` bag, in one
-# routine, so profile data can't be written without refreshing the denormalized
-# copy the target sees (header, avatar, menus via `_user.profile.*`).
+# Shared write-profile fragment — one canonical spec, `_ref`'d by relative path
+# from BOTH user-account (self-service) and user-admin (an operator editing
+# another user's profile). It pairs the change-stamped contact write with the
+# `UpdateUserProfile` re-denorm so the denormalized `user.profile` bag and the
+# top-level `user.name` / `user.image` display copies can NEVER drift from the
+# contact (design Decisions 6 & 8, upstream ask 5). Neither module can write
+# contact profile data without re-denormalizing the target's user row in the
+# same routine.
 #
-# `modules/shared/` file `_ref`'d BY RELATIVE PATH from both this module and
-# user-account — NOT a module export, NOT a dependency. Carries NO `_module.*`:
-# all module-scoped values arrive via the `_var` interface. The `UpdateUserProfile`
-# step targets the EDITED user (never the admin), so it is floored by
-# `auth.userAdminRole` like every other admin write (its self-target exemption is
-# never hit here).
+# This is a var-free file — every input is an `_ref` var (NEVER `_module.var`).
+# It resolves in any consumer that depends on the `events` module (for the
+# change stamp) with no cross-module dependency edge.
 #
-# _var interface (caller-injected):
-#   connection_id — the scoped contact connection id.
-#   user_id       — the TARGET user whose user.profile bag is re-denormed.
-#   contact_id    — the contact `_id` to write.
-#   profile       — the profile fields to set.
-#   write_stages  — (default []) pipeline update stages appended to the contact
-#                   write. THIS is the `request_stages.write` seam, passed in by
-#                   the caller (user-admin: `{ _module.var: request_stages.write }`;
-#                   user-account: omitted → []).
+# Vars (all required unless noted):
+#   connection_id  — the caller's scoped user-contacts connection id
+#   contact_id     — target contact `_id`
+#   user_id        — target auth user id (users.profile.contactId === contact_id)
+#   profile        — the profile fields to merge onto the contact (object)
+#   write_stages   — extra MongoDB update stages appended to the contact write
+#                    (the caller's `request_stages.write`; pass [] if none)
+#
+# It is a YAML sequence of routine steps — splice it into a routine with
+# `_build.array.concat` so the steps flatten inline.
 
-- id: write_profile_contact
+- id: write_contact
   type: MongoDBUpdateOne
   connectionId:
     _var: connection_id
@@ -31,28 +32,56 @@
         _var: contact_id
     update:
       _build.array.concat:
+        # Stage 1: merge the incoming profile fields onto the existing bag and
+        # stamp the write.
         - - $set:
               profile:
                 $mergeObjects:
                   - $ifNull:
-                      - "$$ROOT.profile"
+                      - "$profile"
                       - {}
-                  - _if_none:
-                      - _var: profile
-                      - {}
+                  - _var: profile
               updated:
                 _ref:
                   module: events
                   component: change_stamp
-        # request_stages.write seam — consumer-appended update stages (default []).
-        - _var:
-            key: write_stages
-            default: []
+        # Stage 2: recompute the derived display name (sees stage 1's merge).
+        - - $set:
+              profile.name:
+                $concat:
+                  - $trim:
+                      input: "$profile.given_name"
+                  - " "
+                  - $trim:
+                      input: "$profile.family_name"
+        # Caller-supplied write-stage extensions.
+        - _var: write_stages
 
-- id: write_profile_redenorm
+# Re-read the freshly-written contact so the re-denorm copies exactly what was
+# stored (including the derived name).
+- id: read_contact
+  type: MongoDBFindOne
+  connectionId:
+    _var: connection_id
+  properties:
+    query:
+      _id:
+        _var: contact_id
+
+# Re-denormalize onto the auth user: the whole profile bag onto `user.profile`,
+# and the name / image display copies onto top-level `user.name` / `user.image`.
+# Because `resolveAuthentication` reads the target's user row per request, the
+# bag is fresh on the target's next request with no UpdateSession needed. (A
+# caller refreshing their OWN session is the caller routine's job, not the
+# fragment's — see update-profile.)
+- id: denorm_user_profile
   type: UpdateUserProfile
   properties:
     userId:
       _var: user_id
     profile:
-      _var: profile
+      _step: read_contact.profile
+    name:
+      _step: read_contact.profile.name
+    image:
+      _step: read_contact.profile.picture

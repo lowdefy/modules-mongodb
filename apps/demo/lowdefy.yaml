@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260717101828
+lowdefy: 0.0.0-experimental-20260717123930
 name: Module Demo App
 slug: demo
 
@@ -44,9 +44,31 @@ auth:
     properties:
       uri:
         _secret: MONGODB_URI
+  # Full method matrix so every _build.authConfig-gated branch in the login
+  # page and account workspace resolves and builds into a demo artifact (task
+  # 01). No real OAuth secrets are needed — ldf:b reads only the config
+  # projection.
+  emailAndPassword:
+    enabled: true
+    requireEmailVerification: true
+    minPasswordLength: 8
   magicLink:
     enabled: true
     expiresIn: 1800
+  twoFactor:
+    enabled: true
+  passkey:
+    enabled: true
+    rpId: localhost
+    rpName: Module Demo App
+  providers:
+    - id: google
+      type: Google
+      properties:
+        clientId:
+          _secret: GOOGLE_CLIENT_ID
+        clientSecret:
+          _secret: GOOGLE_CLIENT_SECRET
   email:
     from:
       _secret: AUTH_FROM_ADDRESS
@@ -59,10 +81,8 @@ auth:
           user: apikey
           pass:
             _secret: SENDGRID_API_KEY
-  authPages:
-    signIn: /user-account/login
-    verifyEmail: /user-account/verify-email-request
-    error: /user-account/login
+  # authPages and pages.public are contributed by the user-account module
+  # manifest (auth.pages / auth.public); app config would win on collision.
   # Pinned-org policy (design Decision 1): one deployment = one pinned org.
   # The engine ensures this org by slug at startup; the user-admin module's
   # native reads $match on it via `_organization: id`, and org-scoped admin

@@ -1,9 +1,10 @@
-app_name:
-  _ref:
-    path: app_config.yaml
-    key: app_name
 fields:
   profile:
     _ref: modules/shared/profile/fields.yaml
+# OAuth provider display metadata layered over _build.authConfig.providers.
+providers:
+  - id: google
+    label: Google
+    icon: AiOutlineGoogle
 request_stages:
   write: []

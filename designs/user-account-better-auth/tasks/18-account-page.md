@@ -10,14 +10,17 @@ extract each tile and modal into its own `components/*.yaml` via `_ref`.
 1. **Build the page** — run `mock-to-lowdefy` end to end on
    `mockups/screens/account.html` (frame → layout → content). Shared-component
    discovery: the layout module page wrapper, `profile-avatar`/`user-avatar`
-   (task 04), the `components.main_slots` extension point, and the QR block (task 02)
-   for the enrol-totp modal. Tiles + modals as page/block state; extract deep regions
+   (task 04), the `components.main_slots` extension point, and the built-in
+   `QRCode` block (`@lowdefy/blocks-antd`) for the enrol-totp modal — the platform
+   version in use ships it, so no custom plugin block is needed (task 02). Tiles +
+   modals as page/block state; extract deep regions
    via plain-path `_ref`. Regions:
    - **Profile tile**: contact fields + edit trigger; **edit-profile modal**
      (`fields.profile`).
    - **Security tile**: email + verified badge/resend; change-password control +
-     **change-password modal**; 2FA control + **enrol-totp modal** (QR block renders
-     the `totpURI`, copyable-text fallback) + confirm-code + **backup-codes modal** +
+     **change-password modal**; 2FA control + **enrol-totp modal** (the built-in
+     `QRCode` block renders the `totpURI`, with a copyable-text field beside it as the
+     manual-entry fallback) + confirm-code + **backup-codes modal** +
      disable; passkeys list + register/delete; linked-accounts list (read-only).
    - **Sessions tile**: session list (created, expiry, IP, user-agent — **no token
      column**) + "sign out other sessions".
@@ -33,7 +36,11 @@ extract each tile and modal into its own `components/*.yaml` via `_ref`.
      linked-accounts list AND the **credential-presence** check (a `provider:
 "credential"` row) — one query. Project the session **`token` out**.
    - **Profile tile**: edit modal saves via **`update-profile`** (task 07); display
-     reads the contact directly.
+     reads the contact directly. On a successful save, fire the **`UpdateSession`**
+     client action so the layout header/avatar/menus pick up the new profile without
+     a reload. **`UpdateSession` is a client action, not a server step** — it cannot
+     run inside the `update-profile` routine, so this page fires it (in the API's
+     `onDone`) after the save returns (Decision 6).
    - **Security tile — visibility gates**:
      - **Change password** when `_build.authConfig.emailAndPassword.enabled` **AND**
        the credential row exists → **`ChangePassword`** (current + new +
@@ -69,8 +76,9 @@ extract each tile and modal into its own `components/*.yaml` via `_ref`.
 
 **Notes**:
 
-- Depends on 01 (connections), 02 (QR block), 04 (shared components), 07
-  (`update-profile`). All actions here delivered upstream (ask 1). Use the
+- Depends on 01 (connections), 04 (shared components), 07 (`update-profile`). The
+  enrol-totp QR uses the built-in `QRCode` block (task 02 — no custom plugin block).
+  All actions here delivered upstream (ask 1). Use the
   `lowdefy-docs` MCP / `/lowdefy-config` for schemas and the MongoDB aggregation
   pipelines (`connections/mongodb`, `MongoDBAggregation`).
 - The demo `auth:` config enables the full method matrix (task 01: `twoFactor` +
