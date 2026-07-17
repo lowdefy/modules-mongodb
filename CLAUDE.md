@@ -274,6 +274,8 @@ Per-block schema, props, examples, and concept docs come from the **`lowdefy-doc
 The MCP's `concepts/modules` and `concepts/module-authoring` docs are the authoritative reference for the **module system** (manifest, `_module.*`, scoping, exports, cross-module deps, dynamic defaults, publishing). The "Lowdefy Module System" section above is this repo's specific layer on top of them.
 
 > The `lowdefy-docs` MCP ships with the dev server. If it isn't reachable, ask the developer to start it (`pnpm ldf:d`). A build check (`pnpm ldf:b`) does not require it.
+>
+> **If the MCP server is down, STOP and ask the user to reconnect it — do not guess or work around it.** The server runs on localhost, so it may simply be off or disconnected. Don't proceed with Lowdefy lookups until it's back up.
 
 ## Repo-specific conventions
 
