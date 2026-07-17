@@ -13,7 +13,7 @@ Every module in this repo assumes one organization per MongoDB database: no coll
 
 **Scope**: the domain modules and shared fragments in this repo. The tenant-_shape_ user surface — org switcher, tenant self-serve, multi-tenant administration — is not here (Non-goals); this design makes the data layer safe for it.
 
-**Dependency**: the tenant wall ([mongodb-data-scoping](../../../lowdefy-design/designs/auth-upgrade/features/mongodb-data-scoping/design.md)) — design-stage upstream, not yet implemented. Implementation of this design is blocked on it; the design itself is not.
+**Dependency**: the tenant wall ([mongodb-data-scoping](../../../lowdefy-design/designs/auth-upgrade/features/mongodb-data-scoping/design.md)) — design-stage upstream, not yet implemented. Implementation of this design is blocked on it; the design itself is not. See [Framework prerequisites](#framework-prerequisites) for exactly what must ship, and how it reaches this repo.
 
 ---
 
@@ -29,6 +29,21 @@ The current single-org assumptions are structural, not incidental. Concretely, i
 The platform's answer is the tenant wall: declared once on the connection, enforced on reads _and_ writes, fail-closed. What's missing is the module side: no collection carries the field the wall filters on, no connection declares it, and the in-flight BetterAuth module redesigns scope themselves to `pinned` only.
 
 The existing `app_name` scoping is a different axis — it partitions _apps_ sharing a database (a team portal vs a customer portal), not _customer organizations_ within one app. It stays untouched; the two axes compose.
+
+---
+
+## Framework prerequisites
+
+Every change this design prescribes lands in this repo, but none of it can start until the framework ships the machinery it builds on. The concrete framework surface required, all in the lowdefy repo:
+
+1. **The tenant wall itself** — the [mongodb-data-scoping](../../../lowdefy-design/designs/auth-upgrade/features/mongodb-data-scoping/design.md) implementation: connection-level `tenant:`, write stamping, recursive pipeline injection, change-stream matching, and the request-level `tenant: none` sentinel (`connection-mongodb` + the request layer).
+2. **`context.user.organizationId` exposure** — resolved on every caller and readable as `_user: organizationId` (part of the wall design's runtime section; Decisions 3 and 7 here depend on it).
+3. **The `$search` clause** — [upstream ask 1](upstream-asks.md); without it the wall breaks every `$search`-led list pipeline in this repo, so it must ship *with* the wall, not after it.
+4. **`session.create.after` hook payload carrying the resolved org** — the binding point [upstream ask 4](upstream-asks.md) relocates the merge-on-signup mint to; the hook point exists, the payload contents need confirming when that ask is actioned.
+
+**Delivery path**: these ship as an **experimental lowdefy release**, the same channel this repo already consumes (the demo app pins `experimental-*` versions). The expected loop: the wall (with the `$search` clause) lands in an experimental release → this repo bumps its pinned version → the module tasks proceed against it, build-verified through the demo app. Module implementation tasks should not be scheduled before that experimental release exists.
+
+Upstream asks 2 and 3 are *not* prerequisites — ask 2 has a documented v1 fallback, and ask 3 targets the sibling designs' own config.
 
 ---
 
