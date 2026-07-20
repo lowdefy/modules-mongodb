@@ -14,21 +14,41 @@ events:
   onOpen:
     - id: seed_access
       type: SetState
-      # TODO(request-substitute) modal_access seed: "member.role split (incl. orphans) + member attributes subdoc"
       params:
+        # Current role ids incl. orphans (removable, not re-addable).
         roles:
-          - admin
-          - editor
-          - legacy-ops
+          _request: get_user_detail.0.role_ids
         member_attributes:
-          team: alpha
+          _request: get_user_detail.0.member_attributes
   onOk:
-    # TODO(request-substitute) modal_access onOk: "Validate + CallAPI update-access (UpdateMemberRoles + UpdateMemberAttributes) — task 13"
-    - id: save_access_todo
-      type: DisplayMessage
-      params:
-        status: info
-        content: Save attributes — wired in task 13.
+    _build.array.concat:
+      - - id: validate_access
+          type: Validate
+          params: modal_access
+        # UpdateMemberRoles + UpdateMemberAttributes (Decision 3). Submits only
+        # the selected ids; catalog validation is enforced by the AC.
+        - id: save_access
+          type: CallAPI
+          messages:
+            loading: Saving…
+            success: Attributes updated.
+          params:
+            endpointId:
+              _module.endpointId: update-access
+            payload:
+              member_id:
+                _request: get_user_detail.0.member_id
+              user_id:
+                _request: get_user_detail.0.user_id
+              roles:
+                _state: roles
+              member_attributes:
+                _state: member_attributes
+              target_name:
+                _request: get_user_detail.0.name
+              target_email:
+                _request: get_user_detail.0.email
+      - _ref: actions/detail_refetch.yaml
 blocks:
   _build.array.concat:
     - - id: roles
@@ -36,17 +56,49 @@ blocks:
         required: true
         properties:
           title: Roles
-          # TODO(request-substitute) roles.options: "_build.authConfig.roles catalog — { value: id, label, description-as-subtitle }; orphans excluded from options so they can be removed but not re-added"
+          # Options from the app role catalog (design Decision 8): value=id, a
+          # rich label (name + description subtitle), filterString for search,
+          # and a plain tag for the selected chip. Orphaned roles are not in the
+          # catalog so they are not options — a held orphan stays selected and can
+          # be removed, but not re-added.
+          #
+          # NOTE (running-engine gap): _build.authConfig is not yet available to
+          # module config; design-faithful per the build-red directive, resolves
+          # once the engine ships the catalog projection (upstream ask 7).
           options:
-            - value: admin
-              label: Admin
-            - value: editor
-              label: Editor
-            - value: branch-manager
-              label: Branch Manager
+            _build.array.map:
+              on:
+                _build.authConfig: roles
+              callback:
+                _build.function:
+                  value:
+                    __build.args: 0.id
+                  filterString:
+                    __build.args: 0.label
+                  tag:
+                    title:
+                      __build.args: 0.label
+                  label:
+                    __build.string.concat:
+                      - '<div style="line-height:1.3"><div>'
+                      - __build.args: 0.label
+                      - "</div>"
+                      - __build.if:
+                          test:
+                            __build.ne:
+                              - __build.args: 0.description
+                              - null
+                          then:
+                            __build.string.concat:
+                              - '<div style="font-size:11px;color:var(--ant-color-text-tertiary)">'
+                              - __build.args: 0.description
+                              - "</div>"
+                          else: ""
+                      - "</div>"
       - id: access_roles_hint
         type: Html
-        # TODO(request-substitute) access_roles_hint.visible: "true only when the member holds an orphaned role (Decision 8)"
+        visible:
+          _request: get_user_detail.0.has_orphan
         properties:
           html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary); margin-top:-8px;">A role shown here that is no longer in this app can be removed, but not added back.</div>'
     - _module.var: fields.member_attributes

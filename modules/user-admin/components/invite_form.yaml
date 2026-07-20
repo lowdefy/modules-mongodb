@@ -1,8 +1,8 @@
 # LAYER: invitation-details form (state_form) — serves the unknown (blank) AND
 # existing-contact (prefilled) outcomes (design Decision 7). Blank vs prefilled is
 # seeded state (task 17); the form structure is identical, so it is one layer.
-# Submit = create-or-link contact → InviteMember (roles + member attributes) — the
-# CallAPI + payload mapping is the WIRE task (17).
+# Submit = create-or-link contact → InviteMember (roles + member attributes),
+# via the invite routine (see invite_send_btn).
 #
 # Wrapper Box carries the frame id + the visibility condition; the shared card
 # renders the form body. Roles come from the app role catalog (auth.roles,
@@ -27,9 +27,14 @@ blocks:
         # built-ins concat around it (flattened) — the same pattern as modal_access.
         blocks:
           _build.array.concat:
-            # Profile capture — the contact fields (create-or-link contact). Prefilled
-            # from the resolved contact in the existing-contact outcome (seed = task 17).
-            # TODO(request-substitute) form profile seed: "existing-contact prefill (get contact by email) — full name + phone + job title; blank for unknown"
+            # Profile capture — contact fields. Prefilled from the resolved
+            # contact for the existing-contact outcome (state.full_name /
+            # state.profile.* seeded by the check's apply_resolution), blank for
+            # unknown. NOTE: the invite write path (shared create-or-link + the
+            # bare $setOnInsert) deliberately mints the contact BARE so the
+            # invitee completes their profile at onboarding (Decision 5/7); these
+            # fields are sent on submit (forward-compatible) but the current
+            # routine does not persist them — see the invite_send_btn note.
             - - id: full_name
                 type: TextInput
                 required: true
@@ -60,10 +65,7 @@ blocks:
               # Roles — options/labels/descriptions from the app role catalog
               # (_build.authConfig.roles, Decision 8): the option label renders the
               # role label (primary) + description (subtitle); the selected tag stays
-              # compact (tag.title). Hardcoded to the demo catalog here — the catalog
-              # projection is not resolvable in this page-build context yet (same
-              # limitation noted in all_members_filters.yaml), so the wire task swaps
-              # these in.
+              # compact (tag.title). See the options block below.
               - id: roles
                 type: MultipleSelector
                 required: true
@@ -73,44 +75,44 @@ blocks:
                   title: Roles
                   placeholder: Select roles…
                   renderTags: true
-                  # TODO(request-substitute) roles.options: "_build.authConfig.roles catalog — { value: id, label: '<label> + <description subtitle>' html, filterString: label, tag: { title: label, color } }; Decision 8"
+                  # Options from the app role catalog (design Decision 8): value=id,
+                  # a rich label (name + description subtitle), filterString for
+                  # search, and a compact tag for the selected chip.
+                  #
+                  # NOTE (running-engine gap): _build.authConfig is not yet
+                  # available to module config; design-faithful per the build-red
+                  # directive, resolves once the engine ships the catalog
+                  # projection (upstream ask 7).
                   options:
-                    - value: editor
-                      label: >-
-                        <div>Editor</div><div style="font-size:12px;
-                        color:var(--ant-color-text-tertiary); line-height:1.4;">Create
-                        and edit content; cannot manage users.</div>
-                      filterString: Editor
-                      tag:
-                        title: Editor
-                        color: purple
-                    - value: admin
-                      label: >-
-                        <div>Admin</div><div style="font-size:12px;
-                        color:var(--ant-color-text-tertiary); line-height:1.4;">Full
-                        access to all settings and user management.</div>
-                      filterString: Admin
-                      tag:
-                        title: Admin
-                        color: purple
-                    - value: viewer
-                      label: >-
-                        <div>Viewer</div><div style="font-size:12px;
-                        color:var(--ant-color-text-tertiary); line-height:1.4;">Read-only
-                        access to app data.</div>
-                      filterString: Viewer
-                      tag:
-                        title: Viewer
-                        color: purple
-                    - value: branch-manager
-                      label: >-
-                        <div>Branch manager</div><div style="font-size:12px;
-                        color:var(--ant-color-text-tertiary); line-height:1.4;">Manage
-                        a single branch's data and members.</div>
-                      filterString: Branch manager
-                      tag:
-                        title: Branch manager
-                        color: purple
+                    _build.array.map:
+                      on:
+                        _build.authConfig: roles
+                      callback:
+                        _build.function:
+                          value:
+                            __build.args: 0.id
+                          filterString:
+                            __build.args: 0.label
+                          tag:
+                            title:
+                              __build.args: 0.label
+                            color: purple
+                          label:
+                            __build.string.concat:
+                              - "<div>"
+                              - __build.args: 0.label
+                              - "</div>"
+                              - __build.if:
+                                  test:
+                                    __build.ne:
+                                      - __build.args: 0.description
+                                      - null
+                                  then:
+                                    __build.string.concat:
+                                      - '<div style="font-size:12px; color:var(--ant-color-text-tertiary); line-height:1.4;">'
+                                      - __build.args: 0.description
+                                      - "</div>"
+                                  else: ""
               # Member attributes — group label above the consumer fields.
               - id: member_attributes_label
                 type: Html
@@ -161,9 +163,40 @@ blocks:
                       variant: solid
                     events:
                       onClick:
-                        # TODO(request-substitute) invite_send_btn: "Validate + CallAPI invite (create-or-link contact → InviteMember with profile.contactId + roles + attributes) → audit event; on success Link to view/all — task 17"
-                        - id: send_invite_todo
-                          type: DisplayMessage
+                        - id: validate_invite
+                          type: Validate
+                          params: state_form
+                        # invite routine: reconcile stale-expired → create-or-link
+                        # contact → InviteMember (profile.contactId + roles +
+                        # attributes) → audit. The email is sent by BetterAuth via
+                        # auth.email (no module dispatch). Roles submit as catalog
+                        # ids. `profile` is sent forward-compatibly but the current
+                        # routine mints the contact bare (Decision 5/7 onboarding)
+                        # and does not persist it — see the invite API note.
+                        - id: send_invite
+                          type: CallAPI
+                          messages:
+                            loading: Sending invitation…
+                            success: Invitation sent.
                           params:
-                            status: info
-                            content: Send invitation — wired in task 17.
+                            endpointId:
+                              _module.endpointId: invite
+                            payload:
+                              email:
+                                _state: email
+                              roles:
+                                _state: roles
+                              member_attributes:
+                                _state: member_attributes
+                              profile:
+                                name:
+                                  _state: full_name
+                                phone_number:
+                                  _state: profile.phone_number
+                                job_title:
+                                  _state: profile.job_title
+                        - id: after_invite
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: all

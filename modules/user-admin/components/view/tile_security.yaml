@@ -85,8 +85,15 @@ _ref:
                     properties:
                       title: Delete identity
                       danger: true
-                      # TODO(request-substitute) delete_btn.disabled: "false only when other-membership count is 0 (get_user_memberships)"
-                      disabled: true
+                      # Enabled only at other-membership count 0 (Decision 4/6);
+                      # the routine re-checks server-side.
+                      disabled:
+                        _gt:
+                          - _array.length:
+                              _if_none:
+                                - _request: get_user_memberships
+                                - []
+                          - 0
                     events:
                       onClick:
                         - id: open_delete_modal
@@ -110,18 +117,36 @@ _ref:
                           icon: AiOutlineEye
                         events:
                           onClick:
-                            # TODO(request-substitute) impersonate_btn: "ImpersonateUser client action (BetterAuth admin plugin, session-scoped) — task 13"
-                            - id: impersonate_todo
-                              type: DisplayMessage
+                            # Session-scoped client action, governed by
+                            # BetterAuth's admin-plugin AC bridged from
+                            # auth.userAdminRole (Decision 5). Then land on the
+                            # app root as the impersonated user.
+                            - id: impersonate_user
+                              type: ImpersonateUser
                               params:
-                                status: info
-                                content: View as user — wired in task 13.
+                                userId:
+                                  _url_query: userId
+                            - id: go_home_after_impersonate
+                              type: Link
+                              params:
+                                url: "/"
                     else: []
           - id: security_hint
             type: Html
             properties:
-              # TODO(request-substitute) security_hint: "single-app copy variant when other-membership count is 0 (Decision 6)"
-              html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Suspend blocks this person from every app in the suite and signs them out. Remove takes away access to this app only. Delete is available once they belong to no other apps.</div>'
+              # Copy collapses to this-app framing at other-membership count 0
+              # (Decision 6).
+              html:
+                _if:
+                  test:
+                    _gt:
+                      - _array.length:
+                          _if_none:
+                            - _request: get_user_memberships
+                            - []
+                      - 0
+                  then: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Suspend blocks this person from every app in the suite and signs them out. Remove takes away access to this app only. Delete is available once they belong to no other apps.</div>'
+                  else: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Suspend blocks this person from signing in and signs them out. Remove takes away their access to this app. Delete permanently removes their login (their contact record is kept).</div>'
           - id: security_divider_sessions
             type: Divider
             properties:
@@ -136,25 +161,18 @@ _ref:
               selectable: false
               bordered: false
               gap: 0
-              # TODO(request-substitute) sessions_list: "active sessions (get_user_sessions: device/user-agent, ip, city, expiresAt, current) — token $project-ed out (Decision 5)"
+              # Active sessions for the target (token $project-ed out, Decision 5).
+              # An admin viewing another user has no "current" session in this
+              # list, so rows are read-only; revocation is the tile's
+              # "Sign out everywhere" action.
               data:
-                - device: "Chrome · macOS"
-                  meta: "41.203.11.8 · Johannesburg · expires in 6 days"
-                  current: true
-                - device: "Safari · iPhone"
-                  meta: "102.54.9.2 · expires in 2 days"
-                  current: false
+                _request: get_user_sessions
               html: |
                 <div id="bl-{{ index }}.session_item" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--ant-color-border-secondary); font-size:13px;">
                   <span style="flex:1 1 auto; min-width:0;">
-                    <div style="color:var(--ant-color-text);">{{ item.device }}</div>
-                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{{ item.meta }}</div>
+                    <div style="color:var(--ant-color-text);">{{ item.ua }}</div>
+                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{{ item.ip }}{% if item.ip and item.expires_str %} · {% endif %}{% if item.expires_str %}expires {{ item.expires_str }}{% endif %}</div>
                   </span>
-                  {% if item.current %}
-                    <span style="flex:0 0 auto; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">Current</span>
-                  {% else %}
-                    <span style="flex:0 0 auto; color:var(--ant-color-primary); font-size:12px;">Revoke</span>
-                  {% endif %}
                 </div>
             style:
               .body:
@@ -172,21 +190,25 @@ _ref:
             properties:
               html:
                 _nunjucks:
-                  # TODO(request-substitute) auth_methods: "email-verified (user.emailVerified), linked providers (get_user_accounts.providerId), passkeys, MFA enrolment"
+                  # Read-only: email-verified (user.emailVerified), one badge per
+                  # linked OAuth provider (get_user_accounts), and MFA enrolment
+                  # (user.twoFactorEnabled). Passkey visibility would need a
+                  # user-passkeys read connection, which is not in this module's
+                  # declared surface — omitted here.
                   template: |
                     <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                    {% for m in methods %}
-                      {% if m.ok %}
-                        <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">{{ m.label }}</span>
-                      {% else %}
-                        <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">{{ m.label }}</span>
-                      {% endif %}
+                      <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; {% if emailVerified %}background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);{% else %}background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);{% endif %}">{% if emailVerified %}✓ {% endif %}Email {% if not emailVerified %}not {% endif %}verified</span>
+                    {% for p in providers %}
+                      <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary); text-transform:capitalize;">{{ p.providerId }}</span>
                     {% endfor %}
+                    {% if mfa %}
+                      <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">MFA · TOTP</span>
+                    {% endif %}
                     </div>
                   on:
-                    methods:
-                      - label: "✓ Email verified"
-                        ok: true
-                      - label: Google
-                      - label: Passkey
-                      - label: "MFA · TOTP"
+                    emailVerified:
+                      _request: get_user_detail.0.email_verified
+                    mfa:
+                      _request: get_user_detail.0.two_factor_enabled
+                    providers:
+                      _request: get_user_accounts

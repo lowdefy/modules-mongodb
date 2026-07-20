@@ -1,0 +1,101 @@
+# Excel export (design Decision 2) — the ONE place members and invitations are
+# merged into a single flat "everyone with or pending access" snapshot with a
+# uniform `status` column (Active / Suspended / Invited / Expired). Not paginated
+# and not filtered: it emits the full set. Members are rooted on `user-members`
+# (joined shape) and $unionWith brings in the pending `user-invitations` rows;
+# both are projected down to the common export columns.
+#
+# Roles export as their stored ids joined by ", " (a raw data dump) rather than
+# catalog labels, so the export builds without the `_build.authConfig` catalog
+# projection. Consumer `download_columns` add further columns (wired in the
+# export button's DownloadXlsx schema).
+id: get_users_excel_data
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    _build.array.concat:
+      # Member rows.
+      - _ref: requests/stages/members_base.yaml
+      - - $addFields:
+            roles:
+              $trim:
+                input:
+                  $reduce:
+                    input:
+                      $filter:
+                        input:
+                          $ifNull:
+                            - "$roles_arr"
+                            - []
+                        as: r
+                        cond:
+                          $ne:
+                            - "$$r"
+                            - ""
+                    initialValue: ""
+                    in:
+                      $concat:
+                        - "$$value"
+                        - ", "
+                        - "$$this"
+                chars: ", "
+            expires: null
+        - $project:
+            _id: 0
+            name: 1
+            email: 1
+            roles: 1
+            status: 1
+            created: 1
+            updated: 1
+            signed_up: 1
+            expires: 1
+        # Pending / expired invitation rows, projected to the same shape.
+        - $unionWith:
+            coll: user-invitations
+            pipeline:
+              _build.array.concat:
+                - _ref: requests/stages/invitations_base.yaml
+                - - $addFields:
+                      name: null
+                      roles:
+                        $trim:
+                          input:
+                            $reduce:
+                              input:
+                                $filter:
+                                  input:
+                                    $ifNull:
+                                      - "$roles_arr"
+                                      - []
+                                  as: r
+                                  cond:
+                                    $ne:
+                                      - "$$r"
+                                      - ""
+                              initialValue: ""
+                              in:
+                                $concat:
+                                  - "$$value"
+                                  - ", "
+                                  - "$$this"
+                          chars: ", "
+                      created: "$createdAt"
+                      updated: null
+                      signed_up: null
+                      expires: "$expiresAt"
+                  - $project:
+                      _id: 0
+                      name: 1
+                      email: 1
+                      roles: 1
+                      status: 1
+                      created: 1
+                      updated: 1
+                      signed_up: 1
+                      expires: 1
+        - $sort:
+            status: 1
+            email: 1

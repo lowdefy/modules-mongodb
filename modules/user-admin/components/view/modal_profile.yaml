@@ -12,22 +12,38 @@ events:
   onOpen:
     - id: seed_profile
       type: SetState
-      # TODO(request-substitute) modal_profile seed: "target contact profile subdoc + email (get_user_detail)"
       params:
         profile:
-          given_name: Jane
-          family_name: Mokoena
-          phone_number: "+27 82 555 0142"
-          job_title: Operations Lead
-          department: null
-        email: jane.mokoena@example.com
+          _request: get_user_detail.0.profile
+        email:
+          _request: get_user_detail.0.email
   onOk:
-    # TODO(request-substitute) modal_profile onOk: "Validate + CallAPI update-profile (write-profile fragment) — task 13"
-    - id: save_profile_todo
-      type: DisplayMessage
-      params:
-        status: info
-        content: Save profile — wired in task 13.
+    _build.array.concat:
+      - - id: validate_profile
+          type: Validate
+          params: modal_profile
+        # write-profile fragment: change-stamped contact write + UpdateUserProfile
+        # re-denorm of the TARGET's user.profile bag (Decision 3).
+        - id: save_profile
+          type: CallAPI
+          messages:
+            loading: Saving…
+            success: Profile updated.
+          params:
+            endpointId:
+              _module.endpointId: update-profile
+            payload:
+              user_id:
+                _request: get_user_detail.0.user_id
+              contact_id:
+                _request: get_user_detail.0.contact_id
+              profile:
+                _state: profile
+              email:
+                _request: get_user_detail.0.email
+              target_name:
+                _request: get_user_detail.0.name
+      - _ref: actions/detail_refetch.yaml
 blocks:
   _build.array.concat:
     - _ref:

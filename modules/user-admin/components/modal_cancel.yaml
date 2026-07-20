@@ -12,22 +12,33 @@ properties:
     danger: true
 events:
   onOk:
-    # TODO(request-substitute) modal_cancel onOk: "CallAPI cancel-invitation (CancelInvitation) → refresh resolution to resting/unknown — task 17"
-    - id: cancel_invitation_todo
-      type: DisplayMessage
-      params:
-        status: info
-        content: Cancel invitation — wired in task 17.
+    _build.array.concat:
+      - - id: cancel_invitation
+          type: CallAPI
+          messages:
+            loading: Cancelling…
+            success: Invitation cancelled.
+          params:
+            endpointId:
+              _module.endpointId: cancel-invitation
+            payload:
+              invitation_id:
+                _state: resolved_invitation._id
+              email:
+                _state: email
+      # Re-resolve the (now-cancelled) email — the outcome falls through to the
+      # blank/prefilled form so the admin can send a fresh invitation.
+      - _ref: actions/resolve_email.yaml
 blocks:
   - id: cancel_message
     type: Html
     properties:
       html:
         _nunjucks:
-          # TODO(request-substitute) cancel_message: "the pending invitation's email address"
           template: >-
             <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">
             The invitation to <b>{{ email }}</b> will be withdrawn. The link already
             sent will stop working. You can invite them again later.</div>
           on:
-            email: sam.taylor@example.com
+            email:
+              _state: email

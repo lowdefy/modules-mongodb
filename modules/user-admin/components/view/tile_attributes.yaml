@@ -32,7 +32,6 @@ _ref:
         properties:
           html:
             _nunjucks:
-              # TODO(request-substitute) attributes_roles.roles: "member.role split, each joined to the _build.authConfig.roles catalog for the label; orphan = id not in catalog"
               template: |
                 <div style="display:flex; align-items:baseline; gap:16px;">
                   <span style="color:var(--ant-color-text-secondary); font-size:13px; min-width:88px; flex:0 0 auto;">Roles</span>
@@ -47,23 +46,18 @@ _ref:
                   </span>
                 </div>
               on:
+                # Roles split from member.role + catalog-resolved to
+                # { label, orphan } by the detail read (design Decision 8).
                 roles:
-                  - id: admin
-                    label: Admin
-                  - id: editor
-                    label: Editor
-                  - id: legacy-ops
-                    label: legacy-ops
-                    orphan: true
+                  _request: get_user_detail.0.roles
       # Member attributes — consumer fields.member_attributes (state.member_attributes.*).
       - id: attributes_view
         type: SmartDescriptions
         properties:
           column: 1
           size: small
-          # TODO(request-substitute) attributes_view: "target member attributes subdoc (get_user_detail.member.attributes)"
           data:
             member_attributes:
-              team: alpha
+              _request: get_user_detail.0.member_attributes
           fields:
             _module.var: fields.member_attributes

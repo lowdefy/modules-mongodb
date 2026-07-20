@@ -13,49 +13,49 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `app_name` |  |  | Yes | App name for MongoDB field paths (e.g., example-app) |
-| `app_title` |  | `` |  | Optional display prefix (e.g., Team). When set: Team User Admin, Invite Team User. When not set: User Admin, Invite User. |
-| `roles` |  |  | Yes | List of available user roles [{label, value}] |
-| `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive user (current) and target (edited/invited user). When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge. |
-| `app_domain` |  |  |  | App domain URL for invite links (falls back to current origin) |
-| `filter_requests` |  | `[]` |  | Additional requests for the custom filters section |
+| `app_title` | string | `` |  | Optional display prefix (e.g., Team). When set: "Team User Admin", "Invite Team User". When not set: "User Admin", "Invite User". |
+| `admin_roles` | array | `["user-admin"]` |  | Catalog role id(s) that gate every routine endpoint's `auth.api.roles` (design Decision 3). Should name the same administering role as the app's `auth.userAdminRole`, which the engine additionally enforces as a step-level floor before every auth-owned write (defense in depth). Each id must be a declared `auth.roles` catalog id. |
+| `suspension` | boolean | `true` |  | Gates the suspend/reinstate surface (design Decision 4). Suspend issues a permanent, user-level (suite-wide) ban via BanUser. Default true rests on the deployment premise that the pinned suite is administered by one trusted operator group; set false to limit app-admins to app-scoped RemoveMember. |
+| `impersonation` | boolean | `false` |  | Gates the "View as user" (ImpersonateUser) client action on the Security tile (design Decision 5). Off by default; the action only works once the app configures `auth.userAdminRole` and the caller holds that role. |
+| `download` | boolean | `false` |  | Gates the Excel export on the `all` page (design Decision 2). When false, the download button and its merged export pipeline are excluded. |
+| `event_display` | object |  |  | Event display templates mapping event type -> Nunjucks title template. Templates receive `user` (acting admin) and `target` (edited/invited user). When unset the module defaults render (defaults/event_display.yaml); when set, the override fully replaces the defaults — no merge. |
+| `filter_requests` | array | `[]` |  | Additional requests backing the custom filters section. |
 | `avatar_colors` |  | `{"_ref":"../shared/profile/avatar_colors.yaml"}` |  | Gradient pairs for avatar backgrounds. Each entry: { from, to }. |
-| `fields` | object |  |  | Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr). |
-| `components` | object |  |  | Component overrides: view_access_tile, table_columns, download_columns, filters, main_slots, sidebar_slots |
-| `request_stages` | object |  |  | MongoDB pipeline stage overrides: get_all_users, write, filter_match. write stages are appended to both update and invite write flows. |
+| `fields` | object |  |  | Field block arrays reused for tile display and edit modals. `profile` binds contact fields to `state.profile.*`; `user_attributes` (global attributes on the `user` row) binds `state.user_attributes.*`; `member_attributes` (this app's attributes on the `member` row) binds `state.member_attributes.*`. `show_honorific` toggles the honorific/title selector (Mr/Ms/Dr) in the profile form. |
+| `components` | object |  |  | Component overrides appended to the built-in surfaces: table_columns, download_columns, filters, main_slots, sidebar_slots. Tile-body overrides for the user detail page are added by the view pipeline tasks once the tiles exist. |
+| `request_stages` | object |  |  | MongoDB pipeline stage overrides for reads (list pipeline, filter match, export) and for the contact write. The auth-side write seam is routine steps, not pipeline stages — no slot re-creates one. |
 
 ## Nested var details
 
 ### `fields`
 
-Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr).
+Field block arrays reused for tile display and edit modals. `profile` binds contact fields to `state.profile.*`; `user_attributes` (global attributes on the `user` row) binds `state.user_attributes.*`; `member_attributes` (this app's attributes on the `member` row) binds `state.member_attributes.*`. `show_honorific` toggles the honorific/title selector (Mr/Ms/Dr) in the profile form.
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
 | `show_honorific` | boolean | `false` |  | Show the honorific/title selector (Mr/Ms/Dr) in the profile form. |
-| `profile` |  | `[]` |  | Profile field blocks rendered in the user edit/invite form and view. Block ids must be prefixed with `profile.` so they bind to `state.profile.*`. |
-| `global_attributes` |  | `[]` |  | Cross-app attribute field blocks rendered in the user form and view. Block ids must be prefixed with `global_attributes.` so they bind to `state.global_attributes.*`. |
-| `app_attributes` |  | `[]` |  | Per-app attribute field blocks scoped to `app_name`. Block ids must be prefixed with `app_attributes.` so they bind to `state.app_attributes.*` and write to `app_attributes.{app_name}` on save. |
+| `profile` | array | `[]` |  | Profile field blocks (contact data). Block ids must be prefixed with `profile.` so they bind to `state.profile.*`. |
+| `user_attributes` | array | `[]` |  | Global (cross-app) attribute field blocks written to the `user` row via UpdateUserAttributes. Block ids must be prefixed with `user_attributes.` so they bind to `state.user_attributes.*`. (Was `global_attributes` in the pre-BetterAuth module.) |
+| `member_attributes` | array | `[]` |  | This app's attribute field blocks written to the `member` row via UpdateMemberAttributes (no longer scoped by an `apps.{app}` path — per-app scoping dies with that map, Decision 1). Block ids must be prefixed with `member_attributes.` so they bind to `state.member_attributes.*`. (Was `app_attributes`.) |
 
 ### `components`
 
-Component overrides: view_access_tile, table_columns, download_columns, filters, main_slots, sidebar_slots
+Component overrides appended to the built-in surfaces: table_columns, download_columns, filters, main_slots, sidebar_slots. Tile-body overrides for the user detail page are added by the view pipeline tasks once the tiles exist.
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `download_columns` |  | `[]` |  | Extra columns appended to the Excel export. |
-| `table_columns` |  | `[]` |  | Extra column definitions appended to the users list table. |
-| `filters` |  | `[]` |  | Extra filter blocks rendered below the built-in search bar on the users list page. Pair with `filter_requests` for custom data sources. |
-| `main_slots` |  | `[]` |  | Extra blocks appended to the main column on the users-view page. |
-| `sidebar_slots` |  | `[]` |  | Extra blocks appended to the sidebar column on the users-view page. |
-| `view_access_tile` |  | `{"_ref":"components/view_access.yaml"}` |  | Override for the access tile rendered on the users-view page. Defaults to the built-in roles/access summary; replace with custom blocks to show app-specific access information. |
+| `table_columns` | array | `[]` |  | Extra column definitions appended to the Members list table. |
+| `download_columns` | array | `[]` |  | Extra columns appended to the Excel export (merged members + invitations). |
+| `filters` | array | `[]` |  | Extra filter blocks rendered alongside the built-in search on the `all` page. Pair with `filter_requests` for custom data sources. |
+| `main_slots` | array | `[]` |  | Extra blocks appended to the main column on the `view` page. |
+| `sidebar_slots` | array | `[]` |  | Extra blocks appended to the sidebar column on the `view` page. |
 
 ### `request_stages`
 
-MongoDB pipeline stage overrides: get_all_users, write, filter_match. write stages are appended to both update and invite write flows.
+MongoDB pipeline stage overrides for reads (list pipeline, filter match, export) and for the contact write. The auth-side write seam is routine steps, not pipeline stages — no slot re-creates one.
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `filter_match` |  | `[]` |  | Atlas Search compound clauses appended to the list-page `$search` query. Used to add custom filter conditions to the users list. |
-| `get_all_users` |  | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the users list and Excel export aggregations. |
-| `write` |  | `[]` |  | Pipeline update stages appended to both update-user and invite-user flows. Used for derived fields or extra transforms beyond the built-in profile/attribute writes. |
+| `filter_match` | array | `[]` |  | Plain $match clauses appended to the members/invitations list filter (Decision 2 — Atlas $search is gone from this module; this extends the post-$lookup regex filter, it is NOT a path to reintroduce $search). |
+| `get_all_users` | array | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the `all` list and the Excel export aggregations. |
+| `write` | array | `[]` |  | Pipeline update stages appended to the contact write on the profile routine (passed to the shared write-profile fragment's `write_stages` _var). Used for derived fields beyond the built-in profile write. |

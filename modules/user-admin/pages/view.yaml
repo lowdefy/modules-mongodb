@@ -1,23 +1,55 @@
 # User detail page (design Decision 3) — the operator console for one person's
 # access lifecycle in this app. Two-column console: main (Profile, Attributes,
 # Global attributes) + sidebar (Security, Apps, Activity). Each editable tile
-# opens its own modal (7 total). Built by the mock-to-lowdefy pipeline
-# (tasks 10-12); data/request wiring is task 13 (TODO(request-substitute) markers).
+# opens its own modal (7 total). Native org-scoped reads hydrate the tiles;
+# each modal edits through its own routine (design Decision 3).
 _ref:
   module: layout
   component: page
   vars:
     id: view
     page_type: sidebar
-    # Title-block: status pill (Active / Suspended) + name. The mock's avatar is
-    # a proposed title-block slot the shared component does not offer today — not
-    # added here (a shared-component change is out of scope for the view page).
-    # TODO(request-substitute) title: "target contact name (get_user_detail)"
-    title: Jane Mokoena
-    # TODO(request-substitute) status: "active | suspended, derived from user.banned"
-    status: active
+    # Title-block: status pill (Active / Suspended) + name, hydrated from the
+    # detail read. The mock's avatar is a proposed title-block slot the shared
+    # component does not offer today — not added here (a shared-component change
+    # is out of scope for the view page).
+    title:
+      _request: get_user_detail.0.name
+    status:
+      _request: get_user_detail.0.status_slug
     status_enum:
       _ref: enums/member_statuses.yaml
+    loading:
+      _not:
+        _request: get_user_detail
+    # Native org-scoped reads (design Decision 1): detail, sessions (token
+    # projected out), linked providers, and the target's OTHER memberships (one
+    # read powering the Apps badges, the suspend blast-radius, and the Decision 6
+    # membership-count switch). Activity is the events module's timeline component.
+    requests:
+      - _ref: requests/get_user_detail.yaml
+      - _ref: requests/get_user_sessions.yaml
+      - _ref: requests/get_user_accounts.yaml
+      - _ref: requests/get_user_memberships.yaml
+    events:
+      onMount:
+        - id: fetch_detail
+          type: Request
+          params:
+            - get_user_detail
+            - get_user_sessions
+            - get_user_accounts
+            - get_user_memberships
+        # No member row for this userId in the pinned org → back to the list.
+        - id: redirect_if_not_found
+          type: Link
+          skip:
+            _ne:
+              - _request: get_user_detail.0
+              - null
+          params:
+            pageId:
+              _module.pageId: all
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -28,8 +60,10 @@ _ref:
               - " User Admin"
         pageId:
           _module.pageId: all
-      # TODO(request-substitute) breadcrumb_name: "target contact name"
-      - label: Jane Mokoena
+      - label:
+          _if_none:
+            - _request: get_user_detail.0.name
+            - ""
     blocks:
       - id: user_detail_grid
         type: Box
@@ -62,7 +96,21 @@ _ref:
             blocks:
               _build.array.concat:
                 - - _ref: components/view/tile_security.yaml
-                  - _ref: components/view/tile_apps.yaml
+                  # Apps tile hidden at other-membership count 0 (Decision 6) —
+                  # gated here since the shared card has no visible var.
+                  - id: apps_tile_wrap
+                    type: Box
+                    layout:
+                      span: 24
+                    visible:
+                      _gt:
+                        - _array.length:
+                            _if_none:
+                              - _request: get_user_memberships
+                              - []
+                        - 0
+                    blocks:
+                      - _ref: components/view/tile_apps.yaml
                   - _ref: components/view/tile_activity.yaml
                 # Consumer extension surface (Decision 8) — extra sidebar blocks.
                 - _module.var: components.sidebar_slots

@@ -1,0 +1,24 @@
+# Linked auth providers read (design Decision 5) — read-only. Native read over
+# `user-accounts` for the target, one row per linked account. The built-in
+# email/password credential provider is excluded (it is not an OAuth "method" to
+# display); OAuth providers (google, …) and passkey-provider rows remain. Answers
+# "how does this person sign in?" without touching anything.
+id: get_user_accounts
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-accounts
+payload:
+  user_id:
+    _url_query: userId
+properties:
+  pipeline:
+    - $match:
+        userId:
+          _payload: user_id
+        providerId:
+          $nin:
+            - credential
+            - email
+    - $project:
+        _id: 0
+        providerId: 1

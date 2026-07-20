@@ -17,9 +17,9 @@
 # form (blank or prefilled), so the two outcomes collapse to `state_form`; prefill
 # is seeded state, wired in task 17.
 #
-# The check → outcome transitions, prefill, and submit are the WIRE task (17).
-# Here: mock-data layers + TODO(request-substitute) markers. To preview a layer
-# while reviewing, SetState invite_state to that slug.
+# The Check button resolves the email via check-invite-email (actions/
+# resolve_email.yaml), branching invite_state; submit runs the invite routine;
+# the pending panel offers resend / cancel.
 _ref:
   module: layout
   component: page
@@ -87,8 +87,12 @@ _ref:
               type: info
               icon: AiOutlineLoading
               message: Checking access…
-              # TODO(request-substitute) state_checking.description: "resolved email — 'Looking up {email} across members and pending invitations.'"
-              description: Looking up this address across members and pending invitations.
+              description:
+                _nunjucks:
+                  template: "Looking up {{ email }} across members and pending invitations."
+                  on:
+                    email:
+                      _state: email
 
           # LAYER: form — invitation details (serves unknown + existing outcomes).
           - _ref: components/invite_form.yaml
@@ -104,8 +108,14 @@ _ref:
               type: success
               icon: AiOutlineCheckCircle
               message: Already a member
-              # TODO(request-substitute) state_member.description: "resolved contact name — '{name} already has access to this app.'"
-              description: This person already has access to this app.
+              description:
+                _nunjucks:
+                  template: "{{ name }} already has access to this app."
+                  on:
+                    name:
+                      _if_none:
+                        - _state: resolved_member.user.name
+                        - This person
             slots:
               action:
                 blocks:
@@ -121,12 +131,14 @@ _ref:
                       size: small
                     events:
                       onClick:
-                        # TODO(request-substitute) member_view_btn: "Link to view with the resolved user's id (urlQuery) — task 17"
                         - id: link_to_member
                           type: Link
                           params:
                             pageId:
                               _module.pageId: view
+                            urlQuery:
+                              userId:
+                                _state: resolved_member.userId
 
           # LAYER: pending invitation — resend / cancel.
           - id: state_pending
@@ -139,8 +151,12 @@ _ref:
               type: warning
               icon: AiOutlineMail
               message: Invitation pending
-              # TODO(request-substitute) state_pending.description: "sent-by + expiry — 'Sent by {inviter} {sent_ago} · expires {expiry_rel}.'"
-              description: Sent by Jane Mokoena 3 days ago · expires in 4 days.
+              description:
+                _nunjucks:
+                  template: "A pending invitation already exists for {{ email }}. Resend it, or cancel to start over."
+                  on:
+                    email:
+                      _state: email
             slots:
               action:
                 blocks:
@@ -160,12 +176,27 @@ _ref:
                           size: small
                         events:
                           onClick:
-                            # TODO(request-substitute) pending_resend_btn: "CallAPI resend-invitation (InviteMember resend) — task 17"
-                            - id: resend_todo
-                              type: DisplayMessage
+                            # Resend via InviteMember(resend). Re-send the current
+                            # roles + attributes so the refresh preserves them
+                            # rather than blanking them (the invitation stays
+                            # pending, so no re-resolve needed).
+                            - id: resend_invitation
+                              type: CallAPI
+                              messages:
+                                loading: Resending…
+                                success: Invitation resent.
                               params:
-                                status: info
-                                content: Resend invitation — wired in task 17.
+                                endpointId:
+                                  _module.endpointId: resend-invitation
+                                payload:
+                                  email:
+                                    _state: email
+                                  roles:
+                                    _js: |
+                                      const csv = state('resolved_invitation.role');
+                                      return (csv || '').split(',').map(s => s.trim()).filter(Boolean);
+                                  member_attributes:
+                                    _state: resolved_invitation.attributes
                       - id: pending_cancel_btn
                         type: Button
                         layout:

@@ -29,15 +29,9 @@ _ref:
         properties:
           column: 1
           size: small
-          # TODO(request-substitute) profile_view: "target contact — profile subdoc + email (get_user_detail.contact)"
+          # Contact profile subdoc + login email from the detail read.
           data:
-            profile:
-              given_name: Jane
-              family_name: Mokoena
-              phone_number: "+27 82 555 0142"
-              job_title: Operations Lead
-              department: null
-            email: jane.mokoena@example.com
+            _request: get_user_detail.0
           fields:
             _build.array.concat:
               - _ref:

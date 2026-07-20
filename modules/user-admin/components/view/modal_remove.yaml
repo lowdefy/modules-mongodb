@@ -4,8 +4,14 @@
 id: modal_remove
 type: Modal
 properties:
-  # TODO(request-substitute) modal_remove.title: "Remove {target name} from {app_title} User Admin?"
-  title: Remove Jane Mokoena from this app?
+  title:
+    _nunjucks:
+      template: "Remove {{ name }} from {{ app | trim }} User Admin?"
+      on:
+        name:
+          _request: get_user_detail.0.name
+        app:
+          _module.var: app_title
   width: 480
   okText: Remove from app
   cancelText: Cancel
@@ -13,12 +19,30 @@ properties:
     danger: true
 events:
   onOk:
-    # TODO(request-substitute) modal_remove onOk: "CallAPI remove-member (RemoveMember) — task 13"
-    - id: remove_todo
-      type: DisplayMessage
+    # RemoveMember (app-scoped, Decision 4). The member row is deleted, so the
+    # detail read would return null → return to the list.
+    - id: remove_member
+      type: CallAPI
+      messages:
+        loading: Removing…
+        success: Removed from this app.
       params:
-        status: info
-        content: Remove from app — wired in task 13.
+        endpointId:
+          _module.endpointId: remove-member
+        payload:
+          member_id:
+            _request: get_user_detail.0.member_id
+          user_id:
+            _request: get_user_detail.0.user_id
+          target_name:
+            _request: get_user_detail.0.name
+          target_email:
+            _request: get_user_detail.0.email
+    - id: back_to_list_after_remove
+      type: Link
+      params:
+        pageId:
+          _module.pageId: all
 blocks:
   - id: remove_message
     type: Html
