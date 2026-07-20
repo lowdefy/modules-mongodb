@@ -1,0 +1,133 @@
+id: get-block-docs
+type: InternalApi
+description: >-
+  Fetch the official Lowdefy documentation (markdown) for a block type so the
+  assistant can verify property names, value shapes, and enums before writing
+  block config. Returns the doc markdown, or a short "unavailable" message if
+  the docs can't be reached.
+payloadSchema:
+  type: object
+  required:
+    - type
+  properties:
+    type:
+      type: string
+      description: Block type name, e.g. TextInput
+routine:
+  # Block docs live under per-category sections and the section for a given
+  # type is not known up front, so try each section in order and return the
+  # first hit. Doc slugs are lower-case; a missing doc or unreachable host
+  # throws, which each :catch swallows so the next section is tried.
+  - :try:
+      - id: fetch_input_blocks
+        type: AxiosHttp
+        connectionId:
+          _module.connectionId: lowdefy-docs
+        properties:
+          url:
+            _string.format:
+              template:
+                _module.var: docs.block_path
+              on:
+                section: input-blocks
+                type:
+                  _string.toLowerCase:
+                    _payload: type
+    :catch: []
+  - :if:
+      _ne:
+        # _ne is strict; _if_none normalizes a failed step (undefined) to null.
+        - _if_none:
+            - _step: fetch_input_blocks.data
+            - null
+        - null
+    :then:
+      - :return:
+          _step: fetch_input_blocks.data
+  - :try:
+      - id: fetch_display_blocks
+        type: AxiosHttp
+        connectionId:
+          _module.connectionId: lowdefy-docs
+        properties:
+          url:
+            _string.format:
+              template:
+                _module.var: docs.block_path
+              on:
+                section: display-blocks
+                type:
+                  _string.toLowerCase:
+                    _payload: type
+    :catch: []
+  - :if:
+      _ne:
+        # _ne is strict; _if_none normalizes a failed step (undefined) to null.
+        - _if_none:
+            - _step: fetch_display_blocks.data
+            - null
+        - null
+    :then:
+      - :return:
+          _step: fetch_display_blocks.data
+  - :try:
+      - id: fetch_container_blocks
+        type: AxiosHttp
+        connectionId:
+          _module.connectionId: lowdefy-docs
+        properties:
+          url:
+            _string.format:
+              template:
+                _module.var: docs.block_path
+              on:
+                section: container-blocks
+                type:
+                  _string.toLowerCase:
+                    _payload: type
+    :catch: []
+  - :if:
+      _ne:
+        # _ne is strict; _if_none normalizes a failed step (undefined) to null.
+        - _if_none:
+            - _step: fetch_container_blocks.data
+            - null
+        - null
+    :then:
+      - :return:
+          _step: fetch_container_blocks.data
+  - :try:
+      - id: fetch_list_blocks
+        type: AxiosHttp
+        connectionId:
+          _module.connectionId: lowdefy-docs
+        properties:
+          url:
+            _string.format:
+              template:
+                _module.var: docs.block_path
+              on:
+                section: list-blocks
+                type:
+                  _string.toLowerCase:
+                    _payload: type
+    :catch: []
+  - :if:
+      _ne:
+        # _ne is strict; _if_none normalizes a failed step (undefined) to null.
+        - _if_none:
+            - _step: fetch_list_blocks.data
+            - null
+        - null
+    :then:
+      - :return:
+          _step: fetch_list_blocks.data
+  - :log:
+      message: Block docs not found in any section
+    :level: warn
+  - :return:
+      _string.format:
+        template: Documentation is currently unavailable for block type "{type}".
+        on:
+          type:
+            _payload: type

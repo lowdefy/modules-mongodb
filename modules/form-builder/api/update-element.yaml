@@ -1,0 +1,28 @@
+id: update-element
+type: Api
+routine:
+  - id: update
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: dynamic-elements-collection
+    properties:
+      filter:
+        _id:
+          _payload: id
+      options:
+        upsert: true
+      update:
+        $set:
+          config:
+            _payload: config
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
+        $setOnInsert:
+          created:
+            _ref:
+              module: events
+              component: change_stamp
+  - :return:
+      success: true

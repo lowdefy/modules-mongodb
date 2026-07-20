@@ -1,0 +1,133 @@
+name: Form Builder
+version: 0.9.2
+description: Visually build Lowdefy block config for dynamic page content, with a per-block AI assistant
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper
+  - id: events
+    description: Change stamp for created/updated audit metadata on writes
+
+vars:
+  elements:
+    type: array
+    required: true
+    description: >-
+      The editable targets — one entry per piece of form config a user can
+      build. Each item is `{ id, title, description }`, where `id` is the
+      `_id` of the document stored in the elements collection (and the
+      `elementId` a consumer passes to the dynamic-element component). Drives
+      the `all` page listing and the `edit` page URL (`edit?id=<id>`).
+  collection:
+    type: string
+    default: dynamic-elements
+    description: MongoDB collection storing each element's built config document.
+  conversations_collection:
+    type: string
+    default: dynamic-element-conversations
+    description: >-
+      MongoDB collection storing one AI-assistant conversation thread per
+      (element, block), keyed by `${elementId}:${blockId}`.
+  agent:
+    type: object
+    description: Configuration for the `builder` AIGatewayAgent that assists with block config.
+    properties:
+      model:
+        type: string
+        default: anthropic/claude-sonnet-5
+        description: >-
+          Vercel AI Gateway model id (creator/model form) the builder agent
+          runs on, e.g. anthropic/claude-sonnet-5.
+      max_steps:
+        type: number
+        default: 10
+        description: Maximum tool-loop steps the builder agent may take per turn.
+  docs:
+    type: object
+    description: >-
+      Where the builder agent fetches official per-block Lowdefy documentation
+      for its `get-block-docs` tool. The Lowdefy docs site serves every docs
+      page as raw markdown, so the agent can verify a block's properties before
+      writing config.
+    properties:
+      base_url:
+        type: string
+        default: https://docs.lowdefy.com
+        description: >-
+          Base URL of the Lowdefy documentation site that serves raw block
+          markdown (no trailing slash).
+      block_path:
+        type: string
+        default: /md/{section}/{type}.md
+        description: >-
+          Path template appended to `base_url` to fetch a block's markdown.
+          `{type}` is replaced with the lower-cased block type (TextInput ->
+          textinput) and `{section}` with each block-docs section in turn
+          (`input-blocks`, `display-blocks`, `container-blocks`,
+          `list-blocks`) until a doc is found — matching the docs site's
+          `/md/{section}/{slug}.md` raw-markdown scheme.
+  palette:
+    type: object
+    description: >-
+      Block palette passed through to the FormBuilder block and used as the
+      default `types` bundle for the dynamic-element component.
+    properties:
+      blocks:
+        type: array
+        description: >-
+          Allowed block type names shown in the builder palette. Leave unset to
+          accept the FormBuilder block's curated form-relevant default list.
+
+exports:
+  pages:
+    - id: all
+      description: List of editable elements with an Edit link per element
+    - id: edit
+      description: Visual form builder plus AI assistant for one element
+  api:
+    - id: resolve-element
+      description: Dynamic-block resolver returning a stored element's blocks
+  components:
+    - id: dynamic-element
+      description: Preconfigured Dynamic block that renders a built element into a consumer page
+  menus:
+    - id: default
+      description: Form Builder navigation link
+
+connections:
+  - _ref: connections/dynamic-elements-collection.yaml
+  - _ref: connections/conversations-collection.yaml
+  - _ref: connections/ai-gateway.yaml
+  - _ref: connections/lowdefy-docs.yaml
+
+api:
+  - _ref: api/update-element.yaml
+  - _ref: api/resolve-element.yaml
+  - _ref: api/set-block-config.yaml
+  - _ref: api/get-block-docs.yaml
+  - _ref: api/save-conversation.yaml
+
+agents:
+  - _ref: agents/builder.yaml
+
+pages:
+  - _ref: pages/all.yaml
+  - _ref: pages/edit.yaml
+
+components:
+  - id: dynamic-element
+    component:
+      _ref: components/dynamic_element.yaml
+
+menus:
+  - _ref: menus.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+  - name: AI_GATEWAY_API_KEY
+    description: Vercel AI Gateway API key for the builder agent
+
+plugins:
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.9.2"

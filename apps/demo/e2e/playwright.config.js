@@ -24,13 +24,16 @@ export default {
   ...config,
   globalSetup: "@lowdefy/community-plugin-e2e-mdb/setup",
   globalTeardown: "@lowdefy/community-plugin-e2e-mdb/teardown",
-  // `lowdefy build --server e2e` fails the auth config check unless NEXTAUTH_SECRET
-  // is set. The e2e server uses cookie-based mock auth, so the value is build-only —
-  // mirror the `ldf:b` script and respect a real secret if one is already exported.
+  // `lowdefy build --server e2e` fails the auth config check unless the auth
+  // secret is set. The e2e server uses cookie-based mock auth, so the value is
+  // build-only — mirror the `ldf:b` script and respect a real secret if one is
+  // already exported. AUTH_SECRET is the current name; NEXTAUTH_SECRET covers
+  // lowdefy versions before the rename.
   webServer: {
     ...config.webServer,
     env: {
       ...process.env,
+      AUTH_SECRET: process.env.AUTH_SECRET || "build-only-not-a-real-secret",
       NEXTAUTH_SECRET:
         process.env.NEXTAUTH_SECRET || "build-only-not-a-real-secret",
     },

@@ -1,0 +1,164 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: edit
+    type: Edit Element
+    title:
+      _if_none:
+        - _get:
+            from:
+              _array.filter:
+                on:
+                  _module.var: elements
+                callback:
+                  _function:
+                    __eq:
+                      - __args: 0.id
+                      - _url_query: id
+            key: 0.title
+        - _url_query: id
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Form Builder
+        pageId:
+          _module.pageId: all
+      - label: Edit
+    page_actions:
+      - id: save_button
+        type: Button
+        layout:
+          flex: 0 1 auto
+        properties:
+          title: Save
+          icon: AiOutlineSave
+          type: primary
+        events:
+          onClick:
+            - id: save_element
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: update-element
+                payload:
+                  id:
+                    _url_query: id
+                  config:
+                    _state: config
+              messages:
+                success: Element saved.
+    events:
+      onInit:
+        - id: init_state
+          type: SetState
+          params:
+            selected_block: null
+            chat_messages: []
+            mock: {}
+        - id: fetch_element
+          type: Request
+          params:
+            - get_element
+        - id: set_config
+          type: SetState
+          params:
+            config:
+              _if_none:
+                - _request: get_element.config
+                - blocks: []
+    requests:
+      - _ref: requests/get_element.yaml
+      - _ref: requests/get_conversation.yaml
+    blocks:
+      - id: config
+        type: FormBuilder
+        properties:
+          palette:
+            _module.var: palette
+          mock:
+            _state: mock
+          height: 70vh
+        events:
+          onBlockSelect:
+            - id: set_selected_block
+              type: SetState
+              params:
+                selected_block:
+                  _event: true
+            - id: fetch_conversation
+              type: Request
+              params:
+                - get_conversation
+            - id: set_chat_messages
+              type: SetState
+              params:
+                chat_messages:
+                  _if_none:
+                    - _request: get_conversation.messages
+                    - []
+        slots:
+          chat:
+            blocks:
+              - id: builder_chat
+                type: AgentChat
+                visible:
+                  _ne:
+                    - _state: selected_block
+                    - null
+                properties:
+                  agentId:
+                    _module.agentId: builder
+                  conversationId:
+                    _string.concat:
+                      - _url_query: id
+                      - ":"
+                      - _state: selected_block.blockId
+                  messages:
+                    _state: chat_messages
+                  sharedState:
+                    element:
+                      _url_query: id
+                    selectedBlock:
+                      _state: selected_block
+                    config:
+                      _state: config
+                  height: 100%
+                events:
+                  # Apply from onMessageComplete, not onToolCall: the tool
+                  # input streams incrementally and onToolCall can fire with a
+                  # truncated input mid-stream; onMessageComplete fires once,
+                  # after the turn (and its tool input) is complete, and never
+                  # for restored history.
+                  onMessageComplete:
+                    - id: apply_block_config
+                      type: CallMethod
+                      skip:
+                        _js: |
+                          const parts = event('parts') ?? [];
+                          return !parts.some(
+                            (p) =>
+                              (p.type === 'tool-set-block-config' ||
+                                (p.type === 'dynamic-tool' &&
+                                  p.toolName === 'set-block-config')) &&
+                              p.input?.config
+                          );
+                      params:
+                        blockId: config
+                        method: setBlockConfig
+                        args:
+                          - path:
+                              _state: selected_block.path
+                            config:
+                              _js: |
+                                const parts = event('parts') ?? [];
+                                const call = parts
+                                  .filter(
+                                    (p) =>
+                                      (p.type === 'tool-set-block-config' ||
+                                        (p.type === 'dynamic-tool' &&
+                                          p.toolName === 'set-block-config')) &&
+                                      p.input?.config
+                                  )
+                                  .pop();
+                                return call ? call.input.config : null;

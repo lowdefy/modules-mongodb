@@ -1,0 +1,57 @@
+# Demonstrates the form-builder round trip: build "Profile Fields" on the
+# form-builder edit page, then see it render here via the Dynamic block.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: dynamic-element-demo
+    title: Dynamic Element Demo
+    content_width: 700
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Dynamic Element Demo
+    blocks:
+      - id: demo_intro
+        type: Paragraph
+        properties:
+          content: >-
+            The card below renders the "Profile Fields" element built in the
+            Form Builder. Edit and save it there, then reload this page to
+            see the change — no deploy needed.
+      - id: demo_card
+        type: Card
+        blocks:
+          - _ref:
+              module: form-builder
+              component: dynamic-element
+              vars:
+                id: profile_fields_dynamic
+                elementId: profile-fields
+                types:
+                  blocks:
+                    - TextInput
+                    - TextArea
+                    - NumberInput
+                    - Selector
+                    - MultipleSelector
+                    - RadioSelector
+                    - CheckboxSelector
+                    - DateSelector
+                    - Switch
+                    - Box
+                    - Card
+                    - Label
+                    - Alert
+                    - Title
+                    - Paragraph
+                    - Divider
+                    - Button
+                fallback:
+                  - id: profile_fields_fallback
+                    type: Alert
+                    properties:
+                      type: info
+                      message: >-
+                        This element has not been built yet — open the Form
+                        Builder and save "Profile Fields" to populate it.

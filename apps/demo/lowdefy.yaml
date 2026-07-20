@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260611102401
+lowdefy: 0.0.0-experimental-20260710121634
 name: Module Demo App
 slug: demo
 
@@ -135,6 +135,7 @@ pages:
   - _ref: pages/user-components-demo.yaml
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml
+  - _ref: pages/dynamic-element-demo.yaml
   - _ref: pages/leads/lead-list.yaml
   - _ref: pages/leads/lead-new.yaml
   - _ref: pages/leads/lead-view.yaml

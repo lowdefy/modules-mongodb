@@ -1,0 +1,9 @@
+id: default
+links:
+  - id: form-builder
+    type: MenuLink
+    pageId:
+      _module.pageId: all
+    properties:
+      title: Form Builder
+      icon: AiOutlineForm

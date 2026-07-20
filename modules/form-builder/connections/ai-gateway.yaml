@@ -1,0 +1,5 @@
+id: ai-gateway
+type: AIGateway
+properties:
+  apiKey:
+    _secret: AI_GATEWAY_API_KEY

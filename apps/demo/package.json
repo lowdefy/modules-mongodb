@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ldf:b": "NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-build-only-not-a-real-secret} lowdefy build",
+    "ldf:b": "AUTH_SECRET=${AUTH_SECRET:-build-only-not-a-real-secret} NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-build-only-not-a-real-secret} lowdefy build",
     "ldf:d": "lowdefy dev --log-level=debug --no-open",
     "ldf:s": "lowdefy start",
     "ldf": "lowdefy dev --no-open",
@@ -19,7 +19,7 @@
     "e2e:server": "lowdefy build --server e2e && lowdefy start --port 3101 --log-level warn"
   },
   "dependencies": {
-    "lowdefy": "0.0.0-experimental-20260611102401"
+    "lowdefy": "0.0.0-experimental-20260710121634"
   },
   "devDependencies": {
     "@lowdefy/e2e-utils": "latest",

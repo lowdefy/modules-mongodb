@@ -1,0 +1,48 @@
+id: save-conversation
+type: InternalApi
+# Agent onFinish hook — persists the full conversation thread keyed by
+# conversationId (`${elementId}:${blockId}`).
+routine:
+  - id: update
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: conversations-collection
+    properties:
+      filter:
+        _id:
+          _payload: conversationId
+      options:
+        upsert: true
+      update:
+        $set:
+          elementId:
+            _get:
+              from:
+                _string.split:
+                  on:
+                    _payload: conversationId
+                  separator: ":"
+              key: "0"
+          blockId:
+            _get:
+              from:
+                _string.split:
+                  on:
+                    _payload: conversationId
+                  separator: ":"
+              key: "1"
+          messages:
+            _payload: messages
+          usage:
+            _payload: usage
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
+        $setOnInsert:
+          created:
+            _ref:
+              module: events
+              component: change_stamp
+  - :return:
+      success: true

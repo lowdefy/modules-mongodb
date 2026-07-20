@@ -1,0 +1,53 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: all
+    title: Form Builder
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Form Builder
+    blocks:
+      _build.array.map:
+        on:
+          _module.var: elements
+        callback:
+          _build.function:
+            id:
+              __build.string.concat:
+                - element_card_
+                - __build.args: 0.id
+            type: Card
+            properties:
+              title:
+                __build.args: 0.title
+            blocks:
+              - id:
+                  __build.string.concat:
+                    - element_description_
+                    - __build.args: 0.id
+                type: Paragraph
+                properties:
+                  content:
+                    __build.args: 0.description
+              - id:
+                  __build.string.concat:
+                    - element_edit_button_
+                    - __build.args: 0.id
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Edit
+                  icon: AiOutlineEdit
+                events:
+                  onClick:
+                    - id: go_edit
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: edit
+                        urlQuery:
+                          id:
+                            __build.args: 0.id

@@ -1,0 +1,11 @@
+id: get_element
+type: MongoDBFindOne
+connectionId:
+  _module.connectionId: dynamic-elements-collection
+payload:
+  id:
+    _url_query: id
+properties:
+  query:
+    _id:
+      _payload: id

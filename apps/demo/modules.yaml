@@ -32,6 +32,11 @@
   vars:
     s3_region: us-east-1
 
+- id: form-builder
+  source: "file:../../modules/form-builder"
+  vars:
+    _ref: modules/form-builder/vars.yaml
+
 - id: layout
   source: "file:../../modules/layout"
   vars:
