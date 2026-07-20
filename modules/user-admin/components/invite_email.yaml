@@ -54,11 +54,23 @@ _ref:
                   size: large
                 events:
                   onClick:
-                    # TODO(request-substitute) email_check_btn: "Validate email + CallAPI check-invite-email; branch invite_state to unknown|existing|member|pending (Decision 7) — task 17"
-                    - id: check_email
-                      type: SetState
-                      params:
-                        invite_state: checking
+                    try:
+                      _build.array.concat:
+                        - - id: validate_email
+                            type: Validate
+                            params: email
+                          - id: set_checking
+                            type: SetState
+                            params:
+                              invite_state: checking
+                        # Resolve + branch the state machine (shared action).
+                        - _ref: actions/resolve_email.yaml
+                    catch:
+                      # Validation or lookup failure → back to entry.
+                      - id: check_failed
+                        type: SetState
+                        params:
+                          invite_state: resting
           - id: email_hint
             type: Html
             properties:
@@ -91,7 +103,6 @@ _ref:
             properties:
               html:
                 _nunjucks:
-                  # TODO(request-substitute) resolved_email: "the checked email address"
                   template: >-
                     <span style="display:inline-flex; align-items:center; gap:8px;
                     font-size:15px; font-weight:500; color:var(--ant-color-text);">
@@ -99,7 +110,8 @@ _ref:
                     <svg viewBox="64 64 896 896" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M928 160H96c-17.7 0-32 14.3-32 32v640c0 17.7 14.3 32 32 32h832c17.7 0 32-14.3 32-32V192c0-17.7-14.3-32-32-32zm-40 110.8V792H136V270.8l-27.6-21.5 39.3-50.5 42.8 33.3h643.1l42.8-33.3 39.3 50.5-27.7 21.5zM833.6 232L512 482 190.4 232l-42.8-33.3-39.3 50.5 27.6 21.5 341.6 265.6a55.99 55.99 0 0068.7 0L888 270.8l27.6-21.5-39.3-50.5-42.7 33.2z"/></svg>
                     </span>{{ email }}</span>
                   on:
-                    email: sam.taylor@example.com
+                    email:
+                      _state: email
           - id: email_change_btn
             type: Button
             layout:
@@ -111,8 +123,16 @@ _ref:
               size: small
             events:
               onClick:
-                # TODO(request-substitute) email_change_btn: "reset the resolved email + any prefilled form state before re-opening entry — task 17"
+                # Reset the resolved email + all prefilled/entered form state.
                 - id: reopen_entry
                   type: SetState
                   params:
                     invite_state: resting
+                    email: null
+                    full_name: null
+                    profile: null
+                    roles: null
+                    member_attributes: null
+                    resolved_member: null
+                    resolved_invitation: null
+                    resolved_contact: null

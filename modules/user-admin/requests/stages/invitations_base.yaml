@@ -44,6 +44,12 @@
             - "$$r"
             - ""
     expires_at: "$expiresAt"
+    # Stored invite-time member attributes (applied to the member at accept) —
+    # carried through so Resend can preserve them rather than blank them.
+    member_attributes:
+      $ifNull:
+        - "$attributes"
+        - {}
     status:
       $cond:
         - $gt:
