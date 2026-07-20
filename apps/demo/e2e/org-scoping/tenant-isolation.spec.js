@@ -1,27 +1,34 @@
 import { test, expect } from "../fixtures.js";
 
-// Two-org isolation through real module pages (docs/shared/org-scoping.md).
+// Two-org isolation through a real module page (docs/shared/org-scoping.md).
 //
 // Every module connection declares `tenant: true`, so the platform's tenant
 // wall merges the caller's organization into every read — no page or request
-// authors an organization filter. These tests seed the same collection with
-// two organizations' documents and prove a caller only ever sees their own,
-// through the activities view page (a plain walled aggregation by _id — no
-// Atlas $search, so it runs against the in-memory MongoDB).
+// authors an organization filter. This test exercises the activities view
+// page, whose `get_activity` read is a plain `$match` by `_id` (no Atlas
+// `$search`, so it runs against the in-memory MongoDB the e2e harness boots).
 //
-// The mock e2e caller carries the org: `ldf.user({ organizationId })` flows
-// through the engine's injected-caller normalization, which mirrors
-// organizationId/activeOrganizationId — the same surface the wall stamps and
-// filters with.
+// It is one self-contained test on purpose. `mdb.seed` clears the collection
+// before inserting, so two parallel tests on the shared in-memory MongoDB
+// would wipe each other's data — instead both organizations' documents are
+// seeded in a single call, and isolation is proven in both directions by
+// flipping only the caller's organization.
+//
+// The proof avoids proving-by-absence: each document is shown to render for
+// its OWN organization (so the page provably works), then to be blank for the
+// OTHER organization at the same `_id` on the same page. The only variable is
+// the caller's org, so the blank is the wall, not a broken page.
+//
+// The mock caller carries the org via `ldf.user({ organizationId })`, which
+// the engine's injected-caller normalization mirrors onto
+// `context.user.organizationId` — the value the wall stamps and filters with.
 
-const ORG_A = "org-a-e2e";
-const ORG_B = "org-b-e2e";
+const STAMP = {
+  timestamp: new Date("2026-07-01T09:00:00.000Z"),
+  user: { id: "user-e2e", name: "E2E User" },
+};
 
-function activityDoc({ _id, organizationId, title }) {
-  const stamp = {
-    timestamp: new Date("2026-07-01T09:00:00.000Z"),
-    user: { id: "user-e2e", name: "E2E User" },
-  };
+function activity({ _id, organizationId, title }) {
   return {
     _id,
     organizationId,
@@ -31,80 +38,59 @@ function activityDoc({ _id, organizationId, title }) {
     contacts: [],
     company_ids: [],
     references: {},
-    created: stamp,
-    updated: stamp,
+    created: STAMP,
+    updated: STAMP,
   };
 }
 
-test.beforeEach(async ({ mdb }) => {
+const ORG_A = { organizationId: "org-a", email: "a@example.com" };
+const ORG_B = { organizationId: "org-b", email: "b@example.com" };
+const ACT_A = { _id: "act-org-a", title: "Org A planning note" };
+const ACT_B = { _id: "act-org-b", title: "Org B private note" };
+
+// The view page renders the activity title under the `title` test-id (it also
+// echoes in the header, so the locator is scoped to avoid a strict-mode match).
+function titleHeading(page, title) {
+  return page.getByTestId("title").getByRole("heading", { name: title });
+}
+
+async function viewAs(ldf, page, caller, activityId, title) {
+  await ldf.user({
+    name: caller.email,
+    email: caller.email,
+    roles: ["admin"],
+    ...caller,
+  });
+  await ldf.goto(`/activities/view?_id=${activityId}`);
+  return titleHeading(page, title);
+}
+
+test("the tenant wall isolates activities by organization on the view page", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  // One seed call (clears then inserts both) so the two orgs' fixtures coexist.
   await mdb.seed("activities", [
-    activityDoc({
-      _id: "act-org-a",
-      organizationId: ORG_A,
-      title: "Org A planning note",
-    }),
-    activityDoc({
-      _id: "act-org-b",
-      organizationId: ORG_B,
-      title: "Org B private note",
-    }),
+    activity({ ...ACT_A, organizationId: ORG_A.organizationId }),
+    activity({ ...ACT_B, organizationId: ORG_B.organizationId }),
   ]);
-});
 
-test("a caller sees their own org's activity on the view page", async ({
-  ldf,
-  page,
-}) => {
-  await ldf.user({
-    name: "Org A Admin",
-    email: "org-a-admin@example.com",
-    roles: ["admin"],
-    organizationId: ORG_A,
-  });
-
-  await ldf.goto("/activities/view?_id=act-org-a");
+  // Org A sees its own activity...
   await expect(
-    page.getByRole("heading", { name: "Org A planning note" }),
+    await viewAs(ldf, page, ORG_A, ACT_A._id, ACT_A.title),
   ).toBeVisible();
-});
-
-test("a caller cannot read another org's activity, even by _id", async ({
-  ldf,
-  page,
-}) => {
-  await ldf.user({
-    name: "Org A Admin",
-    email: "org-a-admin@example.com",
-    roles: ["admin"],
-    organizationId: ORG_A,
-  });
-
-  // Direct-URL probe: the document exists, but the wall's injected filter
-  // means the walled read returns nothing — the title must never render.
-  await ldf.goto("/activities/view?_id=act-org-b");
+  // ...but not Org B's, at the same _id on the same page.
   await expect(
-    page.getByRole("heading", { name: "Org B private note" }),
-  ).not.toBeVisible();
-});
+    await viewAs(ldf, page, ORG_A, ACT_B._id, ACT_B.title),
+  ).toHaveCount(0);
 
-test("switching organizations flips visibility, same documents", async ({
-  ldf,
-  page,
-}) => {
-  await ldf.user({
-    name: "Org B Admin",
-    email: "org-b-admin@example.com",
-    roles: ["admin"],
-    organizationId: ORG_B,
-  });
-
-  await ldf.goto("/activities/view?_id=act-org-b");
+  // Symmetric: Org B sees its own activity...
   await expect(
-    page.getByRole("heading", { name: "Org B private note" }),
+    await viewAs(ldf, page, ORG_B, ACT_B._id, ACT_B.title),
   ).toBeVisible();
-
-  await ldf.goto("/activities/view?_id=act-org-a");
+  // ...but not Org A's.
   await expect(
-    page.getByRole("heading", { name: "Org A planning note" }),
-  ).not.toBeVisible();
+    await viewAs(ldf, page, ORG_B, ACT_A._id, ACT_A.title),
+  ).toHaveCount(0);
 });
