@@ -12,17 +12,33 @@ events:
   onOpen:
     - id: seed_global
       type: SetState
-      # TODO(request-substitute) modal_global seed: "target user attributes subdoc (get_user_detail.user.attributes)"
       params:
         user_attributes:
-          notes: Prefers email contact. Based in the Gauteng regional office.
+          _request: get_user_detail.0.user_attributes
   onOk:
-    # TODO(request-substitute) modal_global onOk: "Validate + CallAPI update-user-attributes (UpdateUserAttributes) — task 13"
-    - id: save_global_todo
-      type: DisplayMessage
-      params:
-        status: info
-        content: Save attributes — wired in task 13.
+    _build.array.concat:
+      - - id: validate_global
+          type: Validate
+          params: modal_global
+        # UpdateUserAttributes — cross-app attributes on the user row (Decision 3).
+        - id: save_global
+          type: CallAPI
+          messages:
+            loading: Saving…
+            success: Global attributes updated.
+          params:
+            endpointId:
+              _module.endpointId: update-user-attributes
+            payload:
+              user_id:
+                _request: get_user_detail.0.user_id
+              user_attributes:
+                _state: user_attributes
+              target_name:
+                _request: get_user_detail.0.name
+              target_email:
+                _request: get_user_detail.0.email
+      - _ref: actions/detail_refetch.yaml
 blocks:
   _build.array.concat:
     - _module.var: fields.user_attributes

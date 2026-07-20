@@ -28,9 +28,8 @@ _ref:
         properties:
           column: 1
           size: small
-          # TODO(request-substitute) global_attributes_view: "target user attributes subdoc (get_user_detail.user.attributes)"
           data:
             user_attributes:
-              notes: Prefers email contact. Based in the Gauteng regional office.
+              _request: get_user_detail.0.user_attributes
           fields:
             _module.var: fields.user_attributes

@@ -8,14 +8,15 @@ _ref:
   component: card
   vars:
     title: Apps
-    # TODO(request-substitute) apps_tile.visible: "other-membership count > 0 (get_user_memberships joined to user-organizations) — Decision 6"
+    # The whole tile is hidden at other-membership count 0 (Decision 6); that
+    # gate lives on the wrapping Box in view.yaml (the shared card has no visible
+    # var). Here we just render the badges from get_user_memberships.
     blocks:
       - id: app_badges
         type: Html
         properties:
           html:
             _nunjucks:
-              # TODO(request-substitute) app_badges.apps: "other memberships joined to user-organizations (org name) — excludes this app"
               template: |
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 {% for a in apps %}
@@ -27,12 +28,7 @@ _ref:
                 </div>
               on:
                 apps:
-                  - name: CRM
-                    initial: C
-                  - name: Field Ops
-                    initial: F
-                  - name: Analytics
-                    initial: A
+                  _request: get_user_memberships
       - id: apps_hint
         type: Html
         properties:
