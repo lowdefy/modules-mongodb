@@ -37,3 +37,44 @@ test("returns an empty array when nothing matches", async () => {
   });
   expect(docs).toEqual([]);
 });
+
+describe("tenant scoping", () => {
+  const tenant = { field: "organization_id", value: "org-a" };
+
+  beforeEach(async () => {
+    await mongo.db.collection("actions").insertMany([
+      { _id: "a1", workflow_id: "w1", organization_id: "org-a" },
+      { _id: "a2", workflow_id: "w1", organization_id: "org-b" },
+      { _id: "a3", workflow_id: "w2", organization_id: "org-a" },
+    ]);
+  });
+
+  test("tenant verdict merges into the query — other org's docs invisible", async () => {
+    const docs = await findDocs({
+      mongoDb: mongo.db,
+      collection: "actions",
+      query: { workflow_id: "w1" },
+      tenant,
+    });
+    expect(docs.map((d) => d._id)).toEqual(["a1"]);
+  });
+
+  test("empty query with a tenant returns only the tenant's docs", async () => {
+    const docs = await findDocs({
+      mongoDb: mongo.db,
+      collection: "actions",
+      tenant,
+    });
+    expect(docs.map((d) => d._id).sort()).toEqual(["a1", "a3"]);
+  });
+
+  test("null tenant leaves the query unchanged (both orgs visible)", async () => {
+    const docs = await findDocs({
+      mongoDb: mongo.db,
+      collection: "actions",
+      query: { workflow_id: "w1" },
+      tenant: null,
+    });
+    expect(docs.map((d) => d._id).sort()).toEqual(["a1", "a2"]);
+  });
+});

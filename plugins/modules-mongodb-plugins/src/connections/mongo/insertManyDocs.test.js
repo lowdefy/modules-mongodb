@@ -34,3 +34,32 @@ test("no-ops on an empty docs array (insertMany would otherwise throw)", async (
   expect(result.insertedCount).toBe(0);
   expect(await mongo.db.collection("log-changes").countDocuments()).toBe(0);
 });
+
+describe("tenant scoping", () => {
+  const tenant = { field: "organization_id", value: "org-a" };
+
+  test("stamps the tenant field onto every inserted doc", async () => {
+    await insertManyDocs({
+      mongoDb: mongo.db,
+      collection: "log-changes",
+      docs: [{ _id: "c1" }, { _id: "c2" }],
+      tenant,
+    });
+    const docs = await mongo.db
+      .collection("log-changes")
+      .find({ organization_id: "org-a" })
+      .toArray();
+    expect(docs.map((d) => d._id).sort()).toEqual(["c1", "c2"]);
+  });
+
+  test("null tenant inserts the docs unstamped", async () => {
+    await insertManyDocs({
+      mongoDb: mongo.db,
+      collection: "log-changes",
+      docs: [{ _id: "c1" }],
+      tenant: null,
+    });
+    const doc = await mongo.db.collection("log-changes").findOne({ _id: "c1" });
+    expect(doc).not.toHaveProperty("organization_id");
+  });
+});

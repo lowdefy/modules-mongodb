@@ -11,6 +11,10 @@ import GetWorkflowAction from "./GetWorkflowAction/GetWorkflowAction.js";
 
 const WorkflowAPI = {
   schema,
+  // Runtime tenant contract declaration: the engine threads the verdict from
+  // createEngineContext into every mongo/ wrapper call (reads org-scoped,
+  // writes org-stamped).
+  meta: { tenant: true },
   requests: {
     StartWorkflow,
     CancelWorkflow,

@@ -33,7 +33,7 @@ import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js
  */
 async function GetWorkflowActionGroupOverview(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
-  const { params, mongoDb, connection, workflowsConfig } = context;
+  const { params, mongoDb, connection, workflowsConfig, tenant } = context;
   const { workflow_id, group_id } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
@@ -45,6 +45,7 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
     mongoDb,
     collection: workflowsCollection,
     query: { _id: workflow_id },
+    tenant,
   });
 
   if (!wfDoc) {
@@ -61,6 +62,7 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
     mongoDb,
     collection: actionsCollection,
     query: { workflow_id, action_group: group_id },
+    tenant,
   });
 
   // ── Access filter + link collapse ──

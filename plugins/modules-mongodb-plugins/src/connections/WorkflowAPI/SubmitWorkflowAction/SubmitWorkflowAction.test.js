@@ -113,7 +113,11 @@ async function seed({
   await mongo.db.collection("workflows").insertOne({
     _id: "W1",
     workflow_type: "onboarding",
-    entity: { connection_id: "leads-collection", id: "L1", ref_key: "lead_ids" },
+    entity: {
+      connection_id: "leads-collection",
+      id: "L1",
+      ref_key: "lead_ids",
+    },
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
     summary: { done: 0, not_required: 0, total: 1 + extraActions.length },
     groups: [],
@@ -194,9 +198,11 @@ function buildContext({
   callApi,
   workflowsConfig = makeWorkflowsConfig(),
   changeLog,
+  tenant = null,
 } = {}) {
   return {
     request,
+    tenant,
     blockId: "test-block",
     connectionId: "test-conn",
     pageId: "test-page",
@@ -931,5 +937,91 @@ describe("post-commit dispatch failure", () => {
     expect(thrown.message).toMatch(/step 3/);
     expect(thrown.cause).toBeInstanceOf(Error);
     expect(thrown.cause.message).toMatch(/forced failure/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tenant threading (framework tenant-wall contract)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("tenant threading through the engine", () => {
+  const tenant = { field: "organization_id", value: "org-a" };
+
+  beforeEach(async () => {
+    await mongo.db.collection("log-changes").deleteMany({});
+  });
+
+  // Stamp the org onto the seeded workflow + action (the wall stamps future
+  // writes; pre-existing docs are seeded in-org directly).
+  async function stampSeedOrg(organization_id) {
+    await mongo.db
+      .collection("workflows")
+      .updateOne({ _id: "W1" }, { $set: { organization_id } });
+    await mongo.db
+      .collection("actions")
+      .updateOne({ _id: "A1" }, { $set: { organization_id } });
+  }
+
+  test("verdict reaches reads and writes: in-org submit lands, and fresh change-log rows are org-stamped", async () => {
+    await seed();
+    await stampSeedOrg("org-a");
+    const result = await SubmitWorkflowAction(
+      buildContext({
+        request: { action_id: "A1", signal: "submit" },
+        tenant,
+        changeLog: { collection: "log-changes", meta: { app: "test-app" } },
+      }),
+    );
+    expect(result.action_ids).toContain("A1");
+
+    // The CAS-claimed workflow and bulk-written action stayed inside the org.
+    const wfDoc = await mongo.db.collection("workflows").findOne({ _id: "W1" });
+    const actionDoc = await mongo.db
+      .collection("actions")
+      .findOne({ _id: "A1" });
+    expect(actionDoc.status[0].stage).toBe("in-review");
+    expect(wfDoc.organization_id).toBe("org-a");
+
+    // Docs WRITTEN during the flow carry the org field: change-log rows are
+    // freshly inserted by insertManyDocs, which stamps the verdict.
+    const logRows = await mongo.db.collection("log-changes").find({}).toArray();
+    expect(logRows.length).toBeGreaterThan(0);
+    for (const row of logRows) {
+      expect(row.organization_id).toBe("org-a");
+    }
+  });
+
+  test("a load with a tenant cannot see another org's action (action_not_found)", async () => {
+    await seed();
+    await stampSeedOrg("org-b");
+    await expect(
+      SubmitWorkflowAction(
+        buildContext({
+          request: { action_id: "A1", signal: "submit" },
+          tenant,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "action_not_found" });
+    // Nothing was written.
+    const actionDoc = await mongo.db
+      .collection("actions")
+      .findOne({ _id: "A1" });
+    expect(actionDoc.status[0].stage).toBe("action-required");
+  });
+
+  test("null tenant behaves exactly as before (no stamping, no scoping)", async () => {
+    await seed();
+    const result = await SubmitWorkflowAction(
+      buildContext({
+        request: { action_id: "A1", signal: "submit" },
+        changeLog: { collection: "log-changes", meta: { app: "test-app" } },
+      }),
+    );
+    expect(result.action_ids).toContain("A1");
+    const logRows = await mongo.db.collection("log-changes").find({}).toArray();
+    expect(logRows.length).toBeGreaterThan(0);
+    for (const row of logRows) {
+      expect(row).not.toHaveProperty("organization_id");
+    }
   });
 });

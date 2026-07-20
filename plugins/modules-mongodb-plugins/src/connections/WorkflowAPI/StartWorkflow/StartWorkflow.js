@@ -129,6 +129,8 @@ async function StartWorkflow(lowdefyContext) {
       mongoDb: context.mongoDb,
       collection: actionsCollection,
       query: { _id: params.parent_action_id },
+      // Tenant-wall: a cross-org parent id reads as not found.
+      tenant: context.tenant,
     });
     if (!parent) {
       throw new WorkflowEngineError("StartWorkflow: parent action not found", {
