@@ -5,12 +5,9 @@
 # aggregation, so no extra connection is needed. All writes to auth-owned data
 # go through BetterAuth client actions, never this connection.
 #
-# The invitationId from the accept link is BetterAuth's id — the hex string form
-# of the ObjectId the Mongo adapter stores as `_id` (the adapter coerces string
-# ids to ObjectId on write, unless the deployment configures a custom string
-# generateId). So the match wraps it in `{ _oid: <hex> }`, the MongoDBCollection
-# connection's ObjectId representation; a plain string match would find nothing
-# and mis-render a valid invitation as unusable.
+# Ids are always strings — the invitationId matches `_id` directly. No ObjectId
+# coercion here (it is flaky in Lowdefy): if the engine ever stores auth ids as
+# ObjectIds, that is an upstream bug to fix at the adapter, not to work around.
 id: get_invitation
 type: MongoDBAggregation
 connectionId:
@@ -22,8 +19,7 @@ properties:
   pipeline:
     - $match:
         _id:
-          _oid:
-            _payload: invitationId
+          _payload: invitationId
     - $limit: 1
     - $lookup:
         from: user-organizations
