@@ -1,11 +1,6 @@
 /**
- * Server-side verb/link/button policy (Part 46 task 2).
- *
- * Consolidates the logic that was previously split across four surfaces:
- *   - `modules/shared/workflow/visible_verbs.yaml` (MongoDB $addFields stage)
- *   - `modules/shared/workflow/resolve_action_link.yaml` (MongoDB $addFields stage)
- *   - `modules/workflows/components/action_role_check.yaml` (client _js mirror)
- *   - `modules/workflows/enums/button_signal_sources.yaml` (source-stage table)
+ * Server-side verb/link/button policy — the single source of truth for action
+ * access (verbs, links, button visibility).
  *
  * Exports:
  *   - `computeAllowed`   — four-key `{ view, edit, review, error }` access bag

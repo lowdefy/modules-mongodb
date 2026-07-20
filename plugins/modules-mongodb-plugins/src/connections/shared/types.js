@@ -27,8 +27,8 @@
  * @property {ChangeStamp} created
  * @property {ChangeStamp} updated
  *
- * Part 66: the denormalised `summary`/`groups[]` fields were removed — overview
- * progress counts derive on read from the action docs.
+ * The doc has no denormalised `summary`/`groups[]` fields — overview progress
+ * counts derive on read from the action docs.
  */
 
 /**

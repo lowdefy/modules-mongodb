@@ -82,7 +82,6 @@ vars:
         display name; all other keys are host-owned and available on the action
         response's `entity` object and via the `entity_view` slot. Omit it and
         chrome falls back to the `title` type label and no endpoint is emitted.
-        (Replaces the former `name_field` dot-path.)
       - `list_page_id` + `list_title` (optional pair) — the host-app entity-LIST
         page id and its (plural) crumb label. Set both to prepend a list crumb to
         the action-page breadcrumb so the trail mirrors the host app's own entity
@@ -174,7 +173,7 @@ exports:
         The PAGE drops the modal exactly once and owns its on_complete (the
         host's refetch action sequence run after a successful signal, default
         []) — the page is the only scope that sees every co-present surface, so
-        it composes the full refetch list. Surfaces no longer auto-bundle it; a
+        it composes the full refetch list. Surfaces do not auto-bundle it; a
         check-row click degrades to navigation when no modal is on the page.
         Opened exclusively via the documented SetState + CallMethod(setOpen,
         [{ open: true }]) contract. One instance per page; never drop it on a

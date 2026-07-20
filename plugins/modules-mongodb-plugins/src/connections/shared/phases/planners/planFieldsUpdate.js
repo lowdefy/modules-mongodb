@@ -6,9 +6,7 @@ import planChangeLog from "./planChangeLog.js";
 // The action-level metadata fields this operation owns. A key present in the
 // payload `fields` bag is written ($set semantics — `null` clears); a key
 // absent leaves the stored value unchanged. Any other key in the bag is ignored
-// — universal-field writes flow exclusively through this operation. (Part 64
-// removed the editable `description` universal field; the action body
-// `description` is now author-authored config read via GetWorkflowAction.)
+// — universal-field writes flow exclusively through this operation.
 const UNIVERSAL_FIELDS = ["assignees", "due_date"];
 
 /**

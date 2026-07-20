@@ -1,11 +1,10 @@
 import mergeDeep, { cloneContainers, isPlainObject } from "./deepMerge.js";
 
 /**
- * Plan the workflow's `form_data` for a submit. Replaces the old
- * `mergeFormOverrides.js` top-level spread + per-field `$set` sidewrite: the
- * commit phase `$set`s the whole planned workflow doc (design D9), so the
- * form_data behaviour is determined entirely by how this planner composes the
- * planned `form_data.{action}` from the loaded base (design Q6 — resolved).
+ * Plan the workflow's `form_data` for a submit. The commit phase `$set`s the
+ * whole planned workflow doc (design D9), so the form_data behaviour is
+ * determined entirely by how this planner composes the planned
+ * `form_data.{action}` from the loaded base (design Q6).
  *
  * One uniform merge rule (the shared `deepMerge` helper) for every channel
  * and for the merge onto the loaded base (no per-channel replace/merge
@@ -42,7 +41,7 @@ import mergeDeep, { cloneContainers, isPlainObject } from "./deepMerge.js";
 function planFormDataMerge({ params, preHookResult, loadedState }) {
   // Channel order: form → form_review → form_overrides; later channel wins
   // per-key under the same deep rule, so nested sibling keys survive across
-  // channels (not the old top-level spread).
+  // channels.
   const submitted_form = mergeDeep(
     mergeDeep(params.form ?? {}, params.form_review ?? {}),
     preHookResult?.form_overrides ?? {},

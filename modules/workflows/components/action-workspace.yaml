@@ -1,4 +1,4 @@
-# Three-tier action workspace shell (Part 56, revised by the Part 56 addendum).
+# Three-tier action workspace shell.
 #
 # The shared layout every action page (form templates + the per-workflow check
 # page) `_ref`s, so the column scaffold is identical across page kinds and only
@@ -6,10 +6,9 @@
 # "no-jarring-shift" constraint. The shell is LAYOUT-ONLY: it renders whatever
 # block arrays the caller passes into its slots, holds no requests, writes no
 # state, and renders no header (the header is the layout `page` component's
-# native chrome, set by the template — D8). The universal fields no longer mount
-# in the RHS (addendum DA1): the template wires their chips into the header's
-# `page_actions`, the description into a middle-top callout, and the edit modal as
-# a page block.
+# native chrome, set by the template — D8). The universal fields do not mount
+# in the RHS: the template wires their chips into the header's `page_actions`,
+# the description into a middle-top callout, and the edit modal as a page block.
 #
 #   ┌──────────────┬───────────────────────┬──────────────────────────┐
 #   │ [card]       │  middle (caller slot)  │ [card]                   │

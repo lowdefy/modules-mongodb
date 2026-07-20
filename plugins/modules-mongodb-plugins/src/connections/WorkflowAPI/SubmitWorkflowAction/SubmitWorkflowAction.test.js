@@ -325,16 +325,15 @@ describe("Part 30 worked example", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Part 48: status_map delivered via render_config, not the blob
+// status_map delivered via render_config, not the blob
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The connection blob no longer carries status_map (dropped from
-// makeWorkflowsConfig's ACTION_FIELDS, task 10). The write endpoints deliver it
-// per-request as `request.render_config` (→ context.params.render_config), which
-// loadWorkflowState splices onto the action config. These tests exercise the
-// end-to-end render with the blob slice absent.
+// The connection blob does not carry status_map — the write endpoints deliver
+// it per-request as `request.render_config` (→ context.params.render_config),
+// which loadWorkflowState splices onto the action config. These tests exercise
+// the end-to-end render with the blob slice absent.
 
-describe("Part 48: status_map from render_config (blob slice absent)", () => {
+describe("status_map from render_config (blob slice absent)", () => {
   test("blob carries no status_map but render_config delivers the cell → rendered onto the doc", async () => {
     await seed();
     await SubmitWorkflowAction(

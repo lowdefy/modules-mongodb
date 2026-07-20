@@ -35,8 +35,8 @@ Field block arrays reused for tile display and edit modals. `profile` binds cont
 |---|---|---|---|---|
 | `show_honorific` | boolean | `false` |  | Show the honorific/title selector (Mr/Ms/Dr) in the profile form. |
 | `profile` | array | `[]` |  | Profile field blocks (contact data). Block ids must be prefixed with `profile.` so they bind to `state.profile.*`. |
-| `user_attributes` | array | `[]` |  | Global (cross-app) attribute field blocks written to the `user` row via UpdateUserAttributes. Block ids must be prefixed with `user_attributes.` so they bind to `state.user_attributes.*`. (Was `global_attributes` in the pre-BetterAuth module.) |
-| `member_attributes` | array | `[]` |  | This app's attribute field blocks written to the `member` row via UpdateMemberAttributes (no longer scoped by an `apps.{app}` path — per-app scoping dies with that map, Decision 1). Block ids must be prefixed with `member_attributes.` so they bind to `state.member_attributes.*`. (Was `app_attributes`.) |
+| `user_attributes` | array | `[]` |  | Global (cross-app) attribute field blocks written to the `user` row via UpdateUserAttributes. Block ids must be prefixed with `user_attributes.` so they bind to `state.user_attributes.*`. |
+| `member_attributes` | array | `[]` |  | This app's attribute field blocks written to the `member` row via UpdateMemberAttributes. Block ids must be prefixed with `member_attributes.` so they bind to `state.member_attributes.*`. |
 
 ### `components`
 

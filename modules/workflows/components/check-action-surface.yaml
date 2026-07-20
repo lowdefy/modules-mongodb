@@ -88,10 +88,9 @@ blocks:
           gap: 8
         blocks:
           # Top row: status pill (left) · message title (18px, grows) · close (right).
-          # The chips no longer share this row (Part 66) — the assignees/due chips ran
-          # the row out of width and forced the title to wrap badly, so they drop to
-          # their own row below. The title now only shares the line with the compact
-          # pill and the close button.
+          # The assignees/due chips are not on this row — they drop to their own row
+          # below, so the title shares the line only with the compact pill and the
+          # close button.
           - id: action_header_top
             type: Box
             layout:

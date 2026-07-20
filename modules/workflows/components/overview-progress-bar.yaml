@@ -1,9 +1,9 @@
-# Overview progress bar (Part 66).
+# Overview progress bar.
 #
 # A segmented status bar shared by the two overview pages (workflow-overview,
-# workflow-group-overview). Replaces the single-colour antd `Progress` line:
-# instead of "how much is filled", it shows one coloured segment per action
-# state so the bar reads as "what state the rest is in".
+# workflow-group-overview): it shows one coloured segment per action state, so
+# the bar reads as "what state the workflow is in" rather than "how much is
+# filled".
 #
 # antd's `Progress` can only render success/primary/remainder (or single-colour
 # steps), so it can't stack an arbitrary multi-colour bar — hence Html +

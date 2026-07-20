@@ -27,10 +27,9 @@ const ACTION_FIELDS_FOR_TEMPLATE = [
   "universal_fields",
 ];
 
-// Part 24 / Part 64: the default for the UI presence list. Normalized onto the
-// emitted action_config so templates/components always see a (possibly empty)
-// array — `false` → [], omitted → both fields, array → as-is. (Part 64 dropped
-// `description` from the universal set; it is now author-authored config.)
+// The default for the UI presence list. Normalized onto the emitted
+// action_config so templates/components always see a (possibly empty) array —
+// `false` → [], omitted → both fields, array → as-is.
 const UNIVERSAL_FIELDS_DEFAULT = ["assignees", "due_date"];
 
 function normalizeUniversalFields(value) {
@@ -64,9 +63,8 @@ function resolveWorkflowTitle(workflow, titleAcronyms) {
 // workflow declares none), and the optional entity-list breadcrumb link
 // (list_page_id + list_title, both empty strings when absent so the templates'
 // `{% if list_page_id %}` gate is falsy and the breadcrumb drops the list crumb).
-// Part 26: the instance name no longer comes from a baked name_field — the
-// templates source the breadcrumb name from `entity_link.name` on the action
-// response (resolved server-side from the entity.data routine).
+// The templates source the breadcrumb instance name from `entity_link.name` on
+// the action response (resolved server-side from the entity.data routine).
 function workspaceVars(workflow, workflowTitle) {
   return {
     connection_id: workflow.entity.connection_id,

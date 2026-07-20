@@ -333,9 +333,6 @@ importers:
       '@lowdefy/community-plugin-xlsx':
         specifier: 1.1.0
         version: 1.1.0
-      '@lowdefy/connection-mongodb':
-        specifier: 0.0.0-experimental-20260717123930
-        version: 0.0.0-experimental-20260717123930(@opentelemetry/api@1.9.1)(next@15.5.20(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/errors':
         specifier: 0.0.0-experimental-20260717123930
         version: 0.0.0-experimental-20260717123930
@@ -354,24 +351,9 @@ importers:
       '@lowdefy/node-utils':
         specifier: 0.0.0-experimental-20260717123930
         version: 0.0.0-experimental-20260717123930
-      '@lowdefy/operators-dayjs':
-        specifier: 0.0.0-experimental-20260717123930
-        version: 0.0.0-experimental-20260717123930
       '@lowdefy/operators-js':
         specifier: 0.0.0-experimental-20260717123930
         version: 0.0.0-experimental-20260717123930
-      '@lowdefy/operators-mql':
-        specifier: 0.0.0-experimental-20260717123930
-        version: 0.0.0-experimental-20260717123930
-      '@lowdefy/operators-nunjucks':
-        specifier: 0.0.0-experimental-20260717123930
-        version: 0.0.0-experimental-20260717123930
-      '@lowdefy/operators-uuid':
-        specifier: 0.0.0-experimental-20260717123930
-        version: 0.0.0-experimental-20260717123930
-      '@lowdefy/plugin-aws':
-        specifier: 0.0.0-experimental-20260717123930
-        version: 0.0.0-experimental-20260717123930(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-better-auth':
         specifier: 0.0.0-experimental-20260717123930
         version: 0.0.0-experimental-20260717123930

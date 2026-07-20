@@ -18,10 +18,10 @@ import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js
  * and enriches with display config. Collapses group to null when the workflow
  * doesn't exist, has no visible actions, or the group is unknown.
  *
- * Part 66: the group's `status`/`summary` are derived on read from the group's
- * action docs (`deriveGroupStatus` / `summarizeStatuses`, over ALL of the
- * group's actions — an objective property), and the existence guard keys off
- * the declared config group instead of the dropped runtime `groups[]` cache.
+ * The group's `status`/`summary` are derived on read from the group's action
+ * docs (`deriveGroupStatus` / `summarizeStatuses`, over ALL of the group's
+ * actions — an objective property), and the existence guard keys off the
+ * declared config group.
  *
  * Params: { workflow_id, group_id }
  *
