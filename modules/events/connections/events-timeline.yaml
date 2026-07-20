@@ -1,5 +1,8 @@
 id: events-timeline
 type: EventsTimeline
+# Tenant wall: the timeline read and its actions/contacts lookups are scoped
+# to the caller's organization (defense in depth over the entity-id match).
+tenant: true
 properties:
   databaseUri:
     _secret: MONGODB_URI

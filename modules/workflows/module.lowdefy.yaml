@@ -163,7 +163,9 @@ vars:
       joins it to project profile.picture). Defaults to `user-contacts` — the
       shared collection where a user IS a contact (same _id space). Set this to
       match your contacts collection name if the host app points the contacts
-      module at a custom collection.
+      module at a custom collection. Tenant wall: the workflow-api connection
+      is tenant-scoped, so a substituted collection must itself carry the
+      `organizationId` field — without it the join fails closed.
 
 exports:
   components:

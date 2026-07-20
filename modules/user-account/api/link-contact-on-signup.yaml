@@ -33,8 +33,12 @@ routine:
       _ref:
         path: ../shared/contact/create-or-link-contact.yaml
         vars:
+          # user-contacts-system, not the walled user-contacts-collection: this
+          # endpoint runs in system context (no caller), where the tenant wall
+          # fails closed. The mint cannot know its organization at these
+          # binding points — org-aware-modules Decision 7 / upstream ask 4.
           connection_id:
-            _module.connectionId: user-contacts-collection
+            _module.connectionId: user-contacts-system
           user:
             _payload: user
           binding_point:

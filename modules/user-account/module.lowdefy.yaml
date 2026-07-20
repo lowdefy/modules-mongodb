@@ -92,6 +92,7 @@ vars:
 
 connections:
   - _ref: connections/user-contacts-collection.yaml
+  - _ref: connections/user-contacts-system.yaml
   - _ref: connections/users.yaml
   - _ref: connections/user-sessions.yaml
   - _ref: connections/user-accounts.yaml
@@ -190,7 +191,9 @@ exports:
       description: First-login profile completion.
   connections:
     - id: user-contacts-collection
-      description: Read-write MongoDB connection for the app-owned contact records.
+      description: Read-write MongoDB connection for the app-owned contact records (tenant-walled).
+    - id: user-contacts-system
+      description: Deliberately unwalled user-contacts connection for the system-context merge-on-signup mint (org-aware-modules Decision 7 / upstream ask 4).
     - id: users
       description: Read-only native read of the BetterAuth users collection.
     - id: user-sessions

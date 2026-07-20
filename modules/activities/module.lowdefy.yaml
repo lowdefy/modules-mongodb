@@ -175,7 +175,10 @@ vars:
       Real Mongo collection names used by the read-pipeline `$lookup` stages
       that enrich linked contacts, companies, and agenda tasks on activity
       detail/list pages. Override when an app points its connections at
-      differently-named collections.
+      differently-named collections. Tenant wall: the activities connection is
+      tenant-scoped and the wall filters these joins mechanically, so any
+      substituted collection must itself carry the `organizationId` field —
+      a collection without it fails closed (the join returns nothing).
     properties:
       contacts:
         type: string

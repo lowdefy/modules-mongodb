@@ -1,5 +1,8 @@
 id: companies-collection
 type: MongoDBCollection
+# Tenant wall: every read and write through this connection is scoped to the
+# caller's organization; organizationId is stamped and filtered mechanically.
+tenant: true
 properties:
   databaseUri:
     _secret: MONGODB_URI
