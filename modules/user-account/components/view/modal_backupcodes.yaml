@@ -1,6 +1,8 @@
 # Backup codes modal (design Decision 5) — shown once after TwoFactorEnable, the
-# one-time codes returned alongside the totpURI (read from _actions). Display only;
-# the codes are never fetched again. Opened from the enrol-2FA modal's confirm.
+# one-time codes returned alongside the totpURI (captured on _actions into
+# state.enroltotp.backup_codes at enable time). Display only; the codes are never
+# fetched again. Opened from the enrol-2FA modal's confirm. The "Copy" button
+# copies the codes to the clipboard as it closes.
 id: modal_backupcodes
 type: Modal
 properties:
@@ -8,6 +10,17 @@ properties:
   width: 480
   okText: I've saved them
   cancelText: Copy
+events:
+  onClose:
+    - id: copy_backup_codes
+      type: CopyToClipboard
+      params:
+        copy:
+          _nunjucks:
+            template: "{{ codes | join('\n') }}"
+            on:
+              codes:
+                _state: enroltotp.backup_codes
 blocks:
   - id: backupcodes_message
     type: Html
@@ -22,7 +35,8 @@ blocks:
     properties:
       html:
         _nunjucks:
-          # TODO(request-substitute) backupcodes_grid: "one-time backup codes from TwoFactorEnable (_actions) — shown once, never re-fetched"
+          # One-time backup codes from TwoFactorEnable, stashed in state at enable
+          # time (shown once, never re-fetched).
           template: |
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0 4px;">
             {% for code in codes %}
@@ -31,12 +45,7 @@ blocks:
             </div>
           on:
             codes:
-              - 7F3K-9QP2
-              - L2M8-XR4V
-              - B6N1-TW5H
-              - C9D4-ZK7Q
-              - R3S8-VM2P
-              - J5W6-YB1N
+              _state: enroltotp.backup_codes
   - id: backupcodes_alert
     type: Alert
     layout:

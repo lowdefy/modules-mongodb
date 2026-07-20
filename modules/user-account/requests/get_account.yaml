@@ -1,0 +1,45 @@
+# Account read (design Decision 5) — the caller's own auth user row joined to
+# their contact, the spine of the workspace. Native read over `users` filtered to
+# the caller (`_user.id`, a plain string — this deployment stores ids as strings,
+# no ObjectId coercion), joined to `user-contacts` by `profile.contactId`. Feeds:
+#   profile        — the contact profile subdoc (profile tile display + edit-modal
+#                    seed; display reads the contact directly, Decision 5)
+#   email          — the login identity, from the auth user row (display only)
+#   email_verified — Security-tile verified badge / resend gate
+#   two_factor_enabled — Security-tile 2FA on/off state
+#   contact_id     — the own-contact id (also on _user.profile.contactId)
+# Returns a single-element array; the page binds get_account.0.*.
+id: get_account
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: users
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _user: id
+    - $limit: 1
+    - $lookup:
+        from: user-contacts
+        localField: profile.contactId
+        foreignField: _id
+        as: contact
+    - $unwind:
+        path: "$contact"
+        preserveNullAndEmptyArrays: true
+    - $project:
+        _id: 0
+        email: "$email"
+        email_verified:
+          $eq:
+            - "$emailVerified"
+            - true
+        two_factor_enabled:
+          $eq:
+            - "$twoFactorEnabled"
+            - true
+        contact_id: "$profile.contactId"
+        profile:
+          $ifNull:
+            - "$contact.profile"
+            - {}

@@ -1,9 +1,20 @@
 # Account workspace (design Decision 5) — the signed-in self-service console that
 # replaces the old view + edit pages. Two-column layout: main (Profile, Security)
 # + side (Active sessions, Linked accounts), each tile editing through its own
-# modal and its own pathway. Built by the mock-to-lowdefy pipeline (task 18, UI
-# only); native reads + client-action wiring are the wire task
-# (TODO(request-substitute) markers).
+# modal and its own pathway.
+#
+# Wiring (task 18): four native reads, all filtered to the caller (`_user.id` /
+# `_user.profile.contactId`, plain-string ids), fetched onMount and re-fetched
+# after each section edit (actions/refetch_account.yaml):
+#   get_account  — users ⋈ user-contacts: profile (display + seed), email,
+#                  email_verified, two_factor_enabled
+#   get_sessions — user-sessions (token projected out)
+#   get_accounts — user-accounts: linked list + credential-presence gate (one
+#                  query, Decision 5)
+#   get_passkeys — user-passkeys: list + per-passkey delete
+# Section writes go through their own pathways: profile via the update-profile
+# API; every security/session action via a BetterAuth client action on the
+# caller's session (Decision 5).
 #
 # Open question (design.md) resolved: Security is ONE tile (sign-in rows —
 # password, 2FA, passkeys, verified badge), with Active sessions and Linked
@@ -14,6 +25,14 @@ _ref:
   component: page
   vars:
     id: view
+    requests:
+      - _ref: requests/get_account.yaml
+      - _ref: requests/get_sessions.yaml
+      - _ref: requests/get_accounts.yaml
+      - _ref: requests/get_passkeys.yaml
+    events:
+      onMount:
+        _ref: actions/refetch_account.yaml
     # Title-block: "Account" + subtitle. The mock's avatar is a proposed
     # title-block slot the shared component does not offer today — not added
     # here (a shared-component change is out of scope for this page), matching
@@ -56,9 +75,10 @@ _ref:
             blocks:
               - _ref: components/view/tile_sessions.yaml
               - _ref: components/view/tile_linked_accounts.yaml
-      # ── Interaction-state layers: 4 modals (top-level siblings of the grid,
+      # ── Interaction-state layers: 5 modals (top-level siblings of the grid,
       #    opened via CallMethod toggleOpen from their triggers) ──
       - _ref: components/view/modal_profile.yaml
       - _ref: components/view/modal_changepw.yaml
       - _ref: components/view/modal_enroltotp.yaml
       - _ref: components/view/modal_backupcodes.yaml
+      - _ref: components/view/modal_disable2fa.yaml

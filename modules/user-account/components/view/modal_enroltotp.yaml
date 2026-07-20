@@ -1,10 +1,15 @@
-# Set up 2FA modal (design Decision 5) — TwoFactorEnable returns the totpURI +
-# backup codes (read from _actions), the built-in QRCode block renders the URI
-# (with a copyable-text manual-entry fallback beside it), then a confirmation code
-# → TwoFactorVerify. "Confirm & enable" opens the backup-codes modal (mock flow).
-# Shown only when _build.authConfig.twoFactor.enabled AND the caller holds a
-# credential row — those gates, and the TwoFactorEnable/Verify calls, are the wire
-# task.
+# Set up 2FA modal (design Decision 5). Two phases, gated on whether an enrolment
+# secret has been generated yet (state.enroltotp.uri):
+#   Phase 1 (no uri) — TwoFactorEnable is PASSWORD-GATED (BetterAuth requires the
+#     account password), which the mock omits; so we collect the password and a
+#     "Generate" button calls TwoFactorEnable, reading the totpURI + backup codes
+#     off _actions into state (the codes feed the backup-codes modal).
+#   Phase 2 (uri set) — the built-in QRCode block renders the URI (with a copyable
+#     manual-entry fallback beside it) and a confirmation code. "Confirm & enable"
+#     calls TwoFactorVerify; on success it shows the backup-codes modal and
+#     re-fetches (the 2FA state flips to On).
+# The trigger is shown only when _build.authConfig.twoFactor.enabled AND the
+# caller holds a credential row (gates on the tile). onOpen resets the phase.
 id: modal_enroltotp
 type: Modal
 properties:
@@ -14,28 +19,114 @@ properties:
   cancelText: Cancel
 events:
   onOpen:
-    # TODO(request-substitute) modal_enroltotp onOpen: "TwoFactorEnable client action → totpURI (into state.enroltotp.uri) + backup codes (into state for the backup-codes modal), read from _actions — wire task"
-    - id: seed_totp
+    - id: reset_totp
       type: SetState
       params:
-        enroltotp:
-          uri: "otpauth://totp/Module%20Demo%20App:jane.mokoena@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Module%20Demo%20App"
+        enroltotp: {}
   onOk:
-    # TODO(request-substitute) modal_enroltotp onOk: "TwoFactorVerify (confirmation code) — wire task; on success the backup-codes modal below is shown"
-    - id: open_backupcodes_modal
-      type: CallMethod
-      params:
-        blockId: modal_backupcodes
-        method: toggleOpen
+    _build.array.concat:
+      - - id: validate_totp
+          type: Validate
+          params: modal_enroltotp
+        # Confirm the TOTP code — completes enrolment. A wrong code throws,
+        # keeping the modal open and toasting the friendly error.
+        - id: verify_totp
+          type: TwoFactorVerify
+          messages:
+            loading: Confirming…
+            success: Two-factor authentication is on.
+            error: That code is incorrect or has expired. Try again.
+          params:
+            code:
+              _state: enroltotp.confirmation_code
+        # Show the one-time backup codes captured at enable time (mock flow).
+        - id: open_backupcodes_modal
+          type: CallMethod
+          params:
+            blockId: modal_backupcodes
+            method: toggleOpen
+      - _ref: actions/refetch_account.yaml
 blocks:
-  - id: enroltotp_intro
+  # ── Phase 1: password → generate ──
+  - id: enroltotp_intro_setup
     type: Html
+    visible:
+      _eq:
+        - _state: enroltotp.uri
+        - null
+    layout:
+      span: 24
+    properties:
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Enter your account password to generate a new authenticator secret.</div>'
+  - id: enroltotp.password
+    type: PasswordInput
+    visible:
+      _eq:
+        - _state: enroltotp.uri
+        - null
+    required: true
+    layout:
+      span: 24
+    properties:
+      label:
+        title: Account password
+        span: 24
+        colon: false
+  - id: enroltotp_generate
+    type: Button
+    visible:
+      _eq:
+        - _state: enroltotp.uri
+        - null
+    layout:
+      span: 24
+    properties:
+      title: Generate QR code
+      block: true
+      color: primary
+      variant: solid
+    events:
+      onClick:
+        try:
+          # Password-gated enable — returns the totpURI + backup codes on
+          # _actions, which we stash in state for the QR and the codes modal.
+          - id: enroltotp_enable
+            type: TwoFactorEnable
+            messages:
+              error: false
+            params:
+              password:
+                _state: enroltotp.password
+          - id: stash_totp
+            type: SetState
+            params:
+              enroltotp.uri:
+                _actions: enroltotp_enable.response.totpURI
+              enroltotp.backup_codes:
+                _actions: enroltotp_enable.response.backupCodes
+        catch:
+          - id: enroltotp_enable_error
+            type: DisplayMessage
+            params:
+              status: error
+              content: Couldn't start two-factor setup. Check your password and try again.
+  # ── Phase 2: QR + confirm ──
+  - id: enroltotp_intro_scan
+    type: Html
+    visible:
+      _ne:
+        - _state: enroltotp.uri
+        - null
     layout:
       span: 24
     properties:
       html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Scan this with your authenticator app, then enter the 6-digit code to confirm.</div>'
   - id: enroltotp_row
     type: Box
+    visible:
+      _ne:
+        - _state: enroltotp.uri
+        - null
     layout:
       direction: row
       gap: 16
@@ -49,7 +140,6 @@ blocks:
           sm:
             span: 24
         properties:
-          # TODO(request-substitute) enroltotp_qr: "totpURI from TwoFactorEnable (_state.enroltotp.uri)"
           value:
             _state: enroltotp.uri
           size: 132
@@ -66,8 +156,9 @@ blocks:
             type: TextInput
             layout:
               span: 24
+            value:
+              _state: enroltotp.uri
             properties:
-              # TODO(request-substitute) enroltotp_uri: "totpURI from TwoFactorEnable (_state.enroltotp.uri) — copyable manual-entry fallback"
               disabled: true
               label:
                 title: Can't scan? Enter this key
@@ -75,6 +166,7 @@ blocks:
                 colon: false
           - id: enroltotp.confirmation_code
             type: TextInput
+            required: true
             layout:
               span: 24
             properties:

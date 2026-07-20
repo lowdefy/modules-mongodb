@@ -1,8 +1,10 @@
 # Change password modal (design Decision 5) — ChangePassword client action on the
-# caller's session (current + new + revoke-other-sessions option). Shown only when
-# _build.authConfig.emailAndPassword.enabled AND the caller holds a credential row
-# (native user-accounts read) — those visibility gates are the wire task. onOk
-# wiring (ChangePassword) is the wire task.
+# caller's session (current + new + revoke-other-sessions option). The trigger is
+# shown only when _build.authConfig.emailAndPassword.enabled AND the caller holds
+# a credential row (gates on the tile). A failed change (wrong current password)
+# throws, keeping the modal open and toasting the friendly error; a validation
+# failure does the same. On success we re-fetch (the session list may have
+# changed if revoke-other-sessions was set).
 id: modal_changepw
 type: Modal
 properties:
@@ -12,15 +14,28 @@ properties:
   cancelText: Cancel
 events:
   onOk:
-    # TODO(request-substitute) modal_changepw onOk: "Validate + ChangePassword client action (currentPassword, newPassword, revokeOtherSessions) — wire task"
-    - id: change_password_todo
-      type: DisplayMessage
-      params:
-        status: info
-        content: Update password — wired in the wire task.
+    _build.array.concat:
+      - - id: validate_changepw
+          type: Validate
+          params: modal_changepw
+        - id: change_password
+          type: ChangePassword
+          messages:
+            loading: Updating password…
+            success: Password updated.
+            error: Couldn't update your password. Check your current password and try again.
+          params:
+            currentPassword:
+              _state: changepw.current_password
+            newPassword:
+              _state: changepw.new_password
+            revokeOtherSessions:
+              _state: changepw.revoke_other_sessions
+      - _ref: actions/refetch_account.yaml
 blocks:
   - id: changepw.current_password
     type: PasswordInput
+    required: true
     layout:
       span: 24
     properties:
@@ -29,6 +44,7 @@ blocks:
         span: 24
   - id: changepw.new_password
     type: PasswordInput
+    required: true
     layout:
       span: 24
     properties:

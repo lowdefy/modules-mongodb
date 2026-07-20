@@ -31,15 +31,11 @@ _ref:
         properties:
           column: 1
           size: small
-          # TODO(request-substitute) profile_view: "caller's own contact — profile subdoc + email (native read over user-contacts by _user.profile.contactId)"
+          # The caller's own contact profile subdoc + auth email, from get_account
+          # (users ⋈ user-contacts by profile.contactId). Display reads the contact
+          # directly (Decision 5).
           data:
-            profile:
-              given_name: Jane
-              family_name: Mokoena
-              phone_number: "+27 82 555 0142"
-              job_title: Operations Lead
-              department: null
-            email: jane.mokoena@example.com
+            _request: get_account.0
           fields:
             _build.array.concat:
               - _ref:
