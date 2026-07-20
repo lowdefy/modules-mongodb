@@ -1,0 +1,37 @@
+# Native, read-only lookup of a single invitation for the accept page — display
+# only (org name, inviter, invited email, status, expiry). Keyed on the
+# invitationId query parameter (the auth-emails accept-link contract). $lookup
+# joins user-organizations (org name) and users (inviter name) within the one
+# aggregation, so no extra connection is needed. All writes to auth-owned data
+# go through BetterAuth client actions, never this connection.
+id: get_invitation
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-invitations
+payload:
+  invitationId:
+    _url_query: invitationId
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: invitationId
+    - $limit: 1
+    - $lookup:
+        from: user-organizations
+        localField: organizationId
+        foreignField: _id
+        as: org
+    - $lookup:
+        from: users
+        localField: inviterId
+        foreignField: _id
+        as: inviter
+    - $project:
+        email: 1
+        status: 1
+        expiresAt: 1
+        org_name:
+          $first: "$org.name"
+        inviter_name:
+          $first: "$inviter.name"
