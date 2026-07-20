@@ -9,8 +9,15 @@ _ref:
     title: ""
     events:
       onInit:
-        # TODO(request-substitute) logout: fire the Logout action on load, then
-        # render this confirmation.
+        # Sign out on load, then render the confirmation. Skip when there is no
+        # session so the session provider's post-sign-out reload doesn't loop
+        # (on the reload `_user` is already null).
+        - id: do_logout
+          type: Logout
+          skip:
+            _eq:
+              - _user: id
+              - null
         - id: seed_logout
           type: SetState
           params:
