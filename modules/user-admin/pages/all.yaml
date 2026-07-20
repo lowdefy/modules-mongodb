@@ -21,23 +21,56 @@ _ref:
             _build.string.concat:
               - _module.var: app_title
               - " Users"
-    # Stub reads (real pipelines authored in the wire task, task 9). Declared so
-    # the shared pagination binds and the page builds.
+    # Native reads (design Decision 1/2). The Excel export pipeline is included
+    # only when the `download` var is on (Decision 2) — button + pipeline both
+    # excluded otherwise.
     requests:
-      - _ref: requests/get_all_members.yaml
-      - _ref: requests/get_all_invitations.yaml
+      _build.array.concat:
+        - - _ref: requests/get_all_members.yaml
+          - _ref: requests/get_all_invitations.yaml
+        - _build.if:
+            test:
+              _module.var: download
+            then:
+              - _ref: requests/get_users_excel_data.yaml
+            else: []
     events:
       onInit:
-        # Seed defaults: sort updated-descending (Decision 2), status filters "all".
+        # Seed independent per-tab defaults (Decision 2): Members sort
+        # updated-descending, Invitations sort expiring-soonest, status "all".
         - id: init_all_filters
           type: SetState
           params:
             sort:
-              by: updated.timestamp
+              by: updated
               order: -1
             filter:
               status: all
-              invitation_status: all
+            inv_sort:
+              by: expires_at
+              order: 1
+            inv_filter:
+              status: all
+      onMountAsync:
+        # Seed each tab's pagination (the Pagination block's initValue has no
+        # skip/pageSize) then load both tabs so the pending-count badge is live.
+        - id: seed_pagination
+          type: SetState
+          params:
+            pagination:
+              current: 1
+              skip: 0
+              pageSize: 100
+            inv_pagination:
+              current: 1
+              skip: 0
+              pageSize: 100
+        - id: fetch_members
+          type: Request
+          params: get_all_members
+        - id: fetch_invitations
+          type: Request
+          params: get_all_invitations
     page_actions:
       # Download Excel — present only when the `download` var is true (Decision 2).
       # The merged members+invitations export pipeline is wired in task 9.
@@ -51,8 +84,62 @@ _ref:
           title: Download Excel
           icon: AiOutlineDownload
         events:
-          # TODO(request-substitute) download_excel_btn: "run the merged members+invitations Excel export (get_*_excel_data) and download"
-          onClick: []
+          # Fetch the full merged members+invitations snapshot (get_users_excel_data)
+          # then hand it to the xlsx plugin. One sheet, one status column
+          # (Active/Suspended/Invited/Expired) — the union lives only here.
+          onClick:
+            - id: fetch_excel_data
+              type: FetchRequest
+              messages:
+                loading: Preparing export…
+              params:
+                requestName: get_users_excel_data
+            - id: xlsx_download
+              type: DownloadXlsx
+              params:
+                fileName:
+                  _build.string.trim:
+                    _build.string.concat:
+                      - _module.var: app_title
+                      - " Users Export"
+                dateFormat: "YYYY-MM-DD"
+                data:
+                  _actions: fetch_excel_data.response
+                schema:
+                  _build.array.concat:
+                    - - column: name
+                        value: name
+                        type: String
+                        width: 25
+                      - column: email
+                        value: email
+                        type: String
+                        width: 28
+                      - column: roles
+                        value: roles
+                        type: String
+                        width: 22
+                      - column: status
+                        value: status
+                        type: String
+                        width: 14
+                    - _module.var: components.download_columns
+                    - - column: created
+                        value: created
+                        type: Date
+                        width: 14
+                      - column: updated
+                        value: updated
+                        type: Date
+                        width: 14
+                      - column: signed_up
+                        value: signed_up
+                        type: Date
+                        width: 14
+                      - column: expires
+                        value: expires
+                        type: Date
+                        width: 14
       - id: invite_user_btn
         type: Button
         layout:
@@ -80,25 +167,39 @@ _ref:
               title: Members
               icon: AiOutlineTeam
             - key: invitations_panel
-              title: Invitations
+              # Pending-count badge (Decision 2) — the total from the invitations
+              # $facet (not rows.length); hidden when zero.
+              title:
+                _nunjucks:
+                  template: >-
+                    Invitations{% if count and count > 0 %} <span style="display:inline-flex; align-items:center; min-width:18px; height:18px; padding:0 6px; border-radius:9px; font-size:11px; line-height:18px; background:var(--ant-color-fill-secondary); color:var(--ant-color-text-secondary)">{{ count }}</span>{% endif %}
+                  on:
+                    count:
+                      _get:
+                        from:
+                          _request: get_all_invitations
+                        key: 0.total_results
               icon: AiOutlineMail
         slots:
           members_panel:
             blocks:
               - _ref: components/all_members_filters.yaml
+              # Members sort (shared sort-filters) — owns the default sort/search
+              # state keys; refetches get_all_members on change (Decision 2).
               - _ref:
                   path: ../shared/layout/sort-filters.yaml
                   vars:
-                    search_action: []
+                    search_action:
+                      _ref: actions/members_refetch.yaml
                     sort_options:
                       - label: Name
                         value: name
                       - label: Email
                         value: email
                       - label: Date Created
-                        value: created.timestamp
+                        value: created
                       - label: Date Updated
-                        value: updated.timestamp
+                        value: updated
                       - label: Signed up
                         value: signed_up
               - _ref: components/all_members_table.yaml
@@ -106,22 +207,99 @@ _ref:
                   path: ../shared/layout/pagination.yaml
                   vars:
                     request_id: get_all_members
+          # Invitations tab — fully independent state (Decision 2): its sort and
+          # pagination bind under `inv_sort` / `inv_pagination` (inline here,
+          # rather than the shared fragments which own the Members keys), so
+          # neither tab disturbs the other.
           invitations_panel:
             blocks:
               - _ref: components/all_invitations_filters.yaml
-              - _ref:
-                  path: ../shared/layout/sort-filters.yaml
-                  vars:
-                    search_action: []
-                    sort_options:
-                      - label: Email
-                        value: email
-                      - label: Invited by
-                        value: inviter_name
-                      - label: Expiry
-                        value: expires_at
+              - id: inv_sort_container
+                type: Box
+                layout:
+                  gap: 8
+                  justify: end
+                style:
+                  padding: 12px 16px 0px 16px
+                  margin: auto
+                blocks:
+                  - id: inv_sort.by
+                    type: Selector
+                    layout:
+                      flex: 1 0 auto
+                    style:
+                      maxWidth: 160px
+                    properties:
+                      placeholder: Sort By
+                      label:
+                        disabled: true
+                      options:
+                        - label: Email
+                          value: email
+                        - label: Invited by
+                          value: inviter_name
+                        - label: Expiry
+                          value: expires_at
+                    events:
+                      onChange:
+                        try:
+                          _ref: actions/invitations_refetch.yaml
+                        debounce:
+                          ms: 300
+                  - id: inv_sort_order
+                    type: Button
+                    properties:
+                      icon:
+                        _if:
+                          test:
+                            _eq:
+                              - _state: inv_sort.order
+                              - -1
+                          then: AiOutlineSortDescending
+                          else: AiOutlineSortAscending
+                      hideTitle: true
+                    events:
+                      onClick:
+                        _build.array.concat:
+                          - - id: set_inv_sort_order
+                              type: SetState
+                              params:
+                                inv_sort.order:
+                                  _if:
+                                    test:
+                                      _eq:
+                                        - _state: inv_sort.order
+                                        - -1
+                                    then: 1
+                                    else: -1
+                          - _ref: actions/invitations_refetch.yaml
               - _ref: components/all_invitations_table.yaml
-              - _ref:
-                  path: ../shared/layout/pagination.yaml
-                  vars:
-                    request_id: get_all_invitations
+              - id: inv_pagination
+                type: Pagination
+                style:
+                  textAlign: right
+                properties:
+                  size: small
+                  showTotal: true
+                  showSizeChanger: true
+                  total:
+                    _if_none:
+                      - _get:
+                          from:
+                            _request: get_all_invitations
+                          key: 0.total_results
+                      - 0
+                  disabled:
+                    _not:
+                      _request: get_all_invitations
+                  pageSizeOptions:
+                    - 100
+                    - 500
+                    - 1000
+                events:
+                  onChange:
+                    - id: fetch_inv_page
+                      type: Request
+                      messages:
+                        loading: true
+                      params: get_all_invitations

@@ -1,0 +1,56 @@
+# Members base stages (design Decision 1/2) — shared by the list read and the
+# Excel export. Root is `user-members` for the pinned org (org-scoped with the
+# server-side `_organization` operator). Joins the auth `user` and the app
+# `user-contacts` record, then flattens the display shape:
+#   name / picture — from the contact profile (fallback to the user display name)
+#   email          — from the auth user row
+#   roles_arr      — member.role is a CSV string (user-model Decision 5); $split
+#                    it here (nothing reads a role array from the DB)
+#   status         — Active unless user.banned === true → Suspended (Decision 2;
+#                    permanent bans only, so banExpires is never consulted)
+#   created/updated— the contact change-stamp timestamps
+#   signed_up      — member.createdAt (when the person accepted into this app)
+#
+# Co-location precondition (Decision 1): the user-contacts $lookup returns empty
+# if the read connection and the auth adapter resolve to different databases —
+# blank contact data is a co-location violation, not a wiring bug.
+- $match:
+    organizationId:
+      _organization: id
+- $lookup:
+    from: users
+    localField: userId
+    foreignField: _id
+    as: user
+- $unwind: "$user"
+- $lookup:
+    from: user-contacts
+    localField: user.profile.contactId
+    foreignField: _id
+    as: contact
+- $unwind:
+    path: "$contact"
+    preserveNullAndEmptyArrays: true
+- $addFields:
+    name:
+      $ifNull:
+        - "$contact.profile.name"
+        - "$user.name"
+    picture: "$contact.profile.picture"
+    email: "$user.email"
+    roles_arr:
+      $split:
+        - $ifNull:
+            - "$role"
+            - ""
+        - ","
+    status:
+      $cond:
+        - $eq:
+            - "$user.banned"
+            - true
+        - Suspended
+        - Active
+    created: "$contact.created.timestamp"
+    updated: "$contact.updated.timestamp"
+    signed_up: "$createdAt"

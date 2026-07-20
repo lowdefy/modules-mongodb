@@ -1,9 +1,10 @@
-# Members filter row (content phase).
+# Members filter row (design Decision 2/8).
 # search (name/email) · Role multi-select (options from the auth.roles catalog,
 # design Decision 8) · Status segmented (All/Active/Suspended) · Clear.
 # Consumer `components.filters` blocks append after the built-ins.
-# Filtering itself (the $match/refetch) is wired in task 9 — search_action is a
-# no-op here and every filter-change site carries a TODO(request-substitute).
+# Every filter change refetches get_all_members via actions/members_refetch.yaml
+# (resets to page 1). The role filter matches EXACT split-array elements — see
+# requests/stages/members_filter.yaml.
 id: members_filters
 type: Box
 layout:
@@ -22,10 +23,11 @@ blocks:
       label:
         disabled: true
     events:
-      # TODO(request-substitute) members_search: "name/email regex $match — refetch get_all_members"
-      onPressEnter: []
+      onPressEnter:
+        _ref: actions/members_refetch.yaml
       onChange:
-        try: []
+        try:
+          _ref: actions/members_refetch.yaml
         debounce:
           ms: 500
   - id: filter.roles
@@ -41,27 +43,30 @@ blocks:
       label:
         disabled: true
       # Options + labels come from the app's authored auth.roles catalog
-      # (design Decision 8), NOT a module var. The intended source is the
-      # `_build.authConfig: roles` projection mapped to { value: id, label }:
-      #     _build.array.map:
-      #       on: { _build.authConfig: roles }
-      #       callback: { _build.function: { value: {__build.args: 0.id}, label: {__build.args: 0.label} } }
-      # That projection is not resolvable in this page-build context yet (it
-      # throws "cannot be used inside the auth block"), so options are hardcoded
-      # to the demo catalog here.
-      # TODO(request-substitute) members_role_filter: "options from the auth.roles catalog via `_build.authConfig: roles` (mapped to {value:id,label}) once the projection resolves for module pages — Decision 8"
+      # (design Decision 8), NOT a module var — the single source of truth for
+      # the assignable role set. Mapped from the `_build.authConfig: roles`
+      # projection to { value: id, label }. The role filter matches EXACT
+      # split-array elements ($in on roles_arr, Decision 1) — see
+      # stages/members_filter.yaml.
+      #
+      # NOTE (running-engine gap): `_build.authConfig` is not yet available to
+      # module config in the experimental @lowdefy/server build (throws "cannot
+      # be used inside the auth block"). Written design-faithful per Decision 8
+      # and the build-red directive; resolves once the engine ships the catalog
+      # projection to modules (upstream ask 7).
       options:
-        - label: User Admin
-          value: user-admin
-        - label: Admin
-          value: admin
-        - label: Manager
-          value: manager
-        - label: User
-          value: user
+        _build.array.map:
+          on:
+            _build.authConfig: roles
+          callback:
+            _build.function:
+              value:
+                __build.args: 0.id
+              label:
+                __build.args: 0.label
     events:
-      # TODO(request-substitute) members_role_filter: "match exact split-role elements ($in on the post-$split array, Decision 1) — refetch get_all_members"
-      onChange: []
+      onChange:
+        _ref: actions/members_refetch.yaml
   - id: filter.status
     type: SegmentedSelector
     layout:
@@ -79,8 +84,8 @@ blocks:
         - label: Suspended
           value: suspended
     events:
-      # TODO(request-substitute) members_status_seg: "status $match — banned!==true (Active) / banned===true (Suspended), Decision 2 — refetch get_all_members"
-      onChange: []
+      onChange:
+        _ref: actions/members_refetch.yaml
   - id: members_clear
     type: Button
     layout:
@@ -91,6 +96,13 @@ blocks:
       variant: borderless
     events:
       onClick:
-        # TODO(request-substitute) members_clear: "after Reset, refetch get_all_members"
-        - id: reset_members_filters
-          type: Reset
+        _build.array.concat:
+          # Clear only the Members filter keys (leave the Invitations tab and
+          # the sort untouched — independent per-tab state, Decision 2).
+          - - id: clear_members_filters
+              type: SetState
+              params:
+                filter.search: null
+                filter.roles: null
+                filter.status: all
+          - _ref: actions/members_refetch.yaml

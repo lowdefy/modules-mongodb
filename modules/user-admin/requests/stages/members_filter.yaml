@@ -1,0 +1,60 @@
+# Members filter $match (design Decision 2) — a post-$lookup regex/text filter
+# (Atlas $search is gone from this module; the searchable fields — contact name,
+# user email — only coexist after the joins, so search must run here). Applied
+# by both the list read and the Excel export.
+#   search — case-insensitive regex over the flattened name / email
+#   roles  — EXACT split-array element match: $in on the post-$split roles_arr,
+#            never a substring/regex over the raw CSV (so "admin" does not match
+#            "super-admin", Decision 1)
+#   status — the derived Active / Suspended value
+# Each clause is omitted when its filter is unset, so an empty filter matches all.
+$match:
+  $and:
+    _array.concat:
+      - _if:
+          test:
+            _ne:
+              - _if_none:
+                  - _payload: filter.search
+                  - null
+              - null
+          then:
+            - $or:
+                - name:
+                    $regex:
+                      _payload: filter.search
+                    $options: i
+                - email:
+                    $regex:
+                      _payload: filter.search
+                    $options: i
+          else: []
+      - _if:
+          test:
+            _gt:
+              - _array.length:
+                  _if_none:
+                    - _payload: filter.roles
+                    - []
+              - 0
+          then:
+            - roles_arr:
+                $in:
+                  _payload: filter.roles
+          else: []
+      - _if:
+          test:
+            _eq:
+              - _payload: filter.status
+              - active
+          then:
+            - status: Active
+          else: []
+      - _if:
+          test:
+            _eq:
+              - _payload: filter.status
+              - suspended
+          then:
+            - status: Suspended
+          else: []

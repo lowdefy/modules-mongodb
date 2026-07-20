@@ -1,12 +1,55 @@
-# STUB — declared so the shared pagination + list bind and the page builds.
-# TODO(request-substitute) get_all_members: "this pinned org's members —
-#   user-members $lookup users + user-contacts, filtered/sorted/paginated,
-#   split roles, derive Active/Suspended status, with total_results facet
-#   (design Decision 1/2). Real pipeline authored in the wire task (task 9)."
+# Members list read (design Decision 1/2). Native aggregation rooted on the
+# pinned org's `user-members`, joined to `users` + `user-contacts`, filtered by
+# the members filter, sorted server-side AFTER the joins (so the order spans the
+# whole result set, not just the visible page), then paginated with a $facet that
+# returns the post-filter total alongside the page. Each returned row carries
+# `total_results` (denormalised from the $count facet) so the shared Pagination
+# block and the result count read the true total, never rows.length.
 id: get_all_members
 type: MongoDBAggregation
 connectionId:
   _module.connectionId: user-members
+payload:
+  pagination:
+    _state: pagination
+  filter:
+    _state: filter
+  sort:
+    _state: sort
 properties:
   pipeline:
-    - $limit: 0
+    _build.array.concat:
+      # Join + flatten the display shape.
+      - _ref: requests/stages/members_base.yaml
+      # Post-$lookup filter, then the consumer's plain-$match filter_match slot.
+      - - _ref: requests/stages/members_filter.yaml
+      - _module.var: request_stages.filter_match
+      # Split total + page in one round-trip.
+      - - $facet:
+            count:
+              - $count: total
+            results:
+              _build.array.concat:
+                - - $sort:
+                      _object.assign:
+                        - _object.defineProperty:
+                            on: {}
+                            key:
+                              _payload: sort.by
+                            descriptor:
+                              value:
+                                _payload: sort.order
+                        - _id: 1
+                  - $skip:
+                      _payload: pagination.skip
+                  - $limit:
+                      _payload: pagination.pageSize
+                  # Resolve role ids → { label, orphan } against the catalog.
+                  - _ref: requests/stages/roles_from_catalog.yaml
+                - _module.var: request_stages.get_all_users
+        - $unwind: "$count"
+        - $unwind: "$results"
+        - $addFields:
+            results.total_results: "$count.total"
+        - $replaceRoot:
+            newRoot: "$results"
