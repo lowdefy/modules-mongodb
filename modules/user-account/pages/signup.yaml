@@ -10,9 +10,7 @@
 # Method enablement is read from the app auth config via `_build.authConfig`
 # (Decision 2): the email/password form renders only when emailAndPassword is
 # enabled, an OAuth button per configured provider (label/icon from the
-# `providers` var). KNOWN: `_build.authConfig` throws in authPages-referenced
-# pages until the upstream fix lands, so the demo build is RED — implemented as
-# specified per that fix (see login.yaml).
+# `providers` var).
 _ref:
   module: layout
   component: auth-page

@@ -5,15 +5,9 @@
 #   - noaccess : the authPages.error render (hard-wall "no access" etc.).
 #
 # Method enablement is read from the app auth config via `_build.authConfig`
-# (Decision 2 — NOT module vars): the password form renders only when
-# emailAndPassword is enabled, an OAuth button per configured provider, the
-# passkey button only when passkey is enabled. OAuth display metadata
-# (label/icon/order) comes from the `providers` module var.
-#
-# KNOWN: `_build.authConfig` currently throws "cannot be used inside the auth
-# block" in authPages-referenced pages (this one), so the demo build is RED
-# until the upstream fix lands — implemented as specified per that fix (do not
-# work around it with mirror vars).
+# (Decision 2): the password form renders only when emailAndPassword is enabled,
+# an OAuth button per configured provider, the passkey button only when passkey
+# is enabled. OAuth display metadata (label/icon) comes from the `providers` var.
 #
 # Errors map through ONE code -> message table (the `_switch` blocks below),
 # used by both paths: password errors return inline on the `Login` call (mapped
@@ -271,11 +265,8 @@ _ref:
                               default: Something went wrong while signing you in. Please try again.
             else: []
 
-        # --- OAuth (signin state) — one button per configured provider -------
-        # The button SET is the auth config's call (_build.authConfig: providers);
-        # label/icon come from the `providers` var. A provider configured without
-        # a matching var entry is not rendered (the design's id-fallback edge is
-        # not covered — see notes).
+        # --- OAuth (signin state) — one button per configured provider that
+        # also has display metadata in the `providers` var (label/icon). --------
         - _build.if:
             test:
               _build.gt:
@@ -347,7 +338,7 @@ _ref:
 
         # --- Passkey (signin state) — rendered only when passkey is enabled ---
         # PasskeySignIn runs the WebAuthn assertion ceremony in the browser and
-        # navigates to the callbackUrl on success (upstream ask 6, delivered).
+        # navigates to the callbackUrl on success.
         - _build.if:
             test:
               _build.authConfig: passkey.enabled

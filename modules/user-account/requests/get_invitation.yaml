@@ -1,13 +1,6 @@
-# Native, read-only lookup of a single invitation for the accept page — display
-# only (org name, inviter, invited email, status, expiry). Keyed on the
-# invitationId query parameter (the auth-emails accept-link contract). $lookup
-# joins user-organizations (org name) and users (inviter name) within the one
-# aggregation, so no extra connection is needed. All writes to auth-owned data
-# go through BetterAuth client actions, never this connection.
-#
-# Ids are always strings — the invitationId matches `_id` directly. No ObjectId
-# coercion here (it is flaky in Lowdefy): if the engine ever stores auth ids as
-# ObjectIds, that is an upstream bug to fix at the adapter, not to work around.
+# Read-only lookup of a single invitation for the accept page — display only
+# (org name, inviter, invited email, status, expiry), keyed on the invitationId
+# query parameter. $lookup joins user-organizations and users for their names.
 id: get_invitation
 type: MongoDBAggregation
 connectionId:

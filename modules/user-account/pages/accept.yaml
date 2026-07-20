@@ -17,11 +17,9 @@ _ref:
     requests:
       - _ref: requests/get_invitation.yaml
     events:
-      # A missing invitationId is a required-parameter error, not an expired
-      # invitation — surface it plainly rather than mis-rendering "can't be
-      # used". A read failure (bad id, connection) is left UNcaught so Lowdefy's
-      # error screen shows it; only a well-formed id that matches nothing falls
-      # to the genuine bad/consumed-link render.
+      # A missing invitationId gets its own render; a read failure is left
+      # uncaught (Lowdefy's error screen); a found-but-empty result is a genuine
+      # bad/consumed link.
       onInit:
         - :if:
             _eq:
