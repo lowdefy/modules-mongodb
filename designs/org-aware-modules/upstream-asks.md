@@ -36,6 +36,8 @@ _(`$searchMeta` has the same first-stage constraint and should get the same trea
 
 ## 3. `_organization` → `_user: organizationId` in the sibling module designs
 
+> **Resolved (2026-07-20).** All four `_organization: id` sites (user-admin's `check-invite-email`, `invite`, `delete-user`) swapped to `_user: organizationId` — value-identical for a caller-ful endpoint under `pinned`, and resolving under both policies. user-account had no operator usage. The modules' cross-org features remain `pinned`-shape per Decision 6; only the scoping value changed.
+
 **To**: [user-admin-better-auth](../user-admin-better-auth/design.md), [user-account-better-auth](../user-account-better-auth/design.md).
 
 Both designs scope native reads with the server-side `_organization: id` operator, which **throws under the `tenant` policy** by design (there is no pinned org to resolve). `_user: organizationId` — the caller's active org — resolves under both policies and, under `pinned`, always equals the pinned org (`set-active-organization` is disabled there, [role-catalog](../../../lowdefy-design/designs/auth-upgrade/features/role-catalog/design.md) Decision 4), so the substitution is behavior-preserving for the designs' current scope.
@@ -43,6 +45,8 @@ Both designs scope native reads with the server-side `_organization: id` operato
 **Ask**: switch the native-read `$match` scoping to `_user: organizationId`, so the reads survive a future `tenant`-policy deployment without rework. This does **not** extend those modules' scope: their deliberately cross-org features (suite-wide ban enumeration, cross-app badges) remain `pinned`-shape features per this design's Decision 6, and their multi-tenant successor is a separate design. The ask is only that the _scoping value_ be the policy-portable one.
 
 ## 4. Merge-on-signup's contact mint needs an org-knowing binding point
+
+> **Resolved (2026-07-20).** Both halves landed: the platform ships `session.create.after` with `session.activeOrganizationId` stamped pre-write under both policies (verified in the pinned experimental release), and the mint is rebound there — org read from the hook payload, stamped explicitly through the unwalled connection per Decision 7. The invariant relaxed to "contact by first *verified* session with an active org". See [implementation-notes](implementation-notes.md).
 
 **To**: [user-account-better-auth](../user-account-better-auth/design.md), touching [hooks](../../../lowdefy-design/designs/auth-upgrade/concepts/hooks/design.md) / [user-model](../../../lowdefy-design/designs/auth-upgrade/concepts/user-model/design.md) as needed.
 

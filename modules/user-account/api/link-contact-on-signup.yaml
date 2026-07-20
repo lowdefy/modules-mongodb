@@ -1,45 +1,63 @@
 id: link-contact-on-signup
-# Merge-on-signup hook endpoint (Decision 7, upstream ask 4). InternalApi so it
-# is never HTTP-callable; the engine invokes it in system context, bound at BOTH
-# `user.create.before` (verified-provider OAuth) and `email.verified`
-# (email/password signups) — see the module manifest's `auth.hooks`.
+# Merge-on-signup hook endpoint (Decision 7; upstream ask 4 — RESOLVED by
+# relocating here). InternalApi so it is never HTTP-callable; the engine invokes
+# it in system context, bound at `session.create.after` — the one
+# provider-agnostic choke point (email/password, magic link, and OAuth alike)
+# where the caller's organization is resolved: the engine's active-org policy
+# hook stamps `session.activeOrganizationId` before the session row is written,
+# under both the pinned and tenant policies. See the module manifest's
+# `auth.hooks`.
 #
-# The mechanism injects the firing point as a reserved envelope field on every
-# hook payload (`_payload.point`), so this one endpoint — bound to both points —
-# reads the fact directly and hands it to the shared fragment, which branches on
-# it to pick the write-back mechanic (a synthetic post-write point can't mutate
-# inline, so it must UpdateUserProfile; a database before point sets contactId
-# via an inline `:return`). NB: `_payload.point` injection lands in the next
-# experimental release; until then it resolves null and the write-back no-ops
-# (the upsert still runs) — accepted deliberately.
+# The hook fires on EVERY session create (every login), and hook dispatch is
+# blocking — so the routine is guarded to a silent skip unless ALL hold:
+#   - the email is VERIFIED (user-model: an unverified match is an
+#     account-takeover vector). A deployment that allows sessions before
+#     verification therefore mints on the first VERIFIED session, not the
+#     first session — the invariant is "contact by first verified session";
+#   - no contact is linked yet (`profile.contactId` unset) — the mint runs once
+#     per user; for a multi-org user the first org to link wins (upstream
+#     ask 2's documented v1 fallback), later orgs' contacts come from invites;
+#   - the session carries an active organization. The pending-invitation
+#     carve-out creates a session with NO active org — there the invite flow
+#     already minted the org-stamped contact, and accept links it.
 #
-# Match only on a VERIFIED email (user-model: an unverified match is an
-# account-takeover vector). So:
-#   - user.create.before + unverified (email/password pre-verification) → skip;
-#     the email.verified firing links it once the address is verified.
-#   - user.create.before + verified (verified-provider OAuth) → link inline.
-#   - email.verified → link via UpdateUserProfile.
+# The write goes through the deliberately-unwalled `user-contacts-system`
+# connection (the wall fails closed for caller-less context, and the per-step
+# `tenant: none` sentinel cannot vary per `_ref` caller), but is explicitly
+# org-stamped: `organization_id` joins the upsert key, so the insert carries
+# the session's organization (provenance: the session's resolved active org —
+# Decision 7's explicit-org rule).
 type: InternalApi
 routine:
   - :if:
-      _or:
-        - _eq:
-            - _payload: point
-            - email.verified
+      _and:
         - _eq:
             - _payload: user.emailVerified
             - true
+        - _eq:
+            - _payload: user.profile.contactId
+            - null
+        - _ne:
+            - _payload: session.activeOrganizationId
+            - null
     :then:
       _ref:
         path: ../shared/contact/create-or-link-contact.yaml
         vars:
-          # user-contacts-system, not the walled user-contacts-collection: this
-          # endpoint runs in system context (no caller), where the tenant wall
-          # fails closed. The mint cannot know its organization at these
-          # binding points — org-aware-modules Decision 7 / upstream ask 4.
           connection_id:
             _module.connectionId: user-contacts-system
+          # Per-field runtime operators, NOT one `_payload: user` object: `_var`
+          # substitution is build-time, so the fragment's `_var: user.email`
+          # must resolve to a runtime operator. A single operator object makes
+          # the dot access resolve undefined at build, collapsing the filter's
+          # string ops to "" (the invite splice has always used this shape).
           user:
-            _payload: user
+            id:
+              _payload: user.id
+            email:
+              _payload: user.email
           binding_point:
             _payload: point
+          # Explicit org (Decision 7): the session's resolved active org.
+          organization_id:
+            _payload: session.activeOrganizationId

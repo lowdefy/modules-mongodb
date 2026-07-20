@@ -26,7 +26,9 @@ Two rules follow for app authors:
 
 Hook routines and scheduled jobs have no caller, so the wall **fails closed** for them. The only opt-out is the request-level `tenant: none` sentinel, and the repo rule is: **`tenant: none` must be paired with an explicit `organizationId`** whose provenance is documented — read from data the system already holds (the triggering record, the recipient contact) — never defaulted or invented. See `apps/demo/modules/notifications/send-routine.yaml` for the worked example: its aggregation steps opt out (they `$merge`, which walled connections reject) and stamp each merged notification with the source event's wall-stamped `organizationId`.
 
-**Known exception — the merge-on-signup contact mint.** `user-account`'s `link-contact-on-signup` runs from auth hooks that fire _before_ a `tenant`-policy signup's organization exists, so it cannot supply an organization at all. It writes through the deliberately-unwalled `user-contacts-system` connection, and contacts minted at signup carry **no `organizationId`** — they are invisible to walled reads until the mint is relocated to an organization-knowing binding point (org-aware-modules upstream ask 4, a platform change). Under `pinned`, re-run the backfill step below after that relocation lands to stamp any rows minted in the interim.
+**The merge-on-signup contact mint follows the same rule.** `user-account`'s `link-contact-on-signup` runs from the `session.create.after` auth hook — the point where the caller's organization is resolved (`session.activeOrganizationId`, under both policies). It writes through the deliberately-unwalled `user-contacts-system` connection (a caller-less hook cannot pass the wall), stamping that explicit organization onto every minted contact (provenance: the session's resolved active org). Contacts minted at signup are therefore org-stamped and visible to walled reads.
+
+> **Migration note for deployments that ran the interim version** (mint bound at `user.create.before` / `email.verified`): contacts minted in that window carry no `organizationId`. Re-run the backfill step below once to stamp them.
 
 ## Index requirements (app-owned)
 

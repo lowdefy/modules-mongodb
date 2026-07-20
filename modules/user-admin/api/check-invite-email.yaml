@@ -49,7 +49,7 @@ routine:
       pipeline:
         - $match:
             organizationId:
-              _organization: id
+              _user: organizationId
         - $lookup:
             from: users
             localField: userId
@@ -81,7 +81,7 @@ routine:
     properties:
       query:
         organizationId:
-          _organization: id
+          _user: organizationId
         status: pending
         $expr:
           $eq:

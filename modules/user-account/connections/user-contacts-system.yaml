@@ -1,14 +1,12 @@
 id: user-contacts-system
 type: MongoDBCollection
 # Deliberately UNWALLED (no tenant:) — the system-context surface for the
-# merge-on-signup contact mint (link-contact-on-signup), which runs from auth
-# hooks with no caller, where the tenant wall fails closed by design
-# (org-aware-modules Decision 7). The mint cannot know its organization at its
-# current binding points (the org is minted lazily at first session under the
-# tenant policy) — relocating it to an org-knowing binding point is
-# org-aware-modules upstream ask 4. Until that lands, contacts minted at
-# signup carry NO organizationId and are invisible to walled reads; see
-# docs/shared/org-scoping.md for the operational note.
+# merge-on-signup contact mint (link-contact-on-signup), which runs from the
+# session.create.after auth hook with no caller, where the tenant wall fails
+# closed by design (org-aware-modules Decision 7). The wall's absence does NOT
+# mean org-less writes: the mint stamps an explicit organizationId read from
+# the hook payload's session (Decision 7's explicit-org rule) — see
+# docs/shared/org-scoping.md.
 # Every caller-ful path uses the walled user-contacts-collection instead.
 properties:
   databaseUri:

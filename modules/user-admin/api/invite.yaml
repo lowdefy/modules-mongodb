@@ -37,7 +37,7 @@ routine:
       pipeline:
         - $match:
             organizationId:
-              _organization: id
+              _user: organizationId
             status: pending
             $expr:
               $eq:

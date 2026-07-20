@@ -5,25 +5,34 @@
 # waived, so the change stamp records a system write and UpdateUserProfile is
 # allowed against any user.
 #
-# An upsert keyed on the contact's `lowercase_email`:
-#   - match the contact by lowercased email;
+# An upsert keyed on the contact's `lowercase_email` (compound with
+# `organizationId` when the caller supplies one — see `organization_id` below):
+#   - match the contact by lowercased email (within the org, when given);
 #   - link (contactId) when found;
 #   - insert BARE (change-stamped, no name, `profile.profile_created` unset —
 #     so first login routes through onboarding) when absent;
 #   - reconcile to the existing row on a duplicate-key error (the partial-unique
-#     `user-contacts.lowercase_email` index — see docs/user-account/reference/
-#     indexes.md — is the guard that closes the race with the user-admin invite).
+#     `user-contacts.{organizationId,lowercase_email}` index — see
+#     docs/user-account/reference/indexes.md — is the guard that closes the
+#     race with the user-admin invite).
 #
-# The contactId write-back branches on which binding point fired:
-#   - `user.create.before` (pre-write) — set profile.contactId inline by
-#     `:return`ing the mutated record (replaces what BetterAuth writes);
-#   - `email.verified` (synthetic post-write) — can't mutate inline, so write
-#     profile.contactId through the UpdateUserProfile step.
+# The contactId write-back runs only when `binding_point` is a post-write hook
+# point (`session.create.after`): the user row already exists, so contactId is
+# written through UpdateUserProfile. Callers that link elsewhere (the invite
+# path links at accept) pass no `binding_point` and get no write-back.
 #
 # Var-free — every input is an `_ref` var (NEVER `_module.var`):
-#   connection_id  — the caller's scoped user-contacts connection id
-#   user           — the auth user record (the hook payload's `user`)
-#   binding_point  — "user.create.before" | "email.verified" (which fired)
+#   connection_id   — the caller's scoped user-contacts connection id
+#   user            — the auth user record (the hook payload's `user`)
+#   binding_point   — optional; "session.create.after" (which hook point fired)
+#   organization_id — optional; explicit organization for system-context callers
+#                     writing through an UNWALLED connection (Decision 7). When
+#                     set, it joins the upsert filter and read query, so the
+#                     match key is the compound-unique {organizationId,
+#                     lowercase_email} tuple and MongoDB carries the equality
+#                     into the inserted document. Callers on a WALLED connection
+#                     must NOT pass it — the wall injects the org and rejects an
+#                     authored organizationId filter.
 #
 # YAML sequence of routine steps — splice with `_build.array.concat`.
 
@@ -36,11 +45,27 @@
       connectionId:
         _var: connection_id
       properties:
+        # The organizationId clause is merged at build time only when the
+        # caller passes `organization_id` — an authored organizationId filter
+        # on a walled connection would be rejected by the tenant wall.
         filter:
-          lowercase_email:
-            _string.toLowerCase:
-              _string.trim:
-                _var: user.email
+          _build.object.assign:
+            - lowercase_email:
+                _string.toLowerCase:
+                  _string.trim:
+                    _var: user.email
+            - _build.if:
+                test:
+                  _build.not:
+                    _build.eq:
+                      - _var:
+                          key: organization_id
+                          default: null
+                      - null
+                then:
+                  organizationId:
+                    _var: organization_id
+                else: {}
         update:
           # Document-style update: $setOnInsert only, so a matched (invited)
           # contact is never overwritten — only a brand-new one is minted bare.
@@ -68,24 +93,42 @@
   :catch:
     - :log: create-or-link-contact — reconciling on duplicate lowercase_email (concurrent first-touch)
 
-# Read the canonical contact row (inserted, matched, or reconciled).
+# Read the canonical contact row (inserted, matched, or reconciled) — same
+# key as the upsert, including the org clause when given.
 - id: read_contact
   type: MongoDBFindOne
   connectionId:
     _var: connection_id
   properties:
     query:
-      lowercase_email:
-        _string.toLowerCase:
-          _string.trim:
-            _var: user.email
+      _build.object.assign:
+        - lowercase_email:
+            _string.toLowerCase:
+              _string.trim:
+                _var: user.email
+        - _build.if:
+            test:
+              _build.not:
+                _build.eq:
+                  - _var:
+                      key: organization_id
+                      default: null
+                  - null
+            then:
+              organizationId:
+                _var: organization_id
+            else: {}
 
-# Synthetic post-write point: write profile.contactId through UpdateUserProfile
-# (inline mutation is impossible after the user row is written).
+# Post-write point: the user row already exists (session.create.after fires
+# after the session — and long after the user — is written), so contactId is
+# written through UpdateUserProfile. Callers passing no binding_point (the
+# invite path) skip this — they link at accept.
 - :if:
     _eq:
-      - _var: binding_point
-      - email.verified
+      - _var:
+          key: binding_point
+          default: null
+      - session.create.after
   :then:
     - id: link_user
       type: UpdateUserProfile
@@ -95,22 +138,3 @@
         profile:
           contactId:
             _step: read_contact._id
-
-# Pre-write point: replace the record inline with profile.contactId set. This
-# `:return` is the routine's terminal control (before hooks apply the returned
-# object as the record BetterAuth writes).
-- :if:
-    _eq:
-      - _var: binding_point
-      - user.create.before
-  :then:
-    - :return:
-        _object.assign:
-          - _var: user
-          - profile:
-              _object.assign:
-                - _if_none:
-                    - _var: user.profile
-                    - {}
-                - contactId:
-                    _step: read_contact._id

@@ -161,10 +161,11 @@ auth:
   public:
     - two-factor
     - logout
+  # One binding at session.create.after — the provider-agnostic choke point
+  # where the active organization is resolved (org-aware-modules upstream
+  # ask 4). The endpoint self-guards to a silent skip on every later login.
   hooks:
-    - point: user.create.before
-      endpoint: link-contact-on-signup
-    - point: email.verified
+    - point: session.create.after
       endpoint: link-contact-on-signup
 
 exports:
@@ -193,7 +194,7 @@ exports:
     - id: user-contacts-collection
       description: Read-write MongoDB connection for the app-owned contact records (tenant-walled).
     - id: user-contacts-system
-      description: Deliberately unwalled user-contacts connection for the system-context merge-on-signup mint (org-aware-modules Decision 7 / upstream ask 4).
+      description: Deliberately unwalled user-contacts connection for the system-context merge-on-signup mint; writes are explicitly org-stamped from the session hook payload (org-aware-modules Decision 7).
     - id: users
       description: Read-only native read of the BetterAuth users collection.
     - id: user-sessions

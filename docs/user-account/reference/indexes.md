@@ -24,11 +24,11 @@ The contact identity invariant is **one contact per email per organization** (se
 
 Serves the `create-or-link-contact` shared fragment's reconcile-on-duplicate-key path — the guard that closes the race between this module's merge-on-signup hook and the user-admin invite flow, both of which create-or-link the same contact by the same key. Without a unique index here, two concurrent first-touches for one email would mint two contacts.
 
-**Known gap until the merge-on-signup mint is relocated** (org-aware-modules upstream ask 4): the signup-hook mint runs in system context and cannot know its organization yet, so it writes contacts **without** `organizationId` (they index under a missing key). Two concurrent org-less mints for one email still collide and reconcile correctly — but an org-less mint and an org-stamped invite row have different key tuples and do **not** collide, so the cross-path race guard only fully applies once the mint is org-aware.
+Both paths key on the same compound tuple: the invite path's org is injected by the tenant wall, and the signup-hook mint (bound at `session.create.after`) passes the session's resolved organization explicitly — so a concurrent mint and invite for one email in one organization collide on this index and reconcile to a single contact, exactly as intended.
 
 | Query site                                   | Operation                                                                                     |
 | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `create-or-link-contact` (signup hook)       | Match by `lowercase_email`; insert when absent; **reconcile to the existing row on dup-key**  |
+| `create-or-link-contact` (signup hook)       | Match by `{ organizationId, lowercase_email }`; insert when absent; **reconcile to the existing row on dup-key** |
 | `create-or-link-contact` (user-admin invite) | Same match-and-write against the same key — the unique index is what makes the reconcile safe |
 
 **Must be partial, not plain unique.** `user-contacts` is the unified person record shared with the `contacts` module, whose CRM contacts legitimately have **no email**. A plain unique index would treat every email-less contact's missing key as `null` and reject the second one, so the model could not hold two email-less contacts. The partial filter (`{ lowercase_email: { $exists: true } }`) indexes only email-bearing contacts, so email-less contacts coexist.
