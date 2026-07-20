@@ -1,23 +1,25 @@
 # Login page — task 09. Serves authPages.signIn and authPages.error.
 # Two renders on one shared email/password form, driven by `login_view`
 # (signin | noaccess):
-#   - signin   : the sign-in form + OAuth / passkey methods.
+#   - signin   : the sign-in form + enabled OAuth / passkey methods.
 #   - noaccess : the authPages.error render (hard-wall "no access" etc.).
+#
+# Method enablement is read from the app auth config via `_build.authConfig`
+# (Decision 2 — NOT module vars): the password form renders only when
+# emailAndPassword is enabled, an OAuth button per configured provider, the
+# passkey button only when passkey is enabled. OAuth display metadata
+# (label/icon/order) comes from the `providers` module var.
+#
+# KNOWN: `_build.authConfig` currently throws "cannot be used inside the auth
+# block" in authPages-referenced pages (this one), so the demo build is RED
+# until the upstream fix lands — implemented as specified per that fix (do not
+# work around it with mirror vars).
 #
 # Errors map through ONE code -> message table (the `_switch` blocks below),
 # used by both paths: password errors return inline on the `Login` call (mapped
 # in the onClick `catch`), OAuth / magic-link failures arrive as a redirect to
 # authPages.error (this page) carrying `?error=` (mapped in `onInit`). Codes:
 # MEMBERSHIP_REQUIRED, EMAIL_NOT_VERIFIED, INVALID_EMAIL_OR_PASSWORD, + default.
-#
-# METHOD ENABLEMENT — platform limitation. Decision 2 specifies reading method
-# enablement from `_build.authConfig`. That operator throws "cannot be used
-# inside the auth block" in this page, because pages contributed as authPages
-# roles (this one) are resolved inside the auth-config pre-pass where the
-# projection is deliberately absent. So the OAuth button set is driven by the
-# `providers` module var (already the display-metadata source), and the passkey
-# button renders unconditionally. Enablement-driven gating needs an upstream
-# fix so `_build.authConfig` resolves in authPages-referenced pages. See notes.
 _ref:
   module: layout
   component: auth-page
@@ -65,7 +67,7 @@ _ref:
                 default: Something went wrong while signing you in. Please try again, or contact an administrator.
     blocks:
       _build.array.concat:
-        # --- Always-present: lead / error / form / submit ---------------------
+        # --- Always present: lead + no-access alert --------------------------
         - - id: login_lead
             type: Html
             visible:
@@ -94,186 +96,191 @@ _ref:
               description:
                 _state: login_error_desc
 
-          - id: email
-            type: TextInput
-            visible:
-              _eq:
-                - _state: login_view
-                - signin
-            properties:
-              type: email
-              size: large
-              suffixIcon: AiOutlineMail
-              label:
-                title: Email
-                colon: false
-                span: 24
-              placeholder: you@example.com
+        # --- Password form — rendered only when emailAndPassword is enabled ---
+        - _build.if:
+            test:
+              _build.authConfig: emailAndPassword.enabled
+            then:
+              - id: email
+                type: TextInput
+                visible:
+                  _eq:
+                    - _state: login_view
+                    - signin
+                properties:
+                  type: email
+                  size: large
+                  suffixIcon: AiOutlineMail
+                  label:
+                    title: Email
+                    colon: false
+                    span: 24
+                  placeholder: you@example.com
 
-          - id: login_password_label
-            type: Box
-            visible:
-              _eq:
-                - _state: login_view
-                - signin
-            layout:
-              justify: space-between
-              align: middle
-              selfAlign: middle
-            blocks:
-              - id: login_password_label_text
-                type: Html
+              - id: login_password_label
+                type: Box
+                visible:
+                  _eq:
+                    - _state: login_view
+                    - signin
                 layout:
-                  flex: 0 1 auto
+                  justify: space-between
+                  align: middle
+                  selfAlign: middle
+                blocks:
+                  - id: login_password_label_text
+                    type: Html
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      html: Password
+                    style:
+                      fontSize: 13
+                      fontWeight: 500
+                      color: "var(--ant-color-text-secondary)"
+                  - id: login_forgot_link
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Forgot?
+                      variant: link
+                      color: primary
+                      size: small
+                    events:
+                      onClick:
+                        - id: go_forgot_password
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: forgot-password
+              - id: password
+                type: PasswordInput
+                visible:
+                  _eq:
+                    - _state: login_view
+                    - signin
                 properties:
-                  html: Password
-                style:
-                  fontSize: 13
-                  fontWeight: 500
-                  color: "var(--ant-color-text-secondary)"
-              - id: login_forgot_link
+                  size: large
+                  label:
+                    disabled: true
+
+              # Primary submit — email/password via the one `Login` action.
+              # On session success `Login` navigates to the callbackUrl itself
+              # (from the `?callbackUrl=` set by the unauthenticated-page
+              # redirect); a 2FA-enrolled user gets no session but a
+              # `twoFactorRedirect` outcome, routed to the two-factor page.
+              - id: login_submit
                 type: Button
-                layout:
-                  flex: 0 1 auto
+                visible:
+                  _eq:
+                    - _state: login_view
+                    - signin
                 properties:
-                  title: Forgot?
-                  variant: link
+                  title: Sign in
+                  block: true
+                  size: large
                   color: primary
-                  size: small
+                  variant: solid
                 events:
                   onClick:
-                    - id: go_forgot_password
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: forgot-password
-          - id: password
-            type: PasswordInput
-            visible:
-              _eq:
-                - _state: login_view
-                - signin
-            properties:
-              size: large
-              label:
-                disabled: true
-
-          # Primary submit — email/password via the one `Login` action (dispatch
-          # by parameter). On session success `Login` navigates to the
-          # callbackUrl itself (resolved from the `?callbackUrl=` set by the
-          # unauthenticated-page redirect); a 2FA-enrolled user gets no session
-          # but a `twoFactorRedirect` outcome, which routes to the module's
-          # two-factor challenge page. Errors are mapped inline in `catch`.
-          - id: login_submit
-            type: Button
-            visible:
-              _eq:
-                - _state: login_view
-                - signin
-            properties:
-              title: Sign in
-              block: true
-              size: large
-              color: primary
-              variant: solid
-            events:
-              onClick:
-                try:
-                  - id: login_do
-                    type: Login
-                    messages:
-                      error: false
-                    params:
-                      email:
-                        _state: email
-                      password:
-                        _state: password
-                  - :if:
-                      _eq:
-                        - _actions: login_do.response.twoFactorRedirect
-                        - true
-                    :then:
-                      - id: go_two_factor
-                        type: Link
+                    try:
+                      - id: login_do
+                        type: Login
+                        messages:
+                          error: false
                         params:
-                          pageId:
-                            _module.pageId: two-factor
-                          urlQuery:
-                            callbackUrl:
-                              _url_query: callbackUrl
-                catch:
-                  # Membership / verification failures render the full noaccess
-                  # state; a bad email/password stays on the form for retry.
-                  - id: map_login_error
-                    type: SetState
-                    params:
-                      login_view:
-                        _switch:
-                          branches:
-                            - if:
-                                _eq:
-                                  - _actions: login_do.error.cause.code
-                                  - MEMBERSHIP_REQUIRED
-                              then: noaccess
-                            - if:
-                                _eq:
-                                  - _actions: login_do.error.cause.code
-                                  - EMAIL_NOT_VERIFIED
-                              then: noaccess
-                          default: signin
-                      login_error_title:
-                        _switch:
-                          branches:
-                            - if:
-                                _eq:
-                                  - _actions: login_do.error.cause.code
-                                  - EMAIL_NOT_VERIFIED
-                              then: Verify your email to continue
-                          default: You don't have access to this app
-                      login_error_desc:
-                        _switch:
-                          branches:
-                            - if:
-                                _eq:
-                                  - _actions: login_do.error.cause.code
-                                  - EMAIL_NOT_VERIFIED
-                              then: Your email address hasn't been verified yet. Check your inbox for the verification link, then sign in again.
-                            - if:
-                                _eq:
-                                  - _actions: login_do.error.cause.code
-                                  - MEMBERSHIP_REQUIRED
-                              then: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
-                          default: Something went wrong while signing you in. Please try again.
-                  - id: toast_login_error
-                    type: DisplayMessage
-                    skip:
-                      _or:
-                        - _eq:
-                            - _actions: login_do.error.cause.code
-                            - MEMBERSHIP_REQUIRED
-                        - _eq:
-                            - _actions: login_do.error.cause.code
-                            - EMAIL_NOT_VERIFIED
-                    params:
-                      status: error
-                      content:
-                        _switch:
-                          branches:
-                            - if:
-                                _eq:
-                                  - _actions: login_do.error.cause.code
-                                  - INVALID_EMAIL_OR_PASSWORD
-                              then: Incorrect email or password. Please try again.
-                          default: Something went wrong while signing you in. Please try again.
+                          email:
+                            _state: email
+                          password:
+                            _state: password
+                      - :if:
+                          _eq:
+                            - _actions: login_do.response.twoFactorRedirect
+                            - true
+                        :then:
+                          - id: go_two_factor
+                            type: Link
+                            params:
+                              pageId:
+                                _module.pageId: two-factor
+                              urlQuery:
+                                callbackUrl:
+                                  _url_query: callbackUrl
+                    catch:
+                      - id: map_login_error
+                        type: SetState
+                        params:
+                          login_view:
+                            _switch:
+                              branches:
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - MEMBERSHIP_REQUIRED
+                                  then: noaccess
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - EMAIL_NOT_VERIFIED
+                                  then: noaccess
+                              default: signin
+                          login_error_title:
+                            _switch:
+                              branches:
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - EMAIL_NOT_VERIFIED
+                                  then: Verify your email to continue
+                              default: You don't have access to this app
+                          login_error_desc:
+                            _switch:
+                              branches:
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - EMAIL_NOT_VERIFIED
+                                  then: Your email address hasn't been verified yet. Check your inbox for the verification link, then sign in again.
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - MEMBERSHIP_REQUIRED
+                                  then: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
+                              default: Something went wrong while signing you in. Please try again.
+                      - id: toast_login_error
+                        type: DisplayMessage
+                        skip:
+                          _or:
+                            - _eq:
+                                - _actions: login_do.error.cause.code
+                                - MEMBERSHIP_REQUIRED
+                            - _eq:
+                                - _actions: login_do.error.cause.code
+                                - EMAIL_NOT_VERIFIED
+                        params:
+                          status: error
+                          content:
+                            _switch:
+                              branches:
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - INVALID_EMAIL_OR_PASSWORD
+                                  then: Incorrect email or password. Please try again.
+                              default: Something went wrong while signing you in. Please try again.
+            else: []
 
-        # --- OAuth (signin state) — one button per `providers` var entry ------
-        # Each dispatches through the one `Login` action with its provider id;
-        # label/icon come from the var. Shown only when providers are configured.
+        # --- OAuth (signin state) — one button per configured provider -------
+        # The button SET is the auth config's call (_build.authConfig: providers);
+        # label/icon come from the `providers` var. A provider configured without
+        # a matching var entry is not rendered (the design's id-fallback edge is
+        # not covered — see notes).
         - _build.if:
             test:
               _build.gt:
                 - _build.array.length:
-                    _module.var: providers
+                    _build.authConfig: providers
                 - 0
             then:
               - id: login_oauth_divider
@@ -296,7 +303,22 @@ _ref:
                 blocks:
                   _build.array.map:
                     on:
-                      _module.var: providers
+                      # `providers` var entries whose id the auth config enables.
+                      _build.array.filter:
+                        on:
+                          _module.var: providers
+                        callback:
+                          _build.function:
+                            __build.array.includes:
+                              on:
+                                __build.array.map:
+                                  on:
+                                    __build.authConfig: providers
+                                  callback:
+                                    _build.function:
+                                      __build.args: "0.id"
+                              value:
+                                __build.args: "0.id"
                     callback:
                       _build.function:
                         id:
@@ -323,27 +345,30 @@ _ref:
                                   __build.args: "0.id"
             else: []
 
-        # --- Passkey (signin state) ------------------------------------------
+        # --- Passkey (signin state) — rendered only when passkey is enabled ---
         # PasskeySignIn runs the WebAuthn assertion ceremony in the browser and
         # navigates to the callbackUrl on success (upstream ask 6, delivered).
-        # Rendered unconditionally: the `_build.authConfig: passkey.enabled` gate
-        # Decision 2 specifies is unavailable in this page (see header note).
-        - - id: login_passkey
-            type: Button
-            visible:
-              _eq:
-                - _state: login_view
-                - signin
-            properties:
-              title: Sign in with a passkey
-              icon: AiOutlineKey
-              block: true
-              size: large
-              variant: outlined
-            events:
-              onClick:
-                - id: passkey_signin
-                  type: PasskeySignIn
+        - _build.if:
+            test:
+              _build.authConfig: passkey.enabled
+            then:
+              - id: login_passkey
+                type: Button
+                visible:
+                  _eq:
+                    - _state: login_view
+                    - signin
+                properties:
+                  title: Sign in with a passkey
+                  icon: AiOutlineKey
+                  block: true
+                  size: large
+                  variant: outlined
+                events:
+                  onClick:
+                    - id: passkey_signin
+                      type: PasskeySignIn
+            else: []
     nav:
       - id: login_footer
         type: Html
