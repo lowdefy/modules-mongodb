@@ -30,7 +30,7 @@ test("inserts a doc and returns the inserted id", async () => {
 });
 
 describe("tenant scoping", () => {
-  const tenant = { field: "organization_id", value: "org-a" };
+  const tenant = { field: "organizationId", value: "org-a" };
 
   test("stamps the tenant field onto the inserted doc", async () => {
     await insertOneDoc({
@@ -41,19 +41,19 @@ describe("tenant scoping", () => {
     });
     expect(
       await mongo.db.collection("events").findOne({ _id: "e1" }),
-    ).toMatchObject({ organization_id: "org-a" });
+    ).toMatchObject({ organizationId: "org-a" });
   });
 
   test("the verdict wins over a caller-authored tenant field", async () => {
     await insertOneDoc({
       mongoDb: mongo.db,
       collection: "events",
-      doc: { _id: "e1", organization_id: "org-b" },
+      doc: { _id: "e1", organizationId: "org-b" },
       tenant,
     });
     expect(
       (await mongo.db.collection("events").findOne({ _id: "e1" }))
-        .organization_id,
+        .organizationId,
     ).toBe("org-a");
   });
 
@@ -65,6 +65,6 @@ describe("tenant scoping", () => {
       tenant: null,
     });
     const doc = await mongo.db.collection("events").findOne({ _id: "e1" });
-    expect(doc).not.toHaveProperty("organization_id");
+    expect(doc).not.toHaveProperty("organizationId");
   });
 });

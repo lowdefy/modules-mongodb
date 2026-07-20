@@ -53,12 +53,12 @@ test("no-ops on an empty operations array", async () => {
 });
 
 describe("tenant scoping", () => {
-  const tenant = { field: "organization_id", value: "org-a" };
+  const tenant = { field: "organizationId", value: "org-a" };
 
   beforeEach(async () => {
     await mongo.db.collection("actions").insertMany([
-      { _id: "mine", stage: "blocked", organization_id: "org-a" },
-      { _id: "theirs", stage: "blocked", organization_id: "org-b" },
+      { _id: "mine", stage: "blocked", organizationId: "org-a" },
+      { _id: "theirs", stage: "blocked", organizationId: "org-b" },
     ]);
   });
 
@@ -71,7 +71,7 @@ describe("tenant scoping", () => {
     });
     expect(
       await mongo.db.collection("actions").findOne({ _id: "new" }),
-    ).toMatchObject({ organization_id: "org-a" });
+    ).toMatchObject({ organizationId: "org-a" });
   });
 
   test("updateOne filters are tenant-merged — another org's doc is untouched", async () => {
@@ -146,7 +146,7 @@ describe("tenant scoping", () => {
     });
     expect(
       await mongo.db.collection("actions").findOne({ _id: "mine" }),
-    ).toMatchObject({ stage: "replaced", organization_id: "org-a" });
+    ).toMatchObject({ stage: "replaced", organizationId: "org-a" });
   });
 
   test("unknown op kinds throw (no silent hole in the wall)", async () => {

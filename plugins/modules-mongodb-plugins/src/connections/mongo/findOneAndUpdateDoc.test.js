@@ -41,12 +41,12 @@ test("returns null when the filter matches zero docs (CAS miss)", async () => {
 });
 
 describe("tenant scoping", () => {
-  const tenant = { field: "organization_id", value: "org-a" };
+  const tenant = { field: "organizationId", value: "org-a" };
 
   beforeEach(async () => {
     await mongo.db.collection("docs").insertMany([
-      { _id: "mine", n: 1, organization_id: "org-a" },
-      { _id: "theirs", n: 1, organization_id: "org-b" },
+      { _id: "mine", n: 1, organizationId: "org-a" },
+      { _id: "theirs", n: 1, organizationId: "org-b" },
     ]);
   });
 

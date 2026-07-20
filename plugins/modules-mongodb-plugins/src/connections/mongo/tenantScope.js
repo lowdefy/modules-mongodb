@@ -30,8 +30,9 @@ export function scopeQuery(query, tenant) {
 }
 
 /**
- * Stamp the tenant field onto an insert/replacement document. Spread LAST so
- * a caller-authored value on the tenant field can never override the verdict.
+ * Stamp the tenant field onto an insert/replacement document. The stamp is
+ * assigned AFTER the doc spread, so a caller-authored value on the tenant
+ * field can never override the verdict.
  *
  * @param {Object} doc — the document to insert.
  * @param {{ field: string, value: string } | null} tenant — the framework

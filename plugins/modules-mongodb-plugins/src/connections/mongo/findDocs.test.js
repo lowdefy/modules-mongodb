@@ -39,13 +39,13 @@ test("returns an empty array when nothing matches", async () => {
 });
 
 describe("tenant scoping", () => {
-  const tenant = { field: "organization_id", value: "org-a" };
+  const tenant = { field: "organizationId", value: "org-a" };
 
   beforeEach(async () => {
     await mongo.db.collection("actions").insertMany([
-      { _id: "a1", workflow_id: "w1", organization_id: "org-a" },
-      { _id: "a2", workflow_id: "w1", organization_id: "org-b" },
-      { _id: "a3", workflow_id: "w2", organization_id: "org-a" },
+      { _id: "a1", workflow_id: "w1", organizationId: "org-a" },
+      { _id: "a2", workflow_id: "w1", organizationId: "org-b" },
+      { _id: "a3", workflow_id: "w2", organizationId: "org-a" },
     ]);
   });
 

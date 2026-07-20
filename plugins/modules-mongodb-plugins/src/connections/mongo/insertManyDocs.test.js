@@ -36,7 +36,7 @@ test("no-ops on an empty docs array (insertMany would otherwise throw)", async (
 });
 
 describe("tenant scoping", () => {
-  const tenant = { field: "organization_id", value: "org-a" };
+  const tenant = { field: "organizationId", value: "org-a" };
 
   test("stamps the tenant field onto every inserted doc", async () => {
     await insertManyDocs({
@@ -47,7 +47,7 @@ describe("tenant scoping", () => {
     });
     const docs = await mongo.db
       .collection("log-changes")
-      .find({ organization_id: "org-a" })
+      .find({ organizationId: "org-a" })
       .toArray();
     expect(docs.map((d) => d._id).sort()).toEqual(["c1", "c2"]);
   });
@@ -60,6 +60,6 @@ describe("tenant scoping", () => {
       tenant: null,
     });
     const doc = await mongo.db.collection("log-changes").findOne({ _id: "c1" });
-    expect(doc).not.toHaveProperty("organization_id");
+    expect(doc).not.toHaveProperty("organizationId");
   });
 });

@@ -810,14 +810,14 @@ describe("event author avatar resolution", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("tenant scoping", () => {
-  const tenant = { field: "organization_id", value: "org-a" };
+  const tenant = { field: "organizationId", value: "org-a" };
   const request = { reference_field: "lot_ids", reference_value: "lot-1" };
 
   // Stamp the org onto seeded docs via the seed helpers' passthrough fields.
-  async function stampOrg(collection, _id, organization_id) {
+  async function stampOrg(collection, _id, organizationId) {
     await mongo.db
       .collection(collection)
-      .updateOne({ _id }, { $set: { organization_id } });
+      .updateOne({ _id }, { $set: { organizationId } });
   }
 
   test("events of another org are excluded from the timeline", async () => {

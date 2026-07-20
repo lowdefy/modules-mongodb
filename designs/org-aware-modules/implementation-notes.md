@@ -21,6 +21,8 @@ The demo's `send-routine.yaml` is the worked example: its `$merge` aggregations 
 
 `events-timeline` (EventsTimeline) and `workflow-api` (WorkflowAPI) are plugin connection types; the framework wall passes them the tenant verdict but they enforce it themselves. `@lowdefy/modules-mongodb-plugins` declares the contract (`connectionMetas` in types.js + `meta.tenant` on the type exports) and applies it in the timeline aggregation's match + lookups and the workflow engine's five mongo helpers.
 
+Verdict _delivery_ to plugin types is guaranteed by the framework, not assumed — verified in the pinned release: `callRequest` runs `resolveTenant` for every connection type and `callRequestResolver` passes `tenant` into every request resolver uniformly. There is no silent fail-open path: a `tenant:` declaration on a type without `connectionMetas[type].tenant === true` is a **build error** (`buildConnections` `validateTenant`), a runtime connection export missing `meta.tenant` **throws** (`ConfigError` in `resolveTenant`, belt-and-braces against build/server drift), and an unresolved caller organization **throws** (`AuthenticationError`, fail-closed). So the plugin suites' remaining job is exactly what they test: given a verdict, enforce it.
+
 ## Collection inventory deltas found at implementation
 
 - The BetterAuth rebuilds' auth-collection connections (`users`, `user-members`, `user-organizations`, `user-invitations`, `user-sessions`, `user-accounts`, `user-passkeys`) stay unwalled per Decision 2, as the design states. Their `_organization: id` scoping remains upstream ask 3.

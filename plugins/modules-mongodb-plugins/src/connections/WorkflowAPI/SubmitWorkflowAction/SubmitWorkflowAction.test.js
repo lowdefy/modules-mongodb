@@ -945,7 +945,7 @@ describe("post-commit dispatch failure", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("tenant threading through the engine", () => {
-  const tenant = { field: "organization_id", value: "org-a" };
+  const tenant = { field: "organizationId", value: "org-a" };
 
   beforeEach(async () => {
     await mongo.db.collection("log-changes").deleteMany({});
@@ -953,13 +953,13 @@ describe("tenant threading through the engine", () => {
 
   // Stamp the org onto the seeded workflow + action (the wall stamps future
   // writes; pre-existing docs are seeded in-org directly).
-  async function stampSeedOrg(organization_id) {
+  async function stampSeedOrg(organizationId) {
     await mongo.db
       .collection("workflows")
-      .updateOne({ _id: "W1" }, { $set: { organization_id } });
+      .updateOne({ _id: "W1" }, { $set: { organizationId } });
     await mongo.db
       .collection("actions")
-      .updateOne({ _id: "A1" }, { $set: { organization_id } });
+      .updateOne({ _id: "A1" }, { $set: { organizationId } });
   }
 
   test("verdict reaches reads and writes: in-org submit lands, and fresh change-log rows are org-stamped", async () => {
@@ -980,14 +980,14 @@ describe("tenant threading through the engine", () => {
       .collection("actions")
       .findOne({ _id: "A1" });
     expect(actionDoc.status[0].stage).toBe("in-review");
-    expect(wfDoc.organization_id).toBe("org-a");
+    expect(wfDoc.organizationId).toBe("org-a");
 
     // Docs WRITTEN during the flow carry the org field: change-log rows are
     // freshly inserted by insertManyDocs, which stamps the verdict.
     const logRows = await mongo.db.collection("log-changes").find({}).toArray();
     expect(logRows.length).toBeGreaterThan(0);
     for (const row of logRows) {
-      expect(row.organization_id).toBe("org-a");
+      expect(row.organizationId).toBe("org-a");
     }
   });
 
@@ -1021,7 +1021,7 @@ describe("tenant threading through the engine", () => {
     const logRows = await mongo.db.collection("log-changes").find({}).toArray();
     expect(logRows.length).toBeGreaterThan(0);
     for (const row of logRows) {
-      expect(row).not.toHaveProperty("organization_id");
+      expect(row).not.toHaveProperty("organizationId");
     }
   });
 });
