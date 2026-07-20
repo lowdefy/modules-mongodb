@@ -3,11 +3,12 @@
 # (manage / turn off), passkeys (add / remove). Every control is a self-service
 # BetterAuth client action on the caller's session.
 #
-# Visibility has two gates (Decision 5): a per-user credential gate
+# Visibility has two gates (Decision 5): a deployment gate
+# (`_build.authConfig.<method>.enabled` — the method must be configured for the
+# app) wraps each row at build time, and a per-user credential gate
 # (get_accounts.has_credential — an OAuth/magic-link-only user has no credential
-# and changePassword / twoFactor.* would 400) applied here at runtime, and a
-# deployment gate (`_build.authConfig.<method>.enabled`) layered on separately.
-# The password and two-factor rows require a credential; passkeys do not.
+# and changePassword / twoFactor.* would 400) applies at runtime. The password
+# and two-factor rows require both; passkeys require only the deployment gate.
 #
 # The email-verified badge lives in the tile header (resend when unverified).
 _ref:
@@ -56,261 +57,278 @@ _ref:
         layout:
           gap: 0
         blocks:
-          - id: security_signin_eyebrow
-            type: Html
-            properties:
-              html: '<div style="text-transform:uppercase; letter-spacing:0.08em; font-size:11px; color:var(--ant-color-text-tertiary);">Sign-in</div>'
-            style:
-              marginBottom: 8
-
-          # ── Password row (credential-gated) ──
-          - id: password_row
-            type: Box
-            visible:
-              _request: get_accounts.0.has_credential
-            layout:
-              direction: row
-              align: middle
-              selfAlign: middle
-              justify: space-between
-              gap: 12
-            style:
-              padding: 12px 0
-              borderBottom: 1px solid var(--ant-color-border-secondary)
-            blocks:
-              - id: password_info
+          _build.array.concat:
+            - - id: security_signin_eyebrow
                 type: Html
-                layout:
-                  flex: 1 1 auto
                 properties:
-                  html:
-                    _nunjucks:
-                      template: |
-                        <div style="display:flex; align-items:center; gap:12px; font-size:13px;">
-                          <span style="width:28px; height:28px; border-radius:6px; background:var(--ant-color-primary-bg); color:var(--ant-color-primary); display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;">
-                            <svg viewBox="64 64 896 896" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M608 112c-167.9 0-304 136.1-304 304 0 70.3 23.9 135 63.9 186.5l-41.1 41.1-62.3-62.3a8.15 8.15 0 00-11.4 0l-39.8 39.8a8.15 8.15 0 000 11.4l62.3 62.3-44.9 44.9-62.3-62.3a8.15 8.15 0 00-11.4 0l-39.8 39.8a8.15 8.15 0 000 11.4l62.3 62.3-65.3 65.3a8.03 8.03 0 000 11.3l42.3 42.3c3.1 3.1 8.2 3.1 11.3 0l253.6-253.6A304.06 304.06 0 00608 720c167.9 0 304-136.1 304-304S775.9 112 608 112zm161.2 465.2C726.2 620.3 668.9 644 608 644c-60.9 0-118.2-23.7-161.2-66.8-43.1-43-66.8-100.3-66.8-161.2 0-60.9 23.7-118.2 66.8-161.2 43-43.1 100.3-66.8 161.2-66.8 60.9 0 118.2 23.7 161.2 66.8 43.1 43 66.8 100.3 66.8 161.2 0 60.9-23.7 118.2-66.8 161.2z"/></svg>
-                          </span>
-                          <span style="flex:1 1 auto; min-width:0;">
-                            <div style="color:var(--ant-color-text);">Password</div>
-                            <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{% if updated %}Last changed {{ updated }}{% else %}Active{% endif %}</div>
-                          </span>
-                        </div>
-                      on:
-                        updated:
-                          _request: get_accounts.0.password_updated
-              - id: password_change_btn
-                type: Button
-                layout:
-                  flex: 0 0 auto
-                properties:
-                  title: Change
-                  size: small
-                events:
-                  onClick:
-                    - id: open_changepw_modal
-                      type: CallMethod
-                      params:
-                        blockId: modal_changepw
-                        method: toggleOpen
-
-          # ── Two-factor row (credential-gated) ──
-          - id: twofa_row
-            type: Box
-            visible:
-              _request: get_accounts.0.has_credential
-            layout:
-              direction: row
-              align: middle
-              selfAlign: middle
-              justify: space-between
-              gap: 12
-            style:
-              padding: 12px 0
-              borderBottom: 1px solid var(--ant-color-border-secondary)
-            blocks:
-              - id: twofa_info
-                type: Html
-                layout:
-                  flex: 1 1 auto
-                properties:
-                  html:
-                    _nunjucks:
-                      template: |
-                        <div style="display:flex; align-items:center; gap:12px; font-size:13px;">
-                          <span style="width:28px; height:28px; border-radius:6px; background:var(--ant-color-primary-bg); color:var(--ant-color-primary); display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;">
-                            <svg viewBox="64 64 896 896" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M744 62H280c-35.3 0-64 28.7-64 64v768c0 35.3 28.7 64 64 64h464c35.3 0 64-28.7 64-64V126c0-35.3-28.7-64-64-64zm-8 824H288V134h448v752zM472 784a40 40 0 1080 0 40 40 0 10-80 0z"/></svg>
-                          </span>
-                          <span style="flex:1 1 auto; min-width:0;">
-                            <div style="color:var(--ant-color-text); display:flex; align-items:center; gap:8px;">Two-factor authentication {% if on %}<span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">On</span>{% else %}<span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">Off</span>{% endif %}</div>
-                            <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{% if on %}Authenticator app{% else %}Add a second step at sign-in{% endif %}</div>
-                          </span>
-                        </div>
-                      on:
-                        on:
-                          _request: get_account.0.two_factor_enabled
-              - id: twofa_actions
-                type: Box
-                layout:
-                  flex: 0 0 auto
-                  direction: row
-                  align: middle
-                  selfAlign: middle
-                  gap: 8
-                blocks:
-                  - id: twofa_manage_btn
-                    type: Button
-                    layout:
-                      flex: 0 0 auto
-                    properties:
-                      title:
-                        _if:
-                          test:
-                            _request: get_account.0.two_factor_enabled
-                          then: Manage
-                          else: Set up
-                      size: small
-                    events:
-                      onClick:
-                        - id: open_enroltotp_modal
-                          type: CallMethod
-                          params:
-                            blockId: modal_enroltotp
-                            method: toggleOpen
-                  - id: twofa_disable_btn
-                    type: Button
-                    visible:
-                      _request: get_account.0.two_factor_enabled
-                    layout:
-                      flex: 0 0 auto
-                    properties:
-                      title: Turn off
-                      size: small
-                      color: danger
-                    events:
-                      onClick:
-                        - id: open_disable2fa_modal
-                          type: CallMethod
-                          params:
-                            blockId: modal_disable2fa
-                            method: toggleOpen
-
-          # ── Passkeys row ──
-          - id: passkeys_header
-            type: Box
-            layout:
-              direction: row
-              align: middle
-              selfAlign: middle
-              justify: space-between
-              gap: 12
-            style:
-              padding: 12px 0
-            blocks:
-              - id: passkeys_title
-                type: Html
-                layout:
-                  flex: 1 1 auto
-                properties:
-                  html: |
-                    <div style="display:flex; align-items:center; gap:12px; font-size:13px;">
-                      <span style="width:28px; height:28px; border-radius:6px; background:var(--ant-color-primary-bg); color:var(--ant-color-primary); display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;">
-                        <svg viewBox="0 0 1024 1024" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M512 64L128 192v384c0 212.1 171.9 384 384 384s384-171.9 384-384V192L512 64zm312 512c0 172.3-139.7 312-312 312S200 748.3 200 576V246l312-110 312 110v330z"/><path d="M378.4 475.1a35.91 35.91 0 00-50.9 0 35.91 35.91 0 000 50.9l129.4 129.4 2.1 2.1a33.98 33.98 0 0048.1 0L730.6 434a33.98 33.98 0 000-48.1l-2.8-2.8a33.98 33.98 0 00-48.1 0L483 579.7 378.4 475.1z"/></svg>
-                      </span>
-                      <span style="flex:1 1 auto; min-width:0;">
-                        <div style="color:var(--ant-color-text);">Passkeys</div>
-                        <div style="color:var(--ant-color-text-tertiary); font-size:12px;">Sign in with your device's biometrics or a security key</div>
-                      </span>
-                    </div>
-              - id: passkeys_add_btn
-                type: Button
-                layout:
-                  flex: 0 0 auto
-                properties:
-                  title: Add passkey
-                  size: small
-                events:
-                  onClick:
-                    try:
-                      _build.array.concat:
-                        - - id: passkey_register
-                            type: PasskeyRegister
-                            messages:
-                              loading: Waiting for your authenticator…
-                              success: Passkey added.
-                              error: false
-                        - _ref: actions/refetch_account.yaml
-                    catch:
-                      - id: passkey_register_error
-                        type: DisplayMessage
-                        params:
-                          status: error
-                          content: Couldn't add a passkey. Your device may have cancelled the request.
-          # The caller's registered passkeys, rendered from passkeys_ui state
-          # (seeded off get_passkeys). Each row deletes via PasskeyDelete, then
-          # re-fetches. A List binds to a state array, hence the state mirror.
-          - id: passkeys_ui
-            type: List
-            blocks:
-              - id: passkeys_ui.$.item
-                type: Box
-                layout:
-                  direction: row
-                  align: middle
-                  selfAlign: middle
-                  justify: space-between
-                  gap: 12
+                  html: '<div style="text-transform:uppercase; letter-spacing:0.08em; font-size:11px; color:var(--ant-color-text-tertiary);">Sign-in</div>'
                 style:
-                  padding: 8px 0 8px 40px
-                  borderBottom: 1px solid var(--ant-color-border-secondary)
-                blocks:
-                  - id: passkeys_ui.$.label
-                    type: Html
+                  marginBottom: 8
+
+            # ── Password row (deployment gate + per-user credential gate) ──
+            - _build.if:
+                test:
+                  _build.authConfig: emailAndPassword.enabled
+                then:
+                  - id: password_row
+                    type: Box
+                    visible:
+                      _request: get_accounts.0.has_credential
                     layout:
-                      flex: 1 1 auto
-                    properties:
-                      html:
-                        _nunjucks:
-                          template: |
-                            <div style="font-size:13px; color:var(--ant-color-text);">{{ name }}</div>
-                            {% if device %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">{{ device }}{% if created %} · added {{ created }}{% endif %}</div>{% elif created %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">added {{ created }}</div>{% endif %}
-                          on:
-                            name:
-                              _state: passkeys_ui.$.name
-                            device:
-                              _state: passkeys_ui.$.device
-                            created:
-                              _state: passkeys_ui.$.created_str
-                  - id: passkeys_ui.$.remove
-                    type: Button
-                    layout:
-                      flex: 0 0 auto
-                    properties:
-                      icon: AiOutlineDelete
-                      color: danger
-                      variant: text
-                      size: small
-                      shape: circle
-                    events:
-                      onClick:
-                        _build.array.concat:
-                          - - id: passkey_delete
-                              type: PasskeyDelete
-                              messages:
-                                loading: Removing…
-                                success: Passkey removed.
-                                error: Couldn't remove the passkey. Try again.
+                      direction: row
+                      align: middle
+                      selfAlign: middle
+                      justify: space-between
+                      gap: 12
+                    style:
+                      padding: 12px 0
+                      borderBottom: 1px solid var(--ant-color-border-secondary)
+                    blocks:
+                      - id: password_info
+                        type: Html
+                        layout:
+                          flex: 1 1 auto
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                <div style="display:flex; align-items:center; gap:12px; font-size:13px;">
+                                  <span style="width:28px; height:28px; border-radius:6px; background:var(--ant-color-primary-bg); color:var(--ant-color-primary); display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;">
+                                    <svg viewBox="64 64 896 896" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M608 112c-167.9 0-304 136.1-304 304 0 70.3 23.9 135 63.9 186.5l-41.1 41.1-62.3-62.3a8.15 8.15 0 00-11.4 0l-39.8 39.8a8.15 8.15 0 000 11.4l62.3 62.3-44.9 44.9-62.3-62.3a8.15 8.15 0 00-11.4 0l-39.8 39.8a8.15 8.15 0 000 11.4l62.3 62.3-65.3 65.3a8.03 8.03 0 000 11.3l42.3 42.3c3.1 3.1 8.2 3.1 11.3 0l253.6-253.6A304.06 304.06 0 00608 720c167.9 0 304-136.1 304-304S775.9 112 608 112zm161.2 465.2C726.2 620.3 668.9 644 608 644c-60.9 0-118.2-23.7-161.2-66.8-43.1-43-66.8-100.3-66.8-161.2 0-60.9 23.7-118.2 66.8-161.2 43-43.1 100.3-66.8 161.2-66.8 60.9 0 118.2 23.7 161.2 66.8 43.1 43 66.8 100.3 66.8 161.2 0 60.9-23.7 118.2-66.8 161.2z"/></svg>
+                                  </span>
+                                  <span style="flex:1 1 auto; min-width:0;">
+                                    <div style="color:var(--ant-color-text);">Password</div>
+                                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{% if updated %}Last changed {{ updated }}{% else %}Active{% endif %}</div>
+                                  </span>
+                                </div>
+                              on:
+                                updated:
+                                  _request: get_accounts.0.password_updated
+                      - id: password_change_btn
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          title: Change
+                          size: small
+                        events:
+                          onClick:
+                            - id: open_changepw_modal
+                              type: CallMethod
                               params:
-                                passkeyId:
-                                  _state: passkeys_ui.$.passkey_id
-                          - _ref: actions/refetch_account.yaml
-          - id: passkeys_empty_hint
-            type: Html
-            visible:
-              _eq:
-                - _array.length:
-                    _if_none:
-                      - _state: passkeys_ui
-                      - []
-                - 0
-            properties:
-              html: '<div style="padding:0 0 4px 40px; font-size:12px; color:var(--ant-color-text-tertiary);">No passkeys registered yet.</div>'
+                                blockId: modal_changepw
+                                method: toggleOpen
+                else: []
+
+            # ── Two-factor row (deployment gate + per-user credential gate) ──
+            - _build.if:
+                test:
+                  _build.authConfig: twoFactor.enabled
+                then:
+                  - id: twofa_row
+                    type: Box
+                    visible:
+                      _request: get_accounts.0.has_credential
+                    layout:
+                      direction: row
+                      align: middle
+                      selfAlign: middle
+                      justify: space-between
+                      gap: 12
+                    style:
+                      padding: 12px 0
+                      borderBottom: 1px solid var(--ant-color-border-secondary)
+                    blocks:
+                      - id: twofa_info
+                        type: Html
+                        layout:
+                          flex: 1 1 auto
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                <div style="display:flex; align-items:center; gap:12px; font-size:13px;">
+                                  <span style="width:28px; height:28px; border-radius:6px; background:var(--ant-color-primary-bg); color:var(--ant-color-primary); display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;">
+                                    <svg viewBox="64 64 896 896" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M744 62H280c-35.3 0-64 28.7-64 64v768c0 35.3 28.7 64 64 64h464c35.3 0 64-28.7 64-64V126c0-35.3-28.7-64-64-64zm-8 824H288V134h448v752zM472 784a40 40 0 1080 0 40 40 0 10-80 0z"/></svg>
+                                  </span>
+                                  <span style="flex:1 1 auto; min-width:0;">
+                                    <div style="color:var(--ant-color-text); display:flex; align-items:center; gap:8px;">Two-factor authentication {% if on %}<span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">On</span>{% else %}<span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">Off</span>{% endif %}</div>
+                                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{% if on %}Authenticator app{% else %}Add a second step at sign-in{% endif %}</div>
+                                  </span>
+                                </div>
+                              on:
+                                on:
+                                  _request: get_account.0.two_factor_enabled
+                      - id: twofa_actions
+                        type: Box
+                        layout:
+                          flex: 0 0 auto
+                          direction: row
+                          align: middle
+                          selfAlign: middle
+                          gap: 8
+                        blocks:
+                          - id: twofa_manage_btn
+                            type: Button
+                            layout:
+                              flex: 0 0 auto
+                            properties:
+                              title:
+                                _if:
+                                  test:
+                                    _request: get_account.0.two_factor_enabled
+                                  then: Manage
+                                  else: Set up
+                              size: small
+                            events:
+                              onClick:
+                                - id: open_enroltotp_modal
+                                  type: CallMethod
+                                  params:
+                                    blockId: modal_enroltotp
+                                    method: toggleOpen
+                          - id: twofa_disable_btn
+                            type: Button
+                            visible:
+                              _request: get_account.0.two_factor_enabled
+                            layout:
+                              flex: 0 0 auto
+                            properties:
+                              title: Turn off
+                              size: small
+                              color: danger
+                            events:
+                              onClick:
+                                - id: open_disable2fa_modal
+                                  type: CallMethod
+                                  params:
+                                    blockId: modal_disable2fa
+                                    method: toggleOpen
+                else: []
+
+            # ── Passkeys section (deployment gate only) ──
+            - _build.if:
+                test:
+                  _build.authConfig: passkey.enabled
+                then:
+                  - id: passkeys_header
+                    type: Box
+                    layout:
+                      direction: row
+                      align: middle
+                      selfAlign: middle
+                      justify: space-between
+                      gap: 12
+                    style:
+                      padding: 12px 0
+                    blocks:
+                      - id: passkeys_title
+                        type: Html
+                        layout:
+                          flex: 1 1 auto
+                        properties:
+                          html: |
+                            <div style="display:flex; align-items:center; gap:12px; font-size:13px;">
+                              <span style="width:28px; height:28px; border-radius:6px; background:var(--ant-color-primary-bg); color:var(--ant-color-primary); display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;">
+                                <svg viewBox="0 0 1024 1024" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M512 64L128 192v384c0 212.1 171.9 384 384 384s384-171.9 384-384V192L512 64zm312 512c0 172.3-139.7 312-312 312S200 748.3 200 576V246l312-110 312 110v330z"/><path d="M378.4 475.1a35.91 35.91 0 00-50.9 0 35.91 35.91 0 000 50.9l129.4 129.4 2.1 2.1a33.98 33.98 0 0048.1 0L730.6 434a33.98 33.98 0 000-48.1l-2.8-2.8a33.98 33.98 0 00-48.1 0L483 579.7 378.4 475.1z"/></svg>
+                              </span>
+                              <span style="flex:1 1 auto; min-width:0;">
+                                <div style="color:var(--ant-color-text);">Passkeys</div>
+                                <div style="color:var(--ant-color-text-tertiary); font-size:12px;">Sign in with your device's biometrics or a security key</div>
+                              </span>
+                            </div>
+                      - id: passkeys_add_btn
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          title: Add passkey
+                          size: small
+                        events:
+                          onClick:
+                            try:
+                              _build.array.concat:
+                                - - id: passkey_register
+                                    type: PasskeyRegister
+                                    messages:
+                                      loading: Waiting for your authenticator…
+                                      success: Passkey added.
+                                      error: false
+                                - _ref: actions/refetch_account.yaml
+                            catch:
+                              - id: passkey_register_error
+                                type: DisplayMessage
+                                params:
+                                  status: error
+                                  content: Couldn't add a passkey. Your device may have cancelled the request.
+                  # The caller's registered passkeys, rendered from passkeys_ui
+                  # state (seeded off get_passkeys). Each row deletes via
+                  # PasskeyDelete, then re-fetches. A List binds to a state array,
+                  # hence the state mirror.
+                  - id: passkeys_ui
+                    type: List
+                    blocks:
+                      - id: passkeys_ui.$.item
+                        type: Box
+                        layout:
+                          direction: row
+                          align: middle
+                          selfAlign: middle
+                          justify: space-between
+                          gap: 12
+                        style:
+                          padding: 8px 0 8px 40px
+                          borderBottom: 1px solid var(--ant-color-border-secondary)
+                        blocks:
+                          - id: passkeys_ui.$.label
+                            type: Html
+                            layout:
+                              flex: 1 1 auto
+                            properties:
+                              html:
+                                _nunjucks:
+                                  template: |
+                                    <div style="font-size:13px; color:var(--ant-color-text);">{{ name }}</div>
+                                    {% if device %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">{{ device }}{% if created %} · added {{ created }}{% endif %}</div>{% elif created %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">added {{ created }}</div>{% endif %}
+                                  on:
+                                    name:
+                                      _state: passkeys_ui.$.name
+                                    device:
+                                      _state: passkeys_ui.$.device
+                                    created:
+                                      _state: passkeys_ui.$.created_str
+                          - id: passkeys_ui.$.remove
+                            type: Button
+                            layout:
+                              flex: 0 0 auto
+                            properties:
+                              icon: AiOutlineDelete
+                              color: danger
+                              variant: text
+                              size: small
+                              shape: circle
+                            events:
+                              onClick:
+                                _build.array.concat:
+                                  - - id: passkey_delete
+                                      type: PasskeyDelete
+                                      messages:
+                                        loading: Removing…
+                                        success: Passkey removed.
+                                        error: Couldn't remove the passkey. Try again.
+                                      params:
+                                        passkeyId:
+                                          _state: passkeys_ui.$.passkey_id
+                                  - _ref: actions/refetch_account.yaml
+                  - id: passkeys_empty_hint
+                    type: Html
+                    visible:
+                      _eq:
+                        - _array.length:
+                            _if_none:
+                              - _state: passkeys_ui
+                              - []
+                        - 0
+                    properties:
+                      html: '<div style="padding:0 0 4px 40px; font-size:12px; color:var(--ant-color-text-tertiary);">No passkeys registered yet.</div>'
+                else: []
