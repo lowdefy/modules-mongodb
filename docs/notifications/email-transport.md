@@ -50,8 +50,34 @@ modules:
 Optional `sendgrid.*` vars:
 
 - `reply_to` — reply-to address, defaults to `from`.
-- `filter` — a SendGridMail recipient filter (`{ replaceAddress, allowlist, regex }`) to redirect or restrict outgoing mail in non-production environments. The record's `email_result.to` shows where mail actually went after the filter.
+- `filter` — a SendGridMail recipient filter (`{ replaceAddress, allowlist, regex }`) to redirect or restrict outgoing mail in non-production environments. The record's `email_result.to` shows where mail actually went after the filter. Types in `filter_exempt_types` bypass it — see [Auth-flow exemption](#auth-flow-exemption-from-the-recipient-filter).
 - `sandbox` — enable SendGrid sandbox mode; SendGrid validates the send without delivering. Useful for testing the pipeline end to end.
+
+## Auth-flow exemption from the recipient filter
+
+A recipient filter is a non-production safety net, but some notification types are useless when redirected: an invite email that lands in the team inbox instead of the invitee's cannot be actioned, while login emails (sent by the auth provider, outside this pipeline) always reach the real recipient. The `filter_exempt_types` var closes that gap — mail for the listed notification types skips the filter entirely and delivers to the actual recipient, on both transports:
+
+```yaml
+modules:
+  - id: notifications
+    source: ...
+    vars:
+      sendgrid:
+        filter:
+          replaceAddress: team-inbox@example.com
+      # The default — the pre-auth invite flows (the same set as
+      # public_link_types). Set to [] to filter every type.
+      filter_exempt_types:
+        - invite-user
+        - resend-user-invite
+        - user-invite
+        - user-admin/invite-user
+        - user-admin/resend-user-invite
+```
+
+How it works: the module's email connections resolve their `filter` property per send against the dispatch payload's `notification_id` — an exempt type folds the filter to null, anything else gets the configured filter. A send with no `notification_id` stays filtered (fail-safe). The record's `email_result.to` makes the outcome visible either way: the real recipient for exempt types, the redirect address for the rest.
+
+Exempting a type means those emails DO reach real users from filtered environments — that is the point, but keep the list to flows that need it. Apps that remap `notifications-email` / `notifications-email-sendgrid` to their own connection own their filter outright, and the exemption does not apply.
 
 Apps with an existing `SendGridMail` connection (for example one whose API key lives under a different secret name) remap the connection instead of setting the vars:
 
@@ -87,6 +113,8 @@ modules:
 ```
 
 Or remap `notifications-email` to an existing app `SMTP` connection. The relay and the HTTP API deliver the same rendered message; prefer the HTTP API when outbound SMTP ports are blocked in your environment, or when you want SendGrid features tied to API sends (event webhooks, categories).
+
+The SMTP transport supports the same recipient filter as SendGrid via the `email.filter` var (`{ replaceAddress, allowlist, regex }`), with the same `filter_exempt_types` exemption.
 
 ## See also
 

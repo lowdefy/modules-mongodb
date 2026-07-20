@@ -91,7 +91,7 @@ App API routine (e.g., invite-user, quote approval)
 
 **Module:**
 
-- `modules/notifications/module.lowdefy.yaml` — module manifest with vars (`server_url`, `transport`, `email`, `sendgrid`, `public_link_types`), exports, dependencies
+- `modules/notifications/module.lowdefy.yaml` — module manifest with vars (`server_url`, `transport`, `email`, `sendgrid`, `public_link_types`, `filter_exempt_types`), exports, dependencies
 - `modules/notifications/api/dispatch-notifications.yaml` — batch entry point: validate → `:for` items → CallApi per item
 - `modules/notifications/api/dispatch-notification-item.yaml` — the per-item pipeline: render → insert with dedup → send → bookkeeping
 - `modules/notifications/connections/notifications-email.yaml` — SMTP connection fed by the `email.*` vars (remappable)
