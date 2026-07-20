@@ -21,7 +21,7 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [files](../modules/files/README.md)                 | File attachments backed by S3 — upload, download, file cards, file lists                                    |
 | [notifications](../modules/notifications/README.md) | Bell, inbox, deep-link routing, configurable send routine                                                   |
 | [user-account](../modules/user-account/README.md)   | Login, email verification, profile view/edit/create                                                         |
-| [user-admin](../modules/user-admin/README.md)       | User administration — list, edit, invite                                                                    |
+| [user-admin](../modules/user-admin/README.md)       | Operator console for a person's access lifecycle in one pinned org — members/invitations list, user detail, invite |
 | [contacts](../modules/contacts/README.md)           | Contact management — list, detail, edit, create, selector                                                   |
 | [companies](../modules/companies/README.md)         | Company management — list, detail, edit, create, selector                                                   |
 | [activities](../modules/activities/README.md)       | CRM activities — calls, meetings, emails logged against contacts and companies                              |
@@ -38,7 +38,6 @@ graph TD
   user-account --> events
   user-admin --> layout
   user-admin --> events
-  user-admin --> notifications
   notifications --> layout
   contacts --> layout
   contacts --> events
@@ -72,7 +71,7 @@ A few notes on the shape:
 | You need…                                                                   | Add…                                        |
 | --------------------------------------------------------------------------- | ------------------------------------------- |
 | A login page and a profile page                                             | `layout`, `events`, `user-account`          |
-| To invite and manage users                                                  | + `user-admin`, `notifications`             |
+| To invite and manage users                                                  | + `user-admin`                              |
 | A bell and inbox for in-app messages                                        | + `notifications`                           |
 | Contact management with company links                                       | + `contacts`, `companies`, `files`          |
 | File attachments on any entity                                              | + `files`                                   |

@@ -72,11 +72,14 @@
 ## user-account
 
 - docs/user-account/index.md: User Account — Self-service account pages — passwordless login, email-verification confirmation, profile view/edit, first-time profile creation, and logout. The end-user side of the user/contact schema; the operator side lives in [`user-admin`](../user-admin/index.md).
+- docs/user-account/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collections backing the module's connections before running the create-or-link and profile flows.
 - docs/user-account/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## user-admin
 
-- docs/user-admin/index.md: User Admin — User administration — list, search, invite, edit, and manage user access for an app. Operates on the shared `user-contacts` collection with per-app data namespaced under `apps.{app_name}`, so a single collection serves multiple apps.
+- docs/user-admin/concepts/co-location.md: Same-database co-location — `user-admin` reads are native aggregations: each one roots on an auth collection (`user-members`, `user-invitations`, `user-sessions`, …) and `$lookup`-joins the others plus the app-owned `user-contacts` record. MongoDB's `$lookup` **cannot cross databases** (let alone clusters).
+- docs/user-admin/how-to/migration.md: Migrating from the v0.x surface — `user-admin` was **rebuilt** on the BetterAuth-based auth engine — this is a major breaking change, not an in-place upgrade. The old module owned a person as raw writes against the fused `user_contacts` collection (`apps.{app}` map, `is_user`, `disabled`, `global_attributes`); the new model split...
+- docs/user-admin/index.md: User Admin — The **operator console for a person's access lifecycle in one app**. Rebuilt on the BetterAuth-based auth engine: it composes app-owned contact data, the sanctioned admin-step write surface, and audit events into per-concern routines — it is no longer CRUD over one fused collection.
 - docs/user-admin/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## workflows

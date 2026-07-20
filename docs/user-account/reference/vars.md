@@ -13,25 +13,26 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `app_name` |  |  | Yes | App name for event metadata |
-| `login_message` |  | `<p>Welcome. Please provide your work email to sign in.</p>` |  | HTML message shown on the login page |
-| `verify_email_message` |  | `A sign in link has been sent to your email. Follow the link to sign in.` |  | Message shown on the verify email request page |
-| `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge. |
+| `login_message` |  | `<p>Welcome. Please sign in to continue.</p>` |  | HTML message shown on the login page. |
+| `signup_message` |  | `<p>Create your account to get started.</p>` |  | HTML message shown on the signup page. |
+| `verify_email_message` |  | `A verification link has been sent to your email. Follow the link to verify your address.` |  | Message shown on the verify-email page (post-signup "check your email" state). |
+| `event_display` |  |  |  | Event display templates — a flat map of event type to a Nunjucks title template. Templates receive `user` (the acting user). When unset, the module's `defaults/event_display.yaml` renders. When set, the override fully replaces the defaults — no merge. (Per-app keying is retired with `app_name`.) |
 | `avatar_colors` |  | `{"_ref":"../shared/profile/avatar_colors.yaml"}` |  | Gradient pairs for avatar backgrounds. Each entry: { from, to }. |
-| `fields` | object |  |  | Field block arrays: profile. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr). |
+| `providers` | array | `[]` |  | OAuth provider display metadata layered over `_build.authConfig.providers` (which carries only `{ id, type }`). The login/signup pages render a button for each provider the auth config reports enabled, drawing label/icon/order from this var (a configured provider with no metadata entry falls back to its id). Method *enablement* is read from `_build.authConfig`, never from a var. |
+| `fields` | object |  |  | Field block arrays: profile. Same blocks used for the profile edit modal, onboarding, and view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr). |
 | `components` | object |  |  | Component overrides: main_slots |
-| `request_stages` | object |  |  | MongoDB pipeline stage overrides: write. write stages are appended to both create and update profile flows. |
+| `request_stages` | object |  |  | MongoDB pipeline stage overrides: write. write stages are appended to the profile write flow. |
 
 ## Nested var details
 
 ### `fields`
 
-Field block arrays: profile. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr).
+Field block arrays: profile. Same blocks used for the profile edit modal, onboarding, and view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr).
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
 | `show_honorific` | boolean | `false` |  | Show the honorific/title selector (Mr/Ms/Dr) in the profile form. |
-| `profile` |  | `[]` |  | Profile field blocks rendered in the user-account profile form and view. Block ids must be prefixed with `profile.` so they bind to `state.profile.*`. |
+| `profile` |  | `[]` |  | Profile field blocks rendered in the profile edit modal, onboarding, and view. Block ids must be prefixed with `profile.` so they bind to `state.profile.*`. |
 
 ### `components`
 
@@ -39,12 +40,12 @@ Component overrides: main_slots
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `main_slots` |  | `[]` |  | Extra blocks appended to the main column on the profile page. |
+| `main_slots` |  | `[]` |  | Extra tiles appended to the main column on the account workspace page. |
 
 ### `request_stages`
 
-MongoDB pipeline stage overrides: write. write stages are appended to both create and update profile flows.
+MongoDB pipeline stage overrides: write. write stages are appended to the profile write flow.
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `write` |  | `[]` |  | Pipeline update stages appended to both create-profile and update-profile flows. Used for derived fields or extra transforms beyond the built-in profile write. |
+| `write` |  | `[]` |  | Pipeline update stages appended to the profile contact write (via the shared write-profile fragment). Used for derived fields or extra transforms beyond the built-in profile write. |
