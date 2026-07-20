@@ -1,0 +1,32 @@
+# Passkeys read (design Decision 5) — the caller's OWN registered passkeys.
+# Native read over `user-passkeys` filtered to the caller (`_user.id`, plain
+# string). Powers the Security tile's passkey list + per-passkey delete
+# (PasskeyDelete takes `passkey_id`, the passkey row id). Registration is the
+# tile's "Add passkey" action (PasskeyRegister).
+id: get_passkeys
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-passkeys
+properties:
+  pipeline:
+    - $match:
+        userId:
+          _user: id
+    - $sort:
+        createdAt: -1
+    - $project:
+        _id: 0
+        passkey_id: "$_id"
+        name:
+          $ifNull:
+            - "$name"
+            - Passkey
+        device:
+          $ifNull:
+            - "$deviceType"
+            - ""
+        created_str:
+          $dateToString:
+            date: "$createdAt"
+            format: "%Y-%m-%d"
+            onNull: ""

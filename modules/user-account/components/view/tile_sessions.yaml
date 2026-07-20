@@ -1,7 +1,9 @@
 # Active sessions tile (design Decision 5) — the caller's own signed-in devices,
 # from a native read over user-sessions (token projected out — it's a bearer
 # credential). One action: "Sign out others" (RevokeOtherSessions). Per-session
-# revoke is deferred (token-exposure, Decision 5), so rows are display-only.
+# revoke is deferred (token-exposure, Decision 5), so rows are display-only, and
+# there is no "current device" marker (no non-secret current-session id is
+# available without the token).
 _ref:
   module: layout
   component: card
@@ -12,18 +14,29 @@ _ref:
         type: Button
         layout:
           flex: 0 0 auto
+        # Only offer the action when there is more than one session to revoke.
+        visible:
+          _gt:
+            - _array.length:
+                _if_none:
+                  - _request: get_sessions
+                  - []
+            - 1
         properties:
           title: Sign out others
           size: small
           color: danger
         events:
           onClick:
-            # TODO(request-substitute) sessions_sign_out_others_btn: "RevokeOtherSessions client action — wire task"
-            - id: sign_out_others_todo
-              type: DisplayMessage
-              params:
-                status: info
-                content: Sign out other sessions — wired in the wire task.
+            # Revokes every session except the caller's current one, then
+            # re-fetches so the list drops the revoked rows.
+            _build.array.concat:
+              - - id: revoke_other_sessions
+                  type: RevokeOtherSessions
+                  messages:
+                    loading: Signing out other sessions…
+                    success: Signed out of your other sessions.
+              - _ref: actions/refetch_account.yaml
     blocks:
       - id: sessions_body
         type: Box
@@ -36,26 +49,16 @@ _ref:
               selectable: false
               bordered: false
               gap: 0
-              # TODO(request-substitute) sessions_list: "the caller's active sessions (native user-sessions read: device/user-agent, ip, city, expiresAt, current) — token $project-ed out (Decision 5)"
+              # The caller's active sessions (get_sessions — user-agent, ip,
+              # expiry; token $project-ed out, Decision 5).
               data:
-                - device: "Chrome · macOS"
-                  meta: "41.203.11.8 · Johannesburg · expires in 6 days"
-                  current: true
-                - device: "Safari · iPhone"
-                  meta: "102.54.9.2 · Cape Town · expires in 2 days"
-                  current: false
-                - device: "Firefox · Windows"
-                  meta: "196.25.8.14 · expires in 5 days"
-                  current: false
+                _request: get_sessions
               html: |
                 <div id="bl-{{ index }}.session_item" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--ant-color-border-secondary); font-size:13px;">
                   <span style="flex:1 1 auto; min-width:0;">
-                    <div style="color:var(--ant-color-text);">{{ item.device }}</div>
-                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{{ item.meta }}</div>
+                    <div style="color:var(--ant-color-text);">{{ item.ua }}</div>
+                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{{ item.ip }}{% if item.ip and item.expires_str %} · {% endif %}{% if item.expires_str %}expires {{ item.expires_str }}{% endif %}</div>
                   </span>
-                  {% if item.current %}
-                    <span style="flex:0 0 auto; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">This device</span>
-                  {% endif %}
                 </div>
             style:
               .body:
