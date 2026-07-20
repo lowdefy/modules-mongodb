@@ -3,8 +3,16 @@
 # notification docs (minus email fields) into the notifications collection.
 # An empty $match merges nothing, so every other event type is a silent no-op.
 # See designs/demo-notifications/design.md.
+#
+# Tenant wall (org-aware-modules Decision 7): both steps opt out with
+# `tenant: none` — $merge is rejected on walled connections, and this routine
+# writes another org axis anyway (notification docs). The opt-out is paired
+# with an EXPLICIT organizationId on every merged doc, read from the source
+# event's wall-stamped organizationId (provenance: the triggering record) —
+# a bare tenant: none with no explicit org is forbidden.
 - id: notify_quote_approved
   type: MongoDBAggregation
+  tenant: none
   connectionId:
     _module.connectionId:
       id: events-collection
@@ -77,6 +85,8 @@
           popup:
             $literal: false
           contact_id: $recipient_id
+          # Explicit org (Decision 7): the source event's wall-stamped org.
+          organizationId: $organizationId
           title: Quote approved
           description:
             $concat:
@@ -109,6 +119,7 @@
 # Invite mock — the inbox notification stands in for the production invite email.
 - id: notify_invite
   type: MongoDBAggregation
+  tenant: none
   connectionId:
     _module.connectionId:
       id: events-collection
@@ -146,6 +157,8 @@
           popup:
             $literal: false
           contact_id: $recipient_id
+          # Explicit org (Decision 7): the source event's wall-stamped org.
+          organizationId: $organizationId
           title:
             $cond:
               - $eq:
