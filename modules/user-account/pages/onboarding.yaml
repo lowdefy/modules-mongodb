@@ -1,19 +1,30 @@
-# Onboarding page — task 17 (UI pipeline only; wiring deferred).
-# Chrome-less first-login profile completion (Decision 5 — the old `new` page).
-# Protected; renders on the auth-page shell (no app chrome). The contact already
-# exists by first login (Decision 7) — this page only updates it. The field
-# region is driven from the `fields.profile` module var (same blocks as the
-# profile tile), with the honorific selector gated on `fields.show_honorific`;
-# ids are `profile.`-prefixed so they bind `state.profile.*`. The save
-# (update-profile), the `profile.profile_created` marker, UpdateSession, and the
-# navigate into the app are the wire task — see the TODO(request-substitute)
-# marker.
+# Onboarding page — task 17. Chrome-less first-login profile completion
+# (Decision 5 — the old `new` page). Protected; renders on the auth-page shell.
+# The contact already exists by first login (Decision 7) but may be bare (no
+# name), so onboarding COLLECTS the required name (given_name / family_name — the
+# mock's First/Last name) plus the deployment-configured `fields.profile`, and
+# saves through the update-profile API. On a successful save it sets
+# profile.profile_created: true (the onboarding-complete marker the app router
+# reads), fires UpdateSession so the caller's _user reflects the new bag + marker
+# without a reload, then navigates into the app.
+#
+# All inputs are `profile.`-prefixed so they bind state.profile.*; onInit seeds
+# state.profile from the caller's denormalized _user.profile bag so an invited /
+# OAuth user's name prefills (a bare contact simply starts blank).
 _ref:
   module: layout
   component: auth-page
   vars:
     id: onboarding
     title: ""
+    events:
+      onInit:
+        - id: seed_onboarding
+          type: SetState
+          params:
+            profile:
+              _user: profile
+            avatar_color_index: 0
     blocks:
       _build.array.concat:
         - # ---- Header + avatar ----
@@ -40,19 +51,34 @@ _ref:
               alignItems: center
               marginBottom: 4
             blocks:
-              # TODO(request-substitute) onboarding_avatar_face: content = the
-              # caller's initials from state.profile (first/last name); color from
-              # the avatar_colors var. Mock initials shown.
+              # Initials from the entered name; background from the currently
+              # selected avatar_colors gradient pair.
               - id: onboarding_avatar_face
                 type: Avatar
                 properties:
-                  content: ST
+                  content:
+                    _nunjucks:
+                      template: "{{ (given or '') | first | upper }}{{ (family or '') | first | upper }}"
+                      on:
+                        given:
+                          _state: profile.given_name
+                        family:
+                          _state: profile.family_name
                   size: large
                   theme:
                     containerSizeLG: 72
                     textFontSizeLG: 26
-              # TODO(request-substitute) onboarding_avatar_color: onClick → cycle
-              # the avatar color across the avatar_colors var.
+                style:
+                  .element:
+                    background:
+                      _nunjucks:
+                        template: "linear-gradient(135deg, {{ colors[i].from }}, {{ colors[i].to }})"
+                        on:
+                          colors:
+                            _module.var: avatar_colors
+                          i:
+                            _state: avatar_color_index
+              # Cycle through the avatar_colors var (wraps at the end).
               - id: onboarding_avatar_color
                 type: Button
                 properties:
@@ -60,6 +86,44 @@ _ref:
                   icon: AiOutlineReload
                   size: small
                   shape: round
+                events:
+                  onClick:
+                    - id: cycle_avatar_color
+                      type: SetState
+                      params:
+                        avatar_color_index:
+                          _if:
+                            test:
+                              _gte:
+                                - _sum:
+                                    - _state: avatar_color_index
+                                    - 1
+                                - _array.length:
+                                    _module.var: avatar_colors
+                            then: 0
+                            else:
+                              _sum:
+                                - _state: avatar_color_index
+                                - 1
+        # ---- Required name (always collected — the derived profile.name) ----
+        - - id: profile.given_name
+            type: TextInput
+            required: true
+            properties:
+              size: large
+              label:
+                title: First name
+                colon: false
+                span: 24
+          - id: profile.family_name
+            type: TextInput
+            required: true
+            properties:
+              size: large
+              label:
+                title: Last name
+                colon: false
+                span: 24
         # ---- Honorific selector (gated on the show_honorific module var) ----
         - _build.if:
             test:
@@ -84,10 +148,9 @@ _ref:
         # ---- Deployment-configured profile field blocks ----
         - _module.var: fields.profile
         # ---- Submit ----
-        - # TODO(request-substitute) onboarding_submit: onClick → update-profile
-          # API (payload = the state.profile.* subtree against
-          # _user.profile.contactId) and set profile.profile_created: true; on the
-          # API's onDone fire UpdateSession, then navigate into the app.
+        - # Validate the required fields, save the profile subtree with the
+          # onboarding-complete marker, refresh the caller's session so the
+          # router sees profile_created, then enter the app.
           - id: onboarding_submit
             type: Button
             properties:
@@ -96,3 +159,33 @@ _ref:
               size: large
               color: primary
               variant: solid
+            events:
+              onClick:
+                try:
+                  - id: validate_onboarding
+                    type: Validate
+                  - id: save_profile
+                    type: CallAPI
+                    params:
+                      endpointId:
+                        _module.endpointId: update-profile
+                      payload:
+                        profile:
+                          _state: profile
+                        set_profile_created: true
+                  - id: refresh_session
+                    type: UpdateSession
+                  - id: enter_app
+                    type: Link
+                    params:
+                      home: true
+                catch:
+                  - id: onboarding_error
+                    type: DisplayMessage
+                    skip:
+                      _ne:
+                        - _actions: validate_onboarding.error
+                        - null
+                    params:
+                      status: error
+                      content: We couldn't save your profile. Please check your details and try again.
