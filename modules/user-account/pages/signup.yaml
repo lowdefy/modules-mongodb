@@ -123,6 +123,14 @@ _ref:
                           - _state: profile.first_name
                           - " "
                           - _state: profile.last_name
+                      # Where the emailed verification link lands after verifying
+                      # — the verify-email success render (see verify-email.yaml).
+                      callbackUrl:
+                        _string.concat:
+                          - "/"
+                          - _module.pageId: verify-email
+                          - "?verified=1&email="
+                          - _state: email
                   - :if:
                       _not:
                         _actions: signup_do.response.token
@@ -254,6 +262,12 @@ _ref:
                   params:
                     email:
                       _state: signup_email
+                    callbackUrl:
+                      _string.concat:
+                        - "/"
+                        - _module.pageId: verify-email
+                        - "?verified=1&email="
+                        - _state: signup_email
           - id: signup_check_hint
             type: Html
             visible:
