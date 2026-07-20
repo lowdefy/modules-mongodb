@@ -17,44 +17,59 @@ _ref:
     requests:
       - _ref: requests/get_invitation.yaml
     events:
+      # A missing invitationId is a required-parameter error, not an expired
+      # invitation — surface it plainly rather than mis-rendering "can't be
+      # used". A read failure (bad id, connection) is left UNcaught so Lowdefy's
+      # error screen shows it; only a well-formed id that matches nothing falls
+      # to the genuine bad/consumed-link render.
       onInit:
-        - id: fetch_invitation
-          type: Request
-          params: get_invitation
-        - id: select_accept_view
-          type: SetState
-          params:
-            invite:
-              _actions: fetch_invitation.response.0
-            accept_view:
-              _switch:
-                branches:
-                  - if:
-                      _eq:
-                        - _actions: fetch_invitation.response.0
-                        - null
-                    then: expired
-                  - if:
-                      _eq:
-                        - _user: id
-                        - null
-                    then: nosession
-                  - if:
-                      _eq:
-                        - _actions: fetch_invitation.response.0.status
-                        - accepted
-                    then: member
-                  - if:
-                      _ne:
-                        - _actions: fetch_invitation.response.0.status
-                        - pending
-                    then: expired
-                  - if:
-                      _ne:
-                        - _actions: fetch_invitation.response.0.email
-                        - _user: email
-                    then: expired
-                default: signedin
+        - :if:
+            _eq:
+              - _url_query: invitationId
+              - null
+          :then:
+            - id: no_invitation_id
+              type: SetState
+              params:
+                accept_view: noinvite
+          :else:
+            - id: fetch_invitation
+              type: Request
+              params: get_invitation
+            - id: select_accept_view
+              type: SetState
+              params:
+                invite:
+                  _actions: fetch_invitation.response.0
+                accept_view:
+                  _switch:
+                    branches:
+                      - if:
+                          _eq:
+                            - _actions: fetch_invitation.response.0
+                            - null
+                        then: expired
+                      - if:
+                          _eq:
+                            - _user: id
+                            - null
+                        then: nosession
+                      - if:
+                          _eq:
+                            - _actions: fetch_invitation.response.0.status
+                            - accepted
+                        then: member
+                      - if:
+                          _ne:
+                            - _actions: fetch_invitation.response.0.status
+                            - pending
+                        then: expired
+                      - if:
+                          _ne:
+                            - _actions: fetch_invitation.response.0.email
+                            - _user: email
+                        then: expired
+                    default: signedin
     blocks:
       # ---- No session — offer login / signup ----
       - id: accept_title_nosession
@@ -302,6 +317,18 @@ _ref:
               type: Link
               params:
                 home: true
+
+      # ---- Missing invitationId (required parameter absent) ----
+      - id: accept_no_invitation
+        type: Result
+        visible:
+          _eq:
+            - _state: accept_view
+            - noinvite
+        properties:
+          status: error
+          title: This link is missing its invitation
+          subTitle: Open the invitation link from your email — it carries the reference this page needs.
 
       # ---- Expired / mismatch ----
       - id: accept_expired
