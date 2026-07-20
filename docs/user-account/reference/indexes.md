@@ -11,16 +11,20 @@ The module does not create indexes — index creation is a host-app concern. Hos
 
 ## `user-contacts` collection
 
-### Index: `{ lowercase_email: 1 }` — **partial-unique**
+### Index: `{ organizationId: 1, lowercase_email: 1 }` — **partial-unique**
 
 ```
 db["user-contacts"].createIndex(
-  { lowercase_email: 1 },
+  { organizationId: 1, lowercase_email: 1 },
   { unique: true, partialFilterExpression: { lowercase_email: { $exists: true } } }
 )
 ```
 
+The contact identity invariant is **one contact per email per organization** (see [Organization scoping](../../shared/org-scoping.md)): two organizations holding a contact for the same email are two facts about two relationships, not a collision, so the unique key is compound with the tenant field. Under a single-organization (pinned) deployment every row carries the same `organizationId`, and the compound index enforces exactly what a global email index would.
+
 Serves the `create-or-link-contact` shared fragment's reconcile-on-duplicate-key path — the guard that closes the race between this module's merge-on-signup hook and the user-admin invite flow, both of which create-or-link the same contact by the same key. Without a unique index here, two concurrent first-touches for one email would mint two contacts.
+
+**Known gap until the merge-on-signup mint is relocated** (org-aware-modules upstream ask 4): the signup-hook mint runs in system context and cannot know its organization yet, so it writes contacts **without** `organizationId` (they index under a missing key). Two concurrent org-less mints for one email still collide and reconcile correctly — but an org-less mint and an org-stamped invite row have different key tuples and do **not** collide, so the cross-path race guard only fully applies once the mint is org-aware.
 
 | Query site                                   | Operation                                                                                     |
 | -------------------------------------------- | --------------------------------------------------------------------------------------------- |

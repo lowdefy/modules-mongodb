@@ -62,7 +62,7 @@ Consumer-facing documentation lives in `docs/`. Source-side READMEs (`modules/{n
 - `docs/{module}/concepts/` — Concept pages (added only where the module needs them).
 - `docs/{module}/how-to/` — Goal-oriented guides (added only where the module needs them).
 - `docs/{module}/reference/` — Reference pages; `vars.md` is always generated (see below).
-- `docs/shared/` — One file per consumer-facing cross-cutting idiom: `change-stamps.md`, `event-display.md`, `slots.md`, `app-name.md`, `avatar-colors.md`, `secrets.md`.
+- `docs/shared/` — One file per consumer-facing cross-cutting idiom: `change-stamps.md`, `event-display.md`, `slots.md`, `app-name.md`, `avatar-colors.md`, `secrets.md`, `soft-delete.md`, `org-scoping.md`.
 - `docs/plugins/` — Plugin package overview (`index.md`) and one reference page per block.
 
 Most small modules are just `docs/{module}/index.md` + generated `docs/{module}/reference/vars.md`. Add `concepts/` or `how-to/` subdirectories only when the module genuinely needs them.
