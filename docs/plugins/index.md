@@ -18,6 +18,7 @@ Custom Lowdefy blocks and actions used by the modules in this repo. The package 
 | [EventsTimeline](events-timeline.md)       | `display`         | Timeline of `log-events` documents — avatars, time-ago labels, action badges, optional file attachments. Backs the `events` module's timeline.        |
 | [FileManager](file-manager.md)             | `container`       | Drag-drop S3 upload with thumbnails, paste-to-upload, optional metadata form, download, and delete. Backs the `files` module.                         |
 | [SmartDescriptions](smart-descriptions.md) | `display`         | Antd `Descriptions` view with auto type detection from the data — no schema required. Use `DataDescriptions` instead when you need explicit grouping. |
+| [WorkflowProgress](workflow-progress.md)   | `display`         | Collapsible per-workflow sections of grouped, status-colored action buttons — a presentation variant of `ActionSteps`. Backs the workflows module's `workflow-progress` component. |
 
 ## `FetchRequest` action
 

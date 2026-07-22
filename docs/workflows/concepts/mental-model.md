@@ -86,7 +86,7 @@ actions:
 - **Operational read APIs (static).** `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview` — callable from any app page.
 - **Resolver-emitted surface.** `makeActionPages` generates per-action page sets for form actions and one `{workflow_type}-action` page per workflow with check actions. `makeWorkflowApis` generates the per-type lifecycle endpoints (`{workflow_type}-start` / `-cancel` / `-close`) and one `{workflow_type}-{action_type}-submit` endpoint per form/check action. Both are derived automatically from your `workflows_config` — the lifecycle endpoints are type-scoped, so callers build the id from the workflow type rather than passing it in the payload.
 - **Three-tier action pages.** Form and check pages share one workspace shell (entity's workflows · action surface · universal fields + History). The per-workflow `{workflow_type}-action` page serves all of a workflow's check actions via `?action_id=<id>` routing. See [Action pages](action-pages.md).
-- **Entity-page components.** `actions-on-entity` (renders grouped action lists), `workflow-header`, `action_role_check`.
+- **Entity-page components.** `actions-on-entity` (renders grouped action lists), `workflow-progress` (its presentation variant — collapsible sections of status-colored action buttons), `workflow-header`, `action_role_check`.
 - **Form components library.** 27 named components (`text_input`, `date_selector`, `controlled_list`, …) you reference by name in action `form:` blocks.
 
 See [Exports](../reference/exports.md) for the full list.
