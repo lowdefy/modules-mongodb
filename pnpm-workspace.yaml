@@ -17,4 +17,3 @@ allowBuilds:
   mongodb-memory-server: true
   "@swc/core": false
   sharp: false
-  '@sentry/cli': false
