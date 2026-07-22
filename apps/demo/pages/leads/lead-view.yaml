@@ -82,6 +82,72 @@ _ref:
                             entity_id:
                               _url_query: _id
                             entity_connection_id: leads-collection
+              # The workflow-progress presentation variant of the same surface.
+              # fetch_on_mount: false — actions-on-entity above already fetches
+              # entity_workflows into state; both surfaces read the same key.
+              #
+              # Controlled-expansion demo: the page owns which workflows are open
+              # via `wp_active_keys`. The Expand/Collapse buttons set it; the
+              # component's `on_change` keeps it in sync with manual row toggles.
+              # Until a button is pressed `wp_active_keys` is unset, so the block
+              # falls back to its uncontrolled terminal-heuristic seeding.
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    title: Workflow progress
+                    blocks:
+                      - id: wp_controls
+                        type: Box
+                        layout:
+                          gap: 8
+                        blocks:
+                          - id: wp_expand_all
+                            type: Button
+                            properties:
+                              title: Expand all
+                              type: default
+                              size: small
+                            events:
+                              onClick:
+                                - id: set_wp_expand_all
+                                  type: SetState
+                                  params:
+                                    wp_active_keys:
+                                      _array.map:
+                                        - _if_none:
+                                            - _state: entity_workflows
+                                            - []
+                                        - _function:
+                                            __args: 0.workflow_type
+                          - id: wp_collapse_all
+                            type: Button
+                            properties:
+                              title: Collapse all
+                              type: default
+                              size: small
+                            events:
+                              onClick:
+                                - id: set_wp_collapse_all
+                                  type: SetState
+                                  params:
+                                    wp_active_keys: []
+                      - _ref:
+                          module: workflows
+                          component: workflow-progress
+                          vars:
+                            entity_id:
+                              _url_query: _id
+                            entity_connection_id: leads-collection
+                            fetch_on_mount: false
+                            active_keys:
+                              _state: wp_active_keys
+                            on_change:
+                              - id: sync_wp_active_keys
+                                type: SetState
+                                params:
+                                  wp_active_keys:
+                                    _event: activeKeys
           - id: lead_info_column
             type: Box
             layout:
@@ -205,7 +271,7 @@ _ref:
           vars:
             on_complete:
               _build.array.concat:
-                # refresh the action steps (actions-on-entity's surface)
+                # refresh entity_workflows (actions-on-entity + workflow-progress)
                 - _ref:
                     module: workflows
                     component: entity-workflows-refetch
