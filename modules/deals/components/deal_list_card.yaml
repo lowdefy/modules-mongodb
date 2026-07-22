@@ -4,8 +4,8 @@ type: Box
 # the whole card navigates to the deal workspace (full page load). The narrow
 # in-page sidebar variant is the ListSelector on the deal workspace page.
 #
-# All derived values (palettes, value_label) are computed in the `on:` mapping /
-# request projection and passed in as vars — the template stays presentational.
+# Derived display config (stage/outcome palettes) is computed in the `on:`
+# mapping — the template stays presentational.
 # `card_fields` (host app var) drives the bottom meta line;
 # `components.card_slots` (default []) appends
 # extra blocks below the card via `_build.array.concat`.

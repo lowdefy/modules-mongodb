@@ -176,10 +176,33 @@ company_fields:
       _if_none:
         - _request: get_selected_deal.0.company.attributes.industry
         - "—"
-meta_fields: []
+# Value + close date come from the raw fields a workflow stamps onto the deal,
+# formatted here with this app's $ currency.
+meta_fields:
+  - label: Value
+    value:
+      _nunjucks:
+        template: "{% if value %}${{ value }}{% else %}—{% endif %}"
+        on:
+          value:
+            _request: get_selected_deal.0.value
+  - label: Commercialisation Date
+    value:
+      _nunjucks:
+        template: "{% if close %}{{ close | date('D MMM YYYY') }}{% else %}—{% endif %}"
+        on:
+          close:
+            _request: get_selected_deal.0.close_date
 filters: []
 
+# Drives both the list-page card and the workspace switcher card; raw
+# deal_value formatted with this app's $ currency.
 card_fields:
   - path: salesperson_name
-  - path: value_label
+  - path: deal_value
+    prefix: "$"
+    round: true
     highlight: true
+  - path: expected_close_date
+    prefix: "close "
+    date_format: MMM YYYY

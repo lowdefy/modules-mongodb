@@ -129,23 +129,6 @@ _ref:
                 properties:
                   size: small
                   title: '<div style="font-size: 12px; font-weight: 600; color: #8c8c8c; text-transform: uppercase; letter-spacing: 0.05em;">Active Deals</div>'
-                slots:
-                  extra:
-                    blocks:
-                      - id: new_deal_button
-                        type: Button
-                        properties:
-                          title: New Deal
-                          icon: AiOutlinePlus
-                          type: primary
-                          size: small
-                        events:
-                          onClick:
-                            - id: go_new_deal
-                              type: Link
-                              params:
-                                pageId:
-                                  _module.pageId: new
                 blocks:
                   - id: deal_search
                     type: TextInput
@@ -229,20 +212,16 @@ _ref:
                             const stages = args.stages || {};
                             const outcomes = args.outcomes || {};
                             const reasons = args.reasons || {};
+                            const cardFields = args.cardFields || [];
                             return deals.map((deal) => {
                               const stage = deal.status && deal.status[0] ? deal.status[0].stage : null;
                               const outcomeType = deal.outcome ? deal.outcome.type : null;
                               const reasonKey = deal.outcome ? deal.outcome.reason : null;
-                              const dv = deal.deal_value || 0;
-                              let valueLabel = '';
-                              if (dv >= 1000000) valueLabel = 'R' + (Math.round(dv / 100000) / 10) + 'm';
-                              else if (dv >= 1000) valueLabel = 'R' + (Math.round(dv / 100) / 10) + 'k';
-                              else if (dv > 0) valueLabel = 'R' + Math.round(dv);
                               return Object.assign({}, deal, {
                                 stage_display: stage ? stages[stage] : null,
                                 outcome_display: outcomeType ? outcomes[outcomeType] : null,
                                 reason_display: reasonKey ? reasons[reasonKey] : null,
-                                value_label: valueLabel,
+                                card_fields: cardFields,
                               });
                             });
                           args:
@@ -252,6 +231,8 @@ _ref:
                               _module.var: outcomes
                             reasons:
                               _module.var: outcome_reasons
+                            cardFields:
+                              _module.var: card_fields
                       html: |
                         {% set stage_p = item.stage_display %}
                         {% set outcome_p = item.outcome_display %}
@@ -274,9 +255,13 @@ _ref:
                           {% endif %}
                         </div>
                         <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--ant-color-text-secondary); line-height: 1.4;">
-                          {% if item.salesperson_name %}<span>{{ item.salesperson_name }}</span>{% endif %}
-                          {% if item.value_label %}<span>·</span><span style="color: var(--ant-color-success); font-weight: 500;">{{ item.value_label }}</span>{% endif %}
-                          {% if item.expected_close_date %}<span>·</span><span>close {{ item.expected_close_date | date('MMM YYYY') }}</span>{% endif %}
+                          {% for f in item.card_fields %}
+                            {% set v = item[f.path] %}
+                            {% if v %}
+                              {% if not loop.first %}<span>·</span>{% endif %}
+                              <span{% if f.highlight %} style="color: var(--ant-color-success); font-weight: 500;"{% endif %}>{{ f.prefix | default('') }}{% if f.date_format %}{{ v | date(f.date_format) }}{% elif f.round %}{{ v | round }}{% else %}{{ v }}{% endif %}{{ f.suffix | default('') }}</span>
+                            {% endif %}
+                          {% endfor %}
                         </div>
                         {% if outcome_type == 'lost' and item.outcome.reason %}
                           <div style="font-size: 11px; margin-top: 4px; font-style: italic; color: var(--ant-color-error);">{{ reason_p.title | default('Lost · ' ~ (item.outcome.reason | replace('-', ' '))) }}</div>
@@ -522,19 +507,66 @@ _ref:
                                               _request: get_selected_deal.0.name
                                             description:
                                               _request: get_selected_deal.0.description
+                              # Card-header toggle — opens/collapses all workflows via
+                              # page-owned `wp_active_keys` (on_change syncs manual toggles).
+                              # length is 0 only when explicitly collapsed; undefined when unset.
+                              extra:
+                                blocks:
+                                  - id: wp_toggle_all
+                                    type: Button
+                                    properties:
+                                      title:
+                                        _if:
+                                          test:
+                                            _eq:
+                                              - _state: wp_active_keys.length
+                                              - 0
+                                          then: Expand all
+                                          else: Collapse all
+                                      type: default
+                                      size: small
+                                    events:
+                                      onClick:
+                                        - id: toggle_wp_all
+                                          type: SetState
+                                          params:
+                                            wp_active_keys:
+                                              _if:
+                                                test:
+                                                  _eq:
+                                                    - _state: wp_active_keys.length
+                                                    - 0
+                                                then:
+                                                  _array.map:
+                                                    - _if_none:
+                                                        - _state: entity_workflows
+                                                        - []
+                                                    - _function:
+                                                        __args: 0.workflow_type
+                                                else: []
                             blocks:
-                              # Phase view — the workflows module's actions-on-entity
-                              # widget (replaces the custom ActionSteps stepper, #7).
-                              # entity_id is the state-selected deal; the widget reads
-                              # `entity_workflows` state (refetched on selection).
+                              # Phase view — the workflows module's workflow-progress
+                              # surface (collapsible per-workflow bars). Same data
+                              # contract as actions-on-entity; fetch_on_mount: false
+                              # because the page owns the entity_workflows fetch
+                              # (reseeded on deal selection + via entity-workflows-refetch).
                               - _ref:
                                   module: workflows
-                                  component: actions-on-entity
+                                  component: workflow-progress
                                   vars:
                                     entity_id:
                                       _state: selected_deal_id
                                     entity_connection_id:
                                       _module.var: entity_connection_id
+                                    fetch_on_mount: false
+                                    active_keys:
+                                      _state: wp_active_keys
+                                    on_change:
+                                      - id: sync_wp_active_keys
+                                        type: SetState
+                                        params:
+                                          wp_active_keys:
+                                            _event: activeKeys
                               # Page owns the single check-action modal drop and its
                               # on_complete (workflows Part 55 D1): a `check`-kind row
                               # clicked in actions-on-entity opens this in place instead

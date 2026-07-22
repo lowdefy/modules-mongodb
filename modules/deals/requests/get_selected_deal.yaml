@@ -120,14 +120,6 @@ properties:
         - $addFields:
             company:
               $first: $company
-            deal_value:
-              $ifNull:
-                - $value
-                - 0
-            close_date:
-              $ifNull:
-                - $close_date
-                - null
             days_open_label:
               $concat:
                 - $toString:
@@ -136,29 +128,8 @@ properties:
                       endDate: $$NOW
                       unit: day
                 - d
-        - $addFields:
-            close_label:
-              $cond:
-                if:
-                  $eq:
-                    - $close_date
-                    - null
-                then: "—"
-                else:
-                  $dateToString:
-                    format: "%d %b %Y"
-                    date: $close_date
-            value_label:
-              $cond:
-                if:
-                  $gt:
-                    - $deal_value
-                    - 0
-                then:
-                  $concat:
-                    - "R"
-                    - $toString: $deal_value
-                else: "—"
+        # Raw `value` / `close_date` pass through untouched — the host formats
+        # them for display via meta_fields (currency/date format are host concerns).
         - $limit: 1
       # App-injected pipeline stages (default []) — splice point for
       # request_stages.get_selected_deal.

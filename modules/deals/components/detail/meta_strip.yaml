@@ -42,17 +42,7 @@ properties:
     contentColor: var(--ant-color-text)
   items:
     _array.concat:
-      - - label: Value
-          value:
-            _if_none:
-              - _request: get_selected_deal.0.value_label
-              - "—"
-        - label: Commercialisation Date
-          value:
-            _if_none:
-              - _request: get_selected_deal.0.close_label
-              - "—"
-        - label: Owner
+      - - label: Created by
           value:
             _if_none:
               - _request: get_selected_deal.0.created.user.name

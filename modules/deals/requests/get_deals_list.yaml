@@ -189,52 +189,9 @@ properties:
                   updated: 1
                   salesperson_name: $salesperson.name
                   expected_close_date: 1
+                  # Raw value number; hosts format it via card_fields
+                  # (currency/abbreviation are host concerns).
                   deal_value: 1
-                  # Pre-format the deal value for display so the card template
-                  # doesn't carry the R../m/k branching logic.
-                  value_label:
-                    $switch:
-                      branches:
-                        - case:
-                            $gte:
-                              - $deal_value
-                              - 1000000
-                          then:
-                            $concat:
-                              - "R"
-                              - $toString:
-                                  $round:
-                                    - $divide:
-                                        - $deal_value
-                                        - 1000000
-                                    - 1
-                              - "m"
-                        - case:
-                            $gte:
-                              - $deal_value
-                              - 1000
-                          then:
-                            $concat:
-                              - "R"
-                              - $toString:
-                                  $round:
-                                    - $divide:
-                                        - $deal_value
-                                        - 1000
-                                    - 1
-                              - "k"
-                        - case:
-                            $gt:
-                              - $deal_value
-                              - 0
-                          then:
-                            $concat:
-                              - "R"
-                              - $toString:
-                                  $round:
-                                    - $deal_value
-                                    - 0
-                      default: ""
             # App-injected pipeline stages (default []) — splice point for
             # request_stages.get_deals_list.
             - _module.var: request_stages.get_deals_list
