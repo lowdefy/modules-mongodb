@@ -77,36 +77,6 @@ properties:
                   _if_none:
                     - _payload: pagination.pageSize
                     - 20
-              # Form data now lives on the workflow doc (form_data.{type}), not
-              # deal.workflows.*. Look up the deal's workflow (module workflow_type
-              # var) and alias its form_data back onto `workflows` so the projections below
-              # are unchanged. Matches both entity fields so the workflows
-              # {entity.connection_id, entity.id} index is used.
-              - $lookup:
-                  from: workflows
-                  let:
-                    deal_id: $_id
-                  as: workflow
-                  pipeline:
-                    - $match:
-                        $expr:
-                          $and:
-                            - $eq:
-                                - $entity.connection_id
-                                - deals
-                            - $eq:
-                                - $entity.id
-                                - $$deal_id
-                            - $eq:
-                                - $workflow_type
-                                # Module workflow_type var.
-                                - _module.var: workflow_type
-                    - $limit: 1
-                    - $project:
-                        form_data: 1
-              - $addFields:
-                  workflows:
-                    $first: $workflow.form_data
               - $project:
                   _id: 1
                   name: 1
@@ -122,15 +92,10 @@ properties:
                   updated: 1
                   salesperson_name: $salesperson.name
                   expected_close_date: 1
-                  annual_volume_ton: $workflows.volumes.annual_volume_ton
                   deal_value:
-                    $multiply:
-                      - $ifNull:
-                          - $workflows.pricing-qualification.pricing_r_ton
-                          - 0
-                      - $ifNull:
-                          - $workflows.volumes.annual_volume_ton
-                          - 0
+                    $ifNull:
+                      - $value
+                      - 0
             # App-injected pipeline stages (default []) — splice point for
             # request_stages.get_active_deals.
             - _module.var: request_stages.get_active_deals

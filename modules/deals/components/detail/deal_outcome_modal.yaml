@@ -136,7 +136,8 @@ events:
           entity:
             id:
               _state: selected_deal_id
-            connection_id: deals
+            connection_id:
+              _module.var: entity_connection_id
     - id: set_entity_workflows_after_outcome
       type: SetState
       params:

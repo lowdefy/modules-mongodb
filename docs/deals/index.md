@@ -32,12 +32,12 @@ Add `deals` when an app needs a pipeline-driven opportunity/deal workspace — a
 # lowdefy.yaml (or modules.yaml)
 modules:
   - id: deals
-    source: "github:lowdefy/modules-mongodb/modules/deals@v0.12.0"
+    source: "github:lowdefy/modules-mongodb/modules/deals@v0.13.0"
     vars:
       app_name: my-app
       workflow_type: sales-pipeline # the workflows workflow to render
       stages: # deal.status[].stage display config, keyed by stage slug
-        prospecting: { title: Prospecting, fg: var(--ant-color-processing), bd: var(--ant-color-processing-border) }
+        prospecting: { title: Prospecting, fg: var(--ant-color-primary), bd: var(--ant-color-primary-border) }
       customer_types: { new-business: { title: New business, definition: … } }
       sectors: { manufacturing: { title: Manufacturing } }
       sub_sectors: { automotive: { title: Automotive, sector: manufacturing } }

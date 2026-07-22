@@ -64,7 +64,8 @@ _ref:
               entity:
                 id:
                   _state: selected_deal_id
-                connection_id: deals
+                connection_id:
+                  _module.var: entity_connection_id
         - id: set_entity_workflows_initial
           type: SetState
           skip:
@@ -265,7 +266,6 @@ _ref:
                         </div>
                         <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--ant-color-text-secondary); line-height: 1.4;">
                           {% if item.salesperson_name %}<span>{{ item.salesperson_name }}</span>{% endif %}
-                          {% if item.annual_volume_ton %}{% if item.salesperson_name %}<span>·</span>{% endif %}<span>{{ item.annual_volume_ton | round }} t/yr</span>{% endif %}
                           {% if item.value_label %}<span>·</span><span style="color: var(--ant-color-success); font-weight: 500;">{{ item.value_label }}</span>{% endif %}
                           {% if item.expected_close_date %}<span>·</span><span>close {{ item.expected_close_date | date('MMM YYYY') }}</span>{% endif %}
                         </div>
@@ -312,7 +312,8 @@ _ref:
                               entity:
                                 id:
                                   _state: selected_deal_id
-                                connection_id: deals
+                                connection_id:
+                                  _module.var: entity_connection_id
                         - id: set_entity_workflows
                           type: SetState
                           params:
@@ -525,7 +526,8 @@ _ref:
                                   vars:
                                     entity_id:
                                       _state: selected_deal_id
-                                    entity_connection_id: deals
+                                    entity_connection_id:
+                                      _module.var: entity_connection_id
                         - _module.var: components.sidebar_slots
 
                   - id: detail_col

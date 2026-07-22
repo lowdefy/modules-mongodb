@@ -14,6 +14,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
 | `app_name` | string |  | Yes | App identifier for per-app access flags and event display. |
+| `entity_connection_id` | string | `deals` |  | Connection id this module matches against a workflow doc's `entity.connection_id` (GetEntityWorkflows joins on {entity.connection_id, entity.id}). Must equal the exact `entity.connection_id` string configured in the host's sales-pipeline workflow config — the two must never drift, or every workflow join in this module breaks. |
 | `workflow_type` | string | `sales-pipeline` |  | The workflows-module workflow `type` this module renders on the deal detail page. This is a single-workflow re-platform — there is no multi-workflow support. |
 | `outcome_action_type` | string | `deal-outcome` |  | Action `type` slug used when recording a deal's won/lost outcome through the workflows/activities action pipeline. |
 | `salesperson_role` | string |  |  | Role slug that, when held by the logged-in user, defaults the deals-list salesperson filter to them (matched against salesperson.name). Leave unset (null) to ship no per-user default. |

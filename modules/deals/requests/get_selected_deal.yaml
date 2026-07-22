@@ -87,8 +87,8 @@ properties:
             as: related_deals
         # Form data now lives on the workflow doc (form_data.{type}), not
         # deal.workflows.*. Look up the deal's workflow (module workflow_type var)
-        # and alias its form_data back onto `workflows` so every downstream read (deal_value,
-        # close_date, the monthly_volume_ton $set, section_product) is unchanged.
+        # and alias its form_data back onto `workflows` so host slot components
+        # (e.g. a product/volumes tile via info_grid_slots) keep reading it.
         # Matches both entity fields so the workflows {entity.connection_id,
         # entity.id} index is used.
         - $lookup:
@@ -102,7 +102,7 @@ properties:
                     $and:
                       - $eq:
                           - $entity.connection_id
-                          - deals
+                          - _module.var: entity_connection_id
                       - $eq:
                           - $entity.id
                           - $$deal_id
@@ -121,17 +121,13 @@ properties:
             company:
               $first: $company
             deal_value:
-              $multiply:
-                - $ifNull:
-                    - $workflows.pricing-qualification.pricing_r_ton
-                    - 0
-                - $ifNull:
-                    - $workflows.volumes.annual_volume_ton
-                    - 0
+              $ifNull:
+                - $value
+                - 0
             close_date:
               $ifNull:
-                - $workflows.order-confirmation.commercialisation_date
-                - $expected_close_date
+                - $close_date
+                - null
             days_open_label:
               $concat:
                 - $toString:
@@ -163,11 +159,6 @@ properties:
                     - "R"
                     - $toString: $deal_value
                 else: "—"
-        - $set:
-            workflows.volumes.monthly_volume_ton:
-              $round:
-                - $workflows.volumes.monthly_volume_ton
-                - 2
         - $limit: 1
       # App-injected pipeline stages (default []) — splice point for
       # request_stages.get_selected_deal.

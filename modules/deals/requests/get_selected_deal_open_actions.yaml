@@ -23,7 +23,8 @@ properties:
               _payload: selected_deal_id
           - workflow_type:
               _module.var: workflow_type
-            entity.connection_id: deals
+            entity.connection_id:
+              _module.var: entity_connection_id
             entity.id:
               _payload: selected_deal_id
     - $addFields:
