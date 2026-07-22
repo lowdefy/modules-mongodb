@@ -5,7 +5,7 @@ import withTheme from "@lowdefy/blocks-antd/blocks/withTheme.js";
 import preprocessData from "./preprocessing/preprocessData.js";
 import renderFieldValue from "./core/renderFieldValue.js";
 import computeDescriptionSpans from "../shared/computeDescriptionSpans.js";
-import "./style.css";
+import "./style.module.css";
 
 const DataDescriptions = ({
   blockId,

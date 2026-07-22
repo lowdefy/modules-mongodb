@@ -1,0 +1,44 @@
+/* Global block styles as a CSS Module. :global(...) keeps class names
+   unhashed (the themeable cssKeys); Next/Turbopack rejects both a plain global
+   .css import and the :global block form, so selectors are wrapped per-rule. */
+@layer components {
+  /* ActionSteps visual contract — shared across instances without relying on
+     inline styles in JS (which break theming and CSS-variable overrides). */
+
+  /* Each step's title fills the row. Scoped to the block's own root so it can't
+     reach other antd `Steps` blocks on the same page. */
+  :global(.action-steps .ant-steps-item-title) {
+    width: 100%;
+  }
+
+  /* Per-action badge layout — sits inside the step description, fills the row,
+     leaves room either side for the badge dot and any trailing whitespace. */
+  :global(.action-steps-badge) {
+    margin-left: 5px;
+    width: 100%;
+    padding-right: 5px;
+  }
+
+  /* Current-action highlight — the row whose _id matches `activeActionId`
+     (the action page's ?action_id). A subtle, theme-aware "you are here" band,
+     using antd's selected-item token rather than the app primary (the step rail
+     deliberately neutralises colorPrimary). Radius + horizontal padding keep the
+     tint off the row edges. */
+  :global(.action-steps-badge-active) {
+    background: var(--ant-control-item-bg-active);
+    border-radius: var(--ant-border-radius, 6px);
+    padding-left: 5px;
+  }
+
+  /* Secondary-text variant for action links whose status is `blocked` or
+     `not-required` — picks up the secondary text token so the link recedes. */
+  :global(.action-steps-link-secondary) {
+    color: var(--ant-color-text-tertiary);
+  }
+
+  /* Disabled-link variant — keep the cursor as default rather than pointer
+     so the row reads as non-interactive. */
+  :global(.action-steps-link-disabled) {
+    cursor: default;
+  }
+}
