@@ -1,0 +1,28 @@
+/* Global block styles as a CSS Module. :global(...) keeps class names
+   unhashed (the themeable cssKeys); Next/Turbopack rejects both a plain global
+   .css import and the :global block form, so selectors are wrapped per-rule. */
+@layer components {
+  /* Compact-mode tightening for the events timeline. Scoped to the
+     `events-timeline-compact` class the block sets on its root in compact mode. */
+
+  :global(.events-timeline-compact .ant-timeline-item) {
+    padding-bottom: 8px;
+  }
+
+  :global(.events-timeline-compact .ant-timeline-item-tail) {
+    top: 8px;
+  }
+
+  :global(.events-timeline-compact .ant-timeline-item-head) {
+    top: 4px;
+  }
+
+  :global(.events-timeline-compact .ant-timeline-item-content) {
+    top: -4px;
+    font-size: 12px;
+  }
+
+  :global(.events-timeline-compact .ant-card-body) {
+    padding: 6px 10px !important;
+  }
+}

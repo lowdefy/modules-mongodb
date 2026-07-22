@@ -1,5 +1,5 @@
 name: Activities
-version: 0.14.0
+version: 0.14.1
 description: CRM activities — calls, meetings, emails linked to contacts and companies
 
 dependencies:
@@ -339,4 +339,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.14.0"
+    version: "^0.14.1"

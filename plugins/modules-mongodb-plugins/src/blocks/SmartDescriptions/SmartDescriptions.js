@@ -6,7 +6,7 @@ import processData from "./processData.js";
 import processFields from "./processFields.js";
 import renderValue from "./renderValue.js";
 import computeDescriptionSpans from "../shared/computeDescriptionSpans.js";
-import "./style.css";
+import "./style.module.css";
 
 const SmartDescriptions = ({
   blockId,
