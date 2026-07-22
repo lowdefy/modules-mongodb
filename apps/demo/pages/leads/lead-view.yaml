@@ -82,6 +82,23 @@ _ref:
                             entity_id:
                               _url_query: _id
                             entity_connection_id: leads-collection
+              # The workflow-progress presentation variant of the same surface.
+              # fetch_on_mount: false — actions-on-entity above already fetches
+              # entity_workflows into state; both surfaces read the same key.
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    title: Workflow progress
+                    blocks:
+                      - _ref:
+                          module: workflows
+                          component: workflow-progress
+                          vars:
+                            entity_id:
+                              _url_query: _id
+                            entity_connection_id: leads-collection
+                            fetch_on_mount: false
           - id: lead_info_column
             type: Box
             layout:
@@ -205,7 +222,7 @@ _ref:
           vars:
             on_complete:
               _build.array.concat:
-                # refresh the action steps (actions-on-entity's surface)
+                # refresh entity_workflows (actions-on-entity + workflow-progress)
                 - _ref:
                     module: workflows
                     component: entity-workflows-refetch
