@@ -71,7 +71,10 @@
 
 ## user-account
 
-- docs/user-account/index.md: User Account — Self-service account pages — passwordless login, email-verification confirmation, profile view/edit, first-time profile creation, and logout. The end-user side of the user/contact schema; the operator side lives in [`user-admin`](../user-admin/index.md).
+- docs/user-account/concepts/auth-methods.md: Auth methods — The login and signup pages are **method-driven**: they render whichever sign-in methods the deployment enables, and nothing else. This page explains where "which methods" comes from, what the module configures, and how errors and the 2FA challenge are handled.
+- docs/user-account/concepts/write-pathways.md: Write pathways — A "user" in this module is really two records: the app-owned **contact** (the person's profile / CRM data) and the auth-owned **user** (login identity, plus its `session` / `account` / `passkey` / `member` rows). Self-service writes go to different places depending on which they touch — there is ...
+- docs/user-account/how-to/migration.md: Migrating from the v0.x surface — `user-account` was **rebuilt** on the BetterAuth-based auth engine — a major breaking change, not an in-place upgrade. The old module was passwordless-email login plus profile CRUD over the fused `user_contacts` collection, glued to NextAuth semantics (`?error=` query codes, adapter-enforced invi...
+- docs/user-account/index.md: User Account — The **self-service auth surface for one app**, rebuilt on the BetterAuth-based auth engine. One package, two page families:
 - docs/user-account/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collections backing the module's connections before running the create-or-link and profile flows.
 - docs/user-account/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 

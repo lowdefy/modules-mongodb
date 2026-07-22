@@ -12,7 +12,9 @@ concepts:
 
 Multi-app deployments share user, contact, and event collections across apps. Documents are scoped by **`app_name`** so each app sees only the data it owns.
 
-Modules that require it: `notifications`, `user-account`, `user-admin`, `contacts`. (`user-admin` also writes per-app fields under `app_attributes.{app_name}`.)
+Modules that require it: `notifications`, `contacts`, `companies`, `activities`, `workflows`.
+
+> The `user-account` and `user-admin` modules **no longer use `app_name`** — they were rebuilt on the BetterAuth-based auth engine, where one module instance serves one pinned organization (org = app), so per-app scoping by the `apps.{app}` map is gone. See [`user-account`](../user-account/how-to/migration.md) and [`user-admin`](../user-admin/how-to/migration.md).
 
 ## Where it appears
 
@@ -37,15 +39,9 @@ modules:
   - id: notifications
     vars:
       app_name: ops-app
-  - id: user-account
-    vars:
-      app_name: ops-app
-  - id: user-admin
-    vars:
-      app_name: ops-app
   - id: contacts
     vars:
       app_name: ops-app
 ```
 
-Each app keeps its own scope of users-as-contacts, per-app access flags, notifications, and event display strings, while sharing the underlying `users`, `user_contacts`, `notifications`, and `log-events` collections.
+Each app keeps its own scope of contacts, notifications, and event display strings, while sharing the underlying `user_contacts`, `notifications`, and `log-events` collections.
