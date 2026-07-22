@@ -1,0 +1,206 @@
+/* Global block styles as a CSS Module. :global(...) keeps class names
+   unhashed (the themeable cssKeys); Next/Turbopack rejects both a plain global
+   .css import and the :global block form, so selectors are wrapped per-rule. */
+@layer components {
+  /* WorkflowProgress — grouped action buttons.
+     Colors track the active antd theme via CSS variables; per-button
+     fill/border/text come inline from the action_statuses enum. */
+
+  :global(.wp) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---- workflow group ---- */
+  :global(.wp-workflow) {
+    padding: 12px 0;
+  }
+  :global(.wp-workflow:not(:last-child)) {
+    border-bottom: 1px solid var(--ant-color-split, #f0f0f0);
+  }
+
+  :global(.wp-workflow-row) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    padding: 6px 10px;
+    margin: -2px -10px;
+    border-radius: 6px;
+    transition: background-color 0.15s;
+  }
+  :global(.wp-workflow-row:hover) {
+    background-color: var(--ant-color-fill-secondary, rgba(0, 0, 0, 0.06));
+  }
+  :global(.wp-workflow-row:hover .wp-caret) {
+    color: var(--ant-color-primary, #1677ff);
+    background: var(--ant-color-primary-bg, rgba(22, 119, 255, 0.1));
+  }
+  :global(.wp-workflow-progress) {
+    flex: none;
+    line-height: 0;
+  }
+  /* Percentage / success check inside the ring. */
+  :global(.wp-workflow-progress .ant-progress-text) {
+    font-size: 10px;
+    font-weight: 600;
+  }
+  :global(.wp-workflow-progress .ant-progress-text .anticon) {
+    font-size: 15px;
+  }
+  :global(.wp-workflow-title) {
+    font-size: 14px;
+  }
+  /* Completed pill next to the title. */
+  :global(.wp-workflow-tag) {
+    flex: none;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: var(--ant-color-success, #52c41a);
+    background: var(--ant-color-success-bg, #f6ffed);
+    border: 1px solid var(--ant-color-success-border, #b7eb8f);
+  }
+  /* Right-aligned percentage + fraction. */
+  :global(.wp-workflow-meta) {
+    margin-left: auto;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  :global(.wp-workflow-fraction) {
+    font-size: 13px;
+    color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.35));
+  }
+  /* Workflow-overview button, sits just right of the title. */
+  :global(.wp-workflow-link) {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    color: var(--ant-color-primary, #1677ff);
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  :global(.wp-workflow-link:hover) {
+    color: var(--ant-color-primary-active, #0958d9);
+  }
+  :global(.wp-caret) {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
+    background: var(--ant-color-fill-tertiary, rgba(0, 0, 0, 0.04));
+    font-size: 18px;
+    line-height: 1;
+    transition:
+      transform 0.15s,
+      color 0.15s,
+      background-color 0.15s;
+  }
+  :global(.wp-caret-closed) {
+    transform: rotate(-90deg);
+  }
+
+  /* ---- sections within a workflow ---- */
+  :global(.wp-sections) {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  :global(.wp-section-title) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+    padding-left: 2px;
+    color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.45));
+  }
+  :global(.wp-section-label) {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  :global(.wp-section-fraction) {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.35));
+  }
+  :global(.wp-section-bar) {
+    flex: 1;
+    max-width: 320px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--ant-color-fill-secondary, rgba(0, 0, 0, 0.06));
+    overflow: hidden;
+  }
+  :global(.wp-section-bar-fill) {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--ant-color-success, #52c41a);
+    transition: width 0.2s;
+  }
+  :global(.wp-struck) {
+    text-decoration: line-through;
+  }
+  /* Group title as a link to the group overview — inherit the label color,
+     underline on hover. Keeps the struck-through label readable. */
+  :global(.wp-section-link) {
+    color: inherit;
+    text-decoration: none;
+  }
+  :global(.wp-section-link:hover) {
+    color: var(--ant-color-primary, #1677ff);
+    text-decoration: underline;
+  }
+
+  /* ---- action buttons ---- */
+  :global(.wp-actions) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  :global(.wp-button) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: 1px solid;
+    font-size: 13px;
+    line-height: 1.3;
+    text-decoration: none;
+    cursor: pointer;
+    /* Grow with the label; keep it on one line so short buttons stay tidy. */
+    white-space: nowrap;
+  }
+  :global(.wp-button-dot) {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  :global(.wp-button:hover) {
+    filter: brightness(0.96);
+  }
+  :global(.wp-button-disabled) {
+    cursor: default;
+  }
+  :global(.wp-button-disabled:hover) {
+    filter: none;
+  }
+  :global(.wp-button-active) {
+    box-shadow: 0 0 0 2px var(--ant-color-primary, #1677ff);
+  }
+}

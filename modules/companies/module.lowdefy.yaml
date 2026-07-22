@@ -1,5 +1,5 @@
 name: Companies
-version: 0.12.0
+version: 0.14.1
 description: Company management — list, detail, edit, create, selector
 
 dependencies:
@@ -210,7 +210,10 @@ exports:
       description: Update company with contact reconciliation and event logging
   components:
     - id: company-selector
-      description: Selector/MultipleSelector for picking companies
+      description: >-
+        Selector/MultipleSelector for picking companies. Vars: field_id, mode,
+        title, label, disabled, and `required` (default false — sets the block
+        required so a page-level Validate flags an empty selection).
   menus:
     - id: default
       description: Companies navigation link
@@ -244,4 +247,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.12.0"
+    version: "^0.14.1"

@@ -1,5 +1,31 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.14.1
+
+### Patch Changes
+
+- [#115](https://github.com/lowdefy/modules-mongodb/pull/115) [`c75bad2`](https://github.com/lowdefy/modules-mongodb/commit/c75bad2bfbefde062b3e689618dffb9fcdfb7538) Thanks [@Yianni99](https://github.com/Yianni99)! - Align the suite to lowdefy 5.5.1 and migrate block stylesheets to CSS Modules.
+
+  Blocks that shipped a global `style.css` — `ActionSteps`, `DataDescriptions`,
+  `EventsTimeline`, `SmartDescriptions`, `WorkflowProgress` — now import a
+  `style.module.css` whose selectors are wrapped in `:global(...)` inside
+  `@layer components`, matching the convention used by the official
+  `@lowdefy/blocks-antd` blocks. The Turbopack build in lowdefy 5.5.1 rejects
+  global-CSS imports from transpiled first-party packages; the rendered class
+  names are unchanged, so consumers see no visual difference.
+
+## 0.14.0
+
+### Minor Changes
+
+- [#114](https://github.com/lowdefy/modules-mongodb/pull/114) [`f8b6d19`](https://github.com/lowdefy/modules-mongodb/commit/f8b6d197d010ce025a6e6443184f079d6170fe66) Thanks [@Saiby100](https://github.com/Saiby100)! - Add the WorkflowProgress block and the workflows module's `workflow-progress` component — a presentation variant of `actions-on-entity` that renders an entity's workflows as collapsible sections of grouped, status-colored action buttons, with progress rings, done-fractions, and the shared check-action click handling baked in.
+
+## 0.13.0
+
+### Minor Changes
+
+- [#109](https://github.com/lowdefy/modules-mongodb/pull/109) [`ee7ee3c`](https://github.com/lowdefy/modules-mongodb/commit/ee7ee3c6371452876025e81b110f4df09fcfe626) Thanks [@Saiby100](https://github.com/Saiby100)! - Add the `require` signal: a narrow, pre-hook-only cascade that reopens a `not-required` form/check action back to `action-required`. It is the `not-required` counterpart of `unblock` (which narrowly reopens `blocked`) and is kept distinct from the broad `activate` so a cascade can re-enable a skipped action without accidentally reopening completed (`done`) work. Enables patterns like a boolean form field that toggles a dependent action between `action-required` and `not-required` indefinitely.
+
 ## 0.12.0
 
 ### Patch Changes

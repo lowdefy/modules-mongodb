@@ -1,5 +1,21 @@
 # @lowdefy/modules-mongodb-files
 
+## 0.14.1
+
+## 0.14.0
+
+### Minor Changes
+
+- [#108](https://github.com/lowdefy/modules-mongodb/pull/108) [`784e63c`](https://github.com/lowdefy/modules-mongodb/commit/784e63c103dfffa100a2e79e889c18352fff1e4e) Thanks [@Yianni99](https://github.com/Yianni99)! - Add optional component vars for consumers that need required/empty-state control:
+
+  - `company-selector` gains a `required` var (default `false`) — sets the block
+    required so a page-level `Validate` flags an empty company selection, instead
+    of the consumer hand-rolling a submit guard.
+  - `file-list` gains an `empty_text` var (default `"No files"`) — overrides the
+    empty-state message.
+
+## 0.13.0
+
 ## 0.12.0
 
 ## 0.11.0

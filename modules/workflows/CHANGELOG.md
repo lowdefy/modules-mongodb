@@ -1,5 +1,15 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.14.1
+
+## 0.14.0
+
+### Minor Changes
+
+- [#114](https://github.com/lowdefy/modules-mongodb/pull/114) [`f8b6d19`](https://github.com/lowdefy/modules-mongodb/commit/f8b6d197d010ce025a6e6443184f079d6170fe66) Thanks [@Saiby100](https://github.com/Saiby100)! - Add the WorkflowProgress block and the workflows module's `workflow-progress` component — a presentation variant of `actions-on-entity` that renders an entity's workflows as collapsible sections of grouped, status-colored action buttons, with progress rings, done-fractions, and the shared check-action click handling baked in.
+
+## 0.13.0
+
 ## 0.12.0
 
 ### Minor Changes
