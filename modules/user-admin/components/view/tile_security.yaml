@@ -191,16 +191,19 @@ _ref:
               html:
                 _nunjucks:
                   # Read-only: email-verified (user.emailVerified), one badge per
-                  # linked OAuth provider (get_user_accounts), and MFA enrolment
-                  # (user.twoFactorEnabled). Passkey visibility would need a
-                  # user-passkeys read connection, which is not in this module's
-                  # declared surface — omitted here.
+                  # linked OAuth provider (get_user_accounts), MFA enrolment
+                  # (user.twoFactorEnabled), and a passkey badge when the user has
+                  # ≥1 registered passkey (get_user_detail.passkey_count, joined
+                  # from the user-passkeys read connection).
                   template: |
                     <div style="display:flex; gap:4px; flex-wrap:wrap;">
                       <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; {% if emailVerified %}background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);{% else %}background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);{% endif %}">{% if emailVerified %}✓ {% endif %}Email {% if not emailVerified %}not {% endif %}verified</span>
                     {% for p in providers %}
                       <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary); text-transform:capitalize;">{{ p.providerId }}</span>
                     {% endfor %}
+                    {% if passkeyCount > 0 %}
+                      <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">Passkey</span>
+                    {% endif %}
                     {% if mfa %}
                       <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">MFA · TOTP</span>
                     {% endif %}
@@ -210,5 +213,7 @@ _ref:
                       _request: get_user_detail.0.email_verified
                     mfa:
                       _request: get_user_detail.0.two_factor_enabled
+                    passkeyCount:
+                      _request: get_user_detail.0.passkey_count
                     providers:
                       _request: get_user_accounts

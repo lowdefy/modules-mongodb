@@ -195,6 +195,8 @@ exports:
       description: Read-only connection for the auth `user-accounts` collection
     - id: user-organizations
       description: Read-only connection for the auth `user-organizations` collection
+    - id: user-passkeys
+      description: Read-only connection for the auth `user-passkeys` collection
   api:
     - id: invite
       description: Create invitation (reconcile stale expired → create-or-link contact → InviteMember)
@@ -232,6 +234,7 @@ connections:
   - _ref: connections/user-sessions.yaml
   - _ref: connections/user-accounts.yaml
   - _ref: connections/user-organizations.yaml
+  - _ref: connections/user-passkeys.yaml
 
 api:
   - _ref: api/invite.yaml
