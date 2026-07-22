@@ -5,6 +5,16 @@ _ref:
     id: view
     title: Sales Pipeline
     hide_title: true
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Deals
+        pageId:
+          _module.pageId: all
+      - label:
+          _if_none:
+            - _request: get_selected_deal.0._id
+            - Pipeline
     events:
       onMount:
         - id: set_pagination

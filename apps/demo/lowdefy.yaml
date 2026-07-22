@@ -136,3 +136,4 @@ pages:
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml
   - _ref: pages/files/files-demo.yaml
+  - _ref: pages/deals/quote-builder.yaml

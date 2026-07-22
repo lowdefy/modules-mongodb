@@ -4,6 +4,10 @@ _ref:
   vars:
     id: all
     title: Deals
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Deals
     content_width: 1100
     page_actions:
       - id: new_deal_button

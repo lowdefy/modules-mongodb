@@ -3,7 +3,10 @@ app_name:
     path: app_config.yaml
     key: app_name
 
-workflow_type: sales-pipeline
+# Repointed onto the richer onboarding workflow (task 8, deals-module-rework) —
+# the workflows module resolves {workflow_type}-start/-submit endpoints and the
+# get_selected_deal workflow lookup off this slug.
+workflow_type: onboarding
 
 # Deal pipeline stages (deal.status[].stage). create-deal seeds `prospecting`.
 stages:
@@ -53,11 +56,25 @@ contact_roles:
   finance_contact:
     title: Finance contact
 
+# ActionSteps group display config — one entry per group slug the onboarding
+# workflow config declares (apps/demo/modules/workflows/workflow_config/onboarding/onboarding.yaml).
 action_groups:
-  prospecting:
-    title: Prospecting
+  qualification:
+    title: Qualify
+    order: 1
+    icon: AiOutlineUserAdd
+  quoting:
+    title: Quote
+    order: 2
+    icon: AiOutlineFileText
+  order:
+    title: Purchase order
+    order: 3
+    icon: AiOutlineShoppingCart
   closing:
     title: Closing
+    order: 4
+    icon: AiOutlineFileDone
 
 customer_types:
   new-business:
@@ -139,7 +156,3 @@ card_fields:
   - path: salesperson_name
   - path: value_label
     highlight: true
-
-components:
-  info_grid_slots:
-    _ref: modules/deals/tiles/product_volumes.yaml

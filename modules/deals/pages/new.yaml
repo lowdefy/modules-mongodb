@@ -9,7 +9,7 @@ _ref:
         icon: AiOutlineHome
       - label: Deals
         pageId:
-          _module.pageId: view
+          _module.pageId: all
       - label: New Deal
     events:
       onInit:

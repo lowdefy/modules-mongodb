@@ -1,26 +1,17 @@
-# Compact open-actions card — a lighter sibling of `actions-on-entity` (Part
-# 68). Where `actions-on-entity` renders the full per-workflow ActionSteps
-# stepper, this surfaces just the entity's currently OPEN actions as small
-# colour-keyed cards — for sidebars/summaries that don't need the full
-# workflow breakdown.
+# Compact open-actions card — a lighter sibling of `actions-on-entity`. Where
+# `actions-on-entity` renders the full per-workflow ActionSteps stepper, this
+# surfaces just the entity's currently OPEN actions as small colour-keyed cards,
+# for sidebars/summaries. "Open" = every status except the two terminal ones
+# (`done`, `not-required`) — the same terminal set the engine's own
+# `deriveGroupStatus.js` treats as closed. Actions-only: never reads tasks or
+# any activities collection.
 #
-# Reuses the identical `get-entity-workflows` fetch + `entity_workflows`
-# state pattern as `actions-on-entity`, then derives a flattened, OPEN-only
-# list. "Open" = every status except the two terminal ones (`done`,
-# `not-required`) — the same terminal set the engine's own group-status
-# derivation (`deriveGroupStatus.js`) treats as closed. Actions-only: this
-# never reads tasks or any activities collection.
-#
-# The card List is bound to `open_action_slots` — a FIXED-length array of
-# placeholder slots, seeded once on mount — not a materialized copy of the
-# open actions. Lowdefy's `List` only resyncs its item COUNT via an explicit
-# SetState targeting its own key, so a mount-only derived array goes stale
-# exactly like the pre-Task-5 bug this fixes. Each slot instead reads its
-# own row from `entity_workflows` live via `_js` + `_index`, so the row
-# recomputes on every render — including when a host (e.g. the deal view)
-# reseeds `entity_workflows` on selection change, with no extra host wiring.
-# 24 slots comfortably covers any realistic per-entity open-action count;
-# any excess simply doesn't render (no truncation indicator).
+# Rendering: a SINGLE reactive `_nunjucks` Html block driven by a `_js` flatten
+# of `entity_workflows` state. Both re-evaluate on every render, so the list
+# recomputes whenever `entity_workflows` changes — including when a host (e.g.
+# the deal view) reseeds it on selection change — with no host wiring, no item
+# cap, and one flatten per render. Navigation is an anchor href to each action's
+# page (the compact-card idiom).
 #
 # Vars:
 #   entity_id            — (required) the entity whose open actions render.
@@ -45,151 +36,58 @@ events:
       params:
         entity_workflows:
           _actions: call_entity_workflows.response.response.workflows
-    - id: seed_open_action_slots
-      type: SetState
-      params:
-        open_action_slots:
-          _js:
-            fn: |
-              return Array(24).fill(null);
-layout:
-  gap: 8
 blocks:
-  - id: open_actions_empty
+  - id: open_actions_html
     type: Html
-    visible:
-      _eq:
-        - _array.length:
-            &open_actions_list
-            _js:
-              fn: |
-                // Flatten every workflow's groups into one list, keeping only
-                // non-terminal actions (mirrors deriveGroupStatus's TERMINAL set).
-                // Re-evaluated on every render, so it always reflects the
-                // current `entity_workflows` state (see file header).
-                const TERMINAL = ['done', 'not-required'];
-                const open = [];
-                for (const workflow of (state('entity_workflows') || [])) {
-                  for (const group of (workflow.groups || [])) {
-                    for (const action of (group.actions || [])) {
-                      if (!TERMINAL.includes(action.status)) {
-                        open.push(Object.assign({}, action, {
-                          group_title: group.title,
-                          workflow_title: workflow.title,
-                        }));
+    properties:
+      html:
+        _nunjucks:
+          # `actions` is recomputed from entity_workflows on every render (see
+          # header) — reactive, uncapped.
+          template: |
+            {% if actions.length == 0 %}
+            <div style="font-size: 11px; color: var(--ant-color-text-tertiary); padding: 8px 0;">No open actions.</div>
+            {% else %}
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+            {% for a in actions %}
+            <a {% if a.href %}href="{{ a.href }}" {% endif %}style="display: block; text-decoration: none; padding: 8px 10px; border-radius: 6px; border: 1px solid {{ a.border }}; background: color-mix(in srgb, {{ a.border }} 18%, transparent); cursor: {% if a.href %}pointer{% else %}default{% endif %};">
+              <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: {{ a.title_color }}; margin-bottom: 4px;">{{ a.label }}</div>
+              <div style="font-size: 11px; color: var(--ant-color-text); line-height: 1.4;">{{ a.message }}</div>
+            </a>
+            {% endfor %}
+            </div>
+            {% endif %}
+          on:
+            actions:
+              _js:
+                args:
+                  - _ref: components/action_statuses.yaml
+                fn: |
+                  const statuses = args[0] || {};
+                  const TERMINAL = ['done', 'not-required'];
+                  const out = [];
+                  const wfs = state('entity_workflows') || [];
+                  for (const wf of wfs) {
+                    for (const g of (wf.groups || [])) {
+                      for (const act of (g.actions || [])) {
+                        if (TERMINAL.includes(act.status)) continue;
+                        const sc = statuses[act.status] || {};
+                        let href = null;
+                        if (act.link && act.link.pageId) {
+                          const uq = act.link.urlQuery || {};
+                          const qs = Object.keys(uq)
+                            .map(function (k) { return k + '=' + uq[k]; })
+                            .join('&');
+                          href = '/' + act.link.pageId + (qs ? '?' + qs : '');
+                        }
+                        out.push({
+                          label: g.title || wf.title || 'Action',
+                          message: act.message || '',
+                          border: sc.borderColor || 'var(--ant-color-primary-border)',
+                          title_color: sc.titleColor || 'var(--ant-color-primary)',
+                          href: href,
+                        });
                       }
                     }
                   }
-                }
-                return open;
-        - 0
-    properties:
-      html: |
-        <div style="font-size: 11px; color: var(--ant-color-text-tertiary); padding: 8px 0;">No open actions.</div>
-  - id: open_action_slots
-    type: List
-    layout:
-      direction: column
-      gap: 4
-    blocks:
-      - id: open_action_slots.$.card
-        type: Card
-        # Slots past the live open-actions count read `null` here and hide.
-        visible:
-          _ne:
-            - &open_actions_item
-              _get:
-                from: *open_actions_list
-                key:
-                  _index: 0
-            - null
-        properties:
-          size: small
-          hoverable: true
-          style:
-            border:
-              _string.concat:
-                - '1px solid '
-                - _if_none:
-                    - _get:
-                        from:
-                          _ref: components/action_statuses.yaml
-                        key:
-                          _string.concat:
-                            - _get:
-                                from: *open_actions_item
-                                key: status
-                            - '.borderColor'
-                    - 'var(--ant-color-primary-border)'
-            background:
-              _string.concat:
-                - 'color-mix(in srgb, '
-                - _if_none:
-                    - _get:
-                        from:
-                          _ref: components/action_statuses.yaml
-                        key:
-                          _string.concat:
-                            - _get:
-                                from: *open_actions_item
-                                key: status
-                            - '.borderColor'
-                    - 'var(--ant-color-primary-border)'
-                - ' 18%, transparent)'
-        events:
-          onClick:
-            - id: open_action_slots.$.link_to_action
-              type: Link
-              skip:
-                _eq:
-                  - _get:
-                      from: *open_actions_item
-                      key: link.pageId
-                  - null
-              params:
-                pageId:
-                  _get:
-                      from: *open_actions_item
-                      key: link.pageId
-                urlQuery:
-                  _get:
-                      from: *open_actions_item
-                      key: link.urlQuery
-        blocks:
-          - id: open_action_slots.$.text
-            type: Html
-            properties:
-              html:
-                _nunjucks:
-                  template: |
-                    <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: {{ label_color }}; margin-bottom: 4px;">{{ label }}</div>
-                    <div style="font-size: 11px; color: var(--ant-color-text); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ message }}</div>
-                  on:
-                    label:
-                      _if_none:
-                        - _get:
-                            from: *open_actions_item
-                            key: group_title
-                        - _if_none:
-                            - _get:
-                                from: *open_actions_item
-                                key: workflow_title
-                            - Action
-                    label_color:
-                      _if_none:
-                        - _get:
-                            from:
-                              _ref: components/action_statuses.yaml
-                            key:
-                              _string.concat:
-                                - _get:
-                                    from: *open_actions_item
-                                    key: status
-                                - '.titleColor'
-                        - 'var(--ant-color-primary)'
-                    message:
-                      _if_none:
-                        - _get:
-                            from: *open_actions_item
-                            key: message
-                        - ''
+                  return out;
