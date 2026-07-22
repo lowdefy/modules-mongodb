@@ -40,7 +40,6 @@ _ref:
           type: Request
           params:
             - get_selected_deal
-            - get_selected_deal_open_actions
             - get_last_contact
             - get_entity_files_detail_files_list
         # Phase view is the workflows module's actions-on-entity widget, which
@@ -83,11 +82,9 @@ _ref:
                 - _request: get_selected_deal.0.related_deals
                 - []
         - _ref: actions/set_deal_people.yaml
-        - _ref: actions/compute_open_actions.yaml
     requests:
       - _ref: requests/get_active_deals.yaml
       - _ref: requests/get_selected_deal.yaml
-      - _ref: requests/get_selected_deal_open_actions.yaml
       - _ref: requests/get_last_contact.yaml
       - _ref: requests/get_mentionable_users.yaml
       - _ref: requests/get_task_assignee_options.yaml
@@ -290,7 +287,6 @@ _ref:
                           type: Request
                           params:
                             - get_selected_deal
-                            - get_selected_deal_open_actions
                             - get_last_contact
                             - get-events
                             - get_activities_for_entity
@@ -319,6 +315,19 @@ _ref:
                           params:
                             entity_workflows:
                               _actions: refetch_entity_workflows.response.response.workflows
+                        # Re-seed the open-tasks card: it seeds `open_tasks` state
+                        # only on its own mount + on task-save, so switching deals
+                        # would otherwise leave the previous deal's tasks on screen.
+                        - id: refetch_open_tasks
+                          type: Request
+                          params: get_open_tasks_for_entity
+                        - id: reseed_open_tasks
+                          type: SetState
+                          params:
+                            open_tasks:
+                              _if_none:
+                                - _request: get_open_tasks_for_entity
+                                - []
                         - id: refresh_related_deals
                           type: SetState
                           params:
@@ -327,7 +336,6 @@ _ref:
                                 - _request: get_selected_deal.0.related_deals
                                 - []
                         - _ref: actions/set_deal_people.yaml
-                        - _ref: actions/compute_open_actions.yaml
                   - id: deals_pagination
                     type: Pagination
                     style:
@@ -528,6 +536,38 @@ _ref:
                                       _state: selected_deal_id
                                     entity_connection_id:
                                       _module.var: entity_connection_id
+                              # Page owns the single check-action modal drop and its
+                              # on_complete (workflows Part 55 D1): a `check`-kind row
+                              # clicked in actions-on-entity opens this in place instead
+                              # of full-page-navigating to its own action page. Refresh
+                              # the phase view (entity_workflows) via the shared
+                              # entity-workflows-refetch sequence, plus the open-tasks
+                              # card (mirrors the deal-switch/task-save reseed below —
+                              # a completed check action can spawn/close tasks too).
+                              - _ref:
+                                  module: workflows
+                                  component: check-action-modal
+                                  vars:
+                                    on_complete:
+                                      _build.array.concat:
+                                        - _ref:
+                                            module: workflows
+                                            component: entity-workflows-refetch
+                                            vars:
+                                              entity_id:
+                                                _state: selected_deal_id
+                                              entity_connection_id:
+                                                _module.var: entity_connection_id
+                                        - - id: refetch_open_tasks_after_check_action
+                                            type: Request
+                                            params: get_open_tasks_for_entity
+                                          - id: reseed_open_tasks_after_check_action
+                                            type: SetState
+                                            params:
+                                              open_tasks:
+                                                _if_none:
+                                                  - _request: get_open_tasks_for_entity
+                                                  - []
                         - _module.var: components.sidebar_slots
 
                   - id: detail_col

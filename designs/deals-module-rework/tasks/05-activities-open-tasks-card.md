@@ -6,7 +6,7 @@ Workstream B1 (activities half), completing the widget split. Task 4 gave workfl
 
 ## Task
 
-Add an exported **`open-tasks`** component to the **activities** module — a compact card listing an entity's open tasks from activities' `actions` collection, parameterised by `entity_type` + `entity_id`. Style it to match the workflows `open-actions` card so the two read as one "what's open" row.
+Add an exported **`open-tasks`** component to the **activities** module — a compact card listing an entity's open tasks from activities' `actions` collection, parameterised by `entity_type` + `entity_id`. It queries tasks by `kind: task` + `entity_type`/`entity_id` — **the shape task 3 now writes** (task 3 replaced the old `deal_ids` linkage with the generic `entity_type`/`entity_id`), so this card supersedes deals' old `get_selected_deal_open_actions` reader (which still queries `deal_ids`). Style it to match the workflows `open-actions` card so the two read as one "what's open" row.
 
 Then in **deals**:
 - compose the workflows `open-actions` card + the activities `open-tasks` card side by side where `section_actions` rendered;
@@ -32,3 +32,5 @@ Then in **deals**:
 ## Notes
 
 Depends on task 3 (activities owns task storage/CRUD) and task 4 (the paired actions card). Confirm the `actions-collection` connection is not read elsewhere in deals before deleting — the workflows engine has its own actions collection; don't conflate.
+
+**Host migration (Phase D, record only):** because task 3 changed task→deal linkage from `deal_ids` to `entity_type`/`entity_id`, this card's `entity_type`/`entity_id` query will not surface a host's pre-existing `deal_ids`-shaped tasks. The host needs a one-time backfill migration stamping `entity_type: deal` / `entity_id` onto legacy tasks — same class as the value/close backfill in design A4, run host-side at cutover. The demo has fresh data, so no demo migration is needed. Not implemented here; noted so Phase D plans for it.

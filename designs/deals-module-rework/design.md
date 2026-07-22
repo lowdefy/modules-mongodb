@@ -96,6 +96,8 @@ Because the host configures the workflow, the deal-value formula *belongs* in th
 
 **Data migration (required for the host).** Existing host deals were valued compute-on-read and carry no stored `value`/`close_date`. Once the module reads stored fields, those deals render `0`/`—` until backfilled. The host needs a one-time backfill migration (via its own migration tooling) that computes `value`/`close_date` from each deal's existing workflow `form_data` and stamps them. The `$ifNull` fallbacks (A2) keep the app functional pre-backfill; the migration restores displayed values. This migration is **host-side, part of Phase D**, not this rework — but it is a hard prerequisite for the host's cutover and is called out here so Phase D plans for it.
 
+A **second host migration** in the same class comes from Workstream B2 (task 3): task→entity linkage moved from `deal_ids` to the generic `entity_type`/`entity_id`. Once the open-tasks card queries the new shape, a host's pre-existing `deal_ids`-shaped tasks won't surface until backfilled (`entity_type: deal` / `entity_id`). Also host-side, also Phase D; the demo has fresh data so needs no migration.
+
 **Two module copies today.** The host currently uses its own local copy via a `file:` source; modules-mongodb has the ported copy (PR #111). This rework generalizes the **modules-mongodb** copy. The host's local copy is untouched until Phase D, when the host deletes its copy, points `source:` at the released shared module, and supplies the reconstitution config + backfill above.
 
 ---

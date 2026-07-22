@@ -17,6 +17,13 @@ exports:
       description: Event type display metadata (color, title, icon) merged with app additions
     - id: events-timeline
       description: Timeline panel showing filtered event history for an entity
+    - id: note-capture
+      description: >-
+        @mention rich-text note-capture modal, writing through this
+        module's own new-event api. Parameterised by a mentionable-users
+        source, entity link (entity_id + reference_field, optional
+        company_id), and event type/display — see the file header for the
+        full vars list.
   api:
     - id: new-event
       description: Log a new audit event
@@ -89,6 +96,9 @@ components:
   - id: events-timeline
     component:
       _ref: components/events-timeline.yaml
+  - id: note-capture
+    component:
+      _ref: components/note-capture.yaml
 
 api:
   - _ref: api/new-event.yaml

@@ -10,13 +10,13 @@ Workflows already exports `actions-on-entity` (the full stepper). This task adds
 
 Add an exported **`open-actions`** component to the **workflows** module — a compact card listing an entity's open workflow actions, beside `actions-on-entity`. It fetches only its own open actions (via the existing entity-workflows data path), parameterised by `entity_id` + `entity_connection_id`. Reuse the `action_statuses` colour keying. Do **not** read tasks or any activities collection.
 
-Then have **deals** consume `open-actions` for the actions portion of its current `section_actions` card. (Deals still shows its local task portion until task 5 replaces it — keep the deal view building.)
+Deals' current `section_actions` is a **single merged paginated list** (`open_actions_all` = open workflow actions + tasks combined), so there is no clean "actions half" to peel off here. **This task only creates + exports the workflows `open-actions` component.** The deals composition (replacing the merged card with the two cards side by side, deleting `section_actions`/`action_card.yaml.njk`, removing `get_selected_deal_open_actions`) happens wholesale in task 5, which consumes both `open-actions` (this task) and `open-tasks` (task 5). Task 5's build exercises this component.
 
 ## Acceptance Criteria
 
-- workflows exports `open-actions` (manifest + docs updated); it fetches only workflow actions, no cross-module reads.
-- deals' deal view renders open workflow actions via the workflows `open-actions` component.
-- `CI=true pnpm ldf:b` green; changeset for workflows (minor) + deals; `docs:check` green.
+- workflows exports `open-actions` (manifest + docs updated); it fetches only workflow actions, no cross-module reads (no tasks, no activities collection).
+- `CI=true pnpm ldf:b` green (module still loads with the new component); changeset for workflows (minor); `docs:check` green.
+- Deals is NOT rewired here — deferred to task 5 (avoids a messy half-split of the merged card).
 
 ## Files
 

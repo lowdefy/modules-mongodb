@@ -26,7 +26,10 @@ routine:
       - :throw: Invalid task status.
 
   # Log the event first — new-event generates its own _id, so the returned
-  # eventId is needed for the task's status entry.
+  # eventId is needed for the task's status entry. type/display/references
+  # are fully consumer-supplied (payload.event) — each entity kind (deal,
+  # meeting, ...) keeps its own flavoured audit copy and reference shape;
+  # this API only adds the freshly-minted task's own action_id.
   - id: log_task_event
     type: CallApi
     properties:
@@ -35,30 +38,17 @@ routine:
           id: new-event
           module: events
       payload:
-        type: deal-task-created
+        type:
+          _payload: event.type
         display:
-          _build.object.fromEntries:
-            - - _module.var: app_name
-              - title:
-                  _nunjucks:
-                    template: |
-                      <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> created task — {{ title }}.
-                    on:
-                      user:
-                        _user: true
-                      title:
-                        _payload: title
-                description:
-                  _if_none:
-                    - _payload: description
-                    - null
+          _payload: event.display
         references:
-          deal_ids:
-            - _payload: deal_id
-          company_ids:
-            - _payload: company_id
-          action_ids:
-            - _state: task_id
+          _object.assign:
+            - _if_none:
+                - _payload: event.references
+                - {}
+            - action_ids:
+                - _state: task_id
         metadata:
           task_id:
             _state: task_id
@@ -126,10 +116,28 @@ routine:
                 then:
                   _date: now
                 else: null
-            deal_ids:
-              - _payload: deal_id
+            # Arbitrary entity link — entity_type/entity_id, not a
+            # hardcoded reference, so a task can hang off a deal, a
+            # meeting, or any other entity a host wires this API to.
+            entity_type:
+              _if_none:
+                - _payload: entity_type
+                - null
+            entity_id:
+              _if_none:
+                - _payload: entity_id
+                - null
+            # Optional secondary link (mirrors the company_ids convention
+            # activities' own docs already use for cross-entity joins).
             company_ids:
-              - _payload: company_id
+              _if:
+                test:
+                  _eq:
+                    - _payload: company_id
+                    - null
+                then: []
+                else:
+                  - _payload: company_id
             created:
               _ref:
                 module: events

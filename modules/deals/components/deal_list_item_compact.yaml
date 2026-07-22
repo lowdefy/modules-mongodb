@@ -33,7 +33,6 @@ events:
       type: Request
       params:
         - get_selected_deal
-        - get_selected_deal_open_actions
         - get_last_contact
         - get-events
         - get_activities_for_entity
@@ -58,6 +57,19 @@ events:
       params:
         entity_workflows:
           _actions: refetch_entity_workflows.response.response.workflows
+    # Re-seed the open-tasks card: it seeds `open_tasks` state only on its
+    # own mount + on task-save, so switching deals via this related-deal
+    # click would otherwise leave the previous deal's tasks on screen.
+    - id: refetch_open_tasks
+      type: Request
+      params: get_open_tasks_for_entity
+    - id: reseed_open_tasks
+      type: SetState
+      params:
+        open_tasks:
+          _if_none:
+            - _request: get_open_tasks_for_entity
+            - []
     - id: refresh_related_deals
       type: SetState
       params:
@@ -66,7 +78,6 @@ events:
             - _request: get_selected_deal.0.related_deals
             - []
     - _ref: actions/set_deal_people.yaml
-    - _ref: actions/compute_open_actions.yaml
 blocks:
   - id: deal_list_item_compact_html
     type: Html

@@ -1,0 +1,180 @@
+# @mention rich-text note-capture modal — generalised from deals' original
+# deal-only add_note_modal so there is one note-capture implementation. The
+# note is written as an events-module event via the new-event api (this
+# module already owns the write), so only the capture UI needed lifting.
+# Drop this anywhere on a page; the host opens it via CallMethod
+# (`blockId: <id var>`, method `toggleOpen`) — same fixed contract as the
+# original modal. Internal field state stays under the fixed
+# `note_capture_modal.*` namespace (single-instance-open-at-a-time, same
+# contract as activities' task-modal), regardless of the `id` var.
+#
+# Vars:
+#   id                        — block id for the Modal, so a host targeting
+#                                a non-default id via CallMethod still finds
+#                                it. Default `note_capture_modal`.
+#   mentionable_users         — required. Value for the TiptapMentionInput's
+#                                `mentions.options` — e.g. a `_request:` ref
+#                                to a host-owned aggregation returning
+#                                `{ label, value: { contact_id, name },
+#                                tag }` options (see deals'
+#                                `get_mentionable_users`), or a literal
+#                                options array. events does not hardcode an
+#                                app-scoped users query — the host owns it.
+#   mentionable_users_request_id — optional, default null. When set, this
+#                                request id is refetched every time the
+#                                modal opens (mirrors the original modal's
+#                                onOpen fetch), keeping the mention list
+#                                fresh. Omit when the host's request is
+#                                already kept warm elsewhere.
+#   entity_id                 — required. The host entity's id, stored as
+#                                the sole element of the emitted event's
+#                                `references.<reference_field>` array.
+#   reference_field           — required. Key name for `entity_id`'s
+#                                reference array (e.g. `deal_ids`,
+#                                `meeting_ids`) — matches the
+#                                `reference_field` vocabulary events-timeline
+#                                already uses to query by reference.
+#   company_id                — optional, default null. Secondary link
+#                                stored as the event's `references.company_ids`
+#                                array (single element). Omit entirely when
+#                                the host has no company concept.
+#   type                       — required. The emitted event's `type` string
+#                                (e.g. `deal-note`).
+#   title_template             — required. Nunjucks template string for the
+#                                event's display title, rendered with `user`
+#                                (the acting `_user`) in scope — lets each
+#                                host keep its own flavoured audit copy
+#                                (e.g. deals' teammate-mention link).
+#   on_saved                   — action sequence run after a successful save
+#                                (e.g. refetching the host's timeline/last
+#                                contact requests). Default `[]`.
+id:
+  _var:
+    key: id
+    default: note_capture_modal
+type: Modal
+properties:
+  title: Add Note
+  okText: Save
+  cancelText: Cancel
+events:
+  onOpen:
+    _build.if:
+      test:
+        _build.ne:
+          - _var:
+              key: mentionable_users_request_id
+              default: null
+          - null
+      then:
+        - id: fetch_mentionable_users
+          type: Request
+          params:
+            _var: mentionable_users_request_id
+      else: []
+  onOk:
+    _build.array.concat:
+      - - id: validate_note
+          type: Validate
+          params: note_capture_modal.note_content
+        - id: insert_note_event
+          type: CallAPI
+          skip:
+            _or:
+              - _eq:
+                  - _state: note_capture_modal.note_content.text
+                  - null
+              - _eq:
+                  - _state: note_capture_modal.note_content.html
+                  - <p></p>
+          params:
+            endpointId:
+              _module.endpointId: new-event
+            payload:
+              type:
+                _var: type
+              # App-keyed event display read by the host app — the display
+              # key resolves at build time from this module's own
+              # `display_key` var (host passes its app_name into it, same
+              # as events-timeline's own display_key wiring).
+              display:
+                _build.object.fromEntries:
+                  - - _module.var: display_key
+                    - title:
+                        _nunjucks:
+                          template:
+                            _var: title_template
+                          on:
+                            user:
+                              _user: true
+                      description:
+                        _state: note_capture_modal.note_content.html
+              references:
+                _build.object.assign:
+                  - _build.object.fromEntries:
+                      - - _var: reference_field
+                        - - _var: entity_id
+                  - _build.if:
+                      test:
+                        _build.ne:
+                          - _var:
+                              key: company_id
+                              default: null
+                          - null
+                      then:
+                        company_ids:
+                          - _var: company_id
+                      else: {}
+                  - contact_ids:
+                      _array.map:
+                        on:
+                          _if_none:
+                            - _state: note_capture_modal.note_content.mentions
+                            - []
+                        callback:
+                          _function:
+                            __args: 0.contact_id
+              metadata:
+                text:
+                  _state: note_capture_modal.note_content.text
+                html:
+                  _state: note_capture_modal.note_content.html
+                mentions:
+                  _state: note_capture_modal.note_content.mentions
+      - _var:
+          key: on_saved
+          default: []
+      - - id: clear_note_text
+          type: SetState
+          params:
+            note_capture_modal.note_content: null
+  onClose:
+    - id: clear_note_text_on_close
+      type: SetState
+      params:
+        note_capture_modal.note_content: null
+blocks:
+  - id: note_capture_modal.note_content
+    type: TiptapMentionInput
+    required: true
+    validate:
+      - message: Note cannot be blank.
+        status: error
+        pass:
+          _ne:
+            - _state: note_capture_modal.note_content.text
+            - null
+    properties:
+      title: Note
+      placeholder: Write a note. Use @ to mention a teammate.
+      label:
+        disabled: true
+      style: "min-height: 120px; max-height: 320px; overflow-y: auto;"
+      mentions:
+        getHref:
+          _function:
+            __string.concat:
+              - /contacts/view?_id=
+              - __args: 0.value.contact_id
+        options:
+          _var: mentionable_users

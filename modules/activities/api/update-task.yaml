@@ -21,7 +21,8 @@ routine:
       - :throw: Task not found.
 
   # Field edits (modal only — quick-done sends fields: null). No event; the
-  # connection changeLog records the diff.
+  # connection changeLog records the diff. The task's entity link
+  # (entity_type/entity_id) is set once at create and never rewritten here.
   - :if:
       _not:
         _eq:
@@ -87,6 +88,8 @@ routine:
 
   # Stage flip — only when the stage actually changed, so repeated
   # quick-done clicks are idempotent (no duplicate entries or events).
+  # type/display/references are consumer-supplied (payload.event), same
+  # seam as create-task.
   - :if:
       _and:
         - _not:
@@ -115,47 +118,16 @@ routine:
               module: events
           payload:
             type:
-              _if:
-                test:
-                  _eq:
-                    - _payload: stage
-                    - done
-                then: deal-task-completed
-                else: deal-task-reopened
+              _payload: event.type
             display:
-              _build.object.fromEntries:
-                - - _module.var: app_name
-                  - title:
-                      _nunjucks:
-                        template: |
-                          <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> {{ verb }} task — {{ title }}.
-                        on:
-                          user:
-                            _user: true
-                          title:
-                            _if_none:
-                              - _payload: fields.title
-                              - _step: find_task.title
-                          verb:
-                            _if:
-                              test:
-                                _eq:
-                                  - _payload: stage
-                                  - done
-                              then: completed
-                              else: reopened
-                    description: null
+              _payload: event.display
             references:
-              deal_ids:
+              _object.assign:
                 - _if_none:
-                    - _payload: deal_id
-                    - _step: find_task.deal_ids.0
-              company_ids:
-                - _if_none:
-                    - _payload: company_id
-                    - _step: find_task.company_ids.0
-              action_ids:
-                - _payload: task_id
+                    - _payload: event.references
+                    - {}
+                - action_ids:
+                    - _payload: task_id
             metadata:
               task_id:
                 _payload: task_id

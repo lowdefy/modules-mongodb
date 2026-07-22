@@ -236,6 +236,20 @@ exports:
       description: Transition activity stage, emit stage-specific event
     - id: delete-activity
       description: Soft-delete activity, emit delete-activity event
+    - id: create-task
+      description: >-
+        Create a `kind: task` doc in the shared actions collection. Two
+        seams: an arbitrary entity link (payload `entity_type`/`entity_id`,
+        not a hardcoded reference) and a consumer-supplied emitted event
+        (payload `event: { type, display, references }`, written via the
+        events module's new-event). See `components/task-modal.yaml` for
+        the paired UI, which builds this payload from its vars.
+    - id: update-task
+      description: >-
+        Edit a task's fields and/or flip its stage (emitting a
+        consumer-supplied event on stage change), by the same seams as
+        create-task. The task's entity link is set once at create and
+        never rewritten here.
   components:
     - id: activity-selector
       description: Selector/MultipleSelector for picking activities
@@ -247,6 +261,19 @@ exports:
       description: Button + modal capture flow with prefill vars
     - id: open_capture
       description: Action sequence — navigates to pageId:new with prefill in urlQuery
+    - id: task-modal
+      description: >-
+        Create/edit modal for create-task/update-task, parameterised by
+        entity link, assignee-options source, and event type/display —
+        see the file header for the full vars list.
+    - id: open-tasks
+      description: >-
+        Compact card list of an entity's open `kind: task` docs from
+        activities' own `actions` collection — a lighter sibling of the
+        workflows module's `open-actions`, styled to match it. Takes
+        `entity_type` + `entity_id` vars (the shape create-task/update-task
+        write) and an optional `on_click` action list for wiring a
+        host-owned `task-modal` instance. Reads no workflow-engine data.
   menus:
     - id: default
       description: Activities navigation link
@@ -260,6 +287,8 @@ api:
   - _ref: api/update-activity.yaml
   - _ref: api/change-activity-status.yaml
   - _ref: api/delete-activity.yaml
+  - _ref: api/create-task.yaml
+  - _ref: api/update-task.yaml
 
 pages:
   - _ref: pages/new.yaml
@@ -290,6 +319,12 @@ components:
   - id: tile_activities
     component:
       _ref: components/tile_activities.yaml
+  - id: task-modal
+    component:
+      _ref: components/task-modal.yaml
+  - id: open-tasks
+    component:
+      _ref: components/open-tasks.yaml
 
 menus:
   - _ref: menus.yaml

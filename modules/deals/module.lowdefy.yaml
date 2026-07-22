@@ -188,8 +188,6 @@ exports:
   connections:
     - id: deals-collection
       description: MongoDB connection for deal records
-    - id: actions-collection
-      description: MongoDB connection for deal-linked actions/tasks
     - id: events-collection
       description: MongoDB connection for the audit event log (read-only usage)
   api:
@@ -197,10 +195,6 @@ exports:
       description: Create a new deal
     - id: update-people
       description: Update a deal's contact roles / people
-    - id: create-task
-      description: Create a task on a deal
-    - id: update-task
-      description: Update a task on a deal
     - id: record-loss
       description: Record a deal's lost outcome and reason
   components:
@@ -212,14 +206,11 @@ exports:
 
 connections:
   - _ref: connections/deals-collection.yaml
-  - _ref: connections/actions-collection.yaml
   - _ref: connections/events-collection.yaml
 
 api:
   - _ref: api/create-deal.yaml
   - _ref: api/update-people.yaml
-  - _ref: api/create-task.yaml
-  - _ref: api/update-task.yaml
   - _ref: api/record-loss.yaml
 
 pages:

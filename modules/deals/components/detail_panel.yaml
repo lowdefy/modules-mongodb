@@ -6,7 +6,7 @@ blocks:
   _build.array.concat:
     - - _ref: components/detail/outcome_status.yaml
       - _ref: components/detail/meta_strip.yaml
-      - _ref: components/detail/section_actions.yaml
+      - _ref: components/detail/open_items_row.yaml
       - id: detail_divider_actions
         type: Divider
         style:
@@ -74,11 +74,79 @@ blocks:
                     compact: true
     # App-injected blocks appended to the main detail column (default []).
     - _module.var: components.main_slots
-    - - _ref: components/detail/add_note_modal.yaml
+    - - _ref:
+          module: events
+          component: note-capture
+          vars:
+            id: detail_add_note_modal
+            mentionable_users:
+              _request: get_mentionable_users
+            mentionable_users_request_id: get_mentionable_users
+            entity_id:
+              _state: selected_deal_id
+            reference_field: deal_ids
+            company_id:
+              _request: get_selected_deal.0.company_id
+            display_key:
+              _module.var: app_name
+            type: deal-note
+            title_template: |
+              <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> added a note.
+            on_saved:
+              - id: refetch_after_note
+                type: Request
+                params:
+                  - get-events
+                  - get_last_contact
       # deal_outcome_modal restored: the header Deal Status selector opens it to
       # record won/lost. Won routes through the module's outcome action's submit
       # (engine win hooks, only once that step is actionable); Lost stamps the deal +
       # cancels the workflow at any stage via record-loss.
       - _ref: components/detail/deal_outcome_modal.yaml
       - _ref: components/detail/people_modal.yaml
-      - _ref: components/detail/task_modal.yaml
+      - _ref:
+          module: activities
+          component: task-modal
+          vars:
+            id: deal_task_modal
+            entity_type: deal
+            entity_id:
+              _state: selected_deal_id
+            company_id:
+              _request: get_selected_deal.0.company_id
+            assignee_options:
+              _request: get_task_assignee_options
+            assignee_search:
+              request_id: get_task_assignee_options
+              state_key: task_assignee_search
+            events:
+              created:
+                type: deal-task-created
+                title_template: |
+                  <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> created task — {{ title }}.
+              completed:
+                type: deal-task-completed
+                title_template: |
+                  <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> completed task — {{ title }}.
+              reopened:
+                type: deal-task-reopened
+                title_template: |
+                  <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> reopened task — {{ title }}.
+            event_references:
+              deal_ids:
+                - _state: selected_deal_id
+              company_ids:
+                - _request: get_selected_deal.0.company_id
+            on_saved:
+              - id: refetch_after_task_save
+                type: Request
+                params:
+                  - get_open_tasks_for_entity
+                  - get-events
+              - id: reseed_open_tasks
+                type: SetState
+                params:
+                  open_tasks:
+                    _if_none:
+                      - _request: get_open_tasks_for_entity
+                      - []

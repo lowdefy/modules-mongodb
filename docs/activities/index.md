@@ -153,6 +153,35 @@ fields:
 
 Activity types flagged `agenda: true` (the built-in `meeting`, plus any consumer type that sets the flag) carry an Agenda Topics section in the form. Topics are stored as task documents in the `actions` collection (`kind: task`), stamped `metadata.task_type: agenda` to distinguish them from adhoc tasks, and linked back via `activity_ids`. See the `lookup_collections.actions` var if your app maps `actions-collection` to a non-default collection name. Any host-app per-workflow uniqueness index on `actions` must be **partial** (`partialFilterExpression: { type: { $exists: true } }`) to exclude untyped task docs.
 
+## Adhoc task CRUD
+
+`create-task` / `update-task` write/edit standalone `kind: task` docs in the same `actions` collection as agenda-topic tasks above, for hosts that need a task not tied to a meeting agenda (e.g. the `deals` module's task list). Two seams keep this generic rather than deal- or meeting-specific:
+
+- **Entity link** — payload `entity_type` / `entity_id` (stored verbatim on the task doc), not a hardcoded reference, so a task can hang off a deal, a meeting, or any entity. An optional `company_id` stores a secondary link as the task doc's `company_ids` array. The link is set once at create and never rewritten by `update-task`.
+- **Emitted event** — payload `event: { type, display, references }`, forwarded as-is into the events module's `new-event` (this API only adds the task's own `action_ids` reference). Each host supplies its own event type + Nunjucks display markup per transition.
+
+The paired `task-modal` component builds both API payloads from its vars — see the file header in `components/task-modal.yaml` for the full list (`entity_type`, `entity_id`, `company_id`, `assignee_options`, `assignee_search`, `events`, `event_references`, `on_saved`). `assignee_options` is a var (not a hardcoded request), so each host wires its own assignee-options source (e.g. `deals`' `get_task_assignee_options`, which projects contacts server-side into the `{ contact_id, name }` shape the task doc's `assignees` field stores).
+
+## Open-tasks card
+
+`open-tasks` is a compact card listing an entity's open `kind: task` docs, reading activities' own `actions` collection — filtered by `entity_type` + `entity_id` (the same shape the adhoc task CRUD above writes) and an open status (current stage not `done`). It is the activities-owned sibling of the `workflows` module's `open-actions` card (a lighter summary than the full action stepper), styled to match it so a host composing both side by side gets one "what's open" row. Vars: `entity_type` (required), `entity_id` (required), `on_click` (optional action list, run after `state.selected_task` is set to the clicked task — wire this to open a host's `task-modal` instance). See the file header in `components/open-tasks.yaml` for details.
+
+```yaml
+- _ref:
+    module: activities
+    component: open-tasks
+    vars:
+      entity_type: deal
+      entity_id:
+        _state: selected_deal_id
+      on_click:
+        - id: open_task_modal
+          type: CallMethod
+          params:
+            blockId: deal_task_modal
+            method: toggleOpen
+```
+
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions

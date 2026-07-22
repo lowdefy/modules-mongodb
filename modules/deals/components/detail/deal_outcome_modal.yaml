@@ -59,94 +59,89 @@ events:
               reasons:
                 _module.var: outcome_reasons
   onOk:
-    - id: validate_outcome_form
-      type: Validate
-      params:
-        regex:
-          - ^form\.
-    # Won → submit the outcome action through the engine (runs the win hooks:
-    # stamp deal won, push to Fulfilling, unblock Order Confirmation). Guarded
-    # on the action being actionable — the header selector + Outcome toggle
-    # already hide Won until then, this is the belt-and-braces check.
-    # Endpoint is derived at build time from the module's `workflow_type` var
-    # ({workflow_type}-submit in the workflows namespace) — never a literal.
-    - id: submit_win
-      type: CallAPI
-      skip:
-        _or:
-          - _ne:
+    # Wrapped in _build.array.concat: entity-workflows-refetch (below) resolves
+    # to a 2-action array, which must be spread into this list rather than
+    # nested as a single element — a plain YAML list item would not flatten it.
+    _build.array.concat:
+      - - id: validate_outcome_form
+          type: Validate
+          params:
+            regex:
+              - ^form\.
+          # Won → submit the outcome action through the engine (runs the win hooks:
+          # stamp deal won, push to Fulfilling, unblock Order Confirmation). Guarded
+          # on the action being actionable — the header selector + Outcome toggle
+          # already hide Won until then, this is the belt-and-braces check.
+          # Endpoint is derived at build time from the module's `workflow_type` var
+          # ({workflow_type}-submit in the workflows namespace) — never a literal.
+        - id: submit_win
+          type: CallAPI
+          skip:
+            _or:
+              - _ne:
+                  - _state: form.outcome_type
+                  - won
+              - _not:
+                  _state: deal_outcome_actionable
+          params:
+            endpointId:
+              _module.endpointId:
+                id:
+                  _build.string.concat:
+                    - _module.var: workflow_type
+                    - "-submit"
+                module: workflows
+            payload:
+              action_id:
+                _state: deal_outcome_action._id
+              signal: submit
+              current_key: null
+              form:
+                outcome_type: won
+                reason:
+                  _state: form.reason
+                notes:
+                  _state: form.notes
+          # Lost → stamp the deal + cancel the workflow (works at any stage).
+        - id: record_loss
+          type: CallAPI
+          skip:
+            _ne:
               - _state: form.outcome_type
-              - won
-          - _not:
-              _state: deal_outcome_actionable
-      params:
-        endpointId:
-          _module.endpointId:
-            id:
-              _build.string.concat:
-                - _module.var: workflow_type
-                - "-submit"
-            module: workflows
-        payload:
-          action_id:
-            _state: deal_outcome_action._id
-          signal: submit
-          current_key: null
-          form:
-            outcome_type: won
-            reason:
-              _state: form.reason
-            notes:
-              _state: form.notes
-    # Lost → stamp the deal + cancel the workflow (works at any stage).
-    - id: record_loss
-      type: CallAPI
-      skip:
-        _ne:
-          - _state: form.outcome_type
-          - lost
-      params:
-        endpointId:
-          _module.endpointId: record-loss
-        payload:
-          deal_id:
-            _state: selected_deal_id
-          workflow_id:
-            _state: deal_outcome_action.workflow_id
-          reason:
-            _state: form.reason
-          notes:
-            _state: form.notes
-    - id: refetch_after_outcome
-      type: Request
-      params:
-        - get_selected_deal
-        - get_active_deals
-        - get_last_contact
-        - get-events
-    # Refresh the phase view (actions-on-entity reads entity_workflows state).
-    - id: refetch_entity_workflows_after_outcome
-      type: CallAPI
-      params:
-        endpointId:
-          _module.endpointId:
-            id: get-entity-workflows
-            module: workflows
-        payload:
-          entity:
-            id:
+              - lost
+          params:
+            endpointId:
+              _module.endpointId: record-loss
+            payload:
+              deal_id:
+                _state: selected_deal_id
+              workflow_id:
+                _state: deal_outcome_action.workflow_id
+              reason:
+                _state: form.reason
+              notes:
+                _state: form.notes
+        - id: refetch_after_outcome
+          type: Request
+          params:
+            - get_selected_deal
+            - get_active_deals
+            - get_last_contact
+            - get-events
+      # Refresh the phase view (actions-on-entity reads entity_workflows state) —
+      # the shared workflows refetch sequence, not a hand-rolled one.
+      - _ref:
+          module: workflows
+          component: entity-workflows-refetch
+          vars:
+            entity_id:
               _state: selected_deal_id
-            connection_id:
+            entity_connection_id:
               _module.var: entity_connection_id
-    - id: set_entity_workflows_after_outcome
-      type: SetState
-      params:
-        entity_workflows:
-          _actions: refetch_entity_workflows_after_outcome.response.response.workflows
-    - id: reset_outcome_form
-      type: SetState
-      params:
-        form: null
+      - - id: reset_outcome_form
+          type: SetState
+          params:
+            form: null
   onCancel:
     - id: reset_outcome_form_cancel
       type: SetState
