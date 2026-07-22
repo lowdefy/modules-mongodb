@@ -22,7 +22,7 @@ The host is the module's real consumer (via Phase D). **Every capability this re
 
 - Rebuilding regions deals already delegates correctly (people, files, activity/event feeds, pipeline). Those stay as-is.
 - Restoring the leads collection/pages. Deals is the entity now; onboarding runs on deals.
-- Reintroducing the lead→company conversion (`track-company-setup` tracker). A deal already belongs to a company; that step is genuinely lead-specific and is dropped.
+- Reintroducing the lead→company *conversion* (creating a company from a lead). A deal already belongs to a company, so the company-*creation* step is dropped. **Note:** the `track-company-setup` tracker + `company-setup` child workflow are **restored** (adapted) — they run on the deal's *existing* company rather than a created one (see Workstream C).
 - Phase D itself (swapping the host's `source:` to the released module). This design only notes the cross-repo impact so Phase D stays a clean follow-on.
 
 ## Workstreams and order
@@ -167,7 +167,7 @@ Replace the thin `sales-pipeline` example (`apps/demo/modules/workflows/workflow
 | `send-quote` | keep as a custom-page action; approve-hook stage maps to a deal stage. The lead-scoped `quote-builder` page was deleted with leads, so **build a new lightweight deal-scoped `quote-builder` demo page** (capture quote line/value + submit for review) — preserves the custom-page-action showcase without a full builder |
 | `schedule-followup` | keep as-is |
 | `upload-po` | keep; approve-hook stamps close/value or advances stage |
-| `track-company-setup` (lead→company) | **drop** — lead-specific |
+| `track-company-setup` (lead→company) | **keep, adapted** — the lead→company *creation* is dropped (a deal already has a company), but the tracker + `company-setup` child workflow are restored. Its `start_link` targets a new app page `deals/start-company-setup` (carrying the `action_id`+`entity_id` sentinels), which resolves the deal's `company_id` and starts `company-setup` on the *existing* company with `parent_action_id` — the deals analogue of what `companies/new`'s `on_create_routine` did in the leads flow. The companies `on_create_routine` auto-start is guarded on a parent `action_id` so a plain company create no longer spawns an orphan setup workflow. |
 
 ### C wiring to A and B
 

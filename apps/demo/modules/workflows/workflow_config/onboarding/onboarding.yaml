@@ -68,6 +68,8 @@ starting_actions:
     status: blocked
   - type: upload-po
     status: blocked
+  - type: track-company-setup
+    status: blocked
   - type: deal-outcome
     status: action-required
   # site-visit is deliberately absent — conditional, spawned by the
@@ -136,6 +138,9 @@ action_groups:
   - id: order
     title: Purchase order
     icon: AiOutlineShoppingCart
+  - id: conversion
+    title: Company setup
+    icon: AiOutlineBank
   - id: closing
     title: Closing
     icon: AiOutlineFileDone
@@ -146,4 +151,5 @@ actions:
   - _ref: modules/workflows/workflow_config/onboarding/send-quote.yaml
   - _ref: modules/workflows/workflow_config/onboarding/schedule-followup.yaml
   - _ref: modules/workflows/workflow_config/onboarding/upload-po.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/track-company-setup.yaml
   - _ref: modules/workflows/workflow_config/onboarding/deal-outcome.yaml

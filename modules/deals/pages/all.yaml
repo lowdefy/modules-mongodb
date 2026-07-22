@@ -3,26 +3,16 @@ _ref:
   component: page
   vars:
     id: all
-    title: Deals
+    title:
+      _module.var: label_plural
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
-      - label: Deals
+      - label:
+          _module.var: label_plural
     content_width: 1100
     page_actions:
-      - id: new_deal_button
-        type: Button
-        properties:
-          title: New Deal
-          icon: AiOutlinePlus
-          type: primary
-        events:
-          onClick:
-            - id: go_new_deal
-              type: Link
-              params:
-                pageId:
-                  _module.pageId: new
+      - _ref: components/button_new_deal.yaml
     events:
       # Seed filter + pagination defaults before first render so the outcome
       # Segmented shows "Open" immediately and the request has valid paging.

@@ -3,14 +3,22 @@ _ref:
   component: page
   vars:
     id: new
-    title: New Deal
+    type:
+      _string.concat:
+        - "New "
+        - _module.var: label
+    content_width: 700
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
-      - label: Deals
+      - label:
+          _module.var: label_plural
         pageId:
           _module.pageId: all
-      - label: New Deal
+      - label:
+          _string.concat:
+            - "New "
+            - _module.var: label
     events:
       onInit:
         - id: init_state
@@ -23,141 +31,78 @@ _ref:
             cycle_check_self_id: null
             cycle_check_ids: []
     blocks:
-      - id: content
-        type: Box
+      - id: deal_new_card
+        type: Card
         layout:
-          gap: 8
-        properties:
-          style:
-            maxWidth: 800
-            margin: "0 auto"
+          gap: 12
         blocks:
-          - id: deal_new_card
-            type: Card
-            layout:
-              gap: 12
-            blocks:
-              _build.array.concat:
-                # Core universal deal fields.
-                - - id: section_deal
-                    type: Html
-                    properties:
-                      html: '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8c8c8c; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; margin: 0 0 14px;">Deal</div>'
-                  # Company: the companies module's exported picker. Stores the
-                  # bare company _id at form.company_id — matches the doc shape
-                  # the deal insert expects with no extraction step. `required`
-                  # makes the save-button Validate block an empty selection.
-                  - _ref:
-                      module: companies
-                      component: company-selector
-                      vars:
-                        field_id: form.company_id
-                        title: Company
-                        required: true
-                        label:
-                          span: 6
-                          align: right
-                  - id: form.name
-                    type: TextInput
-                    required: true
-                    properties:
-                      title: Deal Name
-                      label:
-                        span: 6
-                        align: right
-                      placeholder: Deal name
-                  - id: form.description
-                    type: TextInput
-                    properties:
-                      title: Description
-                      label:
-                        span: 6
-                        align: right
-                # Host-supplied domain fields (default []). Block ids prefixed
-                # `attributes.` bind to state.attributes.* — persisted by
-                # create-deal's generic passthrough and rendered read-only on
-                # the view via SmartDescriptions.
-                - _build.if:
-                    test:
-                      _build.gt:
-                        - _build.array.length:
-                            _module.var: fields
-                        - 0
-                    then:
-                      _build.array.concat:
-                        - - id: divider_details
-                            type: Divider
-                            properties:
-                              title: Details
-                        - _module.var: fields
-                    else: []
+          - _ref: components/form_deal.yaml
 
-          - _ref:
-              module: layout
-              component: floating-actions
-              vars:
-                actions:
-                  - id: cancel_button
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    properties:
-                      title: Cancel
-                      type: default
-                    events:
-                      onClick:
-                        - id: go_back
-                          type: Link
-                          params:
-                            pageId:
-                              _module.pageId: view
-                  - id: save_button
-                    type: Button
-                    layout:
-                      flex: 1 0 auto
-                    style:
-                      textAlign: right
-                    properties:
-                      title: Save deal
-                      type: primary
-                      icon: AiOutlineCheck
-                    events:
-                      onClick:
-                        - id: validate
-                          type: Validate
-                        - id: submit
-                          type: CallAPI
-                          messages:
-                            success: Deal created.
-                            error: Failed to create deal.
-                          params:
-                            endpointId:
-                              _module.endpointId: create-deal
-                            payload:
-                              form:
-                                _state: form
-                              # Host `fields` blocks bind to root state.attributes.*
-                              # (ids prefixed `attributes.`) — send them for the
-                              # generic create-deal passthrough.
-                              attributes:
-                                _state: attributes
-                        # Gate on the created deal_id, not form.company_id — Reset
-                        # clears company_id before the redirect's skip, self-skipping nav.
-                        - id: reset
-                          type: Reset
-                          skip:
-                            _eq:
-                              - _actions: submit.response.response.deal_id
-                              - null
-                        - id: redirect
-                          type: Link
-                          skip:
-                            _eq:
-                              - _actions: submit.response.response.deal_id
-                              - null
-                          params:
-                            pageId:
-                              _module.pageId: view
-                            urlQuery:
-                              _id:
-                                _actions: submit.response.response.deal_id
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            actions:
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: all
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Create Deal
+                  icon: AiOutlinePlusCircle
+                  type: primary
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                    - id: submit
+                      type: CallAPI
+                      messages:
+                        success: Deal created.
+                        error: Failed to create deal.
+                      params:
+                        endpointId:
+                          _module.endpointId: create-deal
+                        payload:
+                          form:
+                            _state: form
+                          # Host `fields` blocks bind to root state.attributes.*
+                          # (ids prefixed `attributes.`) — send them for the
+                          # generic create-deal passthrough.
+                          attributes:
+                            _state: attributes
+                    # Gate on the created deal_id, not form.company_id — Reset
+                    # clears company_id before the redirect's skip, self-skipping nav.
+                    - id: reset
+                      type: Reset
+                      skip:
+                        _eq:
+                          - _actions: submit.response.response.deal_id
+                          - null
+                    - id: redirect
+                      type: Link
+                      skip:
+                        _eq:
+                          - _actions: submit.response.response.deal_id
+                          - null
+                      params:
+                        pageId:
+                          _module.pageId: view
+                        urlQuery:
+                          _id:
+                            _actions: submit.response.response.deal_id

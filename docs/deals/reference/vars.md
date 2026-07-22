@@ -14,15 +14,17 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
 | `app_name` | string |  | Yes | App identifier for per-app access flags and event display. |
-| `entity_connection_id` | string | `deals` |  | Connection id this module matches against a workflow doc's `entity.connection_id` (GetEntityWorkflows joins on {entity.connection_id, entity.id}). Must equal the exact `entity.connection_id` string configured in the host's sales-pipeline workflow config — the two must never drift, or every workflow join in this module breaks. |
+| `label` |  | `Deal` |  | Singular display label |
+| `label_plural` |  | `Deals` |  | Plural display label |
+| `entity_connection_id` | string | `deals` |  | Connection id this module matches against a workflow doc's `entity.connection_id` (GetEntityWorkflows joins on {entity.connection_id, entity.id}). Must equal the exact `entity.connection_id` string configured in the host's workflow config — the two must never drift, or every workflow join in this module breaks. |
 | `workflow_type` | string | `sales-pipeline` |  | The workflows-module workflow `type` this module renders on the deal detail page. This is a single-workflow re-platform — there is no multi-workflow support. |
 | `outcome_action_type` | string | `deal-outcome` |  | Action `type` slug used when recording a deal's won/lost outcome through the workflows/activities action pipeline. |
 | `salesperson_role` | string |  |  | Role slug that, when held by the logged-in user, defaults the deals-list salesperson filter to them (matched against salesperson.name). Leave unset (null) to ship no per-user default. |
-| `stages` | object |  | Yes | Deal stage (status) display config, keyed by stage slug — title/fg/bd per stage. REQUIRED: the host app must supply an entry for every stage slug its sales-pipeline workflow config can write to `deals.status[].stage`, or stage chips render blank. |
+| `stages` | object |  | Yes | Deal stage (status) display config, keyed by stage slug — title/fg/bd per stage. REQUIRED: the host app must supply an entry for every stage slug its workflow config can write to `deals.status[].stage`, or stage chips render blank. |
 | `outcomes` | object | `{}` |  | Per-outcome display overrides (title/fg/bd) for the shipped won/lost outcome enum (defaults/outcomes.yaml). Merged via `_build.object.assign` onto the shipped enum and exposed as the deal-status-chip component for UI consumption only. |
 | `outcome_reasons` | object | `{}` |  | Per-reason display overrides (title + outcome discriminator) merged via `_build.object.assign` over the module's minimal other-won/other-lost default (defaults/outcome_reasons.yaml). Host apps typically fully replace this with their own won/lost reason taxonomy. |
 | `contact_roles` | object | `{}` |  | Deal-contact role display config, keyed by role slug (e.g. main_point_of_contact, decision_maker, finance_contact) — title/color/bg/border. |
-| `action_groups` | object | `{}` |  | Sales-pipeline action_group display config, keyed by group slug — title/order/icon. Consumed by the workflows ActionSteps surface. |
+| `action_groups` | object | `{}` |  | Workflow action_group display config, keyed by group slug — title/order/icon. Consumed by the workflows ActionSteps surface. |
 | `company_fields` | array | `[]` |  | Extra field blocks rendered on the deal's company section. |
 | `meta_fields` | array | `[]` |  | Extra field blocks rendered in the deal's meta/info section. |
 | `filters` | array | `[]` |  | Extra filter blocks rendered on the deals list page. |

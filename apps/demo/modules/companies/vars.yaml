@@ -37,17 +37,26 @@ request_stages:
         archived:
           $ne: true
 on_create_routine:
-  - id: start_company_setup
-    type: CallApi
-    properties:
-      endpointId:
-        _module.endpointId: { id: company-setup-start, module: workflows }
-      payload:
-        entity:
-          id:
-            _step: insert.insertedId
-        parent_action_id:
-          _payload: url_query.action_id
+  # company-setup is started by the deal's track-company-setup tracker (via the
+  # deals/start-company-setup page) on the deal's existing company — NOT on every
+  # company creation. Guarded on a parent action_id so a plain company create
+  # doesn't spawn an orphan company-setup workflow.
+  - ":if":
+      _ne:
+        - _payload: url_query.action_id
+        - null
+    ":then":
+      - id: start_company_setup
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId: { id: company-setup-start, module: workflows }
+          payload:
+            entity:
+              id:
+                _step: insert.insertedId
+            parent_action_id:
+              _payload: url_query.action_id
 components:
   sidebar_slots:
     - _ref:

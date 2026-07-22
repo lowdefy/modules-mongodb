@@ -5,7 +5,6 @@ links:
     pageId:
       _module.pageId: all
     properties:
-      title: Deals
-      icon:
-        name: AiOutlineFund
-        size: 14
+      title:
+        _module.var: label_plural
+      icon: AiOutlineFund

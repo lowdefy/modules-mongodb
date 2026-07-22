@@ -88,13 +88,10 @@ blocks:
       - id: filter.clear
         type: Button
         layout:
-          flex: 1 0 auto
-        style:
-          textAlign: right
+          flex: 0 1 auto
         properties:
           title: Clear
           icon: AiOutlineClear
-          type: default
         events:
           onClick:
             _build.array.concat:

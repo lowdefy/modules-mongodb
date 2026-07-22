@@ -3,18 +3,20 @@ _ref:
   component: page
   vars:
     id: view
-    title: Sales Pipeline
+    title:
+      _module.var: label
     hide_title: true
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
-      - label: Deals
+      - label:
+          _module.var: label_plural
         pageId:
           _module.pageId: all
       - label:
           _if_none:
             - _request: get_selected_deal.0._id
-            - Pipeline
+            - _module.var: label
     events:
       onMount:
         - id: set_pagination
@@ -422,14 +424,14 @@ _ref:
                             stage:
                               _request: get_selected_deal.0.status.0.stage
                   - _ref: components/detail/action_bar.yaml
-                  - id: topbar_score_button
-                    type: Button
+                  # Host-injected top-bar action buttons (default []).
+                  - id: topbar_actions
+                    type: Box
                     layout:
                       flex: 0 1 auto
-                    properties:
-                      title: Score
-                      type: primary
-                      size: small
+                      gap: 8
+                    blocks:
+                      _module.var: components.topbar_slots
               - id: workspace_row
                 type: Box
                 layout:
@@ -440,7 +442,7 @@ _ref:
                   - id: pipeline_col
                     type: Box
                     layout:
-                      span: 11
+                      span: 8
                       sm:
                         span: 24
                     blocks:
@@ -570,7 +572,7 @@ _ref:
                   - id: detail_col
                     type: Box
                     layout:
-                      span: 13
+                      span: 16
                       sm:
                         span: 24
                     blocks:

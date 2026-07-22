@@ -1,7 +1,7 @@
 name: Deals
 version: 0.13.0
 description: >-
-  Deal (opportunity) pipeline — list, detail, and the single sales-pipeline
+  Deal (opportunity) pipeline — list, detail, and a single configured
   workflow, orchestrating companies, contacts, activities, files, and events
   rather than reimplementing them.
 
@@ -19,13 +19,19 @@ dependencies:
   - id: contacts
     description: Contact roles and selector on the deal
   - id: workflows
-    description: Sales-pipeline workflow engine rendering deal stage/action transitions
+    description: Workflow engine rendering deal stage/action transitions
 
 vars:
   app_name:
     type: string
     required: true
     description: App identifier for per-app access flags and event display.
+  label:
+    default: Deal
+    description: Singular display label
+  label_plural:
+    default: Deals
+    description: Plural display label
   entity_connection_id:
     type: string
     default: deals
@@ -33,8 +39,8 @@ vars:
       Connection id this module matches against a workflow doc's
       `entity.connection_id` (GetEntityWorkflows joins on
       {entity.connection_id, entity.id}). Must equal the exact
-      `entity.connection_id` string configured in the host's sales-pipeline
-      workflow config — the two must never drift, or every workflow join in
+      `entity.connection_id` string configured in the host's workflow
+      config — the two must never drift, or every workflow join in
       this module breaks.
   workflow_type:
     type: string
@@ -62,7 +68,7 @@ vars:
     description: >-
       Deal stage (status) display config, keyed by stage slug — title/fg/bd
       per stage. REQUIRED: the host app must supply an entry for every stage
-      slug its sales-pipeline workflow config can write to
+      slug its workflow config can write to
       `deals.status[].stage`, or stage chips render blank.
   outcomes:
     type: object
@@ -90,7 +96,7 @@ vars:
     type: object
     default: {}
     description: >-
-      Sales-pipeline action_group display config, keyed by group slug — title/order/icon.
+      Workflow action_group display config, keyed by group slug — title/order/icon.
       Consumed by the workflows ActionSteps surface.
   company_fields:
     type: array
@@ -110,8 +116,11 @@ vars:
     description: Extra fields rendered on the deal card (e.g. kanban/board views).
   components:
     type: object
-    description: "Component slot overrides: main_slots, info_grid_slots, sidebar_slots, card_slots"
+    description: "Component slot overrides: topbar_slots, main_slots, info_grid_slots, sidebar_slots, card_slots"
     properties:
+      topbar_slots:
+        default: []
+        description: Extra action buttons/blocks appended to the deal workspace top bar (after the note/task/activity capture buttons).
       main_slots:
         default: []
         description: Extra blocks appended to the main column on the deal detail page.
@@ -154,7 +163,7 @@ exports:
     - id: all
       description: Deal list with filtering, sorting, and pagination
     - id: view
-      description: Deal detail page — sales-pipeline workflow, info grid, sidebar tiles
+      description: Deal detail page — workflow, info grid, sidebar tiles
     - id: new
       description: Create a new deal
   connections:

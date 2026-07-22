@@ -55,14 +55,16 @@ blocks:
                   {% set parts = name.split(' ') %}
                   {% set initials = '' %}
                   {% for p in parts %}{% if p.length > 0 and initials.length < 2 %}{% set initials = initials + p[0] %}{% endif %}{% endfor %}
-                  <div style="width: 26px; height: 26px; border-radius: 50%; background: {{ bg }}; color: {{ color }}; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0;">{{ initials | upper }}</div>
-                  <div style="flex: 1; min-width: 0;">
-                    <div style="font-size: 12px; font-weight: 600; color: var(--ant-color-text); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ name }}</div>
-                    <div style="font-size: 10px; color: var(--ant-color-text-tertiary); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      {{ contact.email or '' }}{% if contact.profile.job_title %} · {{ contact.profile.job_title }}{% endif %}
+                  <a href="/{{ contact_detail_page }}?_id={{ contact._id }}" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; color: inherit; text-decoration: none;">
+                    <div style="width: 26px; height: 26px; border-radius: 50%; background: {{ bg }}; color: {{ color }}; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0;">{{ initials | upper }}</div>
+                    <div style="flex: 1; min-width: 0;">
+                      <div style="font-size: 12px; font-weight: 600; color: var(--ant-color-text); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ name }}</div>
+                      <div style="font-size: 10px; color: var(--ant-color-text-tertiary); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ contact.email or '' }}{% if contact.profile.job_title %} · {{ contact.profile.job_title }}{% endif %}
+                      </div>
                     </div>
-                  </div>
-                  <span style="display: inline-block; font-size: 9px; font-weight: 500; padding: 1px 6px; border-radius: 8px; background: {{ bg }}; color: {{ color }}; border: 1px solid {{ border }}; flex-shrink: 0; white-space: nowrap;">{{ role_title }}</span>
+                    <span style="display: inline-block; font-size: 9px; font-weight: 500; padding: 1px 6px; border-radius: 8px; background: {{ bg }}; color: {{ color }}; border: 1px solid {{ border }}; flex-shrink: 0; white-space: nowrap;">{{ role_title }}</span>
+                  </a>
                 {% else %}
                   <div style="width: 26px; height: 26px; border-radius: 50%; background: var(--ant-color-fill-quaternary); color: var(--ant-color-text-quaternary); display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0;">—</div>
                   <div style="flex: 1; min-width: 0;">
@@ -87,3 +89,7 @@ blocks:
               _request: get_selected_deal.0.finance_contact_view.0
             roles:
               _module.var: contact_roles
+            contact_detail_page:
+              _module.pageId:
+                id: view
+                module: contacts

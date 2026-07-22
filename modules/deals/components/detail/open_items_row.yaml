@@ -1,6 +1,6 @@
 # Two composed "what's open" cards, side by side, replacing the old
 # merged section_actions.yaml + action_card.yaml.njk (rework Task 5).
-# Left: workflows' open-actions (the deal's open sales-pipeline actions).
+# Left: workflows' open-actions (the deal's open workflow actions).
 # Right: activities' open-tasks (the deal's open adhoc tasks). Each module
 # renders only its own domain and fetches only its own data.
 id: detail_open_items_row
