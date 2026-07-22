@@ -20,7 +20,16 @@
 #                          entity-view pages (no current action).
 #   default_active_keys  — (optional) workflow_type slugs expanded on mount.
 #                          When unset, workflows with any non-terminal action
-#                          start open.
+#                          start open. Ignored when `active_keys` is set.
+#   active_keys          — (optional) controlled expansion: the workflow_type
+#                          slugs that are open. When set (an array), the page
+#                          owns expansion — pair with `on_change` to keep it in
+#                          sync with user toggles. Leave unset for the default
+#                          uncontrolled behaviour.
+#   on_change            — (optional) action list run when a user expands or
+#                          collapses a workflow row. Receives the toggle event
+#                          (`_event: activeKeys` / `workflowType` / `open`);
+#                          wire it to update `active_keys` in controlled mode.
 #   fetch_on_mount       — (optional, default true) set false when the page
 #                          owns the entity_workflows fetch (e.g. it drives
 #                          refetching via `entity-workflows-refetch` because
@@ -90,6 +99,10 @@ blocks:
     events:
       onActionClick:
         _ref: components/check-action-click.yaml
+      onChange:
+        _var:
+          key: on_change
+          default: []
     properties:
       disableTooltip: true
       workflowOverviewPageId:
@@ -101,6 +114,10 @@ blocks:
       defaultActiveKeys:
         _var:
           key: default_active_keys
+          default: null
+      activeKeys:
+        _var:
+          key: active_keys
           default: null
       actionStatusConfig:
         _ref: components/action_statuses.yaml
