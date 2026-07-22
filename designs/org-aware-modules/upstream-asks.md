@@ -4,6 +4,8 @@ Platform-side gaps this design depends on or flags, addressed to the auth-upgrad
 
 ## 1. Tenant wall × Atlas `$search` (blocking)
 
+> **Resolved, then superseded (2026-07-22).** The in-stage rewrite this ask proposed shipped with the wall — and was then replaced by the wall design's [amendment-1](../../../lowdefy-design/designs/auth-upgrade/features/mongodb-data-scoping/amendment-1-authored-scoping.md): the wall never rewrites the inside of a stage. `$search`-led pipelines (and `$graphLookup`) now declare `tenant: authored` and author the organization `equals` clause themselves — value `_user: organizationId` — which the wall **audits** against the caller's resolved org on every run, refusing to run on any miss. This repo's six `$search` requests and two `$graphLookup` sites carry the authored clauses. The `token`-mapping and `storedSource` consumer requirements below stand unchanged; the "rejected by the wall itself" rule (line below) is inverted at exactly the audited positions, where the clause is now *required*.
+
 **To**: [mongodb-data-scoping](../../../lowdefy-design/designs/auth-upgrade/features/mongodb-data-scoping/design.md).
 
 The wall's aggregation injection (its Decision 3) prepends the merged `$match` at stage 0. Atlas Search's `$search` stage **must be the first stage of a pipeline** — injecting a `$match` before it makes the pipeline invalid, and letting `$search` run before the injected `$match` would be correct but unindexed-by-the-wall only by accident of ordering rules. The wall design does not mention `$search`.

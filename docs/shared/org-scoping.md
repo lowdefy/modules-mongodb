@@ -15,11 +15,13 @@ Every module in this repo is **organization-aware, unconditionally**. Every modu
 
 ## What the wall covers
 
-Declared once per connection, enforced by the platform on reads **and** writes: find/aggregation filters (including `$lookup`, `$unionWith`, `$graphLookup`, and `$facet` sub-pipelines, and Atlas `$search` stages), insert/upsert/replace stamping, update/delete selector merging, and change streams. Authoring `organizationId` in a filter or write position of module or app config is **rejected loudly** — scoping happens in exactly one place. Reading the field (projections, group keys) is fine.
+Declared once per connection, enforced by the platform on reads **and** writes: find/aggregation filters (including `$lookup`, `$unionWith`, and `$facet` sub-pipelines), insert/upsert/replace stamping, update/delete selector merging, and change streams. Authoring `organizationId` in a filter or write position of module or app config is **rejected loudly** — scoping happens in exactly one place. Reading the field (projections, group keys) is fine.
+
+**What the wall refuses instead of scoping**: stages it can not scope with its one mechanical move (prepending a `$match`) — a pipeline-leading Atlas `$search`/`$searchMeta`/`$vectorSearch`/`$geoNear`, and `$graphLookup` anywhere. Such a request must declare **`tenant: authored`** and author the organization clause itself (an `equals` on `organizationId` in the `$search` compound filter; an `organizationId` equality in `$graphLookup`'s `restrictSearchWithMatch`), with `_user: organizationId` as the value. The wall then **audits** the clause on every run — present, on the right field, equal to the caller's organization — and refuses to run the request on any miss. This module repo's `$search` list pipelines, Excel exports, the contact selector, and the company hierarchy traversals all carry these authored clauses; a consuming app never adds its own.
 
 Two rules follow for app authors:
 
-1. **Never write your own organization filter** on a walled connection — the wall injects it. Where config genuinely needs the organization id as a value (rare), read `_user: organizationId`, which resolves under both policies. Never use the `_organization` operator in module-consuming config — it throws under the `tenant` policy.
+1. **Never write your own organization filter** on a walled connection — the wall injects it (or, in the authored requests above, the module already carries the audited clause). Where config genuinely needs the organization id as a value (rare), read `_user: organizationId`, which resolves under both policies. Never use the `_organization` operator in module-consuming config — it throws under the `tenant` policy.
 2. **Substituted collections inherit the contract.** Vars that let an app substitute a joined collection by name (`activities.lookup_collections`, `events.actions_collection` / `contacts_collection`, `workflows.contacts_collection`) are joined inside walled pipelines, so the substituted collection must itself carry `organizationId` — otherwise the join fails closed (empty).
 
 ## System-context writes (`tenant: none`)
@@ -37,7 +39,7 @@ The modules create no indexes; these are the host app's job:
 1. **Organization-prefixed compound indexes.** Each walled collection's primary compound indexes gain the `organizationId` prefix (`{ organizationId: 1, ... }`) — one index serves all organizations and is the shard-key path at scale.
 2. **Per-organization email uniqueness.** The contact email index becomes compound partial-unique — see [user-account indexes](../user-account/reference/indexes.md):
    `{ organizationId: 1, lowercase_email: 1 }`, unique, partial on `lowercase_email: { $exists: true }`.
-3. **Atlas Search indexes** on walled collections (`user-contacts`, `companies`, `activities`): the wall injects the organization equality _into_ the `$search` stage, which requires `organizationId` to be **statically mapped as the `token` type** in the search index (dynamic mapping does not create token fields). Where a pipeline uses `returnStoredSource` (contacts and companies list pipelines do), `organizationId` must **also be listed in the index's `storedSource`**. Both are fail-closed when forgotten — no leak, but silently blank list pages.
+3. **Atlas Search indexes** on walled collections (`user-contacts`, `companies`, `activities`): the modules' `$search` requests author the organization equality _inside_ the stage (the audited `tenant: authored` clause above), which requires `organizationId` to be **statically mapped as the `token` type** in the search index (dynamic mapping does not create token fields). Where a pipeline uses `returnStoredSource` (contacts and companies list pipelines do), `organizationId` must **also be listed in the index's `storedSource`**. Both are fail-closed when forgotten — no leak, but silently blank list pages.
 
 ## Migrating an existing deployment
 

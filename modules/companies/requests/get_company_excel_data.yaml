@@ -1,5 +1,10 @@
 id: get_company_excel_data
 type: MongoDBAggregation
+# Authored org clause (tenant wall amendment-1): $search is first-stage-only,
+# so the wall can not inject its filter — this request authors the equals
+# clause below and the wall audits it against the caller's org on every run.
+# (The pipeline is operator-composed, so the audit is the runtime gate here.)
+tenant: authored
 connectionId:
   _module.connectionId: companies-collection
 payload:
@@ -17,6 +22,12 @@ properties:
             returnStoredSource: true
             compound:
               filter:
+                # The authored tenant clause (tenant: authored) — audited by
+                # the wall; organizationId token-mapped + in storedSource.
+                - equals:
+                    path: organizationId
+                    value:
+                      _user: organizationId
                 - compound:
                     mustNot:
                       - exists:
