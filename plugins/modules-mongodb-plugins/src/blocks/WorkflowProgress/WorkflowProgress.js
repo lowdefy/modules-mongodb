@@ -6,7 +6,7 @@ import { type } from "@lowdefy/helpers";
 
 import WorkflowSection from "./WorkflowSection.js";
 import { isTerminalWorkflow, wfKey } from "./helpers.js";
-import "./style.css";
+import "./style.module.css";
 
 const WorkflowProgress = ({
   blockId,
