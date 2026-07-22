@@ -6,7 +6,7 @@ Platform-side changes the [user-account design](design.md) depends on that surfa
 
 ## 6. Passkey sign-in action
 
-> **Status: not delivered** — surfaced by review-2 #2. The round-1 catalog (ask 1) shipped `PasskeyRegister` / `PasskeyDelete` only; passkey _authentication_ has no wrapping action, and `Login`'s dispatch-by-parameter does not cover it.
+> **Status: delivered** — the `PasskeySignIn` action shipped upstream ([passkey-sign-in](../../../lowdefy-design/designs/auth-upgrade/_completed/passkey-sign-in/design.md); engine catalog). Originally surfaced by review-2 #2: the round-1 catalog (ask 1) shipped `PasskeyRegister` / `PasskeyDelete` only, with no passkey _authentication_ action. This ask remains listed here as history; relocating it into the delivered set is left to the parent's next bookkeeping pass.
 
 **Lands in**: [engine](../../../lowdefy-design/designs/auth-upgrade/engine/design.md) (client section, `@lowdefy/actions-core`, the self-service action catalog).
 
