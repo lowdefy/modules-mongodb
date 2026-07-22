@@ -27,46 +27,25 @@ blocks:
         # built-ins concat around it (flattened) — the same pattern as modal_access.
         blocks:
           _build.array.concat:
-            # Profile capture — contact fields. Prefilled from the resolved
-            # contact for the existing-contact outcome (state.full_name /
-            # state.profile.* seeded by the check's apply_resolution), blank for
-            # unknown. NOTE: the invite write path (shared create-or-link + the
-            # bare $setOnInsert) deliberately mints the contact BARE so the
-            # invitee completes their profile at onboarding (Decision 5/7); these
-            # fields are sent on submit (forward-compatible) but the current
-            # routine does not persist them — see the invite_send_btn note.
-            - - id: full_name
-                type: TextInput
-                required: true
-                layout:
-                  span: 12
-                  sm:
-                    span: 24
-                properties:
-                  title: Full name
-                  placeholder: e.g. Sam Taylor
-              - id: profile.phone_number
-                type: PhoneNumberInput
-                layout:
-                  span: 12
-                  sm:
-                    span: 24
-                properties:
-                  title: Phone
-              - id: profile.job_title
-                type: TextInput
-                layout:
-                  span: 12
-                  sm:
-                    span: 24
-                properties:
-                  title: Job title
-                  placeholder: Optional
+            # Profile capture — canonical form_core (first/last, both required, +
+            # optional honorific) plus the consumer `fields.profile` blocks,
+            # identical to modal_profile. Fields bind state.profile.*; prefilled
+            # from the resolved contact for the existing-contact outcome
+            # (state.profile.* seeded by the check's apply_resolution), blank for
+            # unknown. Persisted on submit via the invite routine's write-profile
+            # splice; profile.name is derived (given + family), so no free-text
+            # full_name field.
+            - _ref:
+                path: ../shared/profile/form_core.yaml
+                vars:
+                  show_honorific:
+                    _module.var: fields.show_honorific
+            - _module.var: fields.profile
               # Roles — options/labels/descriptions from the app role catalog
               # (_build.authConfig.roles, Decision 8): the option label renders the
               # role label (primary) + description (subtitle); the selected tag stays
               # compact (tag.title). See the options block below.
-              - id: roles
+            - - id: roles
                 type: MultipleSelector
                 required: true
                 layout:
@@ -167,12 +146,12 @@ blocks:
                           type: Validate
                           params: state_form
                         # invite routine: reconcile stale-expired → create-or-link
-                        # contact → InviteMember (profile.contactId + roles +
-                        # attributes) → audit. The email is sent by BetterAuth via
-                        # auth.email (no module dispatch). Roles submit as catalog
-                        # ids. `profile` is sent forward-compatibly but the current
-                        # routine mints the contact bare (Decision 5/7 onboarding)
-                        # and does not persist it — see the invite API note.
+                        # contact → persist profile (write-profile) → InviteMember
+                        # (profile.contactId + roles + attributes) → audit. The
+                        # email is sent by BetterAuth via auth.email (no module
+                        # dispatch). Roles submit as catalog ids. `profile` is the
+                        # whole state.profile bag; profile.name is derived from
+                        # given/family in write-profile.
                         - id: send_invite
                           type: CallAPI
                           messages:
@@ -189,12 +168,7 @@ blocks:
                               member_attributes:
                                 _state: member_attributes
                               profile:
-                                name:
-                                  _state: full_name
-                                phone_number:
-                                  _state: profile.phone_number
-                                job_title:
-                                  _state: profile.job_title
+                                _state: profile
                         - id: after_invite
                           type: Link
                           params:

@@ -14,7 +14,12 @@
 # Vars (all required unless noted):
 #   connection_id  — the caller's scoped user-contacts connection id
 #   contact_id     — target contact `_id`
-#   user_id        — target auth user id (users.profile.contactId === contact_id)
+#   user_id        — target auth user id (users.profile.contactId === contact_id).
+#                    MAY be absent (undefined/null) — the invite flow reuses this
+#                    fragment before the invitee has a `user` row, so the
+#                    `UpdateUserProfile` re-denorm is guarded on presence and
+#                    no-ops when absent (the contact write still lands). All other
+#                    callers always pass a user_id.
 #   profile        — the profile fields to merge onto the contact (object)
 #   write_stages   — extra MongoDB update stages appended to the contact write
 #                    (the caller's `request_stages.write`; pass [] if none)
@@ -59,7 +64,7 @@
 
 # Re-read the freshly-written contact so the re-denorm copies exactly what was
 # stored (including the derived name).
-- id: read_contact
+- id: reread_contact
   type: MongoDBFindOne
   connectionId:
     _var: connection_id
@@ -74,14 +79,26 @@
 # bag is fresh on the target's next request with no UpdateSession needed. (A
 # caller refreshing their OWN session is the caller routine's job, not the
 # fragment's — see update-profile.)
-- id: denorm_user_profile
-  type: UpdateUserProfile
-  properties:
-    userId:
-      _var: user_id
-    profile:
-      _step: read_contact.profile
-    name:
-      _step: read_contact.profile.name
-    image:
-      _step: read_contact.profile.picture
+#
+# Guarded on `user_id` presence: coalesce to null first, so BOTH the no-match
+# (`undefined`, e.g. the invite flow's find_user with no user row) and the
+# explicit-`null` cases skip. A bare `_ne: [user_id, null]` would pass on
+# `undefined` and fire UpdateUserProfile with no userId.
+- :if:
+    _ne:
+      - _if_none:
+          - _var: user_id
+          - null
+      - null
+  :then:
+    - id: denorm_user_profile
+      type: UpdateUserProfile
+      properties:
+        userId:
+          _var: user_id
+        profile:
+          _step: reread_contact.profile
+        name:
+          _step: reread_contact.profile.name
+        image:
+          _step: reread_contact.profile.picture

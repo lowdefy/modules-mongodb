@@ -29,7 +29,5 @@
       _actions: check_invite.response.invitation
     resolved_contact:
       _actions: check_invite.response.contact
-    full_name:
-      _actions: check_invite.response.contact.profile.name
     profile:
       _actions: check_invite.response.contact.profile

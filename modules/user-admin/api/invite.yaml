@@ -20,9 +20,10 @@
 # resolves to "contact, no membership".
 #
 # Role-gated app-side. Payload: { email, roles (array of catalog ids),
-#                                 member_attributes? (object) }
-# The contact is minted bare on create (no profile copied from the invite form);
-# the invitee fills their profile at onboarding on first login (Decision 5/7).
+#                                 member_attributes? (object), profile? (object) }
+# create-or-link mints the contact bare; the write-profile splice then persists
+# the captured profile onto it (and re-denorms onto the user only if one already
+# exists). `profile.profile_created` stays unset, so the invitee still onboards.
 id: invite
 type: Api
 routine:
@@ -70,9 +71,8 @@ routine:
   #    `read_contact` step, so the contactId is `_step: read_contact._id`. We pass
   #    NO `binding_point`: the fragment's write-back branches (inline `:return` /
   #    `UpdateUserProfile`) are for the signup hook only — here `invite_member`
-  #    below carries `profile.contactId` itself. The contact is minted BARE (no
-  #    name; `profile.profile_created` unset) so the invitee routes through
-  #    onboarding on first login (Decision 5/7).
+  #    below carries `profile.contactId` itself. create-or-link mints the contact
+  #    bare; the write-profile splice below persists the captured profile.
   - _ref:
       path: ../shared/contact/create-or-link-contact.yaml
       vars:
@@ -81,6 +81,42 @@ routine:
         user:
           email:
             _payload: email
+
+  # 3b) Resolve the target auth user, if one exists. An invitee has no user row
+  #     until they accept, but a contact matched by email may already belong to
+  #     another app — find_user._id is that user's id, or absent (no document) when
+  #     none matches. It gates write-profile's re-denorm.
+  - id: find_user
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: users
+    properties:
+      query:
+        profile.contactId:
+          _step: read_contact._id
+      options:
+        projection:
+          _id: 1
+
+  # 3c) Persist the captured profile onto the contact (shared write-profile
+  #     fragment) — the same write seam both update-profile routines use, so the
+  #     invited person's name/phone/job land now, not only at first post-accept
+  #     edit. profile.name is derived (given + family). The UpdateUserProfile
+  #     re-denorm is guarded on user_id, so it no-ops for a pre-accept invitee
+  #     (find_user._id absent) and fires only when a user already exists.
+  - _ref:
+      path: ../shared/contact/write-profile.yaml
+      vars:
+        connection_id:
+          _module.connectionId: user-contacts-collection
+        contact_id:
+          _step: read_contact._id
+        user_id:
+          _step: find_user._id
+        profile:
+          _payload: profile
+        write_stages:
+          _module.var: request_stages.write
 
   # 4) Invite the member. `role` is the catalog-id array joined to the
   #    comma-separated string BetterAuth expects; member attributes ride the
