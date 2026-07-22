@@ -90,29 +90,29 @@ Modules are added to the `modules` array in `lowdefy.yaml`:
 ```yaml
 modules:
   - id: events
-    source: "github:lowdefy/modules-mongodb/modules/events@v0.9.2"
+    source: "github:lowdefy/modules-mongodb/modules/events@v0.13.0"
     vars:
       display_key: my-app
 
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v0.9.2"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v0.13.0"
     # Drop logo-{light,dark}-theme.png and logo-square-{light,dark}-theme.png
     # into the app's public/ folder — the layout reads them by convention.
 
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.9.2"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.13.0"
     vars:
       app_name: my-app
 
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.9.2"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.13.0"
     vars:
       app_name: my-app
 ```
 
 Each entry pins a `source` (GitHub ref or local `file:` path), passes `vars`, and optionally remaps `dependencies` and `connections` when entry IDs don't match the names declared in the module manifest. See <https://docs.lowdefy.com/modules> for the full module-system reference.
 
-Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. The [`docs/shared/`](shared/) folder covers the shared patterns (`change_stamp`, `event_display`, slot vars, `app_name`, avatar colors, secrets) that most modules use.
+Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. The [`docs/shared/`](shared/) folder covers the shared patterns (`change_stamp`, soft delete, `event_display`, slot vars, `app_name`, avatar colors, secrets) that most modules use.
 
 ## See it in action
 

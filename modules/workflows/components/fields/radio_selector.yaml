@@ -20,6 +20,9 @@ vars:
   label_disabled:
     type: boolean
     default: false
+  on_change:
+    type: array
+    default: []
 
 config:
   id:
@@ -48,4 +51,9 @@ config:
     options:
       _var:
         key: options
+        default: []
+  events:
+    onChange:
+      _var:
+        key: on_change
         default: []

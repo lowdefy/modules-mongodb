@@ -91,6 +91,16 @@ properties:
     _var:
       key: modal_title
       default: Upload File
+  okText:
+    _var:
+      key: ok_text
+      default: Save
+slots:
+  form:
+    blocks:
+      _var:
+        key: form_fields
+        default: []
 events:
   onMount:
     - id: fetch_files
@@ -173,4 +183,33 @@ events:
             holdValue: true
       - _var:
           key: on_delete
+          default: []
+  onDownload:
+    _build.array.concat:
+      - - id: log_download_event
+          type: CallAPI
+          skip:
+            _not:
+              _module.var: log_events
+          params:
+            endpointId:
+              _module.endpointId:
+                id: new-event
+                module: events
+            payload:
+              type: download-file
+              references:
+                entity_type:
+                  _var: entity_type
+                entity_id:
+                  _var: entity_id
+              metadata:
+                file_name:
+                  _event: fileDoc.file.name
+                file_category:
+                  _event: fileDoc.file_category
+                file_key:
+                  _event: fileDoc.file.key
+      - _var:
+          key: on_download
           default: []

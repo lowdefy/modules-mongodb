@@ -1,0 +1,16 @@
+# Default block array for the `components.view_attachments` slot in
+# `pages/view.yaml` — the files module's file-card as the first sidebar
+# tile. Requires the host app to register the files module; apps without
+# it set `components.view_attachments` to their own blocks (or `[]`).
+- id: files_wrapper
+  type: Box
+  ~ignoreBuildChecks:
+    - state-refs
+  blocks:
+    - _ref:
+        module: files
+        component: file-card
+        vars:
+          entity_type: activity
+          entity_id:
+            _url_query: _id

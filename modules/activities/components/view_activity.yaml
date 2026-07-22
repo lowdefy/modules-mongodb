@@ -81,26 +81,97 @@ blocks:
               _request: get_activity.0.attributes
           fields:
             _ref: components/activity_meta_fields.yaml
-    # Consumer-defined attribute fields (only when provided)
+    # Consumer-defined attribute fields (only when provided). Per-type
+    # lists (`fields.attributes_by_type.<type_id>`) win over the global
+    # `fields.attributes` array; types without a per-type entry fall back
+    # to the global array. The doc's type is only known at runtime, so
+    # each list renders as its own SmartDescriptions gated on the
+    # `state.type` mirror set by `pages/view.yaml`; when no per-type
+    # lists are configured the global SmartDescriptions renders
+    # unconditionally, exactly as before.
     - _build.if:
         test:
           _build.gt:
             - _build.array.length:
-                _module.var: fields.attributes
+                _build.object.entries:
+                  _module.var: fields.attributes_by_type
             - 0
         then:
-          - id: attributes_view
-            type: SmartDescriptions
-            properties:
-              title: Additional Details
-              column: 1
-              size: small
-              data:
-                attributes:
-                  _request: get_activity.0.attributes
-              fields:
-                _module.var: fields.attributes
-        else: []
+          _build.array.concat:
+            - _build.if:
+                test:
+                  _build.gt:
+                    - _build.array.length:
+                        _module.var: fields.attributes
+                    - 0
+                then:
+                  - id: attributes_view
+                    type: SmartDescriptions
+                    visible:
+                      _not:
+                        _array.includes:
+                          - _build.array.map:
+                              on:
+                                _build.object.entries:
+                                  _module.var: fields.attributes_by_type
+                              callback:
+                                _build.function:
+                                  __build.args: "0.0"
+                          - _state: type
+                    properties:
+                      title: Additional Details
+                      column: 1
+                      size: small
+                      data:
+                        attributes:
+                          _request: get_activity.0.attributes
+                      fields:
+                        _module.var: fields.attributes
+                else: []
+            - _build.array.map:
+                on:
+                  _build.object.entries:
+                    _module.var: fields.attributes_by_type
+                callback:
+                  _build.function:
+                    id:
+                      __build.string.concat:
+                        - attributes_view_
+                        - __build.args: "0.0"
+                    type: SmartDescriptions
+                    visible:
+                      _eq:
+                        - _state: type
+                        - __build.args: "0.0"
+                    properties:
+                      title: Additional Details
+                      column: 1
+                      size: small
+                      data:
+                        attributes:
+                          _request: get_activity.0.attributes
+                      fields:
+                        __build.args: "0.1"
+        else:
+          _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _module.var: fields.attributes
+                - 0
+            then:
+              - id: attributes_view
+                type: SmartDescriptions
+                properties:
+                  title: Additional Details
+                  column: 1
+                  size: small
+                  data:
+                    attributes:
+                      _request: get_activity.0.attributes
+                  fields:
+                    _module.var: fields.attributes
+            else: []
     # Agenda topics — rendered from the agenda-tasks lookup (tasks in the
     # actions collection linked via activity_ids), not from the activity
     # doc. Tasks marked not-required are already filtered out by the

@@ -25,6 +25,12 @@ routine:
                       - __args: 0._id
                       - __uuid: true
                   kind: task
+                  # Origin marker in the workflows-module `metadata` bag —
+                  # distinguishes agenda-topic tasks from adhoc tasks host
+                  # apps create directly, without adding a top-level field to
+                  # the shared actions-collection schema.
+                  metadata:
+                    task_type: agenda
                   workflow_id: null
                   title:
                     __args: 0.topic

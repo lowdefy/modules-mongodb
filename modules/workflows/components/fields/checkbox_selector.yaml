@@ -17,6 +17,9 @@ vars:
   extra:
     type: string
     required: false
+  on_change:
+    type: array
+    default: []
 
 config:
   id:
@@ -42,4 +45,9 @@ config:
     options:
       _var:
         key: options
+        default: []
+  events:
+    onChange:
+      _var:
+        key: on_change
         default: []

@@ -28,6 +28,13 @@ form:
     component: contact
     title: Contact
     required: true
+  # Role-scoped single-select — a dropdown of contacts holding the given app
+  # role, stored as a denormalized (view-renderable) value.
+  - key: form.account_manager
+    component: role_contact
+    title: Account manager
+    roles:
+      - manager
   - key: form.notes
     component: text_area
     title: Qualification notes
@@ -50,10 +57,20 @@ hooks:
                     - _payload: form.site_visit_required
                     - true
                 then:
+                  # Site visit needed: activate spawns it, require reopens it if
+                  # a prior edit left it not-required. upsert keeps both safe when
+                  # it doesn't exist yet.
                   - type: site-visit
                     signal: activate
                     upsert: true
-                else: []
+                  - type: site-visit
+                    signal: require
+                    upsert: true
+                else:
+                  # No longer needed: mark it not-required (no-ops on done).
+                  - type: site-visit
+                    signal: not_required
+                    upsert: true
     # Post-submit: persist the values the form captured (point of contact +
     # estimated value). The lead's *pipeline status* advance lives on the
     # qualification group's `on_complete` (see onboarding.yaml) — the phase

@@ -26,6 +26,16 @@ event_display:
   demo:
     create-company: "{{ user.profile.name }} created company {{ target.name }}"
     update-company: "{{ user.profile.name }} updated company {{ target.name }}"
+# PR #93: consumer stages spliced into the company-selector aggregation
+# after the base active-company $match and before the label projection, so
+# they can filter on raw document fields — here, keeping app-archived
+# companies out of selector pickers (harmless on demo data where no doc
+# carries the marker; demonstrates the extension point).
+request_stages:
+  selector:
+    - $match:
+        archived:
+          $ne: true
 on_create_routine:
   - id: start_company_setup
     type: CallApi

@@ -1,5 +1,5 @@
 name: Companies
-version: 0.9.2
+version: 0.13.0
 description: Company management — list, detail, edit, create, selector
 
 dependencies:
@@ -164,7 +164,11 @@ vars:
           Excel export aggregations.
       selector:
         default: []
-        description: Pipeline stages appended to the company-selector aggregation.
+        description: >-
+          Pipeline stages injected into the company-selector aggregation after
+          the base active-company $match and BEFORE the label projection, so
+          stages can filter or derive on raw document fields (e.g. exclude
+          app-specific soft-delete markers from pickers).
       write:
         default: []
         description: >-
@@ -206,7 +210,10 @@ exports:
       description: Update company with contact reconciliation and event logging
   components:
     - id: company-selector
-      description: Selector/MultipleSelector for picking companies
+      description: >-
+        Selector/MultipleSelector for picking companies. Vars: field_id, mode,
+        title, label, disabled, and `required` (default false — sets the block
+        required so a page-level Validate flags an empty selection).
   menus:
     - id: default
       description: Companies navigation link
@@ -242,4 +249,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.9.2"
+    version: "^0.13.0"

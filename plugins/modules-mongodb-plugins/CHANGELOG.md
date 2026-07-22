@@ -1,5 +1,33 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.13.0
+
+### Minor Changes
+
+- [#109](https://github.com/lowdefy/modules-mongodb/pull/109) [`ee7ee3c`](https://github.com/lowdefy/modules-mongodb/commit/ee7ee3c6371452876025e81b110f4df09fcfe626) Thanks [@Saiby100](https://github.com/Saiby100)! - Add the `require` signal: a narrow, pre-hook-only cascade that reopens a `not-required` form/check action back to `action-required`. It is the `not-required` counterpart of `unblock` (which narrowly reopens `blocked`) and is kept distinct from the broad `activate` so a cascade can re-enable a skipped action without accidentally reopening completed (`done`) work. Enables patterns like a boolean form field that toggles a dependent action between `action-required` and `not-required` indefinitely.
+
+## 0.12.0
+
+### Patch Changes
+
+- [#105](https://github.com/lowdefy/modules-mongodb/pull/105) [`70622be`](https://github.com/lowdefy/modules-mongodb/commit/70622be1ff6e42e50f8e39474a520e9120aa4570) Thanks [@Saiby100](https://github.com/Saiby100)! - Center the ContactSelector row actions (verify/edit buttons) within their
+  fixed-width container instead of right-aligning them.
+
+## 0.11.0
+
+### Minor Changes
+
+- [#100](https://github.com/lowdefy/modules-mongodb/pull/100) [`dd309b8`](https://github.com/lowdefy/modules-mongodb/commit/dd309b83299d3f37d2fb2fd380ed288e42bdf97f) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Log file downloads for parity with upload/delete auditing. The `FileManager`
+  block now fires an `onDownload` event (payload `{ fileDoc }`) when a download is
+  initiated. The `file-manager` / `file-card` components expose a new `on_download`
+  var (action list, default `[]`) for consumer-supplied handlers, and — when
+  `log_events` is on — record a `download-file` event via the events module,
+  matching how uploads and deletes are logged.
+
+## 0.10.1
+
+## 0.10.0
+
 ## 0.9.2
 
 ### Patch Changes

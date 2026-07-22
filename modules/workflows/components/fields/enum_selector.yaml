@@ -14,6 +14,9 @@ vars:
   enum:
     type: object
     default: {}
+  on_change:
+    type: array
+    default: []
 
 config:
   id:
@@ -52,3 +55,8 @@ config:
                 color: $items.v.color
                 icon: $items.v.icon
                 title: $items.v.title
+  events:
+    onChange:
+      _var:
+        key: on_change
+        default: []

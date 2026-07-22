@@ -23,6 +23,9 @@ vars:
   s3PostPolicyRequestId:
     type: string
     default: upload_files
+  on_change:
+    type: array
+    default: []
 
 config:
   id:
@@ -89,3 +92,8 @@ config:
       _var:
         key: s3PostPolicyRequestId
         default: upload_files
+  events:
+    onChange:
+      _var:
+        key: on_change
+        default: []

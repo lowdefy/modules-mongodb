@@ -1,5 +1,8 @@
 export default {
   category: "container",
+  slots: {
+    form: "Fields rendered in the post-upload modal. Field ids must be nested under `{blockId}.form.*`; their state is passed through to onSave.",
+  },
   icons: [
     "AiFillCheckCircle",
     "AiFillCloseCircle",
@@ -33,6 +36,12 @@ export default {
       description: "Triggered when a file delete is confirmed.",
       event: {
         fileDoc: "The full file document being deleted.",
+      },
+    },
+    onDownload: {
+      description: "Triggered when a file download is initiated.",
+      event: {
+        fileDoc: "The full file document being downloaded.",
       },
     },
   },

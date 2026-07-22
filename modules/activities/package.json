@@ -1,6 +1,6 @@
 {
   "name": "@lowdefy/modules-mongodb-activities",
-  "version": "0.9.2",
+  "version": "0.13.0",
   "license": "MIT",
   "private": true
 }
