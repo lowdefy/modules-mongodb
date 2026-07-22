@@ -1,6 +1,6 @@
 name: Notifications
 version: 0.13.0
-description: Notification bell, inbox, and deep-link routing
+description: Notification dispatch pipeline, bell, inbox, and deep-link routing
 
 dependencies:
   - id: layout
@@ -17,11 +17,137 @@ vars:
     type: array
     default: []
     description: >
-      API routine steps for dispatching notifications. Receives event_ids
-      in the payload. Default is an empty routine (no-op).
+      API routine steps that shape app events into notification items and
+      dispatch them (typically ending in a CallApi to dispatch-notifications).
+      Receives event_ids in the payload. Default is an empty routine (no-op).
+  server_url:
+    type: string
+    default: null
+    description: >
+      Absolute origin used to compose email link URLs (e.g.
+      https://app.example.com). Required when notification items carry page
+      links — there is no framework fallback.
+  public_link_types:
+    type: array
+    default:
+      - invite-user
+      - resend-user-invite
+      - user-invite
+      # Module-shipped invite templates under the user-admin module's
+      # conventional entry id — apps installing it under a different entry id
+      # override this var with their scoped types.
+      - user-admin/invite-user
+      - user-admin/resend-user-invite
+    description: >
+      Notification type values whose landing links resolve without a session
+      (pre-auth flows such as user invites). Matched against both the
+      legacy event_type field and the pipeline's type field. Includes the
+      user-admin module's shipped invite types under its conventional entry id.
+  filter_exempt_types:
+    type: array
+    default:
+      - invite-user
+      - resend-user-invite
+      - user-invite
+      - user-admin/invite-user
+      - user-admin/resend-user-invite
+    description: >
+      Notification type values exempt from the email recipient filter
+      (email.filter / sendgrid.filter) — mail for these types always delivers
+      to the actual recipient. Defaults to the pre-auth invite flows (the same
+      set as public_link_types), which are useless when redirected. Set to an
+      empty list to filter every type.
+  transport:
+    type: string
+    default: smtp
+    description: >
+      Email transport for the dispatch pipeline. "smtp" (default) sends
+      SMTPMailSend over the notifications-email connection; "sendgrid" sends
+      SendGridMailSend over the notifications-email-sendgrid connection
+      (SendGrid HTTP API). Any other value throws on dispatch.
+  email:
+    description: >
+      SMTP transport for notification emails, used when transport is "smtp"
+      (the default). Ignored when the app remaps the notifications-email
+      connection to its own email connection.
+    properties:
+      # host/user/pass/from are untyped: apps commonly source them from a
+      # _secret operator, which stays an unevaluated object at build time and
+      # cannot satisfy a `type: string` check. port/secure are never secrets.
+      host:
+        default: null
+        description: SMTP host.
+      port:
+        type: number
+        default: 465
+        description: SMTP port.
+      secure:
+        type: boolean
+        default: true
+        description: Use TLS.
+      user:
+        default: null
+        description: SMTP auth user.
+      pass:
+        default:
+          _secret: NOTIFICATIONS_SMTP_PASS
+        description: >
+          SMTP auth password, read from the NOTIFICATIONS_SMTP_PASS secret. Set
+          that env var to your provider key (e.g. a SendGrid API key). To use a
+          secret you already have under a different name, remap the
+          notifications-email connection to an app connection instead.
+      from:
+        default: null
+        description: From address/header for notification emails.
+      filter:
+        type: object
+        default: null
+        description: >
+          SMTP recipient filter ({ replaceAddress, allowlist, regex }) to
+          redirect or restrict outgoing mail in non-production environments.
+          Types in filter_exempt_types bypass it.
+  sendgrid:
+    description: >
+      SendGrid HTTP API transport for notification emails, used when transport
+      is "sendgrid". Ignored when the app remaps the
+      notifications-email-sendgrid connection to its own connection.
+    properties:
+      # api_key/from/reply_to are untyped: apps commonly source them from a
+      # _secret operator, which stays an unevaluated object at build time and
+      # cannot satisfy a `type: string` check.
+      api_key:
+        default:
+          _secret: SENDGRID_API_KEY
+        description: >
+          SendGrid API key, read from the SENDGRID_API_KEY secret.
+          To use a secret you already have under a different name, remap the
+          notifications-email-sendgrid connection to an app connection instead.
+      from:
+        default: null
+        description: >
+          From address for notification emails. Required by SendGrid when
+          transport is "sendgrid".
+      reply_to:
+        default: null
+        description: Reply-to address. Defaults to sendgrid.from.
+      filter:
+        type: object
+        default: null
+        description: >
+          SendGridMail recipient filter ({ replaceAddress, allowlist, regex })
+          to redirect or restrict outgoing mail in non-production environments.
+          Types in filter_exempt_types bypass it.
+      sandbox:
+        type: boolean
+        default: false
+        description: >
+          Enable SendGrid sandbox mode (mailSettings.sandboxMode.enable) —
+          SendGrid validates the send without delivering the mail.
 
 connections:
   - _ref: connections/notifications-collection.yaml
+  - _ref: connections/notifications-email.yaml
+  - _ref: connections/notifications-email-sendgrid.yaml
   - _ref: connections/notifications-files-bucket-public.yaml
 
 pages:
@@ -43,10 +169,18 @@ exports:
   connections:
     - id: notifications-collection
       description: MongoDB connection for notifications collection
+    - id: notifications-email
+      description: SMTP connection for notification emails — configure via email vars, or remap to an app connection
+    - id: notifications-email-sendgrid
+      description: SendGrid HTTP API connection for notification emails — configure via the transport/sendgrid vars, or remap to an app connection
     - id: notifications-files-bucket-public
       description: Public S3 bucket for notification attachment downloads
   api:
     - id: send-notification
+    - id: dispatch-notifications
+      description: Generic dispatch pipeline — render, store with dedup, send, record the result; payload { notification_id, items }
+    - id: drain-notifications
+      description: Re-sends unsent records (sent false with at least one failed attempt) from their stored render outputs; payload { max_attempts = 5, limit = 50 } — schedule from an app-side cron endpoint
   components:
     - id: notification-config
       description: Notification bell config for PageHeaderMenu — count, icon, and link
@@ -55,6 +189,11 @@ exports:
 
 api:
   - _ref: api/send-notification.yaml
+  - _ref: api/dispatch-notifications.yaml
+  - _ref: api/dispatch-notification-item.yaml
+  - _ref: api/send-notification-record.yaml
+  - _ref: api/drain-notifications.yaml
+  - _ref: api/retry-notification-record.yaml
 
 components:
   - id: notification-config
@@ -67,6 +206,10 @@ components:
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
+  - name: NOTIFICATIONS_SMTP_PASS
+    description: SMTP password for notification emails (default of the email.pass var)
+  - name: SENDGRID_API_KEY
+    description: SendGrid API key for notification emails (default of the sendgrid.api_key var)
   - name: FILES_S3_ACCESS_KEY_ID
     description: AWS access key for the file-download bucket
   - name: FILES_S3_SECRET_ACCESS_KEY

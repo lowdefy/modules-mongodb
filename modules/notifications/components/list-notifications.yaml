@@ -75,7 +75,11 @@ blocks:
                           _global:
                             _string.concat:
                               - enums.event_types.
-                              - _state: list.$.event_type
+                              # Legacy records store event_type; pipeline
+                              # records store type.
+                              - _if_none:
+                                  - _state: list.$.event_type
+                                  - _state: list.$.type
               - id: list.$.time_ago
                 type: Html
                 layout:
@@ -102,7 +106,15 @@ blocks:
                     _nunjucks:
                       template: |
                         <div><b>{{ notification.title | safe }}</b></div>
-                        <div style="color: var(--ant-color-text-secondary);">{{ notification.description | safe }}</div>
+                        <div style="color: var(--ant-color-text-secondary);">{{ description | safe }}</div>
                       on:
                         notification:
                           _state: list.$
+                        # Legacy records store description; lowdefy framework
+                        # notification records store preview.
+                        description:
+                          _if_none:
+                            - _state: list.$.description
+                            - _if_none:
+                                - _state: list.$.preview
+                                - ''

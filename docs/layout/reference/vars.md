@@ -17,7 +17,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `sider_open_blocks` | array | `[]` |  | Blocks rendered in the PageSidebarLayout siderOpen slot (below the menu when expanded). Only used when page_type is 'sidebar'. |
 | `sider_closed_blocks` | array | `[]` |  | Blocks rendered in the PageSidebarLayout siderClosed slot (shown when collapsed). Only used when page_type is 'sidebar'. |
 | `sider_storage_key` | string | `layout-sider` |  | localStorage key suffix for sider collapsed-state persistence. Produces key 'lf-{sider_storage_key}-open'. Ignored for page_type 'header-menu' (no sider to persist). |
-| `menu` | object | `{"_menu":"default"}` |  | Menu config passed to the page block. Defaults to _menu default. |
+| `menu` |  | `{"_menu":"default"}` |  | Menu config passed to the page block. Defaults to _menu default. |
 | `header` | object | `{}` |  | Page block header properties: { theme, contentStyle } |
 | `title_block` | object |  |  | Custom title block override (replaces default title bar) |
 | `footer` | array | `[]` |  | Footer blocks appended after page content |

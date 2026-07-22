@@ -1,0 +1,209 @@
+# Dispatches ONE notification item: render → insert with dedup → send →
+# record the send result. Internal detail of dispatch-notifications — items
+# run here one at a time so each gets fresh step results and state.
+#
+# Item contract (shaped by the app's send_routine):
+#   contact: { _id, email, ... }   required — the recipient
+#   key: string                    optional — deduplication key
+#   send_email: boolean            optional — default true; false = inbox only
+#   cc, bcc: [string]              optional
+#   links.*, <template dataKeys>   optional — { pageId, urlQuery } page links
+#   ...everything else is template data
+id: dispatch-notification-item
+type: InternalApi
+routine:
+  - :if:
+      _or:
+        - _not:
+            _type:
+              type: object
+              on:
+                _payload: item.contact
+        - _eq:
+            - _if_none:
+                - _payload: item.contact._id
+                - null
+            - null
+    :then:
+      - :throw: dispatch-notification-item requires item.contact with an _id.
+
+  # Mint the record id before rendering — landing-page link URLs embed it.
+  - :set_state:
+      record_id:
+        _uuid: true
+      email:
+        _string.toLowerCase:
+          _string.trim:
+            _if_none:
+              - _payload: item.contact.email
+              - ""
+  - :set_state:
+      is_valid_email:
+        _regex:
+          pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+          on:
+            _state: email
+
+  # Render subject/title/preview/html/text from the app's notifications:
+  # config. Page links in the item resolve to landing URLs:
+  # <server_url><basePath><link page>?_id=<record_id>&option=<dotpath>
+  - id: render
+    type: RenderNotification
+    properties:
+      notificationId:
+        _payload: notification_id
+      data:
+        _payload: item
+      serverUrl:
+        _module.var: server_url
+      landingPage:
+        _string.concat:
+          - "/"
+          - _module.pageId: link
+      recordId:
+        _state: record_id
+
+  # Insert BEFORE sending — claims the dedup key so concurrent dispatches
+  # cannot double-send. Requires the app-managed unique partial index on
+  # `key` (see the module docs, Required indexes) — without it duplicate
+  # inserts succeed and the guarantee does not exist.
+  - :try:
+      - id: insert_record
+        type: MongoDBInsertOne
+        connectionId:
+          _module.connectionId: notifications-collection
+        properties:
+          doc:
+            _id:
+              _state: record_id
+            key:
+              _if_none:
+                - _payload: item.key
+                - null
+            type:
+              _payload: notification_id
+            contact_id:
+              _payload: item.contact._id
+            contact:
+              _payload: item.contact
+            email:
+              _state: email
+            is_valid_email:
+              _state: is_valid_email
+            subject:
+              _step: render.subject
+            title:
+              _step: render.title
+            preview:
+              _step: render.preview
+            body:
+              _step: render.html
+            text:
+              _step: render.text
+            # Store the ORIGINAL item — the link page reads { pageId, urlQuery }
+            # targets back out of data at the ?option dot-path. Never store the
+            # render result's data (its links point back at the landing page).
+            data:
+              _payload: item
+            send_email:
+              _if_none:
+                - _payload: item.send_email
+                - true
+            cc:
+              _if_none:
+                - _payload: item.cc
+                - null
+            bcc:
+              _if_none:
+                - _payload: item.bcc
+                - null
+            sent: false
+            send_attempts: 0
+            last_attempt: null
+            email_result: null
+            read: false
+            created:
+              timestamp:
+                _date: now
+              app_name:
+                _module.var: app_name
+    :catch:
+      # :catch cannot inspect the thrown error, so detect a duplicate key by
+      # looking the dedup key up: item has a key AND a record carries it →
+      # already dispatched, skip silently. Anything else is a real failure.
+      - :if:
+          _not:
+            _type:
+              type: string
+              on:
+                _payload: item.key
+        :then:
+          - :throw: Notification insert failed.
+      - id: find_existing
+        type: MongoDBFindOne
+        connectionId:
+          _module.connectionId: notifications-collection
+        properties:
+          query:
+            key:
+              _payload: item.key
+      - :if:
+          _eq:
+            - _step: find_existing
+            - null
+        :then:
+          - :throw: Notification insert failed.
+      - :log:
+          event: notification_duplicate_skipped
+          key:
+            _payload: item.key
+        :level: info
+      - :return:
+          notification_id: null
+          skipped: true
+
+  # Send gate — send_email: false or an invalid/missing address stores the
+  # notification inbox-only. The send itself (transport switch, mark_sent,
+  # failure bookkeeping) lives in send-notification-record, the single send
+  # path shared with the drain. A send failure never fails the dispatch —
+  # the record stays sent: false, ready for a drain retry.
+  - :if:
+      _and:
+        - _state: is_valid_email
+        - _if_none:
+            - _payload: item.send_email
+            - true
+    :then:
+      - id: send_record
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId: send-notification-record
+          payload:
+            record_id:
+              _state: record_id
+            # The email connections resolve their recipient filter against
+            # payload.notification_id (filter_exempt_types exemption).
+            notification_id:
+              _payload: notification_id
+            email:
+              _state: email
+            cc:
+              _if_none:
+                - _payload: item.cc
+                - null
+            bcc:
+              _if_none:
+                - _payload: item.bcc
+                - null
+            subject:
+              _step: render.subject
+            text:
+              _step: render.text
+            html:
+              _step: render.html
+
+  - :return:
+      notification_id:
+        _state: record_id
+      skipped: false

@@ -24,6 +24,13 @@ vars:
     description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive user (current) and target (edited/invited user). When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge."
   app_domain:
     description: App domain URL for invite links (falls back to current origin)
+  login_page_id:
+    type: string
+    default: user-account/login
+    description: >
+      Scoped page id the invite emails' sign-in button targets. Defaults to
+      the user-account module's login page under its conventional entry id;
+      override when the app's login page lives elsewhere.
   fields:
     type: object
     description: "Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
@@ -141,6 +148,14 @@ api:
   - _ref: api/invite-user.yaml
   - _ref: api/update-user.yaml
   - _ref: api/resend-invite.yaml
+
+# Default invite emails, rendered by the notifications module's dispatch
+# pipeline. Ids scope to {entry}/{id} — consumers list the scoped types in the
+# notifications module's public_link_types (the conventional user-admin/*
+# values are in its default).
+notifications:
+  - _ref: notifications/invite-user.yaml
+  - _ref: notifications/resend-user-invite.yaml
 
 pages:
   - _ref: pages/all.yaml

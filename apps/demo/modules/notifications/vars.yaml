@@ -4,3 +4,12 @@ app_name:
     key: app_name
 send_routine:
   _ref: modules/notifications/send-routine.yaml
+# Origin for email link URLs — point at the deployed origin in production.
+server_url: http://localhost:3000
+# SendGrid HTTP API transport for notification emails. The API key comes from
+# the module's SENDGRID_API_KEY secret (its default) — set that env
+# var to the SendGrid API key in the demo environment (the same value the
+# earlier SMTP-relay setup kept in NOTIFICATIONS_SMTP_PASS).
+transport: sendgrid
+sendgrid:
+  from: Lowdefy Demo <notify@demo.lowdefy.dev>

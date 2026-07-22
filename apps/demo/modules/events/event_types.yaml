@@ -10,3 +10,23 @@ action-approve:
   color: "#52c41a"
   title: Action Approved
   icon: AiOutlineCheckCircle
+# Notification pipeline types — badges for records the notifications module's
+# dispatch pipeline writes (record.type = notification config id).
+quote-approved:
+  color: "#52c41a"
+  title: Quote Approved
+  icon: AiOutlineCheckCircle
+user-invite:
+  color: "#1890ff"
+  title: User Invited
+  icon: AiOutlineUserAdd
+# Module-shipped invite notifications — records carry the SCOPED type
+# ({entry}/{id}), so badge keys use the user-admin entry id.
+user-admin/invite-user:
+  color: "#1890ff"
+  title: User Invited
+  icon: AiOutlineUserAdd
+user-admin/resend-user-invite:
+  color: "#1890ff"
+  title: Invite Resent
+  icon: AiOutlineUserAdd

@@ -1,0 +1,158 @@
+# Sends ONE stored notification record's email and records the result — the
+# single send path shared by dispatch-notification-item (first send) and
+# retry-notification-record (drain retry), so transport and bookkeeping
+# behavior cannot drift between them.
+#
+# Payload contract:
+#   record_id: string        required — the notification record _id
+#   notification_id: string  required — the record's type; the email
+#                            connections resolve their recipient filter
+#                            against payload.notification_id, so it must be
+#                            present here for filter_exempt_types to apply
+#   email: string            required — normalized recipient address
+#   cc, bcc: [string]        optional
+#   subject, text, html      the stored render outputs
+id: send-notification-record
+type: InternalApi
+routine:
+  # Transport guard — outside the send :try so a misconfigured transport var
+  # throws loudly instead of being swallowed into retry bookkeeping. The
+  # _module.var resolves at build, so this condition folds to a literal.
+  - :if:
+      _not:
+        _or:
+          - _eq:
+              - _module.var: transport
+              - smtp
+          - _eq:
+              - _module.var: transport
+              - sendgrid
+    :then:
+      - :throw: 'notifications: the transport var must be "smtp" or "sendgrid".'
+
+  - :try:
+      # Transport switch — the _module.var resolves at build, so this :if
+      # condition is a literal in the built routine and only one branch
+      # ever runs. Both send steps throw into the same :catch below.
+      - :if:
+          _eq:
+            - _module.var: transport
+            - sendgrid
+        :then:
+          - id: send_mail_sendgrid
+            type: SendGridMailSend
+            connectionId:
+              _module.connectionId: notifications-email-sendgrid
+            properties:
+              to:
+                _payload: email
+              # Empty arrays (not null) when absent: like SMTPMailSend,
+              # SendGridMailSend's schema accepts an address list but not
+              # null for cc/bcc.
+              cc:
+                _if_none:
+                  - _payload: cc
+                  - []
+              bcc:
+                _if_none:
+                  - _payload: bcc
+                  - []
+              subject:
+                _payload: subject
+              text:
+                _payload: text
+              html:
+                _payload: html
+        :else:
+          - id: send_mail_smtp
+            type: SMTPMailSend
+            connectionId:
+              _module.connectionId: notifications-email
+            properties:
+              to:
+                _payload: email
+              # Empty arrays (not null) when absent: SMTPMailSend's schema
+              # accepts an address list but not null for cc/bcc.
+              cc:
+                _if_none:
+                  - _payload: cc
+                  - []
+              bcc:
+                _if_none:
+                  - _payload: bcc
+                  - []
+              subject:
+                _payload: subject
+              text:
+                _payload: text
+              html:
+                _payload: html
+      - id: mark_sent
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: notifications-collection
+        properties:
+          filter:
+            _id:
+              _payload: record_id
+          update:
+            $set:
+              sent: true
+              # Only one send step ran (transport switch above); _step on
+              # the step that never ran returns null, so _if_none picks the
+              # live transport's result. On Lowdefy versions before the mail
+              # plugins returned per-message results, messageId and to are
+              # null and filtered folds to false.
+              email_result:
+                transport:
+                  _module.var: transport
+                messageId:
+                  _if_none:
+                    - _step: send_mail_sendgrid.results.0.messageId
+                    - _step: send_mail_smtp.results.0.messageId
+                # The post-filter address mail actually went to — differs
+                # from the record's email when the connection filter's
+                # replaceAddress redirect is active.
+                to:
+                  _if_none:
+                    - _step: send_mail_sendgrid.results.0.to
+                    - _step: send_mail_smtp.results.0.to
+                # true when the filter (allowlist/regex) dropped the send
+                # entirely — nothing was delivered.
+                filtered:
+                  _if_none:
+                    - _step: send_mail_sendgrid.results.0.filtered
+                    - _if_none:
+                        - _step: send_mail_smtp.results.0.filtered
+                        - false
+                timestamp:
+                  _date: now
+    :catch:
+      # A send failure never fails the caller — the record stays
+      # sent: false with the attempt recorded, ready for a drain retry.
+      - id: record_send_failure
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: notifications-collection
+        properties:
+          filter:
+            _id:
+              _payload: record_id
+          update:
+            $inc:
+              send_attempts: 1
+            $set:
+              last_attempt:
+                _date: now
+      - :log:
+          event: notification_send_failed
+          notification_id:
+            _payload: record_id
+        :level: warn
+
+  # mark_sent is null when the :catch path ran — the send failed.
+  - :return:
+      sent:
+        _ne:
+          - _step: mark_sent
+          - null

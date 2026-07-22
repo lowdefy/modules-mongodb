@@ -1,0 +1,41 @@
+# SMTP transport for notification emails, used when the module's transport
+# var is "smtp" (the default) and configured through the email.* vars. For
+# SendGrid's HTTP API see the notifications-email-sendgrid sibling.
+# Apps with an existing email connection remap it instead:
+#   modules:
+#     - source: ...notifications
+#       connections:
+#         notifications-email: my-app-smtp
+# A remap suppresses this connection entirely, so the email vars are ignored.
+id: notifications-email
+type: SMTP
+properties:
+  host:
+    _module.var: email.host
+  port:
+    _module.var: email.port
+  secure:
+    _module.var: email.secure
+  auth:
+    user:
+      _module.var: email.user
+    pass:
+      _module.var: email.pass
+  from:
+    _module.var: email.from
+  # Recipient filter with auth-flow exemption — same contract as the sendgrid
+  # sibling: the email.filter var applies to every send EXCEPT notification
+  # types in filter_exempt_types (pre-auth mail such as invites, which must
+  # reach the real recipient). Connection properties evaluate per request with
+  # the dispatch routine's payload in scope, so the _module.var lists fold at
+  # build and the _if resolves on payload.notification_id at send time; a send
+  # without a notification_id stays filtered (fail-safe).
+  filter:
+    _if:
+      test:
+        _array.includes:
+          - _module.var: filter_exempt_types
+          - _payload: notification_id
+      then: null
+      else:
+        _module.var: email.filter

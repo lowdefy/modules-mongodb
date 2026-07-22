@@ -46,6 +46,12 @@ modules:
 
 `app_name` and `roles` are required. See `apps/demo/modules/user-admin/vars.yaml` for a worked example. User documents share the `user-contacts` collection with plain contacts — users are distinguished by `apps.{app_name}.is_user === true`. The `contacts` module excludes user records from its list; this module is the only writer for users.
 
+## Invite emails
+
+The module ships its own invite templates (`notifications:` in the manifest, Lowdefy ≥ the module-notifications release) and dispatches them **directly** to the notifications module's `dispatch-notifications` pipeline — apps do not define invite templates or shape invite events in `send_routine`. Template ids scope to the entry id: records carry `type: user-admin/invite-user` / `user-admin/resend-user-invite`, and the notifications module's `public_link_types` default already includes these conventional scoped types (override the var when installing under a different entry id, and add them to the app's `event_types` enum for inbox badges).
+
+The sign-in button targets the `login_page_id` var (default `user-account/login` — the user-account module's login page under its conventional entry id) with the invitee's email in the `hint` query param. Invite events are still logged via the events module; they just no longer flow through `send-notification`.
+
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions

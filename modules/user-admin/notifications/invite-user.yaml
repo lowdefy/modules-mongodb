@@ -1,0 +1,27 @@
+# Default invite email, shipped by the module (scoped id
+# {entry}/invite-user, conventionally user-admin/invite-user). Apps that want
+# different copy define their own template and dispatch it from a custom flow;
+# the framework's app.email theme brands this one (companyName, colors, logo).
+id: invite-user
+type: NotificationEmail
+properties:
+  subject: You've been invited
+  title: You've been invited
+  message: |
+    {{ inviter_name }} has invited you.
+
+    Sign in with your email address to get started.
+  button:
+    label: Sign in
+testData:
+  inviter_name: Sam Admin
+  contact:
+    _id: UC-TEST
+    email: jane@example.com
+    profile:
+      name: Jane Doe
+  links:
+    button:
+      pageId: user-account/login
+      urlQuery:
+        hint: jane@example.com

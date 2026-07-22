@@ -68,8 +68,10 @@ vars:
         description: >-
           Inline style object applied to the header logo (mapped to the
           `.logo` cssKey on the page block).
+  # menu is untyped: the default is a runtime _menu operator that must pass
+  # through the var into the page block property and resolve on the client —
+  # a type check would reject the unevaluated operator object.
   menu:
-    type: object
     default:
       _menu: default
     description: Menu config passed to the page block. Defaults to _menu default.

@@ -184,16 +184,43 @@ routine:
                   - _payload: email
                   - ""
 
-  - id: send-notification
+  # Dispatch the invite email directly — the module ships its own template
+  # (notifications/invite-user.yaml), so apps no longer shape invite events in
+  # their send_routine. The item is shaped inline: the recipient is known here.
+  - id: dispatch-invite-notification
     type: CallApi
     properties:
       endpointId:
         _module.endpointId:
-          id: send-notification
+          id: dispatch-notifications
           module: notifications
       payload:
-        event_ids:
-          - _step: new-event.eventId
+        notification_id:
+          _module.notificationId: invite-user
+        item:
+          # Dedup: one notification per (event, recipient).
+          key:
+            _string.concat:
+              - _step: new-event.eventId
+              - ":"
+              - _step: get-user._id
+          contact:
+            _id:
+              _step: get-user._id
+            email:
+              _step: get-user.email
+            profile:
+              name:
+                _step: get-user.profile.name
+          inviter_name:
+            _user: profile.name
+          links:
+            button:
+              pageId:
+                _module.var: login_page_id
+              urlQuery:
+                hint:
+                  _step: get-user.email
 
   - :return:
       userId:

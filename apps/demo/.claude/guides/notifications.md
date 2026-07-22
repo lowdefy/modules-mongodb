@@ -4,239 +4,135 @@ How to wire up the notifications module, create notification types, and trigger 
 
 ## Pattern
 
-The notification system spans three layers: a **Lowdefy module** (inbox UI, bell badge, deep-link routing), a **Lambda pipeline** (consume + send), and **notification configs** (paired YAML + JS files per notification type). Each layer is independently customizable.
+The notification system spans three layers: the **framework** (email template rendering via the `notifications:` config section and the `RenderNotification` step), the **notifications module** (dispatch pipeline, inbox UI, bell badge, deep-link routing), and the **app** (template configs, event shaping, SMTP credentials). In this demo everything runs inside the Lowdefy server — the external Lambda pipeline (consume + send via SQS/SendGrid) some production apps use is not retired: the module coexists with it, and apps migrate per notification type (see `docs/notifications/how-to/lambda-pipeline-migration.md`).
 
-**Module layer**: The `notifications` module provides inbox, bell badge, and deep-link pages. It requires two module vars: `app_name` (string — scopes notifications to the current app) and `send_routine` (array — API routine steps for dispatching). The module exports pages (`inbox`, `link`, `invalid`), a `notification-config` component (bell badge for PageHeaderMenu), an `unread-count-request` (aggregation for badge count), and the `send-notification` API endpoint.
+**Framework layer**: The app's `notifications:` config section defines email templates: `{ id, type, properties }` where the type is a React Email template (`NotificationEmail`, `DigestEmail`, `AlertEmail`, or a custom plugin). Properties are nunjucks data templates (`{{ approver_name }} approved your quote.`) interpolated against each dispatched item — interpolated values are inert and can never inject markup. The `RenderNotification` routine step renders one item and returns `{ subject, title, preview, html, text, data }`; the module's pipeline calls it for you.
 
-**Lambda layer**: Two Lambda functions process notifications. **consumeNotifications** receives event IDs via HTTP POST, looks up the event type in a `jobs` map, runs each matching notification template (which determines recipients via a MongoDB aggregation pipeline and renders email content via React), creates notification documents in MongoDB, and queues emails to SQS. **sendNotifications** is an SQS consumer that sends emails via SendGrid. The SQS queue is FIFO with a dead-letter queue (3 retries, 14-day retention).
+**Module layer**: The `notifications` module provides the dispatch pipeline plus inbox, bell badge, and deep-link pages. `dispatch-notifications` (exported InternalApi) takes `{ notification_id, items }` and, per item: renders the template, inserts the notification record (with dedup on `key`), sends the email over the transport selected by the `transport` var (`smtp` default via the `notifications-email` connection, or `sendgrid` via the `notifications-email-sendgrid` SendGrid HTTP API connection), and records the send result. A send failure never fails the dispatch — the record stays `sent: false` with `send_attempts` bumped.
 
-**Notification configs** are paired files: a `.yaml` file defining the MongoDB pipeline that determines recipients and projects data, and a `.js` file defining the React email template and test data. Each config is registered in the consumeNotifications handler's `jobs` map under an event type key. One event type can trigger multiple configs (e.g., `insert-ticket` notifies author, team subscribers, and support subscribers).
+**App layer**: The app supplies module vars (`app_name`, `server_url`, `email` SMTP credentials or `transport: sendgrid` + `sendgrid` credentials — or a connection remap — and `send_routine`) and the `send_routine` — API routine steps that shape app events into notification items and `CallApi` `dispatch-notifications`.
 
-**Triggering flow**: An API routine creates an event, then calls the notifications module's `send-notification` endpoint with `event_ids`. The app's `send_routine` (configured via module var) forwards the IDs to the consume-notifications Lambda via AxiosHttp. The Lambda processes each event ID against matching notification configs.
+**Triggering flow**: An API routine creates an event, then calls the notifications module's `send-notification` endpoint with `event_ids`. The app's `send_routine` aggregates those events into items (recipient contact, template data, page links) and dispatches them.
 
 ## Data Flow
 
 ```
-App API routine (e.g., invite-user, create-contact)
+App API routine (e.g., invite-user, quote approval)
   → Creates event in events collection (via events module CallApi)
   → Calls send-notification endpoint with event_ids
-  → send_routine (AxiosHttp) POSTs to /api/consume-notifications Lambda
-  → consumeNotifications looks up event type in jobs map
-  → For each matching config:
-      → Runs YAML pipeline against events collection (determines recipients, projects data/links)
-      → Each $unwind on notification_contacts produces one notification per recipient
-      → Creates notification doc in MongoDB { contact_id, event_type, title, description, body, links, read: false, send_email, priority }
-      → Queues email to SQS (FIFO) with rendered React template
-  → sendNotifications (SQS consumer) sends email via SendGrid
+  → send_routine aggregation shapes items: { key, contact, links, ...template data }
+  → CallApi dispatch-notifications { notification_id, items }
+  → Per item (dispatch-notification-item):
+      → Mint record id (_uuid) — landing links embed it
+      → RenderNotification: interpolate + render the app's template config
+      → Insert record { contact_id, type, subject, title, preview, body, text, data, sent: false, ... }
+        (duplicate key → already dispatched → skip)
+      → Send via the selected transport (SMTP or SendGrid API) → mark sent + email_result
+        (failure → $inc send_attempts, record stays for a drain retry)
   → User sees notification in inbox (filtered by contact_id + app_name)
   → Bell badge shows unread count
-  → Email contains deep-link button → link page marks as read → redirects to target page
+  → Email button → link page (?_id=<record>&option=<dataPath>) marks read → redirects to target
 ```
 
 ## Variations
 
-**Simple notification** — single recipient, single app. The YAML pipeline matches the event, looks up one contact, projects minimal data:
+**Simple notification** — single recipient. The send_routine branch matches the event, embeds the recipient contact, projects the item:
 
 ```yaml
-# config/exampleEventNotifyRecipient.yaml
-type: "example_event"
-title: "Example Event Notification"
-send_email: true
-priority: 50
-pipeline:
-  - $match:
-      _id: $recordId
-  - $lookup:
-      from: user_contacts
-      localField: contact_id
-      foreignField: _id
-      as: notification_contacts
-  - $unwind: $notification_contacts
-  - $project:
-      contact: $notification_contacts
-      created: 1
-      data:
-        title: $title
-      links:
-        button:
-          pageId: { target-page }
-          urlQuery:
-            _id: $_id
+- id: shape_example
+  type: MongoDBAggregation
+  connectionId:
+    _module.connectionId: { id: events-collection, module: events }
+  properties:
+    pipeline:
+      - $match: { _id: { $in: { _payload: event_ids } }, type: example-event }
+      - $lookup:
+          from: user-contacts
+          localField: contact_id
+          foreignField: _id
+          as: recipient_contact
+      - $set: { recipient_contact: { $first: $recipient_contact } }
+      - $project:
+          _id: 0
+          key: { $concat: [$_id, ":", $contact_id] } # dedup key
+          contact:
+            _id: $recipient_contact._id
+            email: $recipient_contact.email
+            profile: { name: $recipient_contact.profile.name }
+          entity_title: $title # template data — addressable as {{ entity_title }}
+          links:
+            button: { pageId: target-page, urlQuery: { _id: $_id } }
+- id: dispatch_example
+  type: CallApi
+  properties:
+    endpointId:
+      _module.endpointId: { id: dispatch-notifications, module: notifications }
+    payload:
+      notification_id: example-event
+      items:
+        _step: shape_example
 ```
 
-**Multi-recipient notification** — one event notifies multiple user groups. Register multiple configs under the same job key. Each config has its own pipeline that determines a different recipient set (e.g., author vs subscribers vs managers):
+**Multi-recipient notification** — the aggregation produces one item per recipient (e.g. `$unwind` over a subscriber lookup before `$project`). `dispatch-notifications` loops all items.
 
-```js
-// handler.js jobs map
-jobs: {
-  "insert-ticket": [
-    TicketInsertedNotifyTeamSubscribers,
-    TicketInsertedNotifyAuthor,
-    TicketInsertedNotifySupportSubscribers,
-  ],
-}
-```
+**Inbox-only notification** — project `send_email: false` on the item; the record is stored for the inbox but no email is sent.
 
-**Multi-app notification** — the same event creates notifications for different apps. Each config YAML sets `app_name` to scope which app's inbox shows it. The recipient pipeline filters contacts by the target app's `apps.{app_name}.is_user` flag:
+**Scheduled notifications** — a scheduled endpoint (`schedules: [{ cron }]`) runs the same shape → dispatch steps.
 
-```yaml
-# In the pipeline's $lookup for notification_contacts:
-- $match:
-    $expr:
-      $and:
-        - $eq: [$apps.{app_name}.is_user, true]
-        - $ne: [$apps.{app_name}.disabled, true]
-```
-
-**Scheduled notifications** — triggered by cron instead of user actions. The Lambda config is the same; only the trigger source differs (EventBridge schedule instead of HTTP POST from app).
+**Drain retry** — the module exports `drain-notifications`, which re-sends records left at `sent: false` by a failed send (from their stored render outputs, optimistic-locked per record, `max_attempts`/`limit` payload knobs). The module ships no schedule; the app wires a cron-only endpoint that CallApis it — see `apps/demo/api/notifications-drain.yaml`.
 
 ## Anti-patterns
 
-- **Don't create notification documents directly from Lowdefy** — always go through the Lambda pipeline. The Lambda handles email rendering, SQS queueing, recipient resolution, and environment-specific link rewriting.
-- **Don't hardcode URLs in notification config links** — use `pageId` + `urlQuery` objects. The Lambda rewrites these to full URLs using the app's environment domain config.
-- **Don't forget `$unwind: $notification_contacts`** — the pipeline must produce one document per recipient. Without `$unwind`, no notifications are created.
-- **Don't skip the `send_routine` module var** — without it, `send-notification` is a no-op. The app must provide the AxiosHttp routine that calls the Lambda.
-- **Don't register configs without test data** — every JS config needs a `testData` object for email preview rendering. Missing test data breaks the email preview.
+- **Don't `$merge` notification documents directly from a send_routine** — dispatch through `dispatch-notifications` so rendering, dedup, and email delivery happen. (The store-only `$merge` pattern survives only as a test mock in workflows-test.)
+- **Don't hardcode URLs in item links** — use `{ pageId, urlQuery }` objects. The render step resolves them against `server_url`, routing through the link page for mark-as-read.
+- **Don't store the render result's `data` on the record** — store the original item. The link page reads `{ pageId, urlQuery }` targets back out of `data` at the `?option` dot-path; resolved copies would redirect the landing page to itself. (The module pipeline already does this correctly.)
+- **Don't skip the dedup index** — the unique partial index on `key` (see the module docs) is what makes concurrent dispatches safe. Without it, duplicate inserts succeed and double-sends are possible.
+- **Don't forget the enum entry** — records write `type: <notification_id>`; add a matching key to the app's `event_types` enum additions for badge colors/titles in the inbox.
 
 ## Reference Files
 
-**Module (Lowdefy UI):**
+**Module:**
 
-- `modules/notifications/module.lowdefy.yaml` — module manifest with vars, exports, dependencies
+- `modules/notifications/module.lowdefy.yaml` — module manifest with vars (`server_url`, `transport`, `email`, `sendgrid`, `public_link_types`, `filter_exempt_types`), exports, dependencies
+- `modules/notifications/api/dispatch-notifications.yaml` — batch entry point: validate → `:for` items → CallApi per item
+- `modules/notifications/api/dispatch-notification-item.yaml` — the per-item pipeline: render → insert with dedup → CallApi the shared send path
+- `modules/notifications/api/send-notification-record.yaml` — the single send path (transport switch, mark sent, failure bookkeeping), shared by dispatch and drain
+- `modules/notifications/api/drain-notifications.yaml` — exported drain: find unsent → `:for` records → CallApi per record
+- `modules/notifications/api/retry-notification-record.yaml` — per-record drain body: optimistic-lock claim → send from stored render outputs
+- `modules/notifications/connections/notifications-email.yaml` — SMTP connection fed by the `email.*` vars (remappable)
+- `modules/notifications/connections/notifications-email-sendgrid.yaml` — SendGrid HTTP API connection fed by the `sendgrid.*` vars (remappable, used when `transport: sendgrid`)
 - `modules/notifications/pages/all.yaml` — two-column inbox: list (span 10) + detail (span 14), filters, pagination
-- `modules/notifications/pages/link.yaml` — deep-link router: fetch → invite check → auth check → mark read → redirect
+- `modules/notifications/pages/link.yaml` — deep-link router: fetch → pre-auth check → auth check → mark read → redirect via `data` at the `option` dot-path
 - `modules/notifications/components/notification-config.yaml` — bell badge config (count, icon, link)
 - `modules/notifications/components/unread-count-request.yaml` — unread count aggregation ($match + $count)
-- `modules/notifications/requests/get-notifications.yaml` — paginated list with $facet (notifications + total_count)
-- `modules/notifications/actions/update-list.yaml` — reset pagination → fetch → set list → set types
 
-**Lambda pipeline:**
+**App wiring (this demo app):**
 
-- `lambda/internal/src/notifications/consumeNotifications/handler.js` — consumer handler with apps config and jobs map
-- `lambda/internal/src/notifications/sendNotifications/handler.js` — SQS email sender with SendGrid config
-- `lambda/internal/src/notifications/consumeNotifications/config/ExampleEventNotifyRecipient.js` — example template with createNotificationTemplate, ContentComponent, Layout, testData
-- `lambda/internal/src/notifications/consumeNotifications/config/exampleEventNotifyRecipient.yaml` — example pipeline: $match → $lookup contacts → $unwind → $project (contact, data, links)
-- `lambda/internal/src/notifications/consumeNotifications/layout/DefaultLayout.js` — email layout with logo, greeting, signature, optional unsubscribe
-- `lambda/internal/serverless.yml` — SQS FIFO queue, DLQ, Lambda functions, IAM permissions
-
-**App wiring:**
-
-- `apps/example-app/modules/notifications/send-routine.yaml` — AxiosHttp call to consume-notifications Lambda
-- `apps/example-app/connections.yaml` — `consume-notifications` AxiosHttp connection with API key
-- `modules/user-admin/api/invite-user.yaml` — example of triggering send-notification from API routine (line 201)
+- `apps/demo/lowdefy.yaml` — the `notifications:` template config section (`quote-approved`; invites are module-shipped)
+- `apps/demo/modules/notifications/vars.yaml` — `server_url` + `transport: sendgrid` with `sendgrid` vars (SendGrid HTTP API)
+- `apps/demo/modules/notifications/send-routine.yaml` — one shape → dispatch branch (quote approval); invites no longer shaped here
+- `apps/demo/api/notifications-drain.yaml` — cron-only endpoint (`schedules:`) that CallApis the module's drain
+- `apps/demo/modules/events/event_types.yaml` — enum entries for `quote-approved` + scoped `user-admin/*` invite badges
+- `modules/user-admin/notifications/` — module-shipped invite templates (scoped `user-admin/invite-user`)
+- `modules/user-admin/api/invite-user.yaml` — direct dispatch to dispatch-notifications with `_module.notificationId`
 
 ## Template
 
-### Notification Config (YAML pipeline)
+### Notification config (app `notifications:` section)
 
 ```yaml
-# lambda/internal/src/notifications/consumeNotifications/config/{eventTypeNotifyRecipient}.yaml
-
-type: "{event-type-notify-recipient}"
-event_type: "{event_type}"
-app_name: {app_name}
-send_email: true
-title: "{Notification title with {{ data.field }} template vars}"
-description: "{Short description with {{ data.field }} template vars}."
-priority: 50
-
-pipeline:
-  # Look up related entities from the event document
-  - $lookup:
-      from: {related_collection}
-      localField: {entity}_ids
-      foreignField: _id
-      as: {entity}
-  - $unwind:
-      path: ${entity}
-  # Determine recipients — look up contacts who should receive this notification
-  - $lookup:
-      from: user_contacts
-      let:
-        {recipient_id}: ${entity}.{recipient_field}
-      as: notification_contacts
-      pipeline:
-        - $match:
-            $expr:
-              $and:
-                - $eq:
-                    - $_id
-                    - $${recipient_id}
-                - $eq:
-                    - $apps.{app_name}.is_user
-                    - true
-                - $ne:
-                    - $apps.{app_name}.disabled
-                    - true
-  # One notification per recipient
-  - $unwind:
-      path: $notification_contacts
-  # Project the final notification shape
-  - $project:
-      created: 1
-      contact: $notification_contacts
-      data:
-        {entity}:
-          _id: ${entity}._id
-          title: ${entity}.title
-      links:
-        button:
-          pageId: {target-page-id}
-          urlQuery:
-            _id: ${entity}._id
+notifications:
+  - id: "{notification-id}"
+    type: NotificationEmail
+    properties:
+      subject: "{Subject with {{ item_field }} template vars}"
+      title: "{Heading above the message}"
+      message: "{Body text with {{ item_field }} template vars — markdown allowed}"
+      button:
+        label: "{CTA label}" # links to the item's links.button
 ```
 
-### Notification Config (JS email template)
-
-```js
-// lambda/internal/src/notifications/consumeNotifications/config/{EventTypeNotifyRecipient}.js
-
-import React from "react";
-import { Section, Text } from "@react-email/components";
-import { Button, createNotificationTemplate } from "@mrmtech/splice-emails";
-
-import DefaultLayout, { theme } from "../layout/DefaultLayout.js";
-
-const testData = {
-  contact: {
-    profile: { name: "Jane Doe" },
-  },
-  data: {
-    {entity}: {
-      _id: "123",
-      title: "Example Title",
-    },
-  },
-  links: {
-    button: "https://{domain}/{target-page}?_id=123",
-  },
-};
-
-const {EventType}Content = ({ data, links }) => {
-  return (
-    <Section>
-      <Text>
-        There has been an update on <b>{data.{entity}.title}</b>.
-      </Text>
-      <Text>Click the button below to view the details.</Text>
-      <Button href={links.button} color={theme.primary_color}>
-        View Details
-      </Button>
-    </Section>
-  );
-};
-
-export const {EventTypeNotifyRecipient} = createNotificationTemplate({
-  ContentComponent: {EventType}Content,
-  Layout: DefaultLayout,
-  testData,
-  configPath: "./config/{eventTypeNotifyRecipient}.yaml",
-});
-
-export default {EventTypeNotifyRecipient}.default;
-```
-
-### Triggering from API routine
+### Triggering from an API routine
 
 ```yaml
 # In an API routine (e.g., api/create-{entity}.yaml), after creating the event:
@@ -252,30 +148,14 @@ export default {EventTypeNotifyRecipient}.default;
         - _step: new-event.eventId
 ```
 
-### Registering in handler
-
-```js
-// In consumeNotifications/handler.js:
-import { EventTypeNotifyRecipient } from "./config/EventTypeNotifyRecipient.js";
-
-const config = {
-  // ...apps config...
-  jobs: {
-    "{event-type}": [EventTypeNotifyRecipient],
-  },
-};
-```
-
 ## Checklist
 
-- [ ] Module vars: `app_name` set in app's module config; `send_routine` provides AxiosHttp to consume-notifications
-- [ ] App connection: `consume-notifications` AxiosHttp connection exists with `SERVICES_API_URL` and `SERVICES_API_KEY`
-- [ ] Config pair: both `.yaml` pipeline and `.js` template exist for each notification type
-- [ ] Pipeline `$unwind: $notification_contacts` — produces one doc per recipient
-- [ ] Pipeline `$project` includes `contact`, `created`, `data`, and `links` fields
-- [ ] Links use `pageId` + `urlQuery` objects (not hardcoded URLs) — Lambda rewrites per environment
-- [ ] JS template has `testData` with realistic sample data for email preview
-- [ ] JS template uses `createNotificationTemplate` with `ContentComponent`, `Layout`, `testData`, `configPath`
-- [ ] Handler `jobs` map registers the config under the correct event type key
-- [ ] API routine calls `send-notification` with `event_ids` array after creating the event
-- [ ] Notification document has `event_type` matching a key in global `enums.event_types` for badge colors/titles in inbox
+- [ ] Module vars: `app_name`, `server_url`, and transport credentials — `email` SMTP vars, or `transport: sendgrid` + `sendgrid` vars (or a connection remap) — set in the app's module config
+- [ ] `notifications:` config section defines a template per notification type, `subject` required
+- [ ] send_routine branch: `$match` events → embed recipient `contact` (`_id`, `email`, `profile.name`) → project `key` + template data + `links` → CallApi `dispatch-notifications`
+- [ ] Links use `pageId` + `urlQuery` objects (not hardcoded URLs) — the render step resolves them per environment via `server_url`
+- [ ] Dedup `key` projected on every item (event id + recipient id is the convention)
+- [ ] Unique partial index `notification_key_unique` on `key` exists in the app database (see module docs — the dedup guarantee needs it)
+- [ ] Notification id has a matching key in the app's `event_types` enum additions for badge colors/titles
+- [ ] `testData` on the notification config for `lowdefy emails` preview rendering
+- [ ] App wires a scheduled drain endpoint (once per app, not per type) so failed sends retry — see `apps/demo/api/notifications-drain.yaml`

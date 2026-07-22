@@ -1,0 +1,25 @@
+# Default invite-reminder email, shipped by the module (scoped id
+# {entry}/resend-user-invite, conventionally user-admin/resend-user-invite).
+id: resend-user-invite
+type: NotificationEmail
+properties:
+  subject: Your invitation reminder
+  title: Invitation reminder
+  message: |
+    {{ inviter_name }} has sent you a reminder of your invitation.
+
+    Sign in with your email address to get started.
+  button:
+    label: Sign in
+testData:
+  inviter_name: Sam Admin
+  contact:
+    _id: UC-TEST
+    email: jane@example.com
+    profile:
+      name: Jane Doe
+  links:
+    button:
+      pageId: user-account/login
+      urlQuery:
+        hint: jane@example.com

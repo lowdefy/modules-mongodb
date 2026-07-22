@@ -14,4 +14,10 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
 | `app_name` | string |  | Yes | App identifier used to scope notifications. Matches created.app_name on notification documents.  |
-| `send_routine` | array | `[]` |  | API routine steps for dispatching notifications. Receives event_ids in the payload. Default is an empty routine (no-op).  |
+| `send_routine` | array | `[]` |  | API routine steps that shape app events into notification items and dispatch them (typically ending in a CallApi to dispatch-notifications). Receives event_ids in the payload. Default is an empty routine (no-op).  |
+| `server_url` | string |  |  | Absolute origin used to compose email link URLs (e.g. https://app.example.com). Required when notification items carry page links — there is no framework fallback.  |
+| `public_link_types` | array | _(see manifest)_ |  | Notification type values whose landing links resolve without a session (pre-auth flows such as user invites). Matched against both the legacy event_type field and the pipeline's type field. Includes the user-admin module's shipped invite types under its conventional entry id.  |
+| `filter_exempt_types` | array | _(see manifest)_ |  | Notification type values exempt from the email recipient filter (email.filter / sendgrid.filter) — mail for these types always delivers to the actual recipient. Defaults to the pre-auth invite flows (the same set as public_link_types), which are useless when redirected. Set to an empty list to filter every type.  |
+| `transport` | string | `smtp` |  | Email transport for the dispatch pipeline. "smtp" (default) sends SMTPMailSend over the notifications-email connection; "sendgrid" sends SendGridMailSend over the notifications-email-sendgrid connection (SendGrid HTTP API). Any other value throws on dispatch.  |
+| `email` |  |  |  | SMTP transport for notification emails, used when transport is "smtp" (the default). Ignored when the app remaps the notifications-email connection to its own email connection.  |
+| `sendgrid` |  |  |  | SendGrid HTTP API transport for notification emails, used when transport is "sendgrid". Ignored when the app remaps the notifications-email-sendgrid connection to its own connection.  |

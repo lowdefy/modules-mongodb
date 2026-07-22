@@ -52,16 +52,42 @@ routine:
           app_name:
             _module.var: app_name
 
-  - id: send-notification
+  # Dispatch the reminder email directly — the module ships its own template
+  # (notifications/resend-user-invite.yaml). Each resend logs a new event, so
+  # the (event, recipient) dedup key never suppresses a deliberate resend.
+  - id: dispatch-resend-notification
     type: CallApi
     properties:
       endpointId:
         _module.endpointId:
-          id: send-notification
+          id: dispatch-notifications
           module: notifications
       payload:
-        event_ids:
-          - _step: new-event.eventId
+        notification_id:
+          _module.notificationId: resend-user-invite
+        item:
+          key:
+            _string.concat:
+              - _step: new-event.eventId
+              - ":"
+              - _payload: _id
+          contact:
+            _id:
+              _payload: _id
+            email:
+              _payload: email
+            profile:
+              name:
+                _payload: profile.name
+          inviter_name:
+            _user: profile.name
+          links:
+            button:
+              pageId:
+                _module.var: login_page_id
+              urlQuery:
+                hint:
+                  _payload: email
 
   - :return:
       success: true

@@ -18,6 +18,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `roles` |  |  | Yes | List of available user roles [{label, value}] |
 | `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive user (current) and target (edited/invited user). When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge. |
 | `app_domain` |  |  |  | App domain URL for invite links (falls back to current origin) |
+| `login_page_id` | string | `user-account/login` |  | Scoped page id the invite emails' sign-in button targets. Defaults to the user-account module's login page under its conventional entry id; override when the app's login page lives elsewhere.  |
 | `filter_requests` |  | `[]` |  | Additional requests for the custom filters section |
 | `avatar_colors` |  | `{"_ref":"../shared/profile/avatar_colors.yaml"}` |  | Gradient pairs for avatar backgrounds. Each entry: { from, to }. |
 | `fields` | object |  |  | Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr). |
