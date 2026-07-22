@@ -2,7 +2,9 @@
 
 ## Overview
 
-Implements `designs/deals-module-rework/design.md`: generalize the deals module off its host-specific coupling (A), extract three deals-local pieces up into shared modules + close two reuse gaps (B), and sub deals into the richer onboarding workflow in the demo (C). Folds into draft PR #111 as one reviewable commit per task.
+Implements `designs/deals-module-rework/design.md`: generalize the deals module off its host-specific coupling (A), extract three deals-local pieces up into shared modules + close two reuse gaps (B), sub deals into the richer onboarding workflow in the demo (C), and strip the baked-in domain create/display fields in favour of a host `fields` var (D). Folds into draft PR #111 as one reviewable commit per task.
+
+**Status:** Tasks 1–10 (Workstreams A–C) are **implemented and committed**. Tasks 11–14 (Workstream D) are the remaining work — generated after Workstream D was added and reviewed (review-2).
 
 ## Tasks
 
@@ -18,6 +20,10 @@ Implements `designs/deals-module-rework/design.md`: generalize the deals module 
 | 8   | `08-onboarding-workflow-on-deals.md`   | Author onboarding workflow on deals (port actions, drop tracker, carry deal-outcome, register) | 2          |
 | 9   | `09-quote-builder-demo-page.md`        | Build the lightweight deal-scoped quote-builder demo page send-quote links to                 | 8          |
 | 10  | `10-demo-vars-and-verification.md`     | Demo deals vars (workflow_type: onboarding, stages/groups/outcomes) + full runtime + host gate | 1–9        |
+| 11  | `11-generic-fields-create-write.md`    | Module: add `fields` var; strip 7 domain create blocks + 4 taxonomy vars; generic `attributes` write | —          |
+| 12  | `12-generic-view-and-deproduct.md`     | Module: SmartDescriptions `fields` on view; remove `product` (var, header, list requests, card)      | 11         |
+| 13  | `13-demo-resupply-fields.md`           | Demo: re-supply the 7 domain fields via the `fields` var + enums; de-dup sector; product column      | 11, 12     |
+| 14  | `14-build-docs-verify.md`              | Deals changeset + docs + build + runtime round-trip verification + host-reconstitution note          | 11–13      |
 
 ## Ordering Rationale
 
@@ -30,6 +36,8 @@ Three dependency chains, largely parallelizable until C:
 **Shared-file note:** tasks 4, 5, 6, 7 all edit `modules/deals/pages/view.yaml` (and `components/detail/*`). Run them in listed order; each leaves the app building.
 
 **Cross-repo note:** the host-reconstitution gate (task 10) and the host-side backfill migration are Phase-D concerns performed by someone with host access — not automatable in this repo's CI. Task 10 records the gate; it does not implement the host migration.
+
+- **Workstream D (tasks 11–14)** — generic create/display fields. Task 11 (module: `fields` var + generic create form + generic write) is the foundation. Task 12 (module: SmartDescriptions view + remove `product` from the read side) depends on 11 and owns all remaining `view.yaml`/list edits — the two module tasks are split by file ownership (11 owns `new.yaml`/`create-deal.yaml`; 12 owns `view.yaml`/list requests/card) so each leaves the build green. Task 13 (demo re-supply) needs both module seams (11, 12). Task 14 (release hygiene + runtime verification) depends on 11–13. Each task keeps `product` build-safe: 11 stops *writing* it, 12 removes the last *readers* + the var atomically.
 
 ## Scope
 

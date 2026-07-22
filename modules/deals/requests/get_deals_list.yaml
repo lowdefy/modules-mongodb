@@ -77,18 +77,6 @@ properties:
                 test:
                   _gt:
                     - _if_none:
-                        - _payload: filter.product.length
-                        - 0
-                    - 0
-                then:
-                  - product:
-                      $in:
-                        _payload: filter.product
-                else: []
-            - _if:
-                test:
-                  _gt:
-                    - _if_none:
                         - _payload: filter.company_id.length
                         - 0
                     - 0
@@ -190,8 +178,7 @@ properties:
               - $project:
                   _id: 1
                   name: 1
-                  product: 1
-                  product_name_freetext: 1
+                  attributes: 1
                   company_id: 1
                   company_name:
                     $ifNull:

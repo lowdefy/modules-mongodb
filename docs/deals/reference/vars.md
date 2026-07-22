@@ -27,11 +27,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `meta_fields` | array | `[]` |  | Extra field blocks rendered in the deal's meta/info section. |
 | `filters` | array | `[]` |  | Extra filter blocks rendered on the deals list page. |
 | `card_fields` | array | `[]` |  | Extra fields rendered on the deal card (e.g. kanban/board views). |
-| `customer_types` | object |  | Yes | Customer-type taxonomy for the deal-create form's Customer Type field, keyed by slug — { title, definition }. `definition` powers the field's info-modal text. Host app supplies via `_ref` to its own enum file (e.g. apps/shared/enums/deal/customer_types.yaml). |
-| `products` | object | `{}` |  | Coarse product taxonomy for the deal-create form's optional Product field, keyed by slug — { title }. Host app supplies via `_ref` to its own enum file. |
-| `sectors` | object |  | Yes | Sector taxonomy for the deal-create form's Sector field, keyed by slug — { title }. Host app supplies via `_ref` to its own enum file. |
-| `sub_sectors` | object |  | Yes | Sub-sector taxonomy for the deal-create form's Sub-sector field, keyed by slug — { title, sector }. `sector` is the parent sector slug the field's options are filtered by; entries without a `sector` (e.g. `other`) appear under every sector. Host app supplies via `_ref` to its own enum file. |
-| `product_hierarchy` | object |  | Yes | Material/SKU → product-hierarchy lookup for the deal-create form's Material field (issue #22), keyed by material code — { title, l2, l3, l4 }. `title` is the Material Description; l2/l3/l4 are its 1:1 hierarchy branch, persisted onto the deal alongside `material_code`. Host app supplies via `_ref` to its own enum file. |
+| `fields` | array | `[]` |  | Host-supplied domain field blocks appended after the core company/name/description on the create form (rendered as inputs) and rendered read-only on the deal view via SmartDescriptions. Block ids must be prefixed with `attributes.` so they bind to `state.attributes.*` and flow through the generic create-deal passthrough. Deals ships no domain fields of its own — hosts inject their own here, the same way `companies.fields.attributes` works. |
 | `components` | object |  |  | Component slot overrides: main_slots, info_grid_slots, sidebar_slots, card_slots |
 | `request_stages` | object |  |  | Pipeline overrides: get_deals_list, get_active_deals, get_selected_deal |
 

@@ -137,45 +137,17 @@ vars:
       get_selected_deal:
         default: []
         description: Extra pipeline stages appended to the get-selected-deal aggregation.
-  customer_types:
-    type: object
-    required: true
+  fields:
+    type: array
+    default: []
     description: >-
-      Customer-type taxonomy for the deal-create form's Customer Type field,
-      keyed by slug — { title, definition }. `definition` powers the field's
-      info-modal text. Host app supplies via `_ref` to its own enum file
-      (e.g. apps/shared/enums/deal/customer_types.yaml).
-  products:
-    type: object
-    default: {}
-    description: >-
-      Coarse product taxonomy for the deal-create form's optional Product
-      field, keyed by slug — { title }. Host app supplies via `_ref` to its
-      own enum file.
-  sectors:
-    type: object
-    required: true
-    description: >-
-      Sector taxonomy for the deal-create form's Sector field, keyed by
-      slug — { title }. Host app supplies via `_ref` to its own enum file.
-  sub_sectors:
-    type: object
-    required: true
-    description: >-
-      Sub-sector taxonomy for the deal-create form's Sub-sector field, keyed
-      by slug — { title, sector }. `sector` is the parent sector slug the
-      field's options are filtered by; entries without a `sector` (e.g.
-      `other`) appear under every sector. Host app supplies via `_ref` to its
-      own enum file.
-  product_hierarchy:
-    type: object
-    required: true
-    description: >-
-      Material/SKU → product-hierarchy lookup for the deal-create form's
-      Material field (issue #22), keyed by material code — { title, l2, l3,
-      l4 }. `title` is the Material Description; l2/l3/l4 are its 1:1
-      hierarchy branch, persisted onto the deal alongside `material_code`.
-      Host app supplies via `_ref` to its own enum file.
+      Host-supplied domain field blocks appended after the core
+      company/name/description on the create form (rendered as inputs) and
+      rendered read-only on the deal view via SmartDescriptions. Block ids
+      must be prefixed with `attributes.` so they bind to `state.attributes.*`
+      and flow through the generic create-deal passthrough. Deals ships no
+      domain fields of its own — hosts inject their own here, the same way
+      `companies.fields.attributes` works.
 
 exports:
   pages:

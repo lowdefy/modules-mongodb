@@ -513,26 +513,13 @@ _ref:
                                             </style>
                                             <div style="padding: 4px 0;">
                                               <div class="pipeline-header-title" style="font-size: 16px; font-weight: 700;">{{ name | default('—') }}</div>
-                                              <div class="pipeline-header-description" style="font-size: 12px; margin-top: 2px;">{{ description | default('—') }}{% if product_name %} · {{ product_name }}{% endif %}</div>
+                                              <div class="pipeline-header-description" style="font-size: 12px; margin-top: 2px;">{{ description | default('—') }}</div>
                                             </div>
                                           on:
                                             name:
                                               _request: get_selected_deal.0.name
                                             description:
                                               _request: get_selected_deal.0.description
-                                            product_name:
-                                              _if_none:
-                                                - _get:
-                                                    from:
-                                                      _get:
-                                                        from:
-                                                          _module.var: products
-                                                        key:
-                                                          _request: get_selected_deal.0.product
-                                                    key: title
-                                                - _if_none:
-                                                    - _request: get_selected_deal.0.product_name_freetext
-                                                    - _request: get_selected_deal.0.product
                             blocks:
                               # Phase view — the workflows module's actions-on-entity
                               # widget (replaces the custom ActionSteps stepper, #7).

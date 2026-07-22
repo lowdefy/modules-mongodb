@@ -14,6 +14,8 @@ blocks:
         style:
           .element:
             margin: 4px 0
+      # Host domain fields (module `fields` var), read-only. Hidden when none.
+      - _ref: components/detail/section_fields.yaml
     # App-injected info-grid tiles (default []) — the shipped grid has no
     # product tile; host apps re-inject one (e.g. section_product) here.
     - _module.var: components.info_grid_slots

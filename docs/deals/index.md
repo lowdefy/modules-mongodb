@@ -38,10 +38,14 @@ modules:
       workflow_type: sales-pipeline # the workflows workflow to render
       stages: # deal.status[].stage display config, keyed by stage slug
         prospecting: { title: Prospecting, fg: var(--ant-color-primary), bd: var(--ant-color-primary-border) }
-      customer_types: { new-business: { title: New business, definition: … } }
-      sectors: { manufacturing: { title: Manufacturing } }
-      sub_sectors: { automotive: { title: Automotive, sector: manufacturing } }
-      product_hierarchy: { SKU-100: { title: Widget 100, l2: Widgets, l3: Standard, l4: Widget 100 } }
+      # Host domain fields — rendered as inputs on the create form and read-only
+      # on the deal view (SmartDescriptions). Block ids prefixed `attributes.`.
+      fields:
+        - id: attributes.sector
+          type: Selector
+          properties:
+            title: Sector
+            options: [{ value: manufacturing, label: Manufacturing }]
 ```
 
 See the [vars reference](reference/vars.md) for the full list (required + optional).

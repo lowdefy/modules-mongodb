@@ -6,15 +6,6 @@ routine:
         _uuid: true
       event_id:
         _uuid: true
-      # Resolve the selected Material once; L2/L3/L4 + description derive from it
-      # (each Material maps to exactly one hierarchy branch — issue #22). The
-      # enum is a module var now (fed in vars.yaml), not an app _ref.
-      material:
-        _get:
-          from:
-            _module.var: product_hierarchy
-          key:
-            _payload: form.material_code
 
   - id: insert_deal
     type: MongoDBInsertConsecutiveId
@@ -30,29 +21,13 @@ routine:
           _payload: form.description
         company_id:
           _payload: form.company_id
-        product:
-          _payload: form.product
+        # Generic host-field passthrough — whatever the host's `fields` blocks
+        # bind under state.attributes.* is persisted verbatim. The module knows
+        # no domain-specific field keys.
         attributes:
-          project_type:
-            _payload: form.project_type
-          customer_type:
-            _payload: form.customer_type
-          sector:
-            _payload: form.sector
-          sub_sector:
-            _payload: form.sub_sector
-          package:
-            _payload: form.package
-          material_code:
-            _payload: form.material_code
-          material_description:
-            _state: material.title
-          product_hier_l2:
-            _state: material.l2
-          product_hier_l3:
-            _state: material.l3
-          product_hier_l4:
-            _state: material.l4
+          _if_none:
+            - _payload: attributes
+            - {}
         salesperson:
           contact_id:
             _user: id

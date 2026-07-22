@@ -76,79 +76,114 @@ action_groups:
     order: 4
     icon: AiOutlineFileDone
 
-customer_types:
-  new-business:
-    title: New business
-    definition: A company we have not sold to before.
-  existing:
-    title: Existing customer
-    definition: An expansion or repeat deal with a current customer.
+# Host-supplied domain fields (module `fields` var). Block ids prefixed
+# `attributes.` bind to state.attributes.* — rendered as inputs on the create
+# form and read-only on the deal view via SmartDescriptions. These are demo
+# (host) config: the generic deals module ships none of them.
+fields:
+  - id: attributes.material_code
+    type: Selector
+    properties:
+      title: Material
+      label:
+        span: 6
+        align: right
+      showSearch: true
+      placeholder: Search material / SKU
+      options:
+        - value: SKU-100
+          label: Widget 100 (SKU-100)
+        - value: SKU-200
+          label: Gadget 200 (SKU-200)
+  - id: attributes.product
+    type: Selector
+    properties:
+      title: Product
+      label:
+        span: 6
+        align: right
+      placeholder: Select product
+      options:
+        - value: widget
+          label: Widget
+        - value: gadget
+          label: Gadget
+  - id: attributes.customer_type
+    type: ButtonSelector
+    properties:
+      title: Customer Type
+      label:
+        span: 6
+        align: right
+      options:
+        - value: new-business
+          label: New business
+        - value: existing
+          label: Existing customer
+  - id: attributes.project_type
+    type: ButtonSelector
+    properties:
+      title: Project Type
+      label:
+        span: 6
+        align: right
+      options:
+        - value: project
+          label: Project
+        - value: additional-volume
+          label: Additional Volume
+  - id: attributes.sector
+    type: Selector
+    properties:
+      title: Sector
+      label:
+        span: 6
+        align: right
+      options:
+        - value: manufacturing
+          label: Manufacturing
+        - value: services
+          label: Services
+    events:
+      onChange:
+        - id: reset_sub_sector
+          type: SetState
+          params:
+            attributes.sub_sector: null
+  - id: attributes.sub_sector
+    type: Selector
+    properties:
+      title: Sub-sector
+      label:
+        span: 6
+        align: right
+      options:
+        - value: automotive
+          label: Automotive
+        - value: food-and-beverage
+          label: Food & beverage
+        - value: consulting
+          label: Consulting
+  - id: attributes.package
+    type: ButtonSelector
+    properties:
+      title: Package
+      label:
+        span: 6
+        align: right
+      options:
+        - value: 25-kg-bags
+          label: 25 kg bags
+        - value: 20-kg-bags
+          label: 20 kg bags
+        - value: 300-kg-drums
+          label: 300 kg drums
+        - value: bulk
+          label: Bulk
 
-sectors:
-  manufacturing:
-    title: Manufacturing
-  services:
-    title: Services
-
-sub_sectors:
-  automotive:
-    title: Automotive
-    sector: manufacturing
-  food-and-beverage:
-    title: Food & beverage
-    sector: manufacturing
-  consulting:
-    title: Consulting
-    sector: services
-
-products:
-  widget:
-    title: Widget
-  gadget:
-    title: Gadget
-
-# Material/SKU → product hierarchy (L2 › L3 › L4). Drives the create form's
-# Material selector and the auto-filled hierarchy.
-product_hierarchy:
-  SKU-100:
-    title: Widget 100
-    l2: Widgets
-    l3: Standard Widgets
-    l4: Widget 100
-  SKU-200:
-    title: Gadget 200
-    l2: Gadgets
-    l3: Premium Gadgets
-    l4: Gadget 200
-
-# App-injected fields under the company on the deal view — resolve the stored
-# slug (attributes.*) to a title via an inline map.
-company_fields:
-  - label: Sector
-    value:
-      _if_none:
-        - _get:
-            from:
-              manufacturing: Manufacturing
-              services: Services
-            key:
-              _request: get_selected_deal.0.attributes.sector
-        - _if_none:
-            - _request: get_selected_deal.0.attributes.sector
-            - "—"
-  - label: Sub-sector
-    value:
-      _if_none:
-        - _get:
-            from:
-              automotive: Automotive
-              food-and-beverage: Food & beverage
-              consulting: Consulting
-            key:
-              _request: get_selected_deal.0.attributes.sub_sector
-        - _if_none:
-            - _request: get_selected_deal.0.attributes.sub_sector
-            - "—"
+# Sector now renders on the view via the `fields` SmartDescriptions section, so
+# company_fields carries no domain fields (kept for genuine display-only extras).
+company_fields: []
 meta_fields: []
 filters: []
 

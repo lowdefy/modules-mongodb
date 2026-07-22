@@ -80,8 +80,6 @@ properties:
               - $project:
                   _id: 1
                   name: 1
-                  product: 1
-                  product_name_freetext: 1
                   company_id: 1
                   company_name:
                     $ifNull:

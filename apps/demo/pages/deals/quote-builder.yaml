@@ -4,9 +4,9 @@
 # The send-quote action's `link:` cell (workflow_config/onboarding/send-quote.yaml)
 # points here with ?action_id=<id>. This page loads the action, derives
 # edit/review/view mode from the action's stage + the caller's allowed verbs,
-# and renders a single quote-value + note field — deliberately flat, unlike the
-# original lead-scoped quote-builder's line-items builder, per the design's
-# "lightweight" requirement (no client/tonnage data in this public demo).
+# and renders a single quote-value + note field — deliberately flat (a
+# line-items builder would be out of scope), per the design's "lightweight"
+# requirement for this demo.
 #
 # On save it persists the quote to the deal, then calls the workflows module's
 # onboarding-submit endpoint to advance the action (two non-atomic requests —
