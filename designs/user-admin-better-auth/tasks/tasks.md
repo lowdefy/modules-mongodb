@@ -35,6 +35,16 @@ shared fragments, write-side routines, docs, and verify tasks wrap them.
 | 18  | `18-docs.md`                     | Docs: module index, generated `vars.md`, co-location precondition, migration guide                                                                                    | 1–17       |
 | 19  | `19-verify.md`                   | `pnpm ldf:b` build gate, then render/e2e against the dev server                                                                                                       | 1–18       |
 
+## Follow-up tasks (post-implementation review)
+
+Fixes from the deviation review after tasks 1–19 landed — tracked separately so
+they aren't lost among completed work. See "Review follow-ups" below.
+
+| #   | File                           | Summary                                                                                                                                                  | Depends On  |
+| --- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 20  | `20-invite-profile-persist.md` | Persist invite-time profile: canonical `form_core` capture + `write-profile` write (denorm guarded on user existence); fixes the form-vs-write-path drop | 1, 2, 5, 17 |
+| 21  | `21-passkey-auth-method.md`    | Add the `user-passkeys` read connection + passkey badge in the auth-methods tile (Decision 5 gap)                                                        | 1, 13       |
+
 ## Ordering Rationale
 
 **Scaffold first, wire last.** Task 1 rewrites the module skeleton so every
@@ -67,6 +77,28 @@ design's read spec.
 **Docs and verify close out.** Task 18 updates consumer docs and regenerates the
 manifest-derived `vars.md`; task 19 runs the build gate and drives the screens
 against a dev server.
+
+## Review follow-ups
+
+A deviation review after tasks 1–19 went through the implementer's five flagged
+items one by one. Two need code changes (tasks 20–21 above); three were reviewed
+and **kept as built** (no task):
+
+- **Invitations tab uses inline `inv_*` state** (not the shared `sort-filters` /
+  `pagination` fragments). Kept — those fragments hardcode their state keys and the
+  Pagination block auto-binds to its id, so two instances on one page collide;
+  Decision 2 mandates independent per-tab state; the shared sort fragment also
+  carries search-relevance disabling the Invitations tab does not want.
+  Parameterising fragments used by 5+ modules to serve one second table is
+  unwarranted surface.
+- **Activity timeline keys on `user_ids`.** Kept — every post-acceptance event is
+  user-keyed and shows; the `member-invited` genesis event is contact-keyed only
+  (no user exists at invite time, so it cannot be user-keyed) and surfaces on the
+  invite flow. Keying on `contact_ids` instead would pull pure-CRM contact edits
+  onto an access-lifecycle tile.
+- **Per-session revoke not offered** (only "sign out everywhere"). Kept — Decision 5
+  only ever specified `RevokeUserSessions`; per-session revoke is deliberately out
+  of scope (token-exposure reason, mirrored in `user-account`).
 
 ## Scope
 
