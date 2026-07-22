@@ -1,0 +1,78 @@
+# Drain retry for unsent notifications. Re-sends records left at
+# sent: false by a failed send — records store their render outputs, so a
+# retry sends the stored email without re-rendering. Apps schedule this
+# from a small app-side endpoint with a `schedules:` cron (see the module
+# docs); running it more than once concurrently is safe — each record is
+# claimed with an optimistic lock before sending.
+#
+# Payload (all optional):
+#   max_attempts: number  default 5 — records at or past this many failed
+#                         attempts are left alone
+#   limit: number         default 50 — max records per run; the next run
+#                         picks up the rest (oldest attempt first)
+#
+# Scope notes:
+# - send_attempts >= 1 means only records with at least one FAILED attempt
+#   drain: a record mid-first-dispatch (attempts still 0) is never raced,
+#   and legacy Lambda-era records (no send_attempts field) never match.
+# - A record whose mail was delivered but whose mark_sent update failed is
+#   indistinguishable from a failed send and will be re-sent — accepted,
+#   pre-existing edge of the send bookkeeping.
+# - An uncaught per-record error (realistically only a misconfigured
+#   transport var) aborts the run — acceptable for a config error.
+id: drain-notifications
+type: InternalApi
+routine:
+  - :set_state:
+      max_attempts:
+        _if_none:
+          - _payload: max_attempts
+          - 5
+      limit:
+        _if_none:
+          - _payload: limit
+          - 50
+
+  - id: find_unsent
+    type: MongoDBFind
+    connectionId:
+      _module.connectionId: notifications-collection
+    properties:
+      query:
+        sent: false
+        send_attempts:
+          $gte: 1
+          $lt:
+            _state: max_attempts
+        is_valid_email: true
+        send_email:
+          $ne: false
+        created.app_name:
+          _module.var: app_name
+      options:
+        sort:
+          last_attempt: 1
+        limit:
+          _state: limit
+
+  # Each record retries through its own endpoint call: step results are
+  # index-keyed inside :for, so the claim → send sequence needs fresh steps.
+  - :for: record
+    :in:
+      _step: find_unsent
+    :do:
+      - id: retry_record
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId: retry-notification-record
+          payload:
+            record:
+              _item: record
+
+  - :return:
+      found:
+        _array.length:
+          _step: find_unsent
+      results:
+        _step: retry_record

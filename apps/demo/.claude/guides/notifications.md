@@ -4,7 +4,7 @@ How to wire up the notifications module, create notification types, and trigger 
 
 ## Pattern
 
-The notification system spans three layers: the **framework** (email template rendering via the `notifications:` config section and the `RenderNotification` step), the **notifications module** (dispatch pipeline, inbox UI, bell badge, deep-link routing), and the **app** (template configs, event shaping, SMTP credentials). The old external Lambda pipeline (consume + send via SQS/SendGrid) is retired — everything runs inside the Lowdefy server.
+The notification system spans three layers: the **framework** (email template rendering via the `notifications:` config section and the `RenderNotification` step), the **notifications module** (dispatch pipeline, inbox UI, bell badge, deep-link routing), and the **app** (template configs, event shaping, SMTP credentials). In this demo everything runs inside the Lowdefy server — the external Lambda pipeline (consume + send via SQS/SendGrid) some production apps use is not retired: the module coexists with it, and apps migrate per notification type (see `docs/notifications/how-to/lambda-pipeline-migration.md`).
 
 **Framework layer**: The app's `notifications:` config section defines email templates: `{ id, type, properties }` where the type is a React Email template (`NotificationEmail`, `DigestEmail`, `AlertEmail`, or a custom plugin). Properties are nunjucks data templates (`{{ approver_name }} approved your quote.`) interpolated against each dispatched item — interpolated values are inert and can never inject markup. The `RenderNotification` routine step renders one item and returns `{ subject, title, preview, html, text, data }`; the module's pipeline calls it for you.
 
@@ -79,6 +79,8 @@ App API routine (e.g., invite-user, quote approval)
 
 **Scheduled notifications** — a scheduled endpoint (`schedules: [{ cron }]`) runs the same shape → dispatch steps.
 
+**Drain retry** — the module exports `drain-notifications`, which re-sends records left at `sent: false` by a failed send (from their stored render outputs, optimistic-locked per record, `max_attempts`/`limit` payload knobs). The module ships no schedule; the app wires a cron-only endpoint that CallApis it — see `apps/demo/api/notifications-drain.yaml`.
+
 ## Anti-patterns
 
 - **Don't `$merge` notification documents directly from a send_routine** — dispatch through `dispatch-notifications` so rendering, dedup, and email delivery happen. (The store-only `$merge` pattern survives only as a test mock in workflows-test.)
@@ -93,7 +95,10 @@ App API routine (e.g., invite-user, quote approval)
 
 - `modules/notifications/module.lowdefy.yaml` — module manifest with vars (`server_url`, `transport`, `email`, `sendgrid`, `public_link_types`, `filter_exempt_types`), exports, dependencies
 - `modules/notifications/api/dispatch-notifications.yaml` — batch entry point: validate → `:for` items → CallApi per item
-- `modules/notifications/api/dispatch-notification-item.yaml` — the per-item pipeline: render → insert with dedup → send → bookkeeping
+- `modules/notifications/api/dispatch-notification-item.yaml` — the per-item pipeline: render → insert with dedup → CallApi the shared send path
+- `modules/notifications/api/send-notification-record.yaml` — the single send path (transport switch, mark sent, failure bookkeeping), shared by dispatch and drain
+- `modules/notifications/api/drain-notifications.yaml` — exported drain: find unsent → `:for` records → CallApi per record
+- `modules/notifications/api/retry-notification-record.yaml` — per-record drain body: optimistic-lock claim → send from stored render outputs
 - `modules/notifications/connections/notifications-email.yaml` — SMTP connection fed by the `email.*` vars (remappable)
 - `modules/notifications/connections/notifications-email-sendgrid.yaml` — SendGrid HTTP API connection fed by the `sendgrid.*` vars (remappable, used when `transport: sendgrid`)
 - `modules/notifications/pages/all.yaml` — two-column inbox: list (span 10) + detail (span 14), filters, pagination
@@ -106,6 +111,7 @@ App API routine (e.g., invite-user, quote approval)
 - `apps/demo/lowdefy.yaml` — the `notifications:` template config section (`quote-approved`; invites are module-shipped)
 - `apps/demo/modules/notifications/vars.yaml` — `server_url` + `transport: sendgrid` with `sendgrid` vars (SendGrid HTTP API)
 - `apps/demo/modules/notifications/send-routine.yaml` — one shape → dispatch branch (quote approval); invites no longer shaped here
+- `apps/demo/api/notifications-drain.yaml` — cron-only endpoint (`schedules:`) that CallApis the module's drain
 - `apps/demo/modules/events/event_types.yaml` — enum entries for `quote-approved` + scoped `user-admin/*` invite badges
 - `modules/user-admin/notifications/` — module-shipped invite templates (scoped `user-admin/invite-user`)
 - `modules/user-admin/api/invite-user.yaml` — direct dispatch to dispatch-notifications with `_module.notificationId`
@@ -152,3 +158,4 @@ notifications:
 - [ ] Unique partial index `notification_key_unique` on `key` exists in the app database (see module docs — the dedup guarantee needs it)
 - [ ] Notification id has a matching key in the app's `event_types` enum additions for badge colors/titles
 - [ ] `testData` on the notification config for `lowdefy emails` preview rendering
+- [ ] App wires a scheduled drain endpoint (once per app, not per type) so failed sends retry — see `apps/demo/api/notifications-drain.yaml`

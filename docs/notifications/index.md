@@ -86,23 +86,48 @@ Per item the pipeline: mints the record id → `RenderNotification` (interpolate
 
 The typical `send_routine` is one aggregation per event type that shapes items (recipient contact embed, template data, links) followed by a `CallApi` to `dispatch-notifications` — see the demo app's `apps/demo/modules/notifications/send-routine.yaml` for the reference implementation.
 
+## Drain retry
+
+`drain-notifications` (exported InternalApi) re-sends records left at `sent: false` by a failed send. Records store their render outputs, so a retry sends the stored email without re-rendering. Payload (all optional): `max_attempts` (default 5) — records at or past this many failed attempts are left alone; `limit` (default 50) — max records per run, oldest attempt first.
+
+Each record is claimed with an optimistic lock (an update conditional on the `last_attempt` value the drain read) before sending, so overlapping drain runs cannot double-send. Only records with at least one failed attempt (`send_attempts >= 1`) drain — a record whose first send is still in flight is never raced, and legacy (Lambda-era) records, which lack the field, are never picked up.
+
+The module ships no schedule of its own — apps choose the cadence with a small cron-only endpoint (see the demo app's `apps/demo/api/notifications-drain.yaml`):
+
+```yaml
+# api/notifications-drain.yaml — registered in the app's `api:` section
+id: notifications-drain
+type: InternalApi
+schedules:
+  - cron: "0 * * * *"
+routine:
+  - id: drain
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: drain-notifications
+          module: notifications
+      payload: {}
+```
+
 ## Record convention
 
 The pipeline writes this shape; the inbox, bell, and link pages read it. Everything except lifecycle fields is yours to extend via `data`.
 
-| Field                                              | Purpose                                                                  |
-| -------------------------------------------------- | ------------------------------------------------------------------------ |
-| `_id`                                              | Record id (uuid, minted before render — landing links embed it)          |
-| `key`                                              | Dedup key (`null` when the item has none)                                |
-| `type`                                             | The notification config id — drives inbox badges via `enums.event_types` |
-| `contact_id`, `contact`                            | Recipient (flat id for queries; embedded `{ _id, email, profile }`)      |
-| `email`, `is_valid_email`                          | Normalized recipient address and validity (invalid → inbox only)         |
-| `subject`, `title`, `preview`, `body`, `text`      | Render outputs (`body` = HTML) — retries and drains never re-render      |
-| `data`                                             | The ORIGINAL item — link targets stay as `{ pageId, urlQuery }` objects  |
-| `send_email`, `cc`, `bcc`                          | Delivery inputs                                                          |
+| Field                                                   | Purpose                                                                                                                                                                                         |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `_id`                                                   | Record id (uuid, minted before render — landing links embed it)                                                                                                                                 |
+| `key`                                                   | Dedup key (`null` when the item has none)                                                                                                                                                       |
+| `type`                                                  | The notification config id — drives inbox badges via `enums.event_types`                                                                                                                        |
+| `contact_id`, `contact`                                 | Recipient (flat id for queries; embedded `{ _id, email, profile }`)                                                                                                                             |
+| `email`, `is_valid_email`                               | Normalized recipient address and validity (invalid → inbox only)                                                                                                                                |
+| `subject`, `title`, `preview`, `body`, `text`           | Render outputs (`body` = HTML) — retries and drains never re-render                                                                                                                             |
+| `data`                                                  | The ORIGINAL item — link targets stay as `{ pageId, urlQuery }` objects                                                                                                                         |
+| `send_email`, `cc`, `bcc`                               | Delivery inputs                                                                                                                                                                                 |
 | `sent`, `send_attempts`, `last_attempt`, `email_result` | Delivery lifecycle — `email_result.to` records the post-filter address mail actually went to (differs from `email` under a `replaceAddress` redirect); `filtered: true` = dropped by the filter |
-| `read`                                             | Inbox state (mark-as-read)                                               |
-| `created.timestamp`, `created.app_name`            | Ordering and app scoping                                                 |
+| `read`                                                  | Inbox state (mark-as-read)                                                                                                                                                                      |
+| `created.timestamp`, `created.app_name`                 | Ordering and app scoping                                                                                                                                                                        |
 
 **`data` stores the original item, never the render result's resolved copy** — the link page reads `{ pageId, urlQuery }` targets back out of `data` at the `?option` dot-path; a resolved copy would redirect the landing page to itself.
 
@@ -119,7 +144,7 @@ db.notifications.createIndex(
     unique: true,
     partialFilterExpression: { key: { $type: "string" } },
     name: "notification_key_unique",
-  }
+  },
 );
 ```
 
@@ -137,6 +162,7 @@ The `file-download` page is a redirector for notification attachments: params `_
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
 - [Email transport](email-transport.md) — SMTP (default) or the SendGrid HTTP API, selected by the `transport` var
+- [Migrate from an external Lambda pipeline](how-to/lambda-pipeline-migration.md) — coexistence model, hybrid wiring, and the per-type migration recipe
 
 ## Shared idioms
 

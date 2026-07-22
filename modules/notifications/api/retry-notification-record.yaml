@@ -1,0 +1,69 @@
+# Retries ONE unsent notification record. Internal detail of
+# drain-notifications — records run here one at a time so each gets fresh
+# step results (step results are index-keyed inside :for).
+#
+# Payload contract:
+#   record: object  required — the notification document from the drain's find
+#
+# The claim is an optimistic lock: the update only matches while the record
+# is still unsent AND last_attempt equals the value the drain read. The
+# claim's own $set last_attempt invalidates any concurrent claimant, so
+# overlapping drain runs cannot double-send the same record.
+id: retry-notification-record
+type: InternalApi
+routine:
+  - id: claim
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: notifications-collection
+    properties:
+      disableNoMatchError: true
+      filter:
+        _id:
+          _payload: record._id
+        sent: false
+        last_attempt:
+          _payload: record.last_attempt
+      update:
+        $set:
+          last_attempt:
+            _date: now
+
+  - :if:
+      _ne:
+        - _step: claim.matchedCount
+        - 1
+    :then:
+      - :return:
+          claimed: false
+
+  # The record stores the render outputs — no re-render on retry. The
+  # record's type is the notification_id; the email connections resolve
+  # their recipient filter against it (filter_exempt_types exemption).
+  - id: send_record
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId: send-notification-record
+      payload:
+        record_id:
+          _payload: record._id
+        notification_id:
+          _payload: record.type
+        email:
+          _payload: record.email
+        cc:
+          _payload: record.cc
+        bcc:
+          _payload: record.bcc
+        subject:
+          _payload: record.subject
+        text:
+          _payload: record.text
+        html:
+          _payload: record.body
+
+  - :return:
+      claimed: true
+      sent:
+        _step: send_record.sent

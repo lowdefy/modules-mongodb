@@ -179,6 +179,8 @@ exports:
     - id: send-notification
     - id: dispatch-notifications
       description: Generic dispatch pipeline — render, store with dedup, send, record the result; payload { notification_id, items }
+    - id: drain-notifications
+      description: Re-sends unsent records (sent false with at least one failed attempt) from their stored render outputs; payload { max_attempts = 5, limit = 50 } — schedule from an app-side cron endpoint
   components:
     - id: notification-config
       description: Notification bell config for PageHeaderMenu — count, icon, and link
@@ -189,6 +191,9 @@ api:
   - _ref: api/send-notification.yaml
   - _ref: api/dispatch-notifications.yaml
   - _ref: api/dispatch-notification-item.yaml
+  - _ref: api/send-notification-record.yaml
+  - _ref: api/drain-notifications.yaml
+  - _ref: api/retry-notification-record.yaml
 
 components:
   - id: notification-config

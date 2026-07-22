@@ -62,6 +62,7 @@
 ## notifications
 
 - docs/notifications/email-transport.md: Email transport (SMTP or SendGrid) — The dispatch pipeline sends email over one of two transports, selected by the `transport` var:
+- docs/notifications/how-to/lambda-pipeline-migration.md: Migrate from an external Lambda pipeline — Some production apps predate this module and deliver notifications through their own external pipeline — typically a consume Lambda that resolves recipients and writes notification records, an SQS queue, and a send Lambda over SendGrid. Those apps do **not** have to migrate: the module and an ext...
 - docs/notifications/index.md: Notifications — Notification dispatch and in-app display — a render/store/send pipeline, bell counter, inbox page, and deep-link routing. Notification documents are scoped per app via `app_name` so multiple apps can share a single MongoDB collection.
 - docs/notifications/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 

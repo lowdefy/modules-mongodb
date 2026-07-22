@@ -1,0 +1,19 @@
+# Hourly drain retry for unsent notifications. A scheduled InternalApi is
+# cron-only — never client-callable — so this endpoint exists purely to give
+# the notifications module's drain a schedule; cadence and payload knobs
+# (max_attempts, limit) are the app's to choose.
+id: notifications-drain
+type: InternalApi
+schedules:
+  - cron: "0 * * * *"
+routine:
+  - id: drain
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: drain-notifications
+          module: notifications
+      payload: {}
+  - :return:
+      _step: drain
