@@ -29,11 +29,20 @@ module. The self-service counterpart is [`user-account`](../user-account/index.m
   **Global attributes** (user attributes), **Security** (suspend/reinstate,
   sign-out-everywhere, remove, delete, sessions, auth methods, impersonation),
   **Apps** (cross-app badges), **Activity** (event timeline). Each tile edits
-  through its own modal and its own routine.
+  through its own modal and its own routine. The **auth methods** block is
+  read-only visibility of how the user can sign in — email-verified, OAuth
+  providers, MFA, and **passkeys** (a badge when the user has ≥ 1 enrolled;
+  enrolment/removal is `user-account` self-service, never this module).
 - **Invite** (`invite` page) — email-first: the admin enters an email, a check
   resolves it to already-a-member / pending-invitation / existing-contact /
-  unknown before the form opens. The invitation email is sent by BetterAuth via
-  the deployment's `auth.email` — the module ships no email endpoint or hook.
+  unknown before the form opens. The form then captures the invitee's **canonical
+  profile** (first/last name — both required — an optional honorific when
+  `fields.show_honorific`, and the configured `fields.profile`), identical to the
+  Profile edit modal. That profile is **persisted to the contact record at invite
+  time**, so the name shows on the Members list the moment the invitation is
+  accepted — without waiting for the invitee to onboard. The invitation email is
+  sent by BetterAuth via the deployment's `auth.email` — the module ships no email
+  endpoint or hook.
 
 ## The access lifecycle
 
@@ -69,12 +78,12 @@ Every auth-owned write goes through a sanctioned admin step (raw writes bypass
 BetterAuth's invariants); each routine endpoint is role-gated by the `admin_roles`
 var and floored by the engine's `auth.userAdminRole`.
 
-| Concern                       | Record            | Write pathway                                                          |
-| ----------------------------- | ----------------- | ---------------------------------------------------------------------- |
-| Profile / CRM data            | `contact`         | Shared `write-profile` fragment: change-stamped `contact` write + `UpdateUserProfile` re-denorm of the target's `user.profile` |
-| Login identity + global attrs | `user`            | `UpdateUserAttributes`, `BanUser` / `UnbanUser`, `DeleteUser`, `RevokeUserSessions` |
-| This app's access             | `member`          | `UpdateMemberRoles`, `UpdateMemberAttributes`, `RemoveMember`          |
-| Pending access                | `invitation`      | `InviteMember`, `CancelInvitation`                                     |
+| Concern                       | Record       | Write pathway                                                                                                                  |
+| ----------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Profile / CRM data            | `contact`    | Shared `write-profile` fragment: change-stamped `contact` write + `UpdateUserProfile` re-denorm of the target's `user.profile` |
+| Login identity + global attrs | `user`       | `UpdateUserAttributes`, `BanUser` / `UnbanUser`, `DeleteUser`, `RevokeUserSessions`                                            |
+| This app's access             | `member`     | `UpdateMemberRoles`, `UpdateMemberAttributes`, `RemoveMember`                                                                  |
+| Pending access                | `invitation` | `InviteMember`, `CancelInvitation`                                                                                             |
 
 The two shared write-path fragments — `write-profile` and `create-or-link-contact`
 — live in `modules/shared/contact/` and are `_ref`'d by relative path (also by

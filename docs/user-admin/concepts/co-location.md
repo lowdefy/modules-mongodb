@@ -16,11 +16,12 @@ So three things must resolve to **one MongoDB database**:
 
 1. the **BetterAuth adapter database** (the app's `auth` config), which owns
    `users`, `user-members`, `user-invitations`, `user-sessions`, `user-accounts`,
-   `user-organizations`;
+   `user-organizations`, `user-passkeys`;
 2. the **`user-contacts` connection** (the app collection holding contact/profile
    data);
 3. the module's **read-only connections** (`users`, `user-members`,
-   `user-invitations`, `user-sessions`, `user-accounts`, `user-organizations`).
+   `user-invitations`, `user-sessions`, `user-accounts`, `user-organizations`,
+   `user-passkeys`).
 
 The natural shape is a **single shared `_secret`** (e.g. `MONGODB_URI`) used by
 all of them. This is also the auth engine's intended layout: the `user-`

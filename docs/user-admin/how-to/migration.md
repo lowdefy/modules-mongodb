@@ -26,17 +26,17 @@ see [Same-database co-location](../concepts/co-location.md).
 
 ## Vars
 
-| v0.x                       | Now                | Notes                                                                                     |
-| -------------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
-| `app_name`                 | **removed**        | Per-app scoping by the `apps.{app}` field path is gone; one instance = one pinned org.    |
-| `roles`                    | **removed**        | The assignable set comes from the app's authored `auth.roles` catalog (single source).    |
-| `app_domain`               | **removed**        | No longer used.                                                                           |
-| `fields.global_attributes` | `fields.user_attributes`   | Renamed to the model: global attributes live on the `user` row.                   |
-| `fields.app_attributes`    | `fields.member_attributes` | Renamed to the model: this app's attributes live on the `member` row.             |
-| —                          | `admin_roles`      | Catalog role id(s) gating the routine endpoints; name the same role as `auth.userAdminRole`. |
-| —                          | `suspension`       | Gates suspend/reinstate (default `true`).                                                 |
-| —                          | `impersonation`    | Gates the "View as user" client action (default `false`).                                 |
-| —                          | `download`         | Gates the Excel export (default `false`).                                                 |
+| v0.x                       | Now                        | Notes                                                                                        |
+| -------------------------- | -------------------------- | -------------------------------------------------------------------------------------------- |
+| `app_name`                 | **removed**                | Per-app scoping by the `apps.{app}` field path is gone; one instance = one pinned org.       |
+| `roles`                    | **removed**                | The assignable set comes from the app's authored `auth.roles` catalog (single source).       |
+| `app_domain`               | **removed**                | No longer used.                                                                              |
+| `fields.global_attributes` | `fields.user_attributes`   | Renamed to the model: global attributes live on the `user` row.                              |
+| `fields.app_attributes`    | `fields.member_attributes` | Renamed to the model: this app's attributes live on the `member` row.                        |
+| —                          | `admin_roles`              | Catalog role id(s) gating the routine endpoints; name the same role as `auth.userAdminRole`. |
+| —                          | `suspension`               | Gates suspend/reinstate (default `true`).                                                    |
+| —                          | `impersonation`            | Gates the "View as user" client action (default `false`).                                    |
+| —                          | `download`                 | Gates the Excel export (default `false`).                                                    |
 
 `app_title`, `event_display`, `components.*`, `request_stages.*`, `filter_requests`,
 and `avatar_colors` carry over in kind. `event_display` templates now receive
@@ -44,11 +44,11 @@ and `avatar_colors` carry over in kind. `event_display` templates now receive
 
 ## Pages
 
-| v0.x            | Now       |
-| --------------- | --------- |
-| `all`           | `all` (Members + Invitations tabs) |
+| v0.x                      | Now                                                         |
+| ------------------------- | ----------------------------------------------------------- |
+| `all`                     | `all` (Members + Invitations tabs)                          |
 | `view` + `edit` + `check` | `view` (single detail page with section-scoped edit modals) |
-| `new`           | `invite` (email-first check-then-invite) |
+| `new`                     | `invite` (email-first check-then-invite)                    |
 
 The public **accept page is not this module's** — it belongs to the auth-page
 modules (`user-account`).
@@ -74,6 +74,7 @@ modules (`user-account`).
   (`RemoveMember`) is app-scoped. **Delete login identity** (`DeleteUser`) is
   offered only when the user belongs to no other apps.
 - **New engine capabilities**: session listing + sign-out-everywhere, read-only
-  auth-method visibility, and impersonation (behind its var).
+  auth-method visibility (email-verified, OAuth providers, MFA, passkeys), and
+  impersonation (behind its var).
 - **All raw writes to auth-owned data are gone** — every auth write goes through
   a sanctioned admin step, role-gated and floored by `auth.userAdminRole`.
