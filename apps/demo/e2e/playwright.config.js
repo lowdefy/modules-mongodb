@@ -24,6 +24,15 @@ export default {
   ...config,
   globalSetup: "@lowdefy/community-plugin-e2e-mdb/setup",
   globalTeardown: "@lowdefy/community-plugin-e2e-mdb/teardown",
+  // ONE worker, on purpose: every worker shares the single e2e server and the
+  // single in-memory MongoDB, and the mdb fixture's per-test teardown wipes
+  // EVERY collection in the shared database (not just the ones that test
+  // touched — upstream bug in community-plugin-e2e-mdb). With parallel
+  // workers, a short test finishing wipes a longer test's seeded data
+  // mid-flight (this is exactly how tenant-isolation.spec.js flaked). Serial
+  // workers make each teardown wipe land between tests, where every spec
+  // re-seeds what it needs.
+  workers: 1,
   // `lowdefy build --server e2e` fails the auth config check unless NEXTAUTH_SECRET
   // is set. The e2e server uses cookie-based mock auth, so the value is build-only —
   // mirror the `ldf:b` script and respect a real secret if one is already exported.
