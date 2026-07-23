@@ -1,0 +1,96 @@
+# User detail read (design Decision 3). Native aggregation rooted on the target's
+# `user-members` row (matched by the urlQuery userId, scoped to the pinned org),
+# joined to `users` + `user-contacts`. Reuses the shared members base shape
+# (name/email/picture/status/roles_arr/dates) and the catalog role-resolve, then
+# projects the flat detail shape the tiles and edit modals bind to:
+#   user_id / member_id / contact_id — the ids the write routines take
+#   profile / member_attributes / user_attributes — the three editable bags
+#   status_slug — lowercase active|suspended for the title-block status pill
+#   email_verified / two_factor_enabled / banned / passkey_count — Security-tile facts
+# Returns a single-element array; the page binds get_user_detail.0.*.
+id: get_user_detail
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+payload:
+  user_id:
+    _url_query: userId
+properties:
+  pipeline:
+    _build.array.concat:
+      # Narrow to the target first (indexed), then the shared org-scoped joins.
+      - - $match:
+            userId:
+              _payload: user_id
+      - _ref: requests/stages/members_base.yaml
+      # Roles resolved against the catalog → [{ label, orphan }].
+      - _ref: requests/stages/roles_from_catalog.yaml
+      # Registered passkeys for the target user (Decision 5 auth-methods badge).
+      # Keyed on `userId`, present on the member root throughout.
+      - - $lookup:
+            from: user-passkeys
+            localField: userId
+            foreignField: userId
+            as: passkeys
+      - - $addFields:
+            user_id: "$userId"
+            member_id: "$_id"
+            contact_id: "$contact._id"
+            profile:
+              $ifNull:
+                - "$contact.profile"
+                - {}
+            member_attributes:
+              $ifNull:
+                - "$attributes"
+                - {}
+            user_attributes:
+              $ifNull:
+                - "$user.attributes"
+                - {}
+            email_verified:
+              $eq:
+                - "$user.emailVerified"
+                - true
+            two_factor_enabled:
+              $eq:
+                - "$user.twoFactorEnabled"
+                - true
+            banned:
+              $eq:
+                - "$user.banned"
+                - true
+            passkey_count:
+              $size:
+                $ifNull:
+                  - "$passkeys"
+                  - []
+            # Clean current role id list (incl. orphans, empties dropped) — seeds
+            # the access modal's role picker and the update-access payload.
+            role_ids:
+              $filter:
+                input:
+                  $ifNull:
+                    - "$roles_arr"
+                    - []
+                as: r
+                cond:
+                  $ne:
+                    - "$$r"
+                    - ""
+            # True when any held role is orphaned (absent from the catalog) —
+            # drives the access modal's orphan hint (Decision 8).
+            has_orphan:
+              $anyElementTrue:
+                $map:
+                  input: "$roles"
+                  as: r
+                  in: "$$r.orphan"
+            status_slug:
+              $cond:
+                - $eq:
+                    - "$user.banned"
+                    - true
+                - suspended
+                - active
+        - $limit: 1

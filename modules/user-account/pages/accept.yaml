@@ -1,13 +1,344 @@
-# Stub — built out in task 15. Minimal valid auth page so `_ref`s resolve and
-# the module builds; real content added by the screen task.
+# Accept-invitation page — task 15. Serves authPages.acceptInvitation. Public,
+# thin, engine-trusting (Decision 4): its job is session-ensuring + one client
+# call. Four renders via `accept_view` (nosession | signedin | member | expired).
+#
+# The invitation is read natively (get_invitation) by the invitationId query
+# parameter — display only (org / inviter / invited email / status). Render
+# selection: no invitation -> expired; no session -> nosession; status accepted
+# -> member; status not pending or email mismatch -> expired; else signedin.
+# BetterAuth's AcceptInvitation enforces the session-email <-> invitation-email
+# match and expiry itself, so a slipped-through mismatch still fails safely.
 _ref:
   module: layout
   component: auth-page
   vars:
     id: accept
-    title: Accept invitation
+    title: ""
+    requests:
+      - _ref: requests/get_invitation.yaml
+    events:
+      # A missing invitationId gets its own render; a read failure is left
+      # uncaught (Lowdefy's error screen); a found-but-empty result is a genuine
+      # bad/consumed link.
+      onInit:
+        - :if:
+            _eq:
+              - _url_query: invitationId
+              - null
+          :then:
+            - id: no_invitation_id
+              type: SetState
+              params:
+                accept_view: noinvite
+          :else:
+            - id: fetch_invitation
+              type: Request
+              params: get_invitation
+            - id: select_accept_view
+              type: SetState
+              params:
+                invite:
+                  _actions: fetch_invitation.response.0
+                accept_view:
+                  _switch:
+                    branches:
+                      - if:
+                          _eq:
+                            - _actions: fetch_invitation.response.0
+                            - null
+                        then: expired
+                      - if:
+                          _eq:
+                            - _user: id
+                            - null
+                        then: nosession
+                      - if:
+                          _eq:
+                            - _actions: fetch_invitation.response.0.status
+                            - accepted
+                        then: member
+                      - if:
+                          _ne:
+                            - _actions: fetch_invitation.response.0.status
+                            - pending
+                        then: expired
+                      - if:
+                          _ne:
+                            - _actions: fetch_invitation.response.0.email
+                            - _user: email
+                        then: expired
+                    default: signedin
     blocks:
-      - id: placeholder
-        type: Paragraph
+      # ---- No session — offer login / signup ----
+      - id: accept_title_nosession
+        type: Title
+        visible:
+          _eq:
+            - _state: accept_view
+            - nosession
         properties:
-          content: TODO(screen) — Accept invitation page, built in task 15.
+          content: You're invited
+          level: 3
+      - id: accept_invite_context
+        type: Box
+        visible:
+          _or:
+            - _eq:
+                - _state: accept_view
+                - nosession
+            - _eq:
+                - _state: accept_view
+                - signedin
+        layout:
+          align: middle
+          selfAlign: middle
+          gap: 11
+        style:
+          background: "var(--ant-color-primary-bg)"
+          border: "1px solid var(--ant-color-primary-border)"
+          borderRadius: 10
+          padding: 11px 13px
+        blocks:
+          - id: accept_invite_avatar
+            type: Avatar
+            layout:
+              flex: 0 1 auto
+            properties:
+              content:
+                _nunjucks:
+                  template: "{{ (name or '?') | first | upper }}"
+                  on:
+                    name:
+                      _state: invite.inviter_name
+              color: "#7048e8"
+          - id: accept_invite_who
+            type: Html
+            layout:
+              flex: 1 1 auto
+            properties:
+              html:
+                _nunjucks:
+                  template: <div class="text-xs opacity-70">{{ inviter }} invited you to</div><div class="text-sm font-semibold">{{ org }}</div>
+                  on:
+                    inviter:
+                      _state: invite.inviter_name
+                    org:
+                      _state: invite.org_name
+      - id: accept_nosession_lead
+        type: Html
+        visible:
+          _eq:
+            - _state: accept_view
+            - nosession
+        properties:
+          html:
+            _nunjucks:
+              template: To accept, sign in or create your account with <b>{{ email }}</b>.
+              on:
+                email:
+                  _state: invite.email
+        style:
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+      # Sign up / sign in, then return to this page (invitationId preserved) so
+      # the signed-in render can accept.
+      - id: accept_signup
+        type: Button
+        visible:
+          _eq:
+            - _state: accept_view
+            - nosession
+        properties:
+          title: Create account & accept
+          block: true
+          size: large
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            - id: go_signup_accept
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: signup
+                urlQuery:
+                  callbackUrl:
+                    _string.concat:
+                      - "/"
+                      - _module.pageId: accept
+                      - "?invitationId="
+                      - _url_query: invitationId
+      - id: accept_login
+        type: Button
+        visible:
+          _eq:
+            - _state: accept_view
+            - nosession
+        properties:
+          title: Sign in & accept
+          block: true
+          size: large
+          variant: outlined
+        events:
+          onClick:
+            - id: go_login_accept
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: login
+                urlQuery:
+                  callbackUrl:
+                    _string.concat:
+                      - "/"
+                      - _module.pageId: accept
+                      - "?invitationId="
+                      - _url_query: invitationId
+
+      # ---- Signed in, email matches ----
+      - id: accept_title_signedin
+        type: Title
+        visible:
+          _eq:
+            - _state: accept_view
+            - signedin
+        properties:
+          content: Accept your invitation
+          level: 3
+      - id: accept_signed_in_as
+        type: Box
+        visible:
+          _eq:
+            - _state: accept_view
+            - signedin
+        layout:
+          align: middle
+          selfAlign: middle
+          gap: 10
+        blocks:
+          - id: accept_signed_in_avatar
+            type: Avatar
+            layout:
+              flex: 0 1 auto
+            properties:
+              content:
+                _nunjucks:
+                  template: "{{ (name or '?') | first | upper }}"
+                  on:
+                    name:
+                      _user: name
+              size: small
+              color: "#0e7490"
+          - id: accept_signed_in_text
+            type: Html
+            layout:
+              flex: 1 1 auto
+            properties:
+              html:
+                _nunjucks:
+                  template: <div class="text-sm">Signed in as <b>{{ email }}</b></div><div class="text-xs opacity-70">This matches your invitation.</div>
+                  on:
+                    email:
+                      _user: email
+      # Accept the invitation. BetterAuth merges the profile fragment and applies
+      # invite-time attributes engine-side; on success we enter the app.
+      - id: accept_continue
+        type: Button
+        visible:
+          _eq:
+            - _state: accept_view
+            - signedin
+        properties:
+          title: Accept & continue
+          block: true
+          size: large
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            try:
+              - id: accept_do
+                type: AcceptInvitation
+                messages:
+                  error: false
+                params:
+                  invitationId:
+                    _url_query: invitationId
+              - id: accept_enter_app
+                type: Link
+                params:
+                  home: true
+            catch:
+              - id: accept_error
+                type: DisplayMessage
+                params:
+                  status: error
+                  content: We couldn't accept this invitation. It may have expired or been sent to a different email address — ask for a fresh invitation.
+      - id: accept_not_you
+        type: Html
+        visible:
+          _eq:
+            - _state: accept_view
+            - signedin
+        properties:
+          html: Not you? <a href="logout">Sign out</a>
+        style:
+          textAlign: center
+          fontSize: 12
+          color: "var(--ant-color-text-secondary)"
+
+      # ---- Already a member ----
+      - id: accept_already_member
+        type: Result
+        visible:
+          _eq:
+            - _state: accept_view
+            - member
+        properties:
+          status: success
+          title: You're already a member
+          subTitle: Your account already has access to this app.
+      - id: accept_go_to_app
+        type: Button
+        visible:
+          _eq:
+            - _state: accept_view
+            - member
+        properties:
+          title: Go to app
+          block: true
+          size: large
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            - id: member_enter_app
+              type: Link
+              params:
+                home: true
+
+      # ---- Missing invitationId (required parameter absent) ----
+      - id: accept_no_invitation
+        type: Result
+        visible:
+          _eq:
+            - _state: accept_view
+            - noinvite
+        properties:
+          status: error
+          title: This link is missing its invitation
+          subTitle: Open the invitation link from your email — it carries the reference this page needs.
+
+      # ---- Expired / mismatch ----
+      - id: accept_expired
+        type: Result
+        visible:
+          _eq:
+            - _state: accept_view
+            - expired
+        properties:
+          icon:
+            name: AiOutlineClockCircle
+            color: "var(--ant-color-warning)"
+          status: warning
+          title: This invitation can't be used
+          subTitle: It may have expired, already been used, or been sent to a different email address. Ask the person who invited you to send a fresh invitation, then open the new link.

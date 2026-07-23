@@ -1,0 +1,15 @@
+# Member status pill (title-block status_enum, design Decision 2).
+# On the user detail page a member row is either Active (user.banned not true)
+# or Suspended (user.banned true). Invited / Expired are invitation states and
+# never appear here. Three-colour pill contract: { color, borderColor,
+# titleColor, title } — matches the mock's ok / err pills.
+active:
+  color: "#f6ffed"
+  borderColor: "#b7eb8f"
+  titleColor: "#389e0d"
+  title: Active
+suspended:
+  color: "#fff1f0"
+  borderColor: "#ffa39e"
+  titleColor: "#cf1322"
+  title: Suspended

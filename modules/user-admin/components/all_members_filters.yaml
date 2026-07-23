@@ -1,0 +1,108 @@
+# Members filter row (design Decision 2/8).
+# search (name/email) · Role multi-select (options from the auth.roles catalog,
+# design Decision 8) · Status segmented (All/Active/Suspended) · Clear.
+# Consumer `components.filters` blocks append after the built-ins.
+# Every filter change refetches get_all_members via actions/members_refetch.yaml
+# (resets to page 1). The role filter matches EXACT split-array elements — see
+# requests/stages/members_filter.yaml.
+id: members_filters
+type: Box
+layout:
+  gap: 8
+  align: middle
+  selfAlign: middle
+blocks:
+  - id: filter.search
+    type: TextInput
+    layout:
+      flex: 1 1 240px
+    style:
+      maxWidth: 340px
+    properties:
+      placeholder: Search name or email
+      label:
+        disabled: true
+    events:
+      onPressEnter:
+        _ref: actions/members_refetch.yaml
+      onChange:
+        try:
+          _ref: actions/members_refetch.yaml
+        debounce:
+          ms: 500
+  - id: filter.roles
+    type: MultipleSelector
+    layout:
+      flex: 0 1 auto
+    style:
+      minWidth: 160px
+      maxWidth: 260px
+    properties:
+      placeholder: All roles
+      allowClear: true
+      label:
+        disabled: true
+      # Options + labels come from the app's authored auth.roles catalog
+      # (design Decision 8), NOT a module var — the single source of truth for
+      # the assignable role set. Mapped from the `_build.authConfig: roles`
+      # projection to { value: id, label }. The role filter matches EXACT
+      # split-array elements ($in on roles_arr, Decision 1) — see
+      # stages/members_filter.yaml.
+      #
+      # NOTE (running-engine gap): `_build.authConfig` is not yet available to
+      # module config in the experimental @lowdefy/server build (throws "cannot
+      # be used inside the auth block"). Written design-faithful per Decision 8
+      # and the build-red directive; resolves once the engine ships the catalog
+      # projection to modules (upstream ask 7).
+      options:
+        _build.array.map:
+          on:
+            _build.authConfig: roles
+          callback:
+            _build.function:
+              value:
+                __build.args: 0.id
+              label:
+                __build.args: 0.label
+    events:
+      onChange:
+        _ref: actions/members_refetch.yaml
+  - id: filter.status
+    type: SegmentedSelector
+    layout:
+      flex: 0 1 auto
+    properties:
+      label:
+        title: Status
+        inline: true
+        colon: false
+      options:
+        - label: All
+          value: all
+        - label: Active
+          value: active
+        - label: Suspended
+          value: suspended
+    events:
+      onChange:
+        _ref: actions/members_refetch.yaml
+  - id: members_clear
+    type: Button
+    layout:
+      flex: 0 1 auto
+    properties:
+      title: Clear
+      icon: AiOutlineClear
+      variant: borderless
+    events:
+      onClick:
+        _build.array.concat:
+          # Clear only the Members filter keys (leave the Invitations tab and
+          # the sort untouched — independent per-tab state, Decision 2).
+          - - id: clear_members_filters
+              type: SetState
+              params:
+                filter.search: null
+                filter.roles: null
+                filter.status: all
+          - _ref: actions/members_refetch.yaml

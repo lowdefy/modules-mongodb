@@ -1,0 +1,53 @@
+# Sign-out-everywhere confirm modal — RevokeUserSessions (Decision 5). Ends all
+# active sessions; the person can sign back in immediately (not a suspend/remove).
+# "suite"/this-app copy collapses on the other-membership count (Decision 6,
+# wired task 13). onOk (CallAPI revoke-sessions) is wired in task 13.
+id: modal_revoke
+type: Modal
+properties:
+  title:
+    _nunjucks:
+      template: "Sign {{ name }} out everywhere?"
+      on:
+        name:
+          _request: get_user_detail.0.name
+  width: 480
+  okText: Sign out all sessions
+  cancelText: Cancel
+events:
+  onOk:
+    _build.array.concat:
+      # RevokeUserSessions (Decision 5). Not a suspend/remove — the person can
+      # sign back in immediately.
+      - - id: revoke_sessions
+          type: CallAPI
+          messages:
+            loading: Signing out…
+            success: Signed out of all sessions.
+          params:
+            endpointId:
+              _module.endpointId: revoke-sessions
+            payload:
+              user_id:
+                _request: get_user_detail.0.user_id
+              target_name:
+                _request: get_user_detail.0.name
+              target_email:
+                _request: get_user_detail.0.email
+      - _ref: actions/detail_refetch.yaml
+blocks:
+  - id: revoke_message
+    type: Html
+    properties:
+      # "across the suite" collapses to this-app framing at other-membership
+      # count 0 (Decision 6).
+      html:
+        _nunjucks:
+          template: >-
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Signs this person out of all their active sessions{% if others > 0 %} across the suite{% endif %}. They can sign back in right away — this does not suspend or remove their access.</div>
+          on:
+            others:
+              _array.length:
+                _if_none:
+                  - _request: get_user_memberships
+                  - []

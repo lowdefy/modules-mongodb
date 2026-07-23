@@ -1,16 +1,55 @@
-# STUB — real body (Profile / Attributes / Global attributes / Security / Apps /
-# Activity tiles) is authored by the mock-to-lowdefy pipeline tasks 10–13.
+# User detail page (design Decision 3) — the operator console for one person's
+# access lifecycle in this app. Two-column console: main (Profile, Attributes,
+# Global attributes) + sidebar (Security, Apps, Activity). Each editable tile
+# opens its own modal (7 total). Native org-scoped reads hydrate the tiles;
+# each modal edits through its own routine (design Decision 3).
 _ref:
   module: layout
   component: page
   vars:
     id: view
     page_type: sidebar
+    # Title-block: status pill (Active / Suspended) + name, hydrated from the
+    # detail read. The mock's avatar is a proposed title-block slot the shared
+    # component does not offer today — not added here (a shared-component change
+    # is out of scope for the view page).
     title:
-      _build.string.trim:
-        _build.string.concat:
-          - _module.var: app_title
-          - " User"
+      _request: get_user_detail.0.name
+    status:
+      _request: get_user_detail.0.status_slug
+    status_enum:
+      _ref: enums/member_statuses.yaml
+    loading:
+      _not:
+        _request: get_user_detail
+    # Native org-scoped reads (design Decision 1): detail, sessions (token
+    # projected out), linked providers, and the target's OTHER memberships (one
+    # read powering the Apps badges, the suspend blast-radius, and the Decision 6
+    # membership-count switch). Activity is the events module's timeline component.
+    requests:
+      - _ref: requests/get_user_detail.yaml
+      - _ref: requests/get_user_sessions.yaml
+      - _ref: requests/get_user_accounts.yaml
+      - _ref: requests/get_user_memberships.yaml
+    events:
+      onMount:
+        - id: fetch_detail
+          type: Request
+          params:
+            - get_user_detail
+            - get_user_sessions
+            - get_user_accounts
+            - get_user_memberships
+        # No member row for this userId in the pinned org → back to the list.
+        - id: redirect_if_not_found
+          type: Link
+          skip:
+            _ne:
+              - _request: get_user_detail.0
+              - null
+          params:
+            pageId:
+              _module.pageId: all
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -21,10 +60,66 @@ _ref:
               - " User Admin"
         pageId:
           _module.pageId: all
-      - label: User
+      - label:
+          _if_none:
+            - _request: get_user_detail.0.name
+            - ""
     blocks:
-      - id: view_stub
-        type: Title
-        properties:
-          level: 4
-          content: "User detail — built by pipeline tasks 10–13."
+      - id: user_detail_grid
+        type: Box
+        layout:
+          gap: 16
+          align: top
+          selfAlign: top
+        blocks:
+          - id: detail_main_col
+            type: Box
+            layout:
+              span: 14
+              sm:
+                span: 24
+              gap: 16
+            blocks:
+              _build.array.concat:
+                - - _ref: components/view/tile_profile.yaml
+                  - _ref: components/view/tile_attributes.yaml
+                  - _ref: components/view/tile_global_attrs.yaml
+                # Consumer extension surface (Decision 8) — extra main-column blocks.
+                - _module.var: components.main_slots
+          - id: detail_side_col
+            type: Box
+            layout:
+              span: 10
+              sm:
+                span: 24
+              gap: 16
+            blocks:
+              _build.array.concat:
+                - - _ref: components/view/tile_security.yaml
+                  # Apps tile hidden at other-membership count 0 (Decision 6) —
+                  # gated here since the shared card has no visible var.
+                  - id: apps_tile_wrap
+                    type: Box
+                    layout:
+                      span: 24
+                    visible:
+                      _gt:
+                        - _array.length:
+                            _if_none:
+                              - _request: get_user_memberships
+                              - []
+                        - 0
+                    blocks:
+                      - _ref: components/view/tile_apps.yaml
+                  - _ref: components/view/tile_activity.yaml
+                # Consumer extension surface (Decision 8) — extra sidebar blocks.
+                - _module.var: components.sidebar_slots
+      # ── Interaction-state layers: 7 tile / security modals (top-level siblings
+      #    of the grid, opened via CallMethod toggleOpen from their triggers) ──
+      - _ref: components/view/modal_profile.yaml
+      - _ref: components/view/modal_access.yaml
+      - _ref: components/view/modal_global.yaml
+      - _ref: components/view/modal_suspend.yaml
+      - _ref: components/view/modal_remove.yaml
+      - _ref: components/view/modal_revoke.yaml
+      - _ref: components/view/modal_delete.yaml

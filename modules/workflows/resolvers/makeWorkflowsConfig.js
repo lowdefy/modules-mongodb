@@ -9,16 +9,16 @@ import { humanizeSlug } from "./humanizeSlug.js";
 
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
 // (form, form_review, form_error, pages, hooks, event) are excluded —
-// they're consumed by build-time resolvers (parts 12, 13, 15) against
-// the raw workflow YAML, not via workflowsConfig at runtime.
+// they're consumed by build-time resolvers against the raw workflow YAML, not
+// via workflowsConfig at runtime.
 //
-// `status_map` is deliberately NOT picked here (Part 48): it's the blob's one
-// heavy per-stage × per-app field, paid for all workflows on every connection
-// call. It now arrives per-request via the write endpoints' `render_config`
-// and is spliced onto the action config at load time (loadWorkflowState seam,
-// task 3). Build-time validation of `status_map` cells (validateStatusMapCells)
-// still runs against the raw workflow — the field is validated here even though
-// it's no longer carried on the blob.
+// `status_map` is deliberately NOT picked here: it's the blob's one heavy
+// per-stage × per-app field, paid for all workflows on every connection call.
+// It arrives per-request via the write endpoints' `render_config` and is
+// spliced onto the action config at load time (loadWorkflowState seam).
+// Build-time validation of `status_map` cells (validateStatusMapCells) still
+// runs against the raw workflow — the field is validated here but not carried
+// on the blob.
 const ACTION_FIELDS = [
   "type",
   "title",
@@ -122,10 +122,9 @@ const RESERVED_BUTTON_IDS = [
   "button_edit",
 ];
 
-// Part 24 / Part 64: the universal action fields an author may declare for the
-// UI presence list. The action doc carries both; this list only controls which
-// the templates render. (Part 64 removed `description` from the universal set —
-// it is now author-authored config rendered by GetWorkflowAction.)
+// The universal action fields an author may declare for the UI presence list.
+// The action doc carries both; this list only controls which the templates
+// render.
 const UNIVERSAL_FIELDS = ["assignees", "due_date"];
 
 function pick(source, fields) {

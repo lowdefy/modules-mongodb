@@ -1,0 +1,86 @@
+# Invitations list read (design Decision 2/7). Native aggregation rooted on the
+# pinned org's pending `user-invitations`, inviter joined, Invited/Expired
+# derived on expiresAt, filtered by the invitations filter, sorted server-side
+# after the derivation, then paginated with a $facet returning the post-filter
+# total. Each row carries `total_results`; the Invitations pending-count badge
+# and the Pagination block read it (never rows.length).
+#
+# Independent per-tab state (Decision 2): this tab owns `inv_filter` / `inv_sort`
+# / `inv_pagination`, distinct from the Members tab's `filter` / `sort` /
+# `pagination`, so filtering or paging one tab never disturbs the other.
+id: get_all_invitations
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-invitations
+payload:
+  pagination:
+    _state: inv_pagination
+  filter:
+    _state: inv_filter
+  sort:
+    _state: inv_sort
+properties:
+  pipeline:
+    _build.array.concat:
+      # Match pending + org, join inviter, derive Invited/Expired + roles.
+      - _ref: requests/stages/invitations_base.yaml
+      # Filter: email regex + derived-status segment.
+      - - $match:
+            $and:
+              _array.concat:
+                - _if:
+                    test:
+                      _ne:
+                        - _if_none:
+                            - _payload: filter.search
+                            - null
+                        - null
+                    then:
+                      - email:
+                          $regex:
+                            _payload: filter.search
+                          $options: i
+                    else: []
+                - _if:
+                    test:
+                      _eq:
+                        - _payload: filter.status
+                        - invited
+                    then:
+                      - status: Invited
+                    else: []
+                - _if:
+                    test:
+                      _eq:
+                        - _payload: filter.status
+                        - expired
+                    then:
+                      - status: Expired
+                    else: []
+      # Split total + page in one round-trip.
+      - - $facet:
+            count:
+              - $count: total
+            results:
+              - $sort:
+                  _object.assign:
+                    - _object.defineProperty:
+                        on: {}
+                        key:
+                          _payload: sort.by
+                        descriptor:
+                          value:
+                            _payload: sort.order
+                    - _id: 1
+              - $skip:
+                  _payload: pagination.skip
+              - $limit:
+                  _payload: pagination.pageSize
+              # Resolve role ids → { label, orphan } against the catalog.
+              - _ref: requests/stages/roles_from_catalog.yaml
+        - $unwind: "$count"
+        - $unwind: "$results"
+        - $addFields:
+            results.total_results: "$count.total"
+        - $replaceRoot:
+            newRoot: "$results"

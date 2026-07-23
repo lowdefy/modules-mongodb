@@ -1,13 +1,311 @@
-# Stub — built out in task 10. Minimal valid auth page so `_ref`s resolve and
-# the module builds; real content added by the screen task.
+# Signup page — task 10. Serves authPages.signUp. Ships unconditionally;
+# admission is engine policy (this page renders the outcome, it does not
+# re-implement it). Two renders driven by `signup_view` (form | check).
+#
+# Dispatch: email/password via `SignUp`; social "signup" via `Login` (the only
+# real signup endpoint is email/password). With requireEmailVerification the
+# SignUp response carries no session token, so the page shows the check-email
+# state instead of navigating; otherwise `SignUp` navigates to callbackUrl.
+#
+# Method enablement is read from the app auth config via `_build.authConfig`
+# (Decision 2): the email/password form renders only when emailAndPassword is
+# enabled, an OAuth button per configured provider (label/icon from the
+# `providers` var).
 _ref:
   module: layout
   component: auth-page
   vars:
     id: signup
-    title: Sign up
+    title: ""
+    events:
+      onInit:
+        - id: seed_signup_view
+          type: SetState
+          params:
+            signup_view: form
     blocks:
-      - id: placeholder
-        type: Paragraph
+      _build.array.concat:
+        # ---- Email/password form — only when emailAndPassword is enabled ----
+        - _build.if:
+            test:
+              _build.authConfig: emailAndPassword.enabled
+            then:
+              - id: signup_title
+                type: Title
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - form
+                properties:
+                  content: Create your account
+                  level: 3
+              - id: profile.first_name
+                type: TextInput
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - form
+                required: true
+                properties:
+                  size: large
+                  label:
+                    title: First name
+                    colon: false
+                    span: 24
+              - id: profile.last_name
+                type: TextInput
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - form
+                required: true
+                properties:
+                  size: large
+                  label:
+                    title: Last name
+                    colon: false
+                    span: 24
+              - id: email
+                type: TextInput
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - form
+                required: true
+                properties:
+                  type: email
+                  size: large
+                  suffixIcon: AiOutlineMail
+                  label:
+                    title: Email
+                    colon: false
+                    span: 24
+              - id: password
+                type: PasswordInput
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - form
+                required: true
+                properties:
+                  size: large
+                  label:
+                    title: Password
+                    colon: false
+                    span: 24
+                    extra: At least 8 characters.
+              # Create the email/password account. On no-session (verification
+              # required) show the check-email state; SignUp navigates itself
+              # when a session is returned. Validate the form first.
+              - id: signup_submit
+                type: Button
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - form
+                properties:
+                  title: Create account
+                  block: true
+                  size: large
+                  color: primary
+                  variant: solid
+                events:
+                  onClick:
+                    try:
+                      - id: validate_signup
+                        type: Validate
+                      - id: signup_do
+                        type: SignUp
+                        messages:
+                          error: false
+                        params:
+                          email:
+                            _state: email
+                          password:
+                            _state: password
+                          name:
+                            _string.concat:
+                              - _state: profile.first_name
+                              - " "
+                              - _state: profile.last_name
+                          # Where the emailed verification link lands after
+                          # verifying — the verify-email success render.
+                          callbackUrl:
+                            _string.concat:
+                              - "/"
+                              - _module.pageId: verify-email
+                              - "?verified=1&email="
+                              - _state: email
+                      - :if:
+                          _not:
+                            _actions: signup_do.response.token
+                        :then:
+                          - id: show_check_email
+                            type: SetState
+                            params:
+                              signup_view: check
+                              signup_email:
+                                _state: email
+                    catch:
+                      # Validation failures surface their own field messages;
+                      # only toast when it was the SignUp call that failed.
+                      - id: toast_signup_error
+                        type: DisplayMessage
+                        skip:
+                          _ne:
+                            - _actions: validate_signup.error
+                            - null
+                        params:
+                          status: error
+                          content:
+                            _switch:
+                              branches:
+                                - if:
+                                    _eq:
+                                      - _actions: signup_do.error.cause.code
+                                      - USER_ALREADY_EXISTS
+                                  then: An account with this email already exists. Try signing in instead.
+                                - if:
+                                    _eq:
+                                      - _actions: signup_do.error.cause.code
+                                      - MEMBERSHIP_REQUIRED
+                                  then: Sign-ups for this app are by invitation only. Ask an administrator for an invitation.
+                              default: We couldn't create your account. Please check your details and try again.
+              - id: signup_oauth_divider
+                type: Divider
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - form
+                properties:
+                  title: or
+                  plain: true
+            else: []
+
+        # ---- OAuth "signup" — social sign-in creates the account on first use,
+        # so these dispatch through `Login`. One button per configured provider;
+        # label/icon from the `providers` var. ----
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _build.authConfig: providers
+                - 0
+            then:
+              - id: signup_oauth_buttons
+                type: Box
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - form
+                layout:
+                  gap: 12
+                blocks:
+                  _build.array.map:
+                    on:
+                      _build.array.filter:
+                        on:
+                          _module.var: providers
+                        callback:
+                          _build.function:
+                            __build.array.includes:
+                              on:
+                                __build.array.map:
+                                  on:
+                                    __build.authConfig: providers
+                                  callback:
+                                    _build.function:
+                                      __build.args: "0.id"
+                              value:
+                                __build.args: "0.id"
+                    callback:
+                      _build.function:
+                        id:
+                          __build.string.concat:
+                            - signup_oauth_
+                            - __build.args: "0.id"
+                        type: Button
+                        properties:
+                          title:
+                            __build.string.concat:
+                              - "Continue with "
+                              - __build.args: "0.label"
+                          icon:
+                            __build.args: "0.icon"
+                          block: true
+                          size: large
+                          variant: outlined
+                        events:
+                          onClick:
+                            - id: oauth_signup
+                              type: Login
+                              params:
+                                providerId:
+                                  __build.args: "0.id"
+            else: []
+
+        # ---- Check-your-email state (requireEmailVerification) ----
+        - - id: signup_check_email
+            type: Result
+            visible:
+              _eq:
+                - _state: signup_view
+                - check
+            properties:
+              icon:
+                name: AiOutlineMail
+                color: "var(--ant-color-primary)"
+              status: info
+              title: Check your email
+              subTitle:
+                _nunjucks:
+                  template: We sent a verification link to <b>{{ email }}</b>. Open it to finish setting up your account.
+                  on:
+                    email:
+                      _state: signup_email
+          # Resend the verification email to the address just signed up with.
+          - id: signup_resend
+            type: Button
+            visible:
+              _eq:
+                - _state: signup_view
+                - check
+            properties:
+              title: Resend link
+              block: true
+              size: large
+              variant: outlined
+            events:
+              onClick:
+                - id: resend_verification
+                  type: SendVerificationEmail
+                  params:
+                    email:
+                      _state: signup_email
+                    callbackUrl:
+                      _string.concat:
+                        - "/"
+                        - _module.pageId: verify-email
+                        - "?verified=1&email="
+                        - _state: signup_email
+          - id: signup_check_hint
+            type: Html
+            visible:
+              _eq:
+                - _state: signup_view
+                - check
+            properties:
+              html: Wrong address? <a href="signup">Start over</a>
+            style:
+              textAlign: center
+              fontSize: 12
+              color: "var(--ant-color-text-secondary)"
+    nav:
+      - id: signup_footer
+        type: Html
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
         properties:
-          content: TODO(screen) — Sign up page, built in task 10.
+          html: Already have an account? <a href="login">Sign in</a>

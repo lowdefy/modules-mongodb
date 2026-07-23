@@ -1,0 +1,36 @@
+# Active sessions read (design Decision 5). Native read over `user-sessions` for
+# the target user. The `token` (and any bearer/secret) is $project-ed OUT — this
+# shows an admin ANOTHER user's sessions, so returning the token would hand over a
+# replayable credential (matches user-account Decision 5). There is no "current"
+# session here: the admin's own session is never in this list, so sessions render
+# read-only (sign-out is the tile's "sign out everywhere" action).
+id: get_user_sessions
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-sessions
+payload:
+  user_id:
+    _url_query: userId
+properties:
+  pipeline:
+    - $match:
+        userId:
+          _payload: user_id
+    - $sort:
+        updatedAt: -1
+    # Whitelist projection — token is never selected.
+    - $project:
+        _id: 0
+        ua:
+          $ifNull:
+            - "$userAgent"
+            - Unknown device
+        ip: "$ipAddress"
+        expires_str:
+          $dateToString:
+            date: "$expiresAt"
+            format: "%Y-%m-%d"
+        created_str:
+          $dateToString:
+            date: "$createdAt"
+            format: "%Y-%m-%d"

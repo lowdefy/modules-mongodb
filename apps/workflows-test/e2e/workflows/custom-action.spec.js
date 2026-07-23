@@ -1,12 +1,12 @@
 import { test, expect } from "../fixtures.js";
 
-// Cluster: custom-action (Part 28). Mode: Spine.
+// Cluster: custom-action. Mode: Spine.
 //
 // Proves kind:custom routes the AUTHOR's `link:` cell into the per-verb links
 // map and that the card click-through carries the CONCRETE action _id — the
 // single assertion guarding the design's #1/#2 defect class (computeEngineLinks
-// used to `return {}` for custom, so the authored link never reached the card
-// and the `action_id: true` sentinel was never substituted).
+// must route the authored link to the card and substitute the `action_id: true`
+// sentinel with the concrete _id).
 //
 // Two concerns, both against the wired app:
 //   1. CLICK-THROUGH (load-bearing): a user who can act (reviewer) sees the card

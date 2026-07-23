@@ -1,0 +1,82 @@
+# Suspend confirm modal — BanUser (permanent, suite-wide, Decision 4). Enumerates
+# the person's other memberships so the admin sees the blast radius before
+# confirming. Multi-app variant shown here; the single-app variant (no list,
+# plain "Suspend" button, collapsed copy) keys off the other-membership count and
+# is WIRED in task 13. onOk (CallAPI suspend) is also task 13.
+id: modal_suspend
+type: Modal
+properties:
+  title:
+    _nunjucks:
+      template: "Suspend {{ name }}?"
+      on:
+        name:
+          _request: get_user_detail.0.name
+  width: 480
+  # "Suspend across N apps" (N = other memberships + this app) in the multi-app
+  # case; plain "Suspend" at other-membership count 0 (Decision 6).
+  okText:
+    _nunjucks:
+      template: "{% if others > 0 %}Suspend across {{ others + 1 }} apps{% else %}Suspend{% endif %}"
+      on:
+        others:
+          _array.length:
+            _if_none:
+              - _request: get_user_memberships
+              - []
+  cancelText: Cancel
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    _build.array.concat:
+      # Permanent, suite-wide ban (Decision 4). No duration → banExpires unset.
+      - - id: suspend_user
+          type: CallAPI
+          messages:
+            loading: Suspending…
+            success: Access suspended.
+          params:
+            endpointId:
+              _module.endpointId: suspend
+            payload:
+              user_id:
+                _request: get_user_detail.0.user_id
+              target_name:
+                _request: get_user_detail.0.name
+              target_email:
+                _request: get_user_detail.0.email
+      - _ref: actions/detail_refetch.yaml
+blocks:
+  - id: suspend_message
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          # Multi-app: enumerate the OTHER apps the ban reaches (blast radius).
+          # Single-app (no other memberships): drop the list and the suite framing
+          # (Decision 6) — the ban is still on the person, the copy just stops
+          # claiming a reach they don't have.
+          template: |
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">
+              {% if memberships.length > 0 %}
+                Suspending signs <b>{{ name }}</b> out everywhere immediately and blocks them from signing in. Because it applies to the person — not just this app — it blocks <b>every app they can reach</b>, including:
+                <div style="margin:12px 0 4px; display:flex; flex-direction:column; gap:8px;">
+                {% for m in memberships %}
+                  <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--ant-color-border); border-radius:6px; background:var(--ant-color-fill-quaternary);">
+                    <span style="width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:var(--ant-color-fill-secondary); color:var(--ant-color-text-secondary); font-size:9px; font-weight:700;">{{ m.initial }}</span>
+                    <span>{{ m.app }}</span>
+                    <span style="margin-left:auto; color:var(--ant-color-text-tertiary);">{{ m.roles }}</span>
+                  </div>
+                {% endfor %}
+                </div>
+                Reinstating later restores access everywhere. To remove {{ name }} from this app only, use <b>Remove from app</b> instead.
+              {% else %}
+                Suspending signs <b>{{ name }}</b> out and blocks them from signing in. Reinstating later restores their access. To remove them from this app instead, use <b>Remove from app</b>.
+              {% endif %}
+            </div>
+          on:
+            name:
+              _request: get_user_detail.0.name
+            memberships:
+              _request: get_user_memberships

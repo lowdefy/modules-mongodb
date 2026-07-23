@@ -430,8 +430,8 @@ test("makeActionPages: workflow_title honours title_acronyms in the humanized fa
   }
 });
 
-// Part 26: makeActionPages no longer bakes a `name_field` var — the instance
-// name is sourced server-side from entity_link.name (the entity.data routine).
+// The instance name is sourced server-side from `entity_link.name` (the
+// entity.data routine).
 test("makeActionPages: does not bake a name_field var", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],

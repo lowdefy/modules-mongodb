@@ -12,6 +12,8 @@ concepts:
 
 Modules that write to the `log-events` collection store **per-app display titles** alongside each event document. The `event_display` var on each module is a map from `app_name → { event_type → Nunjucks template }`. The events module renders the template that matches the current `display_key`.
 
+> **Auth-upgrade exception.** The `user-account` and `user-admin` modules, rebuilt on the BetterAuth-based auth engine, retired `app_name` (one instance = one pinned org). Their `event_display` is a **flat `{ event-type: template }` map — no `app_name` key**, and the override fully replaces the defaults. `user-account` templates receive `user` (the acting user); `user-admin` templates receive `user` (the acting admin) and `target` (the edited/invited user). Everything below describes the app-keyed shape the other modules still use.
+
 ## Wording convention
 
 Timeline titles read **`{actor} {past-tense verb} {type} {object}`** — sentence case, **no trailing period**. They are headlines in a feed, not sentences:

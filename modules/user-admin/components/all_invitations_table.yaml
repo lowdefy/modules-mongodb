@@ -1,0 +1,188 @@
+# Invitations table (design Decision 2 / 7). Reads get_all_invitations
+# (pending rows, Invited/Expired derived on expiresAt, org-scoped, paginated).
+# Columns: Email · Invited by (avatar) · Roles · Status · Expires · per-action
+# columns. Each action is its own column with a stable colId so the single
+# onCellClick can tell them apart (the repo's AgGrid action-cell pattern):
+#   Resend / Cancel  — shown on Invited rows
+#   Re-invite        — shown on Expired rows; routes to the invite flow, whose
+#                      routine self-reconciles the stale pending row
+#                      (cancel-then-invite, no duplicate — Decision 7)
+id: invitations_table
+type: AgGridBalham
+loading:
+  _not:
+    _request: get_all_invitations
+properties:
+  height: 70vh
+  overlayNoRowsTemplate: No pending invitations
+  defaultColDef:
+    sortable: false
+    filter: false
+    resizable: true
+    cellStyle:
+      display: flex
+      alignItems: center
+  columnDefs:
+    - headerName: Email
+      field: email
+      flex: 2
+      minWidth: 230
+    - headerName: Invited by
+      field: inviter_name
+      flex: 1
+      minWidth: 180
+      cell:
+        type: avatar
+        nameField: inviter_name
+        idField: inviter_id
+    - headerName: Roles
+      field: roles
+      minWidth: 160
+      cellRenderer:
+        _function:
+          __nunjucks:
+            template: >
+              <span style="display:inline-flex; gap:4px; flex-wrap:wrap; align-items:center">{% for r in roles %}{% if r.orphan %}<span title="Role no longer in the app's role catalog" style="display:inline-flex; align-items:center; gap:4px; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-gold-3); background:var(--ant-gold-1); color:var(--ant-gold-7)">⚑ {{ r.label }}</span>{% else %}<span style="display:inline-flex; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-color-border); background:var(--ant-color-fill-quaternary); color:var(--ant-color-text-secondary)">{{ r.label }}</span>{% endif %}{% endfor %}</span>
+            on:
+              roles:
+                __args: 0.data.roles
+    - headerName: Status
+      field: status
+      width: 120
+      cell:
+        type: tag
+        colorMap:
+          Invited: blue
+          Expired: default
+    - headerName: Expires
+      field: expires_at
+      width: 140
+      cell:
+        type: date
+        relative: true
+    # Per-action columns (stable colIds so onCellClick can distinguish them).
+    - headerName: ""
+      colId: action_resend
+      width: 90
+      cellStyle:
+        display: flex
+        alignItems: center
+        cursor: pointer
+      cellRenderer:
+        _function:
+          __nunjucks:
+            template: >
+              {% if status == 'Invited' %}<span style="display:inline-flex; align-items:center; height:24px; padding:0 8px; border-radius:6px; font-size:12px; border:1px solid var(--ant-color-border); color:var(--ant-color-text)">Resend</span>{% endif %}
+            on:
+              status:
+                __args: 0.data.status
+    - headerName: ""
+      colId: action_cancel
+      width: 80
+      cellStyle:
+        display: flex
+        alignItems: center
+        cursor: pointer
+      cellRenderer:
+        _function:
+          __nunjucks:
+            template: >
+              {% if status == 'Invited' %}<span style="display:inline-flex; align-items:center; height:24px; padding:0 8px; border-radius:6px; font-size:12px; border:1px solid var(--ant-red-3); color:var(--ant-red-6)">Cancel</span>{% endif %}
+            on:
+              status:
+                __args: 0.data.status
+    - headerName: ""
+      colId: action_reinvite
+      width: 110
+      cellStyle:
+        display: flex
+        alignItems: center
+        cursor: pointer
+      cellRenderer:
+        _function:
+          __nunjucks:
+            template: >
+              {% if status == 'Expired' %}<span style="display:inline-flex; align-items:center; height:24px; padding:0 8px; border-radius:6px; font-size:12px; border:1px solid var(--ant-color-border); color:var(--ant-color-text)">Re-invite</span>{% endif %}
+            on:
+              status:
+                __args: 0.data.status
+  rowData:
+    _request: get_all_invitations
+events:
+  onCellClick:
+    # Resend — InviteMember(resend) on a still-pending Invited row (Decision 7).
+    - id: resend_invitation
+      type: CallAPI
+      skip:
+        _or:
+          - _ne:
+              - _event: colId
+              - action_resend
+          - _ne:
+              - _event: row.status
+              - Invited
+      messages:
+        loading: Resending…
+        success: Invitation resent.
+      params:
+        endpointId:
+          _module.endpointId: resend-invitation
+        payload:
+          email:
+            _event: row.email
+          # Preserve the invitation's current roles + attributes (resend
+          # refreshes stored values, so re-send them rather than blank them).
+          roles:
+            _event: row.role_ids
+          member_attributes:
+            _event: row.member_attributes
+    # Cancel — CancelInvitation (reversible; re-invitable later, so no confirm
+    # modal on the list — the invite page's pending panel keeps the confirm).
+    - id: cancel_invitation
+      type: CallAPI
+      skip:
+        _ne:
+          - _event: colId
+          - action_cancel
+      messages:
+        loading: Cancelling…
+        success: Invitation cancelled.
+      params:
+        endpointId:
+          _module.endpointId: cancel-invitation
+        payload:
+          invitation_id:
+            _event: row._id
+          email:
+            _event: row.email
+    # Re-invite (Expired) — route to the invite flow with the email prefilled.
+    # The invite routine cancels the stale pending row before creating a fresh
+    # one (cancel-then-invite), so no duplicate is created.
+    - id: reinvite_expired
+      type: Link
+      skip:
+        _or:
+          - _ne:
+              - _event: colId
+              - action_reinvite
+          - _ne:
+              - _event: row.status
+              - Expired
+      params:
+        pageId:
+          _module.pageId: invite
+        urlQuery:
+          email:
+            _event: row.email
+    # Refetch after a resend/cancel (re-invite navigates away, so is excluded).
+    - id: refetch_after_action
+      type: Request
+      skip:
+        _and:
+          - _ne:
+              - _event: colId
+              - action_resend
+          - _ne:
+              - _event: colId
+              - action_cancel
+      params: get_all_invitations

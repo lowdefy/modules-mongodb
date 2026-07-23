@@ -1,0 +1,18 @@
+# Members tab refetch (design Decision 2). Reset to page 1 (so a changed
+# filter/sort walks the fully-ordered set from the top) then re-run the
+# server-side list read. Referenced by every members filter/sort change site.
+- id: reset_members_pagination
+  type: SetState
+  params:
+    pagination:
+      current: 1
+      skip: 0
+      pageSize:
+        _if_none:
+          - _state: pagination.pageSize
+          - 100
+- id: fetch_members
+  type: Request
+  messages:
+    loading: true
+  params: get_all_members

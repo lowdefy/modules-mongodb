@@ -1,0 +1,63 @@
+# Attributes tile (design Decision 3) — this app's access: roles + member
+# attributes. Edit opens modal_access (UpdateMemberRoles + UpdateMemberAttributes,
+# wired task 13). Roles render as tags from the app role catalog; a role held in
+# data but no longer in the catalog renders as a flagged "no longer configured"
+# chip and is never hidden (Decision 8). Member attributes come from the consumer
+# fields.member_attributes via SmartDescriptions.
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Attributes
+    header_buttons:
+      - id: attributes_edit_btn
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Edit
+          icon: AiOutlineEdit
+          size: small
+        events:
+          onClick:
+            - id: open_access_modal
+              type: CallMethod
+              params:
+                blockId: modal_access
+                method: toggleOpen
+    blocks:
+      # Roles — catalog-labelled tags; orphaned roles flagged (Decision 8).
+      - id: attributes_roles
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <div style="display:flex; align-items:baseline; gap:16px;">
+                  <span style="color:var(--ant-color-text-secondary); font-size:13px; min-width:88px; flex:0 0 auto;">Roles</span>
+                  <span style="display:flex; gap:4px; flex-wrap:wrap;">
+                  {% for r in roles %}
+                    {% if r.orphan %}
+                      <span title="Role no longer in the app's role catalog — can be removed but not re-added" style="display:inline-flex; align-items:center; gap:4px; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-warning-bg); border:1px solid var(--ant-color-warning-border); color:var(--ant-color-warning-text);">⚑ {{ r.label }}</span>
+                    {% else %}
+                      <span style="display:inline-flex; align-items:center; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">{{ r.label }}</span>
+                    {% endif %}
+                  {% endfor %}
+                  </span>
+                </div>
+              on:
+                # Roles split from member.role + catalog-resolved to
+                # { label, orphan } by the detail read (design Decision 8).
+                roles:
+                  _request: get_user_detail.0.roles
+      # Member attributes — consumer fields.member_attributes (state.member_attributes.*).
+      - id: attributes_view
+        type: SmartDescriptions
+        properties:
+          column: 1
+          size: small
+          data:
+            member_attributes:
+              _request: get_user_detail.0.member_attributes
+          fields:
+            _module.var: fields.member_attributes

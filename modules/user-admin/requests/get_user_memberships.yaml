@@ -1,0 +1,81 @@
+# Cross-app memberships read (design Decision 4/6) — the target's memberships in
+# OTHER apps of the suite (this pinned org excluded). ONE read powers three
+# things: (a) the Apps-tile badges, (b) the suspend dialog's blast-radius
+# enumeration, and (c) the other-membership COUNT that switches Decision 6
+# degradation (count 0 → hide Apps tile, plain "Suspend", enable Delete, collapse
+# "suite" copy). Joined to `user-organizations` for the org display name.
+#
+# Cross-app visibility rests on the trusted-operator deployment premise
+# (Decision 6); in a single-app deployment this naturally returns empty.
+id: get_user_memberships
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+payload:
+  user_id:
+    _url_query: userId
+properties:
+  pipeline:
+    - $match:
+        userId:
+          _payload: user_id
+        organizationId:
+          $ne:
+            _organization: id
+    - $lookup:
+        from: user-organizations
+        localField: organizationId
+        foreignField: _id
+        as: org
+    - $unwind:
+        path: "$org"
+        preserveNullAndEmptyArrays: true
+    - $addFields:
+        org_id: "$organizationId"
+        name:
+          $ifNull:
+            - "$org.name"
+            - "$organizationId"
+        app:
+          $ifNull:
+            - "$org.name"
+            - "$organizationId"
+        initial:
+          $toUpper:
+            $substrCP:
+              - $ifNull:
+                  - "$org.name"
+                  - "?"
+              - 0
+              - 1
+        roles:
+          $trim:
+            input:
+              $reduce:
+                input:
+                  $filter:
+                    input:
+                      $split:
+                        - $ifNull:
+                            - "$role"
+                            - ""
+                        - ","
+                    as: r
+                    cond:
+                      $ne:
+                        - "$$r"
+                        - ""
+                initialValue: ""
+                in:
+                  $concat:
+                    - "$$value"
+                    - ", "
+                    - "$$this"
+            chars: ", "
+    - $project:
+        _id: 0
+        org_id: 1
+        name: 1
+        app: 1
+        initial: 1
+        roles: 1

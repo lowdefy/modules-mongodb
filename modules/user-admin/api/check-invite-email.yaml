@@ -102,6 +102,9 @@ routine:
           inviterId: 1
           expiresAt: 1
           status: 1
+          # Invite-time member attributes — returned so the pending panel's
+          # Resend can preserve them rather than blank them.
+          attributes: 1
 
   # 4) Discriminated result. `state` is computed with the nested _if OPERATOR
   #    (test/then/else) in priority order: member → pending → contact → unknown.

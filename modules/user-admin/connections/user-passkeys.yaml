@@ -1,0 +1,11 @@
+# Read-only connection for the auth `user-passkeys` collection (registered
+# passkeys, one row per credential). Adapter-fixed collection name (mongodb
+# Decision 2). Same-database co-location precondition applies (see
+# module.lowdefy.yaml).
+id: user-passkeys
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-passkeys
+  write: false

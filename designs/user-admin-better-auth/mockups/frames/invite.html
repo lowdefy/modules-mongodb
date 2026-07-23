@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FRAME — invite (user-admin)</title>
+<style>
+/* The frame dialect stylesheet — assets/frame.css, verbatim. */
+@property --s {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 24;
+}
+@property --sm {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 24;
+}
+@property --g {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: #f0f0f2;
+}
+.c {
+  min-height: 1px;
+  flex: 0 0 calc(var(--sm) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+  max-width: calc(var(--sm) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+}
+@media (min-width: 768px) {
+  .c {
+    flex-basis: calc(var(--s) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+    max-width: calc(var(--s) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+  }
+}
+.fi {
+  flex: 0 1 auto;
+  max-width: none;
+  min-height: 1px;
+}
+.sp {
+  flex: 1 0 auto;
+  max-width: none;
+}
+.r {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  column-gap: var(--g, 0px);
+  row-gap: var(--g, 0px);
+}
+.r.top {
+  align-items: flex-start;
+}
+.r.mid {
+  align-items: center;
+}
+.r.sb {
+  justify-content: space-between;
+}
+.r.ctr {
+  justify-content: center;
+  align-items: center;
+}
+.card {
+  background: #ffffff;
+  border: 1px solid #d9d9de;
+  border-radius: 10px;
+}
+.ph {
+  background: #dcdce1;
+  border-radius: 6px;
+}
+.shell {
+  background: #cdced4;
+}
+.ovl {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 16, 20, 0.45);
+}
+.ovl.right {
+  justify-content: flex-end;
+  align-items: stretch;
+}
+.ovl.left {
+  justify-content: flex-start;
+  align-items: stretch;
+}
+.c[id],
+.fi[id] {
+  position: relative;
+}
+.c[id]::before,
+.fi[id]::before {
+  content: attr(id);
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  z-index: 2;
+  font:
+    500 9px/1 ui-monospace,
+    Menlo,
+    monospace;
+  color: #595963;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 2px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.ph[id]::before {
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #595963;
+  background: none;
+  padding: 0;
+}
+</style>
+</head>
+<body>
+  <!-- FRAME for the `invite` page (email-first check-then-invite, Decision 7).
+       Geometry derived from mockups/screens/invite.html CSS:
+       .appbar height 56  ·  .canvas max-width 800, margin 0 auto, padding 24 32 40
+       Shell (56) + wrapper padding-top (24) = 80 = mock first-content y.
+
+       Resolution slot: the mock shows six panels (resting / checking / unknown /
+       existing / member / pending). unknown & existing are the SAME invitation-
+       details form (blank vs prefilled) — and that form embeds shared consumer
+       field blocks (fields.member_attributes, profile fields) whose ids are fixed
+       and cannot appear twice on one page. Per design Decision 7 (one form, blank
+       or prefilled) they collapse to ONE `state_form` layer; prefill is data (wire
+       task). So five in-flow layers here, each a separable visibility layer keyed
+       off the resolved state. The base render shows `state_resting`. -->
+  <div class="r">
+    <div class="c" id="page">
+      <div class="r">
+        <!-- Page shell (layout `page` component: appbar + breadcrumb, component-owned) -->
+        <div class="c shell" id="shell" style="height:56px"></div>
+
+        <div class="c" id="content" style="max-width:800px; margin:0 auto; padding:24px 32px 40px">
+          <div class="r" style="--g:16px">
+
+            <!-- ── title-block (shared) — "Invite user" + sub-line, no page actions ── -->
+            <div class="c" id="invite_titlebar" data-ldf-component="title-block">
+              <div class="r top">
+                <div class="fi ph" id="title_text" style="width:300px; height:46px"></div>
+              </div>
+            </div>
+
+            <!-- ── Area 1: email entry card ("Who are you inviting?") ──
+                 Two separable layers in the body: entry (resting, input open) and
+                 resolved (email locked once the check resolves to an outcome). -->
+            <div class="c card" id="invite_email" data-ldf-component="card">
+              <div class="r">
+                <div class="c" id="invite_email_head" style="--s:24; padding:12px 16px">
+                  <div class="r mid">
+                    <div class="fi ph" id="invite_email_title" style="width:200px; height:22px"></div>
+                  </div>
+                </div>
+                <div class="c" id="invite_email_body" style="--s:24; padding:16px">
+                  <div class="r">
+
+                    <!-- LAYER: entry (resting/checking — input open) -->
+                    <div class="c" id="email_entry" data-ldf-layer-hide="email_resolved">
+                      <div class="r" style="--g:8px">
+                        <div class="c" id="email_input_row" style="--s:24">
+                          <div class="r top" style="--g:8px">
+                            <div class="fi ph" id="email_input" style="width:340px; height:56px"></div>
+                            <div class="fi ph" id="email_check_btn" style="width:88px; height:40px"></div>
+                          </div>
+                        </div>
+                        <div class="c ph" id="email_hint" style="--s:24; height:18px"></div>
+                      </div>
+                    </div>
+
+                    <!-- LAYER: resolved (outcome — email locked, "use a different email") -->
+                    <div class="c" id="email_resolved" data-ldf-layer="email_resolved" hidden>
+                      <div class="r mid" style="--g:8px">
+                        <div class="fi ph" id="resolved_email" style="width:280px; height:24px"></div>
+                        <div class="fi ph" id="email_change_btn" style="width:160px; height:24px"></div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── Area 2: resolution slot — one layer shown at a time (visibility,
+                 keyed off the resolved state). Base render = resting. ── -->
+            <div class="c" id="invite_result" style="--s:24">
+              <div class="r" style="--g:16px">
+
+                <!-- LAYER: resting — light inline hint, no card chrome -->
+                <div class="c" id="state_resting" data-ldf-layer="state_resting">
+                  <div class="r">
+                    <div class="c ph" id="resting_hint" style="--s:24; height:18px"></div>
+                  </div>
+                </div>
+
+                <!-- LAYER: checking — async resolve in flight -->
+                <div class="c card" id="state_checking" data-ldf-layer="state_checking" data-ldf-component="card" hidden>
+                  <div class="r">
+                    <div class="c ph" id="checking_panel" style="--s:24; height:72px"></div>
+                  </div>
+                </div>
+
+                <!-- LAYER: form — invitation details (serves unknown + existing;
+                     blank vs prefilled is seeded state, a wire concern) -->
+                <div class="c card" id="state_form" data-ldf-layer="state_form" data-ldf-component="card" hidden>
+                  <div class="r">
+                    <div class="c" id="form_head" style="--s:24; padding:12px 16px">
+                      <div class="r mid">
+                        <div class="fi ph" id="form_title" style="width:160px; height:22px"></div>
+                      </div>
+                    </div>
+                    <div class="c" id="form_body" style="--s:24; padding:16px">
+                      <div class="r" style="--g:16px">
+                        <div class="c ph" id="form_full_name" style="--s:12; --sm:24; height:56px"></div>
+                        <div class="c ph" id="form_phone" style="--s:12; --sm:24; height:56px"></div>
+                        <div class="c ph" id="form_job_title" style="--s:12; --sm:24; height:56px"></div>
+                        <div class="c ph" id="form_roles" style="--s:24; height:60px"></div>
+                        <div class="c ph" id="form_member_attributes" style="--s:24; height:60px"></div>
+                        <div class="c ph" id="form_member_attributes_hint" style="--s:24; height:20px"></div>
+                        <div class="c" id="form_actions" style="--s:24">
+                          <div class="r" style="--g:8px">
+                            <div class="sp"></div>
+                            <div class="fi ph" id="form_cancel_btn" style="width:80px; height:32px"></div>
+                            <div class="fi ph" id="form_send_btn" style="width:140px; height:32px"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- LAYER: already a member — link to the user detail page -->
+                <div class="c card" id="state_member" data-ldf-layer="state_member" data-ldf-component="card" hidden>
+                  <div class="r">
+                    <div class="c ph" id="member_panel" style="--s:24; height:72px"></div>
+                  </div>
+                </div>
+
+                <!-- LAYER: pending invitation — resend / cancel -->
+                <div class="c card" id="state_pending" data-ldf-layer="state_pending" data-ldf-component="card" hidden>
+                  <div class="r">
+                    <div class="c ph" id="pending_panel" style="--s:24; height:72px"></div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ INTERACTION-STATE LAYER: confirm cancel invitation (Decision 7) ═══
+       Trigger lives in state_pending (Cancel invitation button). Panel width 440,
+       centred: x = (1440 − 440) / 2 = 500. -->
+  <div class="ovl" data-ldf-layer="modal_cancel">
+    <div class="c card" id="modal_cancel" style="width:440px; max-width:440px">
+      <div class="r">
+        <div class="c" id="modal_cancel_head" style="--s:24; padding:16px 24px">
+          <div class="r top" style="--g:12px">
+            <div class="fi ph" id="modal_cancel_icon" style="width:32px; height:32px"></div>
+            <div class="fi ph" id="modal_cancel_title" style="width:320px; height:64px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_cancel_foot" style="--s:24; padding:16px 24px">
+          <div class="r sb">
+            <div class="sp"></div>
+            <div class="fi ph" id="modal_cancel_keep" style="width:130px; height:32px"></div>
+            <div class="fi ph" id="modal_cancel_confirm" style="width:140px; height:32px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

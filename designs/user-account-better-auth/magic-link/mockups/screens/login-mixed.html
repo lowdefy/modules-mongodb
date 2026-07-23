@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>Login · mixed (password + magic-link) — user-account</title>
+<link rel="stylesheet" href="mock.css" />
+<style>
+  .auth-page{width:360px}
+  /* magic-link send demotes to an alternative-method button (peer of OAuth/passkey) */
+  .g-mail{background:var(--violet)}
+  #ls_signin:checked   ~ .stage .layer[data-layer=signin]{display:block}
+  #ls_linksent:checked ~ .stage .layer[data-layer=linksent]{display:block}
+  #ls_invalid:checked  ~ .stage .layer[data-layer=invalid]{display:block}
+  #ls_signin:checked   ~ .statebar label[for=ls_signin],
+  #ls_linksent:checked ~ .statebar label[for=ls_linksent],
+  #ls_invalid:checked  ~ .statebar label[for=ls_invalid]{background:var(--violet);color:#fff}
+</style>
+</head>
+<body>
+<div class="mock">
+  <input type="radio" name="login_state" id="ls_signin" checked />
+  <input type="radio" name="login_state" id="ls_linksent" />
+  <input type="radio" name="login_state" id="ls_invalid" />
+  <div class="statebar">
+    <span class="lbl">Login states · mixed config (emailAndPassword on · magicLink on · Google · passkey)</span>
+    <label for="ls_signin">Sign in (resting)</label>
+    <label for="ls_linksent">Link sent</label>
+    <label for="ls_invalid">Expired link (retryable)</label>
+  </div>
+  <div class="stage">
+
+    <!-- ============ Layer: sign in (resting) — password primary, magic-link demoted to alt method ============ -->
+    <div class="layer" data-layer="signin">
+      <div class="auth-page" id="login_page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover" id="auth_cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3 id="login_title">Sign in</h3>
+            <p class="lead">Welcome back. Use your work email to continue.</p>
+            <!-- one shared email input, read by BOTH the password submit and the magic-link send -->
+            <div class="frow" id="login_email"><label>Email</label><div class="inp"><input value="jane.mokoena@example.com"/><span class="aff">&#9993;</span></div></div>
+            <div class="frow" id="login_password"><label>Password <span class="spacer"><a class="btn link" id="login_forgot_link" href="#">Forgot?</a></span></label><div class="inp"><input type="password" value="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/><span class="aff">&#128065;</span></div></div>
+            <button class="btn pri lg block" id="login_submit">Sign in</button>
+            <div class="div-or" id="login_alt_divider">or</div>
+            <button class="provider" id="login_magic_send"><span class="glyph g-mail">&#9993;</span> Email me a sign-in link</button>
+            <button class="provider" id="login_oauth_google"><span class="glyph g-google">G</span> Continue with Google</button>
+            <button class="provider" id="login_passkey"><span class="glyph g-key">&#9917;</span> Sign in with a passkey</button>
+          </div>
+        </div>
+        <div class="auth-footer" id="login_footer">New here? <a href="#">Create an account</a></div>
+      </div>
+    </div>
+
+    <!-- ============ Layer: link sent (login_view: link-sent) — same result state as passwordless ============ -->
+    <div class="layer" data-layer="linksent">
+      <div class="auth-page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <div class="result" id="login_link_sent">
+              <div class="ric" style="background:var(--ok-bg);color:var(--ok-fg)">&#9993;</div>
+              <div class="rt">Check your email</div>
+              <div class="rs">We've emailed a sign-in link to <strong>jane.mokoena@example.com</strong>. Open it on this device to continue — the link expires in a few minutes.</div>
+            </div>
+            <button class="btn lg block" id="login_resend" disabled>Resend link (30s)</button>
+            <button class="btn link" id="login_back_to_form" style="align-self:center">Use a different email</button>
+          </div>
+        </div>
+        <div class="auth-footer">Didn't get it? Check spam, or resend once the timer clears.</div>
+      </div>
+    </div>
+
+    <!-- ============ Layer: expired link (?error=INVALID_TOKEN → login_view: signin, full form stays reachable) ============ -->
+    <div class="layer" data-layer="invalid">
+      <div class="auth-page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3>Sign in</h3>
+            <div class="authalert warn" id="login_notice_alert"><span class="ai">&#9203;</span><div><div class="at">Link expired</div><div class="ax">This link has expired or was already used — request a new one below.</div></div></div>
+            <div class="frow"><label>Email</label><div class="inp"><input value="jane.mokoena@example.com"/><span class="aff">&#9993;</span></div></div>
+            <div class="frow"><label>Password <span class="spacer"><a class="btn link" href="#">Forgot?</a></span></label><div class="inp"><input type="password" value="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/><span class="aff">&#128065;</span></div></div>
+            <button class="btn pri lg block">Sign in</button>
+            <div class="div-or">or</div>
+            <button class="provider"><span class="glyph g-mail">&#9993;</span> Email me a sign-in link</button>
+            <button class="provider"><span class="glyph g-google">G</span> Continue with Google</button>
+            <button class="provider"><span class="glyph g-key">&#9917;</span> Sign in with a passkey</button>
+          </div>
+        </div>
+        <div class="auth-footer">New here? <a href="#">Create an account</a></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

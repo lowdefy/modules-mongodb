@@ -1,13 +1,253 @@
-# Stub — built out in task 14. Minimal valid auth page so `_ref`s resolve and
-# the module builds; real content added by the screen task.
+# Two-factor page — task 14. Module-internal 2FA sign-in challenge (Decision 2 —
+# routed to by login; not an authPages role). Two renders via the `tf_view` state
+# key (auth | backup): the authenticator-code state at rest and the backup-code
+# alternate. The auth<->backup toggle is a pure UI affordance (SetState). Verify
+# dispatches through TwoFactorVerify (code or backupCode, both with trustDevice);
+# on success the page navigates to complete sign-in. No QR here (that's the
+# enrolment flow, task 18).
 _ref:
   module: layout
   component: auth-page
   vars:
     id: two-factor
-    title: Two-factor authentication
+    title: ""
+    events:
+      onInit:
+        # authenticator state at rest; trust-device pre-checked (mock default).
+        - id: seed_tf_view
+          type: SetState
+          params:
+            tf_view: auth
+            trust_device: true
     blocks:
-      - id: placeholder
-        type: Paragraph
+      # ---- Authenticator-code state ----
+      - id: tf_title
+        type: Title
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
         properties:
-          content: TODO(screen) — Two-factor authentication page, built in task 14.
+          content: Enter your code
+          level: 3
+      - id: tf_lead
+        type: Html
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        properties:
+          html: Open your authenticator app and enter the 6-digit code.
+        style:
+          marginTop: -8
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+      # 6-digit TOTP code — data path `code`. No dedicated OTP block exists, so a
+      # large centered TextInput carries the code.
+      - id: code
+        type: TextInput
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        required: true
+        properties:
+          size: large
+          maxLength: 6
+          placeholder: "000000"
+          label:
+            disabled: true
+        style:
+          .element:
+            textAlign: center
+            letterSpacing: 8
+            fontFamily: var(--mono)
+      - id: trust_device
+        type: CheckboxSwitch
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        properties:
+          description: Trust this device for 30 days
+      # Verify the TOTP code. TwoFactorVerify sets the session cookie itself but
+      # does not navigate, so on success we navigate to the callbackUrl carried
+      # from login (?callbackUrl=), completing sign-in.
+      - id: tf_verify
+        type: Button
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        properties:
+          title: Verify
+          block: true
+          size: large
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            try:
+              - id: tf_verify_totp
+                type: TwoFactorVerify
+                messages:
+                  error: false
+                params:
+                  code:
+                    _state: code
+                  trustDevice:
+                    _state: trust_device
+              - id: tf_totp_continue
+                type: Link
+                params:
+                  url:
+                    _if_none:
+                      - _url_query: callbackUrl
+                      - "/"
+            catch:
+              - id: tf_totp_error
+                type: DisplayMessage
+                params:
+                  status: error
+                  content: That code is incorrect or has expired. Try again.
+      # "Lost your device? Use a backup code" — UI toggle to the backup state.
+      - id: tf_use_backup_row
+        type: Box
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        layout:
+          justify: center
+          align: middle
+        blocks:
+          - id: tf_use_backup_text
+            type: Html
+            layout:
+              flex: 0 1 auto
+            properties:
+              html: Lost your device?
+            style:
+              fontSize: 13
+              color: "var(--ant-color-text-secondary)"
+          - id: tf_use_backup
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Use a backup code
+              variant: link
+              color: primary
+              size: small
+            events:
+              onClick:
+                - id: show_backup
+                  type: SetState
+                  params:
+                    tf_view: backup
+
+      # ---- Backup-code state ----
+      - id: tf_backup_title
+        type: Title
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        properties:
+          content: Use a backup code
+          level: 3
+      - id: tf_backup_lead
+        type: Html
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        properties:
+          html: Enter one of the single-use codes you saved when you set up two-factor authentication.
+        style:
+          marginTop: -8
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+      # Backup code — data path `backup_code`.
+      - id: backup_code
+        type: TextInput
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        required: true
+        properties:
+          size: large
+          placeholder: xxxx-xxxx
+          label:
+            title: Backup code
+            colon: false
+            span: 24
+        style:
+          .element:
+            fontFamily: var(--mono)
+      # Verify a backup code — same TwoFactorVerify action (dispatches on the
+      # backupCode param), same success navigation.
+      - id: tf_backup_verify
+        type: Button
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        properties:
+          title: Verify
+          block: true
+          size: large
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            try:
+              - id: tf_verify_backup
+                type: TwoFactorVerify
+                messages:
+                  error: false
+                params:
+                  backupCode:
+                    _state: backup_code
+                  trustDevice:
+                    _state: trust_device
+              - id: tf_backup_continue
+                type: Link
+                params:
+                  url:
+                    _if_none:
+                      - _url_query: callbackUrl
+                      - "/"
+            catch:
+              - id: tf_backup_error
+                type: DisplayMessage
+                params:
+                  status: error
+                  content: That backup code is invalid or has already been used. Try another.
+      # Back to the authenticator state — UI toggle.
+      - id: tf_back_to_auth_row
+        type: Box
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        layout:
+          justify: center
+          align: middle
+        blocks:
+          - id: tf_back_to_auth
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: "← Back to authenticator code"
+              variant: link
+              color: primary
+              size: small
+            events:
+              onClick:
+                - id: show_auth
+                  type: SetState
+                  params:
+                    tf_view: auth

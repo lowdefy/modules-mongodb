@@ -79,7 +79,7 @@ routine:
                           key: update-profile
                   on:
                     user:
-                      _step: read_contact
+                      _step: reread_contact
               description: null
             references:
               contact_ids:

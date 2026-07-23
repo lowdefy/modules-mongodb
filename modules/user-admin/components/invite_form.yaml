@@ -1,0 +1,176 @@
+# LAYER: invitation-details form (state_form) — serves the unknown (blank) AND
+# existing-contact (prefilled) outcomes (design Decision 7). Blank vs prefilled is
+# seeded state (task 17); the form structure is identical, so it is one layer.
+# Submit = create-or-link contact → InviteMember (roles + member attributes),
+# via the invite routine (see invite_send_btn).
+#
+# Wrapper Box carries the frame id + the visibility condition; the shared card
+# renders the form body. Roles come from the app role catalog (auth.roles,
+# Decision 8); member attributes from the consumer `fields.member_attributes` var.
+id: state_form
+type: Box
+visible:
+  _or:
+    - _eq:
+        - _state: invite_state
+        - unknown
+    - _eq:
+        - _state: invite_state
+        - existing
+blocks:
+  - _ref:
+      module: layout
+      component: card
+      vars:
+        title: Invitation details
+        # `fields.member_attributes` resolves to an ARRAY of consumer blocks, so the
+        # built-ins concat around it (flattened) — the same pattern as modal_access.
+        blocks:
+          _build.array.concat:
+            # Profile capture — canonical form_core (first/last, both required, +
+            # optional honorific) plus the consumer `fields.profile` blocks,
+            # identical to modal_profile. Fields bind state.profile.*; prefilled
+            # from the resolved contact for the existing-contact outcome
+            # (state.profile.* seeded by the check's apply_resolution), blank for
+            # unknown. Persisted on submit via the invite routine's write-profile
+            # splice; profile.name is derived (given + family), so no free-text
+            # full_name field.
+            - _ref:
+                path: ../shared/profile/form_core.yaml
+                vars:
+                  show_honorific:
+                    _module.var: fields.show_honorific
+            - _module.var: fields.profile
+              # Roles — options/labels/descriptions from the app role catalog
+              # (_build.authConfig.roles, Decision 8): the option label renders the
+              # role label (primary) + description (subtitle); the selected tag stays
+              # compact (tag.title). See the options block below.
+            - - id: roles
+                type: MultipleSelector
+                required: true
+                layout:
+                  span: 24
+                properties:
+                  title: Roles
+                  placeholder: Select roles…
+                  renderTags: true
+                  # Options from the app role catalog (design Decision 8): value=id,
+                  # a rich label (name + description subtitle), filterString for
+                  # search, and a compact tag for the selected chip.
+                  #
+                  # NOTE (running-engine gap): _build.authConfig is not yet
+                  # available to module config; design-faithful per the build-red
+                  # directive, resolves once the engine ships the catalog
+                  # projection (upstream ask 7).
+                  options:
+                    _build.array.map:
+                      on:
+                        _build.authConfig: roles
+                      callback:
+                        _build.function:
+                          value:
+                            __build.args: 0.id
+                          filterString:
+                            __build.args: 0.label
+                          tag:
+                            title:
+                              __build.args: 0.label
+                            color: purple
+                          label:
+                            __build.string.concat:
+                              - "<div>"
+                              - __build.args: 0.label
+                              - "</div>"
+                              - __build.if:
+                                  test:
+                                    __build.ne:
+                                      - __build.args: 0.description
+                                      - null
+                                  then:
+                                    __build.string.concat:
+                                      - '<div style="font-size:12px; color:var(--ant-color-text-tertiary); line-height:1.4;">'
+                                      - __build.args: 0.description
+                                      - "</div>"
+                                  else: ""
+              # Member attributes — group label above the consumer fields.
+              - id: member_attributes_label
+                type: Html
+                properties:
+                  html: >-
+                    <div style="font-size:13px; font-weight:500;
+                    color:var(--ant-color-text-secondary);">Member attributes</div>
+            # This app's authorization parameters (member row), from the consumer
+            # `fields.member_attributes` blocks (bind state.member_attributes.*).
+            - _module.var: fields.member_attributes
+            # Captured now: they must hold from the first session (Decision 7).
+            - - id: member_attributes_hint
+                type: Html
+                properties:
+                  html: >-
+                    <div style="font-size:12px; color:var(--ant-color-text-tertiary);">
+                    Captured now — authorization parameters the user must hold from
+                    their first session.</div>
+              # Form actions — right-aligned, inside the card body (matches the mock).
+              - id: form_actions
+                type: Box
+                layout:
+                  gap: 8
+                  justify: end
+                blocks:
+                  - id: invite_cancel_btn
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Cancel
+                      variant: outlined
+                    events:
+                      onClick:
+                        - id: cancel_invite
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: all
+                  - id: invite_send_btn
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Send invitation
+                      icon: AiOutlineMail
+                      color: primary
+                      variant: solid
+                    events:
+                      onClick:
+                        - id: validate_invite
+                          type: Validate
+                          params: state_form
+                        # invite routine: reconcile stale-expired → create-or-link
+                        # contact → persist profile (write-profile) → InviteMember
+                        # (profile.contactId + roles + attributes) → audit. The
+                        # email is sent by BetterAuth via auth.email (no module
+                        # dispatch). Roles submit as catalog ids. `profile` is the
+                        # whole state.profile bag; profile.name is derived from
+                        # given/family in write-profile.
+                        - id: send_invite
+                          type: CallAPI
+                          messages:
+                            loading: Sending invitation…
+                            success: Invitation sent.
+                          params:
+                            endpointId:
+                              _module.endpointId: invite
+                            payload:
+                              email:
+                                _state: email
+                              roles:
+                                _state: roles
+                              member_attributes:
+                                _state: member_attributes
+                              profile:
+                                _state: profile
+                        - id: after_invite
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: all

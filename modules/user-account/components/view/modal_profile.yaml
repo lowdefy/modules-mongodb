@@ -1,0 +1,119 @@
+# Edit profile modal (design Decision 5) — the caller's own profile edit. Save =
+# the write-profile routine (change-stamped contact write + UpdateUserProfile
+# re-denorm) via the update-profile API, which derives the contact/user ids from
+# `_user` (self-service — no ids in the payload). On a successful save we fire
+# UpdateSession so the layout header/avatar/menus pick up the new profile without
+# a reload (Decision 6 — UpdateSession is a CLIENT action and cannot run inside
+# the server routine, so it fires here in onOk after the API returns), then
+# re-fetch the tiles. Fields bind state.profile.*; email is NOT edited here
+# (verification flow, a v1 non-goal — Decision 6). A validation failure in onOk
+# throws and keeps the modal open.
+id: modal_profile
+type: Modal
+properties:
+  title: Edit profile
+  width: 560
+  okText: Save profile
+  cancelText: Cancel
+events:
+  onOpen:
+    - id: seed_profile
+      type: SetState
+      params:
+        profile:
+          _request: get_account.0.profile
+        avatar_color_index: 0
+  onOk:
+    _build.array.concat:
+      - - id: validate_profile
+          type: Validate
+          params: modal_profile
+        # write-profile fragment (via update-profile): change-stamped contact
+        # write + UpdateUserProfile re-denorm of the caller's own user.profile bag.
+        - id: save_profile
+          type: CallAPI
+          messages:
+            loading: Saving…
+            success: Profile updated.
+          params:
+            endpointId:
+              _module.endpointId: update-profile
+            payload:
+              profile:
+                _state: profile
+        # Refresh the caller's _user so header/avatar/menus reflect the new
+        # profile without a reload (Decision 6).
+        - id: refresh_session
+          type: UpdateSession
+      - _ref: actions/refetch_account.yaml
+blocks:
+  _build.array.concat:
+    # Avatar preview + colour picker (mirrors onboarding). Initials from the
+    # entered name; background from the currently selected avatar_colors gradient.
+    - - id: profile_avatar_edit
+        type: Box
+        layout:
+          gap: 8
+          justify: center
+        style:
+          flexDirection: column
+          alignItems: center
+          marginBottom: 8
+        blocks:
+          - id: profile_avatar_face
+            type: Avatar
+            properties:
+              content:
+                _nunjucks:
+                  template: "{{ (given or '') | first | upper }}{{ (family or '') | first | upper }}"
+                  on:
+                    given:
+                      _state: profile.given_name
+                    family:
+                      _state: profile.family_name
+              size: large
+              theme:
+                containerSizeLG: 64
+                textFontSizeLG: 24
+            style:
+              .element:
+                background:
+                  _nunjucks:
+                    template: "linear-gradient(135deg, {{ colors[i].from }}, {{ colors[i].to }})"
+                    on:
+                      colors:
+                        _module.var: avatar_colors
+                      i:
+                        _state: avatar_color_index
+          - id: profile_avatar_color
+            type: Button
+            properties:
+              title: Change colour
+              icon: AiOutlineReload
+              size: small
+              shape: round
+            events:
+              onClick:
+                - id: cycle_avatar_color
+                  type: SetState
+                  params:
+                    avatar_color_index:
+                      _if:
+                        test:
+                          _gte:
+                            - _sum:
+                                - _state: avatar_color_index
+                                - 1
+                            - _array.length:
+                                _module.var: avatar_colors
+                        then: 0
+                        else:
+                          _sum:
+                            - _state: avatar_color_index
+                            - 1
+    - _ref:
+        path: ../shared/profile/form_core.yaml
+        vars:
+          show_honorific:
+            _module.var: fields.show_honorific
+    - _module.var: fields.profile

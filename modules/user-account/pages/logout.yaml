@@ -1,13 +1,48 @@
-# Stub — built out in task 16. Minimal valid auth page so `_ref`s resolve and
-# the module builds; real content added by the screen task.
+# Logout page — task 16 (UI pipeline only; wiring deferred).
+# Public signed-out confirmation. The Logout action (fired on load per the mock)
+# and its ordering are the wire task; the confirmation render is built here.
 _ref:
   module: layout
   component: auth-page
   vars:
     id: logout
-    title: Sign out
+    title: ""
+    events:
+      onInit:
+        # Sign out on load, then render the confirmation. Skip when there is no
+        # session so the session provider's post-sign-out reload doesn't loop
+        # (on the reload `_user` is already null).
+        - id: do_logout
+          type: Logout
+          skip:
+            _eq:
+              - _user: id
+              - null
+        - id: seed_logout
+          type: SetState
+          params:
+            logged_out: true
     blocks:
-      - id: placeholder
-        type: Paragraph
+      - id: logout_message
+        type: Html
         properties:
-          content: TODO(screen) — Sign out page, built in task 16.
+          html: <div class="text-lg font-semibold">You're signed out</div><div class="text-sm mt-1 opacity-70">Thanks for stopping by. Your session on this device has ended.</div>
+        style:
+          textAlign: center
+          padding: "12px 0 4px"
+      - id: logout_sign_in_again
+        type: Button
+        properties:
+          title: Sign in again
+          block: true
+          size: large
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            - id: go_login
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: login
+    nav: []

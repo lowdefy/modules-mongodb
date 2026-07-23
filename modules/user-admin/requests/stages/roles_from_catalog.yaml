@@ -1,0 +1,56 @@
+# Resolve split role ids against the app's authored role catalog
+# (`_build.authConfig.roles`, design Decision 8) — the single source of truth
+# for role labels. Each id in `roles_arr` becomes { label, orphan }:
+#   label  — the catalog `label` for the id, or the raw id when unmatched
+#   orphan — true when the id is held in data but absent from the catalog
+#            (a role removed from config); rendered flagged "no longer
+#            configured", never silently stripped (Decision 8).
+# Empty CSV entries are dropped.
+#
+# NOTE (running-engine gap): `_build.authConfig` is not yet available to module
+# config in the experimental @lowdefy/server build (it throws "cannot be used
+# inside the auth block"). This stage is written design-faithful per Decision 8
+# and the user's build-red directive; it resolves once the engine ships the
+# catalog projection to modules (upstream ask 7).
+$addFields:
+  roles:
+    $map:
+      input:
+        $filter:
+          input:
+            $ifNull:
+              - "$roles_arr"
+              - []
+          as: r
+          cond:
+            $ne:
+              - "$$r"
+              - ""
+      as: rid
+      in:
+        label:
+          $let:
+            vars:
+              hit:
+                $first:
+                  $filter:
+                    input:
+                      _build.authConfig: roles
+                    as: c
+                    cond:
+                      $eq:
+                        - "$$c.id"
+                        - "$$rid"
+            in:
+              $ifNull:
+                - "$$hit.label"
+                - "$$rid"
+        orphan:
+          $not:
+            - $in:
+                - "$$rid"
+                - $map:
+                    input:
+                      _build.authConfig: roles
+                    as: c
+                    in: "$$c.id"

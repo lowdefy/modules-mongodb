@@ -1,0 +1,59 @@
+# Delete-login-identity confirm modal — DeleteUser (Decision 4). Only reachable
+# when the person holds no other memberships (the trigger button is disabled
+# otherwise); the routine re-checks. The contact record always survives. onOk
+# (CallAPI delete-user) is wired in task 13.
+id: modal_delete
+type: Modal
+properties:
+  title: Delete login identity?
+  width: 480
+  okText: Delete identity
+  cancelText: Cancel
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    # DeleteUser (Decision 4). The routine re-checks no-other-memberships
+    # server-side. The user row is hard-deleted (contact survives) → return to
+    # the list.
+    - id: delete_user
+      type: CallAPI
+      messages:
+        loading: Deleting…
+        success: Login identity deleted.
+      params:
+        endpointId:
+          _module.endpointId: delete-user
+        payload:
+          user_id:
+            _request: get_user_detail.0.user_id
+          target_name:
+            _request: get_user_detail.0.name
+          target_email:
+            _request: get_user_detail.0.email
+    - id: back_to_list_after_delete
+      type: Link
+      params:
+        pageId:
+          _module.pageId: all
+blocks:
+  - id: delete_message
+    type: Html
+    properties:
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Permanently deletes this person''s login. This is only possible when they belong to no other apps. Their contact record is kept.</div>'
+  - id: delete_precondition
+    type: Html
+    properties:
+      # The trigger button is disabled unless the person has no other
+      # memberships, so this modal normally opens only when safe; the copy still
+      # reflects the live count defensively (Decision 4).
+      html:
+        _nunjucks:
+          template: >-
+            {% if others > 0 %}<div style="margin-top:12px; padding:8px 12px; border:1px solid var(--ant-color-warning-border); border-radius:6px; background:var(--ant-color-warning-bg); font-size:13px; color:var(--ant-color-warning-text);">⚑ This person still belongs to {{ others }} other app{{ 's' if others > 1 }} — remove those first.</div>{% else %}<div style="margin-top:12px; padding:8px 12px; border:1px solid var(--ant-color-success-border); border-radius:6px; background:var(--ant-color-success-bg); font-size:13px; color:var(--ant-color-success-text);">✓ No other memberships — safe to delete.</div>{% endif %}
+          on:
+            others:
+              _array.length:
+                _if_none:
+                  - _request: get_user_memberships
+                  - []

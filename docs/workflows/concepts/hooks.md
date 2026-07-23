@@ -55,7 +55,7 @@ hooks:
   # progress / not_required / resolve_error omitted — engine runs the default path
 ```
 
-Both `pre:` and `post:` are optional per signal. Hook declarations are `hooks.{signal}.pre` and `hooks.{signal}.post`. Only button-surfaced signals can carry hooks — engine-internal signals (`unblock`, `internal_*`) have no hook-dispatch point.
+Both `pre:` and `post:` are optional per signal. Hook declarations are `hooks.{signal}.pre` and `hooks.{signal}.post`. Only button-surfaced signals can carry hooks — engine-internal / cascade signals (`unblock`, `activate`, `require`, `block`, `internal_*`) have no hook-dispatch point.
 
 **Hooks are internal-only APIs.** They have no HTTP entry point of their own. They are callable only via the engine's internal `context.callApi` from the submit endpoint. The submit endpoint's access check is the sole gate — if you can fire the signal, you can run its hooks.
 
@@ -93,6 +93,7 @@ A pre-hook may return:
   actions: # optional — signals against other actions in this workflow
     - { type: send-quote, signal: unblock }
     - { type: upload-po, signal: not_required }
+    - { type: extra-review, signal: require } # reopen a not-required action
     - { type: site-visit, signal: activate, upsert: true } # spawn a new keyed instance
   event_overrides: # optional — merged over the engine's default log-event shape
     type: lead-qualified

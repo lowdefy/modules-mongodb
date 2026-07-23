@@ -20,7 +20,7 @@
 # enum components below are UI-only consumers.
 
 name: Workflows
-version: 0.12.0
+version: 0.14.1
 description: Workflow engine — action lifecycle, status transitions, hooks, trackers
 
 dependencies:
@@ -82,7 +82,6 @@ vars:
         display name; all other keys are host-owned and available on the action
         response's `entity` object and via the `entity_view` slot. Omit it and
         chrome falls back to the `title` type label and no endpoint is emitted.
-        (Replaces the former `name_field` dot-path.)
       - `list_page_id` + `list_title` (optional pair) — the host-app entity-LIST
         page id and its (plural) crumb label. Set both to prepend a list crumb to
         the action-page breadcrumb so the trail mirrors the host app's own entity
@@ -169,6 +168,18 @@ vars:
 
 exports:
   components:
+    - id: workflow-progress
+      description: >
+        Entity workflow-progress surface — renders the entity's workflows as
+        collapsible sections of grouped, status-colored action buttons (the
+        WorkflowProgress block), a presentation variant of `actions-on-entity`
+        with the same data contract and the shared check-action-click handler
+        baked in. Vars: entity_id, entity_connection_id (required);
+        active_action_id, default_active_keys, active_keys, on_change (optional
+        — active_keys + on_change give the page controlled expansion);
+        fetch_on_mount (optional, default true — set false when the page owns
+        the entity_workflows fetch, e.g. via entity-workflows-refetch). Pair
+        with the page-dropped check-action-modal for in-place check actions.
     - id: check-action-modal
       description: >
         Standalone in-context check-action modal — a single Modal block (fixed
@@ -176,7 +187,7 @@ exports:
         The PAGE drops the modal exactly once and owns its on_complete (the
         host's refetch action sequence run after a successful signal, default
         []) — the page is the only scope that sees every co-present surface, so
-        it composes the full refetch list. Surfaces no longer auto-bundle it; a
+        it composes the full refetch list. Surfaces do not auto-bundle it; a
         check-row click degrades to navigation when no modal is on the page.
         Opened exclusively via the documented SetState + CallMethod(setOpen,
         [{ open: true }]) contract. One instance per page; never drop it on a
@@ -193,6 +204,9 @@ components:
   - id: actions-on-entity
     component:
       _ref: components/actions-on-entity.yaml
+  - id: workflow-progress
+    component:
+      _ref: components/workflow-progress.yaml
   - id: check-action-modal
     component:
       _ref: components/check-action-modal.yaml
@@ -235,7 +249,7 @@ pages:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.12.0"
+    version: "^0.14.1"
 
 secrets:
   - name: MONGODB_URI

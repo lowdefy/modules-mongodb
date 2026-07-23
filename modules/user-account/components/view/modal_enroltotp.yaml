@@ -1,0 +1,176 @@
+# Set up 2FA modal (design Decision 5). Two phases, gated on whether an enrolment
+# secret has been generated yet (state.enroltotp.uri):
+#   Phase 1 (no uri) — TwoFactorEnable is PASSWORD-GATED (BetterAuth requires the
+#     account password), which the mock omits; so we collect the password and a
+#     "Generate" button calls TwoFactorEnable, reading the totpURI + backup codes
+#     off _actions into state (the codes feed the backup-codes modal).
+#   Phase 2 (uri set) — the built-in QRCode block renders the URI (with a copyable
+#     manual-entry fallback beside it) and a confirmation code. "Confirm & enable"
+#     calls TwoFactorVerify; on success it shows the backup-codes modal and
+#     re-fetches (the 2FA state flips to On).
+# The trigger is shown only when _build.authConfig.twoFactor.enabled AND the
+# caller holds a credential row (gates on the tile). onOpen resets the phase.
+id: modal_enroltotp
+type: Modal
+properties:
+  title: Set up two-factor authentication
+  width: 560
+  okText: Confirm & enable
+  cancelText: Cancel
+events:
+  onOpen:
+    - id: reset_totp
+      type: SetState
+      params:
+        enroltotp: {}
+  onOk:
+    _build.array.concat:
+      - - id: validate_totp
+          type: Validate
+          params: modal_enroltotp
+        # Confirm the TOTP code — completes enrolment. A wrong code throws,
+        # keeping the modal open and toasting the friendly error.
+        - id: verify_totp
+          type: TwoFactorVerify
+          messages:
+            loading: Confirming…
+            success: Two-factor authentication is on.
+            error: That code is incorrect or has expired. Try again.
+          params:
+            code:
+              _state: enroltotp.confirmation_code
+        # Show the one-time backup codes captured at enable time (mock flow).
+        - id: open_backupcodes_modal
+          type: CallMethod
+          params:
+            blockId: modal_backupcodes
+            method: toggleOpen
+      - _ref: actions/refetch_account.yaml
+blocks:
+  # ── Phase 1: password → generate ──
+  - id: enroltotp_intro_setup
+    type: Html
+    visible:
+      _eq:
+        - _state: enroltotp.uri
+        - null
+    layout:
+      span: 24
+    properties:
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Enter your account password to generate a new authenticator secret.</div>'
+  - id: enroltotp.password
+    type: PasswordInput
+    visible:
+      _eq:
+        - _state: enroltotp.uri
+        - null
+    required: true
+    layout:
+      span: 24
+    properties:
+      label:
+        title: Account password
+        span: 24
+        colon: false
+  - id: enroltotp_generate
+    type: Button
+    visible:
+      _eq:
+        - _state: enroltotp.uri
+        - null
+    layout:
+      span: 24
+    properties:
+      title: Generate QR code
+      block: true
+      color: primary
+      variant: solid
+    events:
+      onClick:
+        try:
+          # Password-gated enable — returns the totpURI + backup codes on
+          # _actions, which we stash in state for the QR and the codes modal.
+          - id: enroltotp_enable
+            type: TwoFactorEnable
+            messages:
+              error: false
+            params:
+              password:
+                _state: enroltotp.password
+          - id: stash_totp
+            type: SetState
+            params:
+              enroltotp.uri:
+                _actions: enroltotp_enable.response.totpURI
+              enroltotp.backup_codes:
+                _actions: enroltotp_enable.response.backupCodes
+        catch:
+          - id: enroltotp_enable_error
+            type: DisplayMessage
+            params:
+              status: error
+              content: Couldn't start two-factor setup. Check your password and try again.
+  # ── Phase 2: QR + confirm ──
+  - id: enroltotp_intro_scan
+    type: Html
+    visible:
+      _ne:
+        - _state: enroltotp.uri
+        - null
+    layout:
+      span: 24
+    properties:
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Scan this with your authenticator app, then enter the 6-digit code to confirm.</div>'
+  - id: enroltotp_row
+    type: Box
+    visible:
+      _ne:
+        - _state: enroltotp.uri
+        - null
+    layout:
+      direction: row
+      gap: 16
+      align: top
+      selfAlign: top
+    blocks:
+      - id: enroltotp_qr
+        type: QRCode
+        layout:
+          span: 8
+          sm:
+            span: 24
+        properties:
+          value:
+            _state: enroltotp.uri
+          size: 132
+          errorLevel: M
+      - id: enroltotp_scancol
+        type: Box
+        layout:
+          span: 16
+          sm:
+            span: 24
+          gap: 16
+        blocks:
+          - id: enroltotp_uri
+            type: TextInput
+            layout:
+              span: 24
+            value:
+              _state: enroltotp.uri
+            properties:
+              disabled: true
+              label:
+                title: Can't scan? Enter this key
+                span: 24
+                colon: false
+          - id: enroltotp.confirmation_code
+            type: TextInput
+            required: true
+            layout:
+              span: 24
+            properties:
+              placeholder: 6-digit code
+              label:
+                title: Confirmation code
+                span: 24

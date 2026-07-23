@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Frame — user detail (view) — user-admin</title>
+<style>
+/* The frame dialect stylesheet — copy this VERBATIM into every frame's inline
+ * <style>, plus nothing else.
+ *
+ * It is a ~30-line CSS system that replicates Lowdefy's layout engine exactly:
+ * the same two-element block structure (.c = block wrapper / lf-col, .r = block
+ * content row / lf-row), the same 24-column flex-basis formula from
+ * @lowdefy/layout grid.css, and the same mobile-first breakpoint semantics.
+ * Because a frame renders with Lowdefy's own math, "frame ≈ mock" implies
+ * "app ≈ frame" almost by construction, and frame → YAML translation is
+ * mechanical.
+ *
+ *   .c  = block wrapper (grid-col mode; --s span at md+, --sm below 768px)
+ *   .r  = block content row (--g gap, wraps by default)
+ *   .fi = flex-item mode (Lowdefy layout.flex: 0 1 auto)
+ *   .sp = spacer         (Lowdefy layout.flex: 1 0 auto)
+ *   .ph = leaf placeholder (the only element carrying explicit size)
+ *
+ * The .c width formula is copied verbatim from grid.css:
+ *   flex-basis = span/24 * (100% + gap) - gap, gap inherited from parent .r.
+ *
+ * Colours are a neutral wireframe palette so a frame reads legibly beside the
+ * mock in either light or dark mocks. They are frame-only — they never carry
+ * into the Lowdefy output (structural blocks inherit the app theme; see
+ * phases/02-layout.md).
+ */
+@property --s {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 24;
+}
+@property --sm {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 24;
+}
+@property --g {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: #f0f0f2;
+}
+.c {
+  min-height: 1px;
+  flex: 0 0 calc(var(--sm) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+  max-width: calc(var(--sm) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+}
+@media (min-width: 768px) {
+  .c {
+    flex-basis: calc(var(--s) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+    max-width: calc(var(--s) / 24 * (100% + var(--g, 0px)) - var(--g, 0px));
+  }
+}
+.fi {
+  flex: 0 1 auto;
+  max-width: none;
+  min-height: 1px;
+}
+.sp {
+  flex: 1 0 auto;
+  max-width: none;
+}
+.r {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  column-gap: var(--g, 0px);
+  row-gap: var(--g, 0px);
+}
+.r.top {
+  align-items: flex-start;
+}
+.r.mid {
+  align-items: center;
+}
+.r.sb {
+  justify-content: space-between;
+}
+.r.ctr {
+  justify-content: center;
+  align-items: center;
+}
+.card {
+  background: #ffffff;
+  border: 1px solid #d9d9de;
+  border-radius: 10px;
+}
+.ph {
+  background: #dcdce1;
+  border-radius: 6px;
+}
+.shell {
+  background: #cdced4;
+}
+.ovl {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 16, 20, 0.45);
+}
+.ovl.right {
+  justify-content: flex-end;
+  align-items: stretch;
+}
+.ovl.left {
+  justify-content: flex-start;
+  align-items: stretch;
+}
+.c[id],
+.fi[id] {
+  position: relative;
+}
+.c[id]::before,
+.fi[id]::before {
+  content: attr(id);
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  z-index: 2;
+  font:
+    500 9px/1 ui-monospace,
+    Menlo,
+    monospace;
+  color: #595963;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 2px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.ph[id]::before {
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #595963;
+  background: none;
+  padding: 0;
+}
+</style>
+</head>
+<body>
+  <!-- ═══ BASE SCREEN (resting) ═══
+       Two-column user detail console (design Decision 3). Shell chrome (top
+       menu, breadcrumb) is owned by the shared layout/page component — one stub.
+       The titlebar maps to the shared title-block component (avatar is a
+       proposed slot the component lacks — see layout phase); each tile maps to
+       the shared layout/card component wrapping module-specific body content. -->
+  <div class="r">
+    <div class="c" id="user_detail_page">
+      <div class="r">
+        <div class="c shell" id="shell" style="height:56px"></div>
+        <div class="c" id="content" style="max-width:1200px; margin:0 auto; padding:24px 32px 40px">
+          <div class="r" style="--g:16px">
+
+            <!-- Title-block: avatar + status pill + name (page-actions empty —
+                 edits are section-scoped, Decision 3). Maps to shared title-block. -->
+            <div class="c" id="user_detail_titlebar" data-ldf-component="title-block" style="--s:24">
+              <div class="r mid" style="--g:12px">
+                <div class="fi ph" id="title_avatar" style="width:48px; height:48px"></div>
+                <div class="fi ph" id="title_status_pill" style="width:74px; height:50px"></div>
+                <div class="fi ph" id="title_name" style="width:280px; height:30px"></div>
+              </div>
+            </div>
+
+            <!-- Two-column grid: main span 14 · side span 10 (1.4:1 in the mock). -->
+            <div class="c" id="detail_grid" style="--s:24">
+              <div class="r top" style="--g:16px">
+
+                <!-- ── MAIN COLUMN (span 14) ─────────────────────────────── -->
+                <div class="c" id="detail_main_col" style="--s:14; --sm:24">
+                  <div class="r" style="--g:16px">
+
+                    <!-- Profile tile -->
+                    <div class="c card" id="profile_tile" data-ldf-component="card" style="--s:24">
+                      <div class="r">
+                        <div class="c" id="profile_head" style="--s:24; padding:12px 16px">
+                          <div class="r mid sb">
+                            <div class="fi ph" id="profile_head_title" style="width:110px; height:22px"></div>
+                            <div class="fi ph" id="profile_edit_btn" style="width:72px; height:24px"></div>
+                          </div>
+                        </div>
+                        <div class="c" id="profile_body" style="--s:24; padding:16px">
+                          <div class="r">
+                            <div class="c ph" id="profile_view" style="--s:24; height:186px"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Attributes tile (roles + member attributes) -->
+                    <div class="c card" id="attributes_tile" data-ldf-component="card" style="--s:24">
+                      <div class="r">
+                        <div class="c" id="attributes_head" style="--s:24; padding:12px 16px">
+                          <div class="r mid sb">
+                            <div class="fi ph" id="attributes_head_title" style="width:110px; height:22px"></div>
+                            <div class="fi ph" id="attributes_edit_btn" style="width:72px; height:24px"></div>
+                          </div>
+                        </div>
+                        <div class="c" id="attributes_body" style="--s:24; padding:16px">
+                          <div class="r">
+                            <div class="c ph" id="attributes_view" style="--s:24; height:112px"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Global attributes tile (user-row attributes) -->
+                    <div class="c card" id="global_attrs_tile" data-ldf-component="card" style="--s:24">
+                      <div class="r">
+                        <div class="c" id="global_attrs_head" style="--s:24; padding:12px 16px">
+                          <div class="r mid sb">
+                            <div class="fi ph" id="global_attrs_head_title" style="width:150px; height:22px"></div>
+                            <div class="fi ph" id="global_attrs_edit_btn" style="width:72px; height:24px"></div>
+                          </div>
+                        </div>
+                        <div class="c" id="global_attrs_body" style="--s:24; padding:16px">
+                          <div class="r">
+                            <div class="c ph" id="global_attributes_view" style="--s:24; height:74px"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                <!-- ── SIDE COLUMN (span 10) ─────────────────────────────── -->
+                <div class="c" id="detail_side_col" style="--s:10; --sm:24">
+                  <div class="r" style="--g:16px">
+
+                    <!-- Security tile -->
+                    <div class="c card" id="security_tile" data-ldf-component="card" style="--s:24">
+                      <div class="r">
+                        <div class="c" id="security_head" style="--s:24; padding:12px 16px">
+                          <div class="r mid">
+                            <div class="fi ph" id="security_head_title" style="width:96px; height:22px"></div>
+                          </div>
+                        </div>
+                        <div class="c" id="security_body" style="--s:24; padding:16px">
+                          <div class="r" style="--g:12px">
+                            <div class="c ph" id="security_access_eyebrow" style="--s:24; height:16px"></div>
+                            <div class="c" id="security_actions" style="--s:24">
+                              <div class="r" style="--g:8px">
+                                <div class="fi ph" id="suspend_btn" style="width:120px; height:32px"></div>
+                                <div class="fi ph" id="remove_btn" style="width:132px; height:32px"></div>
+                                <div class="fi ph" id="revoke_btn" style="width:150px; height:32px"></div>
+                                <div class="fi ph" id="delete_btn" style="width:118px; height:32px"></div>
+                              </div>
+                            </div>
+                            <div class="c ph" id="security_hint" style="--s:24; height:36px"></div>
+                            <div class="c ph" id="sessions_eyebrow" style="--s:24; height:16px"></div>
+                            <div class="c ph" id="sessions_list" style="--s:24; height:104px"></div>
+                            <div class="c ph" id="methods_eyebrow" style="--s:24; height:16px"></div>
+                            <div class="c ph" id="auth_methods" style="--s:24; height:24px"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Apps tile (cross-app badges; hidden single-app — wire) -->
+                    <div class="c card" id="apps_tile" data-ldf-component="card" style="--s:24">
+                      <div class="r">
+                        <div class="c" id="apps_head" style="--s:24; padding:12px 16px">
+                          <div class="r mid">
+                            <div class="fi ph" id="apps_head_title" style="width:60px; height:22px"></div>
+                          </div>
+                        </div>
+                        <div class="c" id="apps_body" style="--s:24; padding:16px">
+                          <div class="r" style="--g:8px">
+                            <div class="c ph" id="app_badges" style="--s:24; height:32px"></div>
+                            <div class="c ph" id="apps_hint" style="--s:24; height:34px"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Activity tile (event timeline) -->
+                    <div class="c card" id="activity_tile" data-ldf-component="card" style="--s:24">
+                      <div class="r">
+                        <div class="c" id="activity_head" style="--s:24; padding:12px 16px">
+                          <div class="r mid">
+                            <div class="fi ph" id="activity_head_title" style="width:70px; height:22px"></div>
+                          </div>
+                        </div>
+                        <div class="c" id="activity_body" style="--s:24; padding:16px">
+                          <div class="r">
+                            <div class="c ph" id="events_timeline" style="--s:24; height:180px"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ INTERACTION-STATE LAYERS (7 modals; triggers live in the base) ═══ -->
+
+  <!-- LAYER: Edit profile (write-profile routine) -->
+  <div class="ovl" data-ldf-layer="modal_profile">
+    <div class="c card" id="modal_profile" style="width:560px; max-width:560px">
+      <div class="r">
+        <div class="c" id="modal_profile_head" style="--s:24; padding:16px 24px">
+          <div class="r mid sb">
+            <div class="fi ph" id="modal_profile_title" style="width:130px; height:22px"></div>
+            <div class="fi ph" id="modal_profile_close" style="width:20px; height:20px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_profile_body" style="--s:24; padding:24px">
+          <div class="r" style="--g:16px">
+            <div class="c ph" id="profile_form_name" style="--s:12; height:56px"></div>
+            <div class="c ph" id="profile_form_email" style="--s:12; height:56px"></div>
+            <div class="c ph" id="profile_form_phone" style="--s:12; height:56px"></div>
+            <div class="c ph" id="profile_form_job_title" style="--s:12; height:56px"></div>
+            <div class="c ph" id="profile_form_department" style="--s:12; height:56px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_profile_foot" style="--s:24; padding:16px 24px">
+          <div class="r sb">
+            <div class="fi ph" id="modal_profile_cancel" style="width:80px; height:32px"></div>
+            <div class="fi ph" id="modal_profile_save" style="width:120px; height:32px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER: Edit attributes (UpdateMemberRoles + UpdateMemberAttributes) -->
+  <div class="ovl" data-ldf-layer="modal_access">
+    <div class="c card" id="modal_access" style="width:560px; max-width:560px">
+      <div class="r">
+        <div class="c" id="modal_access_head" style="--s:24; padding:16px 24px">
+          <div class="r mid sb">
+            <div class="fi ph" id="modal_access_title" style="width:130px; height:22px"></div>
+            <div class="fi ph" id="modal_access_close" style="width:20px; height:20px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_access_body" style="--s:24; padding:24px">
+          <div class="r" style="--g:16px">
+            <div class="c ph" id="access_form_roles" style="--s:24; height:60px"></div>
+            <div class="c ph" id="access_form_roles_hint" style="--s:24; height:32px"></div>
+            <div class="c ph" id="access_form_region" style="--s:24; height:56px"></div>
+            <div class="c ph" id="access_form_cost_centre" style="--s:24; height:56px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_access_foot" style="--s:24; padding:16px 24px">
+          <div class="r sb">
+            <div class="fi ph" id="modal_access_cancel" style="width:80px; height:32px"></div>
+            <div class="fi ph" id="modal_access_save" style="width:130px; height:32px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER: Edit global attributes (UpdateUserAttributes) -->
+  <div class="ovl" data-ldf-layer="modal_global">
+    <div class="c card" id="modal_global" style="width:480px; max-width:480px">
+      <div class="r">
+        <div class="c" id="modal_global_head" style="--s:24; padding:16px 24px">
+          <div class="r mid sb">
+            <div class="fi ph" id="modal_global_title" style="width:180px; height:22px"></div>
+            <div class="fi ph" id="modal_global_close" style="width:20px; height:20px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_global_body" style="--s:24; padding:24px">
+          <div class="r" style="--g:16px">
+            <div class="c ph" id="global_form_employee_id" style="--s:24; height:56px"></div>
+            <div class="c ph" id="global_form_locale" style="--s:24; height:56px"></div>
+            <div class="c ph" id="global_form_hint" style="--s:24; height:20px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_global_foot" style="--s:24; padding:16px 24px">
+          <div class="r sb">
+            <div class="fi ph" id="modal_global_cancel" style="width:80px; height:32px"></div>
+            <div class="fi ph" id="modal_global_save" style="width:130px; height:32px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER: Suspend confirm (BanUser — global blast radius, Decision 4) -->
+  <div class="ovl" data-ldf-layer="modal_suspend">
+    <div class="c card" id="modal_suspend" style="width:480px; max-width:480px">
+      <div class="r">
+        <div class="c" id="modal_suspend_head" style="--s:24; padding:16px 24px">
+          <div class="r mid sb">
+            <div class="fi ph" id="modal_suspend_title" style="width:220px; height:22px"></div>
+            <div class="fi ph" id="modal_suspend_close" style="width:20px; height:20px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_suspend_body" style="--s:24; padding:24px">
+          <div class="r" style="--g:12px">
+            <div class="c ph" id="suspend_message" style="--s:24; height:60px"></div>
+            <div class="c ph" id="suspend_membership_list" style="--s:24; height:132px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_suspend_foot" style="--s:24; padding:16px 24px">
+          <div class="r sb">
+            <div class="fi ph" id="modal_suspend_cancel" style="width:80px; height:32px"></div>
+            <div class="fi ph" id="modal_suspend_confirm" style="width:170px; height:32px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER: Remove from app confirm (RemoveMember — app-scoped) -->
+  <div class="ovl" data-ldf-layer="modal_remove">
+    <div class="c card" id="modal_remove" style="width:480px; max-width:480px">
+      <div class="r">
+        <div class="c" id="modal_remove_head" style="--s:24; padding:16px 24px">
+          <div class="r mid sb">
+            <div class="fi ph" id="modal_remove_title" style="width:280px; height:22px"></div>
+            <div class="fi ph" id="modal_remove_close" style="width:20px; height:20px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_remove_body" style="--s:24; padding:24px">
+          <div class="r">
+            <div class="c ph" id="remove_message" style="--s:24; height:96px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_remove_foot" style="--s:24; padding:16px 24px">
+          <div class="r sb">
+            <div class="fi ph" id="modal_remove_cancel" style="width:80px; height:32px"></div>
+            <div class="fi ph" id="modal_remove_confirm" style="width:150px; height:32px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER: Sign out everywhere confirm (RevokeUserSessions) -->
+  <div class="ovl" data-ldf-layer="modal_revoke">
+    <div class="c card" id="modal_revoke" style="width:480px; max-width:480px">
+      <div class="r">
+        <div class="c" id="modal_revoke_head" style="--s:24; padding:16px 24px">
+          <div class="r mid sb">
+            <div class="fi ph" id="modal_revoke_title" style="width:220px; height:22px"></div>
+            <div class="fi ph" id="modal_revoke_close" style="width:20px; height:20px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_revoke_body" style="--s:24; padding:24px">
+          <div class="r">
+            <div class="c ph" id="revoke_message" style="--s:24; height:60px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_revoke_foot" style="--s:24; padding:16px 24px">
+          <div class="r sb">
+            <div class="fi ph" id="modal_revoke_cancel" style="width:80px; height:32px"></div>
+            <div class="fi ph" id="modal_revoke_confirm" style="width:170px; height:32px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER: Delete identity confirm (DeleteUser — no other memberships) -->
+  <div class="ovl" data-ldf-layer="modal_delete">
+    <div class="c card" id="modal_delete" style="width:480px; max-width:480px">
+      <div class="r">
+        <div class="c" id="modal_delete_head" style="--s:24; padding:16px 24px">
+          <div class="r mid sb">
+            <div class="fi ph" id="modal_delete_title" style="width:200px; height:22px"></div>
+            <div class="fi ph" id="modal_delete_close" style="width:20px; height:20px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_delete_body" style="--s:24; padding:24px">
+          <div class="r" style="--g:12px">
+            <div class="c ph" id="delete_message" style="--s:24; height:60px"></div>
+            <div class="c ph" id="delete_precondition" style="--s:24; height:40px"></div>
+          </div>
+        </div>
+        <div class="c" id="modal_delete_foot" style="--s:24; padding:16px 24px">
+          <div class="r sb">
+            <div class="fi ph" id="modal_delete_cancel" style="width:80px; height:32px"></div>
+            <div class="fi ph" id="modal_delete_confirm" style="width:140px; height:32px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

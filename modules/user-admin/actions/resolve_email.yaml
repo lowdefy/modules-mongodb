@@ -1,0 +1,33 @@
+# Resolve state.email to one of four invite outcomes (design Decision 7) and drive
+# the invite_state machine. Shared by the Check button and the pending panel's
+# Resend re-resolve so the branching + prefill logic lives in one place.
+# The check routine's "contact" outcome maps to the form's "existing" (prefilled)
+# layer; "unknown" is the blank form.
+- id: check_invite
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: check-invite-email
+    payload:
+      email:
+        _state: email
+- id: apply_resolution
+  type: SetState
+  params:
+    invite_state:
+      _if:
+        test:
+          _eq:
+            - _actions: check_invite.response.state
+            - contact
+        then: existing
+        else:
+          _actions: check_invite.response.state
+    resolved_member:
+      _actions: check_invite.response.member
+    resolved_invitation:
+      _actions: check_invite.response.invitation
+    resolved_contact:
+      _actions: check_invite.response.contact
+    profile:
+      _actions: check_invite.response.contact.profile

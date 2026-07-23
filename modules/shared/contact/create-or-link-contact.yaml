@@ -9,8 +9,10 @@
 # `organizationId` when the caller supplies one — see `organization_id` below):
 #   - match the contact by lowercased email (within the org, when given);
 #   - link (contactId) when found;
-#   - insert BARE (change-stamped, no name, `profile.profile_created` unset —
-#     so first login routes through onboarding) when absent;
+#   - insert BARE (change-stamped, `profile.profile_created` unset — first login
+#     routes through onboarding) when absent. This fragment writes no profile
+#     data; a caller that captures a profile persists it separately via
+#     write-profile (the invite flow does exactly this);
 #   - reconcile to the existing row on a duplicate-key error (the partial-unique
 #     `user-contacts.{organizationId,lowercase_email}` index — see
 #     docs/user-account/reference/indexes.md — is the guard that closes the

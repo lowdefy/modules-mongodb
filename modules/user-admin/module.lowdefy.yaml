@@ -98,16 +98,13 @@ vars:
           Global (cross-app) attribute field blocks written to the `user` row
           via UpdateUserAttributes. Block ids must be prefixed with
           `user_attributes.` so they bind to `state.user_attributes.*`.
-          (Was `global_attributes` in the pre-BetterAuth module.)
       member_attributes:
         type: array
         default: []
         description: >-
           This app's attribute field blocks written to the `member` row via
-          UpdateMemberAttributes (no longer scoped by an `apps.{app}` path —
-          per-app scoping dies with that map, Decision 1). Block ids must be
-          prefixed with `member_attributes.` so they bind to
-          `state.member_attributes.*`. (Was `app_attributes`.)
+          UpdateMemberAttributes. Block ids must be prefixed with
+          `member_attributes.` so they bind to `state.member_attributes.*`.
   components:
     type: object
     description: >-
@@ -198,6 +195,8 @@ exports:
       description: Read-only connection for the auth `user-accounts` collection
     - id: user-organizations
       description: Read-only connection for the auth `user-organizations` collection
+    - id: user-passkeys
+      description: Read-only connection for the auth `user-passkeys` collection
   api:
     - id: invite
       description: Create invitation (reconcile stale expired → create-or-link contact → InviteMember)
@@ -235,6 +234,7 @@ connections:
   - _ref: connections/user-sessions.yaml
   - _ref: connections/user-accounts.yaml
   - _ref: connections/user-organizations.yaml
+  - _ref: connections/user-passkeys.yaml
 
 api:
   - _ref: api/invite.yaml
@@ -265,14 +265,13 @@ secrets:
       `auth.database` adapter (see the co-location precondition above).
 
 plugins:
-  # No @lowdefy/community-plugin-mongodb pin (design task 1). The built-in
-  # @lowdefy/connection-mongodb (the vendored adapter, supportsJSON for native-BSON
-  # attributes — mongodb Decision 5) provides MongoDBCollection, MongoDBAuthAdapter,
-  # and every MongoDB* request type (including MongoDBInsertConsecutiveId), so the
-  # community plugin is fully superseded and dropped app-wide. The built-in is
-  # auto-included and needs no pin. The module's read connections and the app's
-  # auth.database adapter both resolve from it.
+  # The built-in @lowdefy/connection-mongodb (the vendored adapter, supportsJSON
+  # for native-BSON attributes — mongodb Decision 5) provides MongoDBCollection,
+  # MongoDBAuthAdapter, and every MongoDB* request type (including
+  # MongoDBInsertConsecutiveId), so no @lowdefy/community-plugin-mongodb pin is
+  # needed — the built-in is auto-included. The module's read connections and
+  # the app's auth.database adapter both resolve from it.
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.12.0"
+    version: "^0.14.1"

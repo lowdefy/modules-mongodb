@@ -1,22 +1,16 @@
-# Universal-fields EDIT surface (Part 24; Part 64 shrank it to two fields;
-# Part 67 removed the display group).
+# Universal-fields EDIT surface.
 #
 # Renders the action-level universal-fields EDIT inputs (assignees / due_date)
 # for one action. The surface is always a plain Box (no card chrome): its
 # container owns the chrome. Every consumer gets the same standalone Update
 # button that calls the per-workflow `{workflow_type}-update-fields` operation —
-# independent of any form submit or FSM transition. (Part 64 removed the
-# editable `description` field; the action body `description` is now
-# author-authored config, rendered separately by
-# `components/action-description.yaml`.)
+# independent of any form submit or FSM transition.
 #
-# Placement (Part 56 addendum DA1): the EDIT inputs are hosted inside
-# `universal-fields-modal.yaml` (opened by the title-bar ✎ chip). Read-only
-# display of assignees + due now lives entirely in the title-bar chips
-# (`universal-fields-chips.yaml`) on every surface — including the in-context
-# check-action surface — so the former `mode: display` group was removed
-# (Part 67), and with it the `mode` var: this component now only renders edit
-# inputs.
+# Placement: the EDIT inputs are hosted inside `universal-fields-modal.yaml`
+# (opened by the title-bar ✎ chip). Read-only display of assignees + due lives
+# entirely in the title-bar chips (`universal-fields-chips.yaml`) on every
+# surface — including the in-context check-action surface. This component only
+# renders edit inputs (no `mode` var).
 #
 # Consumed via `_ref: { path: ..., vars: {...} }` with OPERATOR-valued vars, so
 # block-id namespacing uses `_string.concat` (not njk). Vars:

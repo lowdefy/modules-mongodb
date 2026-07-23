@@ -1,0 +1,44 @@
+# Cancel-invitation confirm modal (design Decision 7). Opened via CallMethod
+# toggleOpen from the pending panel's "Cancel invitation" button. Withdraws the
+# pending invitation (CancelInvitation) — the CallAPI onOk is the WIRE task (17).
+id: modal_cancel
+type: Modal
+properties:
+  title: Cancel this invitation?
+  width: 440
+  okText: Cancel invitation
+  cancelText: Keep invitation
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    _build.array.concat:
+      - - id: cancel_invitation
+          type: CallAPI
+          messages:
+            loading: Cancelling…
+            success: Invitation cancelled.
+          params:
+            endpointId:
+              _module.endpointId: cancel-invitation
+            payload:
+              invitation_id:
+                _state: resolved_invitation._id
+              email:
+                _state: email
+      # Re-resolve the (now-cancelled) email — the outcome falls through to the
+      # blank/prefilled form so the admin can send a fresh invitation.
+      - _ref: actions/resolve_email.yaml
+blocks:
+  - id: cancel_message
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          template: >-
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">
+            The invitation to <b>{{ email }}</b> will be withdrawn. The link already
+            sent will stop working. You can invite them again later.</div>
+          on:
+            email:
+              _state: email

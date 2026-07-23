@@ -2,17 +2,14 @@ const TERMINAL = ["done", "not-required"];
 
 /**
  * Compose the planned post-commit workflow doc (whole doc) from the loaded
- * workflow + the planned action states. Replaces the deleted
- * `recomputeWorkflowAfterActionWrite.js` read-modify-write helper: the commit
- * phase `$set`s the composed doc whole under the CAS gate (design D9/D15) —
- * this planner does no I/O.
+ * workflow + the planned action states. The commit phase `$set`s the composed
+ * doc whole under the CAS gate (design D9/D15) — this planner does no I/O.
  *
- * Part 66: the denormalised `summary`/`groups[]` caches are gone. They were
- * pure read-display fields never read for engine logic; the overview resolvers
- * now derive their counts on read from the action docs. So this planner no
- * longer composes them and the final persist-only group recompute pass is
- * deleted. `planAutoUnblock` still runs `recomputeGroups` in-memory per
- * fixpoint iteration for unblock logic — that result simply isn't persisted.
+ * This planner does not compose denormalised `summary`/`groups[]` fields on the
+ * doc — the overview resolvers derive those counts on read from the action
+ * docs, so persisting them here would be dead work. `planAutoUnblock` runs
+ * `recomputeGroups` in-memory per fixpoint iteration for unblock logic, but
+ * that result is not persisted.
  *
  * Auto-complete: pushes `completed` onto the workflow status iff
  * `total > 0 && total === done + not_required` and the current workflow stage

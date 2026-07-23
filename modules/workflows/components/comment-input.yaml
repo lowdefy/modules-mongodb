@@ -1,9 +1,8 @@
-# Shared comment input + visibility control (Part 61 D6).
+# Shared comment input + visibility control.
 #
 # The single comment-input fragment every workflow comment surface _refs, so the
 # text-only config and the shared/internal visibility control live in exactly ONE
-# place (one correct way). Replaces the previously-inline TiptapInput blocks on
-# every surface; supersedes Part 62's per-input text-only edits.
+# place (one correct way).
 #
 # Consumed via `_ref: { path, vars }` with OPERATOR-valued vars (no `key`), the
 # same pattern as universal-fields.yaml — the file IS the block, var values are

@@ -1,0 +1,48 @@
+# Edit global attributes modal — UpdateUserAttributes (Decision 3). Cross-app
+# attributes on the user row; bind state.user_attributes.*. onOk wiring (CallAPI
+# update-user-attributes) is task 13.
+id: modal_global
+type: Modal
+properties:
+  title: Edit global attributes
+  width: 480
+  okText: Save attributes
+  cancelText: Cancel
+events:
+  onOpen:
+    - id: seed_global
+      type: SetState
+      params:
+        user_attributes:
+          _request: get_user_detail.0.user_attributes
+  onOk:
+    _build.array.concat:
+      - - id: validate_global
+          type: Validate
+          params: modal_global
+        # UpdateUserAttributes — cross-app attributes on the user row (Decision 3).
+        - id: save_global
+          type: CallAPI
+          messages:
+            loading: Saving…
+            success: Global attributes updated.
+          params:
+            endpointId:
+              _module.endpointId: update-user-attributes
+            payload:
+              user_id:
+                _request: get_user_detail.0.user_id
+              user_attributes:
+                _state: user_attributes
+              target_name:
+                _request: get_user_detail.0.name
+              target_email:
+                _request: get_user_detail.0.email
+      - _ref: actions/detail_refetch.yaml
+blocks:
+  _build.array.concat:
+    - _module.var: fields.user_attributes
+    - - id: global_attrs_hint
+        type: Html
+        properties:
+          html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">These apply to this person across every app in the suite.</div>'

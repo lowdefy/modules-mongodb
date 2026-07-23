@@ -167,10 +167,9 @@ function planSubmit({ loadedState, preHookResult, context }) {
   });
 
   // ── Step 5 — completed_groups diff (loaded groups vs planned groups) ─────
-  // Part 66: the denormalised `groups[]` cache is gone, so both sides of the
-  // diff are recomputed on the fly from the action docs — the loaded (pre-
-  // transition) actions for "before", the planned actions for "after". This is
-  // the group state the cache used to hold, derived without staleness.
+  // Both sides of the diff are recomputed on the fly from the action docs — the
+  // loaded (pre-transition) actions for "before", the planned actions for
+  // "after".
   const loadedGroupById = new Map(
     recomputeGroups({ declaredGroups, actions }).map((g) => [g.id, g]),
   );

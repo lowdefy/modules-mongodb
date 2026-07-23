@@ -1,0 +1,37 @@
+# Active sessions read (design Decision 5) — the caller's OWN signed-in devices.
+# Native read over `user-sessions` filtered to the caller (`_user.id`, plain
+# string). The `token` is $project-ed OUT — it is a replayable bearer credential
+# and must never reach the browser (Decision 5). Per-session revoke is deferred
+# for the same reason, so rows are display-only and the tile's single action is
+# "sign out others" (RevokeOtherSessions). No "current device" marker: the engine
+# exposes no non-secret current-session identifier on `_user`, and identifying it
+# would require the token — so every row renders the same.
+id: get_sessions
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-sessions
+properties:
+  pipeline:
+    - $match:
+        userId:
+          _user: id
+    - $sort:
+        updatedAt: -1
+    # Whitelist projection — token is never selected.
+    - $project:
+        _id: 0
+        ua:
+          $ifNull:
+            - "$userAgent"
+            - Unknown device
+        ip: "$ipAddress"
+        expires_str:
+          $dateToString:
+            date: "$expiresAt"
+            format: "%Y-%m-%d"
+            onNull: ""
+        created_str:
+          $dateToString:
+            date: "$createdAt"
+            format: "%Y-%m-%d"
+            onNull: ""

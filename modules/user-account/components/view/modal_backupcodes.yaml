@@ -1,0 +1,56 @@
+# Backup codes modal (design Decision 5) — shown once after TwoFactorEnable, the
+# one-time codes returned alongside the totpURI (captured on _actions into
+# state.enroltotp.backup_codes at enable time). Display only; the codes are never
+# fetched again. Opened from the enrol-2FA modal's confirm. The "Copy" button
+# copies the codes to the clipboard as it closes.
+id: modal_backupcodes
+type: Modal
+properties:
+  title: Save your backup codes
+  width: 480
+  okText: I've saved them
+  cancelText: Copy
+events:
+  onClose:
+    - id: copy_backup_codes
+      type: CopyToClipboard
+      params:
+        copy:
+          _nunjucks:
+            template: "{{ codes | join('\n') }}"
+            on:
+              codes:
+                _state: enroltotp.backup_codes
+blocks:
+  - id: backupcodes_message
+    type: Html
+    layout:
+      span: 24
+    properties:
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Two-factor is on. Store these one-time codes somewhere safe — each works once if you lose your authenticator.</div>'
+  - id: backupcodes_grid
+    type: Html
+    layout:
+      span: 24
+    properties:
+      html:
+        _nunjucks:
+          # One-time backup codes from TwoFactorEnable, stashed in state at enable
+          # time (shown once, never re-fetched).
+          template: |
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0 4px;">
+            {% for code in codes %}
+              <span style="font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border-secondary); border-radius:6px; padding:7px 10px; text-align:center; letter-spacing:0.04em;">{{ code }}</span>
+            {% endfor %}
+            </div>
+          on:
+            codes:
+              _state: enroltotp.backup_codes
+  - id: backupcodes_alert
+    type: Alert
+    layout:
+      span: 24
+    properties:
+      type: warning
+      showIcon: true
+      message: You won't see these again. Download or copy them before closing.

@@ -1,0 +1,48 @@
+# Profile tile (design Decision 3) — contact fields (fields.profile), read-only
+# in SmartDescriptions. Edit opens modal_profile (write-profile routine, wired
+# in task 13). Fields = shared form_core (name parts) + locked email identity +
+# consumer fields.profile, matching the sibling contacts view.
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Profile
+    header_buttons:
+      - id: profile_edit_btn
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Edit
+          icon: AiOutlineEdit
+          size: small
+        events:
+          onClick:
+            - id: open_profile_modal
+              type: CallMethod
+              params:
+                blockId: modal_profile
+                method: toggleOpen
+    blocks:
+      - id: profile_view
+        type: SmartDescriptions
+        properties:
+          column: 1
+          size: small
+          # Contact profile subdoc + login email from the detail read.
+          data:
+            _request: get_user_detail.0
+          fields:
+            _build.array.concat:
+              - _ref:
+                  path: ../shared/profile/form_core.yaml
+                  vars:
+                    show_honorific:
+                      _module.var: fields.show_honorific
+              # No `type` — let SmartDescriptions auto-detect the email value and
+              # render it as an email (a forced TextInput/string renderer
+              # title-cases the first letter, which is wrong for an address).
+              - - id: email
+                  properties:
+                    title: Email
+              - _module.var: fields.profile

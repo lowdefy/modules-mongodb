@@ -1,0 +1,69 @@
+# Active sessions tile (design Decision 5) — the caller's own signed-in devices,
+# from a native read over user-sessions (token projected out — it's a bearer
+# credential). One action: "Sign out others" (RevokeOtherSessions). Per-session
+# revoke is deferred (token-exposure, Decision 5), so rows are display-only, and
+# there is no "current device" marker (no non-secret current-session id is
+# available without the token).
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Active sessions
+    header_buttons:
+      - id: sessions_sign_out_others_btn
+        type: Button
+        layout:
+          flex: 0 0 auto
+        # Only offer the action when there is more than one session to revoke.
+        visible:
+          _gt:
+            - _array.length:
+                _if_none:
+                  - _request: get_sessions
+                  - []
+            - 1
+        properties:
+          title: Sign out others
+          size: small
+          color: danger
+        events:
+          onClick:
+            # Revokes every session except the caller's current one, then
+            # re-fetches so the list drops the revoked rows.
+            _build.array.concat:
+              - - id: revoke_other_sessions
+                  type: RevokeOtherSessions
+                  messages:
+                    loading: Signing out other sessions…
+                    success: Signed out of your other sessions.
+              - _ref: actions/refetch_account.yaml
+    blocks:
+      - id: sessions_body
+        type: Box
+        layout:
+          gap: 12
+        blocks:
+          - id: sessions_list
+            type: ListSelector
+            properties:
+              selectable: false
+              bordered: false
+              gap: 0
+              # The caller's active sessions (get_sessions — user-agent, ip,
+              # expiry; token $project-ed out, Decision 5).
+              data:
+                _request: get_sessions
+              html: |
+                <div id="bl-{{ index }}.session_item" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--ant-color-border-secondary); font-size:13px;">
+                  <span style="flex:1 1 auto; min-width:0;">
+                    <div style="color:var(--ant-color-text);">{{ item.ua }}</div>
+                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{{ item.ip }}{% if item.ip and item.expires_str %} · {% endif %}{% if item.expires_str %}expires {{ item.expires_str }}{% endif %}</div>
+                  </span>
+                </div>
+            style:
+              .body:
+                padding: "0"
+          - id: sessions_hint
+            type: Html
+            properties:
+              html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Devices currently signed in to your account. “Sign out others” ends every session except this one.</div>'

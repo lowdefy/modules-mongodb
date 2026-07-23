@@ -46,6 +46,8 @@ URLs keep today's shape: `/{entry}/login`, `/{entry}/signup`, `/{entry}/view`, w
 
 The login page renders whichever sign-in methods the deployment enables. **Enablement is read from the app's auth config, not a module var**: `_build.authConfig` (config-schema) exposes `emailAndPassword.enabled`, `magicLink.enabled`, `passkey.enabled`, and `providers` (`[{ id, type }]`) at build time, so the page shows a password form, magic-link tab, passkey button, or OAuth button exactly when `auth:` configures it — no mirror var to drift out of sync (config-schema built `_build.authConfig` precisely to retire these mirror vars).
 
+> **Magic-link is specified separately.** The magic-link branch is more than a button — it has a no-session "check your email" send state, an emailed-link verification callback that routes new vs existing users, and a passwordless-primary shape (email-only when `emailAndPassword` is off) that is the migration path for today's passwordless-email deployments. Its full flow, decisions, and its upstream needs — a dependency on the `magic-link-callbacks` callback params, plus an ask that the active-org admission policy govern the magic-link flow end-to-end — live in the sub-design [magic-link/design.md](./magic-link/design.md). This decision's method-driven framing is unchanged; the sub-design fills in the magic-link method.
+
 What the module _does_ own is **OAuth display metadata** — labels, icons, ordering — which the projection deliberately omits (`providers` carries only `{ id, type }`). A `providers` var supplies it, keyed by provider id:
 
 ```yaml
@@ -65,7 +67,7 @@ Error handling splits by method. **Password** sign-in returns errors inline on t
 
 The signup page exists even under the default `invite-only` policy: a brand-new invitee **signs up first** (the engine's pending-invitation carve-out admits their pre-accept session), then accepts. Whether an uninvited signup gets in is the engine's call (`organizations.signup`, the hard wall) — the page doesn't re-implement policy, it just renders the outcome's error codes. With `requireEmailVerification` the signup response carries no session and the page shows the check-your-email state instead of navigating.
 
-Signup methods mirror the login var: email+password via `SignUp`, social/magic-link "signup" via `Login` (the only real signup endpoint is email/password — engine design).
+Signup methods mirror the login var: email+password via `SignUp`, social/magic-link "signup" via `Login` (the only real signup endpoint is email/password — engine design). For **magic-link**, sign-in and signup collapse into one email → link action (an unknown email is created at verify time and routed to onboarding); the [magic-link sub-design](./magic-link/design.md) covers this, including how the `authPages.signUp` role resolves in a passwordless deployment.
 
 ### 4. Accept-invitation page — public, thin, engine-trusting
 
@@ -167,5 +169,6 @@ Specified in **[upstream-asks.md](upstream-asks.md)**. **All five round-1 asks a
 
 ## Related
 
+- [magic-link](./magic-link/design.md) — sub-design wiring magic-link as a first-class, config-driven method: the passwordless-primary login/signup shape, the "check your email" send state, and the verification-callback routing. Fills the magic-link branch of Decisions 2 and 3.
 - [user-admin-better-auth](../user-admin-better-auth/design.md) — the operator-side counterpart; shares the record model, the native-read conventions, the shared `write-profile` and `create-or-link-contact` fragments, and upstream asks 4/6.
 - [auth-emails](../../../lowdefy-design/designs/auth-upgrade/_completed/auth-emails/design.md) — how every auth email (verify, reset, magic-link, invitation) is rendered (stock branded templates or a per-flow `auth.email.templates.{flow}` notification override) and sent (the `auth.email` connection). This module contributes the `authPages.acceptInvitation` role the invitation email's accept link targets (Decisions 1, 4).

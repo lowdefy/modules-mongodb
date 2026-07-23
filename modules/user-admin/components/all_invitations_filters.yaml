@@ -1,0 +1,65 @@
+# Invitations filter row (design Decision 2). search (invitation email) · Status
+# segmented (All/Invited/Expired) · Clear. Independent per-tab state: this tab's
+# blocks bind under `inv_filter.*`, distinct from the Members tab's `filter.*`,
+# so filtering one tab never disturbs the other. Refetches get_all_invitations.
+id: invitations_filters
+type: Box
+layout:
+  gap: 8
+  align: middle
+  selfAlign: middle
+blocks:
+  - id: inv_filter.search
+    type: TextInput
+    layout:
+      flex: 1 1 240px
+    style:
+      maxWidth: 340px
+    properties:
+      placeholder: Search invitation email
+      label:
+        disabled: true
+    events:
+      onPressEnter:
+        _ref: actions/invitations_refetch.yaml
+      onChange:
+        try:
+          _ref: actions/invitations_refetch.yaml
+        debounce:
+          ms: 500
+  - id: inv_filter.status
+    type: SegmentedSelector
+    layout:
+      flex: 0 1 auto
+    properties:
+      label:
+        title: Status
+        inline: true
+        colon: false
+      options:
+        - label: All
+          value: all
+        - label: Invited
+          value: invited
+        - label: Expired
+          value: expired
+    events:
+      onChange:
+        _ref: actions/invitations_refetch.yaml
+  - id: invitations_clear
+    type: Button
+    layout:
+      flex: 0 1 auto
+    properties:
+      title: Clear
+      icon: AiOutlineClear
+      variant: borderless
+    events:
+      onClick:
+        _build.array.concat:
+          - - id: clear_invitations_filters
+              type: SetState
+              params:
+                inv_filter.search: null
+                inv_filter.status: all
+          - _ref: actions/invitations_refetch.yaml

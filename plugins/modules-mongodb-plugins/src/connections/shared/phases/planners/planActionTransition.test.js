@@ -92,6 +92,16 @@ test("check kind resolves through the form table (alias)", () => {
   expect(result.doc.status[0].stage).toBe("done");
 });
 
+test("auxiliary require reopens a not-required form action to action-required", () => {
+  const result = plan({
+    action: makeAction({ stage: "not-required" }),
+    signal: "require",
+    source: "auxiliary",
+  });
+  expect(result.operation).toBe("update");
+  expect(result.doc.status[0].stage).toBe("action-required");
+});
+
 test("tracker kind: unblock from blocked lands action-required", () => {
   const result = plan({
     action: makeAction({ kind: "tracker", stage: "blocked" }),
