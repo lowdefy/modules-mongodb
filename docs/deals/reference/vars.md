@@ -28,6 +28,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `meta_fields` | array | `[]` |  | Extra field blocks rendered in the deal's meta/info section. |
 | `filters` | array | `[]` |  | Extra filter blocks rendered on the deals list page. |
 | `card_fields` | array | `[]` |  | Extra fields rendered on the deal card (e.g. kanban/board views). |
+| `show_details` | boolean | `true` |  | Whether the read-only "Details" section (the host `fields` rendered via SmartDescriptions) shows on the deal view. Set false when the host renders those fields through custom tiles (components.info_grid_slots) instead, so they aren't duplicated. |
 | `fields` | array | `[]` |  | Host-supplied domain field blocks appended after the core company/name/description on the create form (rendered as inputs) and rendered read-only on the deal view via SmartDescriptions. Block ids must be prefixed with `attributes.` so they bind to `state.attributes.*` and flow through the generic create-deal passthrough. Deals ships no domain fields of its own — hosts inject their own here, the same way `companies.fields.attributes` works. |
 | `components` | object |  |  | Component slot overrides: topbar_slots, main_slots, info_grid_slots, sidebar_slots, card_slots |
 | `request_stages` | object |  |  | Pipeline overrides: get_deals_list, get_active_deals, get_selected_deal |

@@ -1,21 +1,43 @@
-id: detail_section_fields
+id: detail_fields_section
 # Host-supplied domain fields (module `fields` var) rendered read-only — the
-# display half of the create→view round trip. Block ids prefixed `attributes.`
-# read from the stored deal's `attributes.*`. Hidden when no host fields are
-# configured. Mirrors companies' view_company SmartDescriptions section.
-type: SmartDescriptions
+# display half of the create→view round trip — plus a trailing divider before
+# the tile grid. Block ids prefixed `attributes.` read from the stored deal's
+# `attributes.*`. The whole section (fields + divider) hides when no fields are
+# configured or when the host disables it via `show_details: false` (e.g. it
+# renders those fields through custom tiles instead) — so no dangling divider.
+type: Box
 layout:
   span: 24
+  gap: 6
 visible:
-  _build.gt:
-    - _build.array.length:
+  _build.if:
+    test:
+      _build.ne:
+        - _module.var: show_details
+        - false
+    then:
+      _build.gt:
+        - _build.array.length:
+            _module.var: fields
+        - 0
+    else: false
+blocks:
+  - id: detail_section_fields
+    type: SmartDescriptions
+    layout:
+      span: 24
+    properties:
+      title: Details
+      column: 1
+      size: small
+      data:
+        _request: get_selected_deal.0
+      fields:
         _module.var: fields
-    - 0
-properties:
-  title: Details
-  column: 1
-  size: small
-  data:
-    _request: get_selected_deal.0
-  fields:
-    _module.var: fields
+  - id: detail_fields_divider
+    type: Divider
+    layout:
+      span: 24
+    style:
+      .element:
+        margin: 4px 0
