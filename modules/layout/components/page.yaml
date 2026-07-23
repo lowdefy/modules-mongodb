@@ -134,6 +134,15 @@ events:
           then:
             - id: __fetch_notifications_unread_count
               type: Request
+              # Anonymous callers on public pages must not fire this request:
+              # the notifications connection is tenant-walled, and a caller
+              # with no organization fails closed (loud AuthenticationError on
+              # every public page). The bell is meaningless when logged out
+              # anyway — skip instead of erroring.
+              skip:
+                _eq:
+                  - _user: id
+                  - null
               params: notifications_unread_count
           else: []
       - _var:
