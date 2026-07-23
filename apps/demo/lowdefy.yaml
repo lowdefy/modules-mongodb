@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260723125206
+lowdefy: 0.0.0-experimental-20260723135655
 name: Module Demo App
 slug: demo
 
@@ -79,7 +79,7 @@ auth:
   # Auth mail (verification, password reset, magic link, invitation) sends
   # through the app SMTP connection referenced here — the connection owns
   # `from`, the transport, and the delivery filter. Requires lowdefy >=
-  # experimental-20260723125206 (older experimentals rejected `connectionId`
+  # experimental-20260723135655 (older experimentals rejected `connectionId`
   # at build while the runtime read nothing else — lowdefy PR #2285).
   email:
     connectionId: email
