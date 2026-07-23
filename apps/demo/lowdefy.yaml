@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260723122111
+lowdefy: 0.0.0-experimental-20260723141834
 name: Module Demo App
 slug: demo
 
@@ -69,30 +69,13 @@ auth:
           _secret: GOOGLE_CLIENT_ID
         clientSecret:
           _secret: GOOGLE_CLIENT_SECRET
-  # Email transport is fully env-driven via _secret, so local Mailpit and prod
-  # SendGrid differ only by environment, never by editing this file. Unset
-  # secrets resolve to null. `secure` must be a real boolean — nodemailer treats
-  # the string "false" as truthy — so it's derived by comparing SMTP_SECURE to
-  # "true" rather than read raw; port stays a string (net/tls coerce it).
+  # Auth emails (verify, reset, magic-link, invite) send through the `auth-smtp`
+  # SMTP connection (see connections below): the runtime resolves it by
+  # connectionId at send time and the connection owns from/transport/filter. An
+  # optional `templates` map (verifyEmail/resetPassword/magicLink/invitation →
+  # notification ids) can override the default copy.
   email:
-    from:
-      _secret: AUTH_FROM_ADDRESS
-    provider:
-      type: smtp
-      properties:
-        host:
-          _secret: SMTP_HOST
-        port:
-          _secret: SMTP_PORT
-        secure:
-          _eq:
-            - _secret: SMTP_SECURE
-            - "true"
-        auth:
-          user:
-            _secret: SMTP_USER
-          pass:
-            _secret: SMTP_PASS
+    connectionId: auth-smtp
   # authPages and pages.public are contributed by the user-account module
   # manifest (auth.pages / auth.public); app config would win on collision.
   # Pinned-org policy (design Decision 1): one deployment = one pinned org.
@@ -102,6 +85,12 @@ auth:
   organizations:
     policy: pinned
     org: demo
+    # open: uninvited self-signup is admitted — a user.create.after hook auto-joins
+    # the pinned org with the org plugin's built-in (inert) `member` role, so the
+    # hard wall lets them in while role-gated pages still gate. invite-only is the
+    # secure default (a non-member is rejected with MEMBERSHIP_REQUIRED until an
+    # admin invites them); open lets the demo exercise the full signup→verify flow.
+    signup: open
   # The member role that administers users across the suite. Enforced by the
   # engine as a step-level floor before every auth-owned admin step, and named
   # by the user-admin module's `admin_roles` var for the endpoint gate below.
@@ -137,6 +126,24 @@ menus:
   _ref: menus.yaml
 
 connections:
+  - id: auth-smtp
+    type: SMTP
+    properties:
+      from:
+        _secret: AUTH_FROM_ADDRESS
+      host:
+        _secret: SMTP_HOST
+      port:
+        _secret: SMTP_PORT
+      secure:
+        _eq:
+          - _secret: SMTP_SECURE
+          - "true"
+      auth:
+        user:
+          _secret: SMTP_USER
+        pass:
+          _secret: SMTP_PASS
   - id: demo-contacts
     type: MongoDBCollection
     properties:

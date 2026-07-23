@@ -21,14 +21,14 @@ documented in [`README.md`](./README.md).
 
 ## Phase 0 — Environment & bootstrap
 
-- [ ] Docker running; `docker compose up -d`; `docker compose ps` shows both healthy
-- [ ] Compass connected to `mongodb://localhost:27017`; `demo-auth-test` DB visible
-- [ ] `apps/demo/.env` present with `LOWDEFY_SECRET_*` values (created; README §3a)
-- [ ] Email → Mailpit via `.env` `SMTP_*` (host `localhost`, port `1025`, secure `false`) — env-driven, no config edit (README §3b)
-- [ ] Partial-unique indexes created (see command below)
-- [ ] `pnpm ldf:b` from `apps/demo` is green (config compiles)
-- [ ] `pnpm ldf:d` dev server up; the pinned `demo` org row exists in `user-organizations` (Verify in Compass)
-- [ ] Script deps installed: `cd scripts/auth-testing && pnpm install`
+- [x] Mongo + Mailpit up (dev's own setup, not the compose stack); mongo reachable at `mongodb://localhost:27017`
+- [x] Compass connected; `demo-auth-test` DB visible (only this DB on local mongo — old cluster untouched)
+- [x] `apps/demo/.env` present with `LOWDEFY_SECRET_*` values (README §3a)
+- [x] Email → Mailpit via `.env` `SMTP_*` — config is env-driven (host `localhost`, port `1025`, secure `false`); live send verified in Phase 1
+- [x] Partial-unique indexes present on `user-contacts.lowercase_email` and `users.profile.contactId` (both `unique` + `$exists` partial)
+- [x] Build green — the `lowdefy-docs` dev server reports `build.status: ok`
+- [x] `pnpm ldf:d` dev server up (it backs the MCP); pinned `demo` org row exists in `user-organizations` (UUID `_id`, engine-ensured at startup)
+- [x] Script deps OK — `mongodb` resolves via the root dep (the local `pnpm install` is a no-op; see FINDINGS)
 - [ ] **First admin bootstrapped:** sign up + verify email (Phase 1), then `pnpm bootstrap-admin <email>`; log in and reach the user-admin console
 
 Index creation (run once per fresh DB — survives `reset-db`, lost on `down -v`):
@@ -47,8 +47,14 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 
 ### Signup & email verification
 
+> **Posture for this run: `auth.organizations.signup: open`** (lowdefy.yaml). The
+> default `invite-only` rejects uninvited self-signup with `MEMBERSHIP_REQUIRED` and
+> writes nothing — so the first admin can't be created via the UI. `open` auto-joins
+> the pinned org with the inert `member` role at signup. Requires a **dev-server
+> restart** to take effect (auth config loads at boot, not on hot reload).
+
 - [ ] Signup (email+password) → **check-your-email** state, no session (`requireEmailVerification`)
-- [ ] Verify in Compass: `users` row (`emailVerified: false`), a `user-accounts` credential row, and a **bare** `user-contacts` row (`profile.profile_created` unset)
+- [ ] Verify in Compass: `users` row (`emailVerified: false`), a `user-accounts` credential row, a **bare** `user-contacts` row (`profile.profile_created` unset), and — under `open` — a `user-members` row auto-joined with role `member`
 - [ ] Verification email lands in Mailpit; `pnpm mail-link` prints the verify link
 - [ ] Open the link → verify-email **success** landing; `users.emailVerified` now `true`; `profile.contactId` linked on the user (hook)
 - [ ] First login routes to **onboarding**; completing required `fields.profile` sets `profile.profile_created: true` and lands on the workspace
@@ -58,7 +64,7 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 - [ ] Happy path (verified + member) → workspace
 - [ ] Wrong password → inline **INVALID_EMAIL_OR_PASSWORD** friendly message
 - [ ] Unverified email → **EMAIL_NOT_VERIFIED** (with resend affordance)
-- [ ] Verified but no membership → **MEMBERSHIP_REQUIRED** "no access" state
+- [-] Verified but no membership → **MEMBERSHIP_REQUIRED** "no access" state — _not testable under `signup: open` (everyone auto-joins); flip to `invite-only` + restart to test just this item_
 - [ ] An expired/unmapped code → generic "an error occurred" (default branch, not blank)
 
 ### Password reset
@@ -175,4 +181,12 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 
 ## Notes / issues found
 
-_Log anything surprising here as you go — code line refs, unexpected states, design mismatches._
+- **[Phase 3] `_nunjucks` error on the user-admin `view` remove-modal title.** A
+  recent client `OperatorError` ("\_nunjucks failed to parse nunjucks template. at
+  modal_remove.") points at `modules/user-admin/components/view/modal_remove.yaml:7`
+  (the Modal `title`). Static inspection found nothing wrong: the `{template, on}`
+  shape is valid, the template parses, and `app_title` defaults to `""` so
+  `{{ app | trim }}` gets a real string. Lowdefy reports both parse- and render-time
+  nunjucks failures under the same message, so the real failure may be at render
+  with the live `get_user_detail.0.name` context. Repro when we open the
+  Remove-from-app modal in Phase 3. Build itself is green.

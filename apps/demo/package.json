@@ -19,7 +19,7 @@
     "e2e:server": "lowdefy build --server e2e && lowdefy start --port 3101 --log-level warn"
   },
   "dependencies": {
-    "lowdefy": "0.0.0-experimental-20260723122111"
+    "lowdefy": "0.0.0-experimental-20260723141834"
   },
   "devDependencies": {
     "@lowdefy/e2e-utils": "latest",

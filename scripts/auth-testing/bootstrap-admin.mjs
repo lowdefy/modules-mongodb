@@ -8,8 +8,10 @@
 //   2. Run this to insert the `user-members` row with role `user-admin`.
 //   3. Log in — the hard wall now admits you, and the user-admin console opens.
 //
-// It inserts ONLY the membership; it never touches credentials. All ids are the
-// native ObjectIds BetterAuth's mongo adapter uses (no generateId configured);
+// It inserts ONLY the membership; it never touches credentials. The engine's
+// mongo adapter keys every auth collection on UUID-string ids (the pinned org row
+// is a UUID), so the member row's own `_id` is a UUID string too, and the userId /
+// organizationId references are copied verbatim from the rows they point at.
 // `role` is a comma-separated string, matching what UpdateMemberRoles writes.
 //
 // Usage (from scripts/auth-testing/):
@@ -21,7 +23,9 @@
 //   MONGODB_URI      default mongodb://localhost:27017/demo-auth-test
 //   DEMO_ORG_SLUG    default "demo" (matches auth.organizations.org in lowdefy.yaml)
 
-import { MongoClient, ObjectId } from 'mongodb';
+import { randomUUID } from 'node:crypto';
+
+import { MongoClient } from 'mongodb';
 import { DEFAULT_URI, dbNameFromUri, escapeRegExp, die } from './_shared.mjs';
 
 const email = process.argv[2];
@@ -77,9 +81,9 @@ try {
     }
   } else {
     const memberDoc = {
-      _id: new ObjectId(),
-      userId: user._id, // ObjectId — matches users._id
-      organizationId: org._id, // ObjectId — matches user-organizations._id (_organization:id)
+      _id: randomUUID(), // UUID string — the engine's adapter keys every collection on these
+      userId: user._id, // matches users._id
+      organizationId: org._id, // matches user-organizations._id (_organization:id)
       role, // CSV string; a single role has no commas
       createdAt: new Date(), // read as `signed_up` on the members list
     };

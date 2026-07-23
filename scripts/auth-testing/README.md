@@ -38,8 +38,10 @@ colima start
 docker --version         # verify
 ```
 
-Either gives you the `docker` CLI and `docker compose`. The rest of this guide is
-identical for both.
+Either gives you the `docker` CLI. **The Compose command name differs:** Docker
+Desktop provides `docker compose` (v2 subcommand); Colima installs the standalone
+`docker-compose` (hyphenated). Commands below are written `docker compose` — on
+Colima, substitute `docker-compose`.
 
 ---
 
@@ -89,7 +91,8 @@ LOWDEFY_SECRET_GOOGLE_CLIENT_SECRET="dummy-..."
 LOWDEFY_SECRET_SMTP_HOST="localhost"            # → Mailpit
 LOWDEFY_SECRET_SMTP_PORT="1025"
 LOWDEFY_SECRET_SMTP_SECURE="false"
-# SMTP_USER / SMTP_PASS unset locally (Mailpit needs no auth)
+LOWDEFY_SECRET_SMTP_USER="mailpit"              # any value — Mailpit accepts any creds
+LOWDEFY_SECRET_SMTP_PASS="mailpit"
 ```
 
 > `MONGODB_URI` is the single secret every connection resolves — the auth
@@ -105,9 +108,9 @@ LOWDEFY_SECRET_SMTP_SECURE="false"
 ### 3b. Email → Mailpit (already env-driven)
 
 Nothing to edit. `auth.email.provider` in `lowdefy.yaml` reads host/port/secure and
-optional user/pass from `_secret`, so the `SMTP_*` values in §3a's `.env` point it
-at Mailpit locally, while Infisical supplies SendGrid values in prod — same config,
-different environment.
+user/pass from `_secret`, so the `SMTP_*` values in §3a's `.env` point it at Mailpit
+locally, while Infisical supplies SendGrid values in prod — same config, different
+environment.
 
 Two details worth knowing:
 
@@ -115,9 +118,12 @@ Two details worth knowing:
   treats the string `"false"` as truthy — so the config computes `secure` as
   `SMTP_SECURE == "true"` (a real boolean). Set `LOWDEFY_SECRET_SMTP_SECURE="true"`
   only for an implicit-TLS server (SendGrid :465); Mailpit is `"false"`.
-- **No auth locally.** `SMTP_USER` / `SMTP_PASS` unset → nodemailer sends no AUTH,
-  and Mailpit accepts it (`MP_SMTP_AUTH_*` in the compose file). Unset secrets
-  resolve to `null`, which is fine here.
+- **Dummy creds locally — do not leave them unset.** Mailpit advertises `AUTH`, and
+  nodemailer throws `EAUTH "Missing credentials"` if the `auth` block resolves to
+  null user/pass — so `SMTP_USER` / `SMTP_PASS` must carry _some_ value. Mailpit
+  accepts any credentials, so any dummy string works; prod uses the real SendGrid
+  `apikey` / key. (The provider schema fixes `auth` to `{user, pass}`, so the config
+  can't omit it conditionally — hence dummy values rather than an absent block.)
 
 ---
 
@@ -186,12 +192,10 @@ bootstrap and a Mailpit link-extractor.
 
 ## 7. Helper scripts
 
-One-time setup (installs the single dependency, the `mongodb` driver):
-
-```sh
-cd scripts/auth-testing
-pnpm install          # or: npm install
-```
+No install step — the scripts need only the `mongodb` driver, which is already a
+repo-root dependency and resolves via the root `node_modules`. (This directory
+isn't a pnpm workspace member, so a local `pnpm install` here just re-installs the
+root workspace and is a no-op for these scripts.)
 
 All three read `MONGODB_URI` (default `mongodb://localhost:27017/demo-auth-test`)
 and `MAILPIT_URL` (default `http://localhost:8025`) from the environment.
