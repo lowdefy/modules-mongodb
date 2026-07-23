@@ -185,6 +185,10 @@ _ref:
                   vars:
                     id: login_magic_send
                     label: Email me a sign-in link
+                    on_sent:
+                      login_view: link-sent
+                      magic_link_sent_email:
+                        _state: email
                     visible:
                       _eq:
                         - _state: login_view
@@ -377,6 +381,10 @@ _ref:
                     variant: outlined
                     color: default
                     icon: AiOutlineMail
+                    on_sent:
+                      login_view: link-sent
+                      magic_link_sent_email:
+                        _state: email
                     visible:
                       _eq:
                         - _state: login_view
@@ -529,6 +537,10 @@ _ref:
                     label: Resend link
                     variant: outlined
                     color: default
+                    on_sent:
+                      login_view: link-sent
+                      magic_link_sent_email:
+                        _state: email
                     visible:
                       _eq:
                         - _state: login_view

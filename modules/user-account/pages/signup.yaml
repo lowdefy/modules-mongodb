@@ -182,6 +182,35 @@ _ref:
                   plain: true
             else: []
 
+        # ---- Magic-link alternative-method send — one email → link action,
+        # same on both pages. The signup page only ever builds when password is
+        # on, so the password form always holds the primary slot and magic-link
+        # sits below the "or" divider as a peer of the OAuth buttons (placed
+        # first, closest to the form) — exactly as it demotes on the mixed login
+        # page. The shared component's on-success flip is supplied via `on_sent`
+        # so it drives signup's own `signup_view: link-sent` render. ----
+        - _build.if:
+            test:
+              _build.authConfig: magicLink.enabled
+            then:
+              - _ref:
+                  path: components/magic-link-send.yaml
+                  vars:
+                    id: signup_magic_send
+                    label: Email me a sign-in link
+                    variant: outlined
+                    color: default
+                    icon: AiOutlineMail
+                    on_sent:
+                      signup_view: link-sent
+                      magic_link_sent_email:
+                        _state: email
+                    visible:
+                      _eq:
+                        - _state: signup_view
+                        - form
+            else: []
+
         # ---- OAuth "signup" — social sign-in creates the account on first use,
         # so these dispatch through `Login`. One button per configured provider;
         # label/icon from the `providers` var. ----
@@ -300,6 +329,67 @@ _ref:
               textAlign: center
               fontSize: 12
               color: "var(--ant-color-text-secondary)"
+
+        # ---- Link-sent result (magic-link) — the send returns { status: true }
+        # with no session, so it flips signup_view to link-sent and shows this
+        # "check your email" render. Resend re-fires the same shared send
+        # (cooldown-guarded, re-supplying signup's on_sent); the link button
+        # returns to the form. ----
+        - _build.if:
+            test:
+              _build.authConfig: magicLink.enabled
+            then:
+              - id: signup_link_sent
+                type: Result
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - link-sent
+                properties:
+                  icon:
+                    name: AiOutlineMail
+                    color: "var(--ant-color-primary)"
+                  status: info
+                  title: Check your email
+                  subTitle:
+                    _nunjucks:
+                      template: We've emailed a sign-in link to <b>{{ email }}</b>. Open it on this device to continue — the link expires in a few minutes.
+                      on:
+                        email:
+                          _state: magic_link_sent_email
+              - _ref:
+                  path: components/magic-link-send.yaml
+                  vars:
+                    id: signup_magic_resend
+                    label: Resend link
+                    variant: outlined
+                    color: default
+                    on_sent:
+                      signup_view: link-sent
+                      magic_link_sent_email:
+                        _state: email
+                    visible:
+                      _eq:
+                        - _state: signup_view
+                        - link-sent
+              - id: signup_back_to_form
+                type: Button
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - link-sent
+                properties:
+                  title: Use a different email
+                  block: true
+                  variant: link
+                  color: primary
+                events:
+                  onClick:
+                    - id: back_to_form
+                      type: SetState
+                      params:
+                        signup_view: form
+            else: []
     nav:
       - id: signup_footer
         type: Html
