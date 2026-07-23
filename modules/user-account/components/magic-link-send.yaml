@@ -1,0 +1,93 @@
+# Shared magic-link send affordance. Dispatches the one `Login` action with
+# `magicLink: true` off the canonical `id: email` input the page owns, and on
+# the send's `{ status: true }` (no session) flips the page to the `link-sent`
+# view and stores the target email. The send carries the two verify-callback
+# targets the module owns as structured targets: `callbackUrl` -> the inbound
+# `?callbackUrl=` or app home, `newUserCallbackUrl` -> the onboarding page.
+# `errorCallbackUrl` is deliberately unset — the engine defaults it to
+# authPages.error (this login page), so an expired/consumed link lands here with
+# `?error=INVALID_TOKEN`.
+#
+# `magic_link_cooldown` disables the button between sends (set on click, cleared
+# by a delayed SetState) so a user can't tap through the plugin's send rate
+# limit (5 / 60s per IP). Referenced twice on login (primary send + resend) and
+# into signup; placements differ only in the id / label / styling vars.
+id:
+  _var: id
+type: Button
+visible:
+  _var:
+    key: visible
+    default: true
+properties:
+  title:
+    _var: label
+  block: true
+  size: large
+  color:
+    _var:
+      key: color
+      default: primary
+  variant:
+    _var:
+      key: variant
+      default: solid
+  icon:
+    _var:
+      key: icon
+      default: null
+  disabled:
+    _state: magic_link_cooldown
+events:
+  onClick:
+    try:
+      - id: begin_cooldown
+        type: SetState
+        params:
+          magic_link_cooldown: true
+      - id: magic_link_send
+        type: Login
+        messages:
+          error: false
+        params:
+          email:
+            _state: email
+          magicLink: true
+          callbackUrl:
+            _if:
+              test:
+                _ne:
+                  - _url_query: callbackUrl
+                  - null
+              then:
+                url:
+                  _url_query: callbackUrl
+              else:
+                home: true
+          newUserCallbackUrl:
+            pageId:
+              _module.pageId: onboarding
+      - id: show_link_sent
+        type: SetState
+        params:
+          login_view: link-sent
+          magic_link_sent_email:
+            _state: email
+      - id: hold_cooldown
+        type: Wait
+        params:
+          ms: 30000
+      - id: clear_cooldown
+        type: SetState
+        params:
+          magic_link_cooldown: false
+    catch:
+      - id: clear_cooldown_on_error
+        type: SetState
+        params:
+          magic_link_cooldown: false
+      - id: toast_magic_link_error
+        type: DisplayMessage
+        params:
+          status: error
+          content: We couldn't send your sign-in link right now. Please wait a moment and try again.
