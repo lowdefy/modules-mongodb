@@ -36,6 +36,8 @@ Verified behaviour of the pinned `magic-link@1.6.23` plugin, which shapes every 
 
 The login page renders whichever methods `_build.authConfig` reports enabled — this is the parent's Decision 2, extended to actually build the magic-link branch. Passwordless-primary falls out for free: a deployment with `emailAndPassword.enabled: false` and `magicLink.enabled: true` gets an email-only page because the password `_build.if` produces nothing and the magic-link branch produces the send affordance. There is no separate "passwordless" flag or page variant to maintain — one page, driven by config, is the "one correct way". OAuth and passkey buttons still render when their config is on, uniformly, so a passwordless deployment that also enables Google gets both.
 
+**Composition when both methods are on (mixed deployment).** Magic-link is the only _alternative_ method that also needs the email address, so two things follow. First, the `email` input is **hoisted** into the always-present zone (gated on `emailAndPassword.enabled OR magicLink.enabled`) and is the single canonical field both the password submit and the magic-link send read — it is not owned by either method's branch, so a mixed deployment never renders two email fields (the shipped password form owns `id: email` today; a second magic-link email input would collide on that auto-bound state path). Second, magic-link takes the **primary** submit slot only when no password submit occupies it: in a passwordless deployment it is the primary action directly under the email input, and in a mixed deployment the password "Sign in" is primary while magic-link **demotes to an alternative-method button** — a peer of the OAuth and passkey buttons, below the "or" divider (placed first among them, being the closest to the password form's email). This keeps every method's rendering uniform and mirrors the parent's password-primary stance. See the login mocks — `mockups/screens/login-passwordless.html` (email-only) and `mockups/screens/login-mixed.html` (password + magic-link) — for the two config renders, each with its `signin` / `link-sent` / `expired-link` states; the password-only render is the parent's shipped `../../mockups/screens/login.html`.
+
 ### 2. The "check your email" state
 
 Because the send returns `{ status: true }` and no session, the magic-link submit cannot navigate. It flips the page to a sent state — "We've emailed a sign-in link to {email}" — with a resend control (re-firing the same send) and a way back to the form. This is a genuinely new render alongside the parent's `signin` and `noaccess` states; it is driven by the same `login_view` state the parent already uses (a third value, e.g. `link-sent`). The password and OAuth paths are unchanged.
@@ -52,7 +54,7 @@ The three verify-callback destinations are how the server-side redirect re-enter
 
 Because the resolved targets are module-scoped root-relative paths, they are same-origin — which satisfies the `originCheck` the verify route runs on all three URLs (`magic-link/index.mjs`); an absolute off-site target would be rejected both by that check and by the resolver's open-redirect guard.
 
-`INVALID_TOKEN` joins the parent's one error-code → message table (which already carries `MEMBERSHIP_REQUIRED`, `EMAIL_NOT_VERIFIED`, `INVALID_EMAIL_OR_PASSWORD`, and a `default`). It maps to "this link has expired or was already used — request a new one." The `default` branch already covers any other code, so an unmapped magic-link failure degrades to the generic message rather than a blank page.
+`INVALID_TOKEN` (expired/consumed link) is **retryable**, unlike the terminal `MEMBERSHIP_REQUIRED` / `EMAIL_NOT_VERIFIED` codes — the user still has access; the link just lapsed. So it must **not** render in the form-hiding `noaccess` state (where the email input and magic-link send are gated out and there is no way to request a new link), and must **not** inherit the `noaccess` default title "You don't have access to this app". Concretely: `onInit` maps `?error=INVALID_TOKEN` to `login_view: signin` — the email input and send affordance stay visible — and populates a **dedicated inline notice** state (`login_notice_title`/`login_notice_desc`, left null for every other code) that drives a separate `Alert` block rendered above the form, reading "This link has expired or was already used — request a new one below." A dedicated notice state is used rather than the existing `login_error_alert`, whose title defaults to "You don't have access to this app" on every load; reusing it would surface that alert on clean sign-ins. The terminal codes keep their `noaccess` full-page alert unchanged, and the `default` branch still covers any other/unmapped code (including a 429 rate-limit trip) with the generic message rather than a blank page.
 
 **The engine hard wall does _not_ reach `errorCallbackURL`.** A walled-out user (no member row, no pending invite) is rejected by the engine-tier `session.create.before` hook, which _throws_ `MEMBERSHIP_REQUIRED` during session creation. The verify route only redirects to `errorCallbackURL` for its own explicit checks (a route-local `redirectWithError`); a thrown pre-session error unwinds _past_ that helper, and BetterAuth's global handler does not convert a non-redirect `APIError` into an `errorCallbackURL` redirect (that path is OAuth-only). So the walled-out user lands on a raw 403, not the login render — verified against `magic-link/index.mjs`, `db/with-hooks.mjs`, and the router `onError` in `api/index.mjs`. Closing this is the design's real upstream ask (below). It only affects _uninvited_ users; an invited user is admitted by the invitation carve-out (parent Decision 3), so their session is created and they route normally.
 
@@ -64,11 +66,22 @@ Admission itself is delegated to the engine's active-org policy (parent Decision
 
 Open sub-question (below): whether the `authPages.signUp` role still points at a distinct page in mixed (password + magic-link) deployments, or whether both roles collapse onto the one config-driven page.
 
-### 5. Merge-on-signup: existing binding, one refinement
+### 5. Merge-on-signup: existing binding already covers magic-link, one comment to correct
 
 Because `createUser` fires `user.create.before` for magic-link creations too, the parent's merge-on-signup hook (Decision 7) already runs — it links or creates the contact and sets `profile.contactId` inline via `:return`, exactly as it does for OAuth, and the email is verified at that moment so linking is safe. **No new upstream ask.**
 
-The refinement: the hook must match on **verified email alone, provider-agnostic**. A magic-link user has no `account` row (no credential, no OAuth provider), so any logic that keys on "an OAuth account exists" or a specific `providerId` would skip magic-link users and break the "every user has a contact by first session" invariant. The parent's Decision 7 already frames the binding as `email.verified` (email/password) + `user.create.before` (verified-provider OAuth); this sub-design widens the `user.create.before` intent from "verified-provider OAuth" to "any create with a verified email", which magic-link satisfies. This is a spec clarification to the shared `create-or-link-contact` fragment's binding condition, not a new mechanism.
+No logic change is needed. The hook's match condition lives in the **hook endpoint** `modules/user-account/api/link-contact-on-signup.yaml`, not in the shared `create-or-link-contact` fragment (the fragment upserts unconditionally on `lowercase_email` and carries no verified-email or provider gate). That guard already keys on **verified email alone, provider-agnostic**:
+
+```yaml
+- :if:
+    _or:
+      - _eq: [{ _payload: point }, email.verified]
+      - _eq: [{ _payload: user.emailVerified }, true]
+```
+
+It never keys on `providerId` or account existence, so a magic-link create (`user.create.before` + `emailVerified: true`, no `account` row) already links inline — the "every user has a contact by first session" invariant already holds for magic-link. The parent's Decision 7 frames the binding as `email.verified` (email/password) + `user.create.before` (verified-provider OAuth); magic-link is simply another `user.create.before` + verified-email case the guard already admits. The only refinement is narrative: the endpoint's comment describes `user.create.before` as "verified-provider OAuth", which now under-describes the intent — correct it to "any create with a verified email (verified-provider OAuth _and_ magic-link)". This is a comment fix, not a logic widen.
+
+**Do not touch the shared fragment's condition.** It is `_ref`'d verbatim by user-admin's invite flow, which calls it for invited contacts _before_ their email is verified; adding a verified-email gate there would break invites.
 
 ### 6. 2FA is moot for passwordless
 
@@ -104,7 +117,7 @@ With the gate as the primary mechanism, the wall stays as the backstop and part 
 
 - `pages/login.yaml` — add the magic-link send affordance (gated on `magicLink.enabled`), the `link-sent` result state + resend, and the email-only shape when `emailAndPassword.enabled` is false. Add `INVALID_TOKEN` to the error table and set the three callback URLs on the send.
 - `pages/signup.yaml` — resolve the collapse: in passwordless mode redirect to / reuse the login flow; confirm the `authPages.signUp` role wiring.
-- Merge-on-signup fragment (shared `create-or-link-contact`, parent Decision 7) — widen the `user.create.before` match condition to provider-agnostic verified-email (spec note; no new file).
+- Merge-on-signup hook (`modules/user-account/api/link-contact-on-signup.yaml`, parent Decision 7) — the `user.create.before` guard already matches provider-agnostic verified email, so magic-link is already covered; correct only the stale "verified-provider OAuth" comment (no logic change, no shared-fragment change).
 - Demo consumer — a passwordless (`emailAndPassword` off, `magicLink` on) demo app config exercising send → verify → onboarding, per the repo's "always add a demo consumer" rule.
 - Docs — the module's login/how-to page notes the passwordless shape and the `magicLink.enabled` behaviour.
 
