@@ -152,6 +152,14 @@ vars:
       get_selected_deal:
         default: []
         description: Extra pipeline stages appended to the get-selected-deal aggregation.
+  show_details:
+    type: boolean
+    default: true
+    description: >-
+      Whether the read-only "Details" section (the host `fields` rendered via
+      SmartDescriptions) shows on the deal view. Set false when the host renders
+      those fields through custom tiles (components.info_grid_slots) instead, so
+      they aren't duplicated.
   fields:
     type: array
     default: []
