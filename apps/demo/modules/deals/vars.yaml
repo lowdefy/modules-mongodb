@@ -67,12 +67,12 @@ contact_roles:
 # form and read-only on the deal view via SmartDescriptions. These are demo
 # (host) config: the generic deals module ships none of them.
 fields:
-  - id: attributes.material_code
+  - id: attributes.sku
     type: Selector
     properties:
-      title: Material
+      title: SKU
       showSearch: true
-      placeholder: Search material / SKU
+      placeholder: Search SKU
       options:
         - value: SKU-100
           label: Widget 100 (SKU-100)
@@ -104,8 +104,8 @@ fields:
       options:
         - value: project
           label: Project
-        - value: additional-volume
-          label: Additional Volume
+        - value: expansion
+          label: Expansion
   - id: attributes.sector
     type: Selector
     properties:
@@ -156,7 +156,7 @@ meta_fields:
         on:
           value:
             _request: get_selected_deal.0.value
-  - label: Commercialisation Date
+  - label: Expected close
     value:
       _nunjucks:
         template: "{% if close %}{{ close | date('D MMM YYYY') }}{% else %}—{% endif %}"

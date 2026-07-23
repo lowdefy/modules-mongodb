@@ -66,12 +66,13 @@ blocks:
             const reasons = args.reasons || {};
             const wfs = state('entity_workflows') || [];
             let actionable = false;
-            for (const w of wfs) {
+            // First match wins (mirrors deal_outcome_modal): stop once found.
+            outer: for (const w of wfs) {
               for (const g of (w.groups || [])) {
                 const a = (g.actions || []).find((x) => x.type === args.outcome_action_type);
                 // GetEntityWorkflows collapses each action card's status to the
                 // stage string (status[0].stage) — compare the string directly.
-                if (a) actionable = (a.status === 'action-required');
+                if (a) { actionable = (a.status === 'action-required'); break outer; }
               }
             }
             return Object.keys(reasons)

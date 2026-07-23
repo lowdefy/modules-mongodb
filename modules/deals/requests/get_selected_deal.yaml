@@ -26,17 +26,23 @@ properties:
         # resolved contact-roles registry (build time) — one entry per role.
         - $addFields:
             contact_ids:
-              _build.array.map:
-                on:
-                  _build.object.entries:
-                    _ref: components/contact_roles_resolved.yaml
-                callback:
-                  _build.function:
-                    $first:
-                      __build.string.concat:
-                        - "$"
-                        - __build.args: "0.0"
-                        - ".contact_id"
+              $filter:
+                input:
+                  _build.array.map:
+                    on:
+                      _build.object.entries:
+                        _ref: components/contact_roles_resolved.yaml
+                    callback:
+                      _build.function:
+                        $first:
+                          __build.string.concat:
+                            - "$"
+                            - __build.args: "0.0"
+                            - ".contact_id"
+                cond:
+                  $ne:
+                    - $$this
+                    - null
         - $lookup:
             from: user-contacts
             localField: contact_ids

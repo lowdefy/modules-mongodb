@@ -29,6 +29,7 @@ routine:
       filter:
         _id:
           _payload: deal_id
+        removed: null
       update:
         $set:
           updated:

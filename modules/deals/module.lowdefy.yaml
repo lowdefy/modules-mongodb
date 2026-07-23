@@ -46,9 +46,12 @@ vars:
     type: string
     default: sales-pipeline
     description: >-
-      The workflows-module workflow `type` this module renders on the deal
-      detail page. This is a single-workflow re-platform — there is no
-      multi-workflow support.
+      The module's primary workflow `type`: it wires this workflow's
+      start/submit endpoints and aliases its `form_data` onto the deal in
+      get_selected_deal. A deal may carry more than one workflow — the
+      workflow-progress phase view renders every workflow on the entity, and the
+      host's workflow config spawns the extras (e.g. an outcome hook or tracker).
+      Only the primary workflow's form_data is aliased.
   outcome_action_type:
     type: string
     default: deal-outcome
@@ -70,6 +73,13 @@ vars:
       per stage. REQUIRED: the host app must supply an entry for every stage
       slug its workflow config can write to
       `deals.status[].stage`, or stage chips render blank.
+  initial_stage:
+    type: string
+    default: prospecting
+    description: >-
+      Stage slug stamped on `deals.status[0].stage` at deal creation. Must be a
+      key in `stages`; the `prospecting` default assumes the host's stages
+      include it — set this to the host's own first stage otherwise.
   outcomes:
     type: object
     default: {}

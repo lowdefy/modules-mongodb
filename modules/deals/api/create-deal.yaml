@@ -36,7 +36,8 @@ routine:
           email:
             _user: email
         status:
-          - stage: prospecting
+          - stage:
+              _module.var: initial_stage
             created:
               _ref:
                 module: events
