@@ -1,6 +1,6 @@
 # Members base stages (design Decision 1/2) — shared by the list read and the
 # Excel export. Root is `user-members` for the pinned org (org-scoped with the
-# server-side `_organization` operator). Joins the auth `user` and the app
+# policy-portable `_user: organizationId` read). Joins the auth `user` and the app
 # `user-contacts` record, then flattens the display shape:
 #   name / picture — from the contact profile (fallback to the user display name)
 #   email          — from the auth user row
@@ -16,7 +16,7 @@
 # blank contact data is a co-location violation, not a wiring bug.
 - $match:
     organizationId:
-      _organization: id
+      _user: organizationId
 - $lookup:
     from: users
     localField: userId
