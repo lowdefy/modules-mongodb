@@ -1,5 +1,15 @@
 # @lowdefy/modules-mongodb-deals
 
+## 0.17.0
+
+### Minor Changes
+
+- [#120](https://github.com/lowdefy/modules-mongodb/pull/120) [`5d94b31`](https://github.com/lowdefy/modules-mongodb/commit/5d94b3138e5e214ef023d546c6bd36fbd16287f0) Thanks [@Yianni99](https://github.com/Yianni99)! - Deals view surfaces are now host-controllable:
+
+  - Add a `show_details` var (default `true`). Set it `false` to hide the read-only "Details" SmartDescriptions section — for hosts that render their domain fields through custom tiles (`components.info_grid_slots`) instead of the generic section.
+  - Company is no longer a fixed row in the meta strip. Hosts that want it there add a `meta_fields` entry (the same way Value is added), so a host with a dedicated company tile isn't stuck with a duplicated name.
+  - Info-grid layout regrouped: the read-only Details section is now full-width at the top (with a trailing divider that hides along with it), followed by a uniform tile grid — People, Files, then the host `info_grid_slots` tiles. Previously People sat alone above a divider, apart from the tiles.
+
 ## 0.16.0
 
 ## 0.15.0
