@@ -1,0 +1,4 @@
+display_key:
+  _ref:
+    path: app_config.yaml
+    key: app_name

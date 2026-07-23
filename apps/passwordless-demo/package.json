@@ -1,0 +1,14 @@
+{
+  "name": "@lowdefy/modules-passwordless-demo",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ldf:b": "lowdefy build",
+    "ldf": "lowdefy dev --no-open --port 3002"
+  },
+  "dependencies": {
+    "lowdefy": "0.0.0-experimental-20260723122111"
+  }
+}
