@@ -1,5 +1,5 @@
 name: Deals
-version: 0.15.0
+version: 0.16.0
 description: >-
   Deal (opportunity) pipeline — list, detail, and a single configured
   workflow, orchestrating companies, contacts, activities, files, and events
@@ -216,4 +216,4 @@ plugins:
   - name: "@lowdefy/community-plugin-mongodb"
     version: "^3"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.15.0"
+    version: "^0.16.0"

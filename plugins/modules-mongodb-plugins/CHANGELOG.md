@@ -1,5 +1,11 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.16.0
+
+### Minor Changes
+
+- [#118](https://github.com/lowdefy/modules-mongodb/pull/118) [`cdd1772`](https://github.com/lowdefy/modules-mongodb/commit/cdd1772bdd70ac5d01f8cc6cab245924a07b8748) Thanks [@Saiby100](https://github.com/Saiby100)! - Add a checkable-tree multi-select field for workflow action forms. Report types (or any grouping) show as parent nodes and their items as checkable leaves; checking a group selects all its items. The selection now also renders on the read-only view page instead of showing nothing.
+
 ## 0.15.0
 
 ## 0.14.1
