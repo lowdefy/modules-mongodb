@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260717123930
+lowdefy: 0.0.0-experimental-20260723122111
 name: Module Demo App
 slug: demo
 
@@ -69,18 +69,30 @@ auth:
           _secret: GOOGLE_CLIENT_ID
         clientSecret:
           _secret: GOOGLE_CLIENT_SECRET
+  # Email transport is fully env-driven via _secret, so local Mailpit and prod
+  # SendGrid differ only by environment, never by editing this file. Unset
+  # secrets resolve to null. `secure` must be a real boolean — nodemailer treats
+  # the string "false" as truthy — so it's derived by comparing SMTP_SECURE to
+  # "true" rather than read raw; port stays a string (net/tls coerce it).
   email:
     from:
       _secret: AUTH_FROM_ADDRESS
     provider:
       type: smtp
       properties:
-        host: smtp.sendgrid.net
-        port: 465
+        host:
+          _secret: SMTP_HOST
+        port:
+          _secret: SMTP_PORT
+        secure:
+          _eq:
+            - _secret: SMTP_SECURE
+            - "true"
         auth:
-          user: apikey
+          user:
+            _secret: SMTP_USER
           pass:
-            _secret: SENDGRID_API_KEY
+            _secret: SMTP_PASS
   # authPages and pages.public are contributed by the user-account module
   # manifest (auth.pages / auth.public); app config would win on collision.
   # Pinned-org policy (design Decision 1): one deployment = one pinned org.

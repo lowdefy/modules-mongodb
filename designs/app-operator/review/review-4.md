@@ -6,6 +6,8 @@ Context: since review-3 the design was substantially rewritten on the `auth-upgr
 
 ### 1. The `tasks/` folder describes the old scope and would migrate the wrong modules
 
+> **Resolved.** Deleted the stale `designs/app-operator/tasks/` folder — it predated the post-review-3 rewrite and would migrate `user-account`/`user-admin` (out of scope), skip `activities` (in scope), and edit the removed `docs/idioms.md`. `design.md` was substantially reworked in this review (second app, build-time enumeration, plugin rename, comment sweep), so the task set is regenerated from scratch via `/r:design-task` rather than hand-patched.
+
 `tasks/tasks.md` and its task files predate the rewrite (its "Review files applied" line stops at review-1/review-2, and it never mentions `activities`). Concretely:
 
 - **Task 2** (`02-migrate-simple-modules.md`): "Migrate `contacts`, `companies`, `notifications`, **`user-account`**". `user-account` is now out of scope (design §Scope, §Non-goals line 224) and no longer declares `app_name` — this task would hunt for a var/sites that don't exist.
@@ -29,6 +31,8 @@ Once the modules drop their `app_name` manifest var and their internals read `_a
 
 ### 3. The `app_config.yaml` reader inventory in step 1 is wrong
 
+> **Resolved.** Rewrote step 1 (design line 14): the demo's `app_config.yaml` readers are the six module vars files that `_ref` into it (`activities`/`companies`/`contacts`/`events`/`notifications`/`workflows`, events twice), not just events. Cross-referenced the `workflows-test` bullet for that app's own file, and stated the safety condition explicitly (delete each `app_config.yaml` only once every `_ref` is migrated).
+
 Design line 14 (and the deletion plan): "Its only remaining consumer is the demo's `events` vars (`display_key` and `change_stamp.app_name`)." Actual `app_config.yaml` readers:
 
 - **Six** demo module vars files: `apps/demo/modules/{activities,companies,contacts,events,notifications,workflows}/vars.yaml` (events reads it twice — `display_key` and `change_stamp.app_name`).
@@ -39,6 +43,8 @@ This contradicts the design's own §Scope-of-changes line 155 ("delete `app_name
 ## Correctness — build-time site enumeration
 
 ### 4. A build-time `_build.string.concat` shape is not enumerated, and a mechanical swap would break the build
+
+> **Resolved.** Added the `_build.string.concat` variant to §Build-time and runtime usage (class 2) and to the §Scope-of-changes build-time list, calling out the single site (`modules/activities/api/update-activity.yaml:315–317`) and the separate grep `git grep -n -B2 '_module.var: app_name' modules/ | grep _build.string.concat`, so the map-key find doesn't miss it.
 
 `modules/activities/api/update-activity.yaml:315–317` builds a **dotted** app-keyed message key inside a build operator:
 
@@ -54,6 +60,8 @@ The design's build-time enumeration describes only the **direct map-key** shape 
 
 ### 5. `activities` build-time surface is under-described ("create/update-style endpoints")
 
+> **Resolved.** Corrected the misleading _rule_ rather than enumerating sites (the design intentionally keeps inventories indicative): the build-time bullet now reads "any endpoint that builds an event-display key, not just create/update — in `activities` this includes status-change and delete endpoints," with the existing `git grep -l _build.object.fromEntries modules/` pointer to find them. The stale review-2 ~60/~12 split is not carried forward; task regeneration (#1) will re-derive counts.
+
 Design line 141 lists the build-time sites as the "`create`/`update`-style endpoints" of `activities`, `companies`, `contacts`. For `activities`, **all nine** `app_name` sites are build-time and they span four files, including two the "create/update-style" phrasing skips:
 
 - `create-activity.yaml:79, 198`
@@ -66,6 +74,8 @@ Because `activities` was never in scope during reviews 1–3, review-2's task-sh
 ## Doc / comment drift
 
 ### 6. The `EventsTimeline` connection's `app_name` property is left out of the plugin rename — and its description is already stale
+
+> **Resolved.** Added `EventsTimeline` to the plugin rename: property `app_name` → **`display_key`** (not `slug` — it's fed the events module's `display_key`, which diverges from the slug in the ops-app case), rewrite the stale description, rename the shared-engine read, and update the wiring key in `modules/events/connections/events-timeline.yaml`. Bullet added to §Scope-of-changes and a note to the rename decision. No connection-level default needed — the slug default already flows through the `events.display_key` var (step 4).
 
 `plugins/modules-mongodb-plugins/src/connections/EventsTimeline/schema.js` declares a **required** `app_name` property (lines 3, 11) in the _same_ plugin package the design version-bumps and renames:
 
@@ -88,6 +98,8 @@ The design's identifier-rename decision (§line 146–153, §202–210) scopes t
 **Semantic note:** `EventsTimeline.app_name` is fed `display_key`, which legitimately diverges from the slug (the ops-app case the design preserves). So the accurate rename is to **`display_key`**, _not_ `slug`. **Fix:** decide explicitly — rename the property to `display_key` and fix the description, or exclude it with a one-line rationale — but the current silent omission both undercuts the rename's stated goal and leaves a wrong description shipping to consumers.
 
 ### 7. In-source comments and manifest var descriptions assert the old build-time mechanism
+
+> **Resolved.** Added an "In-source comments and manifest descriptions" bullet to the docs scope: sweep any comment/description asserting `app_name` or "build-time" resolution, calling out the contacts `get_role_contacts_for_selector.yaml:16` comment (rewrite to drop the false build-time premise) and the `event_display` descriptions in the three manifests ("render under app_name" → "under the app slug"), plus `pnpm docs:gen` since those feed generated `vars.md`. Note: the review's "parallel comment at edit.yaml/view.yaml" was not found — only the one request comment exists; the rule-based phrasing covers any that resurface.
 
 The design's docs scope (lines 159–165) covers `docs/shared/*`, `README.md`, and `CLAUDE.md`, but not in-repo source comments that will become false. Per CLAUDE.md ("comments describe the current code"):
 

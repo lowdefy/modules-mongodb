@@ -1,0 +1,46 @@
+# Local test infrastructure for the demo app's BetterAuth flows.
+#
+#   MongoDB  — isolated, ephemeral database for auth + contact data. Nothing here
+#              touches any real cluster; teardown scripts drop collections in THIS
+#              database only.
+#   Mailpit  — SMTP sink + web UI/API. Catches every auth email (verify, reset,
+#              magic-link, invite) so nothing leaves the machine.
+#
+# Usage (from scripts/auth-testing/):
+#   docker compose up -d        # start both, in the background
+#   docker compose ps           # check health
+#   docker compose down         # stop (keeps the mongo volume)
+#   docker compose down -v      # stop AND wipe the mongo volume (full reset)
+#
+# Connection targets once up:
+#   MongoDB  →  mongodb://localhost:27017/demo-auth-test   (no auth)
+#   Mailpit  →  http://localhost:8025   (web UI + JSON API), SMTP on :1025
+
+services:
+  mongo:
+    # Standalone is the design's target (mongodb Decision 5: no cross-step
+    # transactions; steps are idempotent). If a flow ever needs transactions or
+    # change streams, switch to a single-node replica set (see README).
+    image: mongo:7
+    container_name: demo-auth-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: demo-auth-mailpit
+    ports:
+      - "8025:8025" # web UI + JSON API
+      - "1025:1025" # SMTP
+    environment:
+      # Accept whatever the nodemailer client sends, over a plain connection —
+      # so the app's auth.email SMTP config connects with no real credentials.
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    restart: unless-stopped
+
+volumes:
+  mongo-data:

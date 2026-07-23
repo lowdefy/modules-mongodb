@@ -23,14 +23,28 @@ this (`magic-link@1.6.23`, design Context):
   **already delivered** upstream — confirm the exact param via the `lowdefy-docs`
   MCP / `Login` action schema; do not guess).
 - The emailed link is `GET /magic-link/verify`, which redirects to the
-  `callbackURL` / `newUserCallbackURL` / `errorCallbackURL` the send set.
+  `callbackURL` / `newUserCallbackURL` the send set, and to `errorCallbackURL` on a
+  verify failure — which the engine defaults to `authPages.error` (this page) when
+  the send omits it.
 - Send rate limit: **5 requests / 60s per client IP**.
 
 ## Task
 
-Add the magic-link branch to `login.yaml` (extract sub-blocks into
-`components/*` via `_ref` if nesting/reuse warrants it). All of the following are
-gated so they appear **only** when `_build.authConfig: magicLink.enabled`.
+Add the magic-link branch to `login.yaml`. All of the following are gated so they
+appear **only** when `_build.authConfig: magicLink.enabled`.
+
+**Extract the send affordance into a shared component** (Decision 4). The
+"email me a sign-in link" button (with its `Login`-dispatch action, callback
+params, and cooldown-aware disabled binding) is **not inlined** into `login.yaml`
+— it goes in a reusable component file (e.g.
+`modules/user-account/components/magic-link-send.yaml`, alongside the module's
+existing composition components) and is `_ref`'d into the login page. This is
+load-bearing: task 3 `_ref`s the **same** component into `signup.yaml`, so a mixed
+deployment offers magic-link on both pages from one definition ("one component,
+two references"). Pass whatever the two placements differ on (primary vs
+alternative-method styling, button label) via `_ref` `vars`. The `link-sent`
+result state and the shared email input stay in `login.yaml` (the login page owns
+`login_view`); only the send _button/action_ is the shared unit.
 
 1. **Send affordance + shared email input** (Decision 1). **Hoist the `email`
    input** out of the `emailAndPassword.enabled` `_build.if` block into the
@@ -74,21 +88,26 @@ gated so they appear **only** when `_build.authConfig: magicLink.enabled`.
      block's `visible` on the appropriate `login_view` value, consistent with the
      existing blocks.
 
-4. **Verify-callback params on the send** (Decision 3). Set all three as
-   **structured targets in Lowdefy casing** on the `Login` send call — do **not**
+4. **Verify-callback params on the send** (Decision 3). Set the two the module owns
+   as **structured targets in Lowdefy casing** on the `Login` send call — do **not**
    hand-build raw path strings:
    - `callbackUrl` → app home, honoring an inbound `?callbackUrl=` exactly as the
      existing password `Login` does.
    - `newUserCallbackUrl` → the module's onboarding page: `{ pageId: onboarding }`
      (or the equivalent `_module.pageId` structured form the resolver accepts).
-   - `errorCallbackUrl` → this login page (the `authPages.error` role).
-     These are resolved by the upstream **`magic-link-callbacks`** feature through
-     the same shared resolver as `callbackUrl` (basePath-prefixed, open-redirect
-     guarded). See the dependency note below.
+   - **Do not set `errorCallbackUrl`.** The engine defaults it to the resolved
+     `authPages.error` (this login page) when the send omits it (upstream
+     `error-callback-default`), so a verify failure reaches this page automatically —
+     the same declare-once mechanism OAuth errors use. Setting it would just
+     re-declare the error page the module already owns as `authPages.error`.
+     `callbackUrl` / `newUserCallbackUrl` are resolved by the upstream
+     **`magic-link-callbacks`** feature through the same shared resolver
+     (basePath-prefixed, open-redirect guarded). See the dependency note below.
 
 5. **`INVALID_TOKEN` as a retryable inline notice** (Decision 3). An expired/consumed
-   link redirects to `errorCallbackUrl` (this page) with `?error=INVALID_TOKEN`, so it
-   arrives on the **`onInit` (`_url_query: error`) path**, not the inline `catch`.
+   link redirects to the engine-defaulted `errorCallbackUrl` (this page, via
+   `authPages.error`) with `?error=INVALID_TOKEN`, so it arrives on the
+   **`onInit` (`_url_query: error`) path**, not the inline `catch`.
    Unlike the terminal `MEMBERSHIP_REQUIRED` / `EMAIL_NOT_VERIFIED` codes,
    `INVALID_TOKEN` must render so the user **can request a new link**, and must not
    inherit the `noaccess` default title. Wire it concretely as:
@@ -118,8 +137,9 @@ gated so they appear **only** when `_build.authConfig: magicLink.enabled`.
   email-only: no password field, no "Forgot?" link, no password submit.
 - With both enabled, password submit **and** magic-link send both render off one
   email input.
-- The send sets `callbackUrl`, `newUserCallbackUrl` (→ onboarding), and
-  `errorCallbackUrl` (→ login) as structured targets.
+- The send sets `callbackUrl` and `newUserCallbackUrl` (→ onboarding) as structured
+  targets, and does **not** set `errorCallbackUrl` (the engine defaults it to
+  `authPages.error` → this login page).
 - `?error=INVALID_TOKEN` maps to the friendly "expired/already used — request a
   new one" message and leaves the send affordance reachable; the `default` branch
   still catches 429 and unmapped codes.
@@ -133,34 +153,35 @@ gated so they appear **only** when `_build.authConfig: magicLink.enabled`.
   affordance (gated on `magicLink.enabled`), the `link-sent` view + resend with
   cooldown + back, confirm the email-only shape falls out of the existing
   `emailAndPassword.enabled` gate, add `INVALID_TOKEN` to the `onInit` error table,
-  set the three callback params on the send.
+  set `callbackUrl` + `newUserCallbackUrl` on the send (leave `errorCallbackUrl` to
+  the engine default → `authPages.error`).
 - `modules/user-account/pages/components/*` — create (optional) — extract the
   `link-sent` result and/or send affordance via `_ref` if nesting exceeds ~3–4
   levels or the blocks are reused.
 
 ## Notes
 
-- **Upstream dependency (not yet delivered): the `newUserCallbackUrl` /
-  `errorCallbackUrl` `Login` params.** The magic-link **dispatch** and
-  `magicLink.enabled` in `_build.authConfig` are delivered; the structured
-  `newUserCallbackUrl` / `errorCallbackUrl` params are owned by the upstream
-  `magic-link-callbacks` feature (`../../../../lowdefy-design/designs/auth-upgrade/features/magic-link-callbacks/design.md`),
-  **designed but not yet delivered**. Wire them as the design specifies (structured
-  targets). Confirm against the `Login` action schema via the `lowdefy-docs` MCP at
-  implementation time: if the params are present, they resolve; the app-build
-  `params` schema is `{}` and `Login`/`login()` forward extra params verbatim to
-  BetterAuth, so a raw pass-through reaches the server even before the feature
-  formally lands (it just skips resolver prefixing/guarding). Do **not** hand-build
-  raw `newUserCallbackURL` strings as a workaround — the design explicitly rejects
-  that path. If the MCP shows the params are unavailable and passthrough is
-  rejected at build, flag it: without them, new users never reach onboarding and
-  expired-link errors vanish.
+- **Upstream dependencies (delivered).** The magic-link **dispatch**,
+  `magicLink.enabled` in `_build.authConfig`, and the structured
+  `newUserCallbackUrl` / `errorCallbackUrl` `Login` params (owned by
+  `magic-link-callbacks`,
+  `../../../../lowdefy-design/designs/auth-upgrade/_completed/magic-link-callbacks/design.md`)
+  are all delivered. **`errorCallbackUrl` also gains an engine default** to
+  `authPages.error` (`error-callback-default`,
+  `../../../../lowdefy-design/designs/auth-upgrade/features/error-callback-default/design.md`),
+  which is why this task sets only `callbackUrl` + `newUserCallbackUrl` and leaves
+  `errorCallbackUrl` unset (item 4). Wire the two you set as structured targets,
+  resolved through the same shared resolver as `callbackUrl` (basePath-prefixed,
+  open-redirect guarded). Confirm the exact `Login` param names/shape against the
+  action schema via the `lowdefy-docs` MCP at implementation time — do **not** guess,
+  and do **not** hand-build raw callback strings.
 - **Do not add admission gating to the send.** Gating the send on the active-org
-  policy (so uninvited emails never reach verify) is the design's **upstream ask**
-  (§Upstream) — platform/engine territory, explicitly **not** the module's job. The
-  module's send renders and delivers only. The uniform `{ status: true }` /
-  "check your email" response means no enumeration leak regardless. The known
-  consequence until the gate lands (uninvited verify → orphan records + raw 403) is
-  documented and accepted — do not try to solve it here.
+  policy (so uninvited emails never reach verify) is engine/platform territory,
+  delivered by the `signup-admission-gate` feature (the engine-tier send gate +
+  create gate) — explicitly **not** the module's job. The module's send renders and
+  delivers only. The uniform `{ status: true }` / "check your email" response means
+  no enumeration leak regardless. With the gates in place an uninvited email never
+  reaches verify and no orphan record is created; do not try to re-implement any of
+  that here.
 - Use the `lowdefy-docs` MCP (`/lowdefy-config`) for the `Login` action schema, the
   `Result` block, and timer/cooldown patterns — never guess a type or prop.

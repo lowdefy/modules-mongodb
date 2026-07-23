@@ -30,12 +30,17 @@ Document, in the appropriate `docs/user-account/` pages:
    with resend (short cooldown). Magic-link never navigates inline (the send
    returns no session). Add this to `concepts/auth-methods.md` alongside the
    existing method descriptions.
-2. **The passwordless-primary shape** (Decision 1). When `emailAndPassword.enabled`
+2. **The passwordless-primary shape** (Decision 1, 4). When `emailAndPassword.enabled`
    is false and `magicLink.enabled` is true, the login page renders **email-only**
    (no password field, no "Forgot?"), and **sign-up collapses into sign-in** — one
    email → link action; an unknown-but-admittable email is created at verify time
-   and routed to onboarding. Note this is the **migration path** for a
-   formerly-passwordless deployment (cross-link from `how-to/migration.md`).
+   and routed to onboarding. Consumer-observable consequence: there is **no separate
+   `/signup` route** in a passwordless deployment (the signup page is not built), and
+   the `signUp` auth-page role points at login. In a **mixed** deployment (password
+   _and_ magic-link) the `/signup` page is built and offers magic-link as an
+   alternative-method button, exactly as `/login` does. Note passwordless is the
+   **migration path** for a formerly-passwordless deployment (cross-link from
+   `how-to/migration.md`).
 3. **Verify-callback routing** (Decision 3): a magic-link user lands on
    **onboarding** as a first-time user; expired/consumed links return to the login
    page as `INVALID_TOKEN` → "this link has expired or was already used — request a

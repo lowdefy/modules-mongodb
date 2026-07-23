@@ -53,12 +53,16 @@ approach you took.
 
 - A passwordless consumer exists under `apps/` with `emailAndPassword.enabled:
 false` and `magicLink.enabled: true`.
-- `pnpm --filter <name> ldf:b` (or `pnpm ldf:b` from the app dir) succeeds.
+- `pnpm --filter <name> ldf:b` (or `pnpm ldf:b` from the app dir) succeeds — this
+  is what build-verifies the manifest's passwordless branches (email-only login,
+  absent signup page) that `apps/demo` (password on) cannot exercise.
 - Inspecting the generated `.lowdefy/server/build/pages/**` for the login page
   confirms the **email-only** shape: no password field, no "Forgot?" link, no
   password submit; the magic-link send affordance and `link-sent` state present.
-- The signup route resolves to the collapsed (redirect/reuse) behaviour from
-  task 3.
+- **No `signup` page is emitted** in the passwordless build (Decision 4 / task 3:
+  the manifest's `_build.if` drops the signup arm when `emailAndPassword.enabled` is
+  false), and `authPages.signUp` resolves to the **login** page — confirm both in
+  the generated artifacts.
 - The onboarding page exists as the `newUserCallbackUrl` target.
 
 ## Files
