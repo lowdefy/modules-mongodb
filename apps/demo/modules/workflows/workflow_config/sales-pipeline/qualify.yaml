@@ -38,6 +38,41 @@ form:
   - key: form.notes
     component: text_area
     title: Qualification notes
+  # Checkable tree: product categories are parent nodes (no value, not
+  # selectable), products are leaves. primaryKey/parentKey build the hierarchy
+  # from the flat options; SHOW_CHILD stores only the leaf values, so checking a
+  # category cascades to its products without storing the category itself.
+  - key: form.products_interested
+    component: tree_multiple_selector
+    title: Products of interest
+    placeholder: Search products
+    primaryKey: id
+    parentKey: parentId
+    options:
+      - id: hardware
+        label: Hardware
+        parentId: null
+        selectable: false
+      - id: sensor
+        value: sensor
+        label: Sensor unit
+        parentId: hardware
+      - id: gateway
+        value: gateway
+        label: Gateway
+        parentId: hardware
+      - id: software
+        label: Software
+        parentId: null
+        selectable: false
+      - id: dashboard
+        value: dashboard
+        label: Dashboard licence
+        parentId: software
+      - id: api
+        value: api
+        label: API access
+        parentId: software
   - key: form.estimated_value
     component: number
     title: Estimated value
