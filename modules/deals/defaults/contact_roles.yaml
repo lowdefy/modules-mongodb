@@ -1,0 +1,11 @@
+# Shipped default deal-contact role. Each key is the deal document field name
+# holding that role's captured contact snapshot ({ contact_id, name, email }) —
+# do NOT rename. This file is the registry's built-in floor: the host's
+# `contact_roles` var is merged OVER it via `_build.object.assign` (host wins
+# per key, and adds more roles). `main_point_of_contact` is the one universal
+# role, so it always ships; hosts can restyle/reorder it but it is always present.
+# `order` (int) sorts the People section render; title + color/bg/border style
+# the role chip (all display fields optional).
+main_point_of_contact:
+  title: Main point of contact
+  order: 0

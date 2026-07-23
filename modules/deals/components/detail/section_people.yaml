@@ -74,21 +74,16 @@ blocks:
               </div>
             {% endmacro %}
             <div style="border: 1px solid var(--ant-color-border-secondary); border-radius: 6px; background: var(--ant-color-bg-container); overflow: hidden;">
-              {{ row(main_poc, roles.main_point_of_contact) }}
-              <div style="height: 1px; background: var(--ant-color-border-secondary);"></div>
-              {{ row(decision_maker, roles.decision_maker) }}
-              <div style="height: 1px; background: var(--ant-color-border-secondary);"></div>
-              {{ row(finance_contact, roles.finance_contact) }}
+              {% for r in role_list | sort(false, false, 'order') %}
+                {% if not loop.first %}<div style="height: 1px; background: var(--ant-color-border-secondary);"></div>{% endif %}
+                {{ row(deal[r.slug + '_view'][0], r) }}
+              {% endfor %}
             </div>
           on:
-            main_poc:
-              _request: get_selected_deal.0.main_point_of_contact_view.0
-            decision_maker:
-              _request: get_selected_deal.0.decision_maker_view.0
-            finance_contact:
-              _request: get_selected_deal.0.finance_contact_view.0
-            roles:
-              _module.var: contact_roles
+            deal:
+              _request: get_selected_deal.0
+            role_list:
+              _ref: components/contact_roles_list.yaml
             contact_detail_page:
               _module.pageId:
                 id: view

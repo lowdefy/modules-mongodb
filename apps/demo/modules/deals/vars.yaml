@@ -52,12 +52,14 @@ outcome_reasons:
     outcome: lost
 
 contact_roles:
-  main_point_of_contact:
-    title: Main point of contact
+  # main_point_of_contact ships as a module default (order 0); these are the
+  # extra roles this app adds. order sorts them in the People section.
   decision_maker:
     title: Decision maker
+    order: 1
   finance_contact:
     title: Finance contact
+    order: 2
 
 # ActionSteps group display config — one entry per group slug the onboarding
 # workflow config declares (apps/demo/modules/workflows/workflow_config/onboarding/onboarding.yaml).

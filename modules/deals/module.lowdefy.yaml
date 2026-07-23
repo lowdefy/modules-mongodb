@@ -90,8 +90,14 @@ vars:
     type: object
     default: {}
     description: >-
-      Deal-contact role display config, keyed by role slug (e.g.
-      main_point_of_contact, decision_maker, finance_contact) — title/color/bg/border.
+      The deal's people-role registry, keyed by role slug. Merged OVER the
+      shipped default (defaults/contact_roles.yaml, which always contributes
+      `main_point_of_contact`) via `_build.object.assign` — so a role's presence,
+      not just its styling, is host-driven. The slug is the deal document field
+      the role's contact snapshot is stored under. Per entry: `order` (int) sorts
+      the People section; `title` + `color`/`bg`/`border` style the role chip
+      (all optional). Add `decision_maker`, `finance_contact`, or any custom role
+      here; each is rendered, resolved, edited, and persisted generically.
   action_groups:
     type: object
     default: {}

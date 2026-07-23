@@ -103,7 +103,11 @@ blocks:
       # (engine win hooks, only once that step is actionable); Lost stamps the deal +
       # cancels the workflow at any stage via record-loss.
       - _ref: components/detail/deal_outcome_modal.yaml
-      - _ref: components/detail/people_modal.yaml
+      - _ref:
+          path: components/detail/people_modal.yaml.njk
+          vars:
+            roles:
+              _ref: components/contact_roles_list.yaml
       - _ref:
           module: activities
           component: task-modal

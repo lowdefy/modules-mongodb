@@ -17,49 +17,55 @@ properties:
             localField: company_id
             foreignField: _id
             as: company
-        # People are stored as arrays of captured snapshots ({ contact_id, name,
-        # email }). Enrich each via the embedded contact_id so the detail card shows
-        # fresh profile fields (name, job_title). The raw stored arrays are left
-        # intact for the Assign People picker to bind to; enrichment lands in
-        # separate *_view arrays read by section_people (via *_view.0).
-        # Collect every referenced contact_id into one array, then a single
-        # localField/foreignField lookup fetches them with one indexed _id match.
-        # $filter splits the result back into the per-role *_view arrays.
+        # People are stored per role as arrays of captured snapshots
+        # ({ contact_id, name, email }); the raw arrays stay intact for the Assign
+        # People picker. Enrichment: collect every role's contact_id into one array,
+        # one indexed _id lookup fetches them, then $filter splits the result back
+        # into per-role `<slug>_view` arrays that section_people reads (via .0).
+        # Both the id list and the per-role view stages are generated from the
+        # resolved contact-roles registry (build time) — one entry per role.
         - $addFields:
             contact_ids:
-              - $first: $main_point_of_contact.contact_id
-              - $first: $decision_maker.contact_id
-              - $first: $finance_contact.contact_id
+              _build.array.map:
+                on:
+                  _build.object.entries:
+                    _ref: components/contact_roles_resolved.yaml
+                callback:
+                  _build.function:
+                    $first:
+                      __build.string.concat:
+                        - "$"
+                        - __build.args: "0.0"
+                        - ".contact_id"
         - $lookup:
             from: user-contacts
             localField: contact_ids
             foreignField: _id
             as: contacts_view
+        # One `<slug>_view` field per role — $filter splits the single lookup back
+        # out per role. Keyed object generated from the registry (build time).
         - $addFields:
-            main_point_of_contact_view:
-              $filter:
-                input: $contacts_view
-                as: c
-                cond:
-                  $eq:
-                    - $$c._id
-                    - $first: $main_point_of_contact.contact_id
-            decision_maker_view:
-              $filter:
-                input: $contacts_view
-                as: c
-                cond:
-                  $eq:
-                    - $$c._id
-                    - $first: $decision_maker.contact_id
-            finance_contact_view:
-              $filter:
-                input: $contacts_view
-                as: c
-                cond:
-                  $eq:
-                    - $$c._id
-                    - $first: $finance_contact.contact_id
+            _build.object.fromEntries:
+              _build.array.map:
+                on:
+                  _build.object.entries:
+                    _ref: components/contact_roles_resolved.yaml
+                callback:
+                  _build.function:
+                    - __build.string.concat:
+                        - __build.args: "0.0"
+                        - "_view"
+                    - $filter:
+                        input: $contacts_view
+                        as: c
+                        cond:
+                          $eq:
+                            - $$c._id
+                            - $first:
+                                __build.string.concat:
+                                  - "$"
+                                  - __build.args: "0.0"
+                                  - ".contact_id"
         - $unset:
             - contact_ids
             - contacts_view

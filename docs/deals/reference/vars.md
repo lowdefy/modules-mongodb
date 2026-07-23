@@ -23,24 +23,25 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `stages` | object |  | Yes | Deal stage (status) display config, keyed by stage slug — title/fg/bd per stage. REQUIRED: the host app must supply an entry for every stage slug its workflow config can write to `deals.status[].stage`, or stage chips render blank. |
 | `outcomes` | object | `{}` |  | Per-outcome display overrides (title/fg/bd) for the shipped won/lost outcome enum (defaults/outcomes.yaml). Merged via `_build.object.assign` onto the shipped enum and exposed as the deal-status-chip component for UI consumption only. |
 | `outcome_reasons` | object | `{}` |  | Per-reason display overrides (title + outcome discriminator) merged via `_build.object.assign` over the module's minimal other-won/other-lost default (defaults/outcome_reasons.yaml). Host apps typically fully replace this with their own won/lost reason taxonomy. |
-| `contact_roles` | object | `{}` |  | Deal-contact role display config, keyed by role slug (e.g. main_point_of_contact, decision_maker, finance_contact) — title/color/bg/border. |
+| `contact_roles` | object | `{}` |  | The deal's people-role registry, keyed by role slug. Merged OVER the shipped default (defaults/contact_roles.yaml, which always contributes `main_point_of_contact`) via `_build.object.assign` — so a role's presence, not just its styling, is host-driven. The slug is the deal document field the role's contact snapshot is stored under. Per entry: `order` (int) sorts the People section; `title` + `color`/`bg`/`border` style the role chip (all optional). Add `decision_maker`, `finance_contact`, or any custom role here; each is rendered, resolved, edited, and persisted generically. |
 | `action_groups` | object | `{}` |  | Workflow action_group display config, keyed by group slug — title/order/icon. Consumed by the workflows ActionSteps surface. |
 | `company_fields` | array | `[]` |  | Extra field blocks rendered on the deal's company section. |
 | `meta_fields` | array | `[]` |  | Extra field blocks rendered in the deal's meta/info section. |
 | `filters` | array | `[]` |  | Extra filter blocks rendered on the deals list page. |
 | `card_fields` | array | `[]` |  | Extra fields rendered on the deal card (e.g. kanban/board views). |
 | `fields` | array | `[]` |  | Host-supplied domain field blocks appended after the core company/name/description on the create form (rendered as inputs) and rendered read-only on the deal view via SmartDescriptions. Block ids must be prefixed with `attributes.` so they bind to `state.attributes.*` and flow through the generic create-deal passthrough. Deals ships no domain fields of its own — hosts inject their own here, the same way `companies.fields.attributes` works. |
-| `components` | object |  |  | Component slot overrides: main_slots, info_grid_slots, sidebar_slots, card_slots |
+| `components` | object |  |  | Component slot overrides: topbar_slots, main_slots, info_grid_slots, sidebar_slots, card_slots |
 | `request_stages` | object |  |  | Pipeline overrides: get_deals_list, get_active_deals, get_selected_deal |
 
 ## Nested var details
 
 ### `components`
 
-Component slot overrides: main_slots, info_grid_slots, sidebar_slots, card_slots
+Component slot overrides: topbar_slots, main_slots, info_grid_slots, sidebar_slots, card_slots
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
+| `topbar_slots` |  | `[]` |  | Extra action buttons/blocks appended to the deal workspace top bar (after the note/task/activity capture buttons). |
 | `main_slots` |  | `[]` |  | Extra blocks appended to the main column on the deal detail page. |
 | `info_grid_slots` |  | `[]` |  | Extra blocks appended to the deal's info grid. |
 | `sidebar_slots` |  | `[]` |  | Extra blocks appended to the sidebar column on the deal detail page. |
