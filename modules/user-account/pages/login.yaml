@@ -564,7 +564,16 @@ _ref:
                         login_view: signin
             else: []
     nav:
-      - id: login_footer
-        type: Html
-        properties:
-          html: New here? <a href="signup">Create an account</a>
+      # Only when a signup page exists. Passwordless (emailAndPassword off) builds
+      # no signup route and collapses sign-up into this page's email -> link
+      # action, so the "create an account" prompt would 404 and misdescribe the
+      # flow; gated out there.
+      _build.if:
+        test:
+          _build.authConfig: emailAndPassword.enabled
+        then:
+          - id: login_footer
+            type: Html
+            properties:
+              html: New here? <a href="signup">Create an account</a>
+        else: []
