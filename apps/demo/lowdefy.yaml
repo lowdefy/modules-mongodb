@@ -85,26 +85,24 @@ auth:
     connectionId: email
   # authPages and pages.public are contributed by the user-account module
   # manifest (auth.pages / auth.public); app config would win on collision.
-  # Pinned-org policy (design Decision 1): one deployment = one pinned org.
-  # The engine ensures this org by slug at startup; the user-admin module's
-  # native reads $match on it via `_organization: id`, and org-scoped admin
-  # steps default their organizationId to it.
+  # Tenant policy: one shared deployment, many organizations. A fresh signup
+  # mints its own organization (owner); invited users join the inviter's org;
+  # the active org is the oldest membership. The tenant wall makes every
+  # walled read/write org-scoped — this is the multi-tenant mode the
+  # org-aware-modules design targets. (`org` and `signup` are pinned-only
+  # keys; signup admission is a no-op under tenant — self-serve tenant
+  # creation is the model.)
+  #
+  # NOTE: `userAdminRole` is forbidden under tenant (suite-wide admin powers
+  # like Suspend/Impersonate cross org boundaries — multi-tenant admin waits
+  # for its own design, org-aware-modules Decision 6). The user-admin module
+  # stays in the build as config coverage, but its admin endpoints have no
+  # engine floor under tenant and will refuse at runtime.
   organizations:
-    policy: pinned
-    org: demo
-    # Open signup: the invite-only default has no first-user bootstrap on a
-    # fresh database (nobody exists to send the first invite). The demo is a
-    # dev playground and the runtime-verification walkthrough (and the tenant
-    # policy) both need self-serve signup. Production apps should choose
-    # deliberately.
-    signup: open
-  # The member role that administers users across the suite. Enforced by the
-  # engine as a step-level floor before every auth-owned admin step, and named
-  # by the user-admin module's `admin_roles` var for the endpoint gate below.
-  userAdminRole: user-admin
+    policy: tenant
   # Authored role catalog (role-catalog design) — the single source of truth for
-  # assignable roles, their labels, and help text. Every gate reference and
-  # `userAdminRole` must be declared here.
+  # assignable roles, their labels, and help text. Every gate reference must be
+  # declared here.
   roles:
     - id: user-admin
       label: User Admin
