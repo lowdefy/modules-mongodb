@@ -1,11 +1,11 @@
 # send-quote — a kind:custom action.
 #
-# The quote is line items + a live total + notes — richer than a flat form: can
-# express — so its working surface is the app-owned `deals/quote-builder` page
+# The quote is line items + a live total + notes — richer than a flat form can
+# express — so its working surface is the app-owned `quote-builder` page
 # rather than the shared check page. The engine routes the `link:` cell below
 # into the per-verb links map: an actor (edit) and the admin reviewer (review)
 # land on quote-builder; an observer (view) falls back to the shared
-# `onboarding-action` page (no view_link is authored — the default observer
+# `sales-pipeline-action` page (no view_link is authored — the default observer
 # path).
 type: send-quote
 kind: custom
@@ -32,20 +32,20 @@ status_map:
   action-required:
     demo:
       message: Build and send the quote.
-      link: { pageId: deals/quote-builder, urlQuery: { action_id: true } }
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
   in-progress:
     demo:
       message: Quote in progress.
-      link: { pageId: deals/quote-builder, urlQuery: { action_id: true } }
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
   in-review:
     demo:
       message: Quote awaiting approval.
-      link: { pageId: deals/quote-builder, urlQuery: { action_id: true } }
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
   changes-required:
     demo:
       message: Reviewer requested changes.
-      link: { pageId: deals/quote-builder, urlQuery: { action_id: true } }
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
   done:
     demo:
       message: Quote approved and sent.
-      link: { pageId: deals/quote-builder, urlQuery: { action_id: true } }
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }

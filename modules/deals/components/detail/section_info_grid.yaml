@@ -5,8 +5,7 @@ layout:
   justify: stretch
 blocks:
   _build.array.concat:
-    - - _ref: components/detail/section_company.yaml
-      - _ref: components/detail/section_people.yaml
+    - - _ref: components/detail/section_people.yaml
       - id: detail_info_grid_divider
         type: Divider
         layout:

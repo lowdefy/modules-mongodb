@@ -71,6 +71,24 @@ hooks:
                     _ref:
                       module: events
                       component: change_stamp
+        # On WON, auto-start the onboarding workflow on this deal — the second
+        # workflow on the entity, rendered as its own WorkflowProgress bar.
+        # Skipped on lost (skip when outcome_type != won).
+        - id: start_onboarding_on_won
+          type: CallApi
+          skip:
+            _ne:
+              - _payload: form.outcome_type
+              - won
+          properties:
+            endpointId:
+              _module.endpointId:
+                id: onboarding-start
+                module: workflows
+            payload:
+              entity:
+                id:
+                  _payload: context.workflow.entity.id
         - :return:
             deal_id:
               _payload: context.workflow.entity.id

@@ -51,5 +51,5 @@ This task does the **create + write** half of the round trip. The **display** ha
 ## Notes
 
 - Keep `products` and product's view/list usages until Task 12 — removing the var here would strand `view.yaml`'s header reference and break the build.
-- The scrub constraint applies: the packaging values ("25 kg bags", "300 kg drums") and material/sector taxonomies leave the public module entirely here — grep the module after to confirm no residue.
+- The concrete packaging size/unit values and material/sector taxonomies leave the public module entirely here — they live only in `apps/demo`.
 - Do not add an `edit` page; deals has none (exports are `all`/`view`/`new`). The `fields` var only needs to render on `new.yaml` (inputs) and `view.yaml` (read-only, Task 12).

@@ -62,9 +62,9 @@ The deals outcome modal derives its action by scanning `entity_workflows` for `t
 
 ### 7. The host-reconstitution gate is not CI-automatable
 
-> **Resolved (auto).** Verification section now states the gate is a manual developer-side check (host is a private repo, not runnable in modules-mongodb CI), owned by whoever has host access as part of Phase D prep.
+> **Resolved (auto).** Verification section now states the gate is a manual developer-side check (host is a separate repo, not runnable in modules-mongodb CI), owned by whoever has host access as part of Phase D prep.
 
-The Verification section's reconstitution gate ("build the host app locally against the reworked module … diff the deal list/detail") cannot run in modules-mongodb CI — the host is a separate private repo. It is a **manual, developer-side check** performed by someone with host access. State this explicitly so it isn't mistaken for an automated gate, and note who owns running it (it aligns with Phase D prep, not this repo's CI).
+The Verification section's reconstitution gate ("build the host app locally against the reworked module … diff the deal list/detail") cannot run in modules-mongodb CI — the host is a separate repo. It is a **manual, developer-side check** performed by someone with host access. State this explicitly so it isn't mistaken for an automated gate, and note who owns running it (it aligns with Phase D prep, not this repo's CI).
 
 ### 8. Even folded into #111, split A/B/C into reviewable commits
 
@@ -80,8 +80,8 @@ The design leans toward folding the rework into draft #111 (Sequencing). That's 
 
 Promoting the literal `deals` to an `entity_connection_id` var (A1) is correct, but note the constraint: the var value must **match** the workflow config's `entity.connection_id` string, since `GetEntityWorkflows` joins on it. Two config sites must agree. Worth a one-line note in A1 so a host doesn't set them independently.
 
-### 10. A2's field removal doubles as a client-scrub fix
+### 10. A2's field removal also clears consumer-specific names from the public repo
 
-> **Resolved (auto).** A3 now notes the field removal also strips host-industry-revealing names from the public repo, with a post-A2 grep to confirm no residue.
+> **Resolved (auto).** A3 now notes the field removal also strips consumer-specific names from the public repo, with a post-A2 grep to confirm no residue.
 
-The host's quantity/unit-price field identifiers A2 removes are industry-revealing (they encode the unit and currency) and currently live in the public PR #111 module code (from the port). Their removal is a scrub improvement as well as a generalization — a mild reason to prioritise A2 and to make sure the deletions leave no residue (grep the module after A2). Not a design flaw; a sequencing/benefit note.
+The host's quantity/unit-price field identifiers A2 removes are consumer-specific (they encode the unit and currency) and currently live in the public PR #111 module code (from the port). Their removal is a public-repo cleanup as well as a generalization — a mild reason to prioritise A2 and to make sure the deletions leave no residue (grep the module after A2). Not a design flaw; a sequencing/benefit note.

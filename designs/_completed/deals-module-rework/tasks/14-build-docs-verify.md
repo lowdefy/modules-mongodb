@@ -14,9 +14,9 @@ Final Workstream D task: package the deals-module change for release, refresh do
 
 **4. Runtime verification** (demo): create a deal → confirm the host `fields` render as inputs on the create form, the domain values save under `attributes.*`, the deal view renders them read-only via SmartDescriptions, and the deals list behaves (product column/filter if re-added). Confirm the deal-subtitle header is description-only.
 
-**5. Scrub** — grep the full module diff for client/industry residue (`material`, `sector`, packaging values, tonnage/currency identifiers). The module must carry zero domain-field knowledge; all such content lives only in `apps/demo`.
+**5. Verify no domain-field residue** — grep the full module diff for domain-field identifiers (`material`, `sector`, packaging/size values, quantity/currency identifiers). The module must carry zero domain-field knowledge; all such content lives only in `apps/demo`.
 
-**6. Host-reconstitution note** — record (in the PR/commit body, per the design's Verification gate) that the demo reconstitutes all seven domain fields via config, and that the origin app does the same in Phase D. This gate is a manual developer-side check (host is a private repo), not CI-automatable.
+**6. Host-reconstitution note** — record (in the PR/commit body, per the design's Verification gate) that the demo reconstitutes all seven domain fields via config, and that the origin app does the same in Phase D. This gate is a manual developer-side check (host is a separate repo), not CI-automatable.
 
 ## Acceptance Criteria
 
@@ -24,7 +24,7 @@ Final Workstream D task: package the deals-module change for release, refresh do
 - `pnpm docs:check` green; `docs/deals/index.md` + generated `reference/vars.md` document `fields` and omit the removed vars.
 - `CI=true pnpm ldf:b` green; lockfile clean.
 - Runtime round trip verified (create → save `attributes.*` → SmartDescriptions view → list).
-- Module diff scrub-clean (no domain-field/industry residue).
+- Module diff carries no domain-field residue.
 
 ## Files
 

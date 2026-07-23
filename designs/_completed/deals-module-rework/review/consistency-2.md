@@ -41,4 +41,4 @@ Checked `design.md` and the task files against the review-2 decision register (6
 - **Tasks 01–10:** cover Workstreams A–C only; none reference Workstream D, `product`, the domain-taxonomy vars, or the create form — no drift from review-2. `tasks.md` overview correctly scopes itself to A–C folding into #111.
 - **review-1 decisions (A–C):** untouched by review-2; consistency-1 already verified them and nothing in review-2 reopened an A–C decision.
 - **Read-side decision (review-2 #5) and prefill default (#6):** stated once each in the Approach/Write bullets; no contradicting text elsewhere.
-- **Client-scrub:** no client identifiers reintroduced; the `package` values ("25 kg bags" etc.) are cited only as examples of content to strip, consistent with the scrub constraint.
+- **Consumer-clean:** no consumer-specific identifiers reintroduced; the `package` values (concrete size/unit options) are cited only as examples of content to strip.

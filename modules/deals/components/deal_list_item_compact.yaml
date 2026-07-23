@@ -37,8 +37,8 @@ events:
         - get-events
         - get_activities_for_entity
         - get_entity_files_detail_files_list
-    # Refetch the actions-on-entity phase view for the newly-selected deal
-    # (master-detail: the widget self-fetches only on mount).
+    # Refetch the workflow-progress phase view for the newly-selected deal
+    # (master-detail: the surface self-fetches only on mount).
     - id: refetch_entity_workflows
       type: CallAPI
       params:

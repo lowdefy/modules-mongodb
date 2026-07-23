@@ -6,10 +6,11 @@ app_name:
 label: Deal
 label_plural: Deals
 
-# Repointed onto the richer onboarding workflow (task 8, deals-module-rework) —
-# the workflows module resolves {workflow_type}-start/-submit endpoints and the
-# get_selected_deal workflow lookup off this slug.
-workflow_type: onboarding
+# The deal's initial workflow. The workflows module resolves
+# {workflow_type}-start/-submit endpoints and the get_selected_deal workflow
+# lookup off this slug; onboarding is a second workflow auto-started on WON
+# (see sales-pipeline/deal-outcome.yaml).
+workflow_type: sales-pipeline
 
 # Deal pipeline stages (deal.status[].stage). create-deal seeds `prospecting`.
 stages:
@@ -60,30 +61,6 @@ contact_roles:
   finance_contact:
     title: Finance contact
     order: 2
-
-# ActionSteps group display config — one entry per group slug the onboarding
-# workflow config declares (apps/demo/modules/workflows/workflow_config/onboarding/onboarding.yaml).
-action_groups:
-  qualification:
-    title: Qualify
-    order: 1
-    icon: AiOutlineUserAdd
-  quoting:
-    title: Quote
-    order: 2
-    icon: AiOutlineFileText
-  order:
-    title: Purchase order
-    order: 3
-    icon: AiOutlineShoppingCart
-  conversion:
-    title: Company setup
-    order: 4
-    icon: AiOutlineBank
-  closing:
-    title: Closing
-    order: 5
-    icon: AiOutlineFileDone
 
 # Host-supplied domain fields (module `fields` var). Block ids prefixed
 # `attributes.` bind to state.attributes.* — rendered as inputs on the create
@@ -169,15 +146,6 @@ fields:
         - value: bulk
           label: Bulk
 
-# Sector is a deal field now (rendered via the `fields` SmartDescriptions
-# section). company_fields carries genuine company-scoped display rows — here,
-# the linked company's Industry, read off the joined company doc.
-company_fields:
-  - label: Industry
-    value:
-      _if_none:
-        - _request: get_selected_deal.0.company.attributes.industry
-        - "—"
 # Value + close date come from the raw fields a workflow stamps onto the deal,
 # formatted here with this app's $ currency.
 meta_fields:

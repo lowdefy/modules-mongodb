@@ -17,7 +17,7 @@ Rewrite `apps/demo/modules/deals/vars.yaml` so the seven domain fields come thro
   - `attributes.project_type` — ButtonSelector (project / additional-volume).
   - `attributes.sector` — Selector (options from `sectors`), resetting `attributes.sub_sector` onChange.
   - `attributes.sub_sector` — parented Selector filtered by `attributes.sector`.
-  - `attributes.package` — ButtonSelector with the packaging options (25 kg bags / 20 kg bags / 300 kg drums / bulk) inline.
+  - `attributes.package` — ButtonSelector with generic packaging/size options (small / medium / large / bulk) inline.
 - **Keep the enum definitions** (`customer_types`/`sectors`/`sub_sectors`/`products`/`product_hierarchy`) in the demo vars as the option sources these blocks reference; they are no longer passed as module vars.
 - **Sector display** — sector currently shows on the view via `company_fields`. Now that `attributes.sector` is a round-trip `fields` block (rendered read-only via SmartDescriptions), remove sector from `company_fields` to avoid double-display; keep `company_fields` for any genuine display-only extras.
 - **Product as a list column/filter** — if the demo wants product visible on the deals list (it was before), re-add it via the demo's `filters` var (filter) and/or a `card_fields`/table-columns slot (column), reading `attributes.product`. Optional but preserves prior demo UX.

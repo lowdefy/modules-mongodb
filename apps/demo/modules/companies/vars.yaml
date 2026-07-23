@@ -38,7 +38,7 @@ request_stages:
           $ne: true
 on_create_routine:
   # company-setup is started by the deal's track-company-setup tracker (via the
-  # deals/start-company-setup page) on the deal's existing company — NOT on every
+  # start-company-setup page) on the deal's existing company — NOT on every
   # company creation. Guarded on a parent action_id so a plain company create
   # doesn't spawn an orphan company-setup workflow.
   - ":if":

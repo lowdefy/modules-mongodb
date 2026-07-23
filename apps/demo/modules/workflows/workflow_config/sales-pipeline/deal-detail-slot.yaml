@@ -1,7 +1,8 @@
-# entity_view.slot for the onboarding workflow (read-only).
+# entity_view.slot for the deal-entity workflows (read-only) — shared by
+# sales-pipeline and onboarding, which both point entity_view.slot here.
 #
-# Baked by makeActionPages into the onboarding form pages (RHS Details section)
-# and the onboarding-check page (middle review subject). It reads the entity
+# Baked by makeActionPages into each workflow's form pages (RHS Details section)
+# and check page (middle review subject). It reads the entity
 # fields the workflow's `entity.data` routine returns, surfaced server-side on
 # the get_workflow_action response's `entity` object.
 #

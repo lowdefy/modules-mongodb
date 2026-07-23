@@ -136,5 +136,5 @@ pages:
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml
   - _ref: pages/files/files-demo.yaml
-  - _ref: pages/deals/quote-builder.yaml
-  - _ref: pages/deals/start-company-setup.yaml
+  - _ref: pages/quote-builder.yaml
+  - _ref: pages/start-company-setup.yaml

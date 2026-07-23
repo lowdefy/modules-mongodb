@@ -75,9 +75,9 @@ vars:
     default: {}
     description: >-
       Per-outcome display overrides (title/fg/bd) for the shipped won/lost
-      outcome enum (defaults/outcomes.yaml). Merged via `_build.object.assign`
-      onto the shipped enum and exposed as the deal-status-chip component for
-      UI consumption only.
+      outcome enum (defaults/outcomes.yaml). Merged over the shipped enum via
+      `_build.object.assign` (components/outcomes_resolved.yaml) and rendered as
+      the deal's Won/Lost chip on the list card and workspace.
   outcome_reasons:
     type: object
     default: {}
@@ -98,16 +98,6 @@ vars:
       the People section; `title` + `color`/`bg`/`border` style the role chip
       (all optional). Add `decision_maker`, `finance_contact`, or any custom role
       here; each is rendered, resolved, edited, and persisted generically.
-  action_groups:
-    type: object
-    default: {}
-    description: >-
-      Workflow action_group display config, keyed by group slug — title/order/icon.
-      Consumed by the workflows ActionSteps surface.
-  company_fields:
-    type: array
-    default: []
-    description: Extra field blocks rendered on the deal's company section.
   meta_fields:
     type: array
     default: []

@@ -18,7 +18,7 @@ tracker:
   # the leads flow (which pointed at companies/new to *create* the company), this
   # targets an app page that starts company-setup on the deal's EXISTING company.
   start_link:
-    pageId: deals/start-company-setup
+    pageId: start-company-setup
     urlQuery:
       action_id: true # → tracker action _id (the parent_action_id)
       entity_id: true # → deal _id (the start page reads its company_id)

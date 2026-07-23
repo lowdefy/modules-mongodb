@@ -32,9 +32,9 @@ D folds `product` into the generic-`attributes` passthrough, but `product` is no
 
 ### 3. The `package` field is domain-specific but omitted from the audit
 
-> **Resolved.** `package` added to the strip list across the Problem statement, create-form audit row, and write audit row — moves to a host create-field like the rest. Also flagged as scrub-relevant (industry-revealing values).
+> **Resolved.** `package` added to the strip list across the Problem statement, create-form audit row, and write audit row — moves to a host create-field like the rest. Also flagged as consumer-specific.
 
-`form.package` (`new.yaml:236-252` — "25 kg bags / 20 kg bags / 300 kg drums / Bulk") and its write `attributes.package` (`create-deal.yaml:44-45`) are as physical-goods-specific as `material_code` — a services or software deal has no packaging. It is not in D's six-field list (design line 188). Either add `package` to the strip (move to a host `create_fields` block) or state explicitly why it stays. As a bonus, "25 kg bags / 300 kg drums" is exactly the industry-revealing content the scrub constraint targets in the public repo.
+`form.package` (`new.yaml:236-252` — a concrete packaging size/unit taxonomy) and its write `attributes.package` (`create-deal.yaml:44-45`) are as domain-specific as `material_code` — a services or software deal has no packaging. It is not in D's six-field list (design line 188). Either add `package` to the strip (move to a host `create_fields` block) or state explicitly why it stays. As a bonus, those concrete packaging values are exactly the consumer-specific content that should not live in the public repo.
 
 ## API shape (Workstream D)
 

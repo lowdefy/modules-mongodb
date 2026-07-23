@@ -83,7 +83,7 @@ hooks:
     # it gets stamped.
     #
     # The deal's *pipeline status* advance lives on the qualification group's
-    # `on_complete` (see onboarding.yaml) — the phase completing owns the
+    # `on_complete` (see sales-pipeline.yaml) — the phase completing owns the
     # status change, not this action.
     #
     # Uses aggregation-pipeline update syntax; the $set of contact/value/stamp

@@ -1,4 +1,4 @@
-# Start company setup — the app-owned trigger for onboarding's
+# Start company setup — the app-owned trigger for sales-pipeline's
 # `track-company-setup` tracker (deals-module-rework, Workstream C).
 #
 # The tracker's start_link points here with ?action_id=<tracker id>&entity_id=<deal id>.
@@ -12,7 +12,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: deals/start-company-setup
+    id: start-company-setup
     title: Start company setup
     content_width: 640
     breadcrumbs:

@@ -34,4 +34,4 @@ Checked `design.md` against the review-1 decision register (10 findings, all res
 - **Sequencing & PR strategy:** fold-in + commit boundaries match finding #8; the commit list matches the A/B/C workstream structure.
 - **Hard constraint + A4 + Verification gate:** the host-reconstitution constraint, mapping, migration, and manual (non-CI) gate are mutually consistent.
 - **Open questions:** the two remaining (note-capture home, value fallback) are correctly numbered after removals; no other section references the removed questions.
-- **Client-scrub:** no client identifiers reintroduced; "the host" / "generalize" terminology consistent throughout.
+- **Consumer-clean:** no consumer-specific identifiers reintroduced; "the host" / "generalize" terminology consistent throughout.

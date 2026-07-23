@@ -17,7 +17,7 @@ Preserve `value_label` display formatting (it can format the stored `$value`).
 
 ## Acceptance Criteria
 
-- No module aggregation references the host's quantity/unit-price/close-date field identifiers (the exact names at the cited source lines — neutralized in these docs; grep the module for the real names after removal to confirm no residue — confirms both the generalization and finding #10's scrub cleanup).
+- No module aggregation references the host's quantity/unit-price/close-date field identifiers (the exact names at the cited source lines — shown generically in these docs), confirming the generalization.
 - List/detail read `value`/`close_date` as stored fields with `$ifNull` fallbacks; an unstamped deal renders `0`/`—`, not an error.
 - The module no longer defines a volumes tile of its own; `info_grid_slots` still works.
 - `CI=true pnpm ldf:b` green (demo may show `0`/`—` for value until task 8 wires stamping — expected).

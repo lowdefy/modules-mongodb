@@ -33,24 +33,23 @@ blocks:
                         from:
                           _var: deal
                         key: status.0.stage
-                # Won/Lost palette from the module's `outcomes` var, keyed by
-                # outcome type. Null for open deals (no enum entry).
+                # Won/Lost palette from the merged outcomes (host over the shipped
+                # won/lost), keyed by outcome type. Null for open deals.
                 outcome_p:
                   _get:
                     from:
-                      _module.var: outcomes
+                      _ref: components/outcomes_resolved.yaml
                     key:
                       _get:
                         from:
                           _var: deal
                         key: outcome.type
-                # Won/Lost reason display config from the module's
-                # `outcome_reasons` var, keyed by the stored reason slug. Null
-                # when no reason is recorded.
+                # Won/Lost reason display config from the merged outcome_reasons,
+                # keyed by the stored reason slug. Null when no reason is recorded.
                 reason_p:
                   _get:
                     from:
-                      _module.var: outcome_reasons
+                      _ref: components/outcome_reasons_resolved.yaml
                     key:
                       _get:
                         from:

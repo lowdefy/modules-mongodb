@@ -128,7 +128,7 @@ events:
             - get_active_deals
             - get_last_contact
             - get-events
-      # Refresh the phase view (actions-on-entity reads entity_workflows state) —
+      # Refresh the phase view (workflow-progress reads entity_workflows state) —
       # the shared workflows refetch sequence, not a hand-rolled one.
       - _ref:
           module: workflows
@@ -196,6 +196,8 @@ blocks:
               .filter((k) => (oc ? reasons[k].outcome === oc : true))
               .map((k) => ({ label: reasons[k].title, value: k }));
           args:
+            # Menu = raw host taxonomy (NOT the merged set): the shipped won/lost
+            # fallback is a display safety-net, not a selectable reason.
             reasons:
               _module.var: outcome_reasons
   - id: form.notes

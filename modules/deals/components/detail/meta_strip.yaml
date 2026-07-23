@@ -42,7 +42,14 @@ properties:
     contentColor: var(--ant-color-text)
   items:
     _array.concat:
-      - - label: Created by
+      - - label: Company
+          value:
+            _if_none:
+              - _request: get_selected_deal.0.company.short_name
+              - _if_none:
+                  - _request: get_selected_deal.0.company.name
+                  - "—"
+        - label: Created by
           value:
             _if_none:
               - _request: get_selected_deal.0.created.user.name

@@ -1,6 +1,12 @@
 # Deals Module Rework — Generalize, Extract, and Onboarding Workflow
 
-The `modules/deals/` module was ported wholesale from a private consuming app (the app this module was ported from; hereafter **the host**). It works and is already a good reuse citizen — it delegates people→contacts, files→files, the activity/event feeds→activities/events, and the pipeline stepper→the workflows `actions-on-entity` component. But it carries two problems this design fixes:
+> **Status: Completed — shipped in PR #111 (branch `feat/deals-module`).** The
+> as-built diverged from this plan in several material ways (the workflow model
+> ended up inverted, Workstream D shipped rather than deferred, and a few
+> net-new generalizations were added). See **Completion notes (as-built)** at
+> the end before treating any section below as current.
+
+The `modules/deals/` module was ported wholesale from a consuming app (hereafter **the host**). It works and is already a good reuse citizen — it delegates people→contacts, files→files, the activity/event feeds→activities/events, and the pipeline stepper→the workflows `actions-on-entity` component. But it carries two problems this design fixes:
 
 1. **It is over-fit to the host in one specific place.** The list/detail aggregations hardcode the host's deal-value formula and action slugs (`annual_volume × unit_price`, `order-confirmation.completion_date`, the volumes tile). None are vars. This is what makes the module "too much like the host."
 2. **A few genuinely reusable pieces live locally in deals** instead of in the shared module where they belong — the open-actions/tasks widget, task CRUD, and the @mention note-capture modal.
@@ -12,7 +18,7 @@ The same hardcoded coupling in (1) is also what blocks the demo's original **onb
 - **Generalize the deals module** so it reads plain, host-supplied deal fields and carries no knowledge of the host's quantity/pricing/action-slug specifics. The host-specific math moves out to the host's own config.
 - **Extract three reusable pieces** up into the shared modules (workflows, activities, events) and have deals consume them; close two small reuse gaps.
 - **Sub deals into the onboarding workflow** in the demo, in place of the deleted leads example — replacing the thin `sales-pipeline` example built during the port.
-- Keep the public repo client-clean (no client data) and every module release-consistent.
+- Keep the public repo generic (no consumer-specific data) and every module release-consistent.
 
 ### Hard constraint: the host remains a first-class consumer
 
@@ -53,7 +59,7 @@ Coupling to note: this var must equal the workflow config's `entity.connection_i
 
 This is the core generalization step. Today the module *computes* deal value inside its read aggregations from host-specific action fields.
 
-> Note: the host's real field identifiers are **neutralized** throughout this doc (shown as generic names like `annual_volume` / `unit_price` / `completion_date`) to keep the public design free of industry-revealing specifics. The exact names live in the source lines cited below — follow the `file:line` refs when implementing.
+> Note: the host's field identifiers are shown generically throughout this doc (generic names like `annual_volume` / `unit_price` / `completion_date`). The exact names live in the source lines cited below — follow the `file:line` refs when implementing.
 
 - `deal_value = pricing-qualification.unit_price × volumes.annual_volume` — `get_selected_deal.yaml:126,129`; `get_active_deals.yaml:129-132`; `get_deals_list.yaml:218-221`
 - `close_date ← order-confirmation.completion_date` — `get_selected_deal.yaml:133`
@@ -80,7 +86,7 @@ Why a stored field rather than the existing `request_stages` seam or a read-time
 | `volumes.monthly_volume` rounding / `annual_volume` projection | `get_selected_deal.yaml:167`, `get_active_deals.yaml:125`, `get_deals_list.yaml:238`, `pages/view.yaml:268` | move to host info-grid slot (A2) |
 | `sales-pipeline`, `deal-outcome` | `module.lowdefy.yaml:29,37` | already vars — no change |
 
-The host's real field identifiers (neutralized in this doc — see the A2 note) are industry-revealing and currently live in the public repo from the port, so A2's deletion doubles as a client-scrub cleanup. Grep the module after A2 to confirm no residue of the host's field names remains.
+The host's field identifiers (shown generically in this doc — see the A2 note) are consumer-specific and currently live in the public repo from the port, so A2's deletion also removes them from the public repo.
 
 ### A4. Cross-repo impact (the host / Phase D) — reconstitution mapping
 
@@ -182,7 +188,7 @@ Replace the thin `sales-pipeline` example (`apps/demo/modules/workflows/workflow
 
 **Status: captured, not yet implemented.** Surfaced during Workstream C runtime testing. This is a structural module-API change with a wider blast radius than A–C, so it gets its own review + tasks and a fresh implementation pass (ideally post-compact) rather than being folded in hastily.
 
-**Problem.** The module still bakes in a fixed set of *domain-specific* create/display fields that are not universal to deals — `material_code` + `product_hierarchy` (a material/SKU taxonomy), `product`, `sector`, `sub_sector`, `customer_type`, `project_type`, and `package` (physical-goods packaging — 25 kg bags / drums / bulk). Plenty of deals have nothing to do with materials, products, packaging, or a sector taxonomy. A generic deals module should ship only the **universal** deal fields (company, name, description — plus the value/close/people/stage/outcome/pipeline it already handles) and let hosts inject their own domain fields via config — the way `companies` does with `fields.attributes`.
+**Problem.** The module still bakes in a fixed set of *domain-specific* create/display fields that are not universal to deals — `material_code` + `product_hierarchy` (a material/SKU taxonomy), `product`, `sector`, `sub_sector`, `customer_type`, `project_type`, and `package` (a domain-specific packaging/size taxonomy). Plenty of deals have nothing to do with materials, products, packaging, or a sector taxonomy. A generic deals module should ship only the **universal** deal fields (company, name, description — plus the value/close/people/stage/outcome/pipeline it already handles) and let hosts inject their own domain fields via config — the way `companies` does with `fields.attributes`.
 
 **Audit — where the domain fields are hardcoded today** (all must move to host config):
 - **Create form** — `pages/new.yaml`: `material_code`, `product`, `customer_type`, `project_type`, `sector`, `sub_sector`, `package` field blocks (+ the `product_hierarchy`-driven Material hierarchy hint and the `prefill_deal_name` material/product coupling).
@@ -221,10 +227,51 @@ Order: A + B (module changes) first; C last. If the total diff grows unwieldy, f
 
 - `CI=true pnpm ldf:b` (from `apps/demo`) green; `pnpm docs:check` green; changesets present for every module whose package changes (deals, workflows, activities, events).
 - Demo runtime: create a deal → walk the onboarding workflow → confirm stage advances, the open-actions and open-tasks cards render, task create/update, @mention note appears in the Events tab, check-action opens the in-context modal, and Won/Lost outcome + value/close render from the stored fields.
-- **Host-reconstitution gate (required):** before this rework is considered done, prove the host can reproduce its current deal list/detail behaviour against the generalized module using only config — value/close from stamped fields, volumes tile via slot, entity_connection_id var, and the extracted components driven by the host's vars. Simplest form: build the host app locally against the reworked module copy with the host's config and diff the deal list/detail against today's. Any capability the host cannot reconstitute is a design defect, not a host problem. This gate is **not** automatable in modules-mongodb CI — the host is a separate private repo — so it is a manual developer-side check run by someone with host access, aligned with Phase D prep rather than this repo's CI.
-- Client-scrub clean on the full diff before any push.
+- **Host-reconstitution gate (required):** before this rework is considered done, prove the host can reproduce its current deal list/detail behaviour against the generalized module using only config — value/close from stamped fields, volumes tile via slot, entity_connection_id var, and the extracted components driven by the host's vars. Simplest form: build the host app locally against the reworked module copy with the host's config and diff the deal list/detail against today's. Any capability the host cannot reconstitute is a design defect, not a host problem. This gate is **not** automatable in modules-mongodb CI — the host is a separate repo — so it is a manual developer-side check run by someone with host access, aligned with Phase D prep rather than this repo's CI.
 
 ## Open questions
 
 1. **Note-capture home** — events (persisted-as-event argument) vs activities (existing capture pattern). (Leaning events.)
 2. **Value fallback** — confirm every module read of `value`/`close_date` has an `$ifNull` so an unstamped or partially-progressed deal renders cleanly.
+
+---
+
+## Completion notes (as-built)
+
+Workstreams A and B landed substantially as designed (see `tasks/`). The
+material deviations from the plan above:
+
+1. **Workflow model inverted (Workstream C).** The plan repoints `onboarding`
+   onto deals *as the single workflow* (`workflow_type: onboarding`). As-built,
+   the richer workflow is kept as **`sales-pipeline`** (the primary
+   `workflow_type`) and a separate **minimal `onboarding` workflow auto-spawns
+   on WON** — a `deal-outcome` post-hook `CallApi`s `onboarding-start` on the
+   same deal. This turns the demo into a showcase of the workflows module's
+   *multiple parallel workflows on one entity* (two `workflow-progress` bars),
+   which is stronger than the single-workflow swap originally planned.
+2. **Phase view is `workflow-progress`, not `actions-on-entity`.** PR #114 added
+   the `workflow-progress` component (collapsible per-workflow bars) mid-rework;
+   the deal view adopted it with `fetch_on_mount: false` and a page-owned
+   refetch. Every `actions-on-entity` reference in B4/C describes the pre-#114
+   surface.
+3. **Workstream D shipped** (not deferred). The generic `fields` var +
+   `SmartDescriptions` round-trip landed; the five domain-taxonomy vars and the
+   root-level `product` field/var were stripped; `create-deal` writes a generic
+   `attributes` passthrough; the demo re-supplies its domain fields via `fields`.
+4. **Company folded into the meta strip.** Beyond D: `section_company.yaml` was
+   deleted and the `company_fields` var removed — Company now renders as one row
+   in the detail meta strip (alongside Created by / Days open / Last contact).
+   `meta_fields` remains for host display extras.
+5. **People-roles genericized (net-new).** The people set is now a host
+   `contact_roles` registry (module ships `main_point_of_contact`; the demo adds
+   `decision_maker`/`finance_contact`), merged via `_build.object.assign` — the
+   hardcoded roles are gone.
+6. **Outcomes/reasons ship merged defaults (net-new).** `outcomes` /
+   `outcome_reasons` merge shipped won/lost (and `other-won`/`other-lost`)
+   defaults under the host var via `_resolved` components — display uses the
+   merged set, reason *pickers* use the raw host taxonomy. The dead
+   `action_groups` var was removed (group display comes from each workflow
+   config, not a deals var).
+7. **Demo custom-page ids are top-level** — `quote-builder` /
+   `start-company-setup`, not `deals/…`: the `deals/` prefix collided with the
+   deals module namespace in the dev page resolver.

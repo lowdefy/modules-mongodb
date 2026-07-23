@@ -26,15 +26,16 @@ blocks:
               - won
           then: success
           else: error
-      # Reason display title from the module's `outcome_reasons` var, keyed by
-      # the stored reason slug — falls back to the raw slug when unset.
+      # Reason display title from the merged outcome_reasons (host over the
+      # shipped fallback), keyed by the stored reason slug — so a slug outside
+      # the host's taxonomy still labels; falls back to the raw slug when unset.
       title:
         _if_none:
           - _get:
               from:
                 _get:
                   from:
-                    _module.var: outcome_reasons
+                    _ref: components/outcome_reasons_resolved.yaml
                   key:
                     _request: get_selected_deal.0.outcome.reason
               key: title
@@ -44,7 +45,7 @@ blocks:
   # step (module's `outcome_action_type` var) is actionable (action-required);
   # Lost reasons are always available so a deal can be lost at any stage
   # ("lose anytime, win at step"). Reactive on entity_workflows (the
-  # actions-on-entity phase-view state).
+  # workflow-progress phase-view state).
   - id: form.reason
     type: Selector
     visible:
@@ -77,6 +78,8 @@ blocks:
               .filter((k) => actionable || reasons[k].outcome === 'lost')
               .map((k) => ({ label: reasons[k].title, value: k }));
           args:
+            # Menu = raw host taxonomy (NOT the merged set): the shipped won/lost
+            # fallback is a display safety-net, not a selectable reason.
             reasons:
               _module.var: outcome_reasons
             outcome_action_type:
