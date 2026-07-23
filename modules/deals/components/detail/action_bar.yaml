@@ -1,0 +1,62 @@
+id: detail_action_bar
+type: Box
+layout:
+  gap: 8
+  align: middle
+  flex: 0 0 auto
+blocks:
+  - id: detail_add_note_btn
+    type: Button
+    layout:
+      flex: 0 0 auto
+    properties:
+      title: Add Note
+      icon: AiOutlinePlus
+    events:
+      onClick:
+        - id: reset_note_text
+          type: SetState
+          params:
+            detail_panel.note_text: null
+        - id: open_note_modal
+          type: CallMethod
+          params:
+            blockId: detail_add_note_modal
+            method: toggleOpen
+  - id: detail_log_task_btn
+    type: Button
+    layout:
+      flex: 0 0 auto
+    properties:
+      title: Log Task
+      icon: AiOutlinePlus
+    events:
+      onClick:
+        - id: clear_selected_task
+          type: SetState
+          params:
+            selected_task: null
+        - id: open_task_modal
+          type: CallMethod
+          params:
+            blockId: deal_task_modal
+            method: toggleOpen
+  - _ref:
+      module: activities
+      component: capture_activity
+      vars:
+        id: deal_action_capture
+        label: Log activity
+        icon: AiOutlinePlus
+        button_type: default
+        mode: modal
+        prefill:
+          references:
+            deal_ids:
+              - _state: selected_deal_id
+          company_ids:
+            - _request: get_selected_deal.0.company_id
+        on_created:
+          - id: refetch_activities
+            type: Request
+            params: get_activities_for_entity

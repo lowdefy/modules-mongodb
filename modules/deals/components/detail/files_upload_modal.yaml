@@ -1,0 +1,32 @@
+id: detail_files_upload_modal
+type: Modal
+properties:
+  title: Manage Files
+  footer: false
+  width: 560
+events:
+  onClose:
+    - id: refetch_deal_files
+      type: Request
+      params:
+        requestIds:
+          - get_entity_files_detail_files_list
+        holdValue: true
+    # Re-seed the panel: file-list seeds its rows into state only on its onMount.
+    - id: reseed_deal_files_panel
+      type: SetState
+      params:
+        detail_files_list_items:
+          _request: get_entity_files_detail_files_list
+blocks:
+  - _ref:
+      module: files
+      component: file-manager
+      vars:
+        block_id: detail_files_manager
+        entity_type: deals
+        entity_id:
+          _state: selected_deal_id
+        file_category: deal-attachment
+        single_file: false
+        hint: Click or drag to upload a deal attachment

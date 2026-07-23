@@ -1,0 +1,99 @@
+# Person-responsible options for the deal task modal — contacts (not just
+# app users), plain-name labels, and { contact_id, name } values matching
+# the stored task `assignees` shape. The activities module's own agenda
+# "Person Responsible" selector builds its options client-side from an
+# already-loaded `contacts` state array with no search — it doesn't have a
+# server-side-search export that fits this shape, so this request instead
+# points at the contacts module's exported connection (deals already
+# depends on `contacts`), not a raw literal contacts-collection
+# connectionId — same pattern as get_mentionable_users /
+# companies/get_company_contacts. Projected server-side so the option value
+# objects come back clean (no ~k source markers) and the Selector's
+# stable-serialize value↔option match works on edit.
+#
+# Server-side search (mirrors get_deal_people_options): the selector sets
+# `task_assignee_search` and refetches on type; the current assignee is
+# always kept in the results via selected_ids so the Selector can render
+# its value while a search narrows the list.
+id: get_task_assignee_options
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId:
+    id: contacts-collection
+    module: contacts
+payload:
+  search:
+    _state: task_assignee_search
+  selected_ids:
+    _array.filter:
+      - - _state: task_modal.assignee.contact_id
+      - _function:
+          __ne:
+            - __args: 0
+            - null
+properties:
+  pipeline:
+    - $match:
+        hidden:
+          $ne: true
+        disabled:
+          $ne: true
+    - _if:
+        test:
+          _and:
+            - _ne:
+                - _payload: search
+                - null
+            - _ne:
+                - _payload: search
+                - ""
+        then:
+          $match:
+            $or:
+              - _id:
+                  $in:
+                    _payload: selected_ids
+              - profile.name:
+                  $regex:
+                    _payload: search
+                  $options: i
+              - email:
+                  $regex:
+                    _payload: search
+                  $options: i
+        else:
+          $match: {}
+    - $addFields:
+        is_selected:
+          $in:
+            - $_id
+            - _payload: selected_ids
+    - $sort:
+        is_selected: -1
+        profile.name: 1
+    - $limit: 15
+    - $project:
+        # Name with the email on a second line (same presentation as
+        # get_mentionable_users).
+        label:
+          $concat:
+            - $ifNull:
+                - $profile.name
+                - No Name
+            - '<br/><small style="color: var(--ant-color-text-tertiary);">'
+            - $cond:
+                - $and:
+                    - $ne:
+                        - $ifNull:
+                            - $email
+                            - null
+                        - null
+                    - $ne:
+                        - $email
+                        - ""
+                - $email
+                - No email
+            - "</small>"
+        value:
+          contact_id: $_id
+          name: $profile.name

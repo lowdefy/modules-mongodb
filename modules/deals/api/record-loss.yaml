@@ -1,0 +1,80 @@
+id: record-loss
+type: Api
+# Records a deal as lost from the header Deal Status selector at ANY stage
+# (decoupled from the outcome action's FSM gating). Mirrors the outcome
+# action's lost path — stamp deal.outcome=lost, then cancel the workflow
+# (sweeps every open/blocked sibling to not-required, sets the workflow
+# lifecycle to cancelled) — without going through the (blocked-until-account-
+# approval) outcome action. Winning still routes through the outcome action's
+# submit (see deal_outcome_modal.yaml).
+routine:
+  - :if:
+      _or:
+        - _eq:
+            - _payload: deal_id
+            - null
+        - _eq:
+            - _payload: reason
+            - null
+    :then:
+      - :throw: A deal and outcome reason are required to record a loss.
+
+  # Stamp the deal outcome (reason/notes are runtime form values, so this is the
+  # inline stamp rather than a fixed-reason fragment).
+  - id: stamp_deal_lost
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: deals-collection
+    properties:
+      filter:
+        _id:
+          _payload: deal_id
+        removed: null
+      update:
+        $set:
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
+          outcome:
+            type: lost
+            reason:
+              _payload: reason
+            notes:
+              _if_none:
+                - _payload: notes
+                - null
+            timestamp:
+              _date: now
+            user:
+              name:
+                _user: profile.name
+              id:
+                _user: id
+            app_name:
+              _module.var: app_name
+
+  # Cancel the workflow (idempotent). Skipped for the rare deal with no
+  # workflow doc — the outcome stamp above still lands.
+  - id: cancel_workflow
+    type: CallApi
+    skip:
+      _eq:
+        - _payload: workflow_id
+        - null
+    properties:
+      endpointId:
+        _module.endpointId:
+          id:
+            _build.string.concat:
+              - _module.var: workflow_type
+              - "-cancel"
+          module: workflows
+      payload:
+        workflow_id:
+          _payload: workflow_id
+        reason:
+          _payload: reason
+
+  - :return:
+      ok: true

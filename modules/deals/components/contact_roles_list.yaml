@@ -1,0 +1,14 @@
+# The resolved registry flattened to an array of { slug, ...display } for the
+# surfaces that iterate roles (section render, Assign-People modal, state seeds).
+# Order = default first, then host declaration order; the render additionally
+# sorts by each entry's `order`.
+_build.array.map:
+  on:
+    _build.object.entries:
+      _ref: components/contact_roles_resolved.yaml
+  callback:
+    _build.function:
+      __build.object.assign:
+        - slug:
+            __build.args: "0.0"
+        - __build.args: "0.1"

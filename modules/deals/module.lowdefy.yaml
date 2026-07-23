@@ -1,0 +1,219 @@
+name: Deals
+version: 0.13.0
+description: >-
+  Deal (opportunity) pipeline — list, detail, and a single configured
+  workflow, orchestrating companies, contacts, activities, files, and events
+  rather than reimplementing them.
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper
+  - id: events
+    description: Audit event logging, event timeline, and change stamp
+  - id: activities
+    description: Deal-linked activities (calls, meetings, tasks)
+  - id: files
+    description: File attachments on the deal
+  - id: companies
+    description: Company link and selector on the deal
+  - id: contacts
+    description: Contact roles and selector on the deal
+  - id: workflows
+    description: Workflow engine rendering deal stage/action transitions
+
+vars:
+  app_name:
+    type: string
+    required: true
+    description: App identifier for per-app access flags and event display.
+  label:
+    default: Deal
+    description: Singular display label
+  label_plural:
+    default: Deals
+    description: Plural display label
+  entity_connection_id:
+    type: string
+    default: deals
+    description: >-
+      Connection id this module matches against a workflow doc's
+      `entity.connection_id` (GetEntityWorkflows joins on
+      {entity.connection_id, entity.id}). Must equal the exact
+      `entity.connection_id` string configured in the host's workflow
+      config — the two must never drift, or every workflow join in
+      this module breaks.
+  workflow_type:
+    type: string
+    default: sales-pipeline
+    description: >-
+      The module's primary workflow `type`: it wires this workflow's
+      start/submit endpoints and aliases its `form_data` onto the deal in
+      get_selected_deal. A deal may carry more than one workflow — the
+      workflow-progress phase view renders every workflow on the entity, and the
+      host's workflow config spawns the extras (e.g. an outcome hook or tracker).
+      Only the primary workflow's form_data is aliased.
+  outcome_action_type:
+    type: string
+    default: deal-outcome
+    description: >-
+      Action `type` slug used when recording a deal's won/lost outcome
+      through the workflows/activities action pipeline.
+  salesperson_role:
+    type: string
+    default: null
+    description: >-
+      Role slug that, when held by the logged-in user, defaults the deals-list
+      salesperson filter to them (matched against salesperson.name). Leave
+      unset (null) to ship no per-user default.
+  stages:
+    type: object
+    required: true
+    description: >-
+      Deal stage (status) display config, keyed by stage slug — title/fg/bd
+      per stage. REQUIRED: the host app must supply an entry for every stage
+      slug its workflow config can write to
+      `deals.status[].stage`, or stage chips render blank.
+  initial_stage:
+    type: string
+    default: prospecting
+    description: >-
+      Stage slug stamped on `deals.status[0].stage` at deal creation. Must be a
+      key in `stages`; the `prospecting` default assumes the host's stages
+      include it — set this to the host's own first stage otherwise.
+  outcomes:
+    type: object
+    default: {}
+    description: >-
+      Per-outcome display overrides (title/fg/bd) for the shipped won/lost
+      outcome enum (defaults/outcomes.yaml). Merged over the shipped enum via
+      `_build.object.assign` (components/outcomes_resolved.yaml) and rendered as
+      the deal's Won/Lost chip on the list card and workspace.
+  outcome_reasons:
+    type: object
+    default: {}
+    description: >-
+      Per-reason display overrides (title + outcome discriminator) merged via
+      `_build.object.assign` over the module's minimal other-won/other-lost
+      default (defaults/outcome_reasons.yaml). Host apps typically fully
+      replace this with their own won/lost reason taxonomy.
+  contact_roles:
+    type: object
+    default: {}
+    description: >-
+      The deal's people-role registry, keyed by role slug. Merged OVER the
+      shipped default (defaults/contact_roles.yaml, which always contributes
+      `main_point_of_contact`) via `_build.object.assign` — so a role's presence,
+      not just its styling, is host-driven. The slug is the deal document field
+      the role's contact snapshot is stored under. Per entry: `order` (int) sorts
+      the People section; `title` + `color`/`bg`/`border` style the role chip
+      (all optional). Add `decision_maker`, `finance_contact`, or any custom role
+      here; each is rendered, resolved, edited, and persisted generically.
+  meta_fields:
+    type: array
+    default: []
+    description: Extra field blocks rendered in the deal's meta/info section.
+  filters:
+    type: array
+    default: []
+    description: Extra filter blocks rendered on the deals list page.
+  card_fields:
+    type: array
+    default: []
+    description: Extra fields rendered on the deal card (e.g. kanban/board views).
+  components:
+    type: object
+    description: "Component slot overrides: topbar_slots, main_slots, info_grid_slots, sidebar_slots, card_slots"
+    properties:
+      topbar_slots:
+        default: []
+        description: Extra action buttons/blocks appended to the deal workspace top bar (after the note/task/activity capture buttons).
+      main_slots:
+        default: []
+        description: Extra blocks appended to the main column on the deal detail page.
+      info_grid_slots:
+        default: []
+        description: Extra blocks appended to the deal's info grid.
+      sidebar_slots:
+        default: []
+        description: Extra blocks appended to the sidebar column on the deal detail page.
+      card_slots:
+        default: []
+        description: Extra blocks appended to the deal card.
+  request_stages:
+    type: object
+    description: "Pipeline overrides: get_deals_list, get_active_deals, get_selected_deal"
+    properties:
+      get_deals_list:
+        default: []
+        description: Extra pipeline stages appended to the deals list aggregation.
+      get_active_deals:
+        default: []
+        description: Extra pipeline stages appended to the active-deals aggregation.
+      get_selected_deal:
+        default: []
+        description: Extra pipeline stages appended to the get-selected-deal aggregation.
+  fields:
+    type: array
+    default: []
+    description: >-
+      Host-supplied domain field blocks appended after the core
+      company/name/description on the create form (rendered as inputs) and
+      rendered read-only on the deal view via SmartDescriptions. Block ids
+      must be prefixed with `attributes.` so they bind to `state.attributes.*`
+      and flow through the generic create-deal passthrough. Deals ships no
+      domain fields of its own — hosts inject their own here, the same way
+      `companies.fields.attributes` works.
+
+exports:
+  pages:
+    - id: all
+      description: Deal list with filtering, sorting, and pagination
+    - id: view
+      description: Deal detail page — workflow, info grid, sidebar tiles
+    - id: new
+      description: Create a new deal
+  connections:
+    - id: deals-collection
+      description: MongoDB connection for deal records
+    - id: events-collection
+      description: MongoDB connection for the audit event log (read-only usage)
+  api:
+    - id: create-deal
+      description: Create a new deal
+    - id: update-people
+      description: Update a deal's contact roles / people
+    - id: record-loss
+      description: Record a deal's lost outcome and reason
+  components:
+    - id: deal-status-chip
+      description: Status/outcome chip rendering the merged stages/outcomes enums
+  menus:
+    - id: default
+      description: Deals navigation link
+
+connections:
+  - _ref: connections/deals-collection.yaml
+  - _ref: connections/events-collection.yaml
+
+api:
+  - _ref: api/create-deal.yaml
+  - _ref: api/update-people.yaml
+  - _ref: api/record-loss.yaml
+
+pages:
+  - _ref: pages/all.yaml
+  - _ref: pages/new.yaml
+  - _ref: pages/view.yaml
+
+menus:
+  - _ref: menus.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+
+plugins:
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^3"
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.13.0"

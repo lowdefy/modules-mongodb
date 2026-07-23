@@ -1,0 +1,58 @@
+# Two composed "what's open" cards, side by side, replacing the old
+# merged section_actions.yaml + action_card.yaml.njk (rework Task 5).
+# Left: workflows' open-actions (the deal's open workflow actions).
+# Right: activities' open-tasks (the deal's open adhoc tasks). Each module
+# renders only its own domain and fetches only its own data.
+id: detail_open_items_row
+type: Box
+style:
+  marginTop: 12
+layout:
+  gap: 8
+  justify: stretch
+blocks:
+  - id: detail_open_actions_col
+    type: Box
+    layout:
+      span: 12
+      sm:
+        span: 24
+    blocks:
+      - id: detail_open_actions_header
+        type: Html
+        properties:
+          html: |
+            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary); margin-bottom: 6px;">Actions</div>
+      - _ref:
+          module: workflows
+          component: open-actions
+          vars:
+            entity_id:
+              _state: selected_deal_id
+            entity_connection_id:
+              _module.var: entity_connection_id
+  - id: detail_open_tasks_col
+    type: Box
+    layout:
+      span: 12
+      sm:
+        span: 24
+    blocks:
+      - id: detail_open_tasks_header
+        type: Html
+        properties:
+          html: |
+            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary); margin-bottom: 6px;">Tasks</div>
+      - _ref:
+          module: activities
+          component: open-tasks
+          vars:
+            entity_type: deal
+            entity_id:
+              _state: selected_deal_id
+            on_click:
+              - id: open_deal_task_modal_from_open_tasks
+                type: CallMethod
+                params:
+                  blockId: deal_task_modal
+                  method: toggleOpen

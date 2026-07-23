@@ -167,6 +167,14 @@ vars:
 
 exports:
   components:
+    - id: open-actions
+      description: >
+        Compact card list of an entity's OPEN workflow actions — a lighter
+        sibling of `actions-on-entity` for sidebars/summaries that don't need
+        the full per-workflow stepper. Takes `entity_id` + `entity_connection_id`
+        vars, fetches via the same get-entity-workflows endpoint, and renders
+        only non-terminal actions (excludes `done`/`not-required`), colour-keyed
+        off `action_statuses`. Actions-only — reads no tasks or activities.
     - id: workflow-progress
       description: >
         Entity workflow-progress surface — renders the entity's workflows as
@@ -203,6 +211,9 @@ components:
   - id: actions-on-entity
     component:
       _ref: components/actions-on-entity.yaml
+  - id: open-actions
+    component:
+      _ref: components/open-actions.yaml
   - id: workflow-progress
     component:
       _ref: components/workflow-progress.yaml

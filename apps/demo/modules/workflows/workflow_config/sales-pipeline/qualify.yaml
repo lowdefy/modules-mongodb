@@ -1,0 +1,142 @@
+type: qualify
+kind: form
+action_group: qualification
+# Authored action description — markdown, rendered read-time as the
+# chrome-less lead-in at the top of the action's content card. Carries the
+# *criteria* for qualifying (context the form fields don't state), not a
+# restate of the fields themselves.
+description: |
+  Qualify before advancing — a deal that fails a criterion should be parked,
+  not quoted:
+
+  - **Budget** — spend is in range for a standard package
+  - **Authority** — you're talking to the decision-maker, not a researcher
+  - **Need** — a concrete problem we solve, with a deadline behind it
+
+  Flag a **site visit** only when the install is non-standard — multiple sites,
+  restricted access, or bespoke hardware. Routine installs skip it.
+access:
+  demo:
+    view: true
+    edit: true
+form:
+  # Keys are full state paths including the form. prefix — field components
+  # bind block id verbatim from the key, and the edit template primes/submits
+  # the form state subtree. Hooks receive the values under the payload's
+  # form bag (without the prefix): _payload: form.site_visit_required.
+  - key: form.contact
+    component: contact
+    title: Contact
+    required: true
+  # Role-scoped single-select — a dropdown of contacts holding the given app
+  # role, stored as a denormalized (view-renderable) value.
+  - key: form.account_manager
+    component: role_contact
+    title: Account manager
+    roles:
+      - manager
+  - key: form.notes
+    component: text_area
+    title: Qualification notes
+  - key: form.estimated_value
+    component: number
+    title: Estimated value
+    extra: Approximate deal size, in dollars.
+  - key: form.site_visit_required
+    component: yes_no_selector
+    title: Site visit needed?
+hooks:
+  submit:
+    pre:
+      routine:
+        - :return:
+            actions:
+              _if:
+                test:
+                  _eq:
+                    - _payload: form.site_visit_required
+                    - true
+                then:
+                  # Site visit needed: activate spawns it, require reopens it if
+                  # a prior edit left it not-required. upsert keeps both safe when
+                  # it doesn't exist yet.
+                  - type: site-visit
+                    signal: activate
+                    upsert: true
+                  - type: site-visit
+                    signal: require
+                    upsert: true
+                else:
+                  # No longer needed: mark it not-required (no-ops on done).
+                  - type: site-visit
+                    signal: not_required
+                    upsert: true
+    # Post-submit: persist the values the form captured — the point of contact
+    # and the deal value. The `contact` field already collects a 0-or-1 array
+    # of denormalized {contact_id, name, email} snapshots, which is exactly how
+    # the deals module stores role-scoped people (see
+    # modules/deals/actions/set_deal_people.yaml), so it is written verbatim
+    # under `main_point_of_contact` — no `.0` extraction.
+    #
+    # `value` is the generic estimated deal size the deals module now reads
+    # off the stored document (no more computed pricing math) — this is where
+    # it gets stamped.
+    #
+    # The deal's *pipeline status* advance lives on the qualification group's
+    # `on_complete` (see sales-pipeline.yaml) — the phase completing owns the
+    # status change, not this action.
+    #
+    # Uses aggregation-pipeline update syntax; the $set of contact/value/stamp
+    # always applies, so a re-submit from the edit page re-persists cleanly.
+    # Filter is a plain _id match, so it always matches; no guard needed.
+    post:
+      routine:
+        - id: persist_qualification_fields
+          type: MongoDBUpdateOne
+          connectionId:
+            _module.connectionId: { id: deals-collection, module: deals }
+          properties:
+            filter:
+              _id:
+                _payload: context.workflow.entity.id
+            update:
+              - $set:
+                  main_point_of_contact:
+                    _payload: form.contact
+                  value:
+                    _payload: form.estimated_value
+                  updated:
+                    _ref:
+                      module: events
+                      component: change_stamp
+        - :return:
+            deal_id:
+              _payload: context.workflow.entity.id
+pages:
+  edit:
+    buttons:
+      extra:
+        - id: open_help
+          type: Button
+          layout:
+            flex: 0 1 auto
+          properties:
+            title: Help
+            icon: AiOutlineQuestionCircle
+          events:
+            onClick:
+              - id: nav_help
+                type: Link
+                params:
+                  url: https://docs.lowdefy.com
+                  newTab: true
+status_map:
+  action-required:
+    demo:
+      message: Qualify the deal.
+  in-progress:
+    demo:
+      message: Qualifying the deal.
+  done:
+    demo:
+      message: Deal qualified.

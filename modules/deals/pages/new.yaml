@@ -1,0 +1,108 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: new
+    type:
+      _string.concat:
+        - "New "
+        - _module.var: label
+    content_width: 700
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _module.var: label_plural
+        pageId:
+          _module.pageId: all
+      - label:
+          _string.concat:
+            - "New "
+            - _module.var: label
+    events:
+      onInit:
+        - id: init_state
+          type: SetState
+          params:
+            # Init the company-selector's cycle-check keys so its
+            # get_companies_for_selector request doesn't fire a ConfigWarning
+            # for unreferenced _state — this form never cycle-checks (plain
+            # picker); the request's _if_none defaults take over at runtime.
+            cycle_check_self_id: null
+            cycle_check_ids: []
+    blocks:
+      - id: deal_new_card
+        type: Card
+        layout:
+          gap: 12
+        blocks:
+          - _ref: components/form_deal.yaml
+
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            actions:
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: all
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Create Deal
+                  icon: AiOutlinePlusCircle
+                  type: primary
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                    - id: submit
+                      type: CallAPI
+                      messages:
+                        success: Deal created.
+                        error: Failed to create deal.
+                      params:
+                        endpointId:
+                          _module.endpointId: create-deal
+                        payload:
+                          form:
+                            _state: form
+                          # Host `fields` blocks bind to root state.attributes.*
+                          # (ids prefixed `attributes.`) — send them for the
+                          # generic create-deal passthrough.
+                          attributes:
+                            _state: attributes
+                    # Gate on the created deal_id, not form.company_id — Reset
+                    # clears company_id before the redirect's skip, self-skipping nav.
+                    - id: reset
+                      type: Reset
+                      skip:
+                        _eq:
+                          - _actions: submit.response.response.deal_id
+                          - null
+                    - id: redirect
+                      type: Link
+                      skip:
+                        _eq:
+                          - _actions: submit.response.response.deal_id
+                          - null
+                      params:
+                        pageId:
+                          _module.pageId: view
+                        urlQuery:
+                          _id:
+                            _actions: submit.response.response.deal_id

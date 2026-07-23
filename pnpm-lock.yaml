@@ -73,6 +73,8 @@ importers:
 
   modules/contacts: {}
 
+  modules/deals: {}
+
   modules/events: {}
 
   modules/files: {}

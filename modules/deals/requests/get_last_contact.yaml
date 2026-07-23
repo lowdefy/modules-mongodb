@@ -1,0 +1,34 @@
+id: get_last_contact
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: events-collection
+payload:
+  selected_deal_id:
+    _state: selected_deal_id
+properties:
+  pipeline:
+    - $match:
+        deal_ids:
+          _payload: selected_deal_id
+        type:
+          $nin:
+            - update-deal-people
+            - update-deal-files
+    - $sort:
+        date: -1
+        created.timestamp: -1
+    - $limit: 1
+    - $addFields:
+        last_contact_label:
+          $dateToString:
+            format: "%d %b"
+            date:
+              $ifNull:
+                - $date
+                - $created.timestamp
+    - $project:
+        _id: 1
+        type: 1
+        date: 1
+        created: 1
+        last_contact_label: 1

@@ -1,0 +1,37 @@
+id: detail_section_related_deals
+type: Box
+blocks:
+  - id: detail_related_header
+    type: Html
+    properties:
+      html: |
+        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary); margin-bottom: 8px;">Related Deals</div>
+  - id: detail_related_empty
+    type: Html
+    visible:
+      _eq:
+        - _array.length:
+            _if_none:
+              - _state: related_deals
+              - []
+        - 0
+    properties:
+      html: |
+        <div style="font-size: 12px; color: var(--ant-color-text-tertiary);">No Related Deals</div>
+  - id: related_deals
+    visible:
+      _gt:
+        - _array.length:
+            _if_none:
+              - _state: related_deals
+              - []
+        - 0
+    type: List
+    properties:
+      direction: row
+    blocks:
+      - _ref:
+          path: components/deal_list_item_compact.yaml
+          vars:
+            deal:
+              _state: related_deals.$

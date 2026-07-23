@@ -1,0 +1,63 @@
+# Results region for the deals list page: a loading skeleton while
+# get_deals_list is in flight, an empty state when no deals match, and the
+# paginated card list otherwise. Cards are deal_list_card refs.
+id: deals_results
+type: Box
+layout:
+  gap: 0
+loading:
+  _not:
+    _request: get_deals_list
+skeleton:
+  type: Box
+  layout:
+    gap: 10
+  blocks:
+    - type: Skeleton
+      properties:
+        active: true
+        height: 88
+    - type: Skeleton
+      properties:
+        active: true
+        height: 88
+    - type: Skeleton
+      properties:
+        active: true
+        height: 88
+    - type: Skeleton
+      properties:
+        active: true
+        height: 88
+blocks:
+  # Empty state
+  - id: deals_list_empty
+    type: Html
+    visible:
+      _eq:
+        - _array.length:
+            _if_none:
+              - _state: deals_list_results
+              - []
+        - 0
+    properties:
+      html: |
+        <div style="padding: 48px 16px; text-align: center; color: var(--ant-color-text-secondary); font-size: 13px;">
+          No deals match the current filters.
+        </div>
+  # Deal cards
+  - id: deals_list_results
+    type: List
+    visible:
+      _gt:
+        - _array.length:
+            _if_none:
+              - _state: deals_list_results
+              - []
+        - 0
+    blocks:
+      - _ref:
+          path: components/deal_list_card.yaml
+          vars:
+            deal:
+              _state: deals_list_results.$

@@ -1,0 +1,7 @@
+# Resolved people-role registry: the shipped default (main_point_of_contact)
+# with the host's `contact_roles` merged over it (host wins per key, adds roles).
+# _ref'd by every people surface (get_selected_deal, section_people,
+# people_modal, set_deal_people) so they all iterate the same role set.
+_build.object.assign:
+  - _ref: defaults/contact_roles.yaml
+  - _module.var: contact_roles

@@ -1,0 +1,32 @@
+# Server-side pagination for the deals list page. The Pagination block writes
+# current/skip/pageSize into the `pagination` state path that get_deals_list
+# reads; onChange refetches and stores the next page of cards.
+id: pagination
+type: Pagination
+style:
+  padding: 8px 0
+  textAlign: end
+properties:
+  size: small
+  showTotal: true
+  hideOnSinglePage: true
+  showSizeChanger: false
+  pageSizeOptions: []
+  total:
+    _if_none:
+      - _request: get_deals_list.0.count.0.count
+      - 0
+events:
+  onChange:
+    - id: fetch_deals_list
+      type: Request
+      messages:
+        loading: true
+      params: get_deals_list
+    - id: set_deals_list_results
+      type: SetState
+      params:
+        deals_list_results:
+          _if_none:
+            - _request: get_deals_list.0.results
+            - []

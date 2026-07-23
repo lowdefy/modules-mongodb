@@ -1,0 +1,197 @@
+id: get_deals_list
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: deals-collection
+payload:
+  pagination:
+    _state: pagination
+  filter:
+    _state: filter
+properties:
+  pipeline:
+    # 1. Full-text search (must be the first stage). When no search term is
+    # entered, swap in a no-op $match so the rest of the pipeline is unchanged.
+    # Searches deal name + deal code (_id) only — company name is not stored on
+    # the deal document, so it stays a $match filter below, not a search field.
+    - _if:
+        test:
+          _eq:
+            - _if_none:
+                - _payload: filter.search
+                - null
+            - null
+        then:
+          $match: {}
+        else:
+          $search:
+            index: default
+            compound:
+              should:
+                - wildcard:
+                    query:
+                      _string.concat:
+                        - "*"
+                        - _payload: filter.search
+                        - "*"
+                    path:
+                      value: _id
+                      multi: keywordAnalyzer
+                    score:
+                      boost:
+                        value: 3
+                    allowAnalyzedField: true
+                - text:
+                    query:
+                      _payload: filter.search
+                    path:
+                      - name
+                - wildcard:
+                    query:
+                      _string.concat:
+                        - "*"
+                        - _payload: filter.search
+                        - "*"
+                    path:
+                      - name
+                    allowAnalyzedField: true
+
+    # 2. Filters. Each multi-select drops out when nothing is selected; the
+    # outcome Segmented is always set (defaults to "open").
+    - $match:
+        $and:
+          _array.concat:
+            - - removed: null
+            - _if:
+                test:
+                  _gt:
+                    - _if_none:
+                        - _payload: filter.stage.length
+                        - 0
+                    - 0
+                then:
+                  - status.0.stage:
+                      $in:
+                        _payload: filter.stage
+                else: []
+            - _if:
+                test:
+                  _gt:
+                    - _if_none:
+                        - _payload: filter.company_id.length
+                        - 0
+                    - 0
+                then:
+                  - company_id:
+                      $in:
+                        _payload: filter.company_id
+                else: []
+            - _if:
+                test:
+                  _gt:
+                    - _if_none:
+                        - _payload: filter.salesperson.length
+                        - 0
+                    - 0
+                then:
+                  - salesperson.name:
+                      $in:
+                        _payload: filter.salesperson
+                else: []
+            - _if:
+                test:
+                  _eq:
+                    - _payload: filter.outcome
+                    - open
+                then:
+                  - outcome.type: null
+                else: []
+            - _if:
+                test:
+                  _eq:
+                    - _payload: filter.outcome
+                    - won
+                then:
+                  - outcome.type: won
+                else: []
+            - _if:
+                test:
+                  _eq:
+                    - _payload: filter.outcome
+                    - lost
+                then:
+                  - outcome.type: lost
+                else: []
+            - _if:
+                test:
+                  _gt:
+                    - _if_none:
+                        - _payload: filter.outcome_reason.length
+                        - 0
+                    - 0
+                then:
+                  - outcome.reason:
+                      $in:
+                        _payload: filter.outcome_reason
+                else: []
+
+    # 3. Company name for display (same lookup as get_active_deals).
+    - $lookup:
+        from: companies
+        localField: company_id
+        foreignField: _id
+        as: company
+
+    # 4. Count + paginated results.
+    - $facet:
+        count:
+          - $count: count
+        results:
+          _array.concat:
+            - _if:
+                test:
+                  _eq:
+                    - _if_none:
+                        - _payload: filter.search
+                        - null
+                    - null
+                then: []
+                else:
+                  - $addFields:
+                      score:
+                        $meta: searchScore
+            - - $sort:
+                  score: -1
+                  updated.timestamp: -1
+              - $skip:
+                  _if_none:
+                    - _payload: pagination.skip
+                    - 0
+              - $limit:
+                  _if_none:
+                    - _payload: pagination.pageSize
+                    - 20
+              - $addFields:
+                  deal_value:
+                    $ifNull:
+                      - $value
+                      - 0
+              - $project:
+                  _id: 1
+                  name: 1
+                  attributes: 1
+                  company_id: 1
+                  company_name:
+                    $ifNull:
+                      - $first: $company.short_name
+                      - $first: $company.name
+                  status: 1
+                  outcome: 1
+                  updated: 1
+                  salesperson_name: $salesperson.name
+                  expected_close_date: 1
+                  # Raw value number; hosts format it via card_fields
+                  # (currency/abbreviation are host concerns).
+                  deal_value: 1
+            # App-injected pipeline stages (default []) — splice point for
+            # request_stages.get_deals_list.
+            - _module.var: request_stages.get_deals_list

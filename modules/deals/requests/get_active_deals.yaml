@@ -1,0 +1,99 @@
+id: get_active_deals
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: deals-collection
+payload:
+  pagination:
+    _state: deals_pagination
+  # Raw search term. Escaping happens server-side in properties below — a
+  # payload _js runs on the client but Lowdefy classifies request _js as
+  # server-only, so it isn't in the client bundle ("_js function not found").
+  search:
+    _state: deal_search
+properties:
+  pipeline:
+    - $match:
+        removed: null
+    - $lookup:
+        from: companies
+        localField: company_id
+        foreignField: _id
+        as: company
+    # Free-text search over deal name, deal code (_id), and company name.
+    # An empty search term is an empty regex, which matches everything.
+    - $match:
+        $expr:
+          $or:
+            - $regexMatch:
+                input:
+                  $ifNull:
+                    - $name
+                    - ""
+                # Escape regex metacharacters server-side so an unescaped "(",
+                # "[", "\" etc. can't form an invalid pattern that makes Mongo
+                # throw. Empty term -> "" (matches all). Identical _js in all
+                # three stages dedupes to a single built function by hash.
+                regex:
+                  _js: |
+                    const s = payload('search');
+                    if (s === null || s === undefined || s === '') return '';
+                    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                options: i
+            - $regexMatch:
+                input:
+                  $ifNull:
+                    - $_id
+                    - ""
+                regex:
+                  _js: |
+                    const s = payload('search');
+                    if (s === null || s === undefined || s === '') return '';
+                    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                options: i
+            - $regexMatch:
+                input:
+                  $ifNull:
+                    - $first: $company.short_name
+                    - $first: $company.name
+                    - ""
+                regex:
+                  _js: |
+                    const s = payload('search');
+                    if (s === null || s === undefined || s === '') return '';
+                    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                options: i
+    - $facet:
+        count:
+          - $count: count
+        results:
+          _array.concat:
+            - - $sort:
+                  updated.timestamp: -1
+              - $skip:
+                  _if_none:
+                    - _payload: pagination.skip
+                    - 0
+              - $limit:
+                  _if_none:
+                    - _payload: pagination.pageSize
+                    - 20
+              - $project:
+                  _id: 1
+                  name: 1
+                  company_id: 1
+                  company_name:
+                    $ifNull:
+                      - $first: $company.short_name
+                      - $first: $company.name
+                  status: 1
+                  outcome: 1
+                  updated: 1
+                  salesperson_name: $salesperson.name
+                  expected_close_date: 1
+                  deal_value:
+                    $ifNull:
+                      - $value
+                      - 0
+            # App-injected pipeline stages (default []) — splice point for
+            # request_stages.get_active_deals.
+            - _module.var: request_stages.get_active_deals

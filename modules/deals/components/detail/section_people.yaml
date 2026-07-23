@@ -1,0 +1,90 @@
+id: detail_cell_people
+type: Box
+layout:
+  span: 12
+  sm:
+    span: 24
+  gap: 6
+blocks:
+  - id: detail_people_header
+    type: Box
+    layout:
+      span: 24
+      align: middle
+      justify: stretch
+    blocks:
+      - id: detail_people_header_title
+        type: Html
+        layout:
+          flex: 1 1 auto
+        properties:
+          html: |
+            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary);">People</div>
+      - id: detail_people_add_btn
+        type: Button
+        style:
+          margin: auto
+        layout:
+          flex: 0 0 auto
+        properties:
+          size: small
+          icon: AiOutlineEdit
+          hideTitle: true
+        events:
+          onClick:
+            - id: open_people_modal
+              type: CallMethod
+              params:
+                blockId: detail_people_modal
+                method: toggleOpen
+
+  - id: detail_people_card
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            {% macro row(contact, role_cfg) %}
+              {% set role_title = role_cfg.title %}
+              {% set color = role_cfg.color %}
+              {% set bg = role_cfg.bg %}
+              {% set border = role_cfg.border %}
+              <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px;">
+                {% if contact and contact.profile %}
+                  {% set name = contact.profile.name or '—' %}
+                  {% set parts = name.split(' ') %}
+                  {% set initials = '' %}
+                  {% for p in parts %}{% if p.length > 0 and initials.length < 2 %}{% set initials = initials + p[0] %}{% endif %}{% endfor %}
+                  <a href="/{{ contact_detail_page }}?_id={{ contact._id }}" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; color: inherit; text-decoration: none;">
+                    <div style="width: 26px; height: 26px; border-radius: 50%; background: {{ bg }}; color: {{ color }}; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0;">{{ initials | upper }}</div>
+                    <div style="flex: 1; min-width: 0;">
+                      <div style="font-size: 12px; font-weight: 600; color: var(--ant-color-text); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ name }}</div>
+                      <div style="font-size: 10px; color: var(--ant-color-text-tertiary); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ contact.email or '' }}{% if contact.profile.job_title %} · {{ contact.profile.job_title }}{% endif %}
+                      </div>
+                    </div>
+                    <span style="display: inline-block; font-size: 9px; font-weight: 500; padding: 1px 6px; border-radius: 8px; background: {{ bg }}; color: {{ color }}; border: 1px solid {{ border }}; flex-shrink: 0; white-space: nowrap;">{{ role_title }}</span>
+                  </a>
+                {% else %}
+                  <div style="width: 26px; height: 26px; border-radius: 50%; background: var(--ant-color-fill-quaternary); color: var(--ant-color-text-quaternary); display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0;">—</div>
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 11px; color: var(--ant-color-text-tertiary); font-style: italic;">No {{ role_title }} Assigned</div>
+                  </div>
+                {% endif %}
+              </div>
+            {% endmacro %}
+            <div style="border: 1px solid var(--ant-color-border-secondary); border-radius: 6px; background: var(--ant-color-bg-container); overflow: hidden;">
+              {% for r in role_list | sort(false, false, 'order') %}
+                {% if not loop.first %}<div style="height: 1px; background: var(--ant-color-border-secondary);"></div>{% endif %}
+                {{ row(deal[r.slug + '_view'][0], r) }}
+              {% endfor %}
+            </div>
+          on:
+            deal:
+              _request: get_selected_deal.0
+            role_list:
+              _ref: components/contact_roles_list.yaml
+            contact_detail_page:
+              _module.pageId:
+                id: view
+                module: contacts
