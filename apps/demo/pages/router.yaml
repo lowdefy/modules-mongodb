@@ -23,5 +23,5 @@ events:
                 then:
                   _module.pageId:
                     module: user-account
-                    id: new
+                    id: onboarding
             default: home
