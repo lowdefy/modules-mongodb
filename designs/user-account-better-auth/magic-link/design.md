@@ -64,7 +64,12 @@ In a passwordless deployment there is no separate credential to register, so "si
 
 Admission itself is delegated to the engine's active-org policy (parent Decision 3), not re-implemented in the module. The design's position is that this policy should govern the magic-link flow **end-to-end** — gating the send so an uninvited email never enters the create-at-verify flow, with the `session.create.before` hard wall as the backstop — and that this is platform/engine territory (the module does **not** gate admission inside its `sendMagicLink` email callback, which renders and delivers only). Today only the wall is wired, and it fires at `createSession` _after_ the verify route's `createUser`, so an uninvited verify leaves an orphan `user`/`contact` and lands on a raw 403 rather than the login render. Closing both is the design's upstream ask (§Upstream); until it lands, those are the known consequences for the _uninvited_ case (invited users are admitted by the invitation carve-out and route normally).
 
-Open sub-question (below): whether the `authPages.signUp` role still points at a distinct page in mixed (password + magic-link) deployments, or whether both roles collapse onto the one config-driven page.
+**Signup collapses onto login only when there is no password branch.** Signup differs from login in exactly one place — the password _registration_ form (name + password → `SignUp`). Every other method creates the account on first use, so it is identical between the two pages: OAuth already reuses `Login` on both, and magic-link is the one email → link action either way. So the rule is config-driven, mirroring Decision 1's "not a mode":
+
+- **Passwordless** (`emailAndPassword.enabled: false`): no password branch exists, so signup ≡ login and the `signup` page is **not built at all**. The manifest assembles `pages` with a `_build.array.concat` whose signup arm is `_build.if`-gated on `emailAndPassword.enabled` — `[]` when password is off, `[signup]` when on — so a passwordless deployment never renders a distinct `/signup` (no redirect, no dead duplicate). `authPages.signUp` is gated on the **same** condition: → the `signup` page when password is on, → the `login` page when off. One `_build.if` drives both the page's existence and the role target, so they cannot drift.
+- **Mixed / password-only** (`emailAndPassword.enabled: true`): the registration form makes `signup` a genuinely distinct page, so it is built and `authPages.signUp` points at it.
+
+The **magic-link send affordance is a shared component** `_ref`'d into both `login` and `signup`, gated on `magicLink.enabled`. So in a mixed deployment `/signup` offers magic-link as an alternative-method button exactly as `/login` does (demoted below the divider, per Decision 1) — one component, two references, no duplicated logic.
 
 ### 5. Merge-on-signup: existing binding already covers magic-link, one comment to correct
 
@@ -116,15 +121,10 @@ With the gate as the primary mechanism, the wall stays as the backstop and part 
 ## Files changed (sketch)
 
 - `pages/login.yaml` — add the magic-link send affordance (gated on `magicLink.enabled`), the `link-sent` result state + resend, and the email-only shape when `emailAndPassword.enabled` is false. Add `INVALID_TOKEN` to the error table and set the three callback URLs on the send.
-- `pages/signup.yaml` — resolve the collapse: in passwordless mode redirect to / reuse the login flow; confirm the `authPages.signUp` role wiring.
+- `pages/signup.yaml` + manifest — the `signup` page is `_build.if`-gated on `emailAndPassword.enabled` in the manifest's `pages` `_build.array.concat` (not built in passwordless); `authPages.signUp` is gated on the same condition (→ `signup` when password on, → `login` when off). Add the shared magic-link send affordance (gated on `magicLink.enabled`) so a mixed deployment's signup offers it too.
 - Merge-on-signup hook (`modules/user-account/api/link-contact-on-signup.yaml`, parent Decision 7) — the `user.create.before` guard already matches provider-agnostic verified email, so magic-link is already covered; correct only the stale "verified-provider OAuth" comment (no logic change, no shared-fragment change).
 - Demo consumer — a passwordless (`emailAndPassword` off, `magicLink` on) demo app config exercising send → verify → onboarding, per the repo's "always add a demo consumer" rule.
 - Docs — the module's login/how-to page notes the passwordless shape and the `magicLink.enabled` behaviour.
-
-## Open questions
-
-- **`authPages.signUp` in mixed deployments** — one config-driven page serving both `signIn` and `signUp` roles, or a distinct signup render when password is also enabled?
-- **`verify-email` page** — magic-link users are auto-verified, so the verification flow is expected to be orthogonal for them; confirm there is no interaction (e.g. the resend-verification control in the security tile is simply irrelevant to a passwordless user, which the credential/verified state already handles).
 
 ## Non-goals
 
