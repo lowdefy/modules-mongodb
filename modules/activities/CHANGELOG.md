@@ -1,5 +1,31 @@
 # @lowdefy/modules-mongodb-activities
 
+## 0.15.0
+
+### Minor Changes
+
+- [#111](https://github.com/lowdefy/modules-mongodb/pull/111) [`8923ca1`](https://github.com/lowdefy/modules-mongodb/commit/8923ca1501e8ae7af3ee721bd9738134d0f03681) Thanks [@Yianni99](https://github.com/Yianni99)! - Add the **open-tasks** component — a compact card list of an entity's open
+  `kind: task` docs, reading activities' own `actions` collection filtered by
+  `entity_type`/`entity_id` (the shape `create-task`/`update-task` write) and
+  an open status (current stage not `done`). It's the activities-owned
+  sibling of the `workflows` module's `open-actions` card, styled to match
+  it so a host can compose both side by side into one "what's open" row.
+  Takes `entity_type` + `entity_id` vars and an optional `on_click` action
+  list for wiring a host's `task-modal` instance. Reads no workflow-engine
+  data.
+
+- [#111](https://github.com/lowdefy/modules-mongodb/pull/111) [`8923ca1`](https://github.com/lowdefy/modules-mongodb/commit/8923ca1501e8ae7af3ee721bd9738134d0f03681) Thanks [@Yianni99](https://github.com/Yianni99)! - Add exported task CRUD — `create-task` / `update-task` APIs writing
+  `kind: task` docs into activities' `actions-collection`, and a paired
+  `task-modal` component. Two seams keep this from being a lossy
+  generalization of deals' original deal-only implementation: an arbitrary
+  entity link (payload `entity_type`/`entity_id`, not a hardcoded reference,
+  so a task can hang off a deal, a meeting, or any entity) and a
+  consumer-supplied emitted event (`task-modal`'s `events` var supplies the
+  `type` + Nunjucks display template per create/complete/reopen transition,
+  forwarded through to the events module's `new-event`). `task-modal` also
+  takes the assignee-options source as a var (`assignee_options` +
+  optional `assignee_search`) instead of hardcoding a request.
+
 ## 0.14.1
 
 ## 0.14.0
