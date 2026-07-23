@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260722143027
+lowdefy: 0.0.0-experimental-20260723125206
 name: Module Demo App
 slug: demo
 
@@ -76,18 +76,13 @@ auth:
           _secret: GOOGLE_CLIENT_ID
         clientSecret:
           _secret: GOOGLE_CLIENT_SECRET
+  # Auth mail (verification, password reset, magic link, invitation) sends
+  # through the app SMTP connection referenced here — the connection owns
+  # `from`, the transport, and the delivery filter. Requires lowdefy >=
+  # experimental-20260723125206 (older experimentals rejected `connectionId`
+  # at build while the runtime read nothing else — lowdefy PR #2285).
   email:
-    from:
-      _secret: AUTH_FROM_ADDRESS
-    provider:
-      type: smtp
-      properties:
-        host: smtp.sendgrid.net
-        port: 465
-        auth:
-          user: apikey
-          pass:
-            _secret: SENDGRID_API_KEY
+    connectionId: email
   # authPages and pages.public are contributed by the user-account module
   # manifest (auth.pages / auth.public); app config would win on collision.
   # Pinned-org policy (design Decision 1): one deployment = one pinned org.
@@ -138,6 +133,21 @@ menus:
   _ref: menus.yaml
 
 connections:
+  # One transport + delivery filter for every auth email (verification,
+  # password reset, magic link, invitation) — referenced by
+  # auth.email.connectionId above. SMTP is a framework built-in (no plugin pin).
+  - id: email
+    type: SMTP
+    properties:
+      from:
+        _secret: AUTH_FROM_ADDRESS
+      host: smtp.sendgrid.net
+      port: 465
+      secure: true
+      auth:
+        user: apikey
+        pass:
+          _secret: SENDGRID_API_KEY
   - id: demo-contacts
     type: MongoDBCollection
     properties:
