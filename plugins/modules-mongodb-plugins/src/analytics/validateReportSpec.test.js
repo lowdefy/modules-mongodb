@@ -1,5 +1,6 @@
 import validateReportSpec from "./validateReportSpec.js";
 import testCatalog from "./testDatasets.js";
+import { MAX_SECTIONS } from "./constants.js";
 
 const roles = ["analyst"];
 
@@ -102,11 +103,14 @@ test("rejects an invalid format descriptor", () => {
   ).toThrow(/format.style "percent" is not one of/);
 });
 
-test("rejects more than 12 sections", () => {
-  const sections = Array.from({ length: 13 }, () => ({ type: "markdown", content: "hello" }));
+test("rejects more sections than the cap", () => {
+  const sections = Array.from({ length: MAX_SECTIONS + 1 }, () => ({
+    type: "markdown",
+    content: "hello",
+  }));
   expect(() =>
     validateReportSpec({ spec: { title: "Big", sections }, catalog: testCatalog, roles })
-  ).toThrow(/at most 12 sections/);
+  ).toThrow(/at most \d+ sections/);
 });
 
 test("rejects unknown section type", () => {

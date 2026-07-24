@@ -122,7 +122,7 @@ properties:
         ## generate_report
 
         Call generate_report with a report spec:
-        { title, description?, sections: [...] } — at most 12 sections. title
+        { title, description?, sections: [...] } — at most 24 sections. title
         and every section label are required non-empty strings (max 200 chars).
         Each section carries { collection, pipeline } for its data (except
         markdown and filter) plus the contract fields its type needs; a section

@@ -2,7 +2,7 @@
 // validation caps from the ai-chat-reporting design's security model — specs
 // exceeding a cap fail validation with a message the model can act on.
 
-export const MAX_SECTIONS = 12;
+export const MAX_SECTIONS = 24;
 export const MAX_LABEL_LENGTH = 200;
 export const MAX_MARKDOWN_LENGTH = 5000;
 export const MAX_DATA_PARTS_SPECS = 8;
