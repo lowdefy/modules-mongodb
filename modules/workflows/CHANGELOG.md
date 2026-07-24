@@ -1,5 +1,15 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.18.0
+
+### Minor Changes
+
+- [#123](https://github.com/lowdefy/modules-mongodb/pull/123) [`fb72ec0`](https://github.com/lowdefy/modules-mongodb/commit/fb72ec081a64eb0bced8856758e635effd96b2a4) Thanks [@Yianni99](https://github.com/Yianni99)! - Action-form text fields (`text_input`) support native max-length capping. A new `max_length` field option maps to the TextInput `maxLength` property, stopping input at the limit instead of erroring after over-long input; `show_count` maps to `showCount` for a live "n/max" counter and defaults to on whenever `max_length` is set.
+
+- [#123](https://github.com/lowdefy/modules-mongodb/pull/123) [`fb72ec0`](https://github.com/lowdefy/modules-mongodb/commit/fb72ec081a64eb0bced8856758e635effd96b2a4) Thanks [@Yianni99](https://github.com/Yianni99)! - Workflow and action-group overview pages: the back arrow now returns to the previous page instead of always jumping to the entity view (the entity stays reachable via the breadcrumb), and each action is individually collapsible with an Expand/Collapse-all toggle, all collapsed by default.
+
+  Adds two per-action options: `show_comment` (default `true`) — set `false` to hide the free-form comment box on an action's edit and review pages; and `pages.edit.validate_on_draft` (default `false`) — set `true` to validate the form (like Submit) before the edit page's Save Draft saves.
+
 ## 0.17.0
 
 ## 0.16.0
