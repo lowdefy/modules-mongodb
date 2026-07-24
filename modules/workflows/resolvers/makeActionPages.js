@@ -25,6 +25,7 @@ const ACTION_FIELDS_FOR_TEMPLATE = [
   "interactions",
   "event",
   "universal_fields",
+  "show_comment",
 ];
 
 // Part 24 / Part 64: the default for the UI presence list. Normalized onto the

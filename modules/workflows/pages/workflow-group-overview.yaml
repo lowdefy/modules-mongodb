@@ -19,12 +19,8 @@ _ref:
     content_width: 1100
     title:
       _state: group.title
+    # No back_link → the title-block falls back to browser-history back.
     show_back_button: true
-    back_link:
-      pageId:
-        _state: workflow.entity_link.pageId
-      urlQuery:
-        _state: workflow.entity_link.urlQuery
     # Breadcrumb trail: Home / [entity list] / entity / workflow→ / group (terminal).
     breadcrumbs:
       _ref:
@@ -115,6 +111,53 @@ _ref:
           vars:
             summary:
               _state: group.summary
+      # Outside the List, so it writes the whole collapse_map in one SetState.
+      - id: collapse_toolbar
+        type: Box
+        layout:
+          justify: flex-end
+        blocks:
+          - id: collapse_all_toggle
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              type: text
+              size: small
+              title:
+                _js:
+                  args:
+                    acts:
+                      _state: actions_list
+                    map:
+                      _state: collapse_map
+                  fn: |
+                    const acts = args.acts || [];
+                    const ids = acts.map((a) => (a.key ? a.type + '.' + a.key : a.type));
+                    const map = args.map || {};
+                    const allExpanded = ids.length > 0 && ids.every((id) => map[id]);
+                    return allExpanded ? 'Collapse all' : 'Expand all';
+            events:
+              onClick:
+                - id: toggle_all
+                  type: SetState
+                  params:
+                    collapse_map:
+                      _js:
+                        args:
+                          acts:
+                            _state: actions_list
+                          map:
+                            _state: collapse_map
+                        fn: |
+                          const acts = args.acts || [];
+                          const ids = acts.map((a) => (a.key ? a.type + '.' + a.key : a.type));
+                          const map = args.map || {};
+                          const allExpanded = ids.length > 0 && ids.every((id) => map[id]);
+                          if (allExpanded) return {};
+                          const next = {};
+                          for (const id of ids) next[id] = true;
+                          return next;
 
       # Card gap rides the `.element` CSS slot — blocks-basic List merges it into
       # its item flex-container; layout.gap only reaches blocks within a card.
@@ -137,13 +180,72 @@ _ref:
                 layout:
                   gap: 8
                   selfAlign: middle
-                  justify: space-between
+                  # Layout default is flex-wrap: wrap — nowrap holds the row.
+                  wrap: nowrap
                 blocks:
+                  - id: actions_list.$.collapse_toggle
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      type: text
+                      hideTitle: true
+                      icon:
+                        _if:
+                          test:
+                            _get:
+                              from:
+                                _state: collapse_map
+                              key:
+                                _if:
+                                  test:
+                                    _ne:
+                                      - _state: actions_list.$.key
+                                      - null
+                                  then:
+                                    _string.concat:
+                                      - _state: actions_list.$.type
+                                      - .
+                                      - _state: actions_list.$.key
+                                  else:
+                                    _state: actions_list.$.type
+                              default: false
+                          then: AiOutlineUp
+                          else: AiOutlineDown
+                    events:
+                      onClick:
+                        - id: actions_list.$.toggle
+                          type: SetState
+                          params:
+                            collapse_map:
+                              _js:
+                                args:
+                                  id:
+                                    _if:
+                                      test:
+                                        _ne:
+                                          - _state: actions_list.$.key
+                                          - null
+                                      then:
+                                        _string.concat:
+                                          - _state: actions_list.$.type
+                                          - .
+                                          - _state: actions_list.$.key
+                                      else:
+                                        _state: actions_list.$.type
+                                  map:
+                                    _state: collapse_map
+                                fn: |
+                                  const map = { ...(args.map || {}) };
+                                  const id = args.id;
+                                  map[id] = !map[id];
+                                  return map;
                   - id: actions_list.$.title_row
                     type: Box
                     layout:
                       gap: 8
                       selfAlign: middle
+                      flex: 1 1 0
                     blocks:
                       - id: actions_list.$.title_row
                         type: Box
@@ -202,10 +304,10 @@ _ref:
               - id: actions_list.$.body_empty
                 type: Html
                 visible:
-                  _eq:
+                  _and:
                     - _get:
                         from:
-                          _state: workflow.form_data
+                          _state: collapse_map
                         key:
                           _if:
                             test:
@@ -219,17 +321,34 @@ _ref:
                                 - _state: actions_list.$.key
                             else:
                               _state: actions_list.$.type
-                        default: null
-                    - null
+                    - _eq:
+                        - _get:
+                            from:
+                              _state: workflow.form_data
+                            key:
+                              _if:
+                                test:
+                                  _ne:
+                                    - _state: actions_list.$.key
+                                    - null
+                                then:
+                                  _string.concat:
+                                    - _state: actions_list.$.type
+                                    - .
+                                    - _state: actions_list.$.key
+                                else:
+                                  _state: actions_list.$.type
+                            default: null
+                        - null
                 properties:
                   html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
               - id: actions_list.$.body_dataview
                 type: DataDescriptions
                 visible:
-                  _ne:
+                  _and:
                     - _get:
                         from:
-                          _state: workflow.form_data
+                          _state: collapse_map
                         key:
                           _if:
                             test:
@@ -243,8 +362,25 @@ _ref:
                                 - _state: actions_list.$.key
                             else:
                               _state: actions_list.$.type
-                        default: null
-                    - null
+                    - _ne:
+                        - _get:
+                            from:
+                              _state: workflow.form_data
+                            key:
+                              _if:
+                                test:
+                                  _ne:
+                                    - _state: actions_list.$.key
+                                    - null
+                                then:
+                                  _string.concat:
+                                    - _state: actions_list.$.type
+                                    - .
+                                    - _state: actions_list.$.key
+                                else:
+                                  _state: actions_list.$.type
+                            default: null
+                        - null
                 properties:
                   formConfig:
                     _array.concat:
