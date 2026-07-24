@@ -62,7 +62,7 @@ function buildFilterMatch(filters) {
     // walking this stage like any other (a "$where"-shaped field is rejected).
     clauses.push({ [field]: { [mongoOp]: value } });
   }
-  // One $match with $and, matching today's compileMongo filter shape.
+  // One $match with $and — one consistent shape for any number of triples.
   return clauses.length > 0 ? { $match: { $and: clauses } } : null;
 }
 
