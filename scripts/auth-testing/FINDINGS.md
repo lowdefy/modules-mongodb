@@ -48,17 +48,24 @@ Items are numbered `F1`, `F2`, … for reference (stable IDs — don't renumber)
       (`admin@demo.test`). Verified in the DB. **Same root cause as F4** — a server error
       at verify time (`SERVER_ERROR: UpdateUserProfile requires a "userId" property.` at
       `@lowdefy/plugin-better-auth/dist/steps/UpdateUserProfile.js:38`, via
-      `handleAuthStep → runRoutine → controlIf`) shows the `email.verified` synthetic hook
-      fires the merge-on-signup routine but with an **empty/mismatched context payload** —
-      neither the verified user's `id` nor `email` is mapped into the routine steps.
-      Consequences: (a) an invite to the same address won't match this contact (no key), so
-      it mints a **second** contact — violating the one-contact-per-email invariant
-      (checklist Phase 4 line 175, user-account Decision 7); (b) `''` **does** satisfy
-      `$exists`, so the row is indexed under the partial-unique `lowercase_email` index — a
-      second bare/empty-email contact would hit a duplicate-key error. Decision 7 is
-      explicit that the fragment must write the lowercased verified email when present and
-      **omit** the field entirely when absent (never store `''`/`null`). This is the
-      module's flagship endpoint (Decision 7) — **high priority**.
+      `handleAuthStep → runRoutine → controlIf`). **Affects BOTH merge paths, confirmed via
+      magic-link test:** a magic-link signup (`magic@demo.test`) went through the
+      `user.create.before` branch (not `email.verified`) and _still_ produced a contact
+      with `lowercase_email: ''`. So the empty email is **not** a quirk of the
+      `email.verified` payload — the verified email fails to reach the shared
+      `create-or-link-contact` upsert on **either** binding. (b) **The collision has now
+      materialized, not just risked:** because both the admin signup and the magic-link
+      signup keyed the upsert on `lowercase_email: ''`, the magic-link create **matched
+      admin's pre-existing bare contact** and linked `magic@demo.test`'s
+      `user.profile.contactId` to it — **two users now share one contact** (`aa320f44…`),
+      violating one-user-per-contact. (Only reason the partial-unique index hasn't fired:
+      admin's `user.profile.contactId` never got set, per F4.) Decision 7 is explicit the
+      fragment must write the lowercased verified email when present and **omit** the field
+      when absent (never `''`/`null`). Module's flagship endpoint — **high priority**.
+      (c) **Data corruption compounds:** completing onboarding as `magic@demo.test` wrote
+      that profile (`given_name: M`, `name: "M L"`) onto the **shared** contact `aa320f44…`
+      — i.e. onto admin's contact record. So two identities' profiles now collide on one
+      contact. Every symptom traces to the empty `lowercase_email` key.
 
 - [ ] **F4 — `users.profile.contactId` is never linked after verification (no `profile`
       bag on the user).** Post-verify, the `users` doc carries no `profile` object at all,
@@ -68,11 +75,15 @@ Items are numbered `F1`, `F2`, … for reference (stable IDs — don't renumber)
       (user-account Decision 7, "synthetic post-write" branch). **CONFIRMED via server
       error** `UpdateUserProfile requires a "userId" property.` (`UpdateUserProfile.js:38`)
       thrown at verify time — the step is invoked without a `userId`, so the link-back
-      never runs and (per halt-on-first-error) the routine aborts. **Same root cause as F3**:
-      the `email.verified` hook isn't supplying the verified user's `id`/`email` to the
-      routine. Fixing the hook context should resolve both F3 and F4. Knock-on: router
-      completeness signal (`_user.profile.profile_created`, Decision 5) can't resolve, so
-      onboarding routing may misbehave.
+      never runs and (per halt-on-first-error) the routine aborts. **CONFIRMED isolated to
+      the `email.verified` (password) branch:** the magic-link test proved the
+      `user.create.before` branch sets `profile.contactId` **inline via `:return`** fine —
+      `magic@demo.test`'s user row got `profile.contactId` set (to the wrong contact, per
+      F3, but set). So F4 is specifically the `email.verified` step invocation missing its
+      `userId` arg; the OAuth/magic-link `user.create.before` path does not hit it. Fixing
+      the `userId` mapping on the `email.verified` branch resolves F4 (F3's empty-email is
+      separate and broader — see F3). Knock-on: `_user.profile.profile_created` (Decision 5)
+      never resolves for password signups.
 
 - [x] **F5** Incorrect finding
 
@@ -99,3 +110,38 @@ Items are numbered `F1`, `F2`, … for reference (stable IDs — don't renumber)
       nunjucks failures under the same message, so the real failure may be at render with
       the live `get_user_detail.0.name` context. Repro when we open the Remove-from-app
       modal in Phase 3. Build itself is green.
+
+- [x] **F8 — Demo router linked not-onboarded users to the retired `new` page (→ 404 on
+      onboarding completion). FIXED.** `apps/demo/pages/router.yaml:26` (the app's
+      `homePageId: router` entry) routed a user with `profile.profile_created != true` to
+      `_module.pageId: { module: user-account, id: new }`. The redesign **retired `new` →
+      `onboarding`** (module ships only `pages/onboarding.yaml`), so `id: new` resolved to a
+      non-existent page → **404**. Confirmed as the "onboarding links to 404 on completion"
+      symptom: onboarding's `enter_app` does `Link { home: true }` → router; if the `new`
+      branch is taken (session-refresh lag after `UpdateSession`, or the flag not yet on
+      `_user`), the user hits the dead `new` page. **Applied directly:** `id: new` →
+      `id: onboarding`. Build stays green. (Not the cause of the earlier JIT-build hang —
+      that was transient dev-server weirdness.)
+
+- [ ] **F9 — Avatar picker looks unpolished (aesthetic).** The user avatar picker (the
+      `profile-avatar` control shown on onboarding and the profile edit modal) reads as
+      visually rough — needs a design pass. Low priority / cosmetic. TODO: attach a
+      screenshot and specifics (spacing, sizing, color-swatch layout?) so the fix is
+      actionable rather than "looks like rubbish".
+      ![](../../Screenshot%202026-07-24%20at%2011.54.30.png)
+
+- [ ] **F10 — Mixed-deployment login UX: password form + magic-link button together is
+      confusing (enhancement).** In the mixed config (`emailAndPassword` + `magicLink` both
+      on), the login page shows the full password form _and_ a magic-link button below the
+      "or" divider (the shipped composition — parent Decision 1: password primary,
+      magic-link demoted). In testing this read as cluttered/ambiguous — two sign-in
+      mechanisms competing for attention, unclear which to use. **Proposed alternative
+      (method-first, progressive disclosure):** show only the **email input** + two method
+      buttons ("Email me a link" and "Use password"); clicking **Use password** reveals the
+      password field (+ submit + "Forgot?") and hides the other method buttons; a "back"
+      affordance returns to the method choice. This keeps the passwordless-primary and
+      password-only renders clean too (one method → no chooser). NB: this reworks parent
+      Decision 1's "email hoisted, magic-link as an alternative-method button" layout — so
+      it's a **design change to reconcile with the parent design**, not just a CSS tweak.
+      Needs a design/product call; check it doesn't regress the OAuth/passkey button
+      placement (they're peers below the divider today).

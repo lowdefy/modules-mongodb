@@ -12,8 +12,10 @@ documented in [`README.md`](./README.md).
 **Legend:** `[ ]` to do · `[x]` done · `[~]` pending build · `[-]` skipped/N-A this run
 **Verify in Compass** = check the document state in the `demo-auth-test` DB.
 
-> **Magic-link is a pending build** (its subdesign hasn't landed). Items tagged
-> `(magic-link)` are marked `[~]` — flip them to `[ ]` once that flow ships.
+> **Magic-link build has landed** (2026-07-24). The demo runs a **mixed** deployment
+> (`emailAndPassword` + `magicLink` both enabled), so magic-link renders as an
+> alternative-method button below the "or" divider (not a tab); the passwordless-primary
+> shape needs a separate `emailAndPassword: false` run.
 > **Google OAuth** items need real `GOOGLE_*` secrets and a redirect URI; tagged
 > `(oauth)` and left `[-]` unless you're testing the provider this run.
 
@@ -82,12 +84,13 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 
 - [ ] Passkey button shown (`passkey.enabled`); `PasskeySignIn` completes the WebAuthn assertion → workspace
 
-### Magic-link _(pending build)_
+### Magic-link _(build landed 2026-07-24; demo is a mixed deployment)_
 
-- [~] Magic-link tab shown when `magicLink.enabled`
-- [~] Enter email → check-your-email send state; email in Mailpit
-- [~] Emailed link: unknown email → onboarding; existing user → workspace
-- [~] Passwordless-primary shape when `emailAndPassword` is off (separate config run)
+- [x] Magic-link affordance shown when `magicLink.enabled` — confirmed below the "or" divider (mixed config). UX cluttered → **F10**.
+- [x] Enter email → `link-sent` state, resend control present; email in Mailpit — confirmed working
+- [x] Emailed link: unknown email → user created `emailVerified: true` → **onboarding** — routing confirmed. ⚠️ contact data written wrong (empty-email / shared contact) — **F3/F4**, not a magic-link fault
+- [ ] Expired/consumed link → login page with inline notice ("This link has expired or was already used"), form still visible (`INVALID_TOKEN` → `login_view: signin`, dedicated notice alert — Decision 3)
+- [~] Passwordless-primary shape when `emailAndPassword` is off (separate config run + `authPages.signUp: login` app override)
 
 ### OAuth _(needs real Google secrets)_
 
