@@ -41,6 +41,8 @@ The `link` page resolves a notification id to its target page and forwards the u
 
 The `file-download` page is a redirector for notification attachments: params `_id` and `index` are required; it generates a presigned GET against `notifications-files-bucket-public` and forwards the browser.
 
+`link`, `invalid`, and `file-download` are contributed to `auth.pages.public` by the module manifest, so they resolve without a session in any app that embeds the module — no need to list them in the app's own `auth.pages.public`. The inbox (`all`) stays protected.
+
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions

@@ -30,6 +30,17 @@ pages:
   - _ref: pages/invalid.yaml
   - _ref: pages/file-download.yaml
 
+# Public pages the module contributes to auth.pages.public so consuming apps
+# don't have to list them by hand: `link` resolves auth-less event types for
+# recipients who aren't logged in yet, `invalid` is its error page, and
+# `file-download` is a capability-URL attachment redirector (matched by id, no
+# session). The inbox (`all`) stays protected.
+auth:
+  public:
+    - link
+    - invalid
+    - file-download
+
 exports:
   pages:
     - id: all

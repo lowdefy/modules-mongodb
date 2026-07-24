@@ -113,19 +113,16 @@ auth:
     - id: user
       label: User
       description: Standard application user.
-  # App-level page gate: every page requires a session except this public
-  # list. The module-contributed auth/public pages are omitted (see note above);
-  # this list is the app's own public surface — the 404 and router entry pages
-  # plus the notifications deep-link/error pages, which the notifications module
-  # does not itself declare public. Module pages are scoped by entry id, hence
-  # `notifications/…`. The user-admin pages are role-gated to user-admin.
+  # App-level page gate: every page requires a session except this public list.
+  # Modules contribute their own public pages (user-account: login/signup/…,
+  # two-factor, logout; notifications: link, invalid, file-download), so this
+  # list is only the app's own public surface — the 404 and router entry pages.
+  # The user-admin pages are role-gated to user-admin.
   pages:
     protected: true
     public:
       - "404"
       - router
-      - notifications/link
-      - notifications/invalid
     roles:
       user-admin:
         - user-admin/*
