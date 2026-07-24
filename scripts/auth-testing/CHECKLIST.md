@@ -54,7 +54,7 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 > restart** to take effect (auth config loads at boot, not on hot reload).
 
 - [ ] Signup (email+password) → **check-your-email** state, no session (`requireEmailVerification`)
-- [ ] Verify in Compass: `users` row (`emailVerified: false`), a `user-accounts` credential row, a **bare** `user-contacts` row (`profile.profile_created` unset), and — under `open` — a `user-members` row auto-joined with role `member`
+- [ ] Verify in Compass: `users` row (`emailVerified: false`), a `user-accounts` credential row, a **bare** `user-contacts` row (`profile.profile_created` unset), and — under `open` — a `user-members` row auto-joined with an **empty role** (`role: ''`, so `_user.roles = []`; the `'member'` placeholder was retired — role-catalog Decision 3)
 - [ ] Verification email lands in Mailpit; `pnpm mail-link` prints the verify link
 - [ ] Open the link → verify-email **success** landing; `users.emailVerified` now `true`; `profile.contactId` linked on the user (hook)
 - [ ] First login routes to **onboarding**; completing required `fields.profile` sets `profile.profile_created: true` and lands on the workspace
@@ -178,15 +178,3 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 - [ ] **Change stamps**: every contact write carries `created`/`updated` stamps (Verify in Compass)
 
 ---
-
-## Notes / issues found
-
-- **[Phase 3] `_nunjucks` error on the user-admin `view` remove-modal title.** A
-  recent client `OperatorError` ("\_nunjucks failed to parse nunjucks template. at
-  modal_remove.") points at `modules/user-admin/components/view/modal_remove.yaml:7`
-  (the Modal `title`). Static inspection found nothing wrong: the `{template, on}`
-  shape is valid, the template parses, and `app_title` defaults to `""` so
-  `{{ app | trim }}` gets a real string. Lowdefy reports both parse- and render-time
-  nunjucks failures under the same message, so the real failure may be at render
-  with the live `get_user_detail.0.name` context. Repro when we open the
-  Remove-from-app modal in Phase 3. Build itself is green.
