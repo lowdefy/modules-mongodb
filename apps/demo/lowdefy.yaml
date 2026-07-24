@@ -36,6 +36,13 @@ plugins:
     version: workspace:*
 
 auth:
+  # Protect every page by default. The auth pages (login, signup, accept,
+  # verify-email, …) stay public via the roles the user-account module
+  # contributes. Without this, every page renders for anonymous visitors and
+  # every walled request fails closed for the org-less caller — loud
+  # AuthenticationErrors on each page instead of a login redirect.
+  pages:
+    protected: true
   secret:
     _secret: AUTH_SECRET
   database:
@@ -90,6 +97,12 @@ auth:
   organizations:
     policy: pinned
     org: demo
+    # Open signup: the invite-only default has no first-user bootstrap on a
+    # fresh database (nobody exists to send the first invite). The demo is a
+    # dev playground and the runtime-verification walkthrough (and the tenant
+    # policy) both need self-serve signup. Production apps should choose
+    # deliberately.
+    signup: open
   # The member role that administers users across the suite. Enforced by the
   # engine as a step-level floor before every auth-owned admin step, and named
   # by the user-admin module's `admin_roles` var for the endpoint gate below.

@@ -36,8 +36,13 @@ vars:
       timestamp:
         _date: now
       user:
+        # user.name is the engine's top-level display copy (user-profile
+        # Decision 4); profile.name kept as fallback for sessions written
+        # before the display copy existed.
         name:
-          _user: profile.name
+          _if_none:
+            - _user: name
+            - _user: profile.name
         id:
           _user: id
     description: >
