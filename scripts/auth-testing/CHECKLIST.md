@@ -31,7 +31,7 @@ documented in [`README.md`](./README.md).
 - [x] Build green — the `lowdefy-docs` dev server reports `build.status: ok`
 - [x] `pnpm ldf:d` dev server up (it backs the MCP); pinned `demo` org row exists in `user-organizations` (UUID `_id`, engine-ensured at startup)
 - [x] Script deps OK — `mongodb` resolves via the root dep (the local `pnpm install` is a no-op; see FINDINGS)
-- [ ] **First admin bootstrapped:** sign up + verify email (Phase 1), then `pnpm bootstrap-admin <email>`; log in and reach the user-admin console
+- [x] **First admin bootstrapped:** sign up + verify email (Phase 1), then `pnpm bootstrap-admin <email>`; log in and reach the user-admin console — bootstrap confirmed: `admin@demo.test`'s `user-members.role` is now `user-admin` (reaching the console verified in Phase 3)
 
 Index creation (run once per fresh DB — survives `reset-db`, lost on `down -v`):
 
@@ -55,11 +55,11 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 > the pinned org with the inert `member` role at signup. Requires a **dev-server
 > restart** to take effect (auth config loads at boot, not on hot reload).
 
-- [ ] Signup (email+password) → **check-your-email** state, no session (`requireEmailVerification`)
-- [ ] Verify in Compass: `users` row (`emailVerified: false`), a `user-accounts` credential row, a **bare** `user-contacts` row (`profile.profile_created` unset), and — under `open` — a `user-members` row auto-joined with an **empty role** (`role: ''`, so `_user.roles = []`; the `'member'` placeholder was retired — role-catalog Decision 3)
-- [ ] Verification email lands in Mailpit; `pnpm mail-link` prints the verify link
-- [ ] Open the link → verify-email **success** landing; `users.emailVerified` now `true`; `profile.contactId` linked on the user (hook)
-- [ ] First login routes to **onboarding**; completing required `fields.profile` sets `profile.profile_created: true` and lands on the workspace
+- [x] Signup (email+password) → **check-your-email** state, no session (`requireEmailVerification`) — confirmed (no `user-sessions` row until login)
+- [x] Verify in Compass: `users` row (`emailVerified: false`), a `user-accounts` credential row, and — under `open` — a `user-members` row auto-joined with an **empty role** (`role: ''`, so `_user.roles = []`; role-catalog Decision 3) — all confirmed. **Note:** no `user-contacts` row exists at signup for the password path — the contact is created at **verify** (`email.verified` merge, Decision 7), not at signup; checklist previously mis-stated a "bare contact at signup"
+- [x] Verification email lands in Mailpit; `pnpm mail-link` prints the verify link — confirmed (`node scripts/auth-testing/mail-link.mjs`; the `pnpm mail-link` alias is not wired — run the script directly)
+- [x] Open the link → verify-email **success** landing; `users.emailVerified` now `true`; `profile.contactId` linked on the user (hook) — **confirmed, F3/F4 resolved**: contact created with correct `lowercase_email`/`email` (not `''`/`null`), `users.profile.contactId` linked, no `UpdateUserProfile` server error
+- [ ] First login routes to **onboarding**; completing required `fields.profile` sets `profile.profile_created: true` and lands on the workspace — routing to onboarding confirmed via `/` (router), but direct-login navigation no-ops → **F11**; onboarding completion not yet exercised this run
 
 ### Login
 
@@ -71,8 +71,8 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 
 ### Password reset
 
-- [ ] Forgot-password → send state; reset email in Mailpit (`mail-link` yields the link)
-- [ ] Reset-password page sets a new password; login with the new password succeeds
+- [x] Forgot-password → send state; reset email in Mailpit (`mail-link` yields the link) — confirmed
+- [x] Reset-password page sets a new password; login with the new password succeeds — confirmed (logged-out reset flow works end-to-end)
 
 ### 2FA challenge _(enrol first in Phase 2)_
 
@@ -105,7 +105,7 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 
 ### Logout
 
-- [ ] Logout clears the session; header shows signed-out; session gone from `user-sessions` (Compass)
+- [x] Logout clears the session; header shows signed-out; session gone from `user-sessions` (Compass) — confirmed: the current session row was removed on logout (other, older sessions correctly persist until revoked/expired)
 
 ---
 
@@ -120,21 +120,25 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 ### Security tile
 
 - [ ] Email shown with verified badge; resend verification appears when unverified
-- [ ] **Change password** shown (has credential + `emailAndPassword.enabled`) → `ChangePassword`; revoke-other-sessions option works
+- [x] **Change password** shown (has credential + `emailAndPassword.enabled`) → `ChangePassword` — password change succeeds (confirmed working). ⚠️ the revoke-other-sessions toggle renders with no visible label → **F20**, and was left unticked, so "revoke-other-sessions works" is **not yet verified** (re-test once F20's caption is fixed); the Security tile also throws a non-blocking `_if` render error → **F15**
 - [ ] Negative: for a **credential-less** user (OAuth/magic-link only) the password + 2FA controls are **hidden** (per-user credential read)
-- [ ] **2FA enrol**: QR renders (plugin QR block), confirm code (`TwoFactorEnable`/`TwoFactorVerify`), backup codes displayed
-- [ ] **2FA disable** (`TwoFactorDisable`)
+- [x] **2FA enrol**: QR renders (plugin QR block), confirm code (`TwoFactorEnable`/`TwoFactorVerify`), backup codes displayed — enrolment confirmed (`users.twoFactorEnabled: true`, one `user-two-factors` row, codes shown). ⚠️ backup-codes **Copy is broken + can lose the one-time codes** → **F21**
+- [x] **2FA disable** (`TwoFactorDisable`) — confirmed (`users.twoFactorEnabled: false`, `user-two-factors` row removed). Enrol-modal UX/visual issues → **F22**
 - [ ] **Passkeys**: register (`PasskeyRegister`, virtual authenticator), list (native read), delete (`PasskeyDelete`)
 - [ ] **Linked accounts**: provider list from `user-accounts` (read-only, visibility not management)
 
 ### Sessions tile
 
-- [ ] Active sessions listed (created, expiry, IP, user-agent); **`token` absent** from the payload (projected out — check the network response)
-- [ ] "Sign out other sessions" (`RevokeOtherSessions`) → other rows gone from `user-sessions` (Compass), current session survives
+- [~] Active sessions listed (created, expiry, IP, user-agent) — confirmed rendering (raw UA/IP → **F18**); **`token` absent** from the payload still needs a network-response check (not yet inspected)
+- [x] "Sign out other sessions" (`RevokeOtherSessions`) → other rows gone from `user-sessions` (Compass), current session survives — confirmed: dropped from 2 rows to 1 (only the current session `537ac812` remains)
 
 ---
 
 ## Phase 3 — User-admin console (`user-admin`)
+
+### Page role gate
+
+- [ ] **`user-admin/*` page gate holds:** a signed-in user **without** the `user-admin` role is denied the console pages (redirect/403), not just the endpoints — `auth.pages.roles.user-admin: [user-admin/*]`. Test by visiting `/user-admin/all` as a plain member (a second account, or temporarily strip the role) and confirming access is refused; then confirm the bootstrapped admin is admitted. (Admin reached the page this run, but the negative case — non-admin blocked — wasn't confirmed.)
 
 ### `all` page
 
