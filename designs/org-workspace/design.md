@@ -51,9 +51,15 @@ What the auth engine already provides, confirmed in source:
    (auth.email connection, `templates.invitation` override) carries the accept
    URL; the accept page (user-account module) and the pending-invitation
    carve-out (invited signups don't mint their own org) already work.
-4. **Org member roles are BetterAuth's** (`owner` / `admin` / `member`) — a
-   separate axis from the app's `auth.roles` catalog (endpoint gates, menus).
-   This module surfaces the BetterAuth axis only.
+4. **`member.role` is the single role home** (user-model design: roles for any
+   session come from the active member row). One field holds both BetterAuth's
+   built-ins (`owner` / `admin` — these carry the real permission statements
+   that authorize the per-org endpoints) and the app's `auth.roles` catalog
+   names (registered with empty statements; they gate app pages/endpoints,
+   not org management). The members page's role selector therefore offers the
+   **app role catalog** (labels via `_build.authConfig.roles`) plus `admin`
+   for org-management delegation; `owner` is the founder's (transfer out of
+   scope v1).
 5. **Reads**: the auth collections (`user-members`, `user-organizations`,
    `user-invitations`) are engine-owned and unwalled; org-scoped reads filter
    explicitly on `_user: organizationId` — the exact pattern user-admin's list
@@ -178,8 +184,10 @@ see just the org name (still valuable context in a tenant app).
 The natural pinned deployment simply doesn't add the `organizations` module
 entry — the surface is meaningless there (one org, endpoints disabled). If a
 pinned app consumes it anyway, reads still work (the pinned org resolves via
-`_user: organizationId`) and every mutation fails loudly at the engine's
-disabled-path wall — fail-closed, no misbehavior. Once upstream ask 2 lands,
+`_user: organizationId`), the switcher **fails the build** (role-catalog
+Decision 6.5: a wired `SetActiveOrganization` is rejected under pinned — a
+legible build error, by design), and the remaining mutations fail loudly at
+the engine's disabled-path wall — fail-closed, no misbehavior. Once upstream ask 2 lands,
 the pages can additionally render a "single-organization deployment" empty
 state via `_build.authConfig.organizations.policy`; this is polish, not a
 blocker.
