@@ -361,8 +361,8 @@ blocks:
                                 endpointId:
                                   _module.endpointId: query-data
                                 payload:
-                                  spec:
-                                    _state: downloads.$.spec
+                                  query:
+                                    _state: downloads.$.query
                             - id: download_csv
                               type: DownloadCsv
                               params:

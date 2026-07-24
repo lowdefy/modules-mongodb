@@ -67,7 +67,16 @@ function buildFilterMatch(filters) {
 }
 
 async function AnalyticsPipeline({ request = {}, connection }) {
-  const { query = {}, roles, filters } = request;
+  const { query, roles, filters } = request;
+
+  // A destructuring default would miss an explicit null (an unresolved
+  // _payload read, or a persisted part from the pre-pipeline model) — fail
+  // with the actionable message, not a TypeError.
+  if (!query || typeof query !== "object" || Array.isArray(query)) {
+    throw new Error(
+      "Invalid pipeline: query must be { collection, pipeline }.",
+    );
+  }
 
   const match = Array.isArray(filters) ? buildFilterMatch(filters) : null;
   const combined = match ? [match, ...(query.pipeline ?? [])] : query.pipeline;

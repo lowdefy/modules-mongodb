@@ -39,7 +39,7 @@ test("builds chart and download parts", () => {
   expect(parts[0].data.option.series[0].encode).toEqual({ itemName: "status", value: "count" });
   expect(parts[1]).toEqual({
     type: "data-report-download",
-    data: { label: "Orders export", description: "", spec: exportSpec.query },
+    data: { label: "Orders export", description: "", query: exportSpec.query },
   });
 });
 
@@ -51,7 +51,7 @@ test("carries the export description through to the download part", () => {
   expect(parts).toEqual([
     {
       type: "data-report-download",
-      data: { label: "Orders export", description: "Revenue by region", spec: exportSpec.query },
+      data: { label: "Orders export", description: "Revenue by region", query: exportSpec.query },
     },
   ]);
 });
