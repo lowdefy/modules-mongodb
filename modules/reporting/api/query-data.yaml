@@ -1,105 +1,63 @@
-# The constrained query builder — one endpoint, three consumers: the agent's
+# The open query endpoint — one endpoint, three consumers: the agent's
 # query_data tool, report filter re-queries (CallAPI), and panel downloads.
-# The AnalyticsQuery request is the single security boundary: validate the
-# spec against the data dictionary and the user's roles, compile to a
-# read-only aggregation, execute.
+# The AnalyticsPipeline request is the single security boundary: it validates
+# the AI-authored pipeline against the catalog (bound at the connection) and
+# the user's roles, prepends the filter $match, and runs it read-only.
+# The filter triples are untrusted client input (a re-query is a browser-side
+# CallAPI) — contained because the server builds the $match from a fixed op
+# map and the combined pipeline is revalidated through the same walk.
 id: query-data
 type: Api
 description: >
-  Run a constrained analytics query against the data dictionary. Composes a
-  validated aggregation — never raw database queries. Returns result rows;
-  aggregated measures appear as {measureId}_{agg}.
+  Run an AI-authored, allowlist-validated read-only aggregation pipeline
+  against a cataloged collection. Never raw database access — the pipeline is
+  reconstructed and revalidated before execution. Returns result rows.
 payloadSchema:
   type: object
   required:
-    - spec
+    - query
   properties:
-    spec:
+    query:
       type: object
-      description: The structured query spec.
+      description: The collection and pipeline to run.
       required:
-        - dataset
+        - collection
+        - pipeline
       properties:
-        dataset:
+        collection:
           type: string
-          description: Dataset id from the data dictionary.
-        select:
+          description: Catalog-declared base collection the pipeline reads from.
+        pipeline:
           type: array
-          items:
+          description: Read-only MongoDB aggregation pipeline stages.
+    filters:
+      type: array
+      description: >
+        Report filter triples applied as a leading $match before the pipeline
+        (report filter re-queries only). Values arrive as deferred __state
+        reads resolved client-side; null/undefined values drop the triple.
+      items:
+        type: object
+        required:
+          - field
+          - op
+          - value
+        properties:
+          field:
             type: string
-          description: Dimension ids to group by.
-        measures:
-          type: array
-          items:
-            type: object
-            required:
-              - id
-              - agg
-            properties:
-              id:
-                type: string
-              agg:
-                type: string
-                enum:
-                  - sum
-                  - avg
-                  - min
-                  - max
-                  - count
-          description: Measures to aggregate.
-        filters:
-          type: array
-          items:
-            type: object
-            required:
-              - field
-              - op
-              - value
-            properties:
-              field:
-                type: string
-              op:
-                type: string
-                enum:
-                  - eq
-                  - neq
-                  - gt
-                  - gte
-                  - lt
-                  - lte
-                  - in
-                  - nin
-                  - contains
-              value: {}
-          description: Row filters applied before aggregation.
-        sort:
-          type: array
-          items:
-            type: object
-            required:
-              - field
-            properties:
-              field:
-                type: string
-              dir:
-                type: string
-                enum:
-                  - asc
-                  - desc
-          description: Sort on output columns (dimensions or {measureId}_{agg}).
-        limit:
-          type: number
-          description: Max rows (default 100, capped at 1000).
+          op:
+            type: string
+          value: {}
 routine:
   - id: run_query
-    type: AnalyticsQuery
+    type: AnalyticsPipeline
     connectionId:
       _module.connectionId: reporting-data
     properties:
-      datasets:
-        _module.var: datasets
-      spec:
-        _payload: spec
+      query:
+        _payload: query
+      filters:
+        _payload: filters
       roles:
         _user: roles
   - :return:

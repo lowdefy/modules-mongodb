@@ -1,10 +1,11 @@
-# Reporting module config for the demo. `datasets` is the required data
-# dictionary; the collection names and model use the module defaults. The
+# Reporting module config for the demo. `catalog` is the required collections
+# catalog (data dictionary + authorization boundary); the collection names and
+# model use the module defaults. The
 # reports-store, conversations-store and reporting-data connections are remapped
 # onto MONGODB_URI-backed app connections on the module entry (see modules.yaml),
 # so no REPORTING_MONGODB_URI / REPORTING_DATA_MONGODB_URI secrets are needed.
 # The `ai` connection keeps the module's bundled AI gateway connection
 # (AI_GATEWAY_API_KEY); the agent uses the default model (anthropic/claude-sonnet-4.5
 # — set `model: anthropic/claude-haiku-4.5` here to switch).
-datasets:
-  _ref: modules/reporting/datasets.yaml
+catalog:
+  _ref: modules/reporting/catalog.yaml

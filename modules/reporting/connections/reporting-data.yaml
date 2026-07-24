@@ -1,9 +1,12 @@
-# Read-only by construction: AnalyticsQuery is this connection's only request
-# and its compiler emits only read stages. Datasets choose their collection per
-# request, so this connection is not remappable — the app supplies the URI
-# secret instead.
+# Read-only by construction: AnalyticsPipeline is this connection's only request
+# and validatePipeline rejects every write stage. The collections catalog is
+# bound here once (from the module var) so every request validates against the
+# same catalog — a caller cannot substitute a trimmed or stale one. The app
+# supplies the URI secret; the connection is not remappable.
 id: reporting-data
 type: ReportingData
 properties:
   databaseUri:
     _secret: REPORTING_DATA_MONGODB_URI
+  catalog:
+    _module.var: catalog

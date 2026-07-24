@@ -1,12 +1,12 @@
 import schema from "./schema.js";
-import AnalyticsQuery from "./AnalyticsQuery/AnalyticsQuery.js";
+import AnalyticsPipeline from "./AnalyticsPipeline/AnalyticsPipeline.js";
 
-// Read-only by construction: AnalyticsQuery is the connection's only request,
-// and its compiler cannot emit write stages.
+// Read-only by construction: AnalyticsPipeline is the connection's only
+// request, and validatePipeline rejects every write stage.
 const ReportingData = {
   schema,
   requests: {
-    AnalyticsQuery,
+    AnalyticsPipeline,
   },
 };
 
