@@ -20,7 +20,7 @@
 # enum components below are UI-only consumers.
 
 name: Workflows
-version: 0.17.0
+version: 0.18.0
 description: Workflow engine — action lifecycle, status transitions, hooks, trackers
 
 dependencies:
@@ -263,7 +263,7 @@ pages:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.17.0"
+    version: "^0.18.0"
 
 secrets:
   - name: MONGODB_URI
