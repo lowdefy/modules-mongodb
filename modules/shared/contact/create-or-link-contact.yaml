@@ -42,7 +42,10 @@
           lowercase_email:
             _string.toLowerCase:
               _string.trim:
-                _var: user.email
+                _get:
+                  from:
+                    _var: user
+                  key: email
         update:
           # Document-style update: $setOnInsert only, so a matched (invited)
           # contact is never overwritten — only a brand-new one is minted bare.
@@ -50,11 +53,17 @@
             _id:
               _uuid: true
             email:
-              _var: user.email
+              _get:
+                from:
+                  _var: user
+                key: email
             lowercase_email:
               _string.toLowerCase:
                 _string.trim:
-                  _var: user.email
+                  _get:
+                    from:
+                      _var: user
+                    key: email
             hidden: false
             disabled: false
             created:
@@ -80,7 +89,10 @@
       lowercase_email:
         _string.toLowerCase:
           _string.trim:
-            _var: user.email
+            _get:
+              from:
+                _var: user
+              key: email
 
 # Synthetic post-write point: write profile.contactId through UpdateUserProfile
 # (inline mutation is impossible after the user row is written).
@@ -93,7 +105,10 @@
       type: UpdateUserProfile
       properties:
         userId:
-          _var: user.id
+          _get:
+            from:
+              _var: user
+            key: id
         profile:
           contactId:
             _step: read_contact._id
@@ -112,7 +127,10 @@
           - profile:
               _object.assign:
                 - _if_none:
-                    - _var: user.profile
+                    - _get:
+                        from:
+                          _var: user
+                        key: profile
                     - {}
                 - contactId:
                     _step: read_contact._id
