@@ -102,6 +102,40 @@ generations of call sites once actions land. The actions are thin (each is
 `SetActiveOrganization` with a different method call), the upstream release
 loop is same-day, and the module is not time-critical.
 
+### 2b. Consolidation with the existing modules
+
+The surface overlaps user-admin and user-account deliberately; the
+consolidation rule is **share the reads and the contact mint, never the write
+mechanism**:
+
+- **Shared read stages.** user-admin's `members_base` / `invitations_base`
+  stages (user-members ⨝ users ⨝ contacts join, org-scoped by
+  `_user: organizationId`) are exactly the reads the members page needs. They
+  move to `modules/shared/org/` fragments consumed by both modules — one
+  canonical join, same precedent as `shared/contact/create-or-link-contact`.
+- **Shared contact mint at invite.** user-admin's invite pairs the auth
+  invitation with the shared `create-or-link-contact` fragment so the invitee
+  has an org-stamped contact immediately. The organizations invite does the
+  same — and *simpler*: the inviter is a logged-in caller with the target org
+  active, so the mint runs on the **walled** contacts connection and the wall
+  stamps the org mechanically (no system-context/`organization_id` variant
+  needed). Sequence on the members page: `CallAPI` (module endpoint mints the
+  contact via the shared fragment) → `InviteMember` action. The upsert is
+  idempotent, so a failed second step retries cleanly. Without this, an
+  invited user who already has a contact in another org would be invisible in
+  the joined org's contact lists until upstream ask 2 (per-membership
+  contactId) lands — the mint closes that for the common case.
+- **Write mechanisms stay separate by engine necessity.** user-admin mutates
+  through auth-owned **admin steps** (userAdminRole floor — works under
+  pinned, where the per-org HTTP paths are disabled). The organizations module
+  mutates through **per-org client actions** (member-role-gated — mounted
+  under tenant only). Same wall, two doors; forcing one mechanism through the
+  other's door is exactly what the engine refuses.
+- **The accept page stays in user-account.** It is an auth-flow page (chrome
+  -less shell, `authPages.acceptInvitation` manifest contribution, used by
+  people who are *not yet* members) — the organizations module is for people
+  managing an org they already belong to. Cross-linked, not moved.
+
 ### 3. Members page (`members`) — per-org management
 
 One page, active org only:
