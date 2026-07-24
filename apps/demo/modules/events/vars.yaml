@@ -13,8 +13,10 @@ change_stamp:
   user:
     name:
       _if_none:
-        - _user: profile.name
-        - _var: default_name
+        - _user: name
+        - _if_none:
+            - _user: profile.name
+            - _var: default_name
     id:
       _if_none:
         - _user: id
