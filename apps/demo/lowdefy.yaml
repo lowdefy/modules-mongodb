@@ -76,8 +76,10 @@ auth:
   # notification ids) can override the default copy.
   email:
     connectionId: auth-smtp
-  # authPages and pages.public are contributed by the user-account module
-  # manifest (auth.pages / auth.public); app config would win on collision.
+  # The user-account module contributes its own authPages (login, signup,
+  # verify-email, …) and public pages (two-factor, logout) via its manifest, so
+  # they are NOT repeated in `pages.public` below; app config would win on
+  # collision.
   # Pinned-org policy (design Decision 1): one deployment = one pinned org.
   # The engine ensures this org by slug at startup; the user-admin module's
   # native reads $match on it via `_organization: id`, and org-scoped admin
@@ -111,6 +113,22 @@ auth:
     - id: user
       label: User
       description: Standard application user.
+  # App-level page gate: every page requires a session except this public
+  # list. The module-contributed auth/public pages are omitted (see note above);
+  # this list is the app's own public surface — the 404 and router entry pages
+  # plus the notifications deep-link/error pages, which the notifications module
+  # does not itself declare public. Module pages are scoped by entry id, hence
+  # `notifications/…`. The user-admin pages are role-gated to user-admin.
+  pages:
+    protected: true
+    public:
+      - "404"
+      - router
+      - notifications/link
+      - notifications/invalid
+    roles:
+      user-admin:
+        - user-admin/*
   # Defense-in-depth endpoint gate (design Decision 3): the user-admin routine
   # endpoints require the user-admin role. Other endpoints stay as-is (no global
   # `protected` flip). Composes on top of the engine's userAdminRole step-floor.
