@@ -36,8 +36,13 @@ vars:
       timestamp:
         _date: now
       user:
+        # user.name is the engine's top-level display copy (user-profile
+        # Decision 4); profile.name kept as fallback for sessions written
+        # before the display copy existed.
         name:
-          _user: profile.name
+          _if_none:
+            - _user: name
+            - _user: profile.name
         id:
           _user: id
     description: >
@@ -65,7 +70,10 @@ vars:
     description: >
       Actions collection the events timeline joins to enrich events with action
       cards. Defaults to `actions`; override only when your actions collection is
-      named differently. Enrichment is data-driven: the join is inert when events
+      named differently. Tenant wall: the timeline connection is tenant-scoped
+      and its joins are filtered mechanically, so a substituted collection must
+      itself carry the `organizationId` field — without it the join fails
+      closed (empty). Enrichment is data-driven: the join is inert when events
       carry no `action_ids`, so entities with no workflow actions render as an
       events-only timeline.
   contacts_collection:
@@ -75,7 +83,9 @@ vars:
       Contacts collection joined to resolve each event author's avatar
       (`created.user.id` → `_id`, projecting `profile.picture`). Defaults to
       `user-contacts`; avatars fall back to initials when an author has no
-      matching contact.
+      matching contact. Tenant wall: the timeline connection is tenant-scoped,
+      so a substituted collection must itself carry the `organizationId`
+      field — without it the join fails closed (initials fallback).
 
 components:
   - id: change_stamp

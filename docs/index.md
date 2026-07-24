@@ -111,7 +111,7 @@ modules:
 
 Each entry pins a `source` (GitHub ref or local `file:` path), passes `vars`, and optionally remaps `dependencies` and `connections` when entry IDs don't match the names declared in the module manifest. See <https://docs.lowdefy.com/modules> for the full module-system reference.
 
-Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. The [`docs/shared/`](shared/) folder covers the shared patterns (`change_stamp`, soft delete, `event_display`, slot vars, `app_name`, avatar colors, secrets) that most modules use.
+Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. The [`docs/shared/`](shared/) folder covers the shared patterns (`change_stamp`, soft delete, `event_display`, slot vars, `app_name`, avatar colors, secrets, [organization scoping](shared/org-scoping.md)) that most modules use.
 
 ## See it in action
 

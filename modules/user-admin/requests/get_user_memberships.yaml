@@ -21,7 +21,7 @@ properties:
           _payload: user_id
         organizationId:
           $ne:
-            _organization: id
+            _user: organizationId
     - $lookup:
         from: user-organizations
         localField: organizationId

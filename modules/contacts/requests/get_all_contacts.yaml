@@ -1,5 +1,9 @@
 id: get_all_contacts
 type: MongoDBAggregation
+# Authored org clause (tenant wall amendment-1): $search is first-stage-only,
+# so the wall can not inject its filter — this request authors the equals
+# clause below and the wall audits it against the caller's org on every run.
+tenant: authored
 connectionId:
   _module.connectionId: contacts-collection
 payload:
@@ -15,6 +19,12 @@ properties:
         returnStoredSource: true
         compound:
           filter:
+            # The authored tenant clause (tenant: authored) — audited by the
+            # wall; requires organizationId token-mapped + in storedSource.
+            - equals:
+                path: organizationId
+                value:
+                  _user: organizationId
             - compound:
                 mustNot:
                   - equals:

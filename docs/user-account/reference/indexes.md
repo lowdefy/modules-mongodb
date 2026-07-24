@@ -11,20 +11,24 @@ The module does not create indexes — index creation is a host-app concern. Hos
 
 ## `user-contacts` collection
 
-### Index: `{ lowercase_email: 1 }` — **partial-unique**
+### Index: `{ organizationId: 1, lowercase_email: 1 }` — **partial-unique**
 
 ```
 db["user-contacts"].createIndex(
-  { lowercase_email: 1 },
+  { organizationId: 1, lowercase_email: 1 },
   { unique: true, partialFilterExpression: { lowercase_email: { $exists: true } } }
 )
 ```
 
+The contact identity invariant is **one contact per email per organization** (see [Organization scoping](../../shared/org-scoping.md)): two organizations holding a contact for the same email are two facts about two relationships, not a collision, so the unique key is compound with the tenant field. Under a single-organization (pinned) deployment every row carries the same `organizationId`, and the compound index enforces exactly what a global email index would.
+
 Serves the `create-or-link-contact` shared fragment's reconcile-on-duplicate-key path — the guard that closes the race between this module's merge-on-signup hook and the user-admin invite flow, both of which create-or-link the same contact by the same key. Without a unique index here, two concurrent first-touches for one email would mint two contacts.
+
+Both paths key on the same compound tuple: the invite path's org is injected by the tenant wall, and the signup-hook mint (bound at `session.create.after`) passes the session's resolved organization explicitly — so a concurrent mint and invite for one email in one organization collide on this index and reconcile to a single contact, exactly as intended.
 
 | Query site                                   | Operation                                                                                     |
 | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `create-or-link-contact` (signup hook)       | Match by `lowercase_email`; insert when absent; **reconcile to the existing row on dup-key**  |
+| `create-or-link-contact` (signup hook)       | Match by `{ organizationId, lowercase_email }`; insert when absent; **reconcile to the existing row on dup-key** |
 | `create-or-link-contact` (user-admin invite) | Same match-and-write against the same key — the unique index is what makes the reconcile safe |
 
 **Must be partial, not plain unique.** `user-contacts` is the unified person record shared with the `contacts` module, whose CRM contacts legitimately have **no email**. A plain unique index would treat every email-less contact's missing key as `null` and reject the second one, so the model could not hold two email-less contacts. The partial filter (`{ lowercase_email: { $exists: true } }`) indexes only email-bearing contacts, so email-less contacts coexist.

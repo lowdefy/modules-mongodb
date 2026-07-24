@@ -188,6 +188,15 @@ _ref:
                             _state: email
                           password:
                             _state: password
+                          # Login navigates only when it has a destination —
+                          # normally the ?callbackUrl= set by the protected-page
+                          # redirect. A direct visit to the login page has no
+                          # query, and a successful sign-in would silently stay
+                          # on the login page; default to the app root.
+                          callbackUrl:
+                            _if_none:
+                              - _url_query: callbackUrl
+                              - /
                       - :if:
                           _eq:
                             - _actions: login_do.response.twoFactorRedirect
@@ -359,6 +368,14 @@ _ref:
                   onClick:
                     - id: passkey_signin
                       type: PasskeySignIn
+                      params:
+                        # Same dead-end as the email path: PasskeySignIn only
+                        # navigates when it has a destination; default a direct
+                        # login-page visit to the app root.
+                        callbackUrl:
+                          _if_none:
+                            - _url_query: callbackUrl
+                            - /
             else: []
     nav:
       - id: login_footer

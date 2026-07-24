@@ -50,9 +50,11 @@ function buildContext({
     profile: { name: "Test User" },
     roles: ["account-manager"],
   },
+  tenant = null,
 } = {}) {
   return {
     request,
+    tenant,
     blockId: "test-block",
     connectionId: "test-conn",
     pageId: "test-page",
@@ -800,5 +802,73 @@ describe("event author avatar resolution", () => {
       }),
     );
     expect(result[0].created.user.picture).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tenant scoping (framework tenant-wall contract)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("tenant scoping", () => {
+  const tenant = { field: "organizationId", value: "org-a" };
+  const request = { reference_field: "lot_ids", reference_value: "lot-1" };
+
+  // Stamp the org onto seeded docs via the seed helpers' passthrough fields.
+  async function stampOrg(collection, _id, organizationId) {
+    await mongo.db
+      .collection(collection)
+      .updateOne({ _id }, { $set: { organizationId } });
+  }
+
+  test("events of another org are excluded from the timeline", async () => {
+    await seedEvent({ _id: "ev-mine" });
+    await seedEvent({ _id: "ev-theirs" });
+    await stampOrg("log-events", "ev-mine", "org-a");
+    await stampOrg("log-events", "ev-theirs", "org-b");
+
+    const result = await GetEventsTimeline(buildContext({ request, tenant }));
+    expect(result.map((e) => e._id)).toEqual(["ev-mine"]);
+  });
+
+  test("actions lookup is tenant-filtered — a cross-org action linked to my event is dropped", async () => {
+    await seedAction({ _id: "a-mine", stage: "action-required" });
+    await seedAction({ _id: "a-theirs", stage: "action-required" });
+    await stampOrg("actions", "a-mine", "org-a");
+    await stampOrg("actions", "a-theirs", "org-b");
+    await seedEvent({ _id: "ev-1", action_ids: ["a-mine", "a-theirs"] });
+    await stampOrg("log-events", "ev-1", "org-a");
+
+    const result = await GetEventsTimeline(buildContext({ request, tenant }));
+    expect(result[0].actions.map((a) => a._id)).toEqual(["a-mine"]);
+  });
+
+  test("contacts lookup is tenant-filtered — a cross-org author contact resolves no picture", async () => {
+    await seedContact({ _id: "u1", picture: "https://cdn.example/u1.png" });
+    await stampOrg("user-contacts", "u1", "org-b");
+    await seedEvent({ _id: "ev-1", user_id: "u1" });
+    await stampOrg("log-events", "ev-1", "org-a");
+
+    const result = await GetEventsTimeline(buildContext({ request, tenant }));
+    expect(result[0].created.user.picture).toBeNull();
+  });
+
+  test("same-org contact still resolves the picture through the tenant-filtered lookup", async () => {
+    await seedContact({ _id: "u1", picture: "https://cdn.example/u1.png" });
+    await stampOrg("user-contacts", "u1", "org-a");
+    await seedEvent({ _id: "ev-1", user_id: "u1" });
+    await stampOrg("log-events", "ev-1", "org-a");
+
+    const result = await GetEventsTimeline(buildContext({ request, tenant }));
+    expect(result[0].created.user.picture).toBe("https://cdn.example/u1.png");
+  });
+
+  test("null tenant leaves the pipeline unscoped (both orgs' events returned)", async () => {
+    await seedEvent({ _id: "ev-mine" });
+    await seedEvent({ _id: "ev-theirs" });
+    await stampOrg("log-events", "ev-mine", "org-a");
+    await stampOrg("log-events", "ev-theirs", "org-b");
+
+    const result = await GetEventsTimeline(buildContext({ request }));
+    expect(result.map((e) => e._id).sort()).toEqual(["ev-mine", "ev-theirs"]);
   });
 });

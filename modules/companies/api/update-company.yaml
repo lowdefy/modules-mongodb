@@ -11,6 +11,11 @@ routine:
         then:
           - id: cycle_check
             type: MongoDBAggregation
+            # Authored org clause (tenant wall amendment-1): $graphLookup
+            # traverses the collection by name, outside the wall's entry
+            # $match — this step authors restrictSearchWithMatch below and
+            # the wall audits it against the caller's org on every run.
+            tenant: authored
             connectionId:
               _module.connectionId: companies-collection
             properties:
@@ -39,6 +44,11 @@ routine:
                     maxDepth:
                       _module.var: hierarchy.max_depth
                     as: __ancestors
+                    # The authored tenant clause (tenant: authored) — audited
+                    # by the wall, enforced on every traversal step.
+                    restrictSearchWithMatch:
+                      organizationId:
+                        _user: organizationId
                 - $project:
                     has_cycle:
                       $in:

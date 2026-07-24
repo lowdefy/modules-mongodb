@@ -5,7 +5,8 @@
 # GUARDED: offered only when the user holds NO OTHER memberships, and the routine
 # RE-CHECKS server-side before deleting — app A's admin must not destroy an
 # identity app B depends on. The check counts member rows in OTHER orgs (any
-# organizationId other than the pinned org resolved by `_organization: id`).
+# organizationId other than the caller's active org, `_user: organizationId` —
+# the policy-portable value; under pinned it equals the pinned org).
 #
 # Role-gated app-side; step-floored by `auth.userAdminRole`. Audit is the final step.
 # Payload: { user_id, target_name?, target_email? }
@@ -23,7 +24,7 @@ routine:
               _payload: user_id
             organizationId:
               $ne:
-                _organization: id
+                _user: organizationId
         - $count: count
   - :if:
       _gt:

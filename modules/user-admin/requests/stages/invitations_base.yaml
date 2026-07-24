@@ -10,7 +10,7 @@
 #   inviter_name / inviter_id — the "Invited by" column (join `users`).
 - $match:
     organizationId:
-      _organization: id
+      _user: organizationId
     status: pending
 - $lookup:
     from: users

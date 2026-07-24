@@ -31,7 +31,7 @@ import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOr
  */
 async function GetEventsTimeline(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
-  const { params, mongoDb, connection } = context;
+  const { params, mongoDb, connection, tenant } = context;
   const { reference_field, reference_value } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
@@ -55,6 +55,19 @@ async function GetEventsTimeline(lowdefyContext) {
   // visible_verbs / resolve_action_link are NOT run in the aggregation pipeline
   // because they rely on the per-request session user — they are applied in JS
   // post-processing below.
+  //
+  // Tenant-wall (framework tenant contract): when the connection carries a
+  // tenant verdict, the events $match gains the tenant clause AND both $lookup
+  // sub-pipelines are prefixed with a tenant $match — the joined actions and
+  // contacts collections carry the tenant field too, and an unfiltered $lookup
+  // would leak them across the wall (mirrors the framework's recursive-
+  // injection contract for lookups). `tenantClause`/`tenantLookupMatch` are
+  // empty when tenant is null, so tenant-less behavior is unchanged.
+
+  const tenantClause = tenant ? [{ [tenant.field]: tenant.value }] : [];
+  const tenantLookupMatch = tenant
+    ? [{ $match: { [tenant.field]: tenant.value } }]
+    : [];
 
   const pipeline = [
     // ── Match events to the target reference ──
@@ -65,6 +78,8 @@ async function GetEventsTimeline(lowdefyContext) {
           // Events that have a display block for this app (mirrors the
           // display_key $ne null guard from events-timeline.yaml).
           { [app_name]: { $ne: null } },
+          // Tenant-wall: only this org's events.
+          ...tenantClause,
         ],
       },
     },
@@ -78,6 +93,8 @@ async function GetEventsTimeline(lowdefyContext) {
         foreignField: "_id",
         as: "actions",
         pipeline: [
+          // Tenant-wall: joined actions must sit inside the same org.
+          ...tenantLookupMatch,
           // Card-worthiness filter (from timeline_action_lookup.yaml):
           //   1. Current stage must not be 'blocked'.
           //   2. At least one stage in history must be neither 'blocked' nor
@@ -219,7 +236,11 @@ async function GetEventsTimeline(lowdefyContext) {
         localField: "created.user.id",
         foreignField: "_id",
         as: "author_contact",
-        pipeline: [{ $project: { _id: 0, picture: "$profile.picture" } }],
+        pipeline: [
+          // Tenant-wall: joined contacts must sit inside the same org.
+          ...tenantLookupMatch,
+          { $project: { _id: 0, picture: "$profile.picture" } },
+        ],
       },
     },
     {

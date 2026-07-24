@@ -121,7 +121,7 @@ function projectFormSlice(slice, allowedKeys) {
 
 async function GetWorkflowAction(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
-  const { params, mongoDb, connection, workflowsConfig } = context;
+  const { params, mongoDb, connection, workflowsConfig, tenant } = context;
   const { action_id } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
@@ -135,6 +135,7 @@ async function GetWorkflowAction(lowdefyContext) {
     mongoDb,
     collection: actionsCollection,
     query: { _id: action_id },
+    tenant,
   });
 
   // ── Step 3: Task guard ──
@@ -173,6 +174,7 @@ async function GetWorkflowAction(lowdefyContext) {
     mongoDb,
     collection: workflowsCollection,
     query: { _id: action.workflow_id },
+    tenant,
   });
 
   // ── Workflow closed flag ──
@@ -191,6 +193,7 @@ async function GetWorkflowAction(lowdefyContext) {
             mongoDb,
             collection: contactsCollection,
             query: { _id: { $in: assigneeIds } },
+            tenant,
           })
         ).map((d) => ({
           _id: d._id,
@@ -287,6 +290,7 @@ async function GetWorkflowAction(lowdefyContext) {
       mongoDb,
       collection: eventsCollection,
       query: { type: "action-request_changes", action_ids: action._id },
+      tenant,
       options: {
         sort: { date: -1 },
         limit: 1,

@@ -25,7 +25,7 @@ import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js
  */
 async function GetEntityWorkflows(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
-  const { params, mongoDb, connection, workflowsConfig } = context;
+  const { params, mongoDb, connection, workflowsConfig, tenant } = context;
   const { connection_id, id } = params.entity ?? {};
   const app_name = connection.app_name;
   const entry_id = connection.entry_id;
@@ -39,6 +39,7 @@ async function GetEntityWorkflows(lowdefyContext) {
     collection: workflowsCollection,
     query: { "entity.connection_id": connection_id, "entity.id": id },
     options: { sort: { display_order: 1, "created.timestamp": -1 } },
+    tenant,
   });
 
   if (workflowDocs.length === 0) {
@@ -51,6 +52,7 @@ async function GetEntityWorkflows(lowdefyContext) {
     mongoDb,
     collection: actionsCollection,
     query: { workflow_id: { $in: workflowIds } },
+    tenant,
   });
 
   // Index actions by workflow_id for quick lookup.
