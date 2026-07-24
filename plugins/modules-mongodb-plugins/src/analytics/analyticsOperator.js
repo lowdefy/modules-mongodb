@@ -9,15 +9,18 @@ import validateReportSpec from "./validateReportSpec.js";
  * The _analytics server operator — the reporting module's presentation and
  * validation surface, used inside module endpoint routines:
  *
- *   _analytics.validateReportSpec  { spec, datasets, roles } → normalized spec
- *   _analytics.validateChartSpec   { spec, datasets, roles } → normalized spec
- *   _analytics.validateExportSpec  { spec, datasets, roles } → normalized spec
- *   _analytics.querySections       { spec, datasets, roles } → resolve-time queries
- *   _analytics.compileReport       { spec, results, datasets, roles, endpointId } → blocks
- *   _analytics.buildDataParts      { charts, results, downloads, datasets, roles } → dataParts
+ *   _analytics.validateReportSpec  { spec, catalog?, roles } → normalized spec
+ *   _analytics.validateChartSpec   { spec, catalog?, roles } → normalized spec
+ *   _analytics.validateExportSpec  { spec, catalog?, roles } → normalized spec
+ *   _analytics.querySections       { spec, catalog?, roles } → resolve-time queries
+ *   _analytics.compileReport       { spec, results, catalog?, roles, endpointId } → blocks
+ *   _analytics.buildDataParts      { charts, results, downloads, roles } → dataParts
  *
- * All methods are pure; validation failures throw with messages the model
- * (via tool errors) or the app author can act on.
+ * `catalog` is optional and only supplied for validate-before-persist
+ * (generate_report / render_chart), where it runs the pipeline through
+ * validatePipeline; execution-time gating always happens inside
+ * AnalyticsPipeline regardless. All methods are pure; validation failures throw
+ * with messages the model (via tool errors) or the app author can act on.
  */
 const functions = {
   buildDataParts,

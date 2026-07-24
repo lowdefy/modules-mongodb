@@ -1,68 +1,111 @@
 import validateReportSpec from "./validateReportSpec.js";
-import testDatasets from "./testDatasets.js";
+import testCatalog from "./testDatasets.js";
 
 const roles = ["analyst"];
+
+// A raw `{ collection, pipeline }` query against the open (unrestricted)
+// demo_orders collection — grouped totals by region.
+const ordersByRegion = {
+  collection: "demo_orders",
+  pipeline: [{ $group: { _id: "$region", total: { $sum: "$total" } } }, { $project: { _id: 0, region: "$_id", total: 1 } }],
+};
+const orderTotal = {
+  collection: "demo_orders",
+  pipeline: [{ $group: { _id: null, total: { $sum: "$total" } } }],
+};
 
 const designExampleSpec = {
   title: "Q2 Revenue by Region",
   description: "Revenue and order counts, filterable by status.",
   sections: [
-    {
-      type: "kpi",
-      label: "Total Revenue",
-      query: { dataset: "orders", measures: [{ id: "total", agg: "sum" }] },
-    },
-    {
-      type: "chart",
-      chart: "bar",
-      label: "Revenue by Region",
-      query: { dataset: "orders", select: ["region"], measures: [{ id: "total", agg: "sum" }] },
-    },
+    { type: "kpi", label: "Total Revenue", query: orderTotal, valueKey: "total", format: { style: "currency", currency: "USD" } },
+    { type: "chart", chart: "bar", label: "Revenue by Region", query: ordersByRegion, x: "region", y: ["total"] },
     { type: "filter", control: "select", field: "status", label: "Status" },
     {
       type: "table",
       label: "Orders",
-      query: {
-        dataset: "orders",
-        select: ["region", "status"],
-        measures: [
-          { id: "total", agg: "sum" },
-          { id: "count", agg: "count" },
-        ],
-      },
+      query: ordersByRegion,
+      columns: [{ key: "region", label: "Region" }, { key: "total", label: "Total", format: { style: "currency", currency: "USD" } }],
       filterBy: ["status"],
     },
-    {
-      type: "download",
-      label: "Download CSV",
-      query: { dataset: "orders", select: ["region", "status"], measures: [{ id: "total", agg: "sum" }] },
-    },
+    { type: "download", label: "Download CSV", query: ordersByRegion },
   ],
 };
 
 test("validates the design example and assigns positional ids", () => {
-  const result = validateReportSpec({ spec: designExampleSpec, datasets: testDatasets, roles });
+  const result = validateReportSpec({ spec: designExampleSpec, catalog: testCatalog, roles });
   expect(result.sections.map((s) => s.id)).toEqual(["s0", "s1", "s2", "s3", "s4"]);
-  expect(result.sections[0].valueKey).toBe("total_sum");
-  // Table columns are descriptors: enum dimensions (with `values`) tag, measures
-  // carry type/format so the renderer can format them.
+  expect(result.sections[0].valueKey).toBe("total");
+  expect(result.sections[0].format).toEqual({ style: "currency", currency: "USD" });
+  expect(result.sections[1].x).toBe("region");
+  expect(result.sections[1].y).toEqual(["total"]);
+  // Table columns are contract descriptors — no `tag` flag.
   expect(result.sections[3].columns).toEqual([
-    { key: "region", tag: false },
-    { key: "status", tag: true },
-    { key: "total_sum", measure: true, type: "number", format: "currency", currency: "ZAR", locale: "en-ZA" },
-    { key: "count_count", measure: true, type: "count", format: null, currency: null, locale: null },
+    { key: "region", label: "Region" },
+    { key: "total", label: "Total", format: { style: "currency", currency: "USD" } },
   ]);
-  // Select filter without explicit options resolves them from dimension values.
-  expect(result.sections[2].options).toEqual(["pending", "paid", "shipped", "cancelled"]);
+});
+
+test("validates without a catalog (resolve-time inert check, no pipeline gate)", () => {
+  const result = validateReportSpec({ spec: designExampleSpec, roles });
+  expect(result.sections.map((s) => s.id)).toEqual(["s0", "s1", "s2", "s3", "s4"]);
+});
+
+test("rejects a table column carrying a tag key", () => {
+  expect(() =>
+    validateReportSpec({
+      spec: {
+        title: "T",
+        sections: [
+          { type: "table", label: "Orders", query: ordersByRegion, columns: [{ key: "region", tag: true }] },
+        ],
+      },
+      catalog: testCatalog,
+      roles,
+    })
+  ).toThrow(/unexpected key "tag"/);
+});
+
+test("rejects a chart section missing x/y", () => {
+  expect(() =>
+    validateReportSpec({
+      spec: {
+        title: "T",
+        sections: [{ type: "chart", chart: "bar", label: "C", query: ordersByRegion, y: ["total"] }],
+      },
+      catalog: testCatalog,
+      roles,
+    })
+  ).toThrow(/x must be a non-empty column name/);
+});
+
+test("rejects a kpi section missing valueKey", () => {
+  expect(() =>
+    validateReportSpec({
+      spec: { title: "T", sections: [{ type: "kpi", label: "K", query: orderTotal }] },
+      catalog: testCatalog,
+      roles,
+    })
+  ).toThrow(/requires a valueKey/);
+});
+
+test("rejects an invalid format descriptor", () => {
+  expect(() =>
+    validateReportSpec({
+      spec: {
+        title: "T",
+        sections: [{ type: "kpi", label: "K", query: orderTotal, valueKey: "total", format: { style: "percent" } }],
+      },
+      catalog: testCatalog,
+      roles,
+    })
+  ).toThrow(/format.style "percent" is not one of/);
 });
 
 test("rejects more than 12 sections", () => {
-  const sections = Array.from({ length: 13 }, () => ({
-    type: "markdown",
-    content: "hello",
-  }));
+  const sections = Array.from({ length: 13 }, () => ({ type: "markdown", content: "hello" }));
   expect(() =>
-    validateReportSpec({ spec: { title: "Big", sections }, datasets: testDatasets, roles })
+    validateReportSpec({ spec: { title: "Big", sections }, catalog: testCatalog, roles })
   ).toThrow(/at most 12 sections/);
 });
 
@@ -70,7 +113,7 @@ test("rejects unknown section type", () => {
   expect(() =>
     validateReportSpec({
       spec: { title: "T", sections: [{ type: "iframe", label: "X" }] },
-      datasets: testDatasets,
+      catalog: testCatalog,
       roles,
     })
   ).toThrow(/type "iframe" is not one of/);
@@ -79,17 +122,8 @@ test("rejects unknown section type", () => {
 test("rejects labels over 200 characters", () => {
   expect(() =>
     validateReportSpec({
-      spec: {
-        title: "T",
-        sections: [
-          {
-            type: "kpi",
-            label: "x".repeat(201),
-            query: { dataset: "orders", measures: [{ id: "total", agg: "sum" }] },
-          },
-        ],
-      },
-      datasets: testDatasets,
+      spec: { title: "T", sections: [{ type: "kpi", label: "x".repeat(201), query: orderTotal, valueKey: "total" }] },
+      catalog: testCatalog,
       roles,
     })
   ).toThrow(/label exceeds 200 characters/);
@@ -100,40 +134,22 @@ test("rejects filterBy referencing a missing filter section", () => {
     validateReportSpec({
       spec: {
         title: "T",
-        sections: [
-          {
-            type: "table",
-            label: "Orders",
-            query: { dataset: "orders", select: ["region"] },
-            filterBy: ["status"],
-          },
-        ],
+        sections: [{ type: "table", label: "Orders", query: ordersByRegion, columns: [{ key: "region" }], filterBy: ["status"] }],
       },
-      datasets: testDatasets,
+      catalog: testCatalog,
       roles,
     })
   ).toThrow(/no filter section with that field/);
 });
 
-test("rejects filterBy field that is not a dimension of the section's dataset", () => {
+test("rejects a '$'-prefixed filter field", () => {
   expect(() =>
     validateReportSpec({
-      spec: {
-        title: "T",
-        sections: [
-          { type: "filter", control: "select", field: "plan", label: "Plan" },
-          {
-            type: "table",
-            label: "Orders",
-            query: { dataset: "orders", select: ["region"] },
-            filterBy: ["plan"],
-          },
-        ],
-      },
-      datasets: testDatasets,
+      spec: { title: "T", sections: [{ type: "filter", control: "select", field: "$where", label: "X", options: ["a"] }] },
+      catalog: testCatalog,
       roles,
     })
-  ).toThrow(/"plan" is not a dimension of dataset "orders"/);
+  ).toThrow(/requires a field/);
 });
 
 test("rejects unbound filter sections", () => {
@@ -143,63 +159,60 @@ test("rejects unbound filter sections", () => {
         title: "T",
         sections: [
           { type: "filter", control: "select", field: "status", label: "Status" },
-          {
-            type: "table",
-            label: "Orders",
-            query: { dataset: "orders", select: ["region"] },
-          },
+          { type: "table", label: "Orders", query: ordersByRegion, columns: [{ key: "region" }] },
         ],
       },
-      datasets: testDatasets,
+      catalog: testCatalog,
       roles,
     })
   ).toThrow(/not bound by any section/);
 });
 
-test("daterange control requires a date dimension", () => {
+test("select filter with no options and no catalog values is rejected (at persist)", () => {
   expect(() =>
     validateReportSpec({
       spec: {
         title: "T",
         sections: [
-          { type: "filter", control: "daterange", field: "status", label: "Status" },
-          {
-            type: "table",
-            label: "Orders",
-            query: { dataset: "orders", select: ["region"] },
-            filterBy: ["status"],
-          },
+          { type: "filter", control: "select", field: "month", label: "Month" },
+          { type: "table", label: "Orders", query: ordersByRegion, columns: [{ key: "region" }], filterBy: ["month"] },
         ],
       },
-      datasets: testDatasets,
-      roles,
-    })
-  ).toThrow(/daterange control but the dimension is not a date/);
-});
-
-test("select filter with no options and no dimension values is rejected", () => {
-  expect(() =>
-    validateReportSpec({
-      spec: {
-        title: "T",
-        sections: [
-          { type: "filter", control: "select", field: "region", label: "Region" },
-          {
-            type: "table",
-            label: "Orders",
-            query: { dataset: "orders", select: ["region"] },
-            filterBy: ["region"],
-          },
-        ],
-      },
-      datasets: testDatasets,
+      catalog: testCatalog,
       roles,
     })
   ).toThrow(/has no options/);
 });
 
-test("dataset roles are enforced through section queries", () => {
+test("select filter resolves against a catalog field's enum values (no throw)", () => {
+  const result = validateReportSpec({
+    spec: {
+      title: "T",
+      sections: [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        { type: "table", label: "Orders", query: ordersByRegion, columns: [{ key: "region" }], filterBy: ["status"] },
+      ],
+    },
+    catalog: testCatalog,
+    roles,
+  });
+  expect(result.sections[0].type).toBe("filter");
+});
+
+test("collection roles are enforced through section queries (validate-before-persist)", () => {
+  const spec = {
+    title: "Companies",
+    sections: [
+      { type: "table", label: "Companies", query: { collection: "demo_companies", pipeline: [{ $project: { name: 1 } }] }, columns: [{ key: "name" }] },
+    ],
+  };
+  // demo_companies is role-gated; a viewer lacking the role is rejected.
+  expect(() => validateReportSpec({ spec, catalog: testCatalog, roles: ["viewer"] })).toThrow(/not authorized/);
+});
+
+test("export validator rejects a contract payload", async () => {
+  const { default: validateExportSpec } = await import("./validateExportSpec.js");
   expect(() =>
-    validateReportSpec({ spec: designExampleSpec, datasets: testDatasets, roles: ["viewer"] })
-  ).toThrow(/not authorized/);
+    validateExportSpec({ spec: { query: ordersByRegion, columns: [{ key: "region" }] }, catalog: testCatalog, roles })
+  ).toThrow(/exports carry no presentation contract/);
 });

@@ -1,35 +1,49 @@
-import { REPORT_CURRENCY, REPORT_DECIMALS, REPORT_LOCALE } from "./constants.js";
+import {
+  MAX_FILTER_OPTIONS,
+  REPORT_CURRENCY,
+  REPORT_DECIMALS,
+  REPORT_LOCALE,
+} from "./constants.js";
 import buildEChartsOption from "./buildEChartsOption.js";
-import validateReportSpec from "./validateReportSpec.js";
+import validateReportSpec, { catalogFieldValues } from "./validateReportSpec.js";
+import {
+  verifyChartContract,
+  verifyKpiContract,
+  verifyTableContract,
+} from "./verifyContract.js";
 
 /**
  * Compiles a validated report spec plus resolve-time query results into
- * Lowdefy blocks — the trusted server-side half of "the AI supplies a spec,
- * the server compiles". Runs inside the resolve-report endpoint behind the
- * Dynamic block.
+ * Lowdefy blocks — the trusted server-side half of "the AI supplies a spec, the
+ * server compiles". Runs inside the resolve-report endpoint behind the Dynamic
+ * block, consuming the declared presentation contract (valueKey / x,y /
+ * columns + per-column format) rather than any derived query structure.
  *
  * Params:
- *   spec       — the stored report spec (revalidated here on every resolve).
+ *   spec       — the stored report spec (re-validated here, inert-only).
  *   results    — per-query-section results, aligned with querySections():
  *                array (a :for step result) whose entries are row arrays; a
- *                missing/null entry marks a failed section (its AnalyticsQuery
+ *                missing/null entry marks a failed section (its AnalyticsPipeline
  *                ran inside :try), rendered as an Alert card while the rest of
  *                the report renders normally.
- *   datasets   — the data dictionary (allowlist for revalidation).
- *   roles      — the viewing user's roles (dataset gates re-checked).
+ *   catalog    — the collections catalog, used ONLY to resolve select-filter
+ *                options from a field's enum `values` (a display convenience —
+ *                NOT the security gate, which is the per-section AnalyticsPipeline).
+ *   roles      — the viewing user's roles (passed through for symmetry).
  *   endpointId — the scoped query-data endpoint id CallAPI targets for filter
  *                re-queries and downloads (the module passes _module.endpointId).
+ *
+ * The contract is verified against the actual rows per section: a missing
+ * column key or a non-numeric y/KPI value renders that one section as an Alert
+ * card (a graceful rendering failure). Verification skips empty results and
+ * tolerates null value cells.
  *
  * Deferred client operators: compiled output carries `__state`, `__api` and
  * `__if_none` (double underscore) — the Dynamic block's server resolution
  * leaves them untouched and the client unescapes them to live operators.
- * Filter re-querying is event-driven: each filter control's onChange runs
- * CallAPI → query-data per bound section, then SetState copies the response
- * into `sections.<id>.rows`; bound data props read state once a filter has
- * fired, the inlined resolve-time snapshot before that.
  *
- * The compiler never emits `_secret` and never evaluates AI-provided strings
- * as operators — the spec is data.
+ * The compiler never emits `_secret` and never evaluates AI-provided strings as
+ * operators — the spec is data.
  */
 
 function fail(message) {
@@ -51,8 +65,8 @@ function safeFilename(label) {
 
 // The extra filters a bound section's re-query carries: each bound filter
 // contributes constraints whose values read live page state (deferred __state).
-// AnalyticsQuery drops null-valued filters, so an untouched control means "no
-// constraint".
+// AnalyticsPipeline drops null-valued triples, so an untouched control means
+// "no constraint".
 function boundFilters(section, filterSectionsByField) {
   const extra = [];
   for (const field of section.filterBy ?? []) {
@@ -72,7 +86,8 @@ function boundFilters(section, filterSectionsByField) {
 
 // One CallAPI + SetState pair per section bound to a filter. Action lists run
 // sequentially, so each SetState reads its own CallAPI's response before the
-// next call replaces it (_api is keyed by endpointId).
+// next call replaces it (_api is keyed by endpointId). The server builds the
+// $match from the triples and prepends it to the section's pipeline.
 function requeryActions({ boundSections, filterSectionsByField, endpointId }) {
   const actions = [];
   for (const section of boundSections) {
@@ -82,13 +97,8 @@ function requeryActions({ boundSections, filterSectionsByField, endpointId }) {
       params: {
         endpointId,
         payload: {
-          spec: {
-            ...section.query,
-            filters: [
-              ...(section.query.filters ?? []),
-              ...boundFilters(section, filterSectionsByField),
-            ],
-          },
+          query: section.query,
+          filters: boundFilters(section, filterSectionsByField),
         },
       },
     });
@@ -112,17 +122,17 @@ function dataBinding(section, rows) {
   return { __if_none: [{ __state: `sections.${section.id}.rows` }, rows] };
 }
 
-// How a measure's numeric values display: counts are whole numbers, currency
-// measures carry a symbol and two decimals, every other number is a grouped
-// decimal. Currency/locale come from the measure's dictionary entry (default
-// en-US/USD) so an app can localise (e.g. ZAR / en-ZA) without engine changes.
-function numberDisplay({ type, format, currency, locale }) {
-  const loc = locale || REPORT_LOCALE;
-  if (type === "count") return { style: "decimal", decimals: 0, locale: loc };
-  if (format === "currency") {
-    return { style: "currency", decimals: REPORT_DECIMALS, currency: currency || REPORT_CURRENCY, locale: loc };
+// How a contract `format` descriptor ({ style, currency?, locale?, decimals? })
+// displays: currency renders with a symbol and the declared (default 2)
+// decimals, everything else as a grouped decimal. The REPORT_* defaults fill
+// any field the descriptor omits; a null format is a plain grouped decimal.
+function numberDisplay(format) {
+  const locale = format?.locale || REPORT_LOCALE;
+  const decimals = Number.isInteger(format?.decimals) ? format.decimals : REPORT_DECIMALS;
+  if (format?.style === "currency") {
+    return { style: "currency", decimals, currency: format.currency || REPORT_CURRENCY, locale };
   }
-  return { style: "decimal", decimals: REPORT_DECIMALS, locale: loc };
+  return { style: "decimal", decimals, locale };
 }
 
 // Intl.NumberFormat options for a display descriptor.
@@ -149,10 +159,10 @@ function intlSeparators(display) {
   };
 }
 
-// Runtime value formatter for a table measure cell. Deferred through the Dynamic
+// Runtime value formatter for a numeric table cell. Deferred through the Dynamic
 // block, so operators inside the cell's `_function` are triple-escaped (`___`):
 // one level for the Dynamic-block unescape, one for the function body.
-function measureCellRenderer(display) {
+function numericCellRenderer(display) {
   return {
     __function: {
       "___intl.numberFormat": {
@@ -164,37 +174,27 @@ function measureCellRenderer(display) {
   };
 }
 
-// Enum dimension values render as a subtle pill instead of the raw key. Theme
-// tokens keep it consistent in light and dark; an empty cell stays empty.
-const TAG_TEMPLATE =
-  '{% if v %}<span style="display:inline-block;padding:1px 8px;border-radius:10px;' +
-  "font-size:12px;line-height:18px;background:var(--ant-color-fill-secondary);" +
-  'border:1px solid var(--ant-color-border-secondary);color:var(--ant-color-text)">' +
-  "{{ v }}</span>{% endif %}";
-
-function tagCellRenderer() {
-  return {
-    __function: {
-      ___nunjucks: {
-        template: TAG_TEMPLATE,
-        on: { v: { ___args: "0.value" } },
-      },
-    },
-  };
+// A table column: a column carrying a `format` descriptor is numeric — it
+// right-aligns and formats via _intl; a column without one renders plain text
+// (enum tag styling was deliberately dropped). `label` becomes the header.
+function tableColumnDef(column) {
+  const def = { field: column.key };
+  if (column.label !== undefined) def.headerName = column.label;
+  if (column.format) {
+    def.type = "numericColumn";
+    def.cellRenderer = numericCellRenderer(numberDisplay(column.format));
+  }
+  return def;
 }
 
-function tableColumnDef(column) {
-  if (column.measure) {
-    return {
-      field: column.key,
-      type: "numericColumn",
-      cellRenderer: measureCellRenderer(numberDisplay(column)),
-    };
-  }
-  if (column.tag) {
-    return { field: column.key, cellRenderer: tagCellRenderer() };
-  }
-  return { field: column.key };
+// A select filter's options: the agent's declared `options`, else the enum
+// `values` cataloged for the field in one of its bound sections' collections.
+function filterOptions(filter, sections, catalog) {
+  if (filter.options !== undefined) return filter.options.slice(0, MAX_FILTER_OPTIONS);
+  const boundSections = sections.filter((s) => (s.filterBy ?? []).includes(filter.field));
+  const collections = boundSections.map((s) => s.query?.collection).filter(Boolean);
+  const values = catalogFieldValues(catalog, filter.field, collections);
+  return (values ?? []).slice(0, MAX_FILTER_OPTIONS);
 }
 
 // EChart and AgGridAlpine have no `title` property (their schemas set
@@ -209,7 +209,7 @@ function sectionHeading(section) {
   };
 }
 
-function failedSectionBlock(section) {
+function failedSectionBlock(section, description) {
   return {
     id: section.id,
     type: "Alert",
@@ -219,17 +219,30 @@ function failedSectionBlock(section) {
       showIcon: true,
       message: section.label,
       description:
-        "This section failed to load — its query may reference data no longer in the " +
-        "data dictionary.",
+        description ??
+        "This section failed to load — its query may reference data no longer available.",
     },
   };
 }
 
-function compileReport({ spec, results, datasets, roles, endpointId }) {
+// Verifies the section's declared contract against its rows; throws on mismatch.
+function verifySection(section, rows) {
+  if (section.type === "kpi") {
+    verifyKpiContract({ valueKey: section.valueKey, rows });
+  } else if (section.type === "chart") {
+    verifyChartContract({ x: section.x, y: section.y, rows });
+  } else if (section.type === "table") {
+    verifyTableContract({ columns: section.columns, rows });
+  }
+}
+
+function compileReport({ spec, results, catalog, roles, endpointId }) {
   if (typeof endpointId !== "string" || endpointId === "") {
     fail("endpointId (the query-data endpoint) is required.");
   }
-  const validated = validateReportSpec({ spec, datasets, roles });
+  // Inert re-validation only (no catalog): the per-section AnalyticsPipeline is
+  // the security gate, so one inaccessible section must not throw here.
+  const validated = validateReportSpec({ spec, roles });
   const { sections } = validated;
 
   // Align results with querySections() order: the resolver's :for step array.
@@ -283,6 +296,14 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
         bodyBlocks.push(failedSectionBlock(section));
         continue;
       }
+      // Contract-vs-rows check: a mismatch renders this section as an Alert
+      // card while the rest of the report renders normally.
+      try {
+        verifySection(section, rows);
+      } catch (error) {
+        bodyBlocks.push(failedSectionBlock(section, error.message));
+        continue;
+      }
 
       if (section.type === "kpi") {
         const inlined = rows?.[0]?.[section.valueKey] ?? 0;
@@ -296,13 +317,8 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
                 ],
               };
         // Statistic formats its live numeric value natively; separators/symbol
-        // come from the measure's locale so it matches the table's _intl output.
-        const display = numberDisplay({
-          type: section.valueType,
-          format: section.valueFormat,
-          currency: section.valueCurrency,
-          locale: section.valueLocale,
-        });
+        // come from the contract format so it matches the table's _intl output.
+        const display = numberDisplay(section.format);
         const seps = intlSeparators(display);
         const properties = {
           title: section.label,
@@ -312,7 +328,7 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
           decimalSeparator: seps.decimal,
         };
         if (display.style === "currency") {
-          properties.prefix = `${seps.symbol} `;
+          properties.prefix = `${seps.symbol} `;
         }
         bodyBlocks.push({
           id: section.id,
@@ -325,8 +341,8 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
       if (section.type === "chart") {
         const option = buildEChartsOption({
           chart: section.chart,
-          select: section.select,
-          measures: section.measures,
+          x: section.x,
+          y: section.y,
           rows: [],
         });
         option.dataset.source = dataBinding(section, rows);
@@ -379,7 +395,7 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
           properties: {
             title: section.label,
             allowClear: true,
-            options: section.options,
+            options: filterOptions(section, sections, catalog),
           },
           events: { onChange },
         });
@@ -406,7 +422,7 @@ function compileReport({ spec, results, datasets, roles, endpointId }) {
             {
               id: `query_${section.id}`,
               type: "CallAPI",
-              params: { endpointId, payload: { spec: section.query } },
+              params: { endpointId, payload: { query: section.query } },
             },
             {
               id: `download_${section.id}`,

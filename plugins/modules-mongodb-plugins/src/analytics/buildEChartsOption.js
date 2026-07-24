@@ -1,13 +1,14 @@
 /**
- * Builds an ECharts option from a chart kind, the query's shape, and result
- * rows. Uses the ECharts dataset + encode form so the data source is exactly
- * the query's row array — compileReport swaps the source for a deferred
- * `__state` read on filtered sections without touching the series config.
+ * Builds an ECharts option from a chart kind, the declared presentation
+ * contract (`x` category column, `y` value columns), and result rows. Uses the
+ * ECharts dataset + explicit-encode form so the data source is exactly the
+ * query's row array — compileReport swaps the source for a deferred `__state`
+ * read on filtered sections without touching the series config.
  *
- * The AI never contributes chart config: it names a chart kind and a query;
- * this function shapes everything else server-side.
+ * The AI never contributes chart config: it names a chart kind, a query and the
+ * x/y columns; this function shapes everything else server-side.
  */
-function buildEChartsOption({ chart, select, measures, rows }) {
+function buildEChartsOption({ chart, x, y, rows }) {
   const source = rows ?? [];
 
   if (chart === "pie") {
@@ -18,7 +19,7 @@ function buildEChartsOption({ chart, select, measures, rows }) {
       series: [
         {
           type: "pie",
-          encode: { itemName: select[0], value: measures[0].key },
+          encode: { itemName: x, value: y[0] },
         },
       ],
     };
@@ -27,14 +28,14 @@ function buildEChartsOption({ chart, select, measures, rows }) {
   // bar / line
   return {
     tooltip: { trigger: "axis" },
-    ...(measures.length > 1 ? { legend: {} } : {}),
+    ...(y.length > 1 ? { legend: {} } : {}),
     dataset: { source },
     xAxis: { type: "category" },
     yAxis: { type: "value" },
-    series: measures.map((measure) => ({
+    series: y.map((column) => ({
       type: chart,
-      name: measure.key,
-      encode: { x: select[0], y: measure.key },
+      name: column,
+      encode: { x, y: column },
     })),
   };
 }

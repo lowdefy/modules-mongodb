@@ -1,7 +1,10 @@
 # The Dynamic block's resolver: load the report spec (userId-scoped), run each
-# query-backed section's query inside :try (a failed section renders as an
+# query-backed section's pipeline inside :try (a failed section renders as an
 # Alert card while the rest of the report renders), compile spec + rows to
-# blocks server-side.
+# blocks server-side. AnalyticsPipeline is the security gate: it revalidates
+# each stored pipeline against the connection-bound catalog with the VIEWING
+# user's roles on every resolve, so a section the viewer can't access (or that
+# drifted out of the catalog) fails as one Alert card, not a whole-report error.
 id: resolve-report
 type: InternalApi
 routine:
@@ -22,32 +25,31 @@ routine:
     # Whole-report failure — the Dynamic block renders its fallback slot.
     :then:
       - :reject: Report not found.
+  # No catalog passed here: querySections only extracts the query sections
+  # (inert), and the per-section AnalyticsPipeline below is the real gate — so
+  # one inaccessible section never throws here and takes down the whole report.
   - :for: section
     :in:
       _analytics.querySections:
         spec:
           _step: load_report.spec
-        datasets:
-          _module.var: datasets
         roles:
           _user: roles
     :do:
       - :try:
           - id: run_query
-            type: AnalyticsQuery
+            type: AnalyticsPipeline
             connectionId:
               _module.connectionId: reporting-data
             properties:
-              datasets:
-                _module.var: datasets
-              spec:
+              query:
                 _item: section.query
               roles:
                 _user: roles
         # Leave the failed iteration's step result unset — compileReport
         # renders the sparse entry as an Alert card.
         :catch:
-          - :log: A report section query failed against the current data dictionary.
+          - :log: A report section pipeline failed validation or execution for this viewer.
   - :return:
       blocks:
         _analytics.compileReport:
@@ -55,8 +57,10 @@ routine:
             _step: load_report.spec
           results:
             _step: run_query
-          datasets:
-            _module.var: datasets
+          # Catalog is used ONLY to resolve select-filter options from a field's
+          # enum values (a display convenience) — not as a security gate.
+          catalog:
+            _module.var: catalog
           roles:
             _user: roles
           endpointId:

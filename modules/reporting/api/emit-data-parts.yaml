@@ -54,18 +54,19 @@ routine:
     :do:
       - :try:
           - id: chart_rows
-            type: AnalyticsQuery
+            type: AnalyticsPipeline
             connectionId:
               _module.connectionId: reporting-data
             properties:
-              datasets:
-                _module.var: datasets
-              spec:
+              query:
                 _item: chart.query
               roles:
                 _user: roles
         :catch:
-          - :log: A chart query failed at turn end — its chart is skipped.
+          - :log: A chart pipeline failed at turn end — its chart is skipped.
+  # buildDataParts holds the fetched rows already, so it needs no catalog: it
+  # re-checks the inert spec shapes and verifies each chart's x/y contract
+  # against its rows (throwing an actionable error the agent self-corrects on).
   - :set_state:
       data_parts:
         _analytics.buildDataParts:
@@ -75,8 +76,6 @@ routine:
             _step: chart_rows
           downloads:
             _state: download_specs
-          datasets:
-            _module.var: datasets
           roles:
             _user: roles
   # Snapshot this turn's built parts onto the conversation doc so reopening it

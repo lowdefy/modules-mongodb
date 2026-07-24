@@ -1,79 +1,67 @@
-// Shared data-dictionary fixture for analytics tests — mirrors the design
-// document's orders example.
-const testDatasets = [
-  {
-    id: "orders",
-    label: "Orders",
-    description: "Customer orders with totals and status.",
-    roles: ["analyst", "admin"],
-    source: { collection: "orders" },
-    dimensions: [
-      {
-        id: "status",
+// Shared collections-catalog fixture for analytics tests — keyed by collection
+// name, mirroring the demo catalog's shape (fields with types / enum `values` /
+// display hints, optional `roles` gate, `relationships`). Replaces the old
+// dataset-list fixture: the open engine validates pipelines against a catalog,
+// not a dimension/measure dictionary.
+const testCatalog = {
+  demo_orders: {
+    // No `roles` → queryable by any authenticated user (role-gating is opt-in).
+    description: "Synthetic customer orders — one document per order.",
+    fields: {
+      region: {
+        type: "string",
+        description: "Customer region",
+        values: ["North", "South", "East", "West"],
+      },
+      category: {
+        type: "string",
+        description: "Product category",
+        values: ["Electronics", "Clothing", "Home"],
+      },
+      status: {
         type: "string",
         description: "Order status",
         values: ["pending", "paid", "shipped", "cancelled"],
       },
-      { id: "region", type: "string", description: "Customer region" },
-      {
-        id: "createdAt",
-        type: "date",
-        description: "When the order was placed",
+      channel: {
+        type: "string",
+        description: "Sales channel",
+        values: ["online", "retail", "partner"],
       },
-    ],
-    measures: [
-      {
-        id: "total",
+      month: { type: "string", description: "Order month, YYYY-MM" },
+      createdAt: { type: "date", description: "When the order was placed" },
+      total: {
         type: "number",
-        description: "Order total (ZAR)",
+        description: "Order total, money",
         format: "currency",
-        currency: "ZAR",
-        locale: "en-ZA",
-        aggregations: ["sum", "avg", "min", "max"],
+        currency: "USD",
+        locale: "en-US",
+        decimals: 2,
       },
-      { id: "count", type: "count", description: "Number of orders" },
-    ],
-  },
-  {
-    id: "signups",
-    label: "Signups",
-    description: "User signups.",
-    source: { collection: "signups" },
-    dimensions: [{ id: "plan", type: "string", description: "Plan" }],
-    measures: [{ id: "count", type: "count", description: "Signups" }],
-  },
-  {
-    // Exercises author-declared dotted `field` paths (embedded sub-documents,
-    // reached via a flattening view in the demo) and a date `bucket`.
-    id: "activities",
-    label: "Activities",
-    description: "Activity records at activity grain (view).",
-    source: { collection: "activities_report" },
-    dimensions: [
-      {
-        id: "stage",
+      quantity: { type: "number", description: "Units ordered" },
+      company_id: {
         type: "string",
-        field: "status.stage",
-        description: "Current stage",
+        description: "Owning company id — join key",
       },
+    },
+    relationships: [
       {
-        id: "channel",
-        type: "string",
-        field: "source.channel",
-        description: "Channel",
+        field: "company_id",
+        collection: "demo_companies",
+        foreignField: "_id",
       },
-      {
-        id: "created",
-        type: "date",
-        field: "created.timestamp",
-        bucket: "month",
-        description: "Month created",
-      },
-    ],
-    measures: [
-      { id: "count", type: "count", description: "Number of activities" },
     ],
   },
-];
+  demo_companies: {
+    // Role-gated: only `analyst`/`admin` may query it (directly or via $lookup).
+    roles: ["analyst", "admin"],
+    description: "Company records — a join target for orders.",
+    fields: {
+      _id: { type: "string", description: "Company id — join key" },
+      name: { type: "string", description: "Company name" },
+      region: { type: "string", description: "Company region" },
+    },
+  },
+};
 
-export default testDatasets;
+export default testCatalog;

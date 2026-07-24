@@ -1,20 +1,24 @@
-# Chart tool: validates the chart spec against the data dictionary and acks.
-# Tool results are model context (re-sent every later step and turn), so this
-# returns only the small validated spec — the emit-data-parts onFinish hook
-# reads it from the hook payload's toolResults, runs the query once at turn
-# end, and emits the chart dataPart.
+# Chart tool: validates the chart spec (pipeline + presentation contract)
+# against the catalog and acks. Tool results are model context (re-sent every
+# later step and turn), so this returns only the small validated spec — the
+# emit-data-parts onFinish hook reads it from the hook payload's toolResults,
+# runs the pipeline once at turn end via AnalyticsPipeline, verifies the x/y
+# contract against the rows, and emits the chart dataPart.
 id: render-chart
 type: Api
 description: >
   Render a chart in the results panel beside the chat. Validates the chart
   spec; the chart appears when the turn completes. Chart kinds: bar, line,
-  pie. The query must select at least one dimension (x-axis) and one measure.
+  pie. Declare the presentation contract: x (the category / pie-item column)
+  and y (an array of value columns), naming columns the pipeline outputs.
 payloadSchema:
   type: object
   required:
     - chart
     - title
     - query
+    - x
+    - y
   properties:
     chart:
       type: string
@@ -28,10 +32,29 @@ payloadSchema:
       description: Chart title shown in the panel.
     query:
       type: object
-      description: Query spec producing the chart's data (same shape as query_data).
+      description: The collection and pipeline producing the chart's data (same shape as query_data).
+      required:
+        - collection
+        - pipeline
+      properties:
+        collection:
+          type: string
+          description: Catalog-declared base collection the pipeline reads from.
+        pipeline:
+          type: array
+          description: Read-only MongoDB aggregation pipeline stages.
+    x:
+      type: string
+      description: The output column used for the category axis (pie item name).
+    y:
+      type: array
+      description: The output column(s) holding the numeric value series.
+      items:
+        type: string
 routine:
-  # Validation throws on an invalid spec — the tool call fails with the
-  # validator's actionable message.
+  # Validation throws on an invalid spec (bad pipeline or malformed contract) —
+  # the tool call fails with the validator's actionable message. Passing the
+  # catalog runs the full pipeline grammar/role gate now (validate-before-ack).
   - :set_state:
       validated:
         _analytics.validateChartSpec:
@@ -42,8 +65,12 @@ routine:
               _payload: title
             query:
               _payload: query
-          datasets:
-            _module.var: datasets
+            x:
+              _payload: x
+            y:
+              _payload: y
+          catalog:
+            _module.var: catalog
           roles:
             _user: roles
   - :return:
@@ -57,3 +84,7 @@ routine:
           _payload: title
         query:
           _payload: query
+        x:
+          _payload: x
+        y:
+          _payload: y

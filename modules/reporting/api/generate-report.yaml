@@ -1,15 +1,20 @@
-# Report tool: validate the report spec against the data dictionary and the
-# allow-listed section types, persist it raw (the durable contract — blocks
-# are compiled from it at every resolve), return the report's URL.
+# Report tool: validate the report spec against the catalog and the
+# allow-listed section types (each query section's pipeline is run through
+# validatePipeline before persist), persist it raw (the durable contract —
+# blocks are compiled from it at every resolve), return the report's URL.
+# Persisting raw stores nested $-prefixed keys inside the report doc, which
+# MongoDB allows from 5.0 (see task 9); the resolve-time revalidation is the
+# guarantee, so the pipeline is stored verbatim, never sanitized.
 id: generate-report
 type: Api
 description: >
   Save the conversation's findings as a navigable report. Takes a report
   spec — title, optional description, and up to 12 sections of types kpi,
   chart (bar|line|pie), table, filter (select|daterange), markdown, download.
-  Query-backed sections carry a query spec (same shape as query_data); bind
-  sections to filter controls with filterBy: [field]. Returns the report URL
-  to share with the user.
+  Query-backed sections carry a { collection, pipeline } query plus a
+  presentation contract (kpi: valueKey, format?; chart: x, y; table: columns
+  [{ key, label?, format? }]); bind sections to filter controls with
+  filterBy: [field]. Returns the report URL to share with the user.
 payloadSchema:
   type: object
   required:
@@ -53,8 +58,8 @@ routine:
         _analytics.validateReportSpec:
           spec:
             _payload: spec
-          datasets:
-            _module.var: datasets
+          catalog:
+            _module.var: catalog
           roles:
             _user: roles
   - id: insert_report
