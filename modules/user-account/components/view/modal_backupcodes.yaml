@@ -16,11 +16,9 @@ events:
       type: CopyToClipboard
       params:
         copy:
-          _nunjucks:
-            template: "{{ codes | join('\n') }}"
-            on:
-              codes:
-                _state: enroltotp.backup_codes
+          _array.join:
+            - _state: enroltotp.backup_codes
+            - "\n"
 blocks:
   - id: backupcodes_message
     type: Html

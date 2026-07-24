@@ -49,7 +49,8 @@ routine:
                     profile.profile_created:
                       _if:
                         test:
-                          _payload: set_profile_created
+                          _boolean:
+                            _payload: set_profile_created
                         then: true
                         else:
                           $ifNull:
