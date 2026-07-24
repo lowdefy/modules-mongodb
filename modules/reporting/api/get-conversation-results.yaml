@@ -1,9 +1,12 @@
-# Fetches a conversation's persisted result parts (charts + downloads) for the
-# chat page's Results panel, scoped by userId. The conversation list omits
-# dataParts to stay light; the page calls this on select to repopulate the
-# panel. Returns the parts already split by type, matching the charts/downloads
-# state keys. Charts carry a baked ECharts option (a snapshot of the data as of
-# the turn); downloads carry a query spec that re-runs live on click.
+# Fetches a conversation's transcript and persisted result parts (charts +
+# downloads) for the chat page, scoped by userId. The page calls this on
+# select and restores messages FROM THIS FRESH READ — never from the sidebar
+# list snapshot, which races the onFinish save hook and can be a turn behind;
+# restoring a stale transcript and continuing would overwrite the saved doc
+# with the stale messages (permanent turn loss). Returns the parts already
+# split by type, matching the charts/downloads state keys. Charts carry a
+# baked ECharts option (a snapshot of the data as of the turn); downloads
+# carry a query spec that re-runs live on click.
 id: get-conversation-results
 type: Api
 routine:
@@ -17,6 +20,7 @@ routine:
         - null
     :then:
       - :return:
+          messages: []
           charts: []
           downloads: []
   - id: load
@@ -34,12 +38,17 @@ routine:
       options:
         projection:
           dataParts: 1
+          messages: 1
   - :return:
       _mql.expr:
         on:
           parts:
             _if_none:
               - _step: load.dataParts
+              - []
+          messages:
+            _if_none:
+              - _step: load.messages
               - []
         expr:
           $let:
@@ -65,5 +74,6 @@ routine:
                           - data-report-download
                   in: $$this.data
             in:
+              messages: $messages
               charts: $$charts
               downloads: $$downloads

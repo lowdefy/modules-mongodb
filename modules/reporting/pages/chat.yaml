@@ -78,11 +78,14 @@ blocks:
                 charts: []
                 downloads: []
           onSelect:
-            # Switch first (atomic, infallible) and clear the panel as the
-            # loading state, so a failed results fetch can never strand the user
-            # on the previous conversation. Then repopulate from the fetched
-            # snapshot; on fetch failure the chain stops here leaving an empty
-            # panel, which matches a conversation that has no saved results.
+            # Switch first (atomic, infallible) and clear the transcript and
+            # panel as the loading state, so a failed fetch can never strand
+            # the user on the previous conversation. Then repopulate — messages
+            # included — from the FRESH get-conversation-results read, never
+            # from the sidebar list snapshot: that snapshot refreshes when the
+            # stream ends client-side, racing the server's onFinish save, so it
+            # can be a turn behind — and continuing a chat restored from it
+            # would overwrite the saved doc with the stale transcript.
             - id: select_conversation
               type: SetState
               params:
@@ -90,29 +93,7 @@ blocks:
                   _event: key
                 charts: []
                 downloads: []
-                messages:
-                  _mql.expr:
-                    on:
-                      conversations:
-                        _state: conversations
-                      selected:
-                        _event: key
-                    expr:
-                      $let:
-                        vars:
-                          match:
-                            $arrayElemAt:
-                              - $filter:
-                                  input: $conversations
-                                  cond:
-                                    $eq:
-                                      - $$this._id
-                                      - $selected
-                              - 0
-                        in:
-                          $ifNull:
-                            - $$match.messages
-                            - []
+                messages: []
             - id: load_results
               type: CallAPI
               params:
@@ -124,6 +105,11 @@ blocks:
             - id: set_results
               type: SetState
               params:
+                messages:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: get-conversation-results
+                      - ".response.messages"
                 charts:
                   _api:
                     _build.string.concat:

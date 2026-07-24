@@ -1,8 +1,9 @@
-# Conversation list for the chat page's sidebar, most recent first. Messages
-# are included so selecting a conversation restores the transcript without
-# another fetch; dataParts (the persisted chart/download snapshots) are
-# excluded to keep the payload light and fetched on select via
-# get-conversation-results. The list is capped to keep the payload bounded.
+# Conversation list for the chat page's sidebar, most recent first. Carries
+# titles/metadata only: messages and dataParts are excluded — selecting a
+# conversation restores both via a fresh get-conversation-results read (a
+# list snapshot races the onFinish save and can be a turn behind, and a stale
+# restore would overwrite the saved transcript on the next turn). The list is
+# capped to keep the payload bounded.
 id: list-conversations
 type: Api
 routine:
@@ -32,5 +33,6 @@ routine:
         limit: 30
         projection:
           dataParts: 0
+          messages: 0
   - :return:
       _step: find_conversations
