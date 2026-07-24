@@ -384,7 +384,7 @@ my other sessions"` **and** `label.disabled: true`. For `CheckboxSwitch` the cap
 
 - [ ] **F24 — Members list (`user-admin/all`) crashes on load with no filters: empty `$and`
       is illegal in MongoDB.** `modules/user-admin/requests/stages/members_filter.yaml:11`
-      emits `$match: { $and: <_array.concat of four `_if … else: []` clauses> }`. On a clean
+      emits `$match: { $and: <_array.concat of four `\_if … else: []` clauses> }`. On a clean
       page load **no filter is set**, so every clause resolves to `[]`, the concat is `[]`,
       and the stage becomes `$match: { $and: [] }` — which MongoDB rejects with
       `$and/$or/$nor must be a nonempty array` (surfaced at `get_all_members.yaml:8`). The
@@ -397,3 +397,129 @@ my other sessions"` **and** `label.disabled: true`. For `CheckboxSwitch` the cap
       export** path (the export reuses `members_filter.yaml`, per its header) and anywhere else
       that reuses this stage — audit those too. Small, clear fix — flagged for the batch (or
       can be applied directly to unblock Phase 3 on request).
+
+- [ ] **F25 — User-admin `all` page filter/sort toolbar is misaligned, incoherent, and
+      unclosed (no card).** Several layout/styling issues on the Members + Invitations
+      toolbars:
+      (a) **Excel download button is `primary`, should be `default`** — same "primary
+      overused for non-primary actions" theme as **F16** (which was `/user-account/view`);
+      reserve primary for the page's main action.
+      (b) **Segmented (segmented selector) doesn't vertically align with the other filters** —
+      it hangs to the top of the row instead of centering with the text input / buttons
+      (align/`selfAlign` on the toolbar row).
+      (c) **Sort selector + order-direction button wrap onto a second row** instead of sitting
+      inline with the filters (Members tab) — the toolbar row wraps rather than fitting/
+      flexing.
+      (d) **Invitations tab: the sort selector and order button are each on their own line**
+      (worse than the Members tab) — same inline-layout problem, more broken.
+      (e) **Filter input + segmented + clear button don't read as a coherent group; the
+      "clear" button looks wrong/out of place** — needs a consistent control grouping/spacing
+      treatment.
+      (f) **The toolbar/content floats directly on the page background with no card** — reads
+      as unfinished; suggestion to wrap the filter bar + table in a card (matching the tile
+      cards used elsewhere) so it's visually contained.
+      All are `user-admin` `all`-page (`pages/all.yaml` + its filter/sort components).
+      Cosmetic/layout, but collectively make the console's landing page look unpolished.
+      Group as one toolbar rework in the batch.
+
+- [ ] **F26 — Custom Members-table column (`table_columns` slot) renders a header but no
+      data; the members query never projects the field, and the worked example is
+      half-complete.** The demo injects a Department column via
+      `apps/demo/modules/user-admin/vars.yaml` → `components.table_columns:
+[{ headerName: Department, field: department, width: 140 }]` ("worked example of the
+      `table_columns` slot"). The column header shows, but every cell is empty — even though
+      the profile carries `department` (DB-verified: `contact.profile.department` /
+      `users.profile.department` = "Department"). Root cause: `get_all_members`
+      (`modules/user-admin/requests/stages/members_base.yaml`) flattens only
+      name/picture/email/roles*arr/status/created/updated/signed_up — it does **not** surface
+      `department` (nor a top-level `profile` bag), so a column bound to `field: department`
+      finds nothing. Nothing connects the custom column to a projection: the demo's
+      `request_stages` sets only `write: []` (no `get_all_users` stage to add the field), and
+      the base stage can't hardcode a consumer's custom field. **This is a design gap in the
+      slot contract**, not just a demo omission: adding a `table_columns` entry silently gives
+      an empty column unless the consumer \_also* remembers to project the field via
+      `request_stages.get_all_users` — opt-in correctness that drifts (exactly what happened
+      here). Prefer "one correct way": have `members_base` carry the `profile` bag (or the
+      configured `fields.profile` set) onto the row so any `field: profile.<x>` column just
+      works, and make the worked example demonstrate a column that actually populates.
+      Secondary: **field-path inconsistency** — the active slot uses `field: department` while
+      the orphan `apps/demo/modules/user-admin/components/table_columns.yaml` uses
+      `field: profile.department` (apparently unused); reconcile to one shape once the row
+      contract is decided. Per the repo rule that every capability ships a build-verified
+      worked example, the `table_columns` slot example should be one whose data resolves
+      end-to-end.
+
+- [ ] **F27 — Profile edit form: no spacing between fields, and honorific appears in the
+      admin console but not in self-service (inconsistent).** Two issues on the shared profile
+      edit form (`modal_profile.yaml`, used by both `user-account` and `user-admin` via
+      `_module.var: fields.profile` + a shared honorific `_ref` gated on
+      `fields.show_honorific`):
+      (a) **No gap between honorific / first name / last name (and the profile fields)** — the
+      form stacks the inputs flush with no `layout.gap` on the container, so honorific,
+      given*name, family_name and the `fields.profile` blocks run together. Since the fields
+      are shared, this affects **both** the account workspace and the admin `view` profile
+      modals. Same class as **F22**(a) (2FA modal gap). Add a content gap in the shared form.
+      (b) **Honorific is shown in `user-admin` but hidden in `user-account` — inconsistent.**
+      The demo's `user-admin` entry sets `fields.show_honorific: true`
+      (`apps/demo/modules/user-admin/vars.yaml`) but the `user-account` entry does **not** set
+      it (`apps/demo/modules/user-account/vars.yaml` has only `fields.profile`), so it defaults
+      off — a user can set their title when an admin edits them, but not when editing their own
+      profile. The forms \_are* shared; only the gate var diverges. Decide the intended posture
+      and apply it consistently: either surface honorific in both (set `show_honorific: true`
+      on the user-account entry too) or neither — and consider whether `show_honorific` should
+      default on so the two stay aligned without per-entry config. (Confirms the user's
+      expectation that the profile form is a shared component — it is; the divergence is purely
+      the `show_honorific` var.)
+
+- [ ] **F28 — Activity timeline is always empty: `GetEventsTimeline` still reads the retired
+      app_name-keyed event schema, but events are now written flat.** The Activity tile
+      (`user-admin/components/view/tile_activity.yaml`) fetches via the events module's
+      `events-timeline` component → `GetEventsTimeline` plugin request. Events **are** written
+      and match the target (DB-verified: 4 `log-events` rows with
+      `user_ids: ["381b…"]`, plus flat top-level `title`/`description`), yet the tile shows "No
+      activity." Root cause in
+      `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js`:
+      • the `$match` requires a **top-level field named `<app_name>`** —
+      `{ [app_name]: { $ne: null } }` (lines ~62–69, `app_name` = the `display_key` var = the
+      app name, `demo`); and
+      • the display projection reads `$<app_name>.title` / `.description` / `.info`
+      (lines ~202–206).
+      Both assume the **old per-app-keyed display block** (`event.demo.title`). But events were
+      migrated to **flat `event_display`** ("app_name keying is retired", per
+      `update-profile.yaml`): the actual docs have keys `_id, title, description, contact_ids,
+    user_ids, date, created, type, metadata, files` — **no `demo` field**. So the app_name
+      guard excludes **every** event → empty timeline (and the projection would null the real
+      top-level `title` even if a row slipped through). This is the **events module's flagship
+      read** and affects every timeline consumer, not just user-admin. **Write side is correct
+      (flat); the read side + manifest are stale.** Fix: migrate `GetEventsTimeline` to the flat
+      schema — drop/replace the `{ [app_name]: { $ne: null } }` guard (e.g. a flat
+      `{ title: { $ne: null } }` presence check, if any is even needed) and read
+      `title`/`description`/`info` from the top level, not `$<app_name>.*`; rebuild the plugin
+      `dist`. Also update the `events` manifest `display_key` doc
+      (`modules/events/module.lowdefy.yaml:25`), which still says "Events store per-app display
+      titles keyed by app name" — and reassess whether `display_key` is still needed at all
+      under the flat model. NB a prior changelog "fix" tightened the timeline to _filter out_
+      events missing the `display_key` field — under the flat schema that guard is exactly what
+      now hides everything.
+
+- [ ] **F29 — Orphaned-role editing: the roles selector shows a label-less tag, and saving
+      with an orphaned role throws an uninformative `ROLE_NOT_FOUND`.** With a role on the
+      member that isn't in the `auth.roles` catalog (e.g. `old`), the **display** side is fine —
+      the Attributes card renders it as a flagged "no longer configured" chip (checklist
+      line 165 display intent ✓). But the **edit** side has two problems:
+      (a) **Selector renders a bare tag with no label.** The roles multiselect builds its
+      options from the catalog only, so a selected orphaned value has no matching option and
+      renders as a tag with no text. Fix per user's suggestion: inject the member's orphaned
+      role ids into the selector options (labelled e.g. `old (no longer configured)`) so they
+      render and remain visible/removable — matching the card's treatment.
+      (b) **Saving with the orphaned role still selected throws `ROLE_NOT_FOUND: old`.**
+      BetterAuth validates every submitted role against the catalog and rejects the unknown
+      one, so any roles save that keeps an orphaned role fails. Two issues: the error is
+      **uninformative** for the operator (raw `ROLE_NOT_FOUND: old`, no friendly copy), and it
+      **conflicts with the design intent** that orphaned roles are "removable, **never silently
+      stripped**" (checklist line 165 / role-catalog design) — today an admin can't save any
+      role change while an orphaned role remains, they must remove it first. Decide: either
+      preserve orphaned roles through the save (don't re-validate pre-existing ones) so an
+      unrelated edit doesn't force their removal, or make removal the explicit required action
+      with a friendly message ("Role 'old' is no longer configured — remove it to save"). At
+      minimum, map `ROLE_NOT_FOUND` to human copy naming the offending role.
