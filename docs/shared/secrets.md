@@ -39,9 +39,7 @@ Email/SMTP and other transport secrets are not used by any module here — `noti
 
 ## Read-only reporting principal (`REPORTING_DATA_MONGODB_URI`)
 
-<!-- TODO(reporting task 8): the reporting security-model concept page should link here from its "read-only principal" section rather than duplicate this provisioning. -->
-
-The reporting module's query engine executes AI-authored MongoDB aggregation pipelines. Its **second, independent safety layer** (the first is the pipeline validator) is the database principal it connects as: `REPORTING_DATA_MONGODB_URI` must point at a MongoDB user granted **only** the `read` role on the reporting database. This is a **deployment change, not a code change** — the `ReportingData` connection (`modules/reporting/connections/reporting-data.yaml`) resolves its `databaseUri` from this secret via `_secret`, so repointing the secret at a read-only user is all that is required.
+The reporting module's [open query engine](../reporting/concepts/open-query-engine.md) executes AI-authored MongoDB aggregation pipelines. Its **second, independent safety layer** (the first is the pipeline validator) is the database principal it connects as: `REPORTING_DATA_MONGODB_URI` must point at a MongoDB user granted **only** the `read` role on the reporting database. This is a **deployment change, not a code change** — the `ReportingData` connection (`modules/reporting/connections/reporting-data.yaml`) resolves its `databaseUri` from this secret via `_secret`, so repointing the secret at a read-only user is all that is required.
 
 The secret name is declared in `modules/reporting/module.lowdefy.yaml`.
 

@@ -1,0 +1,178 @@
+# Seeds a worked-example saved report into the reporting module's reports-store
+# for the signed-in user, so the open-engine report surface is reproducible
+# without driving the chat agent. The report exercises every consumer-facing
+# capability the presentation contract adds:
+#   - a select filter (region) bound to KPI + chart + table via filterBy, which
+#     drives the server-built $match prepend re-query path;
+#   - a currency-formatted KPI and table column sourced from the catalog's
+#     demo_orders.total display hint (format: currency USD);
+#   - a pipeline-backed bar chart with an x/y presentation contract;
+#   - a CSV download section (pipeline only, no contract).
+# It reads demo_orders (seed it first with the "Seed demo orders" button).
+#
+# Stored raw — nested $-prefixed pipeline keys live inside the report doc (MongoDB
+# 5.0+); resolve-report revalidates each pipeline through AnalyticsPipeline at
+# view time, so the seed does not (need to) run validateReportSpec here.
+#
+# Idempotent: a deterministic per-user _id is cleared then reinserted, so the
+# report keeps a stable URL across re-seeds and never duplicates.
+id: reporting-seed-example-report
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to seed the example report.
+  - id: clear
+    type: MongoDBDeleteMany
+    connectionId: reporting-reports
+    properties:
+      filter:
+        _id:
+          _string.concat:
+            - "example-orders-report-"
+            - _user: id
+        userId:
+          _user: id
+  - id: insert_report
+    type: MongoDBInsertOne
+    connectionId: reporting-reports
+    properties:
+      doc:
+        _id:
+          _string.concat:
+            - "example-orders-report-"
+            - _user: id
+        userId:
+          _user: id
+        title: Orders overview (seeded example)
+        description: >
+          A worked example over the seeded demo_orders collection — a KPI, a
+          bar chart, a table, a bound region filter and a CSV download. Copy the
+          section shapes for your own reports.
+        sourceConversationId: null
+        createdAt:
+          _date: now
+        updatedAt:
+          _date: now
+        spec:
+          title: Orders overview (seeded example)
+          description: >
+            Revenue and order counts across the synthetic demo_orders dataset.
+            Use the Region filter to scope every section below.
+          sections:
+            # A select filter; its options come from demo_orders.region's enum
+            # `values` in the catalog. Bound to the three data sections below.
+            - type: filter
+              label: Region
+              control: select
+              field: region
+            - type: markdown
+              content: >
+                ## Orders overview
+
+                KPI, chart and table over the seeded `demo_orders` collection.
+                The **Region** filter above prepends a `$match` to each bound
+                section's pipeline and re-queries it server-side.
+            # Currency KPI — the format is copied from the catalog's
+            # demo_orders.total display hint.
+            - type: kpi
+              label: Total revenue
+              query:
+                collection: demo_orders
+                pipeline:
+                  - $group:
+                      _id: null
+                      total:
+                        $sum: $total
+              valueKey: total
+              format:
+                style: currency
+                currency: USD
+                locale: en-US
+                decimals: 2
+              filterBy:
+                - region
+            # Pipeline-backed bar chart with an x/y presentation contract.
+            - type: chart
+              label: Revenue by category
+              chart: bar
+              query:
+                collection: demo_orders
+                pipeline:
+                  - $group:
+                      _id: $category
+                      revenue:
+                        $sum: $total
+                  - $project:
+                      _id: 0
+                      category: $_id
+                      revenue: 1
+                  - $sort:
+                      revenue: -1
+              x: category
+              y:
+                - revenue
+              filterBy:
+                - region
+            # Table with a currency-formatted column (again from the catalog hint).
+            - type: table
+              label: Orders by status
+              query:
+                collection: demo_orders
+                pipeline:
+                  - $group:
+                      _id: $status
+                      orders:
+                        $sum: 1
+                      revenue:
+                        $sum: $total
+                  - $project:
+                      _id: 0
+                      status: $_id
+                      orders: 1
+                      revenue: 1
+                  - $sort:
+                      revenue: -1
+              columns:
+                - key: status
+                  label: Status
+                - key: orders
+                  label: Orders
+                - key: revenue
+                  label: Revenue
+                  format:
+                    style: currency
+                    currency: USD
+                    locale: en-US
+                    decimals: 2
+              filterBy:
+                - region
+            # CSV download — pipeline only, no presentation contract; headers
+            # come from the row keys.
+            - type: download
+              label: Download orders CSV
+              query:
+                collection: demo_orders
+                pipeline:
+                  - $project:
+                      _id: 0
+                      region: 1
+                      category: 1
+                      status: 1
+                      channel: 1
+                      month: 1
+                      total: 1
+                      quantity: 1
+  - :return:
+      ok: true
+      reportId:
+        _string.concat:
+          - "example-orders-report-"
+          - _user: id
+      url:
+        _string.concat:
+          - "/reporting/report?reportId=example-orders-report-"
+          - _user: id

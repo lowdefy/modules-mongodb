@@ -71,8 +71,11 @@
 
 ## reporting
 
-- docs/reporting/how-to/complex-data.md: Reporting over complex data — The analytics engine queries **one collection of scalar fields** and compiles to a fixed, read-only pipeline (`$match / $group / $project / $sort / $limit`). That narrow surface is the security boundary: the AI only ever names dictionary ids, and no AI-supplied string becomes a field path, collec...
-- docs/reporting/index.md: AI Chat Reporting — Chat to your data and generate saved, navigable reports. The module ships a reporting agent (chat and one-shot surfaces), a constrained query engine over an app-supplied data dictionary, and report pages compiled server-side from AI-generated report specs.
+- docs/reporting/concepts/open-query-engine.md: The open query engine — The reporting agent answers questions by authoring **near-arbitrary read-only MongoDB aggregation pipelines** — `$lookup`, `$unwind`, array work, window functions, faceting — over the collections you declare in the [catalog](../reference/catalog.md). Chat, charts, saved reports, and CSV exports a...
+- docs/reporting/how-to/complex-data.md: Reporting over complex data — Real schemas are not flat — they have embedded sub-documents, arrays, object-arrays, and links between collections. On the [open query engine](../concepts/open-query-engine.md) the agent handles all of these **directly**: it authors `$lookup`, `$unwind`, and array-expression pipelines over the ba...
+- docs/reporting/index.md: AI Chat Reporting — Chat to your data and generate saved, navigable reports. The module ships a reporting agent (chat and one-shot surfaces), an **open query engine** over an app-supplied collections catalog, and report pages compiled server-side from AI-generated report specs.
+- docs/reporting/reference/catalog.md: The collections catalog — The `catalog` var is the reporting module's single most important input. It is two things at once:
+- docs/reporting/reference/presentation-contract.md: The presentation contract — A raw aggregation pipeline has no statically derivable output shape, so every query that feeds a **renderer** — a chart, a KPI tile, a table — is paired with an AI-declared **presentation contract**: the output columns the renderer reads, and how numbers format. The query says _what data_; the co...
 - docs/reporting/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## user-account

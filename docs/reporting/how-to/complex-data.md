@@ -2,127 +2,100 @@
 title: Reporting over complex data
 module: reporting
 type: how-to
-concepts: [data-dictionary, mongodb-views, dotted-paths, date-buckets, grain]
+concepts: [catalog, relationships, mongodb-views, grain, fan-out, field-hiding]
 ---
 
 # Reporting over complex data
 
-The analytics engine queries **one collection of scalar fields** and compiles to a fixed, read-only pipeline (`$match / $group / $project / $sort / $limit`). That narrow surface is the security boundary: the AI only ever names dictionary ids, and no AI-supplied string becomes a field path, collection, or operator.
+Real schemas are not flat — they have embedded sub-documents, arrays, object-arrays, and links between collections. On the [open query engine](../concepts/open-query-engine.md) the agent handles all of these **directly**: it authors `$lookup`, `$unwind`, and array-expression pipelines over the base collections you declare in the [catalog](../reference/catalog.md). Views are no longer required for joins or arrays.
 
-Real schemas are not flat — they have embedded sub-documents, arrays, object-arrays, and links between collections. This guide shows how to report over them **correctly**, using two mechanisms:
+This guide covers two things:
 
-1. **Dotted field paths + date buckets** — in the dictionary, for embedded scalar fields and time-series. No view needed.
-2. **Read-only MongoDB views** — for arrays, object-arrays, and cross-collection joins. The view bakes the `$lookup`/`$unwind` in at a fixed grain; the engine queries it flat.
+1. **Joining and unwinding directly** — the default path. Declare `relationships` in the catalog and the agent `$lookup`s for you.
+2. **Views as an optional convenience** — when you want a fixed grain (so counts are exact) or want to hide fields.
 
-The rule of thumb: **if the data would fan out (a one-to-many array or join), it belongs in a view**, so the grain is fixed once and every count/sum is exact — never left to whatever the AI composes.
+## 1. Direct joins and unwinds (the default)
 
-## 1. Dotted paths (embedded sub-documents)
-
-A dimension or measure may declare an author-controlled `field` — a dotted path into the document. It defaults to the `id`, so flat fields need nothing. The `id` stays the AI-facing name and the output column; `field` is where the value comes from.
+Declare each cross-collection link as a `relationship` on the catalog entry, and expose the join-target collection too. The agent reads the relationships and authors correct `$lookup`s.
 
 ```yaml
-dimensions:
-  - id: channel
-    type: string
-    field: source.channel # embedded sub-document
-  - id: region
-    type: string
-    field: entity.region
+demo_contacts:
+  description: People, each belonging to one or more companies.
+  fields:
+    profile.name: { type: string, description: Contact full name }
+    global_attributes.company_ids:
+      type: array
+      description: Scalar array of demo_companies `_id`s the contact belongs to
+  relationships:
+    - field: global_attributes.company_ids
+      collection: demo_companies
+      foreignField: _id
+
+demo_companies: # must also be cataloged — it is a $lookup.from target
+  description: Company records; `_id` is the join key.
+  fields:
+    _id: { type: string, description: Company id }
+    name: { type: string, description: Company name }
 ```
 
-Dotted paths are safe because they come from the trusted dictionary at build time, never from the AI. They are validated against a strict pattern (no `$`, no leading digit, no empty segments). Reach array elements with a **view** (below), not a dotted path.
+With both collections cataloged and the relationship declared, the agent can unwind `company_ids`, `$lookup` into `demo_companies`, and group — no view needed. Both collections must be in the catalog; the engine enforces the union of their `roles` on any pipeline that touches both.
 
-## 2. Date buckets (time series)
+Embedded scalars and time-series need nothing special: the agent reads dotted paths (`source.channel`, `created.timestamp`) and groups on a truncated date (`$dateTrunc`) directly.
 
-A `date` dimension may declare a `bucket` (`year`, `month`, `week`, or `day`). The engine groups on a truncated date — no pre-computed month string, and no extra pipeline stage.
+## 2. The grain / fan-out risk
 
-```yaml
-dimensions:
-  - id: created
-    type: date
-    field: created.timestamp
-    bucket: month
-```
+Direct joins are powerful but not automatically correct. **Unwinding a one-to-many array multiplies parent rows**, so summing a parent field after an `$unwind` double-counts. The engine does **not** guarantee aggregates are fan-out-free — this is a [known, documented risk](../concepts/open-query-engine.md#grain-and-fan-out-a-known-documented-risk). Two things mitigate it:
 
-Grouping by `created` now yields one row per month. `bucket` is only valid on a `date` dimension.
+- **Prompting.** The agent is told about grain and steered toward distinct-counting (`$addToSet` + `$size`) when it unwinds.
+- **Clear `description`s.** State a collection's grain and what a "count" means in its catalog `description`, so the agent reasons correctly.
 
-## 3. Views for arrays, object-arrays, and joins
+## 3. Views — an optional convenience
 
-Point a dataset's `source.collection` at a read-only MongoDB view. The view is a saved aggregation over a source collection — **no stored data, no sync** — that presents complex data as a flat collection at a chosen grain.
+A read-only MongoDB **view** is a saved aggregation over a source collection — no stored data, no sync — that presents complex data as a flat collection at a chosen grain. Catalog a view exactly like a base collection (it is a first-class catalog citizen). Use one when you want either of:
 
-There are two recurring formulas.
+### Fixed grain, exact counts
 
-### Formula A — the "report" view (one row per entity)
-
-Flatten current status and denormalize **many-to-one** joins. Grain stays one row per entity, so parent counts/sums are exact.
+Bake the `$lookup`/`$unwind` and current-status extraction into the view so the grain is fixed once and every count is exact — the agent can't fan it out because the fan-out already happened at a controlled grain.
 
 ```js
-// view: activities_report  (viewOn: activities)
-[{ $addFields: { current_stage: { $arrayElemAt: ["$status.stage", 0] } } }]
-
-// view: actions_report  (viewOn: actions) — join the parent workflow (M:1)
-[
-  { $lookup: { from: "workflows", localField: "workflow_id", foreignField: "_id", as: "workflow" } },
-  { $unwind: { path: "$workflow", preserveNullAndEmptyArrays: true } },
-  { $addFields: { current_stage: { $arrayElemAt: ["$status.stage", 0] } } },
-]
+// view: demo_activities_report  (viewOn: demo_activities) — one row per activity
+[{ $addFields: { current_stage: { $arrayElemAt: ["$status.stage", 0] } } }][
+  // view: demo_action_assignees  (viewOn: demo_actions) — one row per (action, assignee)
+  { $unwind: { path: "$assignees", preserveNullAndEmptyArrays: false } }
+];
 ```
 
-The dataset then uses dotted `field` for the joined/nested columns:
+Catalog the view and state its grain plainly:
 
 ```yaml
-- id: actions
-  source: { collection: actions_report }
-  dimensions:
-    - { id: kind, type: string }
-    - { id: stage, type: string, field: current_stage }
-    - { id: workflow_type, type: string, field: workflow.workflow_type }
-  measures:
-    - { id: count, type: count }
+demo_action_assignees:
+  description: >
+    Actions exploded to one row per assignee (workload view). A count is the
+    number of assignments, not distinct actions. A read-only view over demo_actions.
+  fields:
+    assignees.name: { type: string, description: Assigned person }
+    current_stage: { type: string, description: Current status stage }
 ```
 
-### Formula B — the "relational" view (unwind to child grain)
+### Field hiding
 
-Unwind **one** array (object-array or scalar-FK array) to reach child grain. Add these only for insights you want at that grain, and be explicit about what a count means.
-
-```js
-// view: action_assignees  (viewOn: actions) — one row per (action, assignee)
-[{ $unwind: { path: "$assignees", preserveNullAndEmptyArrays: false } }]
-
-// view: contact_companies  (viewOn: contacts) — one row per (contact, company)
-[
-  { $unwind: { path: "$global_attributes.company_ids", preserveNullAndEmptyArrays: false } },
-  { $lookup: { from: "companies", localField: "global_attributes.company_ids", foreignField: "_id", as: "company" } },
-  { $unwind: { path: "$company", preserveNullAndEmptyArrays: true } },
-]
-```
-
-```yaml
-- id: action_assignees
-  # Grain: one row per (action, assignee). `count` is assignments, not actions.
-  source: { collection: action_assignees }
-  dimensions:
-    - { id: assignee, type: string, field: assignees.name }
-  measures:
-    - { id: count, type: count }
-```
-
-## The grain rule (why this is correct)
-
-Unwinding a child array multiplies parent rows. If you unwound `assignees` and then summed a parent field, you'd double-count. The view fixes this by **committing to one grain**: `actions_report` is per-action (sum parent fields freely); `action_assignees` is per-assignment (count assignments, don't sum parent money). State the grain in the dataset `description` so the agent — and you — never conflate them. Never combine a parent measure with an unwound-child dimension in the same dataset.
+There is [no field-level scoping in the catalog](../reference/catalog.md#roles-semantics) — declaring a collection exposes all its fields. To expose a collection while hiding some fields, define a view that `$project`s the sensitive fields away and catalog **the view** instead of the base collection.
 
 ## Creating views
 
-Views are database DDL, so they're created outside the app (the MongoDB connection only does CRUD):
+Views are database DDL, so they are created outside the app (the MongoDB connection only does CRUD):
 
 - **Production:** define them in a migration, or once with `db.createCollection(name, { viewOn, pipeline })`.
-- **Demo:** `apps/demo/scripts/seed-reporting-domain.mjs` seeds a linked domain and creates the four views used by the `activities`, `actions`, `action_assignees`, and `contact_companies` datasets. Run `pnpm --filter @lowdefy/modules-demo reporting:seed`.
+- **Demo:** `apps/demo/scripts/seed-reporting-domain.mjs` seeds a linked domain and creates the demo views (`demo_activities_report`, `demo_actions_report`, `demo_action_assignees`, `demo_contact_companies`). Run `pnpm --filter @lowdefy/modules-demo reporting:seed`.
 
-## Catalog sketch
+## When to reach for a view
 
-For a full schema, expect roughly:
+| Situation                                               | Approach                                                                                        |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Join two collections, parent grain, exact counts matter | Direct `$lookup` (catalog the relationship) — or a report view if you want the grain guaranteed |
+| Unwind a child array and count children                 | Direct `$unwind` — or a relational view for a stable per-child grain                            |
+| Aggregates must be provably free of double-counting     | View at a fixed grain                                                                           |
+| Expose a collection but hide some fields                | View with a `$project`                                                                          |
+| A heavy view is too slow                                | Switch that one to an on-demand materialized view (`$merge` on a schedule)                      |
 
-- **One "report" view per entity** you want current-status or time-series on (activities, actions, workflows, contacts, companies, events, files, notifications).
-- **A relational view per child-grain insight** (assignees, activity contacts, status history, contact↔company, event references).
-
-Storage is zero (plain views compute on read). If a heavy view is ever too slow, switch that one to an on-demand materialized view (`$merge` on a schedule) — not the default.
+Plain views compute on read (zero storage). A view is the surest way to hand the agent a shape where fan-out can't happen — but it is a convenience now, not a requirement.

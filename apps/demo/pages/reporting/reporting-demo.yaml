@@ -19,10 +19,12 @@ _ref:
           content: >
             Chat to your data and generate saved, navigable reports. Seed the
             demo data below, then open one of the surfaces. The reporting agent
-            can only query what the data dictionary declares — here, a flat
-            synthetic `orders` dataset plus four view-backed datasets over
-            realistic linked data (activities, actions, assignees, contact
-            companies) that exercise joins, arrays and object-arrays.
+            authors read-only MongoDB aggregation pipelines against the
+            collections catalog — here a flat synthetic `orders` collection plus
+            realistic linked base collections (companies, contacts, activities,
+            workflows, actions) whose declared relationships let the agent
+            author its own $lookups/$unwinds, and a few optional view-backed
+            collections that pre-bake a fixed grain for exact counts.
 
       - id: secrets_note
         type: Alert
@@ -120,6 +122,51 @@ _ref:
                 fontSize: 12px
                 color: var(--ant-color-text-secondary)
                 marginBottom: 0
+
+      - id: example_report_card
+        type: Card
+        properties:
+          title: Example saved report
+        blocks:
+          - id: example_report_help
+            type: Paragraph
+            properties:
+              content: >
+                Seeds a worked-example report over the demo_orders collection so
+                the report surface is reproducible without driving the chat
+                agent. It exercises the open engine's presentation contract
+                end-to-end: a currency-formatted KPI and table column (sourced
+                from the catalog's demo_orders.total display hint), a
+                pipeline-backed bar chart with an x/y contract, a Region select
+                filter bound to every section (the server-built $match re-query
+                path), and a CSV download section. Seed the demo orders first.
+          - id: seed_report_btn
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Seed example report
+              icon: AiOutlineFileAdd
+              type: primary
+            events:
+              onClick:
+                - id: seed_report
+                  type: CallAPI
+                  params:
+                    endpointId: reporting-seed-example-report
+                  messages:
+                    success: Example report seeded — open it below.
+                    error: Seed failed — sign in and check the MONGODB secret.
+                - id: open_seeded_report
+                  type: Link
+                  params:
+                    pageId:
+                      _module.pageId:
+                        module: reporting
+                        id: report
+                    urlQuery:
+                      reportId:
+                        _api: reporting-seed-example-report.response.reportId
 
       - id: surfaces_divider
         type: Divider
