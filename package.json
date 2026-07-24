@@ -36,6 +36,9 @@
     },
     "onlyBuiltDependencies": [
       "mongodb-memory-server"
-    ]
+    ],
+    "patchedDependencies": {
+      "@lowdefy/blocks-antd-x": "patches/@lowdefy__blocks-antd-x.patch"
+    }
   }
 }

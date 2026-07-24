@@ -1,0 +1,17 @@
+diff --git a/dist/blocks/AgentChat/AgentChat.js b/dist/blocks/AgentChat/AgentChat.js
+index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..3ad2cd6642c961156b944c45b884ac65833ce8e3 100644
+--- a/dist/blocks/AgentChat/AgentChat.js
++++ b/dist/blocks/AgentChat/AgentChat.js
+@@ -73,6 +73,12 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+     ]);
+     const bubbleListRef = useRef(null);
+     const { messages, sendMessage, status, stop, addToolApprovalResponse, addToolOutput, setMessages, regenerate, clearError } = useChat({
++        // Key the Chat instance by conversation: without an id, useChat creates
++        // its Chat once per mount and CAPTURES that transport — the useMemo
++        // transport rebuilt on a conversationId change is silently ignored, so
++        // every send posts under the mount-time conversationId and continuing a
++        // selected conversation persists it under a new id (duplicate doc).
++        id: effectiveConversationId,
+         transport,
+         experimental_throttle: 50,
+         sendAutomaticallyWhen: (args)=>lastAssistantMessageIsCompleteWithToolCalls(args) || lastAssistantMessageIsCompleteWithApprovalResponses(args),
