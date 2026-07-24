@@ -1,6 +1,6 @@
 # Magic-Link Sign-In for user-account
 
-A sub-design of [user-account-better-auth](../design.md). The parent redesign made email/password the primary login method and left magic-link as a `_build.authConfig` enablement branch that renders nothing. This sub-design wires magic-link as a first-class, config-driven method so a deployment with `magicLink` enabled (and, in the migration case, `emailAndPassword` disabled) gets an email-only **passwordless** login and signup, with the emailed link's verification callback landing on the correct module pages.
+A sub-design of [user-account-better-auth](../../design.md). The parent redesign made email/password the primary login method and left magic-link as a `_build.authConfig` enablement branch that renders nothing. This sub-design wires magic-link as a first-class, config-driven method so a deployment with `magicLink` enabled (and, in the migration case, `emailAndPassword` disabled) gets an email-only **passwordless** login and signup, with the emailed link's verification callback landing on the correct module pages.
 
 ## Proposed change
 
@@ -137,7 +137,7 @@ The wall stays as the backstop for the existing-member revoked case. The one res
 
 ## Related
 
-- [user-account-better-auth](../design.md) — the parent design; Decisions 2 (method-driven login), 3 (signup admission), 5 (credential gate), 7 (merge-on-signup) are the load-bearing context here.
+- [user-account-better-auth](../../design.md) — the parent design; Decisions 2 (method-driven login), 3 (signup admission), 5 (credential gate), 7 (merge-on-signup) are the load-bearing context here.
 - [auth-emails](../../../../lowdefy-design/designs/auth-upgrade/_completed/auth-emails/design.md) — renders and sends the magic-link email via the `auth.email` connection; delivered.
 - [magic-link-callbacks](../../../../lowdefy-design/designs/auth-upgrade/_completed/magic-link-callbacks/design.md) — the structured `newUserCallbackUrl` / `errorCallbackUrl` `Login` params this design wires; delivered.
 - [signup-admission-gate](../../../../lowdefy-design/designs/auth-upgrade/features/signup-admission-gate/design.md) — the send gate + create gate that enforce admission before user creation across all flows; delivered.

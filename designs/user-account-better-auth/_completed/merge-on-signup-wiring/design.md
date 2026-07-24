@@ -1,6 +1,6 @@
 # Merge-on-signup identity wiring
 
-The merge-on-signup hook (parent [Decision 7](../design.md)) links or creates a `user-contacts` row for every new user by their verified email, and links the resulting `contactId` back onto the auth `user`. In testing it did neither correctly: it created contacts with an **empty email** and never set `profile.contactId` on password signups. The cause is a build-time/runtime operator confusion in the shared `create-or-link-contact` fragment — it reads the verified user's fields with a build-time `_var` path that navigates into an unresolved runtime `_payload` node, so the real email and id never reach the routine. This sub-design records the root cause and the fix, which is entirely module-side.
+The merge-on-signup hook (parent [Decision 7](../../design.md)) links or creates a `user-contacts` row for every new user by their verified email, and links the resulting `contactId` back onto the auth `user`. In testing it did neither correctly: it created contacts with an **empty email** and never set `profile.contactId` on password signups. The cause is a build-time/runtime operator confusion in the shared `create-or-link-contact` fragment — it reads the verified user's fields with a build-time `_var` path that navigates into an unresolved runtime `_payload` node, so the real email and id never reach the routine. This sub-design records the root cause and the fix, which is entirely module-side.
 
 ## Proposed change
 
@@ -12,7 +12,7 @@ The merge-on-signup hook (parent [Decision 7](../design.md)) links or creates a 
 
 ### Symptoms (F3 / F4)
 
-From the auth-testing run ([`scripts/auth-testing/FINDINGS.md`](../../../scripts/auth-testing/FINDINGS.md), F3/F4):
+From the auth-testing run ([`scripts/auth-testing/FINDINGS.md`](../../../../scripts/auth-testing/FINDINGS.md), F3/F4):
 
 - **F3** — after signup, the `user-contacts` row is created with `lowercase_email: ''` and `email: null` instead of the verified address, on **both** binding paths (`email.verified` for password, `user.create.before` for magic-link/OAuth). Because every upsert keys on the same empty `lowercase_email: ''`, a second signup **matches the first user's bare contact** — two users end up sharing one contact, and a later onboarding save writes one identity's profile onto the other's record. Real cross-identity data corruption, not a cosmetic bug.
 - **F4** — on the `email.verified` (password) path, `UpdateUserProfile` throws `requires a "userId" property`, so the `profile.contactId` link-back never runs and (halt-on-first-error) the routine aborts. `_user.profile.profile_created` then never resolves, so onboarding routing misbehaves. The `user.create.before` path does not hit this — it sets `contactId` inline via `:return` (though to the wrong bare contact, per F3).
@@ -113,7 +113,7 @@ Rejected in favour of `_get` because:
 
 ### 3. Contract stays consistent with user-admin
 
-Parent Decision 7 and [user-admin-better-auth task 02](../../user-admin-better-auth/tasks/02-shared-contact-fragments.md) specify `create-or-link-contact` as **one shared spec** across both modules. The `_var: user.<field>` → `_get` change is internal to the fragment body and leaves the `user` / `connection_id` / `binding_point` var contract intact, so both designs stay on one fragment with no divergence. The whichever-ships-first authoring rule (Decision 8) is unaffected.
+Parent Decision 7 and [user-admin-better-auth task 02](../../../user-admin-better-auth/tasks/02-shared-contact-fragments.md) specify `create-or-link-contact` as **one shared spec** across both modules. The `_var: user.<field>` → `_get` change is internal to the fragment body and leaves the `user` / `connection_id` / `binding_point` var contract intact, so both designs stay on one fragment with no divergence. The whichever-ships-first authoring rule (Decision 8) is unaffected.
 
 ## Impact & follow-ups
 
@@ -131,6 +131,6 @@ Not settleable from source alone — needs a real verify/magic-link flow against
 
 ## Related
 
-- Parent: [user-account on BetterAuth](../design.md) — Decision 7 (merge-on-signup), Decision 8 (shared fragments).
-- [user-admin-better-auth](../../user-admin-better-auth/design.md) — the invite flow that `_ref`s the same fragment (and whose var shape was unaffected).
-- [`scripts/auth-testing/FINDINGS.md`](../../../scripts/auth-testing/FINDINGS.md) — F3, F4.
+- Parent: [user-account on BetterAuth](../../design.md) — Decision 7 (merge-on-signup), Decision 8 (shared fragments).
+- [user-admin-better-auth](../../../user-admin-better-auth/design.md) — the invite flow that `_ref`s the same fragment (and whose var shape was unaffected).
+- [`scripts/auth-testing/FINDINGS.md`](../../../../scripts/auth-testing/FINDINGS.md) — F3, F4.
