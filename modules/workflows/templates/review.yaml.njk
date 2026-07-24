@@ -273,12 +273,19 @@ _ref:
                                                 _var: action_config.form_review
                                               mode: review
                                 else: []
-                            - - _ref:
-                                  path: components/comment-input.yaml
-                                  vars:
-                                    comment_path: comment
-                                    visibility_path: comment_internal
-                                    placeholder: Add a comment (optional).
+                            - _build.if:
+                                test:
+                                  _var:
+                                    key: action_config.show_comment
+                                    default: true
+                                then:
+                                  - _ref:
+                                      path: components/comment-input.yaml
+                                      vars:
+                                        comment_path: comment
+                                        visibility_path: comment_internal
+                                        placeholder: Add a comment (optional).
+                                else: []
                             - _var:
                                 key: page_config.formFooter
                                 default: []

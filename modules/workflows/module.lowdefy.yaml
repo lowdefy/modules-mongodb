@@ -102,6 +102,10 @@ vars:
       applies Title Case, lowercases minor words mid-string, uppercases acronyms
       (base set: PO ID URL API CRM SLA KPI VAT PDF CSV FAQ KYC RFQ; extended by
       `title_acronyms`). Set `title:` only when the default is wrong.
+      Per-action UI knobs (optional): `show_comment` (boolean, default true) — set
+      false to hide the free-form comment box on the action's edit and review
+      pages; `pages.edit.validate_on_draft` (boolean, default false) — set true to
+      validate the form (like Submit) before the edit page's Save Draft persists.
   app_name:
     type: string
     required: true

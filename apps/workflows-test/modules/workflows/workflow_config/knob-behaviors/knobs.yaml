@@ -1,0 +1,38 @@
+# A form action exercising the per-action UI knobs:
+#   show_comment: false            -> the free-form comment box is hidden on edit
+#   pages.edit.validate_on_draft   -> Save Draft validates the form first
+#   form.capped max_length         -> native TextInput maxLength + counter
+type: knobs
+kind: form
+action_group: knob-group
+sort_order: 10
+show_comment: false
+description: Exercises show_comment, validate_on_draft, and max_length.
+access:
+  test:
+    view: true
+    edit: true
+form:
+  # Required — with validate_on_draft on, an empty value must block Save Draft.
+  - key: form.required_field
+    component: text_input
+    title: Required Field
+    required: true
+  # Native max-length capping — maxLength 8 + auto counter.
+  - key: form.capped
+    component: text_input
+    title: Capped
+    max_length: 8
+status_map:
+  action-required:
+    test:
+      message: Fill in the knobs form.
+  in-progress:
+    test:
+      message: Draft saved.
+  done:
+    test:
+      message: Done.
+pages:
+  edit:
+    validate_on_draft: true
