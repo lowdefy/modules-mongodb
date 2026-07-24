@@ -1,19 +1,29 @@
-# Login page — task 09. Serves authPages.signIn and authPages.error.
-# Two renders on one shared email/password form, driven by `login_view`
-# (signin | noaccess):
-#   - signin   : the sign-in form + enabled OAuth / passkey methods.
-#   - noaccess : the authPages.error render (hard-wall "no access" etc.).
+# Login page. Serves authPages.signIn and authPages.error.
+# Three renders driven by `login_view` (signin | noaccess | link-sent):
+#   - signin    : the sign-in form + enabled OAuth / passkey / magic-link methods.
+#   - noaccess  : the authPages.error render (hard-wall "no access" etc.).
+#   - link-sent : the magic-link "check your email" result (send returns
+#                 { status: true } with no session, so it cannot navigate).
 #
 # Method enablement is read from the app auth config via `_build.authConfig`
 # (Decision 2): the password form renders only when emailAndPassword is enabled,
 # an OAuth button per configured provider, the passkey button only when passkey
-# is enabled. OAuth display metadata (label/icon) comes from the `providers` var.
+# is enabled, and the magic-link send only when magicLink is enabled. The `email`
+# input is shared by the password submit and the magic-link send, so it is
+# hoisted out of the password branch and gated on emailAndPassword OR magicLink.
+# Magic-link is the primary action (under the email) when password is off, and an
+# alternative-method button (below the "or" divider) when password is on. The
+# send button itself lives in the shared `components/magic-link-send.yaml`.
+# OAuth display metadata (label/icon) comes from the `providers` var.
 #
-# Errors map through ONE code -> message table (the `_switch` blocks below),
-# used by both paths: password errors return inline on the `Login` call (mapped
-# in the onClick `catch`), OAuth / magic-link failures arrive as a redirect to
-# authPages.error (this page) carrying `?error=` (mapped in `onInit`). Codes:
-# MEMBERSHIP_REQUIRED, EMAIL_NOT_VERIFIED, INVALID_EMAIL_OR_PASSWORD, + default.
+# Errors map through ONE code -> message table (the `_switch` blocks below):
+# password errors return inline on the `Login` call (mapped in the onClick
+# `catch`), OAuth / magic-link failures arrive as a redirect to authPages.error
+# (this page) carrying `?error=` (mapped in `onInit`). Terminal codes
+# (MEMBERSHIP_REQUIRED, EMAIL_NOT_VERIFIED) render the form-hiding noaccess wall;
+# INVALID_EMAIL_OR_PASSWORD toasts inline; a retryable INVALID_TOKEN (expired /
+# consumed magic link) stays on signin and drives a dedicated warning notice so
+# the user can request a new link. A default covers 429 and any unmapped code.
 _ref:
   module: layout
   component: auth-page
@@ -23,19 +33,46 @@ _ref:
     events:
       onInit:
         # Seed the render. If the page was reached as the authPages.error
-        # redirect target it carries `?error=<code>` — flip to the noaccess
-        # render and map the code to a friendly title/description.
+        # redirect target it carries `?error=<code>`. A retryable INVALID_TOKEN
+        # (expired / consumed magic link) stays on signin so the email input and
+        # send affordance remain reachable and drives the dedicated notice below;
+        # every other code flips to the noaccess wall with its friendly title.
         - id: seed_login_view
           type: SetState
           params:
             login_view:
+              _switch:
+                branches:
+                  - if:
+                      _eq:
+                        - _url_query: error
+                        - INVALID_TOKEN
+                    then: signin
+                  - if:
+                      _ne:
+                        - _url_query: error
+                        - null
+                    then: noaccess
+                default: signin
+            # Dedicated retryable notice, set only for INVALID_TOKEN (null for
+            # every other code and on a clean load) — a separate state to the
+            # noaccess alert, whose title defaults on every load.
+            login_notice_title:
               _if:
                 test:
-                  _ne:
+                  _eq:
                     - _url_query: error
-                    - null
-                then: noaccess
-                else: signin
+                    - INVALID_TOKEN
+                then: Link expired
+                else: null
+            login_notice_desc:
+              _if:
+                test:
+                  _eq:
+                    - _url_query: error
+                    - INVALID_TOKEN
+                then: This link has expired or was already used — request a new one below.
+                else: null
             login_error_title:
               _switch:
                 branches:
@@ -90,10 +127,31 @@ _ref:
               description:
                 _state: login_error_desc
 
-        # --- Password form — rendered only when emailAndPassword is enabled ---
+          # Retryable notice above the form (chiefly an expired magic link).
+          # Driven by the dedicated login_notice_* state, so it stays hidden on
+          # a clean sign-in and leaves the send affordance reachable.
+          - id: login_notice_alert
+            type: Alert
+            visible:
+              _ne:
+                - _state: login_notice_title
+                - null
+            properties:
+              type: warning
+              showIcon: true
+              message:
+                _state: login_notice_title
+              description:
+                _state: login_notice_desc
+
+        # --- Shared email input — the one canonical `id: email` field both the
+        # password submit and the magic-link send read. Hoisted out of the
+        # password branch so it renders whenever either method is enabled. ------
         - _build.if:
             test:
-              _build.authConfig: emailAndPassword.enabled
+              _build.or:
+                - _build.authConfig: emailAndPassword.enabled
+                - _build.authConfig: magicLink.enabled
             then:
               - id: email
                 type: TextInput
@@ -110,7 +168,38 @@ _ref:
                     colon: false
                     span: 24
                   placeholder: you@example.com
+            else: []
 
+        # --- Magic-link primary send — when password is off, the send is the
+        # primary action directly under the email input. The button, its `Login`
+        # dispatch, callback params, and cooldown live in the shared component. -
+        - _build.if:
+            test:
+              _build.and:
+                - _build.authConfig: magicLink.enabled
+                - _build.not:
+                    _build.authConfig: emailAndPassword.enabled
+            then:
+              - _ref:
+                  path: components/magic-link-send.yaml
+                  vars:
+                    id: login_magic_send
+                    label: Email me a sign-in link
+                    on_sent:
+                      login_view: link-sent
+                      magic_link_sent_email:
+                        _state: email
+                    visible:
+                      _eq:
+                        - _state: login_view
+                        - signin
+            else: []
+
+        # --- Password form — rendered only when emailAndPassword is enabled ---
+        - _build.if:
+            test:
+              _build.authConfig: emailAndPassword.enabled
+            then:
               - id: login_password_label
                 type: Box
                 visible:
@@ -265,14 +354,57 @@ _ref:
                               default: Something went wrong while signing you in. Please try again.
             else: []
 
-        # --- OAuth (signin state) — one button per configured provider that
-        # also has display metadata in the `providers` var (label/icon). --------
+        # --- Magic-link alternative-method button — when password holds the
+        # primary slot, the send demotes to a peer of the OAuth / passkey buttons
+        # below the "or" divider, placed first among them (closest to the email).
+        # Same shared component as the primary send, restyled via vars. ---------
         - _build.if:
             test:
-              _build.gt:
-                - _build.array.length:
-                    _build.authConfig: providers
-                - 0
+              _build.and:
+                - _build.authConfig: magicLink.enabled
+                - _build.authConfig: emailAndPassword.enabled
+            then:
+              - id: login_alt_divider
+                type: Divider
+                visible:
+                  _eq:
+                    - _state: login_view
+                    - signin
+                properties:
+                  title: or
+                  plain: true
+              - _ref:
+                  path: components/magic-link-send.yaml
+                  vars:
+                    id: login_magic_send
+                    label: Email me a sign-in link
+                    variant: outlined
+                    color: default
+                    icon: AiOutlineMail
+                    on_sent:
+                      login_view: link-sent
+                      magic_link_sent_email:
+                        _state: email
+                    visible:
+                      _eq:
+                        - _state: login_view
+                        - signin
+            else: []
+
+        # --- OAuth "or" divider — owned here unless the magic-link
+        # alternative-method block above already renders one (mixed password +
+        # magic-link deployment), so the two never double up. -------------------
+        - _build.if:
+            test:
+              _build.and:
+                - _build.gt:
+                    - _build.array.length:
+                        _build.authConfig: providers
+                    - 0
+                - _build.not:
+                    _build.and:
+                      - _build.authConfig: magicLink.enabled
+                      - _build.authConfig: emailAndPassword.enabled
             then:
               - id: login_oauth_divider
                 type: Divider
@@ -283,6 +415,17 @@ _ref:
                 properties:
                   title: or
                   plain: true
+            else: []
+
+        # --- OAuth (signin state) — one button per configured provider that
+        # also has display metadata in the `providers` var (label/icon). --------
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _build.authConfig: providers
+                - 0
+            then:
               - id: login_oauth_buttons
                 type: Box
                 visible:
@@ -360,8 +503,77 @@ _ref:
                     - id: passkey_signin
                       type: PasskeySignIn
             else: []
+
+        # --- Link-sent result (magic-link) — the send returns { status: true }
+        # with no session, so it cannot navigate; it flips login_view to
+        # link-sent and shows this "check your email" render. Resend re-fires the
+        # same shared send (cooldown-guarded); the link button returns to signin.
+        - _build.if:
+            test:
+              _build.authConfig: magicLink.enabled
+            then:
+              - id: login_link_sent
+                type: Result
+                visible:
+                  _eq:
+                    - _state: login_view
+                    - link-sent
+                properties:
+                  icon:
+                    name: AiOutlineMail
+                    color: "var(--ant-color-primary)"
+                  status: info
+                  title: Check your email
+                  subTitle:
+                    _nunjucks:
+                      template: We've emailed a sign-in link to <b>{{ email }}</b>. Open it on this device to continue — the link expires in a few minutes.
+                      on:
+                        email:
+                          _state: magic_link_sent_email
+              - _ref:
+                  path: components/magic-link-send.yaml
+                  vars:
+                    id: login_resend
+                    label: Resend link
+                    variant: outlined
+                    color: default
+                    on_sent:
+                      login_view: link-sent
+                      magic_link_sent_email:
+                        _state: email
+                    visible:
+                      _eq:
+                        - _state: login_view
+                        - link-sent
+              - id: login_back_to_form
+                type: Button
+                visible:
+                  _eq:
+                    - _state: login_view
+                    - link-sent
+                properties:
+                  title: Use a different email
+                  block: true
+                  variant: link
+                  color: primary
+                events:
+                  onClick:
+                    - id: back_to_signin
+                      type: SetState
+                      params:
+                        login_view: signin
+            else: []
     nav:
-      - id: login_footer
-        type: Html
-        properties:
-          html: New here? <a href="signup">Create an account</a>
+      # Only when a signup page exists. Passwordless (emailAndPassword off) builds
+      # no signup route and collapses sign-up into this page's email -> link
+      # action, so the "create an account" prompt would 404 and misdescribe the
+      # flow; gated out there.
+      _build.if:
+        test:
+          _build.authConfig: emailAndPassword.enabled
+        then:
+          - id: login_footer
+            type: Html
+            properties:
+              html: New here? <a href="signup">Create an account</a>
+        else: []

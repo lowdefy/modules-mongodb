@@ -1,0 +1,106 @@
+lowdefy: 0.0.0-experimental-20260723122111
+name: Passwordless Demo App
+slug: passwordless-demo
+
+config:
+  homePageId: router
+
+theme:
+  antd:
+    algorithm: compact
+    token:
+      colorPrimary: "#0ea5e9"
+
+global:
+  enums:
+    event_types:
+      _ref:
+        module: events
+        component: event_types
+
+plugins:
+  - name: "@lowdefy/community-plugin-nodemailer"
+    version: 1.1.4
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: workspace:*
+
+auth:
+  secret:
+    _secret: AUTH_SECRET
+  database:
+    id: mdb_adapter
+    type: MongoDBAuthAdapter
+    properties:
+      uri:
+        _secret: MONGODB_URI
+  # Passwordless deployment: email + password OFF, magic-link ON. The login page
+  # reads method enablement from _build.authConfig, so with emailAndPassword
+  # disabled it renders the email-only shape (no password field, no "Forgot?"
+  # link, no password submit) and the magic-link send affordance takes the
+  # primary submit slot. No twoFactor / passkey / OAuth here — credential-gated
+  # methods are moot without a password, so this app exercises the pure
+  # passwordless branch that the full-matrix apps/demo cannot.
+  emailAndPassword:
+    enabled: false
+  magicLink:
+    enabled: true
+    expiresIn: 1800
+  email:
+    from:
+      _secret: AUTH_FROM_ADDRESS
+    provider:
+      type: smtp
+      properties:
+        host:
+          _secret: SMTP_HOST
+        port:
+          _secret: SMTP_PORT
+        secure:
+          _eq:
+            - _secret: SMTP_SECURE
+            - "true"
+        auth:
+          user:
+            _secret: SMTP_USER
+          pass:
+            _secret: SMTP_PASS
+  # CRITICAL passwordless override. The user-account manifest declares a STATIC
+  # authPages.signUp: signup — the role cannot read _build.authConfig inside the
+  # auth block (self-reference) so it always points at the signup page id. But
+  # this app builds NO signup page (the manifest's pages _build.if drops the
+  # signup arm when emailAndPassword.enabled is false), so the static role would
+  # dangle at a non-existent /passwordless-demo/user-account/signup route — the
+  # build does not catch this; it only 404s at runtime. App config wins per role,
+  # so repoint signUp at the login page (which IS the signup page for
+  # passwordless — sign-in and sign-up collapse into one email → link action).
+  authPages:
+    signUp: /user-account/login
+  organizations:
+    policy: pinned
+    org: passwordless-demo
+  userAdminRole: user-admin
+  roles:
+    - id: user-admin
+      label: User Admin
+      description: Administers users across the pinned suite (ban, invite, roles, sessions).
+    - id: admin
+      label: Admin
+      description: Application administrator.
+    - id: user
+      label: User
+      description: Standard application user.
+  api:
+    roles:
+      user-admin:
+        - user-admin/*
+
+modules:
+  _ref: modules.yaml
+
+menus:
+  _ref: menus.yaml
+
+pages:
+  - _ref: pages/router.yaml
+  - _ref: pages/home.yaml
+  - _ref: pages/404.yaml

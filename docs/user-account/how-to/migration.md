@@ -2,7 +2,7 @@
 title: Migrating from the v0.x surface
 module: user-account
 type: how-to
-concepts: [migration, breaking-change, betterauth]
+concepts: [migration, breaking-change, betterauth, magic-link, passwordless]
 ---
 
 # Migrating from the v0.x surface
@@ -30,6 +30,20 @@ exist on `user-contacts` and `users`, and the adapter database, the
 `user-contacts` connection, and the module's read connections must all resolve to
 **one MongoDB database** (see
 [Same-database co-location](../../user-admin/concepts/co-location.md)).
+
+## Magic-link is the passwordless migration path
+
+The old module was passwordless-email login, so the closest match on the new
+engine is a **passwordless deployment**: `emailAndPassword.enabled: false` and
+`magicLink.enabled: true`. The login page then renders email-only (no password
+field, no "Forgot?"), sign-up collapses into sign-in behind one email → link
+action, and there is **no `/signup` route**. Because the module still declares a
+static `authPages.signUp: signup` it cannot gate module-side, a passwordless app
+**must** set `auth.authPages.signUp: login` in its own `auth:` config, or the
+`signUp` role 404s at runtime. See
+[Passwordless-primary](../concepts/auth-methods.md#passwordless-primary-sign-up-collapses-into-sign-in)
+for the full shape. Enabling password alongside magic-link (a mixed deployment)
+is the additive path — it keeps `/signup` and adds a password form.
 
 ## Pages
 

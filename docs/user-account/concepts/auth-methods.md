@@ -3,7 +3,15 @@ title: Auth methods
 module: user-account
 type: concept
 concepts:
-  [auth-methods, providers, build-authConfig, error-handling, two-factor]
+  [
+    auth-methods,
+    providers,
+    build-authConfig,
+    error-handling,
+    two-factor,
+    magic-link,
+    passwordless,
+  ]
 ---
 
 # Auth methods
@@ -21,7 +29,7 @@ through `_build.authConfig`:
 | `_build.authConfig` field      | Enables                                                          |
 | ------------------------------ | ---------------------------------------------------------------- |
 | `emailAndPassword.enabled`     | Password form (login + signup) and change-password / reset flows |
-| `magicLink.enabled`            | Magic-link tab                                                   |
+| `magicLink.enabled`            | Magic-link send (email → "send me a link"); passwordless when password is off |
 | `passkey.enabled`              | Passkey button (login) and passkey management (workspace)        |
 | `twoFactor.enabled`            | 2FA enrolment in the Security tile                               |
 | `providers` (`[{ id, type }]`) | One OAuth button per configured provider                         |
@@ -60,6 +68,68 @@ nothing. Enablement is the config's call; appearance is the var's.
 > `user-admin`'s old `roles` var was retired. Providers go the other way — the
 > projection omits their display metadata, so it stays a module var.
 
+## Magic-link: send a link, never navigate inline
+
+When `magicLink.enabled` is true the login page adds an email → "send me a link"
+affordance. It reads the one canonical `id: email` input (the same field the
+password submit uses when both methods are on). Pressing send dispatches a single
+sign-in call in magic-link mode and — because that send returns `{ status: true }`
+with **no session** — it cannot navigate. Instead the page flips to a
+**`link-sent`** render: a "Check your email" result naming the address, a **Resend
+link** button, and a "Use a different email" link back to the form. Resend is
+guarded by a **short cooldown** (the button disables for ~30s after each send) so a
+user can't tap through the send rate limit.
+
+Placement follows the primary method:
+
+- **Password on (mixed deployment):** the send is an alternative-method button
+  below the "or" divider, alongside the OAuth / passkey buttons (placed first,
+  closest to the email).
+- **Password off (passwordless deployment):** the send is the primary action
+  directly under the email — see [Passwordless-primary](#passwordless-primary-sign-up-collapses-into-sign-in).
+
+### Where the emailed link lands
+
+The send carries the two verify-callback targets the module owns:
+
+- a **new** user — an unknown-but-admittable email, created at verify time — lands
+  on the module's **`onboarding`** page as a first-time user;
+- a returning user lands on the inbound `?callbackUrl=` (or the app home).
+
+The error callback is left to the engine default — `authPages.error`, i.e. the
+login page — so an **expired or already-used link** returns to login with
+`?error=INVALID_TOKEN` (see the error table below).
+
+## Passwordless-primary: sign-up collapses into sign-in
+
+When `emailAndPassword.enabled` is **false** and `magicLink.enabled` is **true**,
+the deployment is _passwordless_: the login page renders **email-only** — no
+password field, no "Forgot?" link — with the magic-link send as the primary action
+under the email. There is a single email → link action for everyone: a known user
+signs in, an unknown-but-admittable email is created at verify time and routed to
+onboarding. So **sign-up collapses into sign-in**, with these consumer-observable
+consequences:
+
+- **There is no `/signup` route.** The signup page is assembled only when
+  `emailAndPassword.enabled` is true, so a passwordless build ships no `/signup`.
+- **The app must repoint the `signUp` auth-page role at login.** The module
+  declares a static `authPages.signUp: signup`. This one role cannot be gated
+  module-side: an `auth:` block can't read `_build.authConfig` — it would be
+  reading the very auth-config projection that `authPages` is itself part of, a
+  self-reference — so the role stays a fixed page id the build always emits.
+  A passwordless deployment **must** therefore set `auth.authPages.signUp: login`
+  in its own app config (app config wins per role). Omit it and the `signUp` role
+  points at a page that was never built and **404s at runtime** — the build does
+  not catch this.
+
+A **mixed** deployment (password _and_ magic-link) is the other case: `/signup`
+**is** built, and it offers the magic-link send as an alternative-method button
+below its "or" divider, exactly as `/login` does.
+
+> Passwordless is the migration path for a formerly-passwordless (v0.x
+> email-link) deployment. See
+> [Migrating from the v0.x surface](../how-to/migration.md).
+
 ## Error handling splits by method
 
 Sign-in errors arrive by two routes, and the page handles both through **one
@@ -73,18 +143,25 @@ error-code → message table**:
   page. The page reads the code off the query string (`_url_query: error`) and
   maps it through the same table.
 
-Friendly-message codes:
+Mapped codes:
 
-| Code                        | Meaning                                                          |
-| --------------------------- | ---------------------------------------------------------------- |
-| `MEMBERSHIP_REQUIRED`       | The hard wall — the account exists but has no access to this app |
-| `EMAIL_NOT_VERIFIED`        | Sign-in blocked pending email verification                       |
-| `INVALID_EMAIL_OR_PASSWORD` | Bad email or password                                            |
+| Code                        | Meaning                                                          | Disposition                                                              |
+| --------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `MEMBERSHIP_REQUIRED`       | The hard wall — the account exists but has no access to this app | **Terminal** — form-hiding "no access" wall                              |
+| `EMAIL_NOT_VERIFIED`        | Sign-in blocked pending email verification                       | **Terminal** — form-hiding wall                                          |
+| `INVALID_EMAIL_OR_PASSWORD` | Bad email or password                                            | Inline toast (password path only)                                        |
+| `INVALID_TOKEN`             | Magic link expired or already used                               | **Retryable** — stays on the login form, warning notice, send reachable  |
 
-The table keeps a **catch-all `default` branch**, so any unmapped code (an
-expired / consumed link, a provider error, a rate limit) degrades to a generic
-"an error occurred" message rather than rendering blank. The three named codes
-are the friendly set, not an exhaustive list.
+`INVALID_TOKEN` is the one **retryable** redirect code: unlike the terminal codes
+(which replace the form with a "no access" wall), it leaves the login form — and
+so the email input and magic-link send — in place, and raises a dedicated warning
+notice ("this link has expired or was already used — request a new one") so the
+user can send a fresh link without leaving the page.
+
+The table keeps a **catch-all `default` branch**, so any unmapped code (a provider
+error, a rate limit / 429) degrades to a generic "an error occurred" message
+rather than rendering blank. The named codes are the mapped set, not an exhaustive
+list.
 
 There is **no dedicated error page** — the login page serves the
 `authPages.error` role and renders the failure as a login-page state.

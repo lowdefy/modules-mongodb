@@ -1,0 +1,17 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: home
+    title: Passwordless Demo
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+    blocks:
+      - id: description
+        type: Paragraph
+        properties:
+          content: |
+            Passwordless demo app — email + password is disabled and magic-link
+            sign-in is enabled, so the user-account login page renders the
+            email-only shape.

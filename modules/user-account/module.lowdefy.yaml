@@ -103,16 +103,25 @@ api:
   - _ref: api/link-contact-on-signup.yaml
 
 pages:
-  - _ref: pages/login.yaml
-  - _ref: pages/signup.yaml
-  - _ref: pages/forgot-password.yaml
-  - _ref: pages/reset-password.yaml
-  - _ref: pages/verify-email.yaml
-  - _ref: pages/two-factor.yaml
-  - _ref: pages/accept.yaml
-  - _ref: pages/logout.yaml
-  - _ref: pages/view.yaml
-  - _ref: pages/onboarding.yaml
+  _build.array.concat:
+    - - _ref: pages/login.yaml
+      - _ref: pages/forgot-password.yaml
+      - _ref: pages/reset-password.yaml
+      - _ref: pages/verify-email.yaml
+      - _ref: pages/two-factor.yaml
+      - _ref: pages/accept.yaml
+      - _ref: pages/logout.yaml
+      - _ref: pages/view.yaml
+      - _ref: pages/onboarding.yaml
+    # Signup is a distinct page only where a password registration form
+    # exists (emailAndPassword.enabled). In a passwordless deployment signup ≡
+    # login, so the page is not assembled and no /signup route exists.
+    - _build.if:
+        test:
+          _build.authConfig: emailAndPassword.enabled
+        then:
+          - _ref: pages/signup.yaml
+        else: []
 
 components:
   - id: profile-avatar
@@ -138,6 +147,15 @@ menus:
 auth:
   pages:
     signIn: login
+    # signUp targets the signup page, which `pages` above builds only when
+    # emailAndPassword.enabled. This role value cannot be gated the same way:
+    # _build.authConfig is unavailable inside any auth: block — it would read the
+    # auth-config projection that authPages is itself part of (a self-reference,
+    # rejected as null) — and _module.var is banned in manifest headers. Other
+    # build operators resolve here, but neither dynamic input can read
+    # emailAndPassword.enabled, so the role stays a static page id. A passwordless
+    # deployment (signup page not built) repoints this role at login via an
+    # app-level authPages override (app wins per role).
     signUp: signup
     forgotPassword: forgot-password
     resetPassword: reset-password
