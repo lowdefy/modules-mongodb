@@ -34,7 +34,19 @@ blocks:
     layout:
       flex: 0 0 auto
     properties:
-      title: Details & History
+      # "Details & History" only when a Details slot is present; History-only
+      # otherwise (check pages / workflows with no entity_view).
+      title:
+        _build.if:
+          test:
+            _build.gt:
+              - _build.array.length:
+                  _var:
+                    key: details_slot
+                    default: []
+              - 0
+          then: Details & History
+          else: History
       icon: AiOutlineHistory
       type: default
     events:
@@ -51,7 +63,17 @@ blocks:
     properties:
       placement: right
       width: 480
-      title: Details & History
+      title:
+        _build.if:
+          test:
+            _build.gt:
+              - _build.array.length:
+                  _var:
+                    key: details_slot
+                    default: []
+              - 0
+          then: Details & History
+          else: History
     events:
       onOpen:
         - id: refetch_history_events
