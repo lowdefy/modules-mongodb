@@ -34,17 +34,27 @@ _ref:
             - id: fetch_invitation
               type: Request
               params: get_invitation
-            - id: select_accept_view
+            # Index the response explicitly: a trailing ".0" on an `_actions`
+            # path does not reach into the response array — it yields the array
+            # itself, which then renders as blank inviter/org/email and makes
+            # every status branch below miss.
+            - id: set_invite
               type: SetState
               params:
                 invite:
-                  _actions: fetch_invitation.response.0
+                  _get:
+                    from:
+                      _actions: fetch_invitation.response
+                    key: 0
+            - id: select_accept_view
+              type: SetState
+              params:
                 accept_view:
                   _switch:
                     branches:
                       - if:
                           _eq:
-                            - _actions: fetch_invitation.response.0
+                            - _state: invite
                             - null
                         then: expired
                       - if:
@@ -54,17 +64,17 @@ _ref:
                         then: nosession
                       - if:
                           _eq:
-                            - _actions: fetch_invitation.response.0.status
+                            - _state: invite.status
                             - accepted
                         then: member
                       - if:
                           _ne:
-                            - _actions: fetch_invitation.response.0.status
+                            - _state: invite.status
                             - pending
                         then: expired
                       - if:
                           _ne:
-                            - _actions: fetch_invitation.response.0.email
+                            - _state: invite.email
                             - _user: email
                         then: expired
                     default: signedin
