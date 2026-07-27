@@ -702,6 +702,91 @@ describe("unseen group order", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// form_data pruning (same policy as GetWorkflowOverview)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("form_data pruning", () => {
+  test("keyed action: only visible key slices ship; denied sibling key does not leak", async () => {
+    // Two keyed actions of type 'qualify': key 'a' (visible) and key 'b'
+    // (denied). form_data.qualify = { a: { val: 1 }, b: { secret: 2 } }.
+    // Only key 'a' survives access; form_data.qualify.b must not ship.
+    await seedWorkflow({
+      overrides: {
+        form_data: {
+          qualify: {
+            a: { val: 1 },
+            b: { secret: 2 },
+          },
+        },
+      },
+    });
+    await seedAction({
+      _id: "qa",
+      type: "qualify",
+      action_group: "phase-1",
+      key: "a",
+    });
+    await seedAction({
+      _id: "qb",
+      type: "qualify",
+      action_group: "phase-1",
+      key: "b",
+      extra: {
+        access: { "test-app": { view: ["admin"] } },
+        "test-app": {
+          links: { view: null, edit: null, review: null, error: null },
+          message: "",
+        },
+      },
+    });
+
+    const result = await GetEntityWorkflows(
+      buildContext({
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
+      }),
+    );
+
+    expect(result.workflows[0].form_data.qualify).toEqual({ a: { val: 1 } });
+    expect("b" in (result.workflows[0].form_data.qualify ?? {})).toBe(false);
+  });
+
+  test("form_data slice of a fully denied action type does not ship", async () => {
+    await seedWorkflow({
+      overrides: {
+        form_data: {
+          qualify: { note: "visible" },
+          "review-only": { secret: "hidden" },
+        },
+      },
+    });
+    await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
+    // review-only is reviewer-gated; the account-manager user holds no verb.
+    await seedAction({
+      _id: "a2",
+      type: "review-only",
+      action_group: "phase-1",
+      extra: {
+        access: { "test-app": { review: ["reviewer"] } },
+        "test-app": {
+          links: { view: null, edit: null, review: null, error: null },
+          message: "",
+        },
+      },
+    });
+
+    const result = await GetEntityWorkflows(
+      buildContext({
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
+      }),
+    );
+
+    expect(result.workflows[0].form_data).toEqual({
+      qualify: { note: "visible" },
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // meta
 // ─────────────────────────────────────────────────────────────────────────────
 

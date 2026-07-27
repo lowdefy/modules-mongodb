@@ -1,11 +1,12 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import collectionNames from "../../shared/collectionNames.js";
+import findWorkflowConfig from "../../shared/findWorkflowConfig.js";
 import resolveEntityData from "../../shared/render/resolveEntityData.js";
-import {
-  computeAllowed,
-  collapseLink,
-} from "../../shared/render/resolveActionAccess.js";
+import { selectVisibleActions } from "../../shared/render/resolveActionAccess.js";
 import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
+import buildEntityLink from "../../shared/render/buildEntityLink.js";
+import pruneFormData from "../../shared/render/pruneFormData.js";
 import summarizeStatuses from "../../shared/render/summarizeStatuses.js";
 import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js";
 
@@ -37,13 +38,12 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
   const { workflow_id, group_id } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
-  const workflowsCollection = connection.workflowsCollection ?? "workflows";
-  const actionsCollection = connection.actionsCollection ?? "actions";
+  const collections = collectionNames(connection);
 
   // ── Load: the workflow doc ──
   const [wfDoc] = await findDocs({
     mongoDb,
-    collection: workflowsCollection,
+    collection: collections.workflows,
     query: { _id: workflow_id },
   });
 
@@ -51,148 +51,61 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
     return { workflow: null, group: null, actions: [] };
   }
 
-  const wfConfig = (workflowsConfig ?? []).find(
-    (wc) => wc.type === wfDoc.workflow_type,
-  );
+  const wfConfig = findWorkflowConfig(workflowsConfig, wfDoc.workflow_type);
   const wfActionsConfig = wfConfig?.actions ?? [];
 
   // ── Load: actions for this workflow in this group only ──
   const rawActions = await findDocs({
     mongoDb,
-    collection: actionsCollection,
+    collection: collections.actions,
     query: { workflow_id, action_group: group_id },
   });
 
-  // ── Access filter + link collapse ──
-  const visibleActions = [];
-  for (const action of rawActions) {
-    const allowed = computeAllowed({
-      access: action.access,
-      app_name,
-      userRoles,
-    });
-    if (!allowed.view && !allowed.edit && !allowed.review && !allowed.error) {
-      continue; // drop: no verb accessible
-    }
-    const link = collapseLink({ links: action[app_name]?.links, allowed });
-    const message = action[app_name]?.message ?? null;
-    const status = action.status?.[0]?.stage ?? null;
-    visibleActions.push({ action, allowed, link, message, status });
-  }
-
-  // ── Sort: declaration order (group, not-required sink, action, key, _id) ──
+  // ── Access filter + link collapse, then declaration-order sort ──
+  const visibleActions = selectVisibleActions({
+    actions: rawActions,
+    app_name,
+    userRoles,
+  });
   const compareOrder = makeWorkflowOrderComparator();
   visibleActions.sort((a, b) => compareOrder(a.action, b.action));
 
   // ── Build action cards ──
   // form_meta comes from the validated action config (form-kind actions only).
-  function findActionConfig(type) {
-    return wfActionsConfig.find((c) => c.type === type);
-  }
-
   const actionCards = visibleActions.map(
-    ({ action, allowed, link, message, status }) => {
-      const actionConfig = findActionConfig(action.type);
-      const form_meta = actionConfig?.form_meta ?? null;
-      return {
-        type: action.type,
-        key: action.key ?? null,
-        status,
-        message,
-        link,
-        allowed,
-        form_meta,
-      };
-    },
+    ({ action, allowed, link, message, status }) => ({
+      type: action.type,
+      key: action.key ?? null,
+      status,
+      message,
+      link,
+      allowed,
+      form_meta:
+        wfActionsConfig.find((c) => c.type === action.type)?.form_meta ?? null,
+    }),
   );
-
-  // ── Prune form_data to view-visible actions ──
-  // form_data structure (per planFormDataMerge):
-  //   unkeyed action: form_data[type] = { ...values }
-  //   keyed action:   form_data[type] = { [key]: { ...values }, [key2]: { ...values } }
-  //
-  // For unkeyed visible actions → keep form_data[type] whole.
-  // For keyed visible actions → keep only the form_data[type][key] slices for
-  //   visible keys; rebuild the nested object with just those keys so denied
-  //   keyed siblings do not ship.
-  const rawFormData = wfDoc.form_data ?? {};
-
-  // Collect visible keys per type.
-  // visibleKeysByType: type → Set<key> | 'unkeyed' sentinel
-  const visibleKeysByType = new Map();
-  for (const { action } of visibleActions) {
-    const type = action.type;
-    const key = action.key ?? null;
-    if (key == null) {
-      visibleKeysByType.set(type, "unkeyed");
-    } else {
-      if (
-        !visibleKeysByType.has(type) ||
-        visibleKeysByType.get(type) !== "unkeyed"
-      ) {
-        if (!visibleKeysByType.has(type)) {
-          visibleKeysByType.set(type, new Set());
-        }
-        visibleKeysByType.get(type).add(key);
-      }
-    }
-  }
-
-  const prunedFormData = {};
-  for (const [type, sentinel] of visibleKeysByType) {
-    if (!(type in rawFormData)) continue;
-    if (sentinel === "unkeyed") {
-      prunedFormData[type] = rawFormData[type];
-    } else {
-      const typeSlice = rawFormData[type];
-      if (
-        typeSlice != null &&
-        typeof typeSlice === "object" &&
-        !Array.isArray(typeSlice)
-      ) {
-        const filtered = {};
-        for (const k of sentinel) {
-          if (k in typeSlice) {
-            filtered[k] = typeSlice[k];
-          }
-        }
-        if (Object.keys(filtered).length > 0) {
-          prunedFormData[type] = filtered;
-        }
-      }
-    }
-  }
 
   // ── Workflow title + entity_link ──
   // Part 26: lift the instance `name` onto entity_link from the host's
   // entity.data routine (server-side; null when no routine / it throws), uniform
   // with the action and overview pages. No `entity` object — chrome only.
-  const title = wfConfig?.title ?? null;
-  const entityConfig = wfConfig?.entity;
   const entityData = await resolveEntityData(
     context,
     wfConfig,
     wfDoc.entity?.id ?? null,
   );
-  const entity_link = entityConfig
-    ? {
-        pageId: entityConfig.page_id,
-        urlQuery: { [entityConfig.id_query_key]: wfDoc.entity.id },
-        title: entityConfig.title ?? null,
-        name: entityData?.name ?? null,
-        // Part 63: the optional entity-list breadcrumb crumb. Runtime-driven
-        // overview pages can't bake these like the action page does, so they
-        // ride the response and the runtime fragment gates on list_page_id.
-        list_page_id: entityConfig.list_page_id ?? null,
-        list_title: entityConfig.list_title ?? null,
-      }
-    : null;
 
   const workflow = {
     ...wfDoc,
-    title,
-    entity_link,
-    form_data: prunedFormData,
+    title: wfConfig?.title ?? null,
+    entity_link: buildEntityLink({
+      entityConfig: wfConfig?.entity,
+      entityId: wfDoc.entity?.id ?? null,
+      name: entityData?.name ?? null,
+      listCrumb: true,
+    }),
+    // Pruned to view-visible actions — denied slices never ship.
+    form_data: pruneFormData({ formData: wfDoc.form_data, visibleActions }),
   };
 
   // ── Group collapse logic (mirrors the original aggregation's :return) ──
@@ -204,8 +117,9 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
     return { workflow, group: null, actions: [] };
   }
 
-  const configGroups = wfConfig?.action_groups ?? [];
-  const configGroup = configGroups.find((g) => g.id === group_id);
+  const configGroup = (wfConfig?.action_groups ?? []).find(
+    (g) => g.id === group_id,
+  );
   if (!configGroup) {
     return { workflow, group: null, actions: actionCards };
   }

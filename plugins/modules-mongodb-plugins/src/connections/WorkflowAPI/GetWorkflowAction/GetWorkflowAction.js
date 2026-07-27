@@ -1,7 +1,10 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import collectionNames from "../../shared/collectionNames.js";
+import findWorkflowConfig from "../../shared/findWorkflowConfig.js";
 import parseNunjucks from "../../shared/render/parseNunjucks.js";
 import resolveEntityData from "../../shared/render/resolveEntityData.js";
+import buildEntityLink from "../../shared/render/buildEntityLink.js";
 import {
   computeAllowed,
   resolveButtons,
@@ -125,25 +128,22 @@ async function GetWorkflowAction(lowdefyContext) {
   const { action_id } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
-  const workflowsCollection = connection.workflowsCollection ?? "workflows";
-  const actionsCollection = connection.actionsCollection ?? "actions";
-  const contactsCollection = connection.contactsCollection ?? "user-contacts";
-  const eventsCollection = connection.eventsCollection ?? "log-events";
+  const collections = collectionNames(connection);
 
-  // ── Step 1: Read the action doc ──
+  // ── Read the action doc ──
   const [action] = await findDocs({
     mongoDb,
-    collection: actionsCollection,
+    collection: collections.actions,
     query: { _id: action_id },
   });
 
-  // ── Step 3: Task guard ──
+  // ── Task guard ──
   // Missing doc or workflow_id == null → null (task-kind docs have no FSM).
   if (!action || action.workflow_id == null) {
     return null;
   }
 
-  // ── Step 4: Access gate ──
+  // ── Access gate ──
   const allowed = computeAllowed({
     access: action.access,
     app_name,
@@ -153,14 +153,12 @@ async function GetWorkflowAction(lowdefyContext) {
     return null;
   }
 
-  // ── Step 2b: Resolve workflowConfig + actionConfig ──
-  const wfConfig = (workflowsConfig ?? []).find(
-    (wc) => wc.type === action.workflow_type,
-  );
+  // ── Resolve workflowConfig + actionConfig ──
+  const wfConfig = findWorkflowConfig(workflowsConfig, action.workflow_type);
   const actionConfig =
     (wfConfig?.actions ?? []).find((ac) => ac.type === action.type) ?? {};
 
-  // ── Step 5: Button resolution ──
+  // ── Button resolution ──
   const stage = action.status?.[0]?.stage ?? null;
   const buttons = resolveButtons({
     stage,
@@ -168,10 +166,10 @@ async function GetWorkflowAction(lowdefyContext) {
     allow_not_required: actionConfig.allow_not_required,
   });
 
-  // ── Step 2c: Read the parent workflow doc (for form_data + workflow_closed) ──
+  // ── Read the parent workflow doc (for form_data + workflow_closed) ──
   const [wfDoc] = await findDocs({
     mongoDb,
-    collection: workflowsCollection,
+    collection: collections.workflows,
     query: { _id: action.workflow_id },
   });
 
@@ -189,7 +187,7 @@ async function GetWorkflowAction(lowdefyContext) {
       ? (
           await findDocs({
             mongoDb,
-            collection: contactsCollection,
+            collection: collections.contacts,
             query: { _id: { $in: assigneeIds } },
           })
         ).map((d) => ({
@@ -243,15 +241,11 @@ async function GetWorkflowAction(lowdefyContext) {
   //    return to the entity page. The instance `name` is lifted off the routine
   //    result onto the chrome (falls back to the type label when null). Null when
   //    the workflow type has no config or no `entity` block.
-  const entityConfig = wfConfig?.entity;
-  const entity_link = entityConfig
-    ? {
-        pageId: entityConfig.page_id,
-        urlQuery: { [entityConfig.id_query_key]: action.entity.id },
-        title: entityConfig.title ?? null,
-        name: entityData?.name ?? null,
-      }
-    : null;
+  const entity_link = buildEntityLink({
+    entityConfig: wfConfig?.entity,
+    entityId,
+    name: entityData?.name ?? null,
+  });
 
   // ── Authored description (Part 64) — rendered at read time from config ──
   // The action body `description` is workflow-author-authored config (lives on
@@ -285,7 +279,7 @@ async function GetWorkflowAction(lowdefyContext) {
   if (stage === "changes-required") {
     const [evt] = await findDocs({
       mongoDb,
-      collection: eventsCollection,
+      collection: collections.events,
       query: { type: "action-request_changes", action_ids: action._id },
       options: {
         sort: { date: -1 },
@@ -302,7 +296,7 @@ async function GetWorkflowAction(lowdefyContext) {
     changes_requested = html?.replace(/<[^>]*>/g, "").trim() ? html : null;
   }
 
-  // ── Step 6: Curated envelope (explicit allowlist — no spread of raw doc) ──
+  // ── Curated envelope (explicit allowlist — no spread of raw doc) ──
   const message = action[app_name]?.message ?? null;
   const required_after_close = actionConfig.required_after_close ?? null;
 
