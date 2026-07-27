@@ -52,7 +52,7 @@ routine:
               id:
                 _user: id
             app_name:
-              _module.var: app_name
+              _build.app: slug
 
   # Cancel the workflow (idempotent). Skipped for the rare deal with no
   # workflow doc — the outcome stamp above still lands.

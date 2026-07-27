@@ -189,7 +189,7 @@ function makeCallApi({ failOn = null, calls = [] } = {}) {
 
 function buildContext({
   request,
-  app_name = "test-app",
+  slug = "test-app",
   user = {
     id: "U1",
     profile: { name: "Test User" },
@@ -213,7 +213,7 @@ function buildContext({
       entry_id: "workflows",
       workflowsCollection: "workflows",
       actionsCollection: "actions",
-      app_name,
+      slug,
       endpoints: {
         new_event: "events/new-event",
         send_notification: "notifications/send-notification",
@@ -495,7 +495,7 @@ describe("hasReview resolution is action-global", () => {
     await SubmitWorkflowAction(
       buildContext({
         request: { action_id: "A1", signal: "submit" },
-        app_name: "test-app",
+        slug: "test-app",
       }),
     );
     const doc = await mongo.db.collection("actions").findOne({ _id: "A1" });
@@ -507,7 +507,7 @@ describe("hasReview resolution is action-global", () => {
     await SubmitWorkflowAction(
       buildContext({
         request: { action_id: "A1", signal: "submit" },
-        app_name: "ops-app",
+        slug: "ops-app",
         user: { id: "U4", profile: { name: "Ops User" }, roles: ["ops"] },
       }),
     );

@@ -35,7 +35,7 @@ async function GetWorkflowOverview(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
   const { params, mongoDb, connection, workflowsConfig, tenant } = context;
   const { workflow_id } = params;
-  const app_name = connection.app_name;
+  const slug = connection.slug;
   const entry_id = connection.entry_id;
   const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? "workflows";
@@ -70,14 +70,14 @@ async function GetWorkflowOverview(lowdefyContext) {
   for (const action of rawActions) {
     const allowed = computeAllowed({
       access: action.access,
-      app_name,
+      slug,
       userRoles,
     });
     if (!allowed.view && !allowed.edit && !allowed.review && !allowed.error) {
       continue; // drop: no verb accessible
     }
-    const link = collapseLink({ links: action[app_name]?.links, allowed });
-    const message = action[app_name]?.message ?? null;
+    const link = collapseLink({ links: action[slug]?.links, allowed });
+    const message = action[slug]?.message ?? null;
     const status = action.status?.[0]?.stage ?? null;
     visibleActions.push({ action, allowed, link, message, status });
   }

@@ -28,7 +28,7 @@ import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js"
  * NOT sent — the endpoint is per-workflow (not per-action-type, Rev 2), so the
  * handler derives type/kind from the loaded action doc.
  *
- * Access: the load phase's `edit`-verb gate (`access.{app_name}.edit`) is the
+ * Access: the load phase's `edit`-verb gate (`access.{slug}.edit`) is the
  * sole access authority — the same posture as the submit endpoint. The
  * universal fields stay editable in any stage the caller has `edit` on,
  * including `done` / `not-required` / `error` and on a completed/cancelled

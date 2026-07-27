@@ -6,7 +6,7 @@ type: Modal
 properties:
   title:
     _nunjucks:
-      template: "Remove {{ name }} from {{ app | trim }} User Admin?"
+      template: "Remove {{ name }} from {{ app }} User Admin?"
       on:
         name:
           _request: get_user_detail.0.name

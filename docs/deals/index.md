@@ -34,7 +34,6 @@ modules:
   - id: deals
     source: "github:lowdefy/modules-mongodb/modules/deals@v0.13.0"
     vars:
-      app_name: my-app
       workflow_type: sales-pipeline # the workflows workflow to render
       stages: # deal.status[].stage display config, keyed by stage slug
         prospecting:

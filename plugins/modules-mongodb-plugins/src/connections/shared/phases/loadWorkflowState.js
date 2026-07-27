@@ -71,7 +71,7 @@ export function gateAllows(gate, userRoles) {
  *     live in the lifecycle handlers, task 17), no access gate.
  *
  * Context contract: `context.mongoDb` (the `Db` from `mongo/getMongoDb.js`,
- * set up at handler entry), `context.connection` (`app_name`, collection
+ * set up at handler entry), `context.connection` (`slug`, collection
  * names), `context.workflowsConfig`, `context.user`.
  *
  * Part 48 render-config seam: after resolving `workflowConfig`, this function
@@ -213,7 +213,7 @@ async function loadWorkflowState(
     );
   }
 
-  const currentApp = connection?.app_name;
+  const currentApp = connection?.slug;
   const userRoles = context.user?.roles ?? [];
 
   // ── Fields mode (Part 24 `UpdateActionFields`): signal-less ──────────────

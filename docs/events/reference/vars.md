@@ -13,7 +13,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `display_key` | string |  | Yes | App identifier for display objects. Events store per-app display titles keyed by app name — this var selects which to render. Must not contain dots — dots in MongoDB field paths are interpreted as nested field navigation, breaking the $addFields extraction.  |
+| `display_key` | string | `{"_build.app":"slug"}` |  | App identifier for display objects. Events store per-app display titles keyed by app slug — this var selects which to render. Defaults to the host app's own slug; set it only to render another app's event display. Must not contain dots — dots in MongoDB field paths are interpreted as nested field navigation, breaking the $addFields extraction.  |
 | `change_stamp` | object | _(see manifest)_ |  | Audit metadata template resolved at runtime. Contains runtime operators (_user, _date) that evaluate per-request.  |
 | `event_types` | object | `{}` |  | Additional event type display metadata. Merged with built-in types. Keys are type strings, values have color, title, icon.  |
 | `contact_page_url` | string | `` |  | URL template for linking a user avatar/timestamp to their profile page. Use `{id}` as the placeholder for the user id; if omitted, the id is appended as `?_id=<id>`. Leave empty to render the timestamp/avatar without a link. Example: `/user-admin/view?user_id={id}`. Per-call overrides via `contact_page_url` and `disable_contact_link` vars on the events-timeline component.  |

@@ -84,14 +84,17 @@ The minimum set for an authenticated app is `layout` + `events` + `user-account`
 
 ## Using modules in an app
 
-Modules are added to the `modules` array in `lowdefy.yaml`:
+Modules are added to the `modules` array in `lowdefy.yaml`, under the app's own `name` and `slug`:
 
 ```yaml
+name: My App
+slug: my-app # kebab-case; the scope every app-scoped module reads via `_build.app: slug`
+
 modules:
   - id: events
     source: "github:lowdefy/modules-mongodb/modules/events@v0.17.0"
-    vars:
-      display_key: my-app
+    # display_key defaults to the app's slug — set it only to render
+    # another app's event display strings.
 
   - id: layout
     source: "github:lowdefy/modules-mongodb/modules/layout@v0.17.0"
@@ -101,17 +104,15 @@ modules:
   - id: user-account
     source: "github:lowdefy/modules-mongodb/modules/user-account@v0.17.0"
     # Method enablement is read from the app's auth: config via _build.authConfig
-    # — no app_name, no method mirror vars. See docs/user-account/.
+    # — no method mirror vars. See docs/user-account/.
 
   - id: notifications
     source: "github:lowdefy/modules-mongodb/modules/notifications@v0.17.0"
-    vars:
-      app_name: my-app
 ```
 
 Each entry pins a `source` (GitHub ref or local `file:` path), passes `vars`, and optionally remaps `dependencies` and `connections` when entry IDs don't match the names declared in the module manifest. See <https://docs.lowdefy.com/modules> for the full module-system reference.
 
-Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. The [`docs/shared/`](shared/) folder covers the shared patterns (`change_stamp`, soft delete, `event_display`, slot vars, `app_name`, avatar colors, secrets, [organization scoping](shared/org-scoping.md)) that most modules use.
+Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. The [`docs/shared/`](shared/) folder covers the shared patterns (`change_stamp`, soft delete, `event_display`, slot vars, [app slug scoping](shared/app-name.md), avatar colors, secrets, [organization scoping](shared/org-scoping.md)) that most modules use.
 
 ## See it in action
 

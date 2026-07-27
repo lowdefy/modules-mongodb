@@ -22,10 +22,6 @@ dependencies:
     description: Workflow engine rendering deal stage/action transitions
 
 vars:
-  app_name:
-    type: string
-    required: true
-    description: App identifier for per-app access flags and event display.
   label:
     default: Deal
     description: Singular display label
@@ -221,9 +217,5 @@ secrets:
     description: MongoDB connection URI
 
 plugins:
-  # The built-in @lowdefy/connection-mongodb provides MongoDBCollection and
-  # every MongoDB* request type this module uses (including
-  # MongoDBInsertConsecutiveId), so no @lowdefy/community-plugin-mongodb pin is
-  # needed — the built-in is auto-included.
   - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.17.0"

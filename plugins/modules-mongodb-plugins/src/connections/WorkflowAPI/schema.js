@@ -72,7 +72,7 @@ const schema = {
       type: "string",
       default: "log-events",
       description:
-        "Events collection name. Defaults to \"log-events\" (matching the " +
+        'Events collection name. Defaults to "log-events" (matching the ' +
         "events module's collection). Read by GetEventsTimeline and by " +
         "GetWorkflowAction (the changes-requested callout's request-changes " +
         "comment lookup). Host apps need only set this when overriding the " +
@@ -115,13 +115,16 @@ const schema = {
       description:
         "Resolves to the events module change_stamp at app build time (typically via _ref: { module: events, component: change_stamp }). The engine reads it at handler entry and stamps every workflow + action doc write with it via `created` and `updated`. One stamp per handler invocation; all writes in the same call share the timestamp.",
     },
-    app_name: {
+    slug: {
       type: "string",
       description:
-        "Host app deployment name. Consumed by the engine at submit time to " +
-        "key the default log event's display block (matching the events " +
-        "module's display_key projection). Apps wire this from _module.var: app_name " +
-        "on connections/workflow-api.yaml.",
+        "The host app's slug. Every per-app position the engine reads or " +
+        "writes is keyed by it: the access gates it enforces " +
+        "(`access.{slug}.{verb}`), the per-app `message` and `links` it renders " +
+        "onto action cards (`action.{slug}`), and the display block it writes on " +
+        "the default log event (matching the events module's display_key " +
+        "projection). Apps wire this from `_build.app: slug` on " +
+        "connections/workflow-api.yaml.",
     },
     enable_internal_comments: {
       type: "boolean",

@@ -44,7 +44,7 @@ beforeEach(async () => {
 
 function buildContext({
   request,
-  app_name = "test-app",
+  display_key = "test-app",
   user = {
     id: "U1",
     profile: { name: "Test User" },
@@ -66,7 +66,7 @@ function buildContext({
       workflowsCollection: "workflows",
       actionsCollection: "actions",
       eventsCollection: "log-events",
-      app_name,
+      display_key,
       changeStamp,
       user,
       endpoints: {
@@ -80,8 +80,8 @@ function buildContext({
 
 /**
  * Seed a log event. The event's action_ids array links it to zero or more
- * action docs. `app_name_block` is the display block stored under `app_name`
- * on the event doc (title/description/info).
+ * action docs. `display_key` names the display block stored on the event doc
+ * (title/description/info).
  */
 async function seedEvent({
   _id,
@@ -91,7 +91,7 @@ async function seedEvent({
   date = new Date("2026-05-01T10:00:00Z"),
   created_timestamp = new Date("2026-05-01T10:00:00Z"),
   user_id = "u1",
-  app_name = "test-app",
+  display_key = "test-app",
   title = "Event Title",
   description = "Event Description",
   info = "Event Info",
@@ -102,7 +102,7 @@ async function seedEvent({
     action_ids,
     date,
     created: { timestamp: created_timestamp, user: { id: user_id } },
-    [app_name]: { title, description, info },
+    [display_key]: { title, description, info },
   });
 }
 
@@ -140,7 +140,7 @@ async function seedAction({
   status_history = null, // full status array override
   stage = "action-required",
   updated_timestamp = new Date("2026-05-01T09:00:00Z"),
-  app_name = "test-app",
+  display_key = "test-app",
   message = "Action message",
   links = null,
   access = null,
@@ -162,7 +162,7 @@ async function seedAction({
     error: null,
   };
   const defaultAccess = {
-    [app_name]: { view: true, edit: ["account-manager"] },
+    [display_key]: { view: true, edit: ["account-manager"] },
   };
 
   await mongo.db.collection("actions").insertOne({
@@ -175,7 +175,7 @@ async function seedAction({
     decl_index,
     kind,
     status: status_history ?? [{ stage, event_id: "e0", created: changeStamp }],
-    [app_name]: {
+    [display_key]: {
       links: links ?? defaultLinks,
       message,
     },
@@ -200,7 +200,7 @@ describe("basic return shape", () => {
     expect(result).toEqual([]);
   });
 
-  test("returns events with title, description, info display fields from app_name block", async () => {
+  test("returns events with title, description, info display fields from display_key block", async () => {
     await seedEvent({
       _id: "ev-1",
       title: "My Event",
@@ -721,11 +721,11 @@ describe("reference value filter", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Events without the app_name display block are excluded
+// Events without the display_key display block are excluded
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("events without app_name display block are excluded", () => {
-  test("event without app_name display block does not appear in results", async () => {
+describe("events without display_key display block are excluded", () => {
+  test("event without display_key display block does not appear in results", async () => {
     // Insert an event doc without the 'test-app' field.
     await mongo.db.collection("log-events").insertOne({
       _id: "ev-no-display",
@@ -744,7 +744,7 @@ describe("events without app_name display block are excluded", () => {
     expect(result.find((e) => e._id === "ev-no-display")).toBeUndefined();
   });
 
-  test("event with app_name display block set to null is excluded", async () => {
+  test("event with display_key display block set to null is excluded", async () => {
     await mongo.db.collection("log-events").insertOne({
       _id: "ev-null-display",
       lot_ids: "lot-1",

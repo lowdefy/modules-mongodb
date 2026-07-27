@@ -105,16 +105,6 @@ vars:
       false to hide the free-form comment box on the action's edit and review
       pages; `pages.edit.validate_on_draft` (boolean, default false) — set true to
       validate the form (like Submit) before the edit page's Save Draft persists.
-  app_name:
-    type: string
-    required: true
-    description: >
-      The host app's deployment name. Serves three roles: (1) filters action
-      access via `access.{app_name}` per action; (2) keys the engine's default
-      log event display block (matching the events module's display_key
-      projection); and (3) keys the per-app action display the engine writes
-      onto each action doc — display surfaces read `action.{app_name}.message`
-      and `action.{app_name}.links` for the current app's slug.
   enable_internal_comments:
     type: boolean
     default: false
@@ -257,8 +247,8 @@ pages:
         vars:
           workflows:
             _module.var: workflows_config
-          app_name:
-            _module.var: app_name
+          slug:
+            _build.app: slug
           title_acronyms:
             _module.var: title_acronyms
 

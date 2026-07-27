@@ -17,7 +17,7 @@ import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOr
  * Cross-stream behaviour:
  *   - workflow_id set   → full workflow enrichment: computeAllowed access gate
  *     (drop if no verb held) + collapseLink for the resolved action link.
- *   - workflow_id null  → pass through status + <app_name>.message only;
+ *   - workflow_id null  → pass through status + <display_key>.message only;
  *     no access/link logic (safety valve for future task-kind docs).
  *
  * Card-worthiness and latest-event-per-action dedup faithfully port the YAML
@@ -33,7 +33,7 @@ async function GetEventsTimeline(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
   const { params, mongoDb, connection, tenant } = context;
   const { reference_field, reference_value } = params;
-  const app_name = connection.app_name;
+  const display_key = connection.display_key;
   const userRoles = context.user?.roles;
   const eventsCollection = connection.eventsCollection ?? "log-events";
   const actionsCollection = connection.actionsCollection ?? "actions";
@@ -43,7 +43,7 @@ async function GetEventsTimeline(lowdefyContext) {
   //
   // Mirrors the pipeline in events-timeline.yaml:
   //   1. $match events by reference_field / reference_value, AND the event has
-  //      a display block for this app (app_name field not null).
+  //      a display block for this app (display_key field not null).
   //   2. $lookup actions joined on action_ids → _id.
   //   3. $unwind + $setWindowFields to find the last event per action.
   //   4. $group to reattach each action only to its latest referencing event.
@@ -77,7 +77,7 @@ async function GetEventsTimeline(lowdefyContext) {
           { [reference_field]: reference_value },
           // Events that have a display block for this app (mirrors the
           // display_key $ne null guard from events-timeline.yaml).
-          { [app_name]: { $ne: null } },
+          { [display_key]: { $ne: null } },
           // Tenant-wall: only this org's events.
           ...tenantClause,
         ],
@@ -213,13 +213,13 @@ async function GetEventsTimeline(lowdefyContext) {
     // ── Sort events newest-first ──
     { $sort: { date: -1 } },
 
-    // ── Add display fields from the app_name display block ──
+    // ── Add display fields from the display_key display block ──
     // Mirrors the final $addFields in events-timeline.yaml.
     {
       $addFields: {
-        title: `$${app_name}.title`,
-        description: `$${app_name}.description`,
-        info: `$${app_name}.info`,
+        title: `$${display_key}.title`,
+        description: `$${display_key}.description`,
+        info: `$${display_key}.info`,
       },
     },
 
@@ -283,7 +283,7 @@ async function GetEventsTimeline(lowdefyContext) {
         // ── Workflow card: apply access gate + link collapse ──
         const allowed = computeAllowed({
           access: action.access,
-          app_name,
+          slug: display_key,
           userRoles,
         });
         if (
@@ -295,9 +295,9 @@ async function GetEventsTimeline(lowdefyContext) {
           // Drop: user holds no verb on this card.
           continue;
         }
-        const links = action[app_name]?.links ?? null;
+        const links = action[display_key]?.links ?? null;
         const link = collapseLink({ links, allowed });
-        const message = action[app_name]?.message ?? null;
+        const message = action[display_key]?.message ?? null;
         card = {
           _id: action._id,
           kind: action.kind ?? null,
@@ -308,13 +308,13 @@ async function GetEventsTimeline(lowdefyContext) {
         };
       } else {
         // ── Non-workflow card (workflow_id null): pass through ──
-        // No access/link logic. Expose status + app_name.message only.
+        // No access/link logic. Expose status + display_key.message only.
         card = {
           _id: action._id,
           kind: action.kind ?? null,
           status: action.status ?? null,
           link: null,
-          message: action[app_name]?.message ?? null,
+          message: action[display_key]?.message ?? null,
           updated: action.updated ?? null,
         };
       }

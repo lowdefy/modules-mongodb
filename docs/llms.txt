@@ -11,11 +11,11 @@
 
 ## shared
 
-- docs/shared/app-name.md: App name scoping — Multi-app deployments share user, contact, and event collections across apps. Documents are scoped by **`app_name`** so each app sees only the data it owns.
+- docs/shared/app-name.md: App slug scoping — Multi-app deployments share user, contact, and event collections across apps. Documents are scoped by the app's **slug** so each app sees only the data it owns.
 - docs/shared/atlas-search-indexes.md: Atlas Search Indexes — The `$search`-led list pipelines (contacts, companies, activities), the Excel exports, and the ContactSelector all require **Atlas Search indexes the host app must create** — the modules create no indexes ([org-scoping](org-scoping.md)). Every requirement here is **fail-closed**: a missing index,...
 - docs/shared/avatar-colors.md: Avatar colors — Modules that render user/contact avatars (`contacts`, `user-account`, `user-admin`) deterministically pick an avatar gradient from a shared palette so the same person always shows the same colors across the app.
 - docs/shared/change-stamps.md: Change stamps — Audit metadata stamped onto every database write so we know **when** something changed and **who** changed it. The same shape is used across `events`, `files`, `companies`, `contacts`, `user-account`, and `user-admin`.
-- docs/shared/event-display.md: Event display — Modules that write to the `log-events` collection store **per-app display titles** alongside each event document. The `event_display` var on each module is a map from `app_name → { event_type → Nunjucks template }`. The events module renders the template that matches the current `display_key`.
+- docs/shared/event-display.md: Event display — Modules that write to the `log-events` collection store **per-app display titles** alongside each event document. The `event_display` var on each module is a map from `app slug → { event_type → Nunjucks template }`. The events module renders the template that matches the current `display_key`.
 - docs/shared/org-scoping.md: Organization Scoping — Every module in this repo is **organization-aware, unconditionally**. Every module-owned collection carries an `organizationId` field, and every module-owned MongoDB connection declares `tenant: true` — the platform's tenant wall stamps the caller's active organization onto every write and merges...
 - docs/shared/secrets.md: Secrets — Master list of every secret read by modules in this repo. Bucket names, keys, and connection strings live in secrets so they stay out of version control.
 - docs/shared/slots.md: Slots — Modules that ship list / detail / edit pages expose **slots** so consumers can extend each page without forking the YAML. Three slot vars are conventional:
@@ -69,7 +69,7 @@
 
 ## notifications
 
-- docs/notifications/index.md: Notifications — In-app notifications — bell counter, inbox page, deep-link routing, and a configurable send routine. Notification documents are scoped per app via `app_name` so multiple apps can share a single MongoDB collection.
+- docs/notifications/index.md: Notifications — In-app notifications — bell counter, inbox page, deep-link routing, and a configurable send routine. Notification documents are scoped per app via the app's `slug` so multiple apps can share a single MongoDB collection.
 - docs/notifications/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## release-notes

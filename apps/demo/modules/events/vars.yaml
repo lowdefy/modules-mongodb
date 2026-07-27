@@ -1,7 +1,3 @@
-display_key:
-  _ref:
-    path: app_config.yaml
-    key: app_name
 contact_page_url: "/contacts/view?_id={id}"
 actions_collection: actions
 contacts_collection: user-contacts
@@ -22,9 +18,7 @@ change_stamp:
         - _user: id
         - _var: default_id
   app_name:
-    _ref:
-      path: app_config.yaml
-      key: app_name
+    _build.app: slug
   version:
     app:
       _ref:

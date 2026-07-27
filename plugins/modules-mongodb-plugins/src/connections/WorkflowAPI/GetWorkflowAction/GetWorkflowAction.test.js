@@ -219,7 +219,7 @@ async function resetCollections() {
 /**
  * Seed an `action-request_changes` event for an action (Part 62). The reviewer's
  * comment is folded into the event's per-app bucket at top level
- * (`{app_name}.description`) — new-event.yaml spreads `display` and `references`
+ * (`{slug}.description`) — new-event.yaml spreads `display` and `references`
  * onto the doc root, so both `action_ids` and the app slice are top-level.
  */
 async function seedRequestChangesEvent({
@@ -245,7 +245,7 @@ beforeEach(async () => {
 
 function buildContext({
   request,
-  app_name = "test-app",
+  slug = "test-app",
   user = {
     id: "U1",
     profile: { name: "Test User" },
@@ -266,7 +266,7 @@ function buildContext({
       entry_id: "workflows",
       workflowsCollection: "workflows",
       actionsCollection: "actions",
-      app_name,
+      slug,
       workflowsConfig,
       changeStamp,
       user,
@@ -1185,7 +1185,7 @@ describe("assignee_docs (Part 24)", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("changes_requested (Part 62)", () => {
-  test("resolves from the latest request-changes event's {app_name}.description in changes-required", async () => {
+  test("resolves from the latest request-changes event's {slug}.description in changes-required", async () => {
     await seedWorkflow();
     await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
     await seedRequestChangesEvent({

@@ -33,7 +33,6 @@ modules:
   - id: companies
     source: "github:lowdefy/modules-mongodb/modules/companies@v0.8.1"
     vars:
-      app_name: my-app
       label: Company
       label_plural: Companies
       id_prefix: "C-"
@@ -64,7 +63,7 @@ fields:
 
 ## Shared idioms
 
-- [App name scoping](../shared/app-name.md) — how `app_name` keys event display data
+- [App slug scoping](../shared/app-name.md) — how the app's `slug` keys event display data
 - [Event display](../shared/event-display.md) — per-app Nunjucks title templates
 - [Slots](../shared/slots.md) — `fields`, `components`, `request_stages` extension points
 - [Change stamps](../shared/change-stamps.md) — audit metadata stamped on writes

@@ -1,6 +1,6 @@
 import makeActionPages from "./makeActionPages.js";
 
-const APP = "my-team-app";
+const SLUG = "my-team-app";
 
 const qualifyAction = {
   type: "qualify",
@@ -74,7 +74,7 @@ function workflow(actions) {
 test("makeActionPages: qualify (form, access [view, edit]) emits exactly -edit and -view", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const ids = pages.map((p) => p.id).sort();
@@ -91,7 +91,7 @@ test("makeActionPages: adding error to access list emits -error; removing it doe
 
   const withErrorPages = makeActionPages(null, {
     workflows: [workflow([withError])],
-    app_name: APP,
+    slug: SLUG,
   });
   const withErrorIds = withErrorPages.map((p) => p.id).sort();
   expect(withErrorIds).toEqual([
@@ -102,7 +102,7 @@ test("makeActionPages: adding error to access list emits -error; removing it doe
 
   const withoutErrorPages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
   expect(
     withoutErrorPages.some((p) => p.id === "onboarding-qualify-error"),
@@ -112,7 +112,7 @@ test("makeActionPages: adding error to access list emits -error; removing it doe
 test("makeActionPages: send-quote (form, access [view, edit, review]) emits -edit, -view, -review and no -error", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([sendQuoteAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const ids = pages.map((p) => p.id).sort();
@@ -127,7 +127,7 @@ test("makeActionPages: send-quote (form, access [view, edit, review]) emits -edi
 test("makeActionPages: schedule-followup (check) emits no per-verb pages even with view+edit access", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([scheduleFollowupAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   // The check action emits no verb pages (no -edit/-view/-review/-error). It
@@ -141,7 +141,7 @@ test("makeActionPages: schedule-followup (check) emits no per-verb pages even wi
 test("makeActionPages: track-installation (tracker) emits nothing even with view+edit+review access", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([trackInstallationAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   expect(pages).toEqual([]);
@@ -150,7 +150,7 @@ test("makeActionPages: track-installation (tracker) emits nothing even with view
 test("makeActionPages: action_config carries access, status_map, and form", () => {
   const [editPage] = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const vars = editPage._ref.vars;
@@ -179,7 +179,7 @@ test("makeActionPages: pages.{verb}.buttons.extra round-trips into the page_conf
   };
   const editPage = makeActionPages(null, {
     workflows: [workflow([action])],
-    app_name: APP,
+    slug: SLUG,
   }).find((p) => p.id === "onboarding-qualify-edit");
 
   expect(editPage._ref.vars.page_config.buttons.extra).toEqual(extra);
@@ -188,7 +188,7 @@ test("makeActionPages: pages.{verb}.buttons.extra round-trips into the page_conf
 test("makeActionPages: page_ids only contains emitted verbs", () => {
   const [editPage] = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const pageIds = editPage._ref.vars.page_ids;
@@ -197,14 +197,25 @@ test("makeActionPages: page_ids only contains emitted verbs", () => {
   expect(pageIds.error).toBeUndefined();
 });
 
-test('makeActionPages: app_name of undefined, null, or "" throws with /app_name is required/', () => {
-  for (const appName of [undefined, null, ""]) {
+test('makeActionPages: slug of undefined, null, or "" throws with /slug is required/', () => {
+  for (const slug of [undefined, null, ""]) {
     expect(() =>
       makeActionPages(null, {
         workflows: [workflow([qualifyAction])],
-        app_name: appName,
+        slug,
       }),
-    ).toThrow(/app_name is required/);
+    ).toThrow(/slug is required/);
+  }
+});
+
+test("makeActionPages: a non-string slug throws rather than emitting zero pages", () => {
+  for (const slug of [{ _app: "slug" }, 42, ["my-team-app"]]) {
+    expect(() =>
+      makeActionPages(null, {
+        workflows: [workflow([qualifyAction])],
+        slug,
+      }),
+    ).toThrow(/slug is required/);
   }
 });
 
@@ -218,7 +229,7 @@ test("makeActionPages: worked-example fixture emits the five form pages plus the
         trackInstallationAction,
       ]),
     ],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const ids = pages.map((p) => p.id).sort();
@@ -237,7 +248,7 @@ test("makeActionPages: worked-example fixture emits the five form pages plus the
 test("makeActionPages: page_config var passes through action.pages.{verb} keys plus a defaulted title", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const editPage = pages.find((p) => p.id === "onboarding-qualify-edit");
@@ -255,12 +266,12 @@ test("makeActionPages: page_config.title defaults to humanizeSlug(action.type)",
   const action = {
     type: "upload-po",
     kind: "form",
-    access: { [APP]: { view: true, edit: true } },
+    access: { [SLUG]: { view: true, edit: true } },
     form: [{ id: "po", type: "TextInput" }],
   };
   const pages = makeActionPages(null, {
     workflows: [workflow([action])],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect(p._ref.vars.page_config.title).toBe("Upload PO");
@@ -272,12 +283,12 @@ test("makeActionPages: page_config.title defaults to an explicit action.title", 
     type: "upload-po",
     kind: "form",
     title: "Send the PO",
-    access: { [APP]: { view: true, edit: true } },
+    access: { [SLUG]: { view: true, edit: true } },
     form: [{ id: "po", type: "TextInput" }],
   };
   const pages = makeActionPages(null, {
     workflows: [workflow([action])],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect(p._ref.vars.page_config.title).toBe("Send the PO");
@@ -288,13 +299,13 @@ test("makeActionPages: explicit pages[verb].title wins over the action title", (
   const action = {
     type: "qualify",
     kind: "form",
-    access: { [APP]: { view: true, edit: true } },
+    access: { [SLUG]: { view: true, edit: true } },
     form: [{ id: "x", type: "TextInput" }],
     pages: { edit: { title: "Edit qualification" } },
   };
   const pages = makeActionPages(null, {
     workflows: [workflow([action])],
-    app_name: APP,
+    slug: SLUG,
   });
   const editPage = pages.find((p) => p.id.endsWith("-edit"));
   const viewPage = pages.find((p) => p.id.endsWith("-view"));
@@ -306,12 +317,12 @@ test("makeActionPages: title_acronyms extends the humanizer for page titles", ()
   const action = {
     type: "upload-bom",
     kind: "form",
-    access: { [APP]: { view: true } },
+    access: { [SLUG]: { view: true } },
     form: [{ id: "x", type: "TextInput" }],
   };
   const pages = makeActionPages(null, {
     workflows: [workflow([action])],
-    app_name: APP,
+    slug: SLUG,
     title_acronyms: ["BOM"],
   });
   expect(pages[0]._ref.vars.page_config.title).toBe("Upload BOM");
@@ -320,7 +331,7 @@ test("makeActionPages: title_acronyms extends the humanizer for page titles", ()
 test("makeActionPages: action_config does not carry the `pages` slot (duplicate path removed)", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const editPage = pages.find((p) => p.id === "onboarding-qualify-edit");
@@ -332,7 +343,7 @@ test("makeActionPages: action_config does not carry the `pages` slot (duplicate 
 test("makeActionPages: universal_fields omitted → both-field default on action_config", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
   expect(pages[0]._ref.vars.action_config.universal_fields).toEqual([
     "assignees",
@@ -344,7 +355,7 @@ test("makeActionPages: universal_fields false → [] on action_config", () => {
   const action = { ...qualifyAction, universal_fields: false };
   const pages = makeActionPages(null, {
     workflows: [workflow([action])],
-    app_name: APP,
+    slug: SLUG,
   });
   expect(pages[0]._ref.vars.action_config.universal_fields).toEqual([]);
 });
@@ -353,7 +364,7 @@ test("makeActionPages: universal_fields explicit subset passes through unchanged
   const action = { ...qualifyAction, universal_fields: ["assignees"] };
   const pages = makeActionPages(null, {
     workflows: [workflow([action])],
-    app_name: APP,
+    slug: SLUG,
   });
   expect(pages[0]._ref.vars.action_config.universal_fields).toEqual([
     "assignees",
@@ -364,7 +375,7 @@ test("makeActionPages: universal_fields_required never appears in output", () =>
   const action = { ...qualifyAction, universal_fields_required: ["assignees"] };
   const pages = makeActionPages(null, {
     workflows: [workflow([action])],
-    app_name: APP,
+    slug: SLUG,
   });
   expect("universal_fields_required" in pages[0]._ref.vars.action_config).toBe(
     false,
@@ -376,7 +387,7 @@ test("makeActionPages: universal_fields_required never appears in output", () =>
 test("makeActionPages: form pages carry connection_id from workflow.entity.connection_id", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect(p._ref.vars.connection_id).toBe("leads-collection");
@@ -386,7 +397,7 @@ test("makeActionPages: form pages carry connection_id from workflow.entity.conne
 test("makeActionPages: form pages carry reference_field from workflow.entity.ref_key", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect(p._ref.vars.reference_field).toBe("lead_ids");
@@ -399,7 +410,7 @@ test("makeActionPages: workflow_title falls back to humanizeSlug(workflow.type) 
   // workflow type "onboarding".
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect(p._ref.vars.workflow_title).toBe("Onboarding");
@@ -410,7 +421,7 @@ test("makeActionPages: explicit workflow.title wins over the humanized type", ()
   const wf = { ...workflow([qualifyAction]), title: "Lead Onboarding" };
   const pages = makeActionPages(null, {
     workflows: [wf],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect(p._ref.vars.workflow_title).toBe("Lead Onboarding");
@@ -421,7 +432,7 @@ test("makeActionPages: workflow_title honours title_acronyms in the humanized fa
   const wf = { ...workflow([qualifyAction]), type: "kyc-review" };
   const pages = makeActionPages(null, {
     workflows: [wf],
-    app_name: APP,
+    slug: SLUG,
     title_acronyms: ["BOM"],
   });
   // "kyc" is in BASE_ACRONYMS, so it uppercases regardless of supplied acronyms.
@@ -435,7 +446,7 @@ test("makeActionPages: workflow_title honours title_acronyms in the humanized fa
 test("makeActionPages: does not bake a name_field var", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect("name_field" in p._ref.vars).toBe(false);
@@ -445,7 +456,7 @@ test("makeActionPages: does not bake a name_field var", () => {
 test("makeActionPages: list_page_id/list_title default to empty string when absent", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect(p._ref.vars.list_page_id).toBe("");
@@ -458,7 +469,7 @@ test("makeActionPages: list_page_id/list_title pass through workflow.entity when
   wf.entity = { ...wf.entity, list_page_id: "lead-list", list_title: "Leads" };
   const pages = makeActionPages(null, {
     workflows: [wf],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect(p._ref.vars.list_page_id).toBe("lead-list");
@@ -469,7 +480,7 @@ test("makeActionPages: list_page_id/list_title pass through workflow.entity when
 test("makeActionPages: entity_view_slot defaults to [] when workflow declares no entity_view", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect(p._ref.vars.entity_view_slot).toEqual([]);
@@ -481,7 +492,7 @@ test("makeActionPages: entity_view_slot is baked from workflow.entity_view.slot 
   const wf = { ...workflow([qualifyAction]), entity_view: { slot } };
   const pages = makeActionPages(null, {
     workflows: [wf],
-    app_name: APP,
+    slug: SLUG,
   });
   for (const p of pages) {
     expect(p._ref.vars.entity_view_slot).toEqual(slot);
@@ -493,7 +504,7 @@ test("makeActionPages: entity_view_slot is baked from workflow.entity_view.slot 
 test("makeActionPages: a workflow with a check action emits exactly one action page", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction, scheduleFollowupAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const checkPages = pages.filter((p) => p.id === "onboarding-action");
@@ -509,7 +520,7 @@ test("makeActionPages: the action page targets templates/action.yaml.njk with th
 
   const pages = makeActionPages(null, {
     workflows: [wf],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const checkPage = pages.find((p) => p.id === "onboarding-action");
@@ -528,7 +539,7 @@ test("makeActionPages: the action page targets templates/action.yaml.njk with th
 test("makeActionPages: a workflow with neither check nor custom action emits no action page", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction, sendQuoteAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   expect(pages.some((p) => p.id === "onboarding-action")).toBe(false);
@@ -538,7 +549,7 @@ test("makeActionPages: multiple check actions still emit exactly one action page
   const secondCheck = { ...scheduleFollowupAction, type: "confirm-delivery" };
   const pages = makeActionPages(null, {
     workflows: [workflow([scheduleFollowupAction, secondCheck])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const checkPages = pages.filter((p) => p.id === "onboarding-action");
@@ -548,7 +559,7 @@ test("makeActionPages: multiple check actions still emit exactly one action page
 test("makeActionPages: the action page's entity_view_slot defaults to [] when no entity_view", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([scheduleFollowupAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   const checkPage = pages.find((p) => p.id === "onboarding-action");
@@ -574,7 +585,7 @@ const reviewDocumentAction = {
 test("makeActionPages: a custom action emits no per-action pages (app owns the working surface)", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([reviewDocumentAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   // No -edit/-view/-review/-error per-action pages — only the shared action page.
@@ -586,7 +597,7 @@ test("makeActionPages: a custom action emits no per-action pages (app owns the w
 test("makeActionPages: a custom-only workflow emits the single shared action page", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([reviewDocumentAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   expect(pages.map((p) => p.id)).toEqual(["onboarding-action"]);

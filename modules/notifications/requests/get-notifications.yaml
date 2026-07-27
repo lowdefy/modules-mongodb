@@ -8,7 +8,7 @@ payload:
   pagination:
     _state: pagination
   app_name:
-    _module.var: app_name
+    _build.app: slug
 properties:
   pipeline:
     - $match:

@@ -15,8 +15,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 |---|---|---|---|---|
 | `label` |  | `Contact` |  | Singular display label |
 | `label_plural` |  | `Contacts` |  | Plural display label |
-| `app_name` |  |  | Yes | App identifier for is_user guard and per-app access flags |
-| `event_display` |  |  |  | Per-app event display templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge. |
+| `event_display` |  |  |  | Per-app event display templates. When unset, the module's defaults render under the app slug. When set, the override fully replaces the defaults — no merge. |
 | `filter_requests` |  | `[]` |  | Additional requests for the custom filters section |
 | `avatar_colors` |  | `{"_ref":"../shared/profile/avatar_colors.yaml"}` |  | Gradient pairs for avatar backgrounds. Each entry: { from, to }. |
 | `use_verified` | boolean | `false` |  | Whether this module instance tracks contact verification. - false: no verification UI or payload writes on any picker. - true: pickers render a Verify button for unverified rows and   write `global_attributes.verified` on add/edit. Each picker   instance sets the written value via its per-call `verified`   var (see contact-selector wrapper).  |

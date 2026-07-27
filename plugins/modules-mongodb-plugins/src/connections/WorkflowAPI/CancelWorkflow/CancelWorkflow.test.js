@@ -93,7 +93,7 @@ function makeCallApi({ failOn = null, calls = [] } = {}) {
 
 function buildContext({
   request,
-  app_name = "test-app",
+  slug = "test-app",
   user = {
     id: "U1",
     profile: { name: "Test User" },
@@ -114,7 +114,7 @@ function buildContext({
       entry_id: "workflows",
       workflowsCollection: "workflows",
       actionsCollection: "actions",
-      app_name,
+      slug,
       endpoints: {
         new_event: "events/new-event",
         send_notification: "notifications/send-notification",
@@ -132,7 +132,11 @@ async function seedWorkflow({ _id = "wf-1", overrides = {} } = {}) {
     _id,
     workflow_type: "onboarding",
     title: "Onboarding",
-    entity: { connection_id: "leads-collection", id: "lead-1", ref_key: "lead_ids" },
+    entity: {
+      connection_id: "leads-collection",
+      id: "lead-1",
+      ref_key: "lead_ids",
+    },
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
     form_data: {},
     created: changeStamp,
@@ -297,7 +301,9 @@ describe("cancel sweep + lifecycle", () => {
       .collection("actions")
       .find({ workflow_id: "wf-1" })
       .toArray();
-    expect(actions.every((a) => a.status[0].stage === "not-required")).toBe(true);
+    expect(actions.every((a) => a.status[0].stage === "not-required")).toBe(
+      true,
+    );
 
     // Denormalised caches dropped — counts derive on read from the actions.
     const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
