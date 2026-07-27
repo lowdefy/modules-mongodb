@@ -34,18 +34,15 @@ _ref:
             - id: fetch_invitation
               type: Request
               params: get_invitation
-            # Index the response explicitly: a trailing ".0" on an `_actions`
-            # path does not reach into the response array — it yields the array
-            # itself, which then renders as blank inviter/org/email and makes
-            # every status branch below miss.
+            # Read the row through `_request`, which indexes into the response
+            # array as expected. An `_actions: fetch_invitation.response.0` path
+            # does NOT — it yields the whole array, which renders as a blank
+            # inviter/org/email and makes every status branch below miss.
             - id: set_invite
               type: SetState
               params:
                 invite:
-                  _get:
-                    from:
-                      _actions: fetch_invitation.response
-                    key: 0
+                  _request: get_invitation.0
             - id: select_accept_view
               type: SetState
               params:
