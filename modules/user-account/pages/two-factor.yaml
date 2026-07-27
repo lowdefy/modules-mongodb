@@ -69,7 +69,11 @@ _ref:
             - _state: tf_view
             - auth
         properties:
+          # `label.disabled` suppresses the form-item label, which would
+          # otherwise fall back to rendering the block id.
           description: Trust this device for 30 days
+          label:
+            disabled: true
       # Verify the TOTP code. TwoFactorVerify sets the session cookie itself but
       # does not navigate, so on success we navigate to the callbackUrl carried
       # from login (?callbackUrl=), completing sign-in.

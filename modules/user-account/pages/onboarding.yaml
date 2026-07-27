@@ -129,7 +129,7 @@ _ref:
             test:
               _module.var: fields.show_honorific
             then:
-              - id: profile.honorific
+              - id: profile.title
                 type: Selector
                 properties:
                   size: large

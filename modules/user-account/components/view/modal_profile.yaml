@@ -10,6 +10,8 @@
 # throws and keeps the modal open.
 id: modal_profile
 type: Modal
+layout:
+  gap: 16
 properties:
   title: Edit profile
   width: 560
@@ -58,7 +60,6 @@ blocks:
         style:
           flexDirection: column
           alignItems: center
-          marginBottom: 8
         blocks:
           - id: profile_avatar_face
             type: Avatar

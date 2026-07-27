@@ -45,7 +45,9 @@ operator console). Both run against the same `contact` / `user` / `member` /
   [Auth methods](concepts/auth-methods.md).
 - **Signup** (`signup` page) — built only when `emailAndPassword.enabled`; it
   ships unconditionally under `invite-only` (admission is engine policy, not the
-  page's) and with `requireEmailVerification` shows the check-your-email state. In
+  page's) and with `requireEmailVerification` shows the check-your-email state. It
+  captures **email and password only** — the account is created without a name and
+  `onboarding` is where the profile (including the name) is captured. In
   a **passwordless** deployment (password off, magic-link on) there is **no
   `/signup` route** — sign-up collapses into the login page's one email → link
   action, and the app must set `auth.authPages.signUp: login`. See

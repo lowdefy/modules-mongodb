@@ -1,4 +1,5 @@
 fields:
+  show_honorific: true
   profile:
     _ref: modules/shared/profile/fields.yaml
 # OAuth provider display metadata layered over _build.authConfig.providers.

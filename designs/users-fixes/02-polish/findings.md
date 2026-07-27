@@ -32,6 +32,14 @@ double entry. Signup becomes pure email + password; onboarding owns name capture
 Pairs with **F13** (`04-planning/`) — once name is dropped here, onboarding is
 the single place it's captured, so onboarding's field configurability matters more.
 
+**Implemented (2026-07-27).** Both fields removed; the page is email + password.
+`SignUp` still passes `name: ""` — BetterAuth's `/sign-up/email` body schema has
+`name: z.string()` (required, empty allowed; verified in `better-auth@1.6.23`
+`dist/api/routes/sign-up.mjs`), so the param cannot simply be dropped. `""` is
+what BetterAuth's own magic-link plugin writes for a first sign-in with no name,
+so the bare-create posture of Decision 7 holds and onboarding's re-denorm fills
+`users.name`.
+
 ---
 
 ## F20 — Change-password modal's "sign out other sessions" toggle renders with no visible label
@@ -54,6 +62,23 @@ the other three for the same blank-caption trap:
 - `modules/workflows/components/comment-input.yaml`
 - `modules/workflows/components/fields/checkbox_switch.yaml`
 - `modules/user-account/pages/two-factor.yaml`
+
+**Implemented (2026-07-27).** `modal_changepw` now sets
+`properties.description` and keeps `label.disabled: true` — dropping
+`label.disabled` is wrong: with no `title` the field label falls back to
+rendering the **block id**, which is the same class of defect.
+
+Sweep outcome:
+
+- `two-factor.yaml` (`trust_device`) had that second variant — `description` set,
+  no `label.disabled`, so the label area rendered `trust_device :`. Confirmed by
+  screenshot, fixed the same way.
+- `comment-input.yaml` already uses `description` + `label.disabled`.
+- `fields/checkbox_switch.yaml` needs no change: it is a documented pass-through
+  that exposes `title`, `description` and `label_disabled` to the field author,
+  and the "no title → block id label" fallback is Lowdefy's behaviour for **every**
+  input in the field library. Special-casing this one component would break that
+  uniformity for no gain.
 
 ---
 
@@ -85,34 +110,28 @@ of three consumers already opt in, consider whether `show_honorific` should
 Same gap class as **F22**(a) (`04-planning/`), but F22's belongs with that
 modal's rework.
 
----
+**Implemented (2026-07-27).**
 
-## F15 (remainder) — repo-wide audit of `_if test:` sites passing raw values
+**(a)** `layout: { gap: 16 }` on both `modal_profile` Modals — the same content
+gap the shared `layout` `card` component already sets, so modal and card forms
+space identically. `layout.gap` flows to a container's `content` area generically
+(`@lowdefy/layout` `layoutParamsToArea`), and `Modal` renders its blocks through
+that area. The now-redundant `marginBottom: 8` on the account modal's avatar box
+was dropped (gap before margins).
 
-The two **confirmed-blocking** sites were fixed in `8c9c9743` (`_boolean` wrap on
-`api/update-profile.yaml` and `components/view/tile_security.yaml`). That commit
-deliberately scoped itself to those two and left the repo-wide audit open.
+**(b) Decision: surface honorific in both; `show_honorific` keeps its `false`
+default.** `show_honorific: true` added to the demo's `user-account` entry, so all
+three demo entries opt in — and the demo now matches the config example already
+published in `docs/user-account/index.md`. The default was **not** flipped: it
+would add a field to the profile forms of every existing consumer of three
+modules on upgrade, and an honorific is a per-deployment content choice, not a
+correctness one. "One correct way" is about mechanically enforcing a pattern, and
+there is no correct universal answer here to enforce.
 
-On the experimental build (`0.0.0-experimental-20260723141834`) the `_if`
-operator strictly requires `test` to be a boolean and throws otherwise
-(`Operator "_if" param "test" must be type "boolean"`), so any remaining site
-passing a possibly-`null`/`undefined` value straight into `test:` is a latent
-throw.
-
-**Scope (measured 2026-07-27):** ~10 sites pass a raw value, not the 376 raw
-`test:` matches — most are already `_eq` / `_ne` / `_build.*`. Raw-value sites
-seen include:
-
-- `modules/layout/module.lowdefy.yaml:132` — `_media: darkMode`
-- `modules/contacts/requests/search_contacts.yaml:63` — `_var: company_only_contacts`
-- `modules/user-admin/components/view/tile_security.yaml:35,109` — `_module.var: suspension` / `impersonation`
-- `modules/user-admin/pages/all.yaml:33` — `_module.var: download`
-
-Classify each site as **write-blocking** (inside a write routine — aborts the
-operation, nothing lands) vs **render-noise** (throws on render, logged as a
-client `ConfigError` but non-blocking). Wrap in `_boolean` per the precedent set
-by `8c9c9743` — minimal, reads as intent, coerces null/absent cleanly.
-
-**Depends on the F15 platform call in `03-upstream/`.** If Lowdefy restores
-truthy coercion, this audit is moot; if not, it's required. Cheap enough to do
-either way — `_boolean` is correct under both engines.
+**Coupled fix.** `onboarding` bound its honorific selector to
+`profile.honorific`, while the shared `form_core` (and the contact view template)
+use `profile.title`. Invisible while `show_honorific` was off for `user-account`;
+turning it on would have shipped an onboarding-captured honorific that the
+profile tile and edit modal never display. Onboarding now writes `profile.title`.
+The two option lists still differ (onboarding omits `Prof`) — that is the
+duplication **F13** (`04-planning/`) removes, left alone here.
