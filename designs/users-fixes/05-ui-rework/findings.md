@@ -54,12 +54,6 @@ tile's Manage / Set up / Disable, and peers) appear in the primary colour, where
 the mockup shows them as the neutral **default** Button type. Primary should be
 reserved for the page's main action, not every card control.
 
-Adjust the Button `variant` / `color` on the card actions to the default
-treatment. Low-risk but repo-wide across the view tiles.
-
-Trivially small on its own — grouped here rather than in `02-polish/` because it's
-the same button-treatment pass as **F25(a)**, on a different page. One agent
-should do both and keep the treatment consistent.
 
 ---
 
