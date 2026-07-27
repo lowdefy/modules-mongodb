@@ -1,0 +1,114 @@
+# History & Details drawer + its header trigger button, for the WIDE action-page
+# layout (page_layout: wide), which omits the shell's RHS card. This bundles both
+# pieces so a template drops it once — in the header `page_actions`: the trigger
+# button renders inline in the header, and the antd Drawer portals to <body>, so
+# it still opens full-height on the right regardless of where it sits in the block
+# tree.
+#
+# The drawer holds the optional Details section (from `details_slot`) above the
+# History timeline (the shared events-timeline). `onOpen` refetches `get-events`
+# because the Drawer mounts its content lazily and the timeline would otherwise be
+# stale on later opens. Because the wide layout removes the inline RHS timeline,
+# this is the only events-timeline instance on the page — no duplicate
+# `get-events` request id.
+#
+# Vars:
+#   - reference_field  scalar — the event-references key for the History match
+#                      (baked from workflow.entity.ref_key); the same value the
+#                      inline RHS timeline used.
+#   - details_slot     block array — the optional Details content (baked from
+#                      workflow.entity_view.slot). Empty on check pages and on
+#                      workflows with no entity_view; the Details section is then
+#                      omitted and History is the sole drawer content.
+#
+# Reads _state.entity_id (the shell's normalized id) for the History
+# reference_value. The button label/icon is an open design question — the working
+# label "Details & History" is used until that is settled.
+id: history_details
+type: Box
+layout:
+  size: content
+blocks:
+  - id: history_details_button
+    type: Button
+    layout:
+      flex: 0 0 auto
+    properties:
+      title: Details & History
+      icon: AiOutlineHistory
+      type: default
+    events:
+      onClick:
+        - id: open_history_details_drawer
+          type: CallMethod
+          params:
+            blockId: history_details_drawer
+            method: setOpen
+            args:
+              - open: true
+  - id: history_details_drawer
+    type: Drawer
+    properties:
+      placement: right
+      width: 480
+      title: Details & History
+    events:
+      onOpen:
+        - id: refetch_history_events
+          type: Request
+          params: get-events
+    blocks:
+      _build.array.concat:
+        # Details — present only when the workflow declares an entity_view slot
+        # (check pages and slot-less workflows pass it empty, so it is omitted).
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: details_slot
+                      default: []
+                - 0
+            then:
+              - id: drawer_details
+                type: Box
+                layout:
+                  gap: 8
+                blocks:
+                  _build.array.concat:
+                    - - id: drawer_details_header
+                        type: Title
+                        properties:
+                          level: 5
+                          content: Details
+                    - _var:
+                        key: details_slot
+                        default: []
+              - id: drawer_details_divider
+                type: Divider
+            else: []
+        # History — always present; entity-id-gated (the events-timeline reads
+        # reference_value: entity_id on mount, so it must not mount until the id
+        # is set — a non-visible block does not mount).
+        - - id: drawer_history
+            type: Box
+            visible:
+              _ne:
+                - _state: entity_id
+                - null
+            layout:
+              gap: 8
+            blocks:
+              - id: drawer_history_header
+                type: Title
+                properties:
+                  level: 5
+                  content: History
+              - _ref:
+                  module: events
+                  component: events-timeline
+                  vars:
+                    reference_field:
+                      _var: reference_field
+                    reference_value:
+                      _state: entity_id

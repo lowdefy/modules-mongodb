@@ -41,6 +41,17 @@
 #                          `actions-on-entity` panel.
 #   - reference_field      scalar — baked from workflow.entity.ref_key (the
 #                          event-references key), for the History timeline match.
+#   - left_variant         scalar — `steps` (default) renders `actions-on-entity`;
+#                          `progress` renders `workflow-progress`. Derived from the
+#                          workflow's `page_layout` in makeActionPages. Both take
+#                          the same entity_id / active_action_id inputs — the swap
+#                          is a build-time _build.if around one _ref.
+#   - history_in_drawer    scalar boolean — false (default) keeps the RHS card
+#                          (Details + inline History) and the middle at span 12;
+#                          true OMITS the RHS card and widens the middle to span 18
+#                          (the "wide" layout). When true the Details slot + History
+#                          live in a drawer the template drops, not in the shell.
+#                          Derived from `page_layout` in makeActionPages.
 #
 # State contract — one normalized read. The loaded action lives under different
 # keys per kind (`_state.action` on form pages, `_state.current_action` on the
@@ -67,167 +78,214 @@ type: Box
 layout:
   gap: 16
 blocks:
-  # LEFT — the entity's workflows + steps (current row links to its action page),
-  # in a card. The CARD renders immediately with a content-shaped skeleton while
-  # the action request is in flight (Part 26), gated on the request — never the
-  # self-set entity_id — so it reserves its column width and doesn't pop in (the
-  # layout-shift fix). The entity-id gate is narrowed to the INNER panel: the
-  # actions-on-entity block fires an onMount CallAPI keyed on entity_id, so it
-  # must not mount until the id is set (a non-visible block does not mount), and
-  # entity_id lands a beat after the request resolves in the same onMount.
-  - id: workspace_left
-    type: Card
-    loading:
-      _not:
-        _request: get_workflow_action
-    skeleton:
-      type: Card
-      blocks:
-        - type: Skeleton
-          properties:
-            height: 400
-    layout:
-      span: 6
-      sm:
-        span: 24
-    blocks:
-      - id: workspace_left_panel
-        type: Box
-        visible:
-          _ne:
-            - _state: entity_id
-            - null
+  # Build-time column assembly for the page_layout variants: left + middle are
+  # always present; the RHS Details/History card is
+  # appended only when history stays inline (history_in_drawer false). In the
+  # wide layout the RHS is omitted entirely so the middle column reclaims the
+  # width (span 18) and no second events-timeline mounts.
+  _build.array.concat:
+    -
+      # LEFT — the entity's workflows + steps (current row links to its action page),
+      # in a card. The CARD renders immediately with a content-shaped skeleton while
+      # the action request is in flight (Part 26), gated on the request — never the
+      # self-set entity_id — so it reserves its column width and doesn't pop in (the
+      # layout-shift fix). The entity-id gate is narrowed to the INNER panel: the
+      # actions-on-entity block fires an onMount CallAPI keyed on entity_id, so it
+      # must not mount until the id is set (a non-visible block does not mount), and
+      # entity_id lands a beat after the request resolves in the same onMount.
+      - id: workspace_left
+        type: Card
+        loading:
+          _not:
+            _request: get_workflow_action
+        skeleton:
+          type: Card
+          blocks:
+            - type: Skeleton
+              properties:
+                height: 400
+        layout:
+          span: 6
+          sm:
+            span: 24
         blocks:
-          - _ref:
-              path: components/actions-on-entity.yaml
-              vars:
-                entity_id:
-                  _state: entity_id
-                entity_connection_id:
-                  _var: entity_connection_id
-                # The action page is addressed by ?action_id; pass it so the left
-                # panel highlights the current action's row (Part 60). The URL
-                # convention stays here at the workspace layer; the component just
-                # takes an optional id.
-                active_action_id:
-                  _url_query: action_id
-  # MIDDLE — the caller-supplied action surface, with the floating action bar
-  # (addendum DA3) docked at the bottom of the column when `actions` is non-empty.
-  - id: workspace_middle
-    type: Box
-    # Content-shaped skeleton while the action request is in flight (Part 26),
-    # so the column shows a card placeholder instead of a blank page. Gated on
-    # the request, never the self-set entity_id.
-    loading:
-      _not:
-        _request: get_workflow_action
-    skeleton:
-      type: Card
-      blocks:
-        - type: Skeleton
-          properties:
-            height: 400
-    layout:
-      span: 12
-      sm:
-        span: 24
-      gap: 16
-    blocks:
-      _build.array.concat:
-        - _var:
-            key: middle
-            default: []
-        - _build.if:
-            test:
-              _build.gt:
-                - _build.array.length:
-                    _var:
-                      key: actions
-                      default: []
-                - 0
-            then:
-              - _ref:
-                  module: layout
-                  component: floating-actions
-                  vars:
-                    actions:
-                      _var: actions
-            else: []
-  # RIGHT — a single card holding an optional Details section (the reference
-  # subject, form pages only) stacked above the History timeline (addendum DA4 —
-  # no Tabs). Plain section headers replace the old single-tab-as-heading.
-  - id: workspace_right
-    type: Card
-    # Content-shaped skeleton while the action request is in flight (Part 26).
-    # Once loaded, the Details slot reads get_workflow_action.entity.*; the
-    # History timeline below keeps its own entity-id mount gate.
-    loading:
-      _not:
-        _request: get_workflow_action
-    skeleton:
-      type: Card
-      blocks:
-        - type: Skeleton
-          properties:
-            height: 300
-    layout:
-      span: 6
-      sm:
-        span: 24
-      gap: 16
-    blocks:
-      _build.array.concat:
-        # Details — present only when the workflow declares an entity_view slot
-        # for this page (check passes it empty, so the section is absent).
-        - _build.if:
-            test:
-              _build.gt:
-                - _build.array.length:
-                    _var:
-                      key: details_slot
-                      default: []
-                - 0
-            then:
-              - id: workspace_rhs_details
-                type: Box
-                layout:
-                  gap: 8
-                blocks:
-                  _build.array.concat:
-                    - - id: workspace_rhs_details_header
-                        type: Title
-                        properties:
-                          level: 5
-                          content: Details
-                    - _var:
-                        key: details_slot
-                        default: []
-            else: []
-        # History — always present; fills the remaining card height and scrolls
-        # (the timeline carries its own maxHeight/overflowY). Entity-id-gated
-        # (Part 26): the events-timeline reads reference_value: entity_id on
-        # mount, so it must not mount until the id is set (the card above already
-        # swapped its loading skeleton out by the time the request resolved, but
-        # entity_id is set a beat later in the same onMount).
-        - - id: workspace_rhs_history
+          - id: workspace_left_panel
             type: Box
             visible:
               _ne:
                 - _state: entity_id
                 - null
-            layout:
-              gap: 8
             blocks:
-              - id: workspace_rhs_history_header
-                type: Title
-                properties:
-                  level: 5
-                  content: History
-              - _ref:
-                  module: events
-                  component: events-timeline
-                  vars:
-                    reference_field:
-                      _var: reference_field
-                    reference_value:
-                      _state: entity_id
+              # LEFT-PANEL VARIANT (driven by page_layout via left_variant).
+              # `steps` (default) renders the vertical step list; `progress` renders
+              # the workflow-progress surface. Both share the same data contract
+              # (get-entity-workflows + check-action-click) and take the same
+              # entity_id / entity_connection_id / active_action_id inputs, so the
+              # swap is a build-time _build.if around one _ref. workflow-progress is
+              # used in its default self-fetch mode (no fetch_on_mount override), so
+              # it fetches on mount exactly like actions-on-entity. The action page is
+              # addressed by ?action_id; pass it so the panel highlights the current
+              # action's row (Part 60).
+              _build.if:
+                test:
+                  _build.eq:
+                    - _var:
+                        key: left_variant
+                        default: steps
+                    - progress
+                then:
+                  - _ref:
+                      path: components/workflow-progress.yaml
+                      vars:
+                        entity_id:
+                          _state: entity_id
+                        entity_connection_id:
+                          _var: entity_connection_id
+                        active_action_id:
+                          _url_query: action_id
+                else:
+                  - _ref:
+                      path: components/actions-on-entity.yaml
+                      vars:
+                        entity_id:
+                          _state: entity_id
+                        entity_connection_id:
+                          _var: entity_connection_id
+                        active_action_id:
+                          _url_query: action_id
+      # MIDDLE — the caller-supplied action surface, with the floating action bar
+      # (addendum DA3) docked at the bottom of the column when `actions` is non-empty.
+      - id: workspace_middle
+        type: Box
+        # Content-shaped skeleton while the action request is in flight (Part 26),
+        # so the column shows a card placeholder instead of a blank page. Gated on
+        # the request, never the self-set entity_id.
+        loading:
+          _not:
+            _request: get_workflow_action
+        skeleton:
+          type: Card
+          blocks:
+            - type: Skeleton
+              properties:
+                height: 400
+        layout:
+          # When history_in_drawer is true the RHS card is omitted, so the middle
+          # column reclaims its width (span 18); otherwise the standard span 12.
+          span:
+            _build.if:
+              test:
+                _var:
+                  key: history_in_drawer
+                  default: false
+              then: 18
+              else: 12
+          sm:
+            span: 24
+          gap: 16
+        blocks:
+          _build.array.concat:
+            - _var:
+                key: middle
+                default: []
+            - _build.if:
+                test:
+                  _build.gt:
+                    - _build.array.length:
+                        _var:
+                          key: actions
+                          default: []
+                    - 0
+                then:
+                  - _ref:
+                      module: layout
+                      component: floating-actions
+                      vars:
+                        actions:
+                          _var: actions
+                else: []
+    - _build.if:
+        test:
+          _var:
+            key: history_in_drawer
+            default: false
+        then: []
+        else:
+          # RIGHT — a single card holding an optional Details section (the reference
+          # subject, form pages only) stacked above the History timeline (addendum DA4 —
+          # no Tabs). Plain section headers replace the old single-tab-as-heading.
+          - id: workspace_right
+            type: Card
+            # Content-shaped skeleton while the action request is in flight (Part 26).
+            # Once loaded, the Details slot reads get_workflow_action.entity.*; the
+            # History timeline below keeps its own entity-id mount gate.
+            loading:
+              _not:
+                _request: get_workflow_action
+            skeleton:
+              type: Card
+              blocks:
+                - type: Skeleton
+                  properties:
+                    height: 300
+            layout:
+              span: 6
+              sm:
+                span: 24
+              gap: 16
+            blocks:
+              _build.array.concat:
+                # Details — present only when the workflow declares an entity_view slot
+                # for this page (check passes it empty, so the section is absent).
+                - _build.if:
+                    test:
+                      _build.gt:
+                        - _build.array.length:
+                            _var:
+                              key: details_slot
+                              default: []
+                        - 0
+                    then:
+                      - id: workspace_rhs_details
+                        type: Box
+                        layout:
+                          gap: 8
+                        blocks:
+                          _build.array.concat:
+                            - - id: workspace_rhs_details_header
+                                type: Title
+                                properties:
+                                  level: 5
+                                  content: Details
+                            - _var:
+                                key: details_slot
+                                default: []
+                    else: []
+                # History — always present; fills the remaining card height and scrolls
+                # (the timeline carries its own maxHeight/overflowY). Entity-id-gated
+                # (Part 26): the events-timeline reads reference_value: entity_id on
+                # mount, so it must not mount until the id is set (the card above already
+                # swapped its loading skeleton out by the time the request resolved, but
+                # entity_id is set a beat later in the same onMount).
+                - - id: workspace_rhs_history
+                    type: Box
+                    visible:
+                      _ne:
+                        - _state: entity_id
+                        - null
+                    layout:
+                      gap: 8
+                    blocks:
+                      - id: workspace_rhs_history_header
+                        type: Title
+                        properties:
+                          level: 5
+                          content: History
+                      - _ref:
+                          module: events
+                          component: events-timeline
+                          vars:
+                            reference_field:
+                              _var: reference_field
+                            reference_value:
+                              _state: entity_id
