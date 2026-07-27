@@ -5,77 +5,84 @@ contract, schema, or intended behaviour. Roughly ordered by priority.
 
 Finding IDs are stable — carried over from the auth-testing run. Don't renumber.
 
-**Verification status:** F3, F4, F14 and F28 are code- or DB-verified open as of
-2026-07-27. The rest are behavioural findings from the 2026-07-24 test run and
-have **not** been re-tested since — confirm before planning.
+**Verification status:** F14 and F28 are code-verified open as of 2026-07-27. The
+rest are behavioural findings from the 2026-07-24 test run and have **not** been
+re-tested since — confirm before planning.
+
+**F3 + F4 are closed** — fixed by `5484bc1d` (build-time `_var: user.<field>`
+paths baked `null`/`''` into the routine; now runtime `_get`) and verified live on
+2026-07-27 against the auth-testing rig: both hook bindings complete clean,
+contacts carry the real email, `profile.contactId` links on both paths, and a
+pre-existing contact is matched rather than duplicated. Evidence in
+[`merge-on-signup-wiring/design.md`](../../user-account-better-auth/_completed/merge-on-signup-wiring/design.md#verification).
+No data cleanup is needed: the corrupted rows are gone from the test DB and a
+scan for the F3 signature returns zero.
 
 ---
 
-## F3 + F4 — Merge-on-signup writes an empty contact email and never links `profile.contactId`
+## F28 — Activity timeline is always empty: user-admin/user-account write a flat display block the timeline can't read
 
-**Highest priority — this is the module's flagship endpoint, and it is actively
-corrupting data.** Treat as one design pass: F3 is the shared root cause, F4 is a
-separate defect on one branch, and they compound.
-
-### F3 — contact created with an EMPTY email; breaks link-by-email and collides on the unique index
-
-After email/password signup + verify, the `email.verified` hook creates the
-`user-contacts` row (system context) but writes `lowercase_email: ''` and
-`email: null` instead of the verified address. Verified in the DB.
-
-**Affects BOTH merge paths.** A magic-link signup (`magic@demo.test`) went
-through the `user.create.before` branch (not `email.verified`) and _still_
-produced a contact with `lowercase_email: ''`. So the empty email is **not** a
-quirk of the `email.verified` payload — the verified email fails to reach the
-shared `create-or-link-contact` upsert on **either** binding.
-
-**The collision has materialized, not just risked.** Because both signups keyed
-the upsert on `lowercase_email: ''`, the magic-link create **matched the
-pre-existing bare contact** and linked `magic@demo.test`'s
-`user.profile.contactId` to it — **two users now share one contact**
-(`aa320f44…`), violating one-user-per-contact. The only reason the partial-unique
-index hasn't fired is that the first user's `profile.contactId` never got set
-(per F4).
-
-**Corruption compounds:** completing onboarding as `magic@demo.test` wrote that
-profile (`given_name: M`, `name: "M L"`) onto the **shared** contact — i.e. onto
-the other identity's record. Two identities' profiles now collide on one contact.
-
-Decision 7 is explicit: the fragment must write the lowercased verified email
-when present, and **omit** the field when absent — never `''` / `null`. Every
-symptom above traces to the empty `lowercase_email` key.
-
-### F4 — `users.profile.contactId` is never linked after verification
-
-Post-verify, the `users` doc carries no `profile` object at all, so
-`profile.contactId` and `profile.profile_created` are unset.
-
-**Confirmed via server error:** `SERVER_ERROR: UpdateUserProfile requires a
-"userId" property.` at
-`@lowdefy/plugin-better-auth/dist/steps/UpdateUserProfile.js:38`, via
-`handleAuthStep → runRoutine → controlIf`, thrown at verify time. The step is
-invoked without a `userId`, so the link-back never runs and (per
-halt-on-first-error) the routine aborts.
-
-**Isolated to the `email.verified` (password) branch.** The magic-link test
-proved the `user.create.before` branch sets `profile.contactId` **inline via
-`:return`** fine — `magic@demo.test`'s user row got it set (to the wrong contact,
-per F3, but set). So F4 is specifically the `email.verified` step invocation
-missing its `userId` arg.
-
-**Knock-on:** `_user.profile.profile_created` (Decision 5) never resolves for
-password signups.
-
-### Sequencing
-
-Fix F3 first (it's the shared root cause and the thing corrupting records), then
-F4's `userId` mapping. **Then run the cleanup in `07-data-cleanup/`** — the demo
-DB holds corrupted records that will otherwise survive the fix and keep
-reproducing the symptoms.
-
----
-
-## F28 — Activity timeline is always empty: `GetEventsTimeline` still reads the retired app_name-keyed schema
+> **RESOLVED 2026-07-27 — and the original diagnosis below was inverted.** The
+> symptom was real; the attributed cause was backwards. The read side
+> (`GetEventsTimeline`) is **correct** and matches the documented contract; the
+> **write side** in `user-admin` / `user-account` was the bug. The original
+> heading ("`GetEventsTimeline` still reads the retired app_name-keyed schema")
+> and the fix it proposed are both wrong — acting on them would have hidden every
+> `contacts` / `companies` / `activities` / `deals` / workflow-engine event, a
+> strictly larger regression against a documented contract. Everything from
+> "Root cause" down is preserved for the record; read the correction first.
+>
+> **Why the original inverted it.** Three compounding errors:
+>
+> 1. **A false claim in source, taken as fact.** `user-account/api/update-profile.yaml`
+>    carried the comment "flat event_display — app_name keying is retired", and
+>    `user-account/module.lowdefy.yaml` said "(Per-app keying is retired with
+>    `app_name`.)" — which propagated into generated
+>    `docs/user-account/reference/vars.md`. Both were wrong.
+>    [`designs/app-operator`](../../app-operator/design.md) retired the `app_name`
+>    **module var** (replaced by `_build.app: slug`); it explicitly **kept**
+>    per-app display keying. Its §"Keep `display_key` as a manifest var" retains
+>    it on purpose (the ops-app cross-read case), and design.md:45 says outright:
+>    _"`user-account` and `user-admin` are **not** in this list (BetterAuth
+>    rebuild)… `events` is not either: it scopes display via `display_key`, not
+>    `app_name`."_ The BetterAuth rebuild ran concurrently, misread "the var is
+>    retired" as "the keying is retired", and baked that misreading into source.
+> 2. **A biased data sample.** The test DB held only 9 events, **all** of them
+>    written by user-admin/user-account — i.e. exclusively the broken writers.
+>    Zero `contacts`/`activities` events existed to compare against, so "every
+>    event is flat" looked like a completed migration rather than a localised bug.
+> 3. **`docs/` was not consulted.** Per CLAUDE.md, `docs/` is the source of truth
+>    for consumer-observable behaviour, and
+>    [`docs/shared/event-display.md`](../../../docs/shared/event-display.md)
+>    documents the app-keyed `$my-app.title` read in detail. A stale-looking
+>    design note was trusted over current docs.
+>
+> **Evidence for the corrected diagnosis.** Built artifacts under
+> `apps/demo/.lowdefy/server/build/api/` showed two shapes coexisting —
+> `contacts/update-contact` → `"display":{"demo":{"title":…}}` (app-keyed) vs
+> `user-admin/update-profile` → `"display":{"title":…}` (flat). Census: **9
+> app-keyed writers** (contacts ×2, companies ×2, activities ×3, deals ×2), plus
+> the workflow engine (`WorkflowAPI/schema.js` `slug` prop) and
+> `activities/components/task-modal.yaml`'s pass-throughs — against **12 flat
+> writers, all in user-admin (×11) and user-account (×1)**. `GetEventsTimeline`'s
+> 28 tests pass and include a deliberate
+> `describe("events without display_key display block are excluded")`, so the
+> guard the original called stale is intentional and test-covered.
+>
+> **Fix applied.** All 12 flat endpoints now wrap the rendered block under
+> `_build.app: slug` via `_build.object.fromEntries`, verified app-keyed in the
+> build output. The flat `event_display` **var** contract (type → template) is
+> retained deliberately — it is simpler than the app-keyed var map used by
+> `contacts`/`companies`, and redundant now that `display_key` defaults to the
+> slug; only the _written block_ is keyed. The two false claims were deleted and
+> `pnpm docs:gen` re-run. `GetEventsTimeline`, the `events` manifest, and the
+> `display_key` action reads (lines 265/277/279/290/296) were **left untouched** —
+> all correct. The 9 stale flat rows are deletable test data; clear them with
+> `scripts/auth-testing/reset-db.mjs`.
+>
+> **Standing lesson:** when a source comment asserts a schema decision, verify it
+> against `docs/` and the owning design before building on it — and never treat a
+> single app's event rows as a census of the collection's shape.
 
 **High priority — this is the events module's flagship read** and affects every
 timeline consumer, not just user-admin.
