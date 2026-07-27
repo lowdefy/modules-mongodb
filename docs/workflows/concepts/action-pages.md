@@ -24,6 +24,16 @@ The action's **universal fields** (`assignees`, `due_date`) live in the title ba
 - **Middle** — the authored description lead-in (when set), then the action surface, then a floating (sticky) action bar. For a form action the surface is the form (edit / view / review / error verb); for a check action it is the check surface (the optional `entity_view` review subject + a comment field). The action bar holds the action's buttons — any workflow-defined `buttons.extra` on the left, the standard signal verbs on the right — docked at the bottom of the column. The edit page's progress ("Save Draft") and submit ("Submit") button titles can be relabelled per action via `page_config.buttons.progress.title` / `page_config.buttons.submit.title`.
 - **Right** — a single card with an optional **Details** section stacked above the **History** timeline (no tabs). History is always present (the action-filtered events timeline) and fills the remaining card height, scrolling internally. The **Details** section appears only when the workflow declares an `entity_view` slot (form pages only — see below); on the check page it is absent (the entity is the middle review subject), leaving History as the sole section.
 
+## Wide layout (`page_layout: wide`)
+
+The three-tier layout above is the default (`page_layout: standard`). Setting `page_layout: wide` on the workflow definition switches **all** of that workflow's action pages to a wider variant, for form-heavy actions that need more horizontal room:
+
+- **Left** — the `workflow-progress` surface replaces the `actions-on-entity` step list. Same data (an entity's workflows and their actions), a more compact presentation.
+- **Middle** — the action surface takes over the full width the right column vacated.
+- **Right** — the column is removed. The optional **Details** section and the **History** timeline move into a right-side **drawer**, opened from a button in the title bar. The button (and drawer) read "Details & History" when the workflow declares an `entity_view` slot, "History" when it does not; the drawer refetches History each time it opens.
+
+The choice is per workflow and applies to every one of its action pages — the form verbs and the [per-workflow check page](#the-per-workflow-check-page) alike. On the check page there is no form and no Details section, so only the left-panel swap and the History drawer apply. Workflows that omit `page_layout` (or set `standard`) are unchanged.
+
 ## The per-workflow check page
 
 Each workflow that has any `kind: check` action emits exactly one page, `{workflow_type}-action`, addressed by `?action_id=<id>`. That single page serves **all** of the workflow's check actions — there is no page per check action type.
