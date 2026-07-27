@@ -41,6 +41,7 @@ _ref:
                         properties:
                           title: Suspend access
                           danger: true
+                          variant: outlined
                         events:
                           onClick:
                             - id: open_suspend_modal
@@ -55,6 +56,7 @@ _ref:
                       flex: 0 0 auto
                     properties:
                       title: Remove from app
+                      variant: outlined
                     events:
                       onClick:
                         - id: open_remove_modal
@@ -68,6 +70,7 @@ _ref:
                       flex: 0 0 auto
                     properties:
                       title: Sign out everywhere
+                      variant: outlined
                     events:
                       onClick:
                         - id: open_revoke_modal
@@ -85,6 +88,7 @@ _ref:
                     properties:
                       title: Delete identity
                       danger: true
+                      variant: outlined
                       # Enabled only at other-membership count 0 (Decision 4/6);
                       # the routine re-checks server-side.
                       disabled:
@@ -115,6 +119,7 @@ _ref:
                         properties:
                           title: View as user
                           icon: AiOutlineEye
+                          variant: outlined
                         events:
                           onClick:
                             # Session-scoped client action, governed by
@@ -155,28 +160,14 @@ _ref:
             type: Html
             properties:
               html: '<div style="text-transform:uppercase; letter-spacing:0.08em; font-size:11px; color:var(--ant-color-text-tertiary);">Active sessions</div>'
-          - id: sessions_list
-            type: ListSelector
-            properties:
-              selectable: false
-              bordered: false
-              gap: 0
-              # Active sessions for the target (token $project-ed out, Decision 5).
-              # An admin viewing another user has no "current" session in this
-              # list, so rows are read-only; revocation is the tile's
-              # "Sign out everywhere" action.
-              data:
-                _request: get_user_sessions
-              html: |
-                <div id="bl-{{ index }}.session_item" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--ant-color-border-secondary); font-size:13px;">
-                  <span style="flex:1 1 auto; min-width:0;">
-                    <div style="color:var(--ant-color-text);">{{ item.ua }}</div>
-                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{{ item.ip }}{% if item.ip and item.expires_str %} · {% endif %}{% if item.expires_str %}expires {{ item.expires_str }}{% endif %}</div>
-                  </span>
-                </div>
-            style:
-              .body:
-                padding: "0"
+          # Active sessions for the target (token $project-ed out, Decision 5).
+          # An admin viewing another user has no "current" session in this list,
+          # so rows are read-only; revocation is the tile's "Sign out everywhere"
+          # action.
+          - _ref:
+              path: ../shared/sessions/session_list.yaml
+              vars:
+                request: get_user_sessions
           - id: security_divider_methods
             type: Divider
             properties:

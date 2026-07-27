@@ -17,21 +17,6 @@ properties:
           _user: id
     - $sort:
         updatedAt: -1
-    # Whitelist projection — token is never selected.
-    - $project:
-        _id: 0
-        ua:
-          $ifNull:
-            - "$userAgent"
-            - Unknown device
-        ip: "$ipAddress"
-        expires_str:
-          $dateToString:
-            date: "$expiresAt"
-            format: "%Y-%m-%d"
-            onNull: ""
-        created_str:
-          $dateToString:
-            date: "$createdAt"
-            format: "%Y-%m-%d"
-            onNull: ""
+    # Whitelist projection — token is never selected. Shared with the user-admin
+    # sessions read so both surfaces render the same row shape.
+    - _ref: ../shared/sessions/session_fields.yaml

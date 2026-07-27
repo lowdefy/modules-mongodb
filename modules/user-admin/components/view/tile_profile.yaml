@@ -16,6 +16,7 @@ _ref:
           title: Edit
           icon: AiOutlineEdit
           size: small
+          variant: outlined
         events:
           onClick:
             - id: open_profile_modal

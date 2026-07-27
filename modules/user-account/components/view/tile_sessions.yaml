@@ -26,6 +26,7 @@ _ref:
           title: Sign out others
           size: small
           color: danger
+          variant: outlined
         events:
           onClick:
             # Revokes every session except the caller's current one, then
@@ -43,26 +44,10 @@ _ref:
         layout:
           gap: 12
         blocks:
-          - id: sessions_list
-            type: ListSelector
-            properties:
-              selectable: false
-              bordered: false
-              gap: 0
-              # The caller's active sessions (get_sessions — user-agent, ip,
-              # expiry; token $project-ed out, Decision 5).
-              data:
-                _request: get_sessions
-              html: |
-                <div id="bl-{{ index }}.session_item" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--ant-color-border-secondary); font-size:13px;">
-                  <span style="flex:1 1 auto; min-width:0;">
-                    <div style="color:var(--ant-color-text);">{{ item.ua }}</div>
-                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{{ item.ip }}{% if item.ip and item.expires_str %} · {% endif %}{% if item.expires_str %}expires {{ item.expires_str }}{% endif %}</div>
-                  </span>
-                </div>
-            style:
-              .body:
-                padding: "0"
+          - _ref:
+              path: ../shared/sessions/session_list.yaml
+              vars:
+                request: get_sessions
           - id: sessions_hint
             type: Html
             properties:

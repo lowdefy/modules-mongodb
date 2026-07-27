@@ -93,6 +93,7 @@ blocks:
               icon: AiOutlineReload
               size: small
               shape: round
+              variant: outlined
             events:
               onClick:
                 - id: cycle_avatar_color
