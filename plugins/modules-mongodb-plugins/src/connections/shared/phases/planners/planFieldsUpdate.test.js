@@ -38,7 +38,7 @@ function makeContext(overrides = {}) {
     event_id,
     now,
     user,
-    connection: { app_name: "demo", ...overrides.connection },
+    connection: { slug: "demo", ...overrides.connection },
     lowdefyContext: overrides.lowdefyContext,
   };
 }
@@ -184,7 +184,7 @@ test("change-log: one MongoDBUpdateOne entry with correct before/after", () => {
   const before = makeAction();
   const context = makeContext({
     connection: {
-      app_name: "demo",
+      slug: "demo",
       changeLog: { collection: "log-changes", meta: { m: 1 } },
     },
     lowdefyContext: { request: {}, pageId: "p", requestId: "r" },

@@ -77,19 +77,13 @@ function workspaceVars(workflow, workflowTitle) {
   };
 }
 
-function emitForAction(
-  workflow,
-  action,
-  appName,
-  titleAcronyms,
-  workflowTitle,
-) {
+function emitForAction(workflow, action, slug, titleAcronyms, workflowTitle) {
   if (action.kind !== "form") return [];
 
   // Part 34 D5: emit a verb page iff the verb key is present in the app's
   // verb→gate map. Role gates don't matter at build time — presence of the key
   // alone gates page generation. Reads the map keys, not the old verb array.
-  const accessMap = action.access?.[appName] ?? {};
+  const accessMap = action.access?.[slug] ?? {};
   const emittedVerbs = VERBS.filter((v) => v in accessMap);
   if (emittedVerbs.length === 0) return [];
 
@@ -165,11 +159,15 @@ function emitActionPage(workflow, workflowTitle) {
 }
 
 function makeActionPages(_, vars) {
-  const { workflows, app_name: appName, title_acronyms = [] } = vars;
+  const { workflows, slug, title_acronyms = [] } = vars;
 
-  if (!appName) {
+  // The type check is load-bearing, not defensive: the manifest must pass the
+  // slug as `_build.app`, and an `_app` operator would arrive here as an
+  // unevaluated object. That object is truthy, and `access?.[{…}]` is
+  // undefined, so a falsy-only guard would emit zero action pages in silence.
+  if (typeof slug !== "string" || !slug) {
     fail(
-      `vars.app_name is required and must be non-empty (got: ${JSON.stringify(appName)}).`,
+      `vars.slug is required and must be a non-empty string (got: ${JSON.stringify(slug)}).`,
     );
   }
 
@@ -178,13 +176,7 @@ function makeActionPages(_, vars) {
     const workflowTitle = resolveWorkflowTitle(workflow, title_acronyms);
     for (const action of workflow.actions ?? []) {
       pages.push(
-        ...emitForAction(
-          workflow,
-          action,
-          appName,
-          title_acronyms,
-          workflowTitle,
-        ),
+        ...emitForAction(workflow, action, slug, title_acronyms, workflowTitle),
       );
     }
     pages.push(...emitActionPage(workflow, workflowTitle));

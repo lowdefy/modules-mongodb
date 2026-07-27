@@ -91,7 +91,7 @@ routine:
         type: create-deal
         display:
           _build.object.fromEntries:
-            - - _module.var: app_name
+            - - _build.app: slug
               - title:
                   _nunjucks:
                     template: |

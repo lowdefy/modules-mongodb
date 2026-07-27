@@ -117,7 +117,9 @@ atlas_search:
     and an unindexed scan, so suitable for development or small collections.
 ```
 
-Boolean (not an enum) because regex is the only fallback we have a concrete need for; an enum would be speculative surface. It reads naturally as "default Atlas." Consumers that want to switch the whole app at once set it once in `app_config.yaml` and reference it per module entry — the same idiom already used for `app_name` (`_ref: app_config.yaml, key: ...`). The demo wires it this way so `pnpm ldf:b` + a local MongoDB works end-to-end.
+Boolean (not an enum) because regex is the only fallback we have a concrete need for; an enum would be speculative surface. It reads naturally as "default Atlas." The demo wires it so `pnpm ldf:b` + a local MongoDB works end-to-end.
+
+> **Open question — how consumers set this app-wide.** This design originally proposed setting the flag once in `app_config.yaml` and `_ref`-ing it per module entry, by analogy with `app_name`. That analogy is gone: [`designs/app-operator`](../app-operator/design.md) removed the `app_name` var in favour of Lowdefy's `_app: slug` operator and **deleted `app_config.yaml` from every app**, on the reasoning that a shared-config file invites exactly the drift it was meant to prevent. `atlas_search` is not yet implemented anywhere, so this is still open: either repeat the boolean per module entry, or reintroduce a shared-config file for this specific need and justify it against that decision. Resolve before implementing.
 
 Because the structural filters are now standard `$match`, the consumer hook `request_stages.filter_match` must also be standard `$match` syntax (not Atlas compound). This is a **breaking change** to that var, but it then works identically in both modes — one syntax instead of two. The demo does not pass `filter_match` (only `request_stages.write`), so blast radius is low; the change is called out in the module CHANGELOGs and the migration note below.
 

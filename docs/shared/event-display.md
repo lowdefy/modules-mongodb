@@ -10,9 +10,9 @@ concepts:
 
 # Event display
 
-Modules that write to the `log-events` collection store **per-app display titles** alongside each event document. The `event_display` var on each module is a map from `app_name → { event_type → Nunjucks template }`. The events module renders the template that matches the current `display_key`.
+Modules that write to the `log-events` collection store **per-app display titles** alongside each event document. The `event_display` var on each module is a map from `app slug → { event_type → Nunjucks template }`. The events module renders the template that matches the current `display_key`.
 
-> **Auth-upgrade exception.** The `user-account` and `user-admin` modules, rebuilt on the BetterAuth-based auth engine, retired `app_name` (one instance = one pinned org). Their `event_display` is a **flat `{ event-type: template }` map — no `app_name` key**, and the override fully replaces the defaults. `user-account` templates receive `user` (the acting user); `user-admin` templates receive `user` (the acting admin) and `target` (the edited/invited user). Everything below describes the app-keyed shape the other modules still use.
+> **Auth-upgrade exception.** The `user-account` and `user-admin` modules, rebuilt on the BetterAuth-based auth engine, are not app-scoped (one instance = one pinned org). Their `event_display` is a **flat `{ event-type: template }` map — no app-slug key**, and the override fully replaces the defaults. `user-account` templates receive `user` (the acting user); `user-admin` templates receive `user` (the acting admin) and `target` (the edited/invited user). Everything below describes the app-keyed shape the other modules still use.
 
 ## Wording convention
 
@@ -46,7 +46,7 @@ update-company: "{{ user.profile.name }} updated {{ target.name }}"
 - Keys are event types (matching the `type` field on event documents).
 - Values are Nunjucks templates rendered against the event payload.
 
-When the consumer doesn't override `event_display`, the build wraps these templates under the module's `app_name` var. The `new-event` endpoint flattens the rendered display block onto the event document's top level (keyed by app name), so an event written by a module with `app_name: my-app` ends up with a top-level `my-app.title` field set to the rendered template — and `display_key: my-app` on the events module reads it back (`$my-app.title`, not `$display.my-app.title`).
+When the consumer doesn't override `event_display`, the build wraps these templates under the app's slug (read via `_build.app: slug` — a build-time key, see [App slug scoping](app-name.md)). The `new-event` endpoint flattens the rendered display block onto the event document's top level (keyed by slug), so an event written in an app with `slug: my-app` ends up with a top-level `my-app.title` field set to the rendered template — and the events module's `display_key`, which defaults to that same slug, reads it back (`$my-app.title`, not `$display.my-app.title`).
 
 ## Variables available to templates
 
@@ -67,7 +67,7 @@ When the consumer doesn't override `event_display`, the build wraps these templa
         update-company: "Updated {{ target.name }}"
 ```
 
-**Override fully replaces the defaults — no merge.** Whatever you write under `event_display` is exactly what's stored on the event document. List every app and event type you want rendered. If you want only the override-the-wording case (single app), the file shape is just `{ [app_name]: { event-type: template } }`. To render titles for multiple apps, list them all explicitly.
+**Override fully replaces the defaults — no merge.** Whatever you write under `event_display` is exactly what's stored on the event document. List every app and event type you want rendered. If you want only the override-the-wording case (single app), the file shape is just `{ [slug]: { event-type: template } }` — spelled out with the app's own slug, since the override is authored config, not an operator position. To render titles for multiple apps, list them all explicitly.
 
 ## Display metadata vs templates
 

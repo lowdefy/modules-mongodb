@@ -7,19 +7,12 @@
 # the build requires the entry.
 - id: user-account
   source: "file:../../modules/user-account"
-  vars:
-    app_name:
-      _ref:
-        path: app_config.yaml
-        key: app_name
 
 - id: layout
   source: "file:../../modules/layout"
 
 - id: events
   source: "file:../../modules/events"
-  vars:
-    _ref: modules/events/vars.yaml
 
 - id: notifications
   source: "file:../../modules/notifications"
@@ -33,25 +26,15 @@
 
 # The workflows module declares a `contacts` dependency (the contact-selector
 # field components). Wiring contacts pulls in companies + files too (contacts ↔
-# companies are mutually dependent; both depend on files). Only the required
-# vars are set — app_name (contacts/companies) and s3_region (files); all other
-# vars use their defaults. These modules are not exercised by the workflows-test
-# specs; they exist solely to satisfy the build-time dependency graph.
+# companies are mutually dependent; both depend on files). Only s3_region
+# (files) is set; all other vars use their defaults. These modules are not
+# exercised by the workflows-test specs; they exist solely to satisfy the
+# build-time dependency graph.
 - id: companies
   source: "file:../../modules/companies"
-  vars:
-    app_name:
-      _ref:
-        path: app_config.yaml
-        key: app_name
 
 - id: contacts
   source: "file:../../modules/contacts"
-  vars:
-    app_name:
-      _ref:
-        path: app_config.yaml
-        key: app_name
 
 - id: files
   source: "file:../../modules/files"

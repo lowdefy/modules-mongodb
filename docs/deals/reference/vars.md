@@ -13,7 +13,6 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `app_name` | string |  | Yes | App identifier for per-app access flags and event display. |
 | `label` |  | `Deal` |  | Singular display label |
 | `label_plural` |  | `Deals` |  | Plural display label |
 | `entity_connection_id` | string | `deals` |  | Connection id this module matches against a workflow doc's `entity.connection_id` (GetEntityWorkflows joins on {entity.connection_id, entity.id}). Must equal the exact `entity.connection_id` string configured in the host's workflow config — the two must never drift, or every workflow join in this module breaks. |

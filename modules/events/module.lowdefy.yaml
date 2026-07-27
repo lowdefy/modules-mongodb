@@ -31,12 +31,15 @@ exports:
 vars:
   display_key:
     type: string
-    required: true
+    default:
+      _build.app: slug
     description: >
       App identifier for display objects. Events store per-app display
-      titles keyed by app name — this var selects which to render.
-      Must not contain dots — dots in MongoDB field paths are interpreted
-      as nested field navigation, breaking the $addFields extraction.
+      titles keyed by app slug — this var selects which to render.
+      Defaults to the host app's own slug; set it only to render another
+      app's event display. Must not contain dots — dots in MongoDB field
+      paths are interpreted as nested field navigation, breaking the
+      $addFields extraction.
   change_stamp:
     type: object
     default:

@@ -76,7 +76,7 @@ routine:
                   deleted: null
                 # App-keyed task message read by host-app task lists.
                 - _build.object.fromEntries:
-                    - - _module.var: app_name
+                    - - _build.app: slug
                       - message:
                           __args: 0.topic
 
@@ -195,7 +195,7 @@ routine:
                       _build.if_none:
                         - _module.var: event_display
                         - _build.object.fromEntries:
-                            - - _module.var: app_name
+                            - - _build.app: slug
                               - _ref: defaults/event_display.yaml
                   callback:
                     _build.function:

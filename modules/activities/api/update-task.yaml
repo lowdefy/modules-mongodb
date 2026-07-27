@@ -78,11 +78,10 @@ routine:
                       module: events
                       component: change_stamp
                 # App-keyed task message, dotted so other keys under the
-                # app object survive — the app key resolves at build time
-                # from _module.var: app_name.
+                # app object survive.
                 - _build.object.fromEntries:
                     - - _build.string.concat:
-                          - _module.var: app_name
+                          - _build.app: slug
                           - .message
                       - _payload: fields.title
 

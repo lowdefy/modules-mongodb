@@ -14,10 +14,6 @@
 
 - id: events
   source: "file:../../modules/events"
-  vars:
-    _ref: modules/events/vars.yaml
 
 - id: notifications
   source: "file:../../modules/notifications"
-  vars:
-    _ref: modules/notifications/vars.yaml

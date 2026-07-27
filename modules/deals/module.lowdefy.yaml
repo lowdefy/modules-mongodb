@@ -22,10 +22,6 @@ dependencies:
     description: Workflow engine rendering deal stage/action transitions
 
 vars:
-  app_name:
-    type: string
-    required: true
-    description: App identifier for per-app access flags and event display.
   label:
     default: Deal
     description: Singular display label

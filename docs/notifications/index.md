@@ -6,7 +6,7 @@ type: index
 
 # Notifications
 
-In-app notifications — bell counter, inbox page, deep-link routing, and a configurable send routine. Notification documents are scoped per app via `app_name` so multiple apps can share a single MongoDB collection.
+In-app notifications — bell counter, inbox page, deep-link routing, and a configurable send routine. Notification documents are scoped per app via the app's `slug` so multiple apps can share a single MongoDB collection.
 
 The send routine itself is provided by the consuming app — this module ships the schema, the read paths (bell, inbox), and the `send-notification` API stub. Wire whatever transport you need (email, SMS, push) inside `send_routine`.
 
@@ -28,12 +28,11 @@ modules:
   - id: notifications
     source: "github:lowdefy/modules-mongodb/modules/notifications@v0.8.1"
     vars:
-      app_name: my-app
       send_routine:
         _ref: modules/notifications/send-routine.yaml
 ```
 
-`app_name` is required. `send_routine` is an array of API routine steps that receives `{ event_ids }` in the payload — leave it empty to skip dispatch (notifications still write but nothing is sent).
+Scoping reads the app's own `slug` — nothing to pass. `send_routine` is an array of API routine steps that receives `{ event_ids }` in the payload — leave it empty to skip dispatch (notifications still write but nothing is sent).
 
 ## Deep-link and file-download pages
 
@@ -49,5 +48,5 @@ The `file-download` page is a redirector for notification attachments: params `_
 
 ## Shared idioms
 
-- [App name scoping](../shared/app-name.md) — how `app_name` scopes notifications
+- [App slug scoping](../shared/app-name.md) — how the app's `slug` scopes notifications
 - [Secrets](../shared/secrets.md) — `MONGODB_URI`, `FILES_S3_*` connection secrets

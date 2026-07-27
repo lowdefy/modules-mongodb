@@ -3,7 +3,8 @@ _ref:
   component: page
   vars:
     id: home
-    title: Module Demo App
+    title:
+      _app: name
     breadcrumbs:
       - home: true
         icon: AiOutlineHome

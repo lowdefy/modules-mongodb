@@ -13,5 +13,4 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `app_name` | string |  | Yes | App identifier used to scope notifications. Matches created.app_name on notification documents.  |
 | `send_routine` | array | `[]` |  | API routine steps for dispatching notifications. Receives event_ids in the payload. Default is an empty routine (no-op).  |

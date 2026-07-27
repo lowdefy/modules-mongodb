@@ -13,13 +13,12 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `app_name` |  |  | Yes | App identifier used to key event_display titles when no override is supplied. |
 | `label` |  | `Company` |  | Singular display label |
 | `label_plural` |  | `Companies` |  | Plural display label |
 | `name_field` |  | `name` |  | Field used as the display name in selectors and titles |
 | `id_prefix` |  | `C-` |  | Prefix for auto-generated consecutive IDs |
 | `id_length` |  | `4` |  | Numeric length for consecutive IDs (e.g., 4 → C-0001) |
-| `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge. |
+| `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under the app slug. When set, the override fully replaces the defaults — no merge. |
 | `on_create_routine` | array | `[]` |  | API routine steps appended to the create-company routine after the insert, contact-link, and event steps, before the :return:. Steps run server-side with the routine's context: `_step: insert.insertedId` is the new company's id, and the request payload is readable via `_payload`, including the reserved `url_query` key — the new page forwards its full URL query under `url_query`, which is how start-link params reach the server.  |
 | `filter_requests` |  | `[]` |  | Additional requests for the custom filters section |
 | `short_name` | object |  |  | Configuration for the togglable required `short_name` top-level field on companies. |

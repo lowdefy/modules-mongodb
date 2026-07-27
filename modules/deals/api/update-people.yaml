@@ -45,7 +45,7 @@ routine:
         type: update-deal-people
         display:
           _build.object.fromEntries:
-            - - _module.var: app_name
+            - - _build.app: slug
               - title:
                   _nunjucks:
                     template: |

@@ -68,8 +68,6 @@ blocks:
                     reference_field: deal_ids
                     reference_value:
                       _state: selected_deal_id
-                    display_key:
-                      _module.var: app_name
                     reverse: false
                     compact: true
     # App-injected blocks appended to the main detail column (default []).
@@ -87,8 +85,6 @@ blocks:
             reference_field: deal_ids
             company_id:
               _request: get_selected_deal.0.company_id
-            display_key:
-              _module.var: app_name
             type: deal-note
             title_template: |
               <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> added a note.

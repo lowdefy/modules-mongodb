@@ -62,7 +62,7 @@ const workflowsConfig = [
 function makeContext({ user, connection } = {}) {
   return {
     mongoDb: mongo.db,
-    connection: { app_name: APP, ...connection },
+    connection: { slug: APP, ...connection },
     workflowsConfig,
     user: user ?? { roles: ["account-manager"] },
   };
@@ -421,7 +421,7 @@ test("a `true` gate passes a user with no roles for the app", async () => {
 test("an app absent from access fails closed with access_denied", async () => {
   await seedWorkflow();
   await expect(
-    loadWorkflowState(makeContext({ connection: { app_name: "other-app" } }), {
+    loadWorkflowState(makeContext({ connection: { slug: "other-app" } }), {
       actionId: "act-1",
       signal: "submit",
     }),
@@ -481,7 +481,7 @@ test.each(gateCases)(
 function makeContextWithRenderConfig(renderConfig) {
   return {
     mongoDb: mongo.db,
-    connection: { app_name: APP },
+    connection: { slug: APP },
     workflowsConfig: [
       {
         type: "onboarding",

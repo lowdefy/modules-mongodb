@@ -27,7 +27,7 @@ Emitted by `makeActionPages`. Both page kinds `_ref` the same [three-tier action
 | `form`  | `{workflow_type}-{action_type}-{verb}` | `/{entryId}/{workflow_type}-{action_type}-{verb}` | `?action_id=` |
 | `check` | `{workflow_type}-action`               | `/{entryId}/{workflow_type}-action`               | `?action_id=` |
 
-Form actions emit one page per declared verb (`edit`, `view`, `review`, `error`) — only verbs present in the action's `access.{app_name}` map. Each `kind: check` workflow emits exactly one `{workflow_type}-action` page shared by all of that workflow's check actions (routed by `?action_id=`); its mode (`edit` / `view` / `review`) is derived at load from the action's stage and the caller's resolved access. Tracker actions emit none.
+Form actions emit one page per declared verb (`edit`, `view`, `review`, `error`) — only verbs present in the action's `access.{slug}` map. Each `kind: check` workflow emits exactly one `{workflow_type}-action` page shared by all of that workflow's check actions (routed by `?action_id=`); its mode (`edit` / `view` / `review`) is derived at load from the action's stage and the caller's resolved access. Tracker actions emit none.
 
 Example: a `qualify` form action in the `onboarding` workflow with `access.demo: { edit: true, view: true }` emits `onboarding-qualify-edit` and `onboarding-qualify-view`; the same workflow's check actions are served by `onboarding-check`.
 

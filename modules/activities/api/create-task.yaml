@@ -146,10 +146,9 @@ routine:
               _ref:
                 module: events
                 component: change_stamp
-          # App-keyed task message read by host-app open-actions cards —
-          # the app key resolves at build time from _module.var: app_name.
+          # App-keyed task message read by host-app open-actions cards.
           - _build.object.fromEntries:
-              - - _module.var: app_name
+              - - _build.app: slug
                 - message:
                     _payload: title
 

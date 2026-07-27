@@ -3,7 +3,7 @@ type: EventsTimeline
 properties:
   databaseUri:
     _secret: MONGODB_URI
-  app_name:
+  display_key:
     _module.var: display_key
   eventsCollection: log-events
   actionsCollection:

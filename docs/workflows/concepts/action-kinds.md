@@ -43,7 +43,7 @@ form:
 
 **What the module emits for form actions:**
 
-- A set of pages per declared verb: `{workflow_type}-{action_type}-edit`, `-view`, `-review`, `-error`. A page is only emitted when its verb key is present in the action's `access.{app_name}` map.
+- A set of pages per declared verb: `{workflow_type}-{action_type}-edit`, `-view`, `-review`, `-error`. A page is only emitted when its verb key is present in the action's `access.{slug}` map.
 - One submit endpoint: `{workflow_type}-{action_type}-submit`. Every button on every page for this action calls this endpoint with a different `signal` value.
 
 **Form data paths.** The engine writes submitted form fields to `form_data.{action_type}.{field}` on the workflow doc. For instanced actions (see below), the path gains a key segment: `form_data.{action_type}.{key}.{field}`.

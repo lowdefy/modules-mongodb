@@ -7,12 +7,6 @@ dependencies:
     description: Page layout wrapper
 
 vars:
-  app_name:
-    type: string
-    required: true
-    description: >
-      App identifier used to scope notifications. Matches created.app_name
-      on notification documents.
   send_routine:
     type: array
     default: []
