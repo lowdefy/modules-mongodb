@@ -51,7 +51,7 @@ blocks:
             email:
               _state: selected_member.email
             joined:
-              _dayjs:
+              _dayjs.format:
                 on:
                   _state: selected_member.signed_up
                 format: YYYY-MM-DD
