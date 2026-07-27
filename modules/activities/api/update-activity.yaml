@@ -82,7 +82,7 @@ routine:
                   deleted: null
                 # App-keyed task message read by host-app task lists.
                 - _build.object.fromEntries:
-                    - - _module.var: app_name
+                    - - _build.app: slug
                       - message:
                           __args: 0.topic
   - :set_state:
@@ -211,7 +211,7 @@ routine:
                       _build.if_none:
                         - _module.var: event_display
                         - _build.object.fromEntries:
-                            - - _module.var: app_name
+                            - - _build.app: slug
                               - _ref: defaults/event_display.yaml
                   callback:
                     _build.function:
@@ -314,7 +314,7 @@ routine:
                 # dotted path so other keys under the app object survive.
                 - _build.object.fromEntries:
                     - - _build.string.concat:
-                          - _module.var: app_name
+                          - _build.app: slug
                           - .message
                       - _item: task.title
             # _id and kind are merged in from the filter on insert.

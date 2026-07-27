@@ -8,30 +8,45 @@ Full documentation: [`docs/`](docs/index.md)
 
 ## Quick start
 
-Add modules to the `modules` array in your app's `lowdefy.yaml`, pinning each to a tagged release:
+Declare the app's `slug` on the root of your `lowdefy.yaml`, then add modules to the `modules` array, pinning each to a tagged release:
 
 ```yaml
+name: My App
+slug: my-app # kebab-case; modules scope themselves to it via `_app: slug`
+
 modules:
   - id: events
     source: "github:lowdefy/modules-mongodb/modules/events@v0.17.0"
-    vars:
-      display_key: my-app
 
   - id: layout
     source: "github:lowdefy/modules-mongodb/modules/layout@v0.17.0"
 
   - id: user-account
     source: "github:lowdefy/modules-mongodb/modules/user-account@v0.17.0"
-    vars:
-      app_name: my-app
 
   - id: notifications
     source: "github:lowdefy/modules-mongodb/modules/notifications@v0.17.0"
-    vars:
-      app_name: my-app
 ```
 
-The minimum set for an authenticated app is `layout` + `events` + `user-account` + `notifications`. See [`docs/index.md`](docs/index.md) for the full module list, dependency graph, and "what to use when" guide.
+The slug is declared once and read by every module that scopes data per app — there is no per-module app-name var. Where a value needs it explicitly, use the operator; the audit stamp's app attribution is the common case (the stored field stays named `app_name`, its value is the slug):
+
+```yaml
+- id: events
+  source: "github:lowdefy/modules-mongodb/modules/events@v0.17.0"
+  vars:
+    change_stamp:
+      timestamp:
+        _date: now
+      user:
+        name:
+          _user: profile.name
+        id:
+          _user: id
+      app_name:
+        _app: slug
+```
+
+The minimum set for an authenticated app is `layout` + `events` + `user-account` + `notifications`. See [`docs/index.md`](docs/index.md) for the full module list, dependency graph, and "what to use when" guide, and [`docs/shared/app-name.md`](docs/shared/app-name.md) for how the slug scopes stored data.
 
 ## Documentation
 

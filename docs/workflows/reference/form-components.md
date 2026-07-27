@@ -108,18 +108,18 @@ Numeric input. Renders a `NumberInput`.
 
 Phone-number input. Renders a `PhoneNumberInput` — the form-side counterpart to the `phoneNumber` field type the view renderer already recognises. The block value is stored at the `key` state path.
 
-| Var             | Type    | Required / Default |
-| --------------- | ------- | ------------------ |
-| `key`           | string  | required           |
-| `title`         | string  | —                  |
-| `placeholder`   | string  | —                  |
-| `visible`       | boolean | `true`             |
-| `required`      | boolean | `false`            |
-| `validate`      | array   | `[]`               |
-| `label_inline`  | boolean | `false`            |
-| `label_span`    | number  | —                  |
-| `default_region`| string  | —                  | ISO region for parsing/formatting (e.g. `ZA`) |
-| `on_change`     | array   | `[]`               |
+| Var              | Type    | Required / Default |
+| ---------------- | ------- | ------------------ | --------------------------------------------- |
+| `key`            | string  | required           |
+| `title`          | string  | —                  |
+| `placeholder`    | string  | —                  |
+| `visible`        | boolean | `true`             |
+| `required`       | boolean | `false`            |
+| `validate`       | array   | `[]`               |
+| `label_inline`   | boolean | `false`            |
+| `label_span`     | number  | —                  |
+| `default_region` | string  | —                  | ISO region for parsing/formatting (e.g. `ZA`) |
+| `on_change`      | array   | `[]`               |
 
 ```yaml
 - component: phone
@@ -245,15 +245,15 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`.
 
-| Var        | Type    | Required / Default |
-| ---------- | ------- | ------------------ |
-| `key`      | string  | required           |
-| `title`    | string  | —                  |
-| `visible`  | boolean | `true`             |
-| `required` | boolean | `false`            |
-| `options`  | array   | `[]`               |
-| `extra`    | string  | —                  |
-| `on_change` | array  | `[]`               |
+| Var         | Type    | Required / Default |
+| ----------- | ------- | ------------------ |
+| `key`       | string  | required           |
+| `title`     | string  | —                  |
+| `visible`   | boolean | `true`             |
+| `required`  | boolean | `false`            |
+| `options`   | array   | `[]`               |
+| `extra`     | string  | —                  |
+| `on_change` | array   | `[]`               |
 
 ```yaml
 - component: checkbox_selector
@@ -269,7 +269,7 @@ Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `s
 Button-group selector. Renders a `ButtonSelector`.
 
 | Var            | Type    | Required / Default |
-| -------------- | ------- | ------------------ |
+| -------------- | ------- | ------------------ | ------------------------------------------------------------ |
 | `key`          | string  | required           |
 | `title`        | string  | —                  |
 | `visible`      | boolean | `true`             |
@@ -344,14 +344,14 @@ Yes/no toggle. Renders a `ButtonSelector` with hardcoded `[Yes / No]` boolean op
 
 Selector sourced from an enum map. Renders a `Selector`. The enum object (`slug → { title, color, icon, ... }`) is converted to `{ label, value, style, tag }` options at build time. Label is hardcoded `align: right / span: 12`.
 
-| Var        | Type    | Required / Default |
-| ---------- | ------- | ------------------ |
-| `key`      | string  | required           |
-| `title`    | string  | —                  |
-| `visible`  | boolean | `true`             |
-| `required` | boolean | `false`            |
-| `enum`     | object  | `{}`               |
-| `on_change` | array  | `[]`               |
+| Var         | Type    | Required / Default |
+| ----------- | ------- | ------------------ |
+| `key`       | string  | required           |
+| `title`     | string  | —                  |
+| `visible`   | boolean | `true`             |
+| `required`  | boolean | `false`            |
+| `enum`      | object  | `{}`               |
+| `on_change` | array   | `[]`               |
 
 ```yaml
 - component: enum_selector
@@ -410,7 +410,7 @@ Multiple contacts. Same as `contact` but uncapped; set `max` to limit selections
 
 ### `role_contact`
 
-Single contact scoped to one or more roles. Wraps the contacts module's `role-contact-selector` export — a plain `Selector` of contacts holding any of `roles` (matched against `apps.<app_name>.roles`), not the rich search/add/edit picker. Stores a denormalized `{ contact_id, name, email }` object (view-renderable). Use when a form only needs to pick an existing contact in a role (e.g. an internal agent).
+Single contact scoped to one or more roles. Wraps the contacts module's `role-contact-selector` export — a plain `Selector` of contacts holding any of `roles` (matched against `apps.{slug}.roles`), not the rich search/add/edit picker. Stores a denormalized `{ contact_id, name, email }` object (view-renderable). Use when a form only needs to pick an existing contact in a role (e.g. an internal agent).
 
 | Var            | Type    | Required / Default |
 | -------------- | ------- | ------------------ |

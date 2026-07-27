@@ -1,7 +1,3 @@
-app_name:
-  _ref:
-    path: app_config.yaml
-    key: app_name
 event_display:
   demo:
     create-activity: "{{ user.profile.name }} logged a {{ target.type_label }}: {{ target.title }}"

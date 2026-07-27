@@ -87,7 +87,7 @@ function resolveActionSignalTitle(signal, status_after) {
  * Originally applied only to SubmitWorkflowAction; generalized in Part 48 to
  * serve tracker-mirror (D4) and lifecycle (D8) channels as well.
  *
- * The runtime `comment` is folded into `display.{app_name}.description` by
+ * The runtime `comment` is folded into `display.{slug}.description` by
  * `foldCommentIntoEvent`, run **after** `renderEventDisplay` (merge → render →
  * fold, Part 33 D4) — the comment HTML is stored verbatim and never templated.
  * The description slot is comment-only: the merge strips any non-comment
@@ -123,7 +123,7 @@ function resolveActionSignalTitle(signal, status_after) {
  *   mirrored action; lifecycle → all initially created / terminal actions).
  *   Used to build `references.action_ids`.
  * @param {Object} args.connection — engine connection config; reads
- *   `connection.app_name` (required — throws if absent) and optionally
+ *   `connection.slug` (required — throws if absent) and optionally
  *   `connection.changeLog` (for meta, unused by this planner directly).
  * @param {Object} [args.yamlEventOverrides] — the YAML override slice for this
  *   invocation: submit YAML `event_overrides[signal]`, a parent tracker action's
@@ -150,11 +150,11 @@ function planEventDispatch({
   yamlEventOverrides,
   preHookEventOverrides,
 }) {
-  const appName = connection?.app_name;
-  if (typeof appName !== "string" || appName.length === 0) {
+  const slug = connection?.slug;
+  if (typeof slug !== "string" || slug.length === 0) {
     throw new WorkflowEngineError(
-      "planEventDispatch: connection.app_name is required — apps must wire app_name on the workflows module entry.",
-      { code: "missing_app_name" },
+      "planEventDispatch: connection.slug is required — apps must wire slug on the workflows connection.",
+      { code: "missing_slug" },
     );
   }
 
@@ -249,7 +249,7 @@ function planEventDispatch({
 
   // ── Build engine-default display payload ─────────────────────────────────
   const defaultDisplay = {
-    [appName]: {
+    [slug]: {
       title: titleTemplate,
     },
   };
@@ -302,7 +302,7 @@ function planEventDispatch({
   foldCommentIntoEvent(
     { display: renderedDisplay },
     comment,
-    appName,
+    slug,
     comment_visibility,
     connection?.enable_internal_comments === true,
   );

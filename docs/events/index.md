@@ -27,7 +27,6 @@ modules:
   - id: events
     source: "github:lowdefy/modules-mongodb/modules/events@v0.8.1"
     vars:
-      display_key: my-app
       change_stamp:
         timestamp:
           _date: now
@@ -36,7 +35,8 @@ modules:
             _user: profile.name
           id:
             _user: id
-        app_name: my-app
+        app_name:
+          _app: slug
       event_types:
         sync-job:
           title: Sync job
@@ -44,7 +44,7 @@ modules:
           icon: AiOutlineSync
 ```
 
-`display_key` is required — it selects which per-app title to render from each event's `display.{display_key}` field.
+`display_key` selects which per-app title to render — the events timeline reads it from each event's top-level `{display_key}.title` field. It defaults to the app's own `slug`, so set it only when this app should render another app's event display strings. See [App slug scoping](../shared/app-name.md).
 
 ## Components
 
@@ -78,7 +78,6 @@ Two vars point the engine at the app's collections. Both default to `null` on th
 - id: events
   source: "github:lowdefy/modules-mongodb/modules/events@v1"
   vars:
-    display_key: demo
     actions_collection: actions # collection-name override; matches the engine default
     contacts_collection: user-contacts
 ```
@@ -93,5 +92,5 @@ Every entity timeline in the app now renders action cards for actions referenced
 
 - [Change stamps](../shared/change-stamps.md) — audit metadata stamped on every engine write
 - [Event display](../shared/event-display.md) — per-app pre-rendered display titles
-- [App name scoping](../shared/app-name.md) — how `display_key` selects the right title
+- [App slug scoping](../shared/app-name.md) — how `display_key` defaults to the app slug and selects the right title
 - [Secrets](../shared/secrets.md) — `MONGODB_URI` and other connection secrets

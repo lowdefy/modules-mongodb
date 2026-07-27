@@ -47,9 +47,8 @@ To extend the stamp (e.g. add `app_name` to track which app produced the write),
 
 ```yaml
 - id: events
-  source: "github:lowdefy/modules-mongodb/modules/events@v0.8.1"
+  source: "github:lowdefy/modules-mongodb/modules/events@v0.17.0"
   vars:
-    display_key: my-app
     change_stamp:
       timestamp:
         _date: now
@@ -58,10 +57,13 @@ To extend the stamp (e.g. add `app_name` to track which app produced the write),
           _user: profile.name
         id:
           _user: id
-      app_name: my-app
+      app_name:
+        _app: slug
 ```
 
 Every module that writes via `events.change_stamp` will pick up the override automatically.
+
+`_app: slug` is valid inside the stamp because the stamp is a runtime template — it reads the app's `slug:` at request time, so the value never has to be repeated per module entry. The stamp **field** stays named `app_name`: it is the stored field name on the document (see [App slug scoping](app-name.md)), only the value moved from a baked literal to the operator.
 
 ## Why a runtime template
 

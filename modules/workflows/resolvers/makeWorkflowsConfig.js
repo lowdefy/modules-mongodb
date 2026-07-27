@@ -306,18 +306,18 @@ function validateActionAccess(workflow, action) {
   if (access === null || typeof access !== "object" || Array.isArray(access)) {
     fail(
       workflow.type,
-      `${where} access must be a map of {app_name}: { verb: gate } (got: ${JSON.stringify(access)}).`,
+      `${where} access must be a map of {slug}: { verb: gate } (got: ${JSON.stringify(access)}).`,
     );
   }
 
-  for (const [appName, block] of Object.entries(access)) {
-    if (appName === "roles") {
+  for (const [slug, block] of Object.entries(access)) {
+    if (slug === "roles") {
       fail(
         workflow.type,
         `${where} access.roles (the action-wide role gate) is removed (Part 34 D4). Every gate is per-app per-verb — move it under access.{app}.{verb}.`,
       );
     }
-    if (appName === "notification_roles") {
+    if (slug === "notification_roles") {
       fail(
         workflow.type,
         `${where} notification_roles lives at the action root, not under access (Part 34 D9).`,
@@ -326,13 +326,13 @@ function validateActionAccess(workflow, action) {
     if (Array.isArray(block)) {
       fail(
         workflow.type,
-        `${where} access.${appName} is the removed shorthand list form (Part 34 D1). Use the verb→gate map: access.${appName}.{verb}: true | [roles].`,
+        `${where} access.${slug} is the removed shorthand list form (Part 34 D1). Use the verb→gate map: access.${slug}.{verb}: true | [roles].`,
       );
     }
     if (block === null || typeof block !== "object") {
       fail(
         workflow.type,
-        `${where} access.${appName} must be a verb→gate map object (got: ${JSON.stringify(block)}).`,
+        `${where} access.${slug} must be a verb→gate map object (got: ${JSON.stringify(block)}).`,
       );
     }
 
@@ -340,13 +340,13 @@ function validateActionAccess(workflow, action) {
       if (!ACCESS_VERBS.includes(verb)) {
         fail(
           workflow.type,
-          `${where} access.${appName} has unknown verb key "${verb}" (expected one of: ${ACCESS_VERBS.join(", ")}).`,
+          `${where} access.${slug} has unknown verb key "${verb}" (expected one of: ${ACCESS_VERBS.join(", ")}).`,
         );
       }
       if (Array.isArray(gate) && gate.length === 0) {
         fail(
           workflow.type,
-          `${where} access.${appName}.${verb} is the empty list [] — invalid. Omit the verb key to deny access instead (Part 34).`,
+          `${where} access.${slug}.${verb} is the empty list [] — invalid. Omit the verb key to deny access instead (Part 34).`,
         );
       }
       const gateOk =
@@ -355,7 +355,7 @@ function validateActionAccess(workflow, action) {
       if (!gateOk) {
         fail(
           workflow.type,
-          `${where} access.${appName}.${verb} gate must be true or a non-empty array of role strings (got: ${JSON.stringify(gate)}).`,
+          `${where} access.${slug}.${verb} gate must be true or a non-empty array of role strings (got: ${JSON.stringify(gate)}).`,
         );
       }
     }
@@ -364,7 +364,7 @@ function validateActionAccess(workflow, action) {
       "edit" in block || "review" in block || "error" in block;
     if (!("view" in block) && declaresPrivileged) {
       console.warn(
-        `makeWorkflowsConfig: workflow "${workflow.type}": ${where} access.${appName} declares edit/review/error without view — users granted those verbs may be unable to read the action. Add "view" if that's unintended (Part 34 D4).`,
+        `makeWorkflowsConfig: workflow "${workflow.type}": ${where} access.${slug} declares edit/review/error without view — users granted those verbs may be unable to read the action. Add "view" if that's unintended (Part 34 D4).`,
       );
     }
   }

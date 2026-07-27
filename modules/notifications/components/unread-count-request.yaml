@@ -4,7 +4,7 @@ connectionId:
   _module.connectionId: notifications-collection
 payload:
   app_name:
-    _module.var: app_name
+    _app: slug
 properties:
   pipeline:
     - $match:

@@ -90,6 +90,11 @@ Root cause in
 `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js`
 (verified 2026-07-27):
 
+> **Identifier note.** [`designs/app-operator`](../../app-operator/design.md) renamed the
+> `EventsTimeline` connection property and the engine locals described below from `app_name` to
+> **`display_key`**, and edited this same file. The finding itself still stands — only the
+> identifier changed, not the schema mismatch — but re-verify the line numbers before acting on it.
+
 - the `$match` requires a **top-level field named `<app_name>`** —
   `{ [app_name]: { $ne: null } }` (line 67, `app_name` = the `display_key` var =
   the app name, `demo`); and

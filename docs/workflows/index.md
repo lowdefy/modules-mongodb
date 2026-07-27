@@ -35,14 +35,11 @@ modules:
     vars:
       workflows_config:
         _ref: workflow_config/workflows.yaml
-      app_name:
-        _ref:
-          path: app_config.yaml
-          key: app_name
 ```
 
 - `workflows_config` — the app's workflow YAML, one entry per workflow type with actions and optional `action_groups`. Validated at build time by `makeWorkflowsConfig`.
-- `app_name` — the host app's deployment name. Filters per-action access via `access.{app_name}`. See [App name scoping](../shared/app-name.md).
+
+The module scopes itself to the app's own `slug` (declared on the root of `lowdefy.yaml`) — it filters per-action access via `access.{slug}` and keys per-app action display under the same value. There is no var for it. See [App slug scoping](../shared/app-name.md).
 
 Each workflow declares its own entity wiring (`connection_id`, `ref_key`, and the page link) in a per-workflow `entity:` block inside `workflows_config` — not as a module var. See [Authoring grammar](reference/authoring-grammar.md).
 
@@ -82,5 +79,5 @@ See [`apps/demo/modules/workflows/vars.yaml`](../../apps/demo/modules/workflows/
 - [Change stamps](../shared/change-stamps.md) — audit metadata stamped on every engine write
 - [Event display](../shared/event-display.md) — per-app display titles on log events
 - [Slots](../shared/slots.md) — consumer-extension slots on shared pages
-- [App name scoping](../shared/app-name.md) — how `app_name` filters access and keys display data
+- [App slug scoping](../shared/app-name.md) — how the app's `slug` filters access and keys display data
 - [Secrets](../shared/secrets.md) — `MONGODB_URI` and other connection secrets

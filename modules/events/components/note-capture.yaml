@@ -93,10 +93,10 @@ events:
             payload:
               type:
                 _var: type
-              # App-keyed event display read by the host app — the display
-              # key resolves at build time from this module's own
-              # `display_key` var (host passes its app_name into it, same
-              # as events-timeline's own display_key wiring).
+              # App-keyed event display, keyed by this module's `display_key`
+              # var. `_build.object.fromEntries` needs a literal key, so the
+              # var must resolve to a string at build time — its default is
+              # `_build.app: slug`.
               display:
                 _build.object.fromEntries:
                   - - _module.var: display_key

@@ -81,7 +81,7 @@ beforeEach(async () => {
 
 function buildContext({
   request,
-  app_name = "test-app",
+  slug = "test-app",
   user = {
     id: "U1",
     profile: { name: "Test User" },
@@ -101,7 +101,7 @@ function buildContext({
       entry_id: "workflows",
       workflowsCollection: "workflows",
       actionsCollection: "actions",
-      app_name,
+      slug,
       endpoints: {
         new_event: "events/new-event",
         send_notification: "notifications/send-notification",

@@ -41,7 +41,7 @@ Under `display.{app}`, **`title` is the only author-overridable field**. The `de
 
 ## Event display
 
-For display titles on the timeline, the workflows module follows the same per-app keying as the events module's `event_display` pattern. Display is keyed by `app_name` so each app sees its own label.
+For display titles on the timeline, the workflows module follows the same per-app keying as the events module's `event_display` pattern. Display is keyed by the app's `slug` so each app sees its own label.
 
 For how event display works across all modules, see [Event display](../../shared/event-display.md). The workflows module uses the same idiom — there is no separate workflows-specific display system.
 

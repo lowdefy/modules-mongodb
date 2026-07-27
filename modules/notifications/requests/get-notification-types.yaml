@@ -6,7 +6,7 @@ payload:
   filter:
     _state: filter
   app_name:
-    _module.var: app_name
+    _app: slug
 properties:
   pipeline:
     - $match:

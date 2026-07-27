@@ -1,7 +1,3 @@
-app_name:
-  _ref:
-    path: app_config.yaml
-    key: app_name
 fields:
   show_honorific: true
   profile:

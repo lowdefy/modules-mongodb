@@ -6,7 +6,7 @@ payload:
   _id:
     _url_query: _id
   app_name:
-    _module.var: app_name
+    _app: slug
   contact_id:
     _user: id
 properties:

@@ -123,7 +123,7 @@ async function GetWorkflowAction(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
   const { params, mongoDb, connection, workflowsConfig } = context;
   const { action_id } = params;
-  const app_name = connection.app_name;
+  const slug = connection.slug;
   const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? "workflows";
   const actionsCollection = connection.actionsCollection ?? "actions";
@@ -146,7 +146,7 @@ async function GetWorkflowAction(lowdefyContext) {
   // ── Step 4: Access gate ──
   const allowed = computeAllowed({
     access: action.access,
-    app_name,
+    slug,
     userRoles,
   });
   if (!allowed.view) {
@@ -273,7 +273,7 @@ async function GetWorkflowAction(lowdefyContext) {
   // the reworker sees "what to fix" without hunting the History timeline. The
   // comment lives once on the request_changes event (Part 33), so this reads the
   // event — never the action doc — and inherits Part 61's app-scoping for free:
-  // the projection keys off the CALLING connection's app_name, so an `internal`
+  // the projection keys off the CALLING connection's slug, so an `internal`
   // note resolves to null for an app that can't see it.
   //
   // Read contract: the latest `action-request_changes` event for this action
@@ -290,10 +290,10 @@ async function GetWorkflowAction(lowdefyContext) {
       options: {
         sort: { date: -1 },
         limit: 1,
-        projection: { [`${app_name}.description`]: 1 },
+        projection: { [`${slug}.description`]: 1 },
       },
     });
-    const html = evt?.[app_name]?.description ?? null;
+    const html = evt?.[slug]?.description ?? null;
     // Defensive (D3): request-changes comments are text-only (inline files are
     // disabled on the input), but legacy image-only rows stored TipTap's empty
     // doc marker `<p></p>` with the content in `fileList` (not read here). Treat
@@ -303,7 +303,7 @@ async function GetWorkflowAction(lowdefyContext) {
   }
 
   // ── Step 6: Curated envelope (explicit allowlist — no spread of raw doc) ──
-  const message = action[app_name]?.message ?? null;
+  const message = action[slug]?.message ?? null;
   const required_after_close = actionConfig.required_after_close ?? null;
 
   return {

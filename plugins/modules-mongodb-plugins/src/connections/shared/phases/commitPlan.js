@@ -217,7 +217,7 @@ function buildCommitResult(plan, event_id, dispatchErrors, context) {
  *   context.mongoClient       — MongoClient from getMongoDb (transaction path only)
  *   context.useTransactions   — topology flag from getMongoDb
  *   context.connection        — raw connection config (collection names, changeLog,
- *                               app_name, endpoints.{new_event,send_notification})
+ *                               slug, endpoints.{new_event,send_notification})
  *   context.loadedState       — LoadedState from load phase; .workflow.updated.timestamp
  *                               is the CAS anchor (D15)
  *   context.callApi           — Lowdefy callApi (community client, not engine session)

@@ -127,7 +127,7 @@ routine:
                           _build.if_none:
                             - _module.var: event_display
                             - _build.object.fromEntries:
-                                - - _module.var: app_name
+                                - - _build.app: slug
                                   - _ref: defaults/event_display.yaml
                       callback:
                         _build.function:

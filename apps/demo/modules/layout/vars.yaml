@@ -3,6 +3,11 @@ footer:
   - id: footer-text
     type: Html
     properties:
-      html: |
-        <p>Modules Demo</p>
-        <p>© 2026 Resonancy. All rights reserved.</p>
+      html:
+        _nunjucks:
+          template: |
+            <p>{{ name }}</p>
+            <p>© 2026 Resonancy. All rights reserved.</p>
+          on:
+            name:
+              _app: name
