@@ -26,8 +26,9 @@ vars:
       Event display templates — a flat map of event type to a Nunjucks title
       template. Templates receive `user` (the acting user). When unset, the
       module's `defaults/event_display.yaml` renders. When set, the override
-      fully replaces the defaults — no merge. (Per-app keying is retired with
-      `app_name`.)
+      fully replaces the defaults — no merge. The rendered block is written to
+      the event under the app slug, which is where the events module's
+      `display_key` reads it back.
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
