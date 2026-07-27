@@ -1,0 +1,20 @@
+type: handover
+kind: check
+action_group: onboarding
+blocked_by:
+  - kickoff
+description: Hand the account over to customer success.
+access:
+  demo:
+    view: true
+    edit: true
+status_map:
+  blocked:
+    demo:
+      message: Complete the kickoff call before handover.
+  action-required:
+    demo:
+      message: Hand the account over to customer success.
+  done:
+    demo:
+      message: Handed over to customer success.

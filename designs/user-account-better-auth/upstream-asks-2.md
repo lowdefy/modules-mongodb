@@ -1,6 +1,6 @@
 # User Account — Upstream Asks (Round 2, outstanding)
 
-Platform-side changes the [user-account design](design.md) depends on that surfaced **after** the first round ([upstream-asks.md](upstream-asks.md)) was delivered. The five round-1 asks are all delivered upstream; the asks here are **not yet delivered** — this file tracks them separately so the delivered set stays clean. Numbering continues the round-1 sequence (round 1 was asks 1–5), so ask ids stay globally unique.
+Platform-side changes the [user-account design](design.md) depends on that surfaced **after** the first round ([upstream-asks.md](upstream-asks.md)) was delivered. The five round-1 asks and the sole round-2 ask below (ask 6, passkey sign-in) are **all delivered upstream** — this file is retained as history. Numbering continues the round-1 sequence (round 1 was asks 1–5), so ask ids stay globally unique.
 
 ---
 

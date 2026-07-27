@@ -48,28 +48,30 @@ fields:
       # Request-backed field: options come from `form_requests` below, so it
       # only works on the full new/edit pages. Gate on activity_form_context
       # == page to keep it out of the capture modal and the read-only view.
-      - id: attributes.lead_id
+      - id: attributes.deal_id
         type: Selector
         visible:
           _eq:
             - _state: activity_form_context
             - page
         properties:
-          title: Related Lead
+          title: Related Deal
           options:
-            _request: selector_leads
+            _request: selector_deals
 
-# Option source for the request-backed `attributes.lead_id` field above.
+# Option source for the request-backed `attributes.deal_id` field above.
 # Spliced into the new/edit page request lists and fired on page init; not
-# added to the capture modal (a modal can't own page requests).
+# added to the capture modal (a modal can't own page requests). Cross-module
+# reference to the deals module's collection.
 form_requests:
-  - id: selector_leads
+  - id: selector_deals
     type: MongoDBAggregation
-    connectionId: leads-collection
+    connectionId:
+      _module.connectionId: { id: deals-collection, module: deals }
     properties:
       pipeline:
         - $match:
-            deleted:
+            removed:
               $ne: true
         - $project:
             _id: 0

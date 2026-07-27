@@ -1,0 +1,14 @@
+- id: default
+  links:
+    - id: home
+      type: MenuLink
+      pageId: home
+      properties:
+        title: Home
+        icon: AiOutlineHome
+
+- id: profile
+  links:
+    _ref:
+      module: user-account
+      menu: profile-default

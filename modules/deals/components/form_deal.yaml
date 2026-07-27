@@ -1,0 +1,44 @@
+id: form_deal
+# Deal create-form body (like companies' form_company) — universal fields plus
+# the host `fields` slot — so the create page stays a thin shell.
+type: Box
+layout:
+  gap: 12
+blocks:
+  _build.array.concat:
+    - # Company picker stores the bare _id at form.company_id — the shape the
+      # deal insert expects, no extraction step.
+      - _ref:
+          module: companies
+          component: company-selector
+          vars:
+            field_id: form.company_id
+            title: Company
+            required: true
+      - id: form.name
+        type: TextInput
+        required: true
+        properties:
+          title: Deal Name
+          placeholder: Enter deal name
+      - id: form.description
+        type: TextArea
+        properties:
+          title: Description
+          rows: 3
+    # Host domain fields (default []). Ids prefixed `attributes.` bind to
+    # state.attributes.* — persisted by create-deal, shown read-only on the view.
+    - _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields
+            - 0
+        then:
+          _build.array.concat:
+            - - id: divider_details
+                type: Divider
+                properties:
+                  title: Details
+            - _module.var: fields
+        else: []

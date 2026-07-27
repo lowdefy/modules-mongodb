@@ -1,0 +1,23 @@
+# knob-behaviors — a single-action workflow exercising the per-action UI knobs
+# (show_comment / validate_on_draft / max_length). Kept separate from the other
+# fixtures so toggling these flags never perturbs their specs.
+type: knob-behaviors
+title: Knob behaviors
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
+
+starting_actions:
+  - type: knobs
+    status: action-required
+
+action_groups:
+  - id: knob-group
+    title: Knobs
+    icon: AiOutlineSetting
+
+actions:
+  - _ref: modules/workflows/workflow_config/knob-behaviors/knobs.yaml

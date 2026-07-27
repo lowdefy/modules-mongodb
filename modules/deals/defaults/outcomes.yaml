@@ -1,0 +1,12 @@
+# Shipped default deal outcome display config. Keys are the values stored in
+# deals.outcome.type — do NOT rename them. title = chip label; fg = text
+# color; bd = border color. Merged with the app's `outcomes` var via
+# `_build.object.assign` (module default first, app override wins per key).
+won:
+  title: Won
+  fg: "var(--ant-color-success)"
+  bd: "var(--ant-color-success-border)"
+lost:
+  title: Lost
+  fg: "var(--ant-color-error)"
+  bd: "var(--ant-color-error-border)"

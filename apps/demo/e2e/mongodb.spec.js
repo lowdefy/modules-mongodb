@@ -9,51 +9,28 @@ test("database seeding example", async ({ ldf, page, mdb }) => {
     roles: ["admin"],
   });
 
-  // Seed a lead directly into the demo's `leads` collection.
-  await mdb.seed("leads", [
+  // Seed a deal directly into the deals module's `deals` collection.
+  await mdb.seed("deals", [
     {
-      _id: "lead-e2e-seed",
-      name: "Seeded QA Lead",
-      status: [{ stage: "new" }],
+      _id: "deal-e2e-seed",
+      name: "Seeded QA Deal",
+      status: [{ stage: "prospecting" }],
+      outcome: null,
     },
   ]);
 
-  // lead-view reads the doc by `_url_query: _id`, so it is reachable directly.
-  await ldf.goto("/lead-view?_id=lead-e2e-seed");
+  // The deals workspace reads the selected deal from `_url_query: _id`.
+  await ldf.goto("/deals/view?_id=deal-e2e-seed");
 
-  // The seeded name drives the page-title <h2> (get_lead.0.name). It also appears
-  // in the breadcrumb, so target the heading specifically.
-  await expect(
-    page.getByRole("heading", { name: "Seeded QA Lead" }),
-  ).toBeVisible();
+  // The seeded name renders in the deal list card on the workspace.
+  await expect(page.getByText("Seeded QA Deal").first()).toBeVisible();
 });
 
-// Example: Testing with database assertions
+// Example: Using the native MongoDB driver for assertions
 //
 // test('creates new record in database', async ({ ldf, mdb }) => {
-//   await ldf.goto('/lead-new');
-//
-//   await ldf.block('name').do.fill('Jane Doe');
-//   await ldf.block('company').do.fill('Acme Inc');
-//   await ldf.block('save_btn').do.click();
-//
-//   // Assert record was created using native MongoDB driver
-//   const lead = await mdb.collection('leads').findOne({ company: 'Acme Inc' });
-//   expect(lead).toBeDefined();
-//   expect(lead.name).toBe('Jane Doe');
-// });
-//
-// Example: Using native driver for complex queries
-//
-// test('lead list shows correct data', async ({ ldf, page, mdb }) => {
-//   await mdb.seed('leads', [
-//     { _id: 'lead-1', name: 'Alice', status: [{ stage: 'new' }] },
-//     { _id: 'lead-2', name: 'Bob', status: [{ stage: 'won' }] },
-//   ]);
-//
-//   await ldf.goto('/lead-list');
-//
-//   // Use native driver to count documents
-//   const count = await mdb.collection('leads').countDocuments({});
-//   expect(count).toBe(2);
+//   await ldf.goto('/deals/new');
+//   // ...fill the create form and save...
+//   const deal = await mdb.collection('deals').findOne({ name: 'Acme deal' });
+//   expect(deal).toBeDefined();
 // });

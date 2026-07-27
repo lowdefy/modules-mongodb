@@ -1,0 +1,62 @@
+{# Assign-People modal. People roles are host-configured via `contact_roles`;
+   this template loops them in Nunjucks (at build) to emit one header +
+   contact-selector per role with plain-string vars. It must be a `.njk` (not a
+   `_build.array.map`) because the contact-selector is itself a `.njk` and refs
+   resolve BEFORE `_build.*` ops — build-op-derived vars would reach it unresolved.
+   Vars: roles — the resolved contact_roles list [{ slug, title, order, ... }]. #}
+id: detail_people_modal
+type: Modal
+properties:
+  title: Assign People
+  okText: Save
+  cancelText: Cancel
+  width: 520
+events:
+  onOk:
+    - id: submit_people
+      type: CallAPI
+      messages:
+        success: People updated.
+      params:
+        endpointId:
+          _module.endpointId: update-people
+        payload:
+          deal_id:
+            _state: selected_deal_id
+{% for r in roles %}
+          {{ r.slug }}:
+            _state: selected_deal_people.{{ r.slug }}
+{% endfor %}
+    - id: refetch_after_people
+      type: Request
+      params: get_selected_deal
+    # Re-sync the picker-bound state to the saved (and freshly re-fetched) deal.
+    - _ref: actions/set_deal_people.yaml
+  onClose:
+    # Discard any unsaved picker edits by restoring bound state from the deal.
+    - _ref: actions/set_deal_people.yaml
+blocks:
+{% for r in (roles | sort(false, false, 'order')) %}
+  - id: people_role_{{ r.slug }}
+    type: Box
+    layout:
+      gap: 8
+    blocks:
+      - id: people_role_header_{{ r.slug }}
+        type: Html
+        properties:
+          html: |
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary); padding-bottom: 6px; border-bottom: 1px solid var(--ant-color-border-secondary); margin: 12px 0;">{{ r.title }}</div>
+      - _ref:
+          module: contacts
+          component: contact-selector
+          vars:
+            id: selected_deal_people.{{ r.slug }}
+            keyword: "{{ r.title }}"
+            max: 1
+            form_extra_blocks:
+              _ref:
+                path: components/detail/contact_phone_fields.yaml.njk
+                vars:
+                  key_prefix: selected_deal_people_{{ r.slug }}_contact
+{% endfor %}

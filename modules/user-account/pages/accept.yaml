@@ -159,8 +159,18 @@ _ref:
             - id: go_signup_accept
               type: Link
               params:
+                # signup exists only where a password registration form does
+                # (emailAndPassword.enabled); passwordless collapses signup into
+                # login, so target login there — the invitee's email → link
+                # creates the account at verify time.
                 pageId:
-                  _module.pageId: signup
+                  _build.if:
+                    test:
+                      _build.authConfig: emailAndPassword.enabled
+                    then:
+                      _module.pageId: signup
+                    else:
+                      _module.pageId: login
                 urlQuery:
                   callbackUrl:
                     _string.concat:

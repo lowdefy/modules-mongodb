@@ -3,7 +3,14 @@ title: Write pathways
 module: user-account
 type: concept
 concepts:
-  [write-pathways, contact, betterauth-actions, denormalization, onboarding]
+  [
+    write-pathways,
+    contact,
+    betterauth-actions,
+    denormalization,
+    onboarding,
+    passwordless,
+  ]
 ---
 
 # Write pathways
@@ -73,8 +80,10 @@ conditions:
 - **The per-user gate** — for password-dependent controls (change password, 2FA
   enable / disable), a native read of `user-accounts` for a `provider:
 "credential"` row. An OAuth / magic-link-only user has no credential, so
-  `changePassword` / `twoFactor.*` would 400 — those controls simply hide. There
-  is no "set password" flow for credential-less users in v1.
+  `changePassword` / `twoFactor.*` would 400 — those controls simply hide. A user
+  in a **passwordless** deployment is exactly this "no credential" case: password
+  and 2FA controls hide, while passkeys, linked accounts, and sessions remain.
+  There is no "set password" flow for credential-less users in v1.
 
 The linked-accounts block is **visibility only** (provider list from
 `user-accounts`), and its read is the same one that feeds the credential check —

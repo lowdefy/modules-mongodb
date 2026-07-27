@@ -10,3 +10,4 @@
 - _ref: modules/workflows/workflow_config/operational-lifecycle/operational-lifecycle.yaml
 - _ref: modules/workflows/workflow_config/access-verbs/access-verbs.yaml
 - _ref: modules/workflows/workflow_config/custom-action/custom-action.yaml
+- _ref: modules/workflows/workflow_config/knob-behaviors/knob-behaviors.yaml

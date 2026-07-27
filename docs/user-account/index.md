@@ -3,7 +3,15 @@ title: User Account
 module: user-account
 type: index
 concepts:
-  [auth-pages, account-workspace, auth-methods, write-pathways, onboarding]
+  [
+    auth-pages,
+    account-workspace,
+    auth-methods,
+    write-pathways,
+    onboarding,
+    magic-link,
+    passwordless,
+  ]
 ---
 
 # User Account
@@ -28,13 +36,20 @@ operator console). Both run against the same `contact` / `user` / `member` /
 - **Login** (`login` page) — renders whichever sign-in methods the deployment
   enables (email + password, magic link, OAuth buttons, passkey), read live from
   the app's auth config via `_build.authConfig` — **not** a module var. OAuth
-  button label/icon/order come from the `providers` var. Also serves the
+  button label/icon/order come from the `providers` var. Magic-link adds an email
+  → "send me a link" send that flips to a `link-sent` "check your email" state
+  (it returns no session, so it never navigates inline). Also serves the
   `authPages.error` role: OAuth / magic-link failures redirect here and render as
-  a login-page error state. A 2FA-enrolled sign-in routes to the `two-factor`
-  page. See [Auth methods](concepts/auth-methods.md).
-- **Signup** (`signup` page) — ships unconditionally, even under `invite-only`
-  (an invitee signs up first, then accepts). Admission is engine policy, not the
-  page's; with `requireEmailVerification` it shows the check-your-email state.
+  a login-page error state (an expired link as a retryable `INVALID_TOKEN`
+  notice). A 2FA-enrolled sign-in routes to the `two-factor` page. See
+  [Auth methods](concepts/auth-methods.md).
+- **Signup** (`signup` page) — built only when `emailAndPassword.enabled`; it
+  ships unconditionally under `invite-only` (admission is engine policy, not the
+  page's) and with `requireEmailVerification` shows the check-your-email state. In
+  a **passwordless** deployment (password off, magic-link on) there is **no
+  `/signup` route** — sign-up collapses into the login page's one email → link
+  action, and the app must set `auth.authPages.signUp: login`. See
+  [Passwordless-primary](concepts/auth-methods.md#passwordless-primary-sign-up-collapses-into-sign-in).
 - **Password + verification flows** — `forgot-password`, `reset-password`, and
   `verify-email` (one page, two renders: the post-signup "check your email"
   prompt and the emailed-link landing).

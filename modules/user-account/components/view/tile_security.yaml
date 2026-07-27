@@ -176,7 +176,8 @@ _ref:
                               title:
                                 _if:
                                   test:
-                                    _request: get_account.0.two_factor_enabled
+                                    _boolean:
+                                      _request: get_account.0.two_factor_enabled
                                   then: Manage
                                   else: Set up
                               size: small

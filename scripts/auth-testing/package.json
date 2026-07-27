@@ -1,0 +1,15 @@
+{
+  "name": "demo-auth-testing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local test-infra helper scripts for the demo app's BetterAuth flows. Not a pnpm workspace member (the workspace globs only match apps/*, plugins/*, modules/*).",
+  "scripts": {
+    "bootstrap-admin": "node bootstrap-admin.mjs",
+    "reset-db": "node reset-db.mjs",
+    "mail-link": "node mail-link.mjs"
+  },
+  "dependencies": {
+    "mongodb": "^6.12.0"
+  }
+}

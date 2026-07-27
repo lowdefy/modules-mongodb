@@ -1,0 +1,7 @@
+# Resolved outcome display config: the shipped won/lost default with the host's
+# `outcomes` var merged over it (host wins per key, adds outcomes). _ref'd by the
+# deal outcome-chip surfaces (deal_list_card, view workspace list) so an
+# unconfigured host still renders won/lost chips.
+_build.object.assign:
+  - _ref: defaults/outcomes.yaml
+  - _module.var: outcomes

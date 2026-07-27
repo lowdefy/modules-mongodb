@@ -55,7 +55,10 @@
             - lowercase_email:
                 _string.toLowerCase:
                   _string.trim:
-                    _var: user.email
+                    _get:
+                      from:
+                        _var: user
+                      key: email
             - _build.if:
                 test:
                   _build.not:
@@ -75,11 +78,17 @@
             _id:
               _uuid: true
             email:
-              _var: user.email
+              _get:
+                from:
+                  _var: user
+                key: email
             lowercase_email:
               _string.toLowerCase:
                 _string.trim:
-                  _var: user.email
+                  _get:
+                    from:
+                      _var: user
+                    key: email
             hidden: false
             disabled: false
             created:
@@ -107,7 +116,10 @@
         - lowercase_email:
             _string.toLowerCase:
               _string.trim:
-                _var: user.email
+                _get:
+                  from:
+                    _var: user
+                  key: email
         - _build.if:
             test:
               _build.not:
@@ -136,7 +148,10 @@
       type: UpdateUserProfile
       properties:
         userId:
-          _var: user.id
+          _get:
+            from:
+              _var: user
+            key: id
         profile:
           contactId:
             _step: read_contact._id

@@ -37,6 +37,13 @@
   vars:
     _ref: modules/layout/vars.yaml
 
+# deals depends on layout/events/activities/files/companies/contacts/workflows —
+# listed after all of them so the order-sensitive entry-var resolve works.
+- id: deals
+  source: "file:../../modules/deals"
+  vars:
+    _ref: modules/deals/vars.yaml
+
 - id: notifications
   source: "file:../../modules/notifications"
   vars:

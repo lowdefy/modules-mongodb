@@ -20,7 +20,7 @@
 # enum components below are UI-only consumers.
 
 name: Workflows
-version: 0.14.1
+version: 0.17.0
 description: Workflow engine — action lifecycle, status transitions, hooks, trackers
 
 dependencies:
@@ -101,6 +101,10 @@ vars:
       applies Title Case, lowercases minor words mid-string, uppercases acronyms
       (base set: PO ID URL API CRM SLA KPI VAT PDF CSV FAQ KYC RFQ; extended by
       `title_acronyms`). Set `title:` only when the default is wrong.
+      Per-action UI knobs (optional): `show_comment` (boolean, default true) — set
+      false to hide the free-form comment box on the action's edit and review
+      pages; `pages.edit.validate_on_draft` (boolean, default false) — set true to
+      validate the form (like Submit) before the edit page's Save Draft persists.
   app_name:
     type: string
     required: true
@@ -168,6 +172,14 @@ vars:
 
 exports:
   components:
+    - id: open-actions
+      description: >
+        Compact card list of an entity's OPEN workflow actions — a lighter
+        sibling of `actions-on-entity` for sidebars/summaries that don't need
+        the full per-workflow stepper. Takes `entity_id` + `entity_connection_id`
+        vars, fetches via the same get-entity-workflows endpoint, and renders
+        only non-terminal actions (excludes `done`/`not-required`), colour-keyed
+        off `action_statuses`. Actions-only — reads no tasks or activities.
     - id: workflow-progress
       description: >
         Entity workflow-progress surface — renders the entity's workflows as
@@ -204,6 +216,9 @@ components:
   - id: actions-on-entity
     component:
       _ref: components/actions-on-entity.yaml
+  - id: open-actions
+    component:
+      _ref: components/open-actions.yaml
   - id: workflow-progress
     component:
       _ref: components/workflow-progress.yaml
@@ -249,7 +264,7 @@ pages:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.14.1"
+    version: "^0.17.0"
 
 secrets:
   - name: MONGODB_URI

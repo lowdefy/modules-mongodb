@@ -1,0 +1,167 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  validate:
+    type: array
+    default: []
+  options:
+    type: array
+    default: []
+  # Structural keys that build the hierarchy from `options`. When both are
+  # strings, getTreeData nests each row under the option whose `primaryKey`
+  # matches this row's `parentKey`; otherwise the tree renders flat.
+  primaryKey:
+    type: string
+    default: null
+  parentKey:
+    type: string
+    default: null
+  # Show checkboxes on nodes (the multiple-select affordance). Defaults on for
+  # this component; a group's check cascades to its leaves.
+  checkable:
+    type: boolean
+    default: true
+  # How checked nodes are stored: SHOW_CHILD keeps only leaf ids (checking a
+  # group never stores the group itself), SHOW_PARENT/SHOW_ALL keep parents too.
+  showCheckedStrategy:
+    type: string
+    default: SHOW_CHILD
+  showSearch:
+    type: boolean
+    default: true
+  treeDefaultExpandAll:
+    type: boolean
+    default: false
+  allowClear:
+    type: boolean
+    default: true
+  placeholder:
+    type: string
+    required: false
+  maxTagCount:
+    type: number
+    required: false
+  extra:
+    type: string
+    required: false
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
+  label_disabled:
+    type: boolean
+    default: false
+  on_change:
+    type: array
+    default: []
+
+config:
+  id:
+    _var: key
+  type: TreeMultipleSelector
+  validate:
+    _build.array.concat:
+      - _var:
+          key: validate
+          default: []
+      - _build.if:
+          test:
+            _build.eq:
+              - _var:
+                  key: required
+                  default: false
+              - true
+          then:
+            - message: This field is required.
+              status: error
+              pass:
+                _gt:
+                  - _array.length:
+                      _state:
+                        _var: key
+                  - 0
+          else: []
+  visible:
+    _var:
+      key: visible
+      default: true
+  required:
+    _var:
+      key: required
+      default: false
+  properties:
+    checkable:
+      _var:
+        key: checkable
+        default: true
+    showCheckedStrategy:
+      _var:
+        key: showCheckedStrategy
+        default: SHOW_CHILD
+    showSearch:
+      _var:
+        key: showSearch
+        default: true
+    treeDefaultExpandAll:
+      _var:
+        key: treeDefaultExpandAll
+        default: false
+    allowClear:
+      _var:
+        key: allowClear
+        default: true
+    placeholder:
+      _var: placeholder
+    maxTagCount:
+      _var: maxTagCount
+    primaryKey:
+      _var: primaryKey
+    parentKey:
+      _var: parentKey
+    label:
+      _build.object.assign:
+        - extra:
+            _var: extra
+          inline:
+            _var:
+              key: label_inline
+              default: false
+          disabled:
+            _var:
+              key: label_disabled
+              default: false
+        - _build.if:
+            test:
+              _build.ne:
+                - _var:
+                    key: label_span
+                    default: null
+                - null
+            then:
+              span:
+                _var: label_span
+              align: right
+            else: {}
+    title:
+      _var: title
+    options:
+      _var:
+        key: options
+        default: []
+  events:
+    onChange:
+      _var:
+        key: on_change
+        default: []

@@ -152,12 +152,10 @@ blocks:
             span: 24
           gap: 16
         blocks:
-          - id: enroltotp_uri
+          - id: enroltotp.uri
             type: TextInput
             layout:
               span: 24
-            value:
-              _state: enroltotp.uri
             properties:
               disabled: true
               label:

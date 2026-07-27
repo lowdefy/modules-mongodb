@@ -36,13 +36,6 @@ plugins:
     version: workspace:*
 
 auth:
-  # Protect every page by default. The auth pages (login, signup, accept,
-  # verify-email, …) stay public via the roles the user-account module
-  # contributes. Without this, every page renders for anonymous visitors and
-  # every walled request fails closed for the org-less caller — loud
-  # AuthenticationErrors on each page instead of a login redirect.
-  pages:
-    protected: true
   secret:
     _secret: AUTH_SECRET
   database:
@@ -76,15 +69,17 @@ auth:
           _secret: GOOGLE_CLIENT_ID
         clientSecret:
           _secret: GOOGLE_CLIENT_SECRET
-  # Auth mail (verification, password reset, magic link, invitation) sends
-  # through the app SMTP connection referenced here — the connection owns
-  # `from`, the transport, and the delivery filter. Requires lowdefy >=
-  # experimental-20260723135655 (older experimentals rejected `connectionId`
-  # at build while the runtime read nothing else — lowdefy PR #2285).
+  # Auth emails (verify, reset, magic-link, invite) send through the `auth-smtp`
+  # SMTP connection (see connections below): the runtime resolves it by
+  # connectionId at send time and the connection owns from/transport/filter. An
+  # optional `templates` map (verifyEmail/resetPassword/magicLink/invitation →
+  # notification ids) can override the default copy.
   email:
-    connectionId: email
-  # authPages and pages.public are contributed by the user-account module
-  # manifest (auth.pages / auth.public); app config would win on collision.
+    connectionId: auth-smtp
+  # The user-account module contributes its own authPages (login, signup,
+  # verify-email, …) and public pages (two-factor, logout) via its manifest, so
+  # they are NOT repeated in `pages.public` below; app config would win on
+  # collision.
   # Tenant policy: one shared deployment, many organizations. A fresh signup
   # mints its own organization (owner); invited users join the inviter's org;
   # the active org is the oldest membership. The tenant wall makes every
@@ -116,6 +111,22 @@ auth:
     - id: user
       label: User
       description: Standard application user.
+  # App-level page gate: every page requires a session except this public list.
+  # Modules contribute their own public pages (user-account: login/signup/…,
+  # two-factor, logout; notifications: link, invalid, file-download), so this
+  # list is only the app's own public surface — the 404 and router entry pages.
+  # The user-admin pages are role-gated to user-admin. Protecting by default
+  # also matters under the tenant policy: a walled request from an org-less
+  # anonymous caller fails closed, so an unprotected page would render loud
+  # AuthenticationErrors instead of redirecting to login.
+  pages:
+    protected: true
+    public:
+      - "404"
+      - router
+    roles:
+      user-admin:
+        - user-admin/*
   # Defense-in-depth endpoint gate (design Decision 3): the user-admin routine
   # endpoints require the user-admin role. Other endpoints stay as-is (no global
   # `protected` flip). Composes on top of the engine's userAdminRole step-floor.
@@ -134,30 +145,40 @@ connections:
   # One transport + delivery filter for every auth email (verification,
   # password reset, magic link, invitation) — referenced by
   # auth.email.connectionId above. SMTP is a framework built-in (no plugin pin).
-  - id: email
+  # Fully env-driven: the same config points at a local catcher in dev and a
+  # real provider in prod (docs/shared/secrets.md).
+  - id: auth-smtp
     type: SMTP
     properties:
       from:
         _secret: AUTH_FROM_ADDRESS
-      host: smtp.sendgrid.net
-      port: 465
-      secure: true
+      host:
+        _secret: SMTP_HOST
+      port:
+        _secret: SMTP_PORT
+      secure:
+        _eq:
+          - _secret: SMTP_SECURE
+          - "true"
       auth:
-        user: apikey
+        user:
+          _secret: SMTP_USER
         pass:
-          _secret: SENDGRID_API_KEY
+          _secret: SMTP_PASS
   - id: demo-contacts
     type: MongoDBCollection
     properties:
       databaseUri:
         _secret: MONGODB_URI
       collection: user-contacts
-  - id: leads-collection
+  # Sales-pipeline workflow entity connection — the `deals` id the deals module's
+  # GetEntityWorkflows queries match on (module r/w the collection via deals-collection).
+  - id: deals
     type: MongoDBCollection
     properties:
       databaseUri:
         _secret: MONGODB_URI
-      collection: leads
+      collection: deals
       write: true
       changeLog:
         collection: log-changes
@@ -165,9 +186,7 @@ connections:
           user:
             _user: true
 
-api:
-  - _ref: api/leads-create.yaml
-  - _ref: api/leads-update.yaml
+api: []
 
 pages:
   - _ref: pages/router.yaml
@@ -175,9 +194,6 @@ pages:
   - _ref: pages/user-components-demo.yaml
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml
-  - _ref: pages/leads/lead-list.yaml
-  - _ref: pages/leads/lead-new.yaml
-  - _ref: pages/leads/lead-view.yaml
-  # App-owned working surface for the send-quote custom action (Part 28).
-  - _ref: pages/leads/quote-builder.yaml
   - _ref: pages/files/files-demo.yaml
+  - _ref: pages/quote-builder.yaml
+  - _ref: pages/start-company-setup.yaml
