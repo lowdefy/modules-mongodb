@@ -53,6 +53,18 @@ Agents almost always want to **verify config compiles**, not run a live server. 
 
 **Always add a demo consumer when adding module functionality.** Any new consumer-facing capability — a component or export, a new var/slot, a new block behaviour — must ship with at least one real example consumer in `apps/demo/` that exercises it, in the same change. This gives every capability a build-verified reference and a worked example authors can copy, and it's how you validate the feature actually resolves end-to-end (`ldf:b`, then inspect the generated `.lowdefy/server/build/pages/**` artifacts). This does not contradict "absence of a caller is not absence of need" above: that rule forbids _deleting_ capability because the demo lacks a caller; this rule requires _adding_ a caller when you add capability. Prefer wiring the example into an existing demo page/flow over a throwaway page.
 
+## Database Access
+
+**Reading the database is fine. Never change data unless the user explicitly asked you to.**
+
+Reads are unrestricted — an ad-hoc script with the `mongodb` driver, `lowdefy_run_request`, a read-only aggregation. Diagnose freely.
+
+**Writes require an explicit request from the user.** No `deleteMany`, `updateMany`, `insertOne`, `drop`, `$merge`/`$out` — and **no running an existing script that mutates data either**, however well-guarded it looks. The prohibition is on the _act_ of changing data, not on the sloppiness of the method: a maintained reset script run without being asked is exactly as wrong as a throwaway `deleteMany`. Inferring permission from context does not count — not "the data is obviously junk", not "the finding says these rows are stale", not "a reset is the normal next step here", not having been asked to fix the code that produced the bad data. Only a direct instruction to change the data counts.
+
+**When a task seems to need a data change, stop and say so.** State what you believe needs changing and why, then let the user decide — they may have a script, a migration, a reason the rows should stay, or a different environment in mind. Finish everything that _doesn't_ depend on the mutation and report the data step as outstanding; a diagnosis with a clean write-up of the needed change is a complete deliverable. If a repeatable mutation is genuinely warranted, it belongs in a committed migration (`/r:migration-dev`), proposed for review rather than run.
+
+This holds for every environment. A local dev database is not a safe sandbox — a `MONGODB_URI` can point anywhere, and you generally cannot tell from inside the repo what a connection string actually reaches.
+
 ## Documentation
 
 Consumer-facing documentation lives in `docs/`. Source-side READMEs (`modules/{name}/README.md`, `plugins/modules-mongodb-plugins/README.md`, block READMEs) are stubs that point into `docs/` — do not add content to them.
