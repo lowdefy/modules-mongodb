@@ -1,5 +1,17 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.18.0
+
+### Minor Changes
+
+- [#123](https://github.com/lowdefy/modules-mongodb/pull/123) [`fb72ec0`](https://github.com/lowdefy/modules-mongodb/commit/fb72ec081a64eb0bced8856758e635effd96b2a4) Thanks [@Yianni99](https://github.com/Yianni99)! - Action-form text fields (`text_input`) support native max-length capping. A new `max_length` field option maps to the TextInput `maxLength` property, stopping input at the limit instead of erroring after over-long input; `show_count` maps to `showCount` for a live "n/max" counter and defaults to on whenever `max_length` is set.
+
+- [#126](https://github.com/lowdefy/modules-mongodb/pull/126) [`79824a6`](https://github.com/lowdefy/modules-mongodb/commit/79824a615dabb129038dfc7b618ee3a361d6ede9) Thanks [@Yianni99](https://github.com/Yianni99)! - Workflow action pages support an optional wide layout. Setting `page_layout: wide` on a workflow renders all of its action pages — view, edit, review, error, and the per-workflow check page — with the workflow-progress panel on the left, the form expanded to the full width, and the record's Details and History moved into a right-side drawer opened from a header button. Workflows that omit `page_layout` (or set it to `standard`) keep the existing three-column layout unchanged, and an unrecognized value is rejected at build time.
+
+- [#123](https://github.com/lowdefy/modules-mongodb/pull/123) [`fb72ec0`](https://github.com/lowdefy/modules-mongodb/commit/fb72ec081a64eb0bced8856758e635effd96b2a4) Thanks [@Yianni99](https://github.com/Yianni99)! - Workflow and action-group overview pages: the back arrow now returns to the previous page instead of always jumping to the entity view (the entity stays reachable via the breadcrumb), and each action is individually collapsible with an Expand/Collapse-all toggle, all collapsed by default.
+
+  Adds two per-action options: `show_comment` (default `true`) — set `false` to hide the free-form comment box on an action's edit and review pages; and `pages.edit.validate_on_draft` (default `false`) — set `true` to validate the form (like Submit) before the edit page's Save Draft saves.
+
 ## 0.17.0
 
 ## 0.16.0

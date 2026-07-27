@@ -1,5 +1,11 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.18.0
+
+### Patch Changes
+
+- [#126](https://github.com/lowdefy/modules-mongodb/pull/126) [`87c465c`](https://github.com/lowdefy/modules-mongodb/commit/87c465c5ee4a7e286d35bd36fed1478f76cb84f9) Thanks [@Yianni99](https://github.com/Yianni99)! - Removed the redundant status-colored dot from workflow actions: the leading bullet on each action in the WorkflowProgress panel, and the dot beside the status text on action events in the EventsTimeline card. The status colour is already carried by the surrounding button/text, so the dot added visual noise. Timeline node markers, group icons, and the standard ActionSteps step list are unchanged.
+
 ## 0.17.0
 
 ## 0.16.0
