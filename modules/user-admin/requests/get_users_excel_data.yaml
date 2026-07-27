@@ -17,7 +17,7 @@ properties:
   pipeline:
     _build.array.concat:
       # Member rows.
-      - _ref: requests/stages/members_base.yaml
+      - _ref: ../shared/org/members_base.yaml
       - - $addFields:
             roles:
               $trim:
@@ -57,7 +57,7 @@ properties:
             coll: user-invitations
             pipeline:
               _build.array.concat:
-                - _ref: requests/stages/invitations_base.yaml
+                - _ref: ../shared/org/invitations_base.yaml
                 - - $addFields:
                       name: null
                       roles:

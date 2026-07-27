@@ -1,7 +1,11 @@
-# Members base stages (design Decision 1/2) — shared by the list read and the
-# Excel export. Root is `user-members` for the pinned org (org-scoped with the
-# policy-portable `_user: organizationId` read). Joins the auth `user` and the app
-# `user-contacts` record, then flattens the display shape:
+# Shared members base stages — one canonical member join, `_ref`'d by relative
+# path from BOTH user-admin (suite list + Excel export) and organizations (the
+# per-org members page), so the read shape can't drift between them.
+#
+# Root is `user-members`, scoped to the caller's active organization with the
+# policy-portable `_user: organizationId` read (the same expression resolves
+# the pinned org and the tenant's active org). Joins the auth `user` and the
+# app `user-contacts` record, then flattens the display shape:
 #   name / picture — from the contact profile (fallback to the user display name)
 #   email          — from the auth user row
 #   roles_arr      — member.role is a CSV string (user-model Decision 5); $split

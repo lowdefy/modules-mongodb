@@ -23,7 +23,7 @@ properties:
   pipeline:
     _build.array.concat:
       # Match pending + org, join inviter, derive Invited/Expired + roles.
-      - _ref: requests/stages/invitations_base.yaml
+      - _ref: ../shared/org/invitations_base.yaml
       # Filter: email regex + derived-status segment.
       - - $match:
             $and:

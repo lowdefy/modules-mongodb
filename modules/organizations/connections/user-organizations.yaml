@@ -1,0 +1,16 @@
+# Read-only connection for the auth `user-organizations` collection — resolves
+# the active organization's name for the settings page and the switcher, and the
+# names of the caller's other memberships.
+# Adapter-fixed collection name (mongodb Decision 2). Same-database co-location
+# precondition applies (see module.lowdefy.yaml).
+#
+# Deliberately UNWALLED (see user-members.yaml): reads scope themselves on the
+# organization ids the caller demonstrably belongs to. Renames go through the
+# UpdateOrganization client action, never through this connection.
+id: user-organizations
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-organizations
+  write: false

@@ -1,7 +1,12 @@
-# Invitations base stages (design Decision 2/7) — shared by the Invitations list
-# read and the Excel export. Root is `user-invitations` for the pinned org.
-# Reads the collection directly (bypassing the org-plugin helpers) so it can do
-# its own status/expiry derivation:
+# Shared invitations base stages — one canonical pending-invitation read,
+# `_ref`'d by relative path from BOTH user-admin (suite Invitations tab +
+# Excel export) and organizations (the per-org members page), so the read
+# shape can't drift between them.
+#
+# Root is `user-invitations`, scoped to the caller's active organization with
+# the policy-portable `_user: organizationId` read. Reads the collection
+# directly (bypassing the org-plugin helpers) so it can do its own
+# status/expiry derivation:
 #   $match status: "pending" — excludes accepted / rejected / canceled rows,
 #     which appear in neither the Invitations tab nor the export.
 #   status — there is NO "expired" status in BetterAuth; it is derived from a

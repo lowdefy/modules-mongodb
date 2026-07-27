@@ -22,7 +22,7 @@ properties:
       - - $match:
             userId:
               _payload: user_id
-      - _ref: requests/stages/members_base.yaml
+      - _ref: ../shared/org/members_base.yaml
       # Roles resolved against the catalog → [{ label, orphan }].
       - _ref: requests/stages/roles_from_catalog.yaml
       # Registered passkeys for the target user (Decision 5 auth-methods badge).

@@ -20,7 +20,7 @@ properties:
   pipeline:
     _build.array.concat:
       # Join + flatten the display shape.
-      - _ref: requests/stages/members_base.yaml
+      - _ref: ../shared/org/members_base.yaml
       # Post-$lookup filter, then the consumer's plain-$match filter_match slot.
       - - _ref: requests/stages/members_filter.yaml
       - _module.var: request_stages.filter_match

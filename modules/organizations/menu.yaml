@@ -1,0 +1,16 @@
+id: default
+links:
+  - id: organization-members
+    type: MenuLink
+    pageId:
+      _module.pageId: members
+    properties:
+      title: Members
+      icon: AiOutlineTeam
+  - id: organization-settings
+    type: MenuLink
+    pageId:
+      _module.pageId: settings
+    properties:
+      title: Organization
+      icon: AiOutlineBank

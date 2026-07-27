@@ -1,0 +1,36 @@
+# invite-contact — mint or link the invitee's contact in the caller's ACTIVE
+# organization, so the invited person is visible in that org's contact lists
+# from the moment they are invited rather than only after they accept.
+#
+# The members page calls this first, then fires the InviteMember client action
+# (org-workspace Decision 2b). Splitting it this way is deliberate: the
+# invitation itself is a per-org client action, member-role-gated by BetterAuth
+# under the tenant policy, while the contact mint is an app-collection write
+# that needs a Lowdefy connection — which a client action has no access to.
+#
+# The upsert is idempotent (it reconciles on duplicate key), so a failure at the
+# InviteMember step leaves nothing to clean up and a retry converges.
+#
+# The shared fragment is spliced with NO `organization_id` var: the connection
+# is walled, the caller is a logged-in member with the target org active, so the
+# wall stamps the organization mechanically. Passing one here would be rejected.
+# No `binding_point` either — the invitee has no user row yet, so there is
+# nothing to write `profile.contactId` back onto; the accept flow links them.
+#
+# Payload: { email }
+id: invite-contact
+type: Api
+routine:
+  - _ref:
+      path: ../shared/contact/create-or-link-contact.yaml
+      vars:
+        connection_id:
+          _module.connectionId: user-contacts-collection
+        user:
+          email:
+            _payload: email
+
+  - :return:
+      success: true
+      contactId:
+        _step: read_contact._id
