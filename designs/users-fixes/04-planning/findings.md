@@ -35,7 +35,7 @@ scan for the F3 signature returns zero.
 > **Why the original inverted it.** Three compounding errors:
 >
 > 1. **A false claim in source, taken as fact.** `user-account/api/update-profile.yaml`
->    carried the comment "flat event_display — app_name keying is retired", and
+>    carried the comment "flat `event_display` — `app_name` keying is retired", and
 >    `user-account/module.lowdefy.yaml` said "(Per-app keying is retired with
 >    `app_name`.)" — which propagated into generated
 >    `docs/user-account/reference/vars.md`. Both were wrong.
@@ -43,9 +43,9 @@ scan for the F3 signature returns zero.
 >    **module var** (replaced by `_build.app: slug`); it explicitly **kept**
 >    per-app display keying. Its §"Keep `display_key` as a manifest var" retains
 >    it on purpose (the ops-app cross-read case), and design.md:45 says outright:
->    _"`user-account` and `user-admin` are **not** in this list (BetterAuth
+>    "`user-account` and `user-admin` are **not** in this list (BetterAuth
 >    rebuild)… `events` is not either: it scopes display via `display_key`, not
->    `app_name`."_ The BetterAuth rebuild ran concurrently, misread "the var is
+>    `app_name`." The BetterAuth rebuild ran concurrently, misread "the var is
 >    retired" as "the keying is retired", and baked that misreading into source.
 > 2. **A biased data sample.** The test DB held only 9 events, **all** of them
 >    written by user-admin/user-account — i.e. exclusively the broken writers.
@@ -77,8 +77,8 @@ scan for the F3 signature returns zero.
 > slug; only the _written block_ is keyed. The two false claims were deleted and
 > `pnpm docs:gen` re-run. `GetEventsTimeline`, the `events` manifest, and the
 > `display_key` action reads (lines 265/277/279/290/296) were **left untouched** —
-> all correct. The 9 stale flat rows are deletable test data; clear them with
-> `scripts/auth-testing/reset-db.mjs`.
+> all correct. The 9 pre-existing flat rows in the test DB are stale data the
+> developer can clear at their discretion; no migration is warranted.
 >
 > **Standing lesson:** when a source comment asserts a schema decision, verify it
 > against `docs/` and the owning design before building on it — and never treat a
