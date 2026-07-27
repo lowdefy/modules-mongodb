@@ -67,28 +67,42 @@ _ref:
     # Universal-fields chips (assignees avatars + due pill + ✎ → edit modal) in the
     # title bar's page_actions, only when the action declares universal fields.
     page_actions:
-      _build.if:
-        test:
-          _build.gt:
-            - _build.array.length:
-                _var:
-                  key: action_config.universal_fields
-                  default: []
-            - 0
-        then:
-          - _ref:
-              path: components/universal-fields/universal-fields-chips.yaml
+      _build.array.concat:
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: action_config.universal_fields
+                      default: []
+                - 0
+            then:
+              - _ref:
+                  path: components/universal-fields/universal-fields-chips.yaml
+                  vars:
+                    modal_id: universal_fields_edit_modal
+                    show:
+                      _var: action_config.universal_fields
+                    assignee_docs: action.assignee_docs
+                    action_data:
+                      due_date:
+                        _state: action.due_date
+                      stage:
+                        _state: action.status.0.stage
+            else: []
+        # Wide layout: the bundled trigger button + drawer. The antd Drawer
+        # portals to <body>, so it opens on the right despite living here.
+{%- if history_in_drawer %}
+        - - _ref:
+              path: components/history-details-drawer.yaml
               vars:
-                modal_id: universal_fields_edit_modal
-                show:
-                  _var: action_config.universal_fields
-                assignee_docs: action.assignee_docs
-                action_data:
-                  due_date:
-                    _state: action.due_date
-                  stage:
-                    _state: action.status.0.stage
-        else: []
+                reference_field:
+                  _var: reference_field
+                details_slot:
+                  _var: entity_view_slot
+{%- else %}
+        - []
+{%- endif %}
     show_back_button: true
     content_width:
       _var:
@@ -189,6 +203,10 @@ _ref:
                   _var: reference_field
                 details_slot:
                   _var: entity_view_slot
+                left_variant:
+                  _var: left_variant
+                history_in_drawer:
+                  _var: history_in_drawer
                 middle:
                   _build.array.concat:
                     # Workflow-closed banner — bare full-width alert above the

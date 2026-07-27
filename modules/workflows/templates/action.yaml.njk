@@ -102,6 +102,16 @@ _ref:
                 _state: current_action.due_date
               stage:
                 _state: current_action.stage
+      # Wide layout: the History drawer trigger (portals to <body>). Check pages
+      # have no Details — the entity slot is in the MIDDLE — so it is History only.
+{%- if history_in_drawer %}
+      - _ref:
+          path: components/history-details-drawer.yaml
+          vars:
+            reference_field:
+              _var: reference_field
+            details_slot: []
+{%- endif %}
     breadcrumbs:
       _ref:
         path: components/action-breadcrumbs.yaml
@@ -211,6 +221,10 @@ _ref:
             # Check puts the entity slot in the MIDDLE, not a Details section (D7),
             # so the RHS is History only.
             details_slot: []
+            left_variant:
+              _var: left_variant
+            history_in_drawer:
+              _var: history_in_drawer
             middle:
               # 1. Workflow-closed banner — bare full-width alert, first (the
               #    hard-stop notice; Part 64 layout model). Gated on

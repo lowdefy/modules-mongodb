@@ -34,6 +34,7 @@ entity: # required — the workflow's entity wiring
 entity_view: # optional — build-time, read-only UI hint; never part of the engine config
   slot: { ... } # a Lowdefy block ref rendering a read-only view of the entity
 title: <string> # optional — human-readable title; derived from slug when omitted
+page_layout: standard | wide # optional — action-page layout variant (default standard); see concepts/action-pages.md
 starting_actions: # required — seed actions at workflow start
   - { type: <slug>, status: action-required | blocked }
 action_groups: # optional — ordered group definitions
