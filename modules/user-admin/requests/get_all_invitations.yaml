@@ -24,10 +24,14 @@ properties:
     _build.array.concat:
       # Match pending + org, join inviter, derive Invited/Expired + roles.
       - _ref: requests/stages/invitations_base.yaml
-      # Filter: email regex + derived-status segment.
+      # Filter: email regex + derived-status segment. Set clauses are merged into a
+      # single object (implicit AND) so an unset filter leaves the match-all
+      # `$match: {}` — MongoDB rejects `$and: []`. Every clause therefore owns a
+      # distinct top-level key (the two status branches are mutually exclusive).
       - - $match:
-            $and:
+            _object.assign:
               _array.concat:
+                - - {}
                 - _if:
                     test:
                       _ne:

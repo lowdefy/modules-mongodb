@@ -35,20 +35,22 @@ routine:
       payload:
         type: invitation-resent
         display:
-          title:
-            _nunjucks:
-              template:
-                _build.if_none:
-                  - _module.var: event_display.invitation-resent
-                  - _ref:
-                      path: defaults/event_display.yaml
-                      key: invitation-resent
-              on:
-                user:
-                  _user: true
-                target:
-                  email:
-                    _payload: email
-          description: null
+          _build.object.fromEntries:
+            - - _build.app: slug
+              - title:
+                  _nunjucks:
+                    template:
+                      _build.if_none:
+                        - _module.var: event_display.invitation-resent
+                        - _ref:
+                            path: defaults/event_display.yaml
+                            key: invitation-resent
+                    on:
+                      user:
+                        _user: true
+                      target:
+                        email:
+                          _payload: email
+                description: null
   - :return:
       success: true

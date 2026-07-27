@@ -153,21 +153,23 @@ routine:
       payload:
         type: member-invited
         display:
-          title:
-            _nunjucks:
-              template:
-                _build.if_none:
-                  - _module.var: event_display.member-invited
-                  - _ref:
-                      path: defaults/event_display.yaml
-                      key: member-invited
-              on:
-                user:
-                  _user: true
-                target:
-                  email:
-                    _payload: email
-          description: null
+          _build.object.fromEntries:
+            - - _build.app: slug
+              - title:
+                  _nunjucks:
+                    template:
+                      _build.if_none:
+                        - _module.var: event_display.member-invited
+                        - _ref:
+                            path: defaults/event_display.yaml
+                            key: member-invited
+                    on:
+                      user:
+                        _user: true
+                      target:
+                        email:
+                          _payload: email
+                description: null
         references:
           contact_ids:
             - _step: read_contact._id
