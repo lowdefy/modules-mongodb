@@ -17,6 +17,9 @@ _ref:
   vars:
     id: onboarding
     title: ""
+    # Wider than the default auth card — form_core lays the honorific and the
+    # two name fields out on a single 24-column row.
+    max_width: 560
     events:
       onInit:
         - id: seed_onboarding
@@ -105,46 +108,13 @@ _ref:
                               _sum:
                                 - _state: avatar_color_index
                                 - 1
-        # ---- Required name (always collected — the derived profile.name) ----
-        - - id: profile.given_name
-            type: TextInput
-            required: true
-            properties:
-              size: large
-              label:
-                title: First name
-                colon: false
-                span: 24
-          - id: profile.family_name
-            type: TextInput
-            required: true
-            properties:
-              size: large
-              label:
-                title: Last name
-                colon: false
-                span: 24
-        # ---- Honorific selector (gated on the show_honorific module var) ----
-        - _build.if:
-            test:
-              _module.var: fields.show_honorific
-            then:
-              - id: profile.title
-                type: Selector
-                properties:
-                  size: large
-                  allowClear: true
-                  placeholder: Select title
-                  options:
-                    - Mr
-                    - Ms
-                    - Mrs
-                    - Dr
-                  label:
-                    title: Title
-                    colon: false
-                    span: 24
-            else: []
+        # ---- Core profile fields (shared form_core — same capture as the
+        # profile edit modal: honorific + first/last name on one row) ----
+        - _ref:
+            path: ../shared/profile/form_core.yaml
+            vars:
+              show_honorific:
+                _module.var: fields.show_honorific
         # ---- Deployment-configured profile field blocks ----
         - _module.var: fields.profile
         # ---- Submit ----

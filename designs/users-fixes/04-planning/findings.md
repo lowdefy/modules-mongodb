@@ -5,9 +5,9 @@ contract, schema, or intended behaviour. Roughly ordered by priority.
 
 Finding IDs are stable — carried over from the auth-testing run. Don't renumber.
 
-**Verification status:** F14 and F28 are code-verified open as of 2026-07-27. The
-rest are behavioural findings from the 2026-07-24 test run and have **not** been
-re-tested since — confirm before planning.
+**Verification status:** F14 is code-verified open as of 2026-07-27. The rest are
+behavioural findings from the 2026-07-24 test run and have **not** been re-tested
+since — confirm before planning.
 
 **F3 + F4 are closed** — fixed by `5484bc1d` (build-time `_var: user.<field>`
 paths baked `null`/`''` into the routine; now runtime `_get`) and verified live on
@@ -17,121 +17,6 @@ pre-existing contact is matched rather than duplicated. Evidence in
 [`merge-on-signup-wiring/design.md`](../../user-account-better-auth/_completed/merge-on-signup-wiring/design.md#verification).
 No data cleanup is needed: the corrupted rows are gone from the test DB and a
 scan for the F3 signature returns zero.
-
----
-
-## F28 — Activity timeline is always empty: user-admin/user-account write a flat display block the timeline can't read
-
-> **RESOLVED 2026-07-27 — and the original diagnosis below was inverted.** The
-> symptom was real; the attributed cause was backwards. The read side
-> (`GetEventsTimeline`) is **correct** and matches the documented contract; the
-> **write side** in `user-admin` / `user-account` was the bug. The original
-> heading ("`GetEventsTimeline` still reads the retired app_name-keyed schema")
-> and the fix it proposed are both wrong — acting on them would have hidden every
-> `contacts` / `companies` / `activities` / `deals` / workflow-engine event, a
-> strictly larger regression against a documented contract. Everything from
-> "Root cause" down is preserved for the record; read the correction first.
->
-> **Why the original inverted it.** Three compounding errors:
->
-> 1. **A false claim in source, taken as fact.** `user-account/api/update-profile.yaml`
->    carried the comment "flat `event_display` — `app_name` keying is retired", and
->    `user-account/module.lowdefy.yaml` said "(Per-app keying is retired with
->    `app_name`.)" — which propagated into generated
->    `docs/user-account/reference/vars.md`. Both were wrong.
->    [`designs/app-operator`](../../app-operator/design.md) retired the `app_name`
->    **module var** (replaced by `_build.app: slug`); it explicitly **kept**
->    per-app display keying. Its §"Keep `display_key` as a manifest var" retains
->    it on purpose (the ops-app cross-read case), and design.md:45 says outright:
->    "`user-account` and `user-admin` are **not** in this list (BetterAuth
->    rebuild)… `events` is not either: it scopes display via `display_key`, not
->    `app_name`." The BetterAuth rebuild ran concurrently, misread "the var is
->    retired" as "the keying is retired", and baked that misreading into source.
-> 2. **A biased data sample.** The test DB held only 9 events, **all** of them
->    written by user-admin/user-account — i.e. exclusively the broken writers.
->    Zero `contacts`/`activities` events existed to compare against, so "every
->    event is flat" looked like a completed migration rather than a localised bug.
-> 3. **`docs/` was not consulted.** Per CLAUDE.md, `docs/` is the source of truth
->    for consumer-observable behaviour, and
->    [`docs/shared/event-display.md`](../../../docs/shared/event-display.md)
->    documents the app-keyed `$my-app.title` read in detail. A stale-looking
->    design note was trusted over current docs.
->
-> **Evidence for the corrected diagnosis.** Built artifacts under
-> `apps/demo/.lowdefy/server/build/api/` showed two shapes coexisting —
-> `contacts/update-contact` → `"display":{"demo":{"title":…}}` (app-keyed) vs
-> `user-admin/update-profile` → `"display":{"title":…}` (flat). Census: **9
-> app-keyed writers** (contacts ×2, companies ×2, activities ×3, deals ×2), plus
-> the workflow engine (`WorkflowAPI/schema.js` `slug` prop) and
-> `activities/components/task-modal.yaml`'s pass-throughs — against **12 flat
-> writers, all in user-admin (×11) and user-account (×1)**. `GetEventsTimeline`'s
-> 28 tests pass and include a deliberate
-> `describe("events without display_key display block are excluded")`, so the
-> guard the original called stale is intentional and test-covered.
->
-> **Fix applied.** All 12 flat endpoints now wrap the rendered block under
-> `_build.app: slug` via `_build.object.fromEntries`, verified app-keyed in the
-> build output. The flat `event_display` **var** contract (type → template) is
-> retained deliberately — it is simpler than the app-keyed var map used by
-> `contacts`/`companies`, and redundant now that `display_key` defaults to the
-> slug; only the _written block_ is keyed. The two false claims were deleted and
-> `pnpm docs:gen` re-run. `GetEventsTimeline`, the `events` manifest, and the
-> `display_key` action reads (lines 265/277/279/290/296) were **left untouched** —
-> all correct. The 9 pre-existing flat rows in the test DB are stale data the
-> developer can clear at their discretion; no migration is warranted.
->
-> **Standing lesson:** when a source comment asserts a schema decision, verify it
-> against `docs/` and the owning design before building on it — and never treat a
-> single app's event rows as a census of the collection's shape.
-
-**High priority — this is the events module's flagship read** and affects every
-timeline consumer, not just user-admin.
-
-The Activity tile (`user-admin/components/view/tile_activity.yaml`) fetches via
-the events module's `events-timeline` component → `GetEventsTimeline` plugin
-request. Events **are** written and match the target (DB-verified: 4 `log-events`
-rows with `user_ids: ["381b…"]`, plus flat top-level `title` / `description`), yet
-the tile shows "No activity."
-
-Root cause in
-`plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js`
-(verified 2026-07-27):
-
-> **Identifier note.** [`designs/app-operator`](../../app-operator/design.md) renamed the
-> `EventsTimeline` connection property and the engine locals described below from `app_name` to
-> **`display_key`**, and edited this same file. The finding itself still stands — only the
-> identifier changed, not the schema mismatch — but re-verify the line numbers before acting on it.
-
-- the `$match` requires a **top-level field named `<app_name>`** —
-  `{ [app_name]: { $ne: null } }` (line 67, `app_name` = the `display_key` var =
-  the app name, `demo`); and
-- the display projection reads `$<app_name>.title` / `.description` / `.info`
-  (lines 203–205).
-
-Both assume the **old per-app-keyed display block** (`event.demo.title`). But
-events were migrated to **flat `event_display`** ("app_name keying is retired",
-per `update-profile.yaml`): actual docs have keys `_id, title, description,
-contact_ids, user_ids, date, created, type, metadata, files` — **no `demo`
-field**. So the app_name guard excludes **every** event → empty timeline, and the
-projection would null the real top-level `title` even if a row slipped through.
-
-**Write side is correct (flat); the read side and manifest are stale.**
-
-**Fix:** migrate `GetEventsTimeline` to the flat schema — drop or replace the
-`{ [app_name]: { $ne: null } }` guard (a flat `{ title: { $ne: null } }` presence
-check, if any guard is even needed) and read `title` / `description` / `info`
-from the top level. Rebuild the plugin `dist`.
-
-**Also:** update the `events` manifest `display_key` doc
-(`modules/events/module.lowdefy.yaml:25`), which still says "Events store per-app
-display titles keyed by app name" — and **reassess whether `display_key` is still
-needed at all** under the flat model. Note there are further `app_name` reads at
-lines 265, 277, 279, 290, 296 (links/message extraction) that need the same
-treatment.
-
-NB a prior changelog "fix" tightened the timeline to _filter out_ events missing
-the `display_key` field — under the flat schema that guard is exactly what now
-hides everything.
 
 ---
 

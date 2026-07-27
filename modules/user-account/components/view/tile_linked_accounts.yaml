@@ -13,29 +13,34 @@ _ref:
         layout:
           gap: 12
         blocks:
+          # Rows sit flush in the tile card, and the last row drops its rule so it
+          # does not double up with the hint that follows.
           - id: linked_accounts_list
-            type: ListSelector
+            type: Html
             properties:
-              selectable: false
-              bordered: false
-              gap: 0
-              # The caller's linked accounts (get_accounts.accounts — one row per
-              # user-accounts doc, incl. the built-in `credential` row rendered as
-              # "Email & password"). Read-only visibility, not management
-              # (Decision 5). providerId → friendly label / detail in the template.
-              data:
-                _request: get_accounts.0.accounts
-              html: |
-                <div id="bl-{{ index }}.linked_account_item" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--ant-color-border-secondary); font-size:13px;">
-                  <span style="flex:1 1 auto; min-width:0;">
-                    <div style="color:var(--ant-color-text); text-transform:capitalize;">{% if item.providerId == 'credential' %}Email &amp; password{% else %}{{ item.providerId }}{% endif %}</div>
-                    <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{% if item.providerId == 'credential' %}Primary sign-in{% else %}{{ item.accountId }}{% endif %}</div>
-                  </span>
-                  <span style="flex:0 0 auto; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">Connected</span>
-                </div>
-            style:
-              .body:
-                padding: "0"
+              html:
+                _nunjucks:
+                  # The caller's linked accounts (get_accounts.accounts — one row
+                  # per user-accounts doc, incl. the built-in `credential` row
+                  # rendered as "Email & password"). Read-only visibility, not
+                  # management (Decision 5). providerId → friendly label / detail.
+                  template: |
+                    <div style="display:flex; flex-direction:column;">
+                    {% for item in accounts %}
+                      <div id="bl-{{ loop.index0 }}.linked_account_item" style="display:flex; align-items:center; gap:12px; padding:12px 0; font-size:13px;{% if not loop.last %} border-bottom:1px solid var(--ant-color-border-secondary);{% endif %}">
+                        <span style="flex:1 1 auto; min-width:0;">
+                          <div style="color:var(--ant-color-text); text-transform:capitalize;">{% if item.providerId == 'credential' %}Email &amp; password{% else %}{{ item.providerId }}{% endif %}</div>
+                          <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{% if item.providerId == 'credential' %}Primary sign-in{% else %}{{ item.accountId }}{% endif %}</div>
+                        </span>
+                        <span style="flex:0 0 auto; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">Connected</span>
+                      </div>
+                    {% else %}
+                      <div style="color:var(--ant-color-text-tertiary); font-size:13px;">No linked accounts.</div>
+                    {% endfor %}
+                    </div>
+                  on:
+                    accounts:
+                      _request: get_accounts.0.accounts
           - id: linked_accounts_hint
             type: Html
             properties:
