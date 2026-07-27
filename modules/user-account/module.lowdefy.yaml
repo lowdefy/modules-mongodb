@@ -1,5 +1,5 @@
 name: User Account
-version: 1.0.0
+version: 0.17.0
 description: >-
   Self-service auth pages (login, signup, password reset, email verification,
   2FA challenge, invitation accept, logout) and the signed-in account workspace
@@ -248,4 +248,4 @@ secrets:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.14.1"
+    version: "^0.17.0"

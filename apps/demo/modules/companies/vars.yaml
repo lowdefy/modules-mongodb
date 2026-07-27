@@ -37,45 +37,26 @@ request_stages:
         archived:
           $ne: true
 on_create_routine:
-  - id: start_company_setup
-    type: CallApi
-    properties:
-      endpointId:
-        _module.endpointId: { id: company-setup-start, module: workflows }
-      payload:
-        entity:
-          id:
-            _step: insert.insertedId
-        parent_action_id:
-          _payload: url_query.action_id
+  # company-setup is started by the deal's track-company-setup tracker (via the
+  # start-company-setup page) on the deal's existing company — NOT on every
+  # company creation. Guarded on a parent action_id so a plain company create
+  # doesn't spawn an orphan company-setup workflow.
   - ":if":
       _ne:
-        - _payload: url_query.entity_id
+        - _payload: url_query.action_id
         - null
     ":then":
-      - id: log_convert_lead
+      - id: start_company_setup
         type: CallApi
         properties:
           endpointId:
-            _module.endpointId: { id: new-event, module: events }
+            _module.endpointId: { id: company-setup-start, module: workflows }
           payload:
-            type: convert-lead
-            display:
-              demo:
-                title:
-                  _nunjucks:
-                    template: "{{ user.profile.name }} converted lead {{ target.name }} to a customer"
-                    on:
-                      user:
-                        _user: true
-                      target:
-                        name:
-                          _payload: name
-            references:
-              lead_ids:
-                - _payload: url_query.entity_id
-              company_ids:
-                - _step: insert.insertedId
+            entity:
+              id:
+                _step: insert.insertedId
+            parent_action_id:
+              _payload: url_query.action_id
 components:
   sidebar_slots:
     - _ref:

@@ -1,0 +1,361 @@
+# Generic create/edit modal for `kind: task` docs in the shared `actions`
+# collection — consolidated from deals' original deal-only task modal so
+# there is one task implementation. Drop this anywhere on a page; the host
+# opens it via CallMethod (`blockId: <id var>`, method `toggleOpen`) after
+# setting `state.selected_task` (null to create, or the clicked task doc to
+# edit) — same fixed state contract as the original.
+#
+# Vars:
+#   id                — block id for the Modal, so multiple instances on a
+#                       page don't collide when targeted by CallMethod.
+#                       Default `task_modal`. Internal field blocks/state
+#                       stay under the fixed `task_modal.*` namespace
+#                       (single-instance-open-at-a-time, same contract as
+#                       activities' own capture_activity).
+#   entity_type       — required. Stored on the task doc's `entity_type`
+#                       field (e.g. "deal", "meeting") — the generic entity
+#                       link, not a hardcoded reference.
+#   entity_id         — required. Stored on the task doc's `entity_id`
+#                       field — the linked entity's id.
+#   company_id        — optional secondary link, stored as the task doc's
+#                       `company_ids` array (single element). Default null.
+#   assignee_options  — required. Value for the assignee Selector's
+#                       `options` (e.g. a `_request:` ref to a host-owned
+#                       request returning `{ label, value: { contact_id,
+#                       name } }` options matching the stored `assignees`
+#                       shape).
+#   assignee_search   — optional `{ request_id, state_key }`. When set,
+#                       wires server-side search: typing sets
+#                       `state.<state_key>` and refetches `request_id`
+#                       (holding the current value), and disables the
+#                       Selector's client-side filter. Omit for a plain
+#                       client-filtered Selector fed by `assignee_options`.
+#   events            — required `{ created, completed, reopened }`, each
+#                       `{ type, title_template }`. `title_template` is a
+#                       Nunjucks string rendered with `user` (the acting
+#                       `_user`) and `title` (the task title) in scope —
+#                       lets each entity kind keep its own flavoured audit
+#                       copy (e.g. deals' `deal-task-created`).
+#   event_references  — required. Arbitrary references object merged onto
+#                       every emitted event (e.g. `{ deal_ids: [...],
+#                       company_ids: [...] }`), matching the
+#                       events-timeline `reference_field` convention.
+#   on_saved          — action sequence run after a successful create or
+#                       update (e.g. refetching the host's open-items
+#                       list). Default `[]`.
+id:
+  _var:
+    key: id
+    default: task_modal
+type: Modal
+layout:
+  gap: 12
+properties:
+  title:
+    _if:
+      test:
+        _eq:
+          - _state: task_modal.mode
+          - edit
+      then: Edit Task
+      else: Log Task
+  okText: Save
+  cancelText: Cancel
+  width: 520
+events:
+  onOpen:
+    _build.array.concat:
+      # Create mode when no task is selected; otherwise prefill from the
+      # selected task (set by the host before calling toggleOpen).
+      - - id: seed_task_modal
+          type: SetState
+          params:
+            task_modal:
+              _if:
+                test:
+                  _eq:
+                    - _state: selected_task
+                    - null
+                then:
+                  mode: create
+                  task_id: null
+                  title: null
+                  description: null
+                  stage: action-required
+                  due_date:
+                    _date: now
+                  assignee: null
+                else:
+                  mode: edit
+                  task_id:
+                    _state: selected_task._id
+                  title:
+                    _state: selected_task.title
+                  description:
+                    _state: selected_task.description
+                  stage:
+                    _state: selected_task.stage
+                  due_date:
+                    _state: selected_task.due_date
+                  assignee:
+                    _state: selected_task.assignees.0
+      - _build.if:
+          test:
+            _build.ne:
+              - _var:
+                  key: assignee_search
+                  default: null
+              - null
+          then:
+            - id: reset_assignee_search
+              type: SetState
+              params:
+                _build.object.fromEntries:
+                  - - _var: assignee_search.state_key
+                    - null
+            - id: fetch_assignee_options
+              type: Request
+              params:
+                _var: assignee_search.request_id
+          else: []
+  onOk:
+    _build.array.concat:
+      - - id: validate_task_form
+          type: Validate
+          params:
+            regex:
+              - ^task_modal\.
+        - id: create_task
+          type: CallAPI
+          skip:
+            _eq:
+              - _state: task_modal.mode
+              - edit
+          messages:
+            success: Task created.
+          params:
+            endpointId:
+              _module.endpointId: create-task
+            payload:
+              entity_type:
+                _var: entity_type
+              entity_id:
+                _var: entity_id
+              company_id:
+                _var:
+                  key: company_id
+                  default: null
+              title:
+                _state: task_modal.title
+              description:
+                _state: task_modal.description
+              stage:
+                _state: task_modal.stage
+              due_date:
+                _state: task_modal.due_date
+              assignee:
+                _state: task_modal.assignee
+              event:
+                type:
+                  _var: events.created.type
+                display:
+                  _build.object.fromEntries:
+                    - - _module.var: app_name
+                      - title:
+                          _nunjucks:
+                            template:
+                              _var: events.created.title_template
+                            on:
+                              user:
+                                _user: true
+                              title:
+                                _state: task_modal.title
+                        description:
+                          _if_none:
+                            - _state: task_modal.description
+                            - null
+                references:
+                  _var: event_references
+        - id: update_task
+          type: CallAPI
+          skip:
+            _not:
+              _eq:
+                - _state: task_modal.mode
+                - edit
+          messages:
+            success: Task updated.
+          params:
+            endpointId:
+              _module.endpointId: update-task
+            payload:
+              task_id:
+                _state: task_modal.task_id
+              stage:
+                _state: task_modal.stage
+              fields:
+                title:
+                  _state: task_modal.title
+                description:
+                  _state: task_modal.description
+                due_date:
+                  _state: task_modal.due_date
+                assignee:
+                  _state: task_modal.assignee
+              event:
+                type:
+                  _if:
+                    test:
+                      _eq:
+                        - _state: task_modal.stage
+                        - done
+                    then:
+                      _var: events.completed.type
+                    else:
+                      _var: events.reopened.type
+                display:
+                  _build.object.fromEntries:
+                    - - _module.var: app_name
+                      - title:
+                          _nunjucks:
+                            template:
+                              _if:
+                                test:
+                                  _eq:
+                                    - _state: task_modal.stage
+                                    - done
+                                then:
+                                  _var: events.completed.title_template
+                                else:
+                                  _var: events.reopened.title_template
+                            on:
+                              user:
+                                _user: true
+                              title:
+                                _state: task_modal.title
+                        description: null
+                references:
+                  _var: event_references
+      - _var:
+          key: on_saved
+          default: []
+  onClose:
+    - id: reset_task_modal
+      type: SetState
+      params:
+        _build.object.assign:
+          - task_modal: null
+            selected_task: null
+          - _build.if:
+              test:
+                _build.ne:
+                  - _var:
+                      key: assignee_search
+                      default: null
+                  - null
+              then:
+                _build.object.fromEntries:
+                  - - _var: assignee_search.state_key
+                    - null
+              else: {}
+blocks:
+  - id: task_modal.title
+    type: TextInput
+    required: true
+    properties:
+      title: Task Name
+      placeholder: e.g. Send revised pricing to the procurement lead
+  - id: task_modal.description
+    type: TextArea
+    properties:
+      title: Description
+      placeholder: Add details or context…
+      rows: 3
+  - id: task_modal.stage
+    type: ButtonSelector
+    properties:
+      title: Status
+      label:
+        extra:
+          _if:
+            test:
+              _eq:
+                - _state: task_modal.stage
+                - done
+            then: The completed date will be set to the current date.
+            else: null
+      options:
+        - label: To Do
+          value: action-required
+        - label: Done
+          value: done
+  - id: task_modal.due_date
+    type: DateSelector
+    layout:
+      span: 12
+    required: true
+    visible:
+      _not:
+        _eq:
+          - _state: task_modal.stage
+          - done
+    properties:
+      title: Due Date
+  - id: task_modal.assignee
+    type: Selector
+    layout:
+      span:
+        _if:
+          test:
+            _eq:
+              - _state: task_modal.stage
+              - done
+          then: 24
+          else: 12
+    properties:
+      title: Person Responsible
+      allowClear: true
+      showSearch: true
+      # Search runs server-side when assignee_search is wired — don't let
+      # the Selector client-filter the returned options too.
+      filterOption:
+        _build.if:
+          test:
+            _build.ne:
+              - _var:
+                  key: assignee_search
+                  default: null
+              - null
+          then: false
+          else: true
+      placeholder: Select a person
+      options:
+        _if_none:
+          - _var: assignee_options
+          - []
+    events:
+      _build.if:
+        test:
+          _build.ne:
+            - _var:
+                key: assignee_search
+                default: null
+            - null
+        then:
+          onSearch:
+            debounce:
+              ms: 300
+            try:
+              - id: set_assignee_search
+                type: SetState
+                params:
+                  _build.object.fromEntries:
+                    - - _var: assignee_search.state_key
+                      - _event: value
+              - id: refetch_assignee_options
+                type: Request
+                params:
+                  requestIds:
+                    - _var: assignee_search.request_id
+                  holdValue: true
+        else: {}

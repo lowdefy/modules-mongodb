@@ -32,6 +32,12 @@ vars:
   on_change:
     type: array
     default: []
+  max_length:
+    type: number
+    required: false
+  show_count:
+    type: boolean
+    required: false
 
 config:
   id:
@@ -78,6 +84,26 @@ config:
       _var: title
     placeholder:
       _var: placeholder
+    maxLength:
+      _var:
+        key: max_length
+        default: null
+    showCount:
+      _build.if:
+        test:
+          _build.eq:
+            - _var:
+                key: show_count
+                default: null
+            - null
+        then:
+          _build.ne:
+            - _var:
+                key: max_length
+                default: null
+            - null
+        else:
+          _var: show_count
   events:
     onChange:
       _var:

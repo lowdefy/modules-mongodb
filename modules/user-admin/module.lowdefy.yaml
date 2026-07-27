@@ -1,5 +1,5 @@
 name: User Admin
-version: 0.13.0
+version: 0.17.0
 description: >-
   User administration on the BetterAuth engine — the operator console for a
   person's access lifecycle in one pinned org. Native $lookup reads over the
@@ -274,4 +274,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.14.1"
+    version: "^0.17.0"

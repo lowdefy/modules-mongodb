@@ -1,0 +1,44 @@
+id: get_deals_list_options
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: deals-collection
+# Builds the dynamic filter dropdown option lists in a single request via
+# $facet. Stage + Product options come from app-level enums fed into the
+# `filters` var, so they are not included here. Only companies that actually
+# have deals and salespeople that appear on deals are surfaced as filter
+# options.
+properties:
+  pipeline:
+    - $match:
+        removed: null
+    - $facet:
+        companies:
+          - $lookup:
+              from: companies
+              localField: company_id
+              foreignField: _id
+              as: company
+          - $group:
+              _id: $company_id
+              label:
+                $first:
+                  $ifNull:
+                    - $first: $company.short_name
+                    - $first: $company.name
+                    - $company_id
+          - $project:
+              value: $_id
+              label: 1
+          - $sort:
+              label: 1
+        salespeople:
+          - $match:
+              salesperson.name:
+                $ne: null
+          - $group:
+              _id: $salesperson.name
+          - $project:
+              value: $_id
+              label: $_id
+          - $sort:
+              label: 1

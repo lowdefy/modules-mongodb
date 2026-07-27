@@ -1,0 +1,16 @@
+id: detail_section_info_grid
+type: Box
+layout:
+  gap: 6
+  justify: stretch
+blocks:
+  _build.array.concat:
+    # Host domain fields (Details), full-width at the top — self-contained with
+    # its own trailing divider, and self-hiding (no fields / show_details false).
+    - - _ref: components/detail/section_fields.yaml
+    # span-12 tiles: People, Files, then host-injected tiles.
+    - - _ref: components/detail/section_people.yaml
+      - _ref: components/detail/section_files.yaml
+    # App-injected info-grid tiles (default []) — the shipped grid has no
+    # product tile; host apps inject their own (e.g. a product tile) here.
+    - _module.var: components.info_grid_slots

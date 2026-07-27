@@ -1,0 +1,176 @@
+id: update-task
+type: Api
+routine:
+  # Guard: the kind filter makes it impossible for this endpoint to ever
+  # touch a workflow-engine action.
+  - id: find_task
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: actions-collection
+    properties:
+      query:
+        _id:
+          _payload: task_id
+        kind: task
+
+  - :if:
+      _eq:
+        - _step: find_task
+        - null
+    :then:
+      - :throw: Task not found.
+
+  # Field edits (modal only — quick-done sends fields: null). No event; the
+  # connection changeLog records the diff. The task's entity link
+  # (entity_type/entity_id) is set once at create and never rewritten here.
+  - :if:
+      _not:
+        _eq:
+          - _payload: fields
+          - null
+    :then:
+      - :if:
+          _or:
+            - _eq:
+                - _payload: fields.title
+                - null
+            - _eq:
+                - _payload: fields.title
+                - ""
+        :then:
+          - :throw: Task name is required.
+      - id: update_task_fields
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: actions-collection
+        properties:
+          filter:
+            _id:
+              _payload: task_id
+            kind: task
+          update:
+            $set:
+              _object.assign:
+                - title:
+                    _payload: fields.title
+                  description:
+                    _if_none:
+                      - _payload: fields.description
+                      - null
+                  due_date:
+                    _if_none:
+                      - _payload: fields.due_date
+                      - null
+                  assignees:
+                    _if:
+                      test:
+                        _eq:
+                          - _payload: fields.assignee
+                          - null
+                      then: []
+                      else:
+                        - contact_id:
+                            _payload: fields.assignee.contact_id
+                          name:
+                            _payload: fields.assignee.name
+                  updated:
+                    _ref:
+                      module: events
+                      component: change_stamp
+                # App-keyed task message, dotted so other keys under the
+                # app object survive — the app key resolves at build time
+                # from _module.var: app_name.
+                - _build.object.fromEntries:
+                    - - _build.string.concat:
+                          - _module.var: app_name
+                          - .message
+                      - _payload: fields.title
+
+  # Stage flip — only when the stage actually changed, so repeated
+  # quick-done clicks are idempotent (no duplicate entries or events).
+  # type/display/references are consumer-supplied (payload.event), same
+  # seam as create-task.
+  - :if:
+      _and:
+        - _not:
+            _eq:
+              - _payload: stage
+              - null
+        - _not:
+            _eq:
+              - _payload: stage
+              - _step: find_task.status.0.stage
+    :then:
+      - :if:
+          _not:
+            _array.includes:
+              - - action-required
+                - done
+              - _payload: stage
+        :then:
+          - :throw: Invalid task status.
+      - id: log_stage_event
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type:
+              _payload: event.type
+            display:
+              _payload: event.display
+            references:
+              _object.assign:
+                - _if_none:
+                    - _payload: event.references
+                    - {}
+                - action_ids:
+                    - _payload: task_id
+            metadata:
+              task_id:
+                _payload: task_id
+              stage:
+                _payload: stage
+      - id: push_task_status
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: actions-collection
+        properties:
+          filter:
+            _id:
+              _payload: task_id
+            kind: task
+          update:
+            $push:
+              status:
+                $position: 0
+                $each:
+                  - stage:
+                      _payload: stage
+                    event_id:
+                      _step: log_stage_event.eventId
+                    created:
+                      _ref:
+                        module: events
+                        component: change_stamp
+            $set:
+              # Stamped server-side on completion (the modal no longer asks
+              # for a done date); cleared again when the task is reopened.
+              completed_date:
+                _if:
+                  test:
+                    _eq:
+                      - _payload: stage
+                      - done
+                  then:
+                    _date: now
+                  else: null
+              updated:
+                _ref:
+                  module: events
+                  component: change_stamp
+
+  - :return:
+      ok: true

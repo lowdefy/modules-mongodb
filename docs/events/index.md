@@ -60,6 +60,7 @@ modules:
   ```
 
 - **`events-timeline`** — The single entity timeline panel. It renders the event log and **self-enriches** with workflow action cards wherever an app's events reference actions — the cards are verb-filtered and link-collapsed server-side. Enrichment is data-driven, not a gate: an entity whose events reference no actions renders as a plain events-only timeline through the same code path. There is no second component to swap in; an action-enriched timeline is the default behaviour of this one panel.
+- **`note-capture`** — An `@mention` rich-text note-capture modal that writes through this module's own `new-event` api. It is parameterised by four seams so no consumer's app/entity details leak into `events`: a `mentionable_users` options source (the host's own request or literal list — `events` never queries app users itself), an `entity_id` + `reference_field` pair naming the emitted event's primary reference array (e.g. `deal_ids`), an optional `company_id` for a secondary `company_ids` reference, and a `type` + `title_template` pair controlling the emitted event's type and display copy. See the component file header for the full vars list.
 
 ## Timeline enrichment
 
@@ -78,7 +79,7 @@ Two vars point the engine at the app's collections. Both default to `null` on th
   source: "github:lowdefy/modules-mongodb/modules/events@v1"
   vars:
     display_key: demo
-    actions_collection: actions       # collection-name override; matches the engine default
+    actions_collection: actions # collection-name override; matches the engine default
     contacts_collection: user-contacts
 ```
 

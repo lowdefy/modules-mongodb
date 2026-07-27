@@ -1,0 +1,148 @@
+id: get_selected_deal
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: deals-collection
+payload:
+  selected_deal_id:
+    _state: selected_deal_id
+properties:
+  pipeline:
+    _array.concat:
+      - - $match:
+            _id:
+              _payload: selected_deal_id
+            removed: null
+        - $lookup:
+            from: companies
+            localField: company_id
+            foreignField: _id
+            as: company
+        # People are stored per role as arrays of captured snapshots
+        # ({ contact_id, name, email }); the raw arrays stay intact for the Assign
+        # People picker. Enrichment: collect every role's contact_id into one array,
+        # one indexed _id lookup fetches them, then $filter splits the result back
+        # into per-role `<slug>_view` arrays that section_people reads (via .0).
+        # Both the id list and the per-role view stages are generated from the
+        # resolved contact-roles registry (build time) — one entry per role.
+        - $addFields:
+            contact_ids:
+              $filter:
+                input:
+                  _build.array.map:
+                    on:
+                      _build.object.entries:
+                        _ref: components/contact_roles_resolved.yaml
+                    callback:
+                      _build.function:
+                        $first:
+                          __build.string.concat:
+                            - "$"
+                            - __build.args: "0.0"
+                            - ".contact_id"
+                cond:
+                  $ne:
+                    - $$this
+                    - null
+        - $lookup:
+            from: user-contacts
+            localField: contact_ids
+            foreignField: _id
+            as: contacts_view
+        # One `<slug>_view` field per role — $filter splits the single lookup back
+        # out per role. Keyed object generated from the registry (build time).
+        - $addFields:
+            _build.object.fromEntries:
+              _build.array.map:
+                on:
+                  _build.object.entries:
+                    _ref: components/contact_roles_resolved.yaml
+                callback:
+                  _build.function:
+                    - __build.string.concat:
+                        - __build.args: "0.0"
+                        - "_view"
+                    - $filter:
+                        input: $contacts_view
+                        as: c
+                        cond:
+                          $eq:
+                            - $$c._id
+                            - $first:
+                                __build.string.concat:
+                                  - "$"
+                                  - __build.args: "0.0"
+                                  - ".contact_id"
+        - $unset:
+            - contact_ids
+            - contacts_view
+        - $lookup:
+            from: deals
+            localField: company_id
+            foreignField: company_id
+            let:
+              deal_id: $_id
+            pipeline:
+              - $match:
+                  $expr:
+                    $ne:
+                      - $_id
+                      - $$deal_id
+                  removed: null
+              - $sort:
+                  updated.timestamp: -1
+              - $limit: 20
+              - $project:
+                  _id: 1
+                  name: 1
+                  status: 1
+                  outcome: 1
+            as: related_deals
+        # Form data now lives on the workflow doc (form_data.{type}), not
+        # deal.workflows.*. Look up the deal's workflow (module workflow_type var)
+        # and alias its form_data back onto `workflows` so host slot components
+        # (e.g. a product/volumes tile via info_grid_slots) keep reading it.
+        # Matches both entity fields so the workflows {entity.connection_id,
+        # entity.id} index is used.
+        - $lookup:
+            from: workflows
+            let:
+              deal_id: $_id
+            as: workflow
+            pipeline:
+              - $match:
+                  $expr:
+                    $and:
+                      - $eq:
+                          - $entity.connection_id
+                          - _module.var: entity_connection_id
+                      - $eq:
+                          - $entity.id
+                          - $$deal_id
+                      - $eq:
+                          - $workflow_type
+                          # Module workflow_type var.
+                          - _module.var: workflow_type
+              - $limit: 1
+              - $project:
+                  form_data: 1
+        - $addFields:
+            workflows:
+              $first: $workflow.form_data
+        - $unset: workflow
+        - $addFields:
+            company:
+              $first: $company
+            days_open_label:
+              $concat:
+                - $toString:
+                    $dateDiff:
+                      startDate: $created.timestamp
+                      endDate: $$NOW
+                      unit: day
+                - d
+        # Raw `value` / `close_date` pass through untouched — the host formats
+        # them for display via meta_fields (currency/date format are host concerns).
+        - $limit: 1
+      # App-injected pipeline stages (default []) — splice point for
+      # request_stages.get_selected_deal.
+      - _module.var: request_stages.get_selected_deal

@@ -15,12 +15,8 @@ _ref:
     content_width: 1100
     title:
       _state: workflow.title
+    # No back_link → the title-block falls back to browser-history back.
     show_back_button: true
-    back_link:
-      pageId:
-        _state: workflow.entity_link.pageId
-      urlQuery:
-        _state: workflow.entity_link.urlQuery
     # Breadcrumb trail: Home / [entity list] / entity / workflow (terminal).
     breadcrumbs:
       _ref:
@@ -87,6 +83,55 @@ _ref:
           vars:
             summary:
               _state: workflow.summary
+      # Outside the List, so it writes the whole collapse_map in one SetState.
+      - id: collapse_toolbar
+        type: Box
+        layout:
+          justify: flex-end
+        blocks:
+          - id: collapse_all_toggle
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              type: text
+              size: small
+              title:
+                _js:
+                  args:
+                    groups:
+                      _state: groups_list
+                    map:
+                      _state: collapse_map
+                  fn: |
+                    const groups = args.groups || [];
+                    const ids = [];
+                    for (const g of groups) for (const a of (g.actions || [])) ids.push(a.key ? a.type + '.' + a.key : a.type);
+                    const map = args.map || {};
+                    const allExpanded = ids.length > 0 && ids.every((id) => map[id]);
+                    return allExpanded ? 'Collapse all' : 'Expand all';
+            events:
+              onClick:
+                - id: toggle_all
+                  type: SetState
+                  params:
+                    collapse_map:
+                      _js:
+                        args:
+                          groups:
+                            _state: groups_list
+                          map:
+                            _state: collapse_map
+                        fn: |
+                          const groups = args.groups || [];
+                          const ids = [];
+                          for (const g of groups) for (const a of (g.actions || [])) ids.push(a.key ? a.type + '.' + a.key : a.type);
+                          const map = args.map || {};
+                          const allExpanded = ids.length > 0 && ids.every((id) => map[id]);
+                          if (allExpanded) return {};
+                          const next = {};
+                          for (const id of ids) next[id] = true;
+                          return next;
       # Action cards grouped by action group (engine emits groups in declaration
       # order; cards within keep declaration order). Each group renders an
       # icon + title header (suppressed for ungrouped/null-title groups) above
@@ -159,13 +204,72 @@ _ref:
                     layout:
                       gap: 8
                       selfAlign: middle
-                      justify: space-between
+                      # Layout default is flex-wrap: wrap — nowrap holds the row.
+                      wrap: nowrap
                     blocks:
+                      - id: groups_list.$.actions.$.collapse_toggle
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          type: text
+                          hideTitle: true
+                          icon:
+                            _if:
+                              test:
+                                _get:
+                                  from:
+                                    _state: collapse_map
+                                  key:
+                                    _if:
+                                      test:
+                                        _ne:
+                                          - _state: groups_list.$.actions.$.key
+                                          - null
+                                      then:
+                                        _string.concat:
+                                          - _state: groups_list.$.actions.$.type
+                                          - .
+                                          - _state: groups_list.$.actions.$.key
+                                      else:
+                                        _state: groups_list.$.actions.$.type
+                                  default: false
+                              then: AiOutlineUp
+                              else: AiOutlineDown
+                        events:
+                          onClick:
+                            - id: groups_list.$.actions.$.toggle
+                              type: SetState
+                              params:
+                                collapse_map:
+                                  _js:
+                                    args:
+                                      id:
+                                        _if:
+                                          test:
+                                            _ne:
+                                              - _state: groups_list.$.actions.$.key
+                                              - null
+                                          then:
+                                            _string.concat:
+                                              - _state: groups_list.$.actions.$.type
+                                              - .
+                                              - _state: groups_list.$.actions.$.key
+                                          else:
+                                            _state: groups_list.$.actions.$.type
+                                      map:
+                                        _state: collapse_map
+                                    fn: |
+                                      const map = { ...(args.map || {}) };
+                                      const id = args.id;
+                                      map[id] = !map[id];
+                                      return map;
                       - id: groups_list.$.actions.$.title_row
                         type: Box
                         layout:
                           gap: 8
                           selfAlign: middle
+                          flex: 1 1 0
                         blocks:
                           - id: groups_list.$.actions.$.status_badge
                             type: Tag
@@ -218,10 +322,10 @@ _ref:
                   - id: groups_list.$.actions.$.body_empty
                     type: Html
                     visible:
-                      _eq:
+                      _and:
                         - _get:
                             from:
-                              _state: workflow.form_data
+                              _state: collapse_map
                             key:
                               _if:
                                 test:
@@ -235,17 +339,34 @@ _ref:
                                     - _state: groups_list.$.actions.$.key
                                 else:
                                   _state: groups_list.$.actions.$.type
-                            default: null
-                        - null
+                        - _eq:
+                            - _get:
+                                from:
+                                  _state: workflow.form_data
+                                key:
+                                  _if:
+                                    test:
+                                      _ne:
+                                        - _state: groups_list.$.actions.$.key
+                                        - null
+                                    then:
+                                      _string.concat:
+                                        - _state: groups_list.$.actions.$.type
+                                        - .
+                                        - _state: groups_list.$.actions.$.key
+                                    else:
+                                      _state: groups_list.$.actions.$.type
+                                default: null
+                            - null
                     properties:
                       html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
                   - id: groups_list.$.actions.$.body_dataview
                     type: DataDescriptions
                     visible:
-                      _ne:
+                      _and:
                         - _get:
                             from:
-                              _state: workflow.form_data
+                              _state: collapse_map
                             key:
                               _if:
                                 test:
@@ -259,8 +380,25 @@ _ref:
                                     - _state: groups_list.$.actions.$.key
                                 else:
                                   _state: groups_list.$.actions.$.type
-                            default: null
-                        - null
+                        - _ne:
+                            - _get:
+                                from:
+                                  _state: workflow.form_data
+                                key:
+                                  _if:
+                                    test:
+                                      _ne:
+                                        - _state: groups_list.$.actions.$.key
+                                        - null
+                                    then:
+                                      _string.concat:
+                                        - _state: groups_list.$.actions.$.type
+                                        - .
+                                        - _state: groups_list.$.actions.$.key
+                                    else:
+                                      _state: groups_list.$.actions.$.type
+                                default: null
+                            - null
                     properties:
                       formConfig:
                         _array.concat:
