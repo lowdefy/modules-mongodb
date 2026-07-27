@@ -1,0 +1,293 @@
+---
+title: Implementation walkthrough
+module: reporting
+type: concept
+concepts:
+  [
+    architecture,
+    query-engine,
+    agent-tools,
+    data-parts,
+    report-compilation,
+    presentation-contract,
+    conversation-persistence,
+  ]
+---
+
+# Implementation walkthrough
+
+An end-to-end trace of the module as built: chat message in, rendered output out,
+with the file and line references for each hop. This is a contributor-facing page
+— it describes _how the code is wired_, not how to author against the module. For
+authoring, start at the [module index](../index.md); for the engine's model and
+security posture in consumer terms, read [The open query engine](open-query-engine.md).
+
+The same walkthrough is kept alongside the design at
+`designs/reporting-open-query-engine/implementation-walkthrough.md`. Line
+references are signposts against the tree at the time of writing, not guarantees.
+
+## 1. The shape of the thing
+
+Three layers, and the split matters:
+
+| Layer             | Where                                            | Role                                                 |
+| ----------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| **Config** (YAML) | `modules/reporting/`                             | pages, agent definition, API routines, connections   |
+| **Engine** (JS)   | `plugins/modules-mongodb-plugins/src/analytics/` | validators, compilers, chart builders — pure, no I/O |
+| **Boundary** (JS) | `plugins/.../src/connections/ReportingData/`     | the one place a pipeline reaches MongoDB             |
+
+The central design bet: **the AI authors raw MongoDB aggregation pipelines**, and
+safety comes from a default-deny grammar walker rather than from restricting the
+AI to pre-baked query templates. The AI also never touches presentation config —
+it declares a [presentation contract](../reference/presentation-contract.md)
+(`x`/`y`/`valueKey`/`columns`) and the server builds every block.
+
+## 2. Build time: the catalog is the whole security model
+
+`modules/reporting/module.lowdefy.yaml:35-61` declares one required var,
+`catalog`. It is simultaneously the data dictionary, the allowlist, and the
+authorization boundary — see [The collections catalog](../reference/catalog.md).
+It gets bound in exactly two places:
+
+**Into the prompt** — `agents/reporting-assistant.yaml:160-162` appends
+`_build.json.stringify` of the catalog to the end of the instruction string at
+build time. The agent's whole world-model of the database is this object.
+
+**Into the connection** — `connections/reporting-data.yaml:11-14` binds the same
+var onto the `ReportingData` connection, _not_ onto the request. The comment at
+`AnalyticsPipeline.js:20-23` is the reason: binding at the connection means every
+request validates against the same catalog by construction — a caller cannot pass
+a widened one.
+
+Per-collection `roles` are opt-in (see `apps/demo/modules/reporting/catalog.yaml:7-13`):
+absent or empty means any authenticated user. Declaring a collection _is_ the act
+of exposing it.
+
+> Deployment caveat: when an app remaps `reporting-data` onto its own connection,
+> the module's `_module.var` catalog binding is replaced along with it — the
+> catalog must be re-bound on the app connection or `validatePipeline` gets none
+> and rejects every collection. See `apps/demo/lowdefy.yaml:156-168`.
+
+## 3. Chat → agent
+
+`modules/reporting/pages/chat.yaml:128-137` mounts an `AgentChat` block pointed at
+`_module.agentId: reporting-assistant`, keyed by a client-generated
+`conversationId` (`chat.yaml:20-22`, a `_uuid`).
+
+The agent (`agents/reporting-assistant.yaml`) is an `AIGatewayAgent` with
+`maxSteps: 12`. Its `tools` array (L163-175) is pure wiring — name → endpointId.
+All four tool _contracts_ live in the instruction prose (L17-159), which is why
+the prompt is long: it teaches the pipeline grammar (L36-51), grain/fan-out
+hazards (L52-72), the presentation contract (L90-114), and the report-section
+shapes (L124-142).
+
+Teaching the grammar in the prompt is deliberate — the validator's rejections are
+actionable strings, so the agent self-corrects cheaply within its step budget
+instead of dead-ending.
+
+## 4. The single security boundary
+
+Every tool bottoms out at the same place. Take `query_data`:
+
+`api/query-data.yaml:52-62` runs one request — `AnalyticsPipeline` on the
+`reporting-data` connection, passing `query`, optional `filters`, and
+`_user: roles`.
+
+`AnalyticsPipeline.js:69-101`:
+
+- L81-82 — report filter triples become a leading `$match`, built server-side from
+  a **fixed** op map (`FILTER_OPS = { eq, gte, lte }`, L49); an unknown op throws
+  (L58-60), never silently skips.
+- L84-89 — the combined pipeline goes through `validatePipeline`. The
+  server-built `$match` is _not_ exempt: it walks like any other stage, so a
+  hostile field name is caught by the same gate.
+- L92-98 — executes **the reconstructed object the validator returned**, never the
+  caller's input by reference, with `maxTimeMS` 30s and `allowDiskUse`.
+
+`analytics/validatePipeline.js` is the actual gate. Its governing idea is at
+L42-46: _reconstruct, don't forward_. The walker returns a freshly built tree of
+nodes it explicitly classified and approved — a subtree it never visited cannot
+reach the database, so a missed case fails closed.
+
+Three separate default-deny grammars:
+
+- **Stages** — `validateStage` (L815-898), against `stageAllowlist.js`
+- **Expressions** — `walkExpression` (L227-282); every `$`-key must be
+  allowlisted, and `$let`/`$map`/`$filter`/`$reduce` get lexical `$$`-scope
+  tracking (L287-353) so an unbound variable is rejected
+- **Query documents** — `walkQueryDoc` (L383-419) / `walkOperatorDocument`
+  (L440-521), a separate grammar because `$match` is not an expression
+
+Catalog and roles are enforced in `checkCollectionAccess` (L153-168), called for
+the base collection (L947) _and_ every `$lookup.from` (L649). Because it is
+checked at each encounter, union-of-roles falls out for free: the caller must
+satisfy every non-empty roles list among all touched collections, recursively.
+
+The result cap at L908-913 is unconditional — an agent-supplied `$limit` is never
+trusted to be the bound, so a trailing `$limit: 1000` is always appended (and to
+every `$facet` branch). Caps live in `analytics/constants.js:41-88`; note L52-54,
+where several caps exist to protect the _validator's own recursion_, not just
+Mongo. `validatePipeline.js:929-931` uses `JSON.stringify` throwing as a free
+cycle check before the walker ever recurses.
+
+`validatePipeline.js:52-53` calls out that for `$where`/`$function`/`$accumulator`
+this validator is the sole defense — a read-only Mongo principal does not stop
+server-side eval.
+
+## 5. Charts and exports: validate now, render at turn end
+
+`render_chart` deliberately **does not** run the query. `api/render-chart.yaml:58-75`
+calls `_analytics.validateChartSpec` _with_ the catalog — which runs the full
+pipeline grammar and role gate (`validateChartSpec.js:33-42`) — then returns only
+the small validated spec (L76-90).
+
+Why: the comment at `render-chart.yaml:2-6`. Tool results are model context,
+re-sent on every later step and turn. Returning chart rows would blow up the
+context window for the rest of the conversation.
+
+So the rows are fetched exactly once, at turn end, by the `emit-data-parts`
+onFinish hook (`agents/reporting-assistant.yaml:176-179`):
+
+1. `emit-data-parts.yaml:16-50` — `_mql.expr` pulls the validated specs out of
+   `toolResults` by `toolName`, capped at 8 per turn.
+2. L51-66 — `:for` over the chart specs, one `AnalyticsPipeline` each, each inside
+   `:try` so a failed query skips its chart instead of killing the hook.
+3. L70-80 — `_analytics.buildDataParts` (`buildDataParts.js:29-59`) rebuilds each
+   ECharts option. It runs **no catalog gate** — the rows are already in hand —
+   but it does run `verifyChartContract` (`verifyContract.js:54-57`), which checks
+   the declared `x`/`y` against the _actual_ rows: keys present, y-columns
+   numeric. This is the check that cannot be static, since an arbitrary
+   pipeline's output shape is unknown.
+4. `buildEChartsOption.js:11-41` shapes the option using the ECharts `dataset` +
+   explicit `encode` form. The AI contributes a kind, a query and two column
+   names; every other line of chart config is server-authored.
+5. L87-109 — pushes the parts onto the conversation doc (`upsert: false` — the
+   prior hook owns doc creation), then L110-112 returns them as `dataParts` on the
+   stream.
+
+Client side, `chat.yaml:145-173` accumulates them: `onDataPart` with a `skip`
+guard on `_event: type`, appending to `charts` or `downloads` state. The panel at
+L293-309 renders charts through a `List` + `EChart`; downloads (L333-360) are
+buttons that re-run `query-data` live and pipe the response into `DownloadCsv`.
+
+The asymmetry is intentional — **charts are a snapshot** (option baked at turn
+end), **downloads are live** (query stored, executed on click).
+
+## 6. Conversation persistence
+
+Two onFinish hooks, in order. `save-conversation.yaml:14-102` upserts the whole
+transcript keyed by `conversationId` + `userId`; on insert it derives a fallback
+title with a `$let`/`$reduce` over the first user message (L38-100 — note L47-49,
+the `as: msg` alias, because the inner `$reduce` rebinds `$$this`). If the model
+produced a real title, `chat.yaml:191-201` persists it over the top via
+`set-conversation-title`.
+
+Restore is where the sharp edges are. `chat.yaml:80-122`: switching conversation
+sets `conversationId` and **clears** messages/charts/downloads first (atomic and
+infallible), then repopulates from a _fresh_ `get-conversation-results` read. The
+comment at L82-88 explains why not from the sidebar list: the list refreshes when
+the stream ends client-side, which races the server's onFinish save, so it can be
+a turn behind — and continuing from a stale transcript would overwrite the saved
+doc. `list-conversations.yaml:34-36` projects `messages` and `dataParts` _out_ to
+make that mistake impossible.
+
+There is also a framework patch here — `patches/@lowdefy__blocks-antd-x.patch`,
+commit `7df0cca2`. `AgentChat` called `useChat` with a transport but no `id`, so
+AI SDK v5 created the Chat instance once per mount and captured the mount-time
+`conversationId` URL. Every send in a page session posted under that id, so
+continuing a restored conversation forked a duplicate doc without its dataParts.
+The patch adds `id: effectiveConversationId`. It is interim — the fix belongs
+upstream in `blocks-antd-x`.
+
+## 7. Chat → saved report
+
+When the user asks for a report, the agent calls `generate_report` with a full
+spec. `api/generate-report.yaml`:
+
+- L48-53 — reject if unauthenticated.
+- L56-64 — `_analytics.validateReportSpec` **with** the catalog.
+  `validateReportSpec.js:126-267` walks every section by type; each query
+  section's pipeline goes through `validateQuery` → `validatePipeline`
+  (validate-before-persist). The second pass at L270-312 checks filter bindings:
+  distinct fields, every `filterBy` resolves to a filter section, every filter is
+  bound by something, and a select filter has an options source.
+- L65-88 — insert the spec **raw**. The comment at L2-7 is the key decision: the
+  reconstructed pipeline is discarded and the AI's verbatim pipeline is stored,
+  because _resolve-time revalidation is the guarantee_, not sanitization-at-write.
+- L89-98 — return the report URL, which the agent hands back in chat.
+
+## 8. Report render
+
+`pages/report.yaml:12-36` is a single `Dynamic` block resolved by
+`resolve-report`. `properties.types` (L17-36) is a bundling declaration — the
+compiled output's block/action/operator types must be listed so they ship to the
+client.
+
+`api/resolve-report.yaml`:
+
+- L11-20 — load the spec, userId-scoped; L21-27 whole-report failure → the Dynamic
+  block's fallback slot (a 404 `Result`).
+- L31-38 — `_analytics.querySections` (`querySections.js:19-24`) returns just the
+  kpi/chart/table sections in order. **No catalog is passed here** (L28-30) — it
+  is inert extraction only.
+- L39-52 — `:for` + `AnalyticsPipeline` per section, each in `:try`. _This_ is the
+  per-viewer gate: every stored pipeline is revalidated against the
+  connection-bound catalog with the **viewing** user's roles, on every single
+  resolve. A section the viewer cannot reach, or that drifted out of the catalog,
+  fails as one entry — not the whole report.
+- L53-67 — `_analytics.compileReport`. The catalog is passed here for exactly one
+  thing (L60-61): resolving select-filter options from a field's enum values. A
+  display convenience, explicitly not a gate.
+
+`compileReport.js:239-455` turns spec + rows into blocks:
+
+- The sparse `:for` result array is aligned index-for-index with `querySections`
+  (L258-264); a null entry becomes an Alert card (L294-297).
+- `verifySection` (L229-237) checks the declared contract against real rows; a
+  mismatch is caught (L301-306) and rendered as an Alert card with the validator's
+  message — a graceful _rendering_ failure, never a safety one.
+- KPI → `Statistic` (L308-339), with separators resolved at compile time via
+  `Intl.NumberFormat.formatToParts` (`intlSeparators`, L146-160) so the native
+  Statistic formatting matches the table's runtime `_intl` output.
+- chart → `EChart` (L341-356); table → `AgGridAlpine` (L358-370); markdown →
+  `Markdown`; download → `Button` + `CallAPI` + `DownloadCsv` (L414-438).
+- Filters collect into their own full-width row at the top (L443-452) regardless
+  of spec position.
+
+**Filters** are the clever bit. `requeryActions` (L91-114) emits a
+`CallAPI`/`SetState` pair per bound section. The payload's filter values are
+`{ __state: ... }` — deferred client operators (double underscore; the Dynamic
+block's server resolution leaves them alone and the client unescapes them,
+L41-44). `dataBinding` (L118-123) makes a filtered section read
+`__if_none: [__state rows, inlined resolve-time rows]` — so it shows server rows
+until a filter fires, then live ones. The triples land back at
+`AnalyticsPipeline.js:51-67`, which builds the `$match` itself and revalidates the
+combined pipeline.
+
+That is why the prompt has the section at `reporting-assistant.yaml:144-152`:
+since the `$match` is _prepended_, a filterable field must exist at the source
+grain, not be a post-`$group` alias — the same limitation stated in
+[The presentation contract](../reference/presentation-contract.md).
+
+## 9. The one-shot path
+
+`pages/generate.yaml:35-53` → `api/generate-oneshot.yaml`, which runs the _same_
+agent headlessly via `CallAgent` (L14-26), then digs the last `generate_report`
+result out of `run.toolResults` (L27-41) and returns its id and url; the page then
+`Link`s straight to the report. Both onFinish hooks no-op headlessly because there
+is no `conversationId` (`save-conversation.yaml:7-13`,
+`emit-data-parts.yaml:9-14`).
+
+## 10. Invariants worth keeping in your head
+
+1. **One boundary.** Chat tool, report section, filter re-query, panel download —
+   four callers, one `AnalyticsPipeline` request, one `validatePipeline` walk.
+2. **Reconstruct, never forward.** Unvisited subtrees cannot execute.
+3. **Store raw, validate at read.** Reports revalidate per-viewer on every
+   resolve, so catalog and role changes take effect retroactively.
+4. **The AI declares a contract; the server builds the blocks.** No AI-supplied
+   string is ever evaluated as an operator (`compileReport.js:46-47`).
+5. **Contract verification is against rows, not static** — the only honest option
+   with arbitrary pipelines.
+6. **Failure granularity is per-section / per-chart** (`:try` + Alert cards),
+   except a missing report, which is the Dynamic block's fallback slot.

@@ -71,6 +71,7 @@ When `ai` is remapped, `AI_GATEWAY_API_KEY` is not needed.
 ## Concepts
 
 - [The open query engine](concepts/open-query-engine.md) — the pipeline model, the three default-deny grammars, resource caps, the always-appended row limit, the two-layer security model, and the grain/fan-out risk
+- [Implementation walkthrough](concepts/implementation-walkthrough.md) — contributor-facing end-to-end trace: chat message in, rendered output out, with file and line references for each hop
 
 ## How-to
 
