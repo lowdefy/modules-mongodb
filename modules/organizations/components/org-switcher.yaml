@@ -1,0 +1,116 @@
+# Header widget: which organization am I working in, and switch to another.
+#
+# Wired by the app into the layout's `header_extra.blocks` seam, paired with
+# `org-switcher-requests` in `header_extra.requests` — a block cannot declare
+# its own request, so the two are exported together and must be wired together.
+#
+# A caller with one membership sees the name as plain context and no dropdown:
+# in a tenant app knowing which organization you are in is worth the space even
+# when there is nowhere to switch to.
+#
+# Switching writes the session's active organization, which is what the wall and
+# role resolution both read, so UpdateSession re-syncs the client and the app
+# navigates home rather than leaving the current page showing another
+# organization's data mid-flight.
+id: org_switcher
+type: Box
+layout:
+  flex: 0 0 auto
+  align: center
+blocks:
+  - id: org_switcher_single
+    type: Box
+    layout:
+      flex: 0 0 auto
+      gap: 6
+      align: center
+    visible:
+      _not:
+        _gt:
+          - _array.length:
+              _if_none:
+                - _request: get_switcher_memberships
+                - []
+          - 1
+    blocks:
+      - id: org_switcher_single_icon
+        type: Icon
+        layout:
+          flex: 0 0 auto
+        properties:
+          name: AiOutlineBank
+          size: 14
+      - id: org_switcher_single_name
+        type: Html
+        layout:
+          flex: 0 0 auto
+        properties:
+          html:
+            _nunjucks:
+              template: >-
+                <span style="font-size:13px; color:var(--ant-color-text-secondary)">{{ name }}</span>
+              on:
+                name:
+                  _request: get_switcher_organization.name
+  - id: org_switcher_menu
+    type: DropdownMenu
+    layout:
+      flex: 0 0 auto
+    visible:
+      _gt:
+        - _array.length:
+            _if_none:
+              - _request: get_switcher_memberships
+              - []
+        - 1
+    properties:
+      trigger: click
+      placement: bottomRight
+      # One link per membership, keyed by organization id — the clicked key is
+      # exactly what SetActiveOrganization takes. The active one is disabled
+      # rather than hidden, so the list always reads as the full set.
+      links:
+        _array.map:
+          - _if_none:
+              - _request: get_switcher_memberships
+              - []
+          - _function:
+              id:
+                __args: 0.organization_id
+              type: MenuLink
+              properties:
+                title:
+                  __args: 0.organization_name
+                icon: AiOutlineBank
+                disabled:
+                  __args: 0.is_active
+    events:
+      onClick:
+        - id: switch_active_organization
+          type: SetActiveOrganization
+          messages:
+            loading: Switching…
+          params:
+            organizationId:
+              _event: key
+        # Roles, the wall, and every walled read resolve from the session's
+        # active organization, so it has to be re-read before anything renders.
+        - id: resync_session_after_switch
+          type: UpdateSession
+        - id: go_home_after_switch
+          type: Link
+          params:
+            home: true
+    blocks:
+      - id: org_switcher_trigger
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title:
+            _if_none:
+              - _request: get_switcher_organization.name
+              - Organization
+          icon: AiOutlineBank
+          size: small
+          variant: text

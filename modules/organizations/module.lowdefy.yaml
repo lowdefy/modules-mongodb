@@ -54,7 +54,12 @@ exports:
     - id: org-switcher
       description: >-
         Header widget showing the active organization's name; a dropdown to
-        switch when the caller belongs to more than one.
+        switch when the caller belongs to more than one. Wire into the layout's
+        `header_extra.blocks`, together with `org-switcher-requests`.
+    - id: org-switcher-requests
+      description: >-
+        The reads org-switcher depends on. Wire into the layout's
+        `header_extra.requests` — the block cannot carry its own.
   connections:
     - id: user-members
       description: Read-only connection for the auth `user-members` collection
@@ -88,6 +93,9 @@ components:
   - id: org-switcher
     component:
       _ref: components/org-switcher.yaml
+  - id: org-switcher-requests
+    component:
+      _ref: components/org-switcher-requests.yaml
 
 menus:
   - _ref: menu.yaml

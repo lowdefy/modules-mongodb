@@ -1,0 +1,37 @@
+# The caller's own member row in the ACTIVE organization, reduced to the one
+# question the page asks of it: may this caller administer the organization?
+#
+# The boolean is derived in the pipeline rather than in config because
+# `member.role` is a CSV string (user-model Decision 5) — splitting and
+# intersecting it here keeps the page free of string surgery.
+#
+# This gate is convenience, not security: BetterAuth authorizes every per-org
+# action server-side against this same member row, so a forged call from a
+# plain member fails there regardless of what the UI renders.
+id: get_my_member
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    - $match:
+        userId:
+          _user: id
+        organizationId:
+          _user: organizationId
+    - $addFields:
+        is_org_admin:
+          $gt:
+            - $size:
+                $setIntersection:
+                  - $split:
+                      - $ifNull:
+                          - "$role"
+                          - ""
+                      - ","
+                  - - owner
+                    - admin
+            - 0
+    - $project:
+        is_org_admin: 1
+        role: 1

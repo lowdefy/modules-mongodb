@@ -1,0 +1,37 @@
+# Assignable member roles, resolved at build time.
+#
+# The app's authored `auth.roles` catalog is the single source of truth for role
+# ids and their labels (role-catalog Decision 1), so the options come straight
+# from `_build.authConfig.roles`. `admin` is appended when the catalog does not
+# already declare it: under the tenant policy the built-in tier stays active, and
+# `admin` is what BetterAuth reads to authorize the per-org endpoints, so it must
+# be assignable even by an app that never gates a page on it. An app that does
+# declare `admin` gets its own label instead of a duplicate entry.
+#
+# `owner` is deliberately absent — ownership transfer is out of scope for v1, and
+# the engine's last-owner guard is authoritative either way.
+_build.array.concat:
+  - _build.array.map:
+      on:
+        _build.authConfig: roles
+      callback:
+        _build.function:
+          label:
+            __build.args: 0.label
+          value:
+            __build.args: 0.id
+  - _build.if:
+      test:
+        _build.array.includes:
+          on:
+            _build.array.map:
+              on:
+                _build.authConfig: roles
+              callback:
+                _build.function:
+                  __build.args: 0.id
+          value: admin
+      then: []
+      else:
+        - label: Admin (organization)
+          value: admin

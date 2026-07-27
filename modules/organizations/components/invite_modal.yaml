@@ -1,0 +1,71 @@
+# Invite someone into the active organization.
+#
+# Two steps in order, per org-workspace Decision 2b: mint the invitee's contact
+# in this organization, then send the invitation. The mint runs first because it
+# is the idempotent half — it reconciles on duplicate key, so a failure at
+# InviteMember leaves nothing to undo and a retry converges. Doing it at all is
+# what makes the invited person visible in this org's contact lists immediately
+# rather than only once they accept.
+#
+# BetterAuth sends the invitation email itself (auth.email + the invitation
+# template); this module ships no email wiring.
+id: invite_modal
+type: Modal
+properties:
+  title: Invite a member
+  width: 480
+  okText: Send invitation
+events:
+  onOk:
+    _build.array.concat:
+      - - id: validate_invite
+          type: Validate
+          params: invite_modal
+        - id: mint_contact
+          type: CallAPI
+          messages:
+            loading: Inviting…
+          params:
+            endpointId:
+              _module.endpointId: invite-contact
+            payload:
+              email:
+                _state: invite.email
+        - id: send_invitation
+          type: InviteMember
+          messages:
+            loading: Inviting…
+            success: Invitation sent.
+          params:
+            email:
+              _state: invite.email
+            role:
+              _state: invite.roles
+        - id: clear_invite_form
+          type: SetState
+          params:
+            invite: null
+      - _ref: actions/refetch_members.yaml
+blocks:
+  - id: invite.email
+    type: TextInput
+    required: true
+    properties:
+      title: Email address
+      placeholder: person@example.com
+      type: email
+  - id: invite.roles
+    type: TagMultipleSelector
+    properties:
+      title: Roles
+      placeholder: Choose one or more roles
+      options:
+        _ref: components/role_options.yaml
+  - id: invite_hint
+    type: Html
+    properties:
+      html: >-
+        <div style="font-size:13px; color:var(--ant-color-text-secondary)">They
+        will receive an email with a link to join this organization. The link
+        expires; you can cancel or re-send from the list below until they
+        accept.</div>

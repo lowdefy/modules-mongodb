@@ -1,0 +1,33 @@
+# Members of the caller's ACTIVE organization. The join, the org scope, and the
+# display flattening all come from the shared stages; this request only adds
+# what the members page itself needs: the member row id (the handle
+# UpdateMemberRole and RemoveMember take), a self marker so the page can offer
+# "leave" instead of "remove", and the role list with the CSV's empty entries
+# dropped.
+id: get_members
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    _build.array.concat:
+      - _ref: ../shared/org/members_base.yaml
+      - - $addFields:
+            member_id: "$_id"
+            is_self:
+              $eq:
+                - "$userId"
+                - _user: id
+            roles_list:
+              $filter:
+                input:
+                  $ifNull:
+                    - "$roles_arr"
+                    - []
+                as: r
+                cond:
+                  $ne:
+                    - "$$r"
+                    - ""
+        - $sort:
+            name: 1

@@ -623,6 +623,8 @@ importers:
 
   modules/notifications: {}
 
+  modules/organizations: {}
+
   modules/release-notes: {}
 
   modules/user-account: {}

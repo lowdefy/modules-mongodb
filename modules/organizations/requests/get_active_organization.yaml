@@ -1,0 +1,11 @@
+# The caller's ACTIVE organization row — the name the settings page edits and
+# the switcher displays. Scoped by the session's active organization id, so it
+# can only ever read the organization the caller is acting in.
+id: get_active_organization
+type: MongoDBFindOne
+connectionId:
+  _module.connectionId: user-organizations
+properties:
+  query:
+    _id:
+      _user: organizationId

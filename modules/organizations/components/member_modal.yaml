@@ -1,0 +1,120 @@
+# One member, opened from the members table: change their roles, or remove them
+# from the organization.
+#
+# Removing yourself is a different engine call — RemoveMember acts on someone
+# else, LeaveOrganization ends your own membership — so the footer swaps by
+# `is_self` rather than trying to make one action cover both. Either way the
+# engine's last-owner guard is authoritative: it refuses the call and the error
+# surfaces as a message.
+#
+# A role change can alter the caller's own authorization, so UpdateSession runs
+# after it to re-sync the client rather than leaving the page on stale roles.
+id: member_modal
+type: Modal
+properties:
+  title:
+    _nunjucks:
+      template: "{{ name | default('Member') }}"
+      on:
+        name:
+          _state: selected_member.name
+  width: 480
+  okText: Save roles
+events:
+  onOk:
+    _build.array.concat:
+      - - id: update_member_role
+          type: UpdateMemberRole
+          messages:
+            loading: Updating roles…
+            success: Roles updated.
+          params:
+            memberId:
+              _state: selected_member.member_id
+            role:
+              _state: member_roles
+        # Roles resolve from the member row server-side, so a caller who just
+        # changed their own would otherwise keep the old set until reload.
+        - id: resync_session
+          type: UpdateSession
+      - _ref: actions/refetch_members.yaml
+blocks:
+  - id: member_identity
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          template: >-
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary)">{{
+            email }}{% if joined %} · joined {{ joined }}{% endif %}</div>
+          on:
+            email:
+              _state: selected_member.email
+            joined:
+              _dayjs:
+                on:
+                  _state: selected_member.signed_up
+                format: YYYY-MM-DD
+  - id: member_roles
+    type: TagMultipleSelector
+    properties:
+      title: Roles
+      placeholder: No role
+      options:
+        _ref: components/role_options.yaml
+  - id: member_danger_zone
+    type: Box
+    layout:
+      gap: 8
+    blocks:
+      - id: remove_member_btn
+        type: Button
+        visible:
+          _not:
+            _state: selected_member.is_self
+        properties:
+          title: Remove from organization
+          icon: AiOutlineUserDelete
+          danger: true
+          block: true
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: remove_member
+                  type: RemoveMember
+                  messages:
+                    loading: Removing…
+                    success: Member removed.
+                  params:
+                    memberIdOrEmail:
+                      _state: selected_member.member_id
+                - id: close_after_remove
+                  type: CallMethod
+                  params:
+                    blockId: member_modal
+                    method: toggleOpen
+              - _ref: actions/refetch_members.yaml
+      - id: leave_organization_btn
+        type: Button
+        visible:
+          _state: selected_member.is_self
+        properties:
+          title: Leave this organization
+          icon: AiOutlineLogout
+          danger: true
+          block: true
+        events:
+          onClick:
+            - id: leave_organization
+              type: LeaveOrganization
+              messages:
+                loading: Leaving…
+                success: You have left the organization.
+            # Membership drives the wall and role resolution, so the session has
+            # to be re-read before anything else renders.
+            - id: resync_after_leave
+              type: UpdateSession
+            - id: go_home_after_leave
+              type: Link
+              params:
+                home: true

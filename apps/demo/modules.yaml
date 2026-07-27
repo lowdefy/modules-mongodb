@@ -32,6 +32,13 @@
   vars:
     s3_region: us-east-1
 
+# organizations must be listed before layout: the layout entry vars wire the
+# org-switcher into header_extra by cross-module _ref, and the experimental
+# build's entry-vars resolve is order-sensitive (target module entry must be
+# registered first).
+- id: organizations
+  source: "file:../../modules/organizations"
+
 - id: layout
   source: "file:../../modules/layout"
   vars:

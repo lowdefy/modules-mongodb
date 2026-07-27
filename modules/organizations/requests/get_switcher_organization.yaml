@@ -1,0 +1,15 @@
+# The active organization's name, for the switcher.
+#
+# Deliberately a separate request from `get_active_organization` even though the
+# query is identical: the switcher's reads are injected into the layout header
+# and therefore load on EVERY page, so their ids have to be ones no page will
+# ever declare for itself. The settings page reads the same row under its own
+# id, and a shared id would collide there.
+id: get_switcher_organization
+type: MongoDBFindOne
+connectionId:
+  _module.connectionId: user-organizations
+properties:
+  query:
+    _id:
+      _user: organizationId

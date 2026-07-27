@@ -1,0 +1,13 @@
+# Pending invitations for the caller's ACTIVE organization, soonest expiry
+# first. The org scope, the pending filter, and the Invited/Expired derivation
+# all come from the shared stages.
+id: get_invitations
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-invitations
+properties:
+  pipeline:
+    _build.array.concat:
+      - _ref: ../shared/org/invitations_base.yaml
+      - - $sort:
+            expires_at: 1

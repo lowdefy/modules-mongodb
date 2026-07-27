@@ -28,7 +28,7 @@ Why not the generic `Fetch` action: hand-rolled paths/error-shapes/basePath per
 call site, and two generations of call sites once actions exist. Rejected in
 design Decision 2.
 
-**Status: open.**
+**Status: landed** — lowdefy PR #2288 (`feat/org-client-actions`), shipped in experimental-20260727103801.
 
 ## Ask 2 — project `organizations.policy` into `_build.authConfig`
 
@@ -39,4 +39,4 @@ deployment" empty state instead of dead controls when a pinned app consumes the
 organizations module. One projected field: `organizations.policy`
 (`'pinned' | 'tenant'`, defaulted the way the engine defaults it).
 
-**Status: open.**
+**Status: landed** — lowdefy PR #2288 (`feat/org-client-actions`), shipped in experimental-20260727103801.
