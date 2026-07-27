@@ -36,7 +36,7 @@ modules:
           id:
             _user: id
         app_name:
-          _app: slug
+          _build.app: slug
       event_types:
         sync-job:
           title: Sync job

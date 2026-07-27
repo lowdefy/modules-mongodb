@@ -27,18 +27,17 @@ modules:
     source: "github:lowdefy/modules-mongodb/modules/notifications@v0.17.0"
 ```
 
-Modules read it directly with the `_app: slug` operator. No module takes an app-name var — `activities`, `companies`, `contacts`, `deals`, `notifications`, and `workflows` all scope themselves off the app's own slug.
+Modules read it directly with the `_build.app: slug` operator. No module takes an app-name var — `activities`, `companies`, `contacts`, `deals`, `notifications`, and `workflows` all scope themselves off the app's own slug.
 
 > The `user-account` and `user-admin` modules **do not scope by slug** — they are built on the BetterAuth-based auth engine, where one module instance serves one pinned organization (org = app), so per-app scoping by the `apps.{app}` map is gone. See [`user-account`](../user-account/how-to/migration.md) and [`user-admin`](../user-admin/how-to/migration.md).
 
-## Reading the slug: `_app` and `_build.app`
+## Reading the slug: always `_build.app: slug`
 
-Two forms exist, and the position decides which one to write:
+Lowdefy offers two spellings — `_app: slug` and `_build.app: slug` — and its own docs treat `_app` as the default. These modules use **`_build.app: slug` everywhere**, without exception.
 
-- **`_app: slug`** — everywhere ordinary: runtime positions (MongoDB filters, change-stamp templates, request payloads, Nunjucks vars) and plain build positions. It evaluates on client, server, and at build.
-- **`_build.app: slug`** — only when the operator sits **directly inside a `_build.*` operator's arguments** (e.g. a key fed to `_build.object.fromEntries` or `_build.string.concat`). There, `_app` would still be an unevaluated object when the surrounding `_build.*` operator runs; `_build.app` resolves to a literal string in time.
+Both produce the same thing: the build folds every static `_app` into a literal, so no `_app` operator survives into the artifact either way. But `_build.app` is the only form that also works **inside a `_build.*` operator's arguments** (a key fed to `_build.object.fromEntries` or `_build.string.concat`), as a build resolver's vars, and in the root metadata fields of `lowdefy.yaml`. Writing `_app` in one of those positions leaves an unevaluated object where a string was expected, and it fails silently — a map keyed by `[object Object]`, or a resolver that emits nothing. One unconditional rule removes the judgement call and with it that whole class of bug.
 
-Referencing an undeclared slug **fails the build** — `_app: slug` is required-when-referenced, so a missing `slug:` on `lowdefy.yaml` is caught at build time rather than writing documents under an empty scope.
+Referencing an undeclared slug **fails the build** — `slug` is required-when-referenced, so a missing `slug:` on `lowdefy.yaml` is caught at build time rather than writing documents under an empty scope.
 
 ## Format: kebab-case, enforced
 
@@ -69,7 +68,7 @@ _ref:
       _app: name
 ```
 
-`_app: description` reads the app's `description:` the same way. Both are display-only — they never key stored data.
+`_app: description` reads the app's `description:` the same way. Both are display-only — they never key stored data, and unlike the slug they are only ever leaf strings in chrome, never a key fed to a `_build.*` operator. Either spelling works for them; `_app` reads better in a page title.
 
 ## Multi-app deployments
 

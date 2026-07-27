@@ -6,7 +6,7 @@ payload:
   _id:
     _state: selected_id
   app_name:
-    _app: slug
+    _build.app: slug
 properties:
   pipeline:
     - $match:

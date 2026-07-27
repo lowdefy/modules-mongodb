@@ -16,7 +16,7 @@ change_stamp:
         - _user: id
         - _var: default_id
   app_name:
-    _app: slug
+    _build.app: slug
   version:
     app:
       _ref:

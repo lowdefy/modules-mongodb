@@ -35,7 +35,7 @@ _ref:
                 key:
                   _string.concat:
                     - "apps."
-                    - _app: slug
+                    - _build.app: slug
                     - ".is_user"
                 from:
                   _request: get_contact.0

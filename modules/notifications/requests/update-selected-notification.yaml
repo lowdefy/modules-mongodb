@@ -6,7 +6,7 @@ payload:
   selected_id:
     _state: selected_id
   app_name:
-    _app: slug
+    _build.app: slug
 properties:
   disableNoMatchError: true
   filter:

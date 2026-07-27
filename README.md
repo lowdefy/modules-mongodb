@@ -12,7 +12,7 @@ Declare the app's `slug` on the root of your `lowdefy.yaml`, then add modules to
 
 ```yaml
 name: My App
-slug: my-app # kebab-case; modules scope themselves to it via `_app: slug`
+slug: my-app # kebab-case; modules scope themselves to it via `_build.app: slug`
 
 modules:
   - id: events
@@ -43,7 +43,7 @@ The slug is declared once and read by every module that scopes data per app — 
         id:
           _user: id
       app_name:
-        _app: slug
+        _build.app: slug
 ```
 
 The minimum set for an authenticated app is `layout` + `events` + `user-account` + `notifications`. See [`docs/index.md`](docs/index.md) for the full module list, dependency graph, and "what to use when" guide, and [`docs/shared/app-name.md`](docs/shared/app-name.md) for how the slug scopes stored data.

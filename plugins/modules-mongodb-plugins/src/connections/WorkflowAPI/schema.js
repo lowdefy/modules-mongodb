@@ -123,7 +123,7 @@ const schema = {
         "(`access.{slug}.{verb}`), the per-app `message` and `links` it renders " +
         "onto action cards (`action.{slug}`), and the display block it writes on " +
         "the default log event (matching the events module's display_key " +
-        "projection). Apps wire this from `_app: slug` on " +
+        "projection). Apps wire this from `_build.app: slug` on " +
         "connections/workflow-api.yaml.",
     },
     enable_internal_comments: {

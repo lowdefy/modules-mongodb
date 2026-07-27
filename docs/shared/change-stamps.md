@@ -58,12 +58,12 @@ To extend the stamp (e.g. add `app_name` to track which app produced the write),
         id:
           _user: id
       app_name:
-        _app: slug
+        _build.app: slug
 ```
 
 Every module that writes via `events.change_stamp` will pick up the override automatically.
 
-`_app: slug` is valid inside the stamp because the stamp is a runtime template — it reads the app's `slug:` at request time, so the value never has to be repeated per module entry. The stamp **field** stays named `app_name`: it is the stored field name on the document (see [App slug scoping](app-name.md)), only the value moved from a baked literal to the operator.
+Unlike its siblings, `_build.app: slug` is not resolved per request — the build folds it to a literal, because the app's slug is fixed at build. It earns its place anyway: the value is declared once on the app root instead of being repeated on every module entry. The stamp **field** stays named `app_name`: it is the stored field name on the document (see [App slug scoping](app-name.md)), only the value moved from a hand-written literal to the operator.
 
 ## Why a runtime template
 

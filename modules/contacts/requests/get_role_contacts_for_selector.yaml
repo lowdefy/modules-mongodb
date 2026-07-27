@@ -22,7 +22,7 @@ properties:
                   - $ifNull:
                       - _string.concat:
                           - "$apps."
-                          - _app: slug
+                          - _build.app: slug
                           - ".roles"
                       - []
                   - _var: roles

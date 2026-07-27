@@ -11,7 +11,7 @@ properties:
   workflowsConfig:
     _ref: components/validated_workflows_config.yaml
   slug:
-    _app: slug
+    _build.app: slug
   # Part 61: opt this app in to internal (single-app) comments. When false (the
   # default) the engine coerces any `internal` request to `shared`. The comment
   # surfaces read the same module var at build time to show/hide the control.

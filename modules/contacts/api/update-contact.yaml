@@ -15,7 +15,7 @@ routine:
               key:
                 _string.concat:
                   - "apps."
-                  - _app: slug
+                  - _build.app: slug
                   - ".is_user"
               descriptor:
                 value:

@@ -88,7 +88,7 @@ Modules are added to the `modules` array in `lowdefy.yaml`, under the app's own 
 
 ```yaml
 name: My App
-slug: my-app # kebab-case; the scope every app-scoped module reads via `_app: slug`
+slug: my-app # kebab-case; the scope every app-scoped module reads via `_build.app: slug`
 
 modules:
   - id: events
