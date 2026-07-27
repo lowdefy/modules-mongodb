@@ -1,0 +1,27 @@
+# A check action exercising `lock_when_done: true` — the action is final, so once
+# it is submitted it cannot be re-submitted:
+#   - the resolved allowed.edit is cleared at `done`, so the check surface's Edit
+#     button disappears and the Submit button with it (submit needs the edit verb)
+#   - the engine rejects a `submit` signal outright, so a hand-crafted submission
+#     cannot re-run the hooks either
+#
+# Check kind (not form) because that is where the flag does its whole job with no
+# pairing: a form action's view-page Edit button is a navigation link that is not
+# verb-gated, so it would still render.
+type: final-check
+kind: check
+action_group: knob-group
+sort_order: 20
+lock_when_done: true
+description: Exercises lock_when_done — final once submitted.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Confirm to finish.
+  done:
+    test:
+      message: Confirmed — final.

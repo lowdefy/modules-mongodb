@@ -62,7 +62,7 @@ actions: # required — action definitions
 
 ### Runtime-read fields (engine reads at runtime)
 
-`type`, `title`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `required_after_close`, `allow_not_required`, `access`, `status_map`, `universal_fields`
+`type`, `title`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `required_after_close`, `allow_not_required`, `lock_when_done`, `access`, `status_map`, `universal_fields`
 
 ### Build-time-only fields (consumed by resolvers)
 
@@ -233,6 +233,28 @@ Action-root boolean, valid on `form` and `check` kinds. Default `false`. Opt in 
   access: { ... }
 ```
 
+## Lock when done (`lock_when_done:`)
+
+Action-root boolean, any kind. Default `false`. Declares the action **final**: once it reaches `done` it cannot be re-submitted.
+
+```yaml
+- type: confirm-setup
+  kind: check
+  lock_when_done: true
+  access: { ... }
+```
+
+By default the FSM permits `submit` from `done` for every kind, so a submitted action stays re-submittable (that is what makes form actions "editable while done"). Set this flag when a submit has side effects that must happen exactly once — creating a record in an external system, starting a downstream workflow — and a second run would be wrong.
+
+Enforced on both sides, the same shape as `allow_not_required`:
+
+- **Presentation** — at `done`, the action's resolved `allowed.edit` is cleared. `submit` requires the `edit` verb, so the re-submit button disappears; every surface's Edit affordance is gated on the same verb, so it disappears too. `view` is untouched, so the action stays readable.
+- **Enforcement** — the engine rejects a `submit` signal for a locked `done` action (`stage_rejects_submit`), so a hand-crafted submission cannot re-run its hooks either.
+
+Only `submit` is gated. `request_changes` still works on a locked `done` action, so a reviewer can pull it back — locking means "not re-submittable as-is", not "frozen".
+
+**Form-kind caveat.** On a form action's **view** page the Edit button is a navigation link that is deliberately not gated on `allowed.edit` (the edit page gates its own writes), so it still renders — the edit page it opens simply offers no Submit. To hide the navigation too, pair the flag with `pages.view.buttons.edit.visible: false`. Check actions need no pairing: their surfaces gate on the verb directly.
+
 ## Titles
 
 Actions, workflows, and action groups accept an optional `title:`. When omitted, the title is derived from the slug (`type`/`id`) by the title humanizer: splits on `-`/`_`/camelCase, applies Title Case, lowercases minor words mid-string, uppercases acronyms (base set: `PO ID URL API CRM SLA KPI VAT PDF CSV FAQ KYC RFQ`; extended by the `title_acronyms` var). Set `title:` only when the default is wrong.
@@ -338,7 +360,20 @@ pages:
       request_changes: # view page only; default visible false
         successMessage: <string> # override "Changes requested."
         visible: <bool | operator>
+      edit: # the navigation button to the edit page
+        visible: <bool | operator>
+        disabled: <bool | operator>
 ```
+
+Alongside `visible` and `successMessage`, buttons accept three further keys — not uniformly, so check the table before reaching for one:
+
+| Key        | Available on                                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------------------------- |
+| `disabled` | every button — `submit`, `progress`, `not_required`, `approve`, `request_changes`, `resolve_error`, `edit` |
+| `title`    | `submit`, `progress`, `resolve_error` — overrides the button label                                         |
+| `modal`    | `submit`, `not_required`, `approve`, `resolve_error` — `{ title, content }` confirm step                   |
+
+`disabled` OR-combines with the template's own disabled gates (so it can only further restrict). The `edit` button on the `view` and `review` pages carries no signal, so it takes `visible` / `disabled` only.
 
 Button `visible` accepts a boolean or any Lowdefy operator expression. It AND-combines with the server-resolved boolean — authors can only further restrict visibility, never show a button the FSM or role gate would reject.
 

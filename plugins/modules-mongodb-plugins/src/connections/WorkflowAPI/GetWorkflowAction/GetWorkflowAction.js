@@ -4,6 +4,7 @@ import parseNunjucks from "../../shared/render/parseNunjucks.js";
 import resolveEntityData from "../../shared/render/resolveEntityData.js";
 import resolveUniversalFields from "../../shared/render/resolveUniversalFields.js";
 import {
+  applyLockWhenDone,
   computeAllowed,
   resolveButtons,
 } from "../../shared/render/resolveActionAccess.js";
@@ -145,12 +146,15 @@ async function GetWorkflowAction(lowdefyContext) {
   }
 
   // ── Step 4: Access gate ──
-  const allowed = computeAllowed({
+  // Role-only at this point; the view gate is a pure role question, so it runs
+  // before the stage-aware `lock_when_done` narrowing below (which never clears
+  // `view`, so the gate's answer cannot change).
+  const roleAllowed = computeAllowed({
     access: action.access,
     app_name,
     userRoles,
   });
-  if (!allowed.view) {
+  if (!roleAllowed.view) {
     return null;
   }
 
@@ -162,7 +166,16 @@ async function GetWorkflowAction(lowdefyContext) {
     (wfConfig?.actions ?? []).find((ac) => ac.type === action.type) ?? {};
 
   // ── Step 5: Button resolution ──
+  // A `lock_when_done` action at `done` is final: the narrowing clears `edit`,
+  // which both hides every surface's Edit affordance and suppresses the
+  // re-submit button (submit requires the edit verb). `loadWorkflowState`
+  // rejects the signal server-side, so this is presentation, not the gate.
   const stage = action.status?.[0]?.stage ?? null;
+  const allowed = applyLockWhenDone({
+    allowed: roleAllowed,
+    stage,
+    lock_when_done: actionConfig.lock_when_done,
+  });
   const buttons = resolveButtons({
     stage,
     allowed,

@@ -1795,6 +1795,48 @@ test("makeWorkflowsConfig: tracker-kind action has no form_meta", () => {
   expect("form_meta" in out.actions[0]).toBe(false);
 });
 
+// --- lock_when_done ---------------------------------------------------------
+
+test("makeWorkflowsConfig: lock_when_done defaults to false when absent (check-kind)", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
+  expect(out.actions[0].lock_when_done).toBe(false);
+});
+
+test("makeWorkflowsConfig: lock_when_done: true flows through on a check-kind action", () => {
+  const wf = {
+    ...validWorkflow,
+    actions: [{ ...validWorkflow.actions[0], lock_when_done: true }],
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect(out.actions[0].lock_when_done).toBe(true);
+});
+
+test("makeWorkflowsConfig: lock_when_done: true flows through on a form-kind action", () => {
+  // The flag is kind-agnostic (same as allow_not_required) — the engine gate
+  // keys off stage + flag, not kind.
+  const wf = workflowWithFormActions({
+    ...qualifyAction,
+    lock_when_done: true,
+  });
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [wf, deviceInstallationStub],
+  });
+  expect(out.actions[0].lock_when_done).toBe(true);
+});
+
+test("makeWorkflowsConfig: non-boolean lock_when_done hard-errors", () => {
+  const wf = workflowWithFormActions({
+    ...qualifyAction,
+    lock_when_done: "yes",
+  });
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] }),
+  ).toThrow(/makeWorkflowsConfig:/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] }),
+  ).toThrow(/lock_when_done must be a boolean/);
+});
+
 // --- allow_not_required -----------------------------------------------------
 
 test("makeWorkflowsConfig: allow_not_required defaults to false when absent (check-kind)", () => {

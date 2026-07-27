@@ -1,6 +1,7 @@
-# knob-behaviors — a single-action workflow exercising the per-action UI knobs
-# (show_comment / validate_on_draft / max_length). Kept separate from the other
-# fixtures so toggling these flags never perturbs their specs.
+# knob-behaviors — exercises the per-action UI knobs (show_comment /
+# validate_on_draft / max_length on the `knobs` form action, and lock_when_done on
+# the `final-check` check action). Kept separate from the other fixtures so
+# toggling these flags never perturbs their specs.
 type: knob-behaviors
 title: Knob behaviors
 entity:
@@ -13,6 +14,8 @@ entity:
 starting_actions:
   - type: knobs
     status: action-required
+  - type: final-check
+    status: action-required
 
 action_groups:
   - id: knob-group
@@ -21,3 +24,4 @@ action_groups:
 
 actions:
   - _ref: modules/workflows/workflow_config/knob-behaviors/knobs.yaml
+  - _ref: modules/workflows/workflow_config/knob-behaviors/final-check.yaml

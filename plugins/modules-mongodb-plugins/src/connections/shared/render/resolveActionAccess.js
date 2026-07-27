@@ -107,6 +107,34 @@ export function collapseLink({ links, allowed }) {
 }
 
 /**
+ * Apply the `lock_when_done` flag to an already-computed `allowed` bag.
+ *
+ * `computeAllowed` is stage-blind — it answers "does this user hold the verb?",
+ * which is a pure role question. Finality is a stage question, so it is applied
+ * here as a separate, explicitly stage-aware narrowing step rather than by
+ * teaching `computeAllowed` about stages.
+ *
+ * Dropping `edit` is the whole mechanism, and it is deliberately the only field
+ * touched: `submit` requires the `edit` verb (`SIGNAL_VERBS.submit`), so
+ * clearing it suppresses the re-submit button, and every surface's Edit
+ * affordance is gated on `allowed.edit`, so the same clear hides that too. One
+ * narrowing, both effects, no new plumbing on either surface.
+ *
+ * `view` is untouched on purpose — a locked action must stay readable.
+ *
+ * The server-side twin of this narrowing lives in `loadWorkflowState`, which
+ * rejects the `submit` signal outright for a locked `done` action. Hiding a
+ * button is presentation; that gate is the enforcement.
+ *
+ * @param {{ allowed: { view: boolean, edit: boolean, review: boolean, error: boolean }, stage?: string, lock_when_done?: boolean }}
+ * @returns {{ view: boolean, edit: boolean, review: boolean, error: boolean }}
+ */
+export function applyLockWhenDone({ allowed, stage, lock_when_done }) {
+  if (lock_when_done !== true || stage !== "done") return allowed;
+  return { ...allowed, edit: false };
+}
+
+/**
  * Resolve button visibility for the six user-facing signals.
  *
  * For each signal, a button is visible (true) only when ALL of:
@@ -114,6 +142,9 @@ export function collapseLink({ links, allowed }) {
  *   2. `allowed` is true for at least one of `SIGNAL_VERBS[signal]` (Part 49:
  *      `request_changes` accepts `view`, `edit`, or `review`).
  *   3. For `not_required` only: `allow_not_required === true`.
+ *
+ * Callers pass the `allowed` bag already narrowed by `applyLockWhenDone`, so
+ * finality needs no special case here.
  *
  * Internal signals (`activate`, `block`, `internal_mirror_*`) never appear in
  * the output — only the six user-facing signals are keyed here.
