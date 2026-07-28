@@ -27,11 +27,9 @@ layout:
   gap: 16
 properties:
   theme:
-    # Status-tinted card head. The status is already on the Tag, but a
-    # whole-band tint is what makes a long, mostly-collapsed workflow
-    # scannable. Driven by antd's Card `headerBg` token rather than a `.header`
-    # CSS slot: per-block `theme:` is how the modules override antd internals,
-    # and the tint is per-card, so an app-level token can't do it.
+    # Status-tinted card head — the status rides the Tag too, but a whole-band
+    # tint is what makes a long, mostly-collapsed workflow scannable. A theme
+    # token fits here because every card sets a colour: nothing to preserve.
     headerBg:
       _get:
         from:
@@ -44,10 +42,13 @@ properties:
                   - .status
             - .color
         default: "#fafafa"
-    # A collapsed card hides both body blocks but antd still renders the padded
-    # body div — a dead white strip under every band. Zero the padding while
-    # collapsed so the card is just its header.
-    bodyPadding:
+# Collapsed cards hide both body blocks, but antd still renders the padded body
+# div — a dead strip under every band. Unlike the tint above this uses the CSS
+# slot, because expanded must set NOTHING: React drops a null style property so
+# the host's theme padding shows through, where a token override would replace it.
+style:
+  .body:
+    padding:
       _if:
         test:
           _get:
@@ -60,7 +61,7 @@ properties:
                   prefix:
                     _var: prefix
             default: false
-        then: 24
+        then: null
         else: 0
 slots:
   title:
