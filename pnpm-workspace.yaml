@@ -14,3 +14,21 @@ packages:
 # one copy (satisfies both ranges) makes the utc plugin registration shared.
 overrides:
   dayjs: 1.11.20
+
+# These three live here, not under a "pnpm" key in package.json: pnpm 10 (the
+# repo pins pnpm@10.6.2) no longer reads that key and silently ignores it —
+# it only warns. A dropped patchedDependencies is invisible and undoes the
+# AgentChat fix below on the next fresh install.
+packageExtensions:
+  "@lowdefy/client":
+    dependencies:
+      antd: 6.3.1
+
+onlyBuiltDependencies:
+  - mongodb-memory-server
+
+# AgentChat keys useChat by conversationId. Without the patch, useChat captures
+# the transport at mount, so switching conversations persists the continued
+# chat under the mount-time id.
+patchedDependencies:
+  "@lowdefy/blocks-antd-x": patches/@lowdefy__blocks-antd-x.patch
