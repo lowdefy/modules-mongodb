@@ -8,6 +8,11 @@ blocked_by:
 # Declares the opposite list to assign-account-manager on purpose: both are check
 # actions in this workflow and share the one `company-setup-action` page.
 universal_fields: [due_date]
+# The outcome of the call is captured in the entity record, not a free-form note,
+# so the comment box is noise here. Its sibling assign-account-manager leaves the
+# flag defaulted, so the one shared page carries both states — the flag is read
+# per action off the GetWorkflowAction envelope.
+show_comment: false
 description: Schedule and complete the kickoff call with the company.
 access:
   demo:
