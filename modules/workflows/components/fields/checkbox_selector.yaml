@@ -17,6 +17,11 @@ vars:
   extra:
     type: string
     required: false
+  direction:
+    type: string
+    # Defaulted, not left unset: an unsupplied var resolves to null, and antd
+    # Space falls back to horizontal only on undefined.
+    default: horizontal
   on_change:
     type: array
     default: []
@@ -46,6 +51,10 @@ config:
       _var:
         key: options
         default: []
+    direction:
+      _var:
+        key: direction
+        default: horizontal
   events:
     onChange:
       _var:

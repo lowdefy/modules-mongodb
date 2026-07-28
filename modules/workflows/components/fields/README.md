@@ -257,21 +257,23 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 #### `checkbox_selector`
 
-Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`.
+Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row.
 
-| Var        | Type    | Required / Default |
-| ---------- | ------- | ------------------ |
-| `key`      | string  | required           |
-| `title`    | string  | —                  |
-| `visible`  | boolean | `true`             |
-| `required` | boolean | `false`            |
-| `options`  | array   | `[]`               |
-| `extra`    | string  | —                  |
+| Var         | Type    | Required / Default |
+| ----------- | ------- | ------------------ |
+| `key`       | string  | required           |
+| `title`     | string  | —                  |
+| `visible`   | boolean | `true`             |
+| `required`  | boolean | `false`            |
+| `options`   | array   | `[]`               |
+| `extra`     | string  | —                  |
+| `direction` | string  | `horizontal`       |
 
 ```yaml
 - component: checkbox_selector
   key: channels
   title: Notification channels
+  direction: vertical
   options:
     - { label: Email, value: email }
     - { label: SMS, value: sms }
