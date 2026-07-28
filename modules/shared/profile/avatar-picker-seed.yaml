@@ -1,0 +1,19 @@
+# Seeds the gradient avatar-picker.yaml previews. Ref this into the host's init
+# event after the `profile` subtree has been seeded — without it the shared SVG
+# generator falls back to its grey defaults (#37474f/#546e7a), which reads as a
+# broken avatar rather than as an unchosen colour.
+#
+# Skipped when the profile already carries a colour, so a choice that came back
+# from the database is never overwritten.
+id: seed_avatar_color
+type: SetState
+skip:
+  _ne:
+    - _state: profile.avatar_color
+    - null
+params:
+  profile.avatar_color:
+    _get:
+      from:
+        _module.var: avatar_colors
+      key: 0

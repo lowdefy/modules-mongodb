@@ -28,6 +28,7 @@ _ref:
             profile:
               _user: profile
             avatar_color_index: 0
+        - _ref: ../shared/profile/avatar-picker-seed.yaml
     blocks:
       _build.array.concat:
         - # ---- Header + avatar ----
@@ -44,70 +45,7 @@ _ref:
               marginTop: -8
               fontSize: 13
               color: "var(--ant-color-text-secondary)"
-          - id: onboarding_avatar
-            type: Box
-            layout:
-              gap: 8
-              justify: center
-            style:
-              flexDirection: column
-              alignItems: center
-              marginBottom: 4
-            blocks:
-              # Initials from the entered name; background from the currently
-              # selected avatar_colors gradient pair.
-              - id: onboarding_avatar_face
-                type: Avatar
-                properties:
-                  content:
-                    _nunjucks:
-                      template: "{{ (given or '') | first | upper }}{{ (family or '') | first | upper }}"
-                      on:
-                        given:
-                          _state: profile.given_name
-                        family:
-                          _state: profile.family_name
-                  size: large
-                  theme:
-                    containerSizeLG: 72
-                    textFontSizeLG: 26
-                style:
-                  .element:
-                    background:
-                      _nunjucks:
-                        template: "linear-gradient(135deg, {{ colors[i].from }}, {{ colors[i].to }})"
-                        on:
-                          colors:
-                            _module.var: avatar_colors
-                          i:
-                            _state: avatar_color_index
-              # Cycle through the avatar_colors var (wraps at the end).
-              - id: onboarding_avatar_color
-                type: Button
-                properties:
-                  title: Change colour
-                  icon: AiOutlineReload
-                  size: small
-                  shape: round
-                events:
-                  onClick:
-                    - id: cycle_avatar_color
-                      type: SetState
-                      params:
-                        avatar_color_index:
-                          _if:
-                            test:
-                              _gte:
-                                - _sum:
-                                    - _state: avatar_color_index
-                                    - 1
-                                - _array.length:
-                                    _module.var: avatar_colors
-                            then: 0
-                            else:
-                              _sum:
-                                - _state: avatar_color_index
-                                - 1
+          - _ref: ../shared/profile/avatar-picker.yaml
         # ---- Core profile fields (shared form_core — same capture as the
         # profile edit modal: honorific + first/last name on one row) ----
         - _ref:

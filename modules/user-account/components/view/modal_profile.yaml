@@ -25,6 +25,7 @@ events:
         profile:
           _request: get_account.0.profile
         avatar_color_index: 0
+    - _ref: ../shared/profile/avatar-picker-seed.yaml
   onOk:
     _build.array.concat:
       - - id: validate_profile
@@ -50,69 +51,7 @@ events:
       - _ref: actions/refetch_account.yaml
 blocks:
   _build.array.concat:
-    # Avatar preview + colour picker (mirrors onboarding). Initials from the
-    # entered name; background from the currently selected avatar_colors gradient.
-    - - id: profile_avatar_edit
-        type: Box
-        layout:
-          gap: 8
-          justify: center
-        style:
-          flexDirection: column
-          alignItems: center
-        blocks:
-          - id: profile_avatar_face
-            type: Avatar
-            properties:
-              content:
-                _nunjucks:
-                  template: "{{ (given or '') | first | upper }}{{ (family or '') | first | upper }}"
-                  on:
-                    given:
-                      _state: profile.given_name
-                    family:
-                      _state: profile.family_name
-              size: large
-              theme:
-                containerSizeLG: 64
-                textFontSizeLG: 24
-            style:
-              .element:
-                background:
-                  _nunjucks:
-                    template: "linear-gradient(135deg, {{ colors[i].from }}, {{ colors[i].to }})"
-                    on:
-                      colors:
-                        _module.var: avatar_colors
-                      i:
-                        _state: avatar_color_index
-          - id: profile_avatar_color
-            type: Button
-            properties:
-              title: Change colour
-              icon: AiOutlineReload
-              size: small
-              shape: round
-              variant: outlined
-            events:
-              onClick:
-                - id: cycle_avatar_color
-                  type: SetState
-                  params:
-                    avatar_color_index:
-                      _if:
-                        test:
-                          _gte:
-                            - _sum:
-                                - _state: avatar_color_index
-                                - 1
-                            - _array.length:
-                                _module.var: avatar_colors
-                        then: 0
-                        else:
-                          _sum:
-                            - _state: avatar_color_index
-                            - 1
+    - - _ref: ../shared/profile/avatar-picker.yaml
     - _ref:
         path: ../shared/profile/form_core.yaml
         vars:
