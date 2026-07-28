@@ -257,7 +257,7 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 #### `checkbox_selector`
 
-Multi-select checkbox group. Renders a `CheckboxSelector`. Label `colon` is hardcoded `false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row.
+Multi-select checkbox group. Renders a `CheckboxSelector`. Label `colon` is hardcoded `false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row. When `required: true`, required-validation fires on empty array; caller-supplied `validate` is concatenated with that rule.
 
 | Var            | Type    | Required / Default |
 | -------------- | ------- | ------------------ |
@@ -265,6 +265,7 @@ Multi-select checkbox group. Renders a `CheckboxSelector`. Label `colon` is hard
 | `title`        | string  | —                  |
 | `visible`      | boolean | `true`             |
 | `required`     | boolean | `false`            |
+| `validate`     | array   | `[]`               |
 | `options`      | array   | `[]`               |
 | `extra`        | string  | —                  |
 | `label_inline` | boolean | `false`            |

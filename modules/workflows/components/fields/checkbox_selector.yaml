@@ -11,6 +11,9 @@ vars:
   required:
     type: boolean
     default: false
+  validate:
+    type: array
+    default: []
   options:
     type: array
     default: []
@@ -36,6 +39,28 @@ config:
   id:
     _var: key
   type: CheckboxSelector
+  validate:
+    _build.array.concat:
+      - _var:
+          key: validate
+          default: []
+      - _build.if:
+          test:
+            _build.eq:
+              - _var:
+                  key: required
+                  default: false
+              - true
+          then:
+            - message: This field is required.
+              status: error
+              pass:
+                _gt:
+                  - _array.length:
+                      _state:
+                        _var: key
+                  - 0
+          else: []
   visible:
     _var:
       key: visible
