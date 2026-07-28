@@ -1,5 +1,17 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.20.0
+
+### Minor Changes
+
+- [#131](https://github.com/lowdefy/modules-mongodb/pull/131) [`8b25037`](https://github.com/lowdefy/modules-mongodb/commit/8b25037e8bd8c7692d9bd63f95e3ac4abc9ee4cb) Thanks [@Yianni99](https://github.com/Yianni99)! - The `checkbox_selector` form component takes a `direction` var (`horizontal` — the existing behaviour — or `vertical`). Setting it to `vertical` stacks the checkboxes one per line instead of flowing them across the row, which reads better once an action's option list is long enough that a wrapped row is hard to scan.
+
+- [#131](https://github.com/lowdefy/modules-mongodb/pull/131) [`41fef2d`](https://github.com/lowdefy/modules-mongodb/commit/41fef2d792179f2b2dc9d18e7864c774fafefb64) Thanks [@Yianni99](https://github.com/Yianni99)! - Workflow and action-group overview pages: each action card now reads at a glance. The card header is tinted with its status colour and the status badge picks up the same pale-fill/outline/saturated-text treatment as the workflow status pill above it, so a long list of collapsed actions can be scanned without opening anything. The action message is emphasised, the link button carries a right-arrow, and a collapsed card is now just its coloured header instead of a header plus an empty white body.
+
+  Uploaded files inside an action's data now download instead of showing "No files available" — both pages wire the files module's download policy.
+
+  The title bar now states which record the workflow belongs to: a new line beneath the title shows the entity's id, linked straight to its record. Expand/collapse-all has moved into the title bar's actions area, freeing the row it used to occupy above the cards, and reads as a button rather than plain text. The group heading's icon is also aligned with its title rather than sitting above it.
+
 ## 0.19.0
 
 ### Minor Changes
