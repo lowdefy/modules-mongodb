@@ -272,6 +272,23 @@ async function loadWorkflowState(
     );
   }
 
+  // `lock_when_done` gate: an action declared final cannot be re-submitted once
+  // it is `done`. The FSM permits `submit` from `done` for every kind, so
+  // without this gate a hand-crafted submission could re-run the action's hooks
+  // even though the button is hidden (`applyLockWhenDone` clears the `edit` verb
+  // the button needs). Same shape as the `allow_not_required` gate above: the
+  // flag is the author's declaration, this is its enforcement.
+  if (
+    signal === "submit" &&
+    actionConfig.lock_when_done === true &&
+    (targetAction.status?.[0]?.stage ?? null) === "done"
+  ) {
+    throw new WorkflowEngineError(
+      `loadWorkflowState: signal "submit" rejected — action type "${targetAction.type}" has lock_when_done: true and is already done`,
+      { code: "stage_rejects_submit" },
+    );
+  }
+
   return { workflow, actions, workflowConfig, actionConfig, targetAction };
 }
 

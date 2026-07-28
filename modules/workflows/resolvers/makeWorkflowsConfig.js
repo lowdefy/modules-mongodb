@@ -30,6 +30,7 @@ const ACTION_FIELDS = [
   "action_group",
   "required_after_close",
   "allow_not_required",
+  "lock_when_done",
   "access",
   "universal_fields",
   // Part 64: the author-authored action body. Carried into the runtime config
@@ -640,6 +641,16 @@ function validateAction(workflow, action) {
     );
   }
 
+  if (
+    "lock_when_done" in action &&
+    typeof action.lock_when_done !== "boolean"
+  ) {
+    fail(
+      workflow.type,
+      `${where} lock_when_done must be a boolean (got: ${JSON.stringify(action.lock_when_done)}).`,
+    );
+  }
+
   if ("title" in action && typeof action.title !== "string") {
     fail(
       workflow.type,
@@ -1050,6 +1061,11 @@ function makeWorkflowsConfig(_, vars) {
       // Default allow_not_required to false (opt-in; preserves Part 39 D3's
       // safety rationale). Validation already rejected non-boolean values above.
       picked.allow_not_required = action.allow_not_required === true;
+
+      // Default lock_when_done to false (opt-in). The FSM permits `submit` from
+      // `done` for every kind, so re-submitting a done action is the default
+      // behaviour; this flag is how an author declares an action final.
+      picked.lock_when_done = action.lock_when_done === true;
 
       // Attach form_meta for form-kind actions. Ported from makeActionFormConfigs
       // so the per-action metadata rides the validated config directly (no

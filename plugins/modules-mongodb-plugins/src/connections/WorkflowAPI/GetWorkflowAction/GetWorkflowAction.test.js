@@ -104,6 +104,9 @@ function makeWorkflowsConfig() {
           action_group: "phase-1",
           allow_not_required: true,
           required_after_close: false,
+          // Declares a partial presence list. The check surfaces are shared
+          // across actions, so this must reach them via the envelope.
+          universal_fields: ["due_date"],
           access: { "test-app": { view: true, edit: ["account-manager"] } },
         },
         {
@@ -111,6 +114,8 @@ function makeWorkflowsConfig() {
           kind: "form",
           action_group: "phase-1",
           allow_not_required: false,
+          // Opts out of both universal fields.
+          universal_fields: false,
           access: { "test-app": { view: true, edit: ["account-manager"] } },
           form_meta: {
             form: [
@@ -488,6 +493,62 @@ describe("envelope shape", () => {
     );
     expect(result.message).toBe("qualify message");
     expect(result.required_after_close).toBe(true);
+  });
+
+  // ── universal_fields presence list ─────────────────────────────────────────
+  // Author config resolved per read, never persisted on the action doc. The
+  // check surfaces (per-workflow-type page + the host-dropped modal) are shared
+  // across actions, so the envelope is their only per-action source.
+  test("universal_fields defaults to both fields when the author declares none", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.universal_fields).toEqual(["assignees", "due_date"]);
+  });
+
+  test("universal_fields carries a partial list through verbatim", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "check-step", kind: "check" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.universal_fields).toEqual(["due_date"]);
+  });
+
+  test("universal_fields: false resolves to an empty list", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "keyed-form" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.universal_fields).toEqual([]);
+  });
+
+  test("universal_fields comes from config, not the action doc", async () => {
+    await seedWorkflow();
+    // A stale/bogus value on the doc must be ignored — the doc is never the
+    // source, so an author's config change can't be shadowed by stored state.
+    await seedAction({
+      _id: "a1",
+      type: "check-step",
+      kind: "check",
+      universal_fields: ["assignees"],
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.universal_fields).toEqual(["due_date"]);
+  });
+
+  test("universal_fields defaults to both when the action has no config entry", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" }, workflowsConfig: [] }),
+    );
+    expect(result.universal_fields).toEqual(["assignees", "due_date"]);
   });
 
   test("description is rendered from config (read-time nunjucks), not the doc", async () => {
@@ -1067,6 +1128,71 @@ describe("check-kind action (no form)", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("allowed resolution", () => {
+  // lock_when_done: an action declared final loses the `edit` verb once it is
+  // `done`, which is what hides the Edit affordance and suppresses re-submit.
+  // The server-side twin lives in loadWorkflowState.
+
+  function lockedConfig() {
+    const config = makeWorkflowsConfig();
+    const check = config[0].actions.find((a) => a.type === "check-step");
+    check.lock_when_done = true;
+    return config;
+  }
+
+  test("lock_when_done clears allowed.edit once the action is done", async () => {
+    await seedWorkflow();
+    await seedAction({
+      _id: "a-locked",
+      type: "check-step",
+      kind: "check",
+      stage: "done",
+    });
+    const result = await GetWorkflowAction(
+      buildContext({
+        request: { action_id: "a-locked" },
+        workflowsConfig: lockedConfig(),
+      }),
+    );
+    expect(result.allowed.edit).toBe(false);
+    // Still readable, and the re-submit button is gone with the verb.
+    expect(result.allowed.view).toBe(true);
+    expect(result.buttons.submit).toBe(false);
+  });
+
+  test("lock_when_done leaves an action still open untouched", async () => {
+    await seedWorkflow();
+    await seedAction({
+      _id: "a-locked-open",
+      type: "check-step",
+      kind: "check",
+      stage: "action-required",
+    });
+    const result = await GetWorkflowAction(
+      buildContext({
+        request: { action_id: "a-locked-open" },
+        workflowsConfig: lockedConfig(),
+      }),
+    );
+    expect(result.allowed.edit).toBe(true);
+    expect(result.buttons.submit).toBe(true);
+  });
+
+  test("a done action without lock_when_done keeps edit and re-submit", async () => {
+    // Guards the default: this flag must not change existing actions.
+    await seedWorkflow();
+    await seedAction({
+      _id: "a-unlocked",
+      type: "check-step",
+      kind: "check",
+      stage: "done",
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a-unlocked" } }),
+    );
+    expect(result.allowed.edit).toBe(true);
+    expect(result.buttons.submit).toBe(true);
+  });
+
   test("allowed reflects actual user roles (account-manager)", async () => {
     await seedWorkflow();
     await seedAction({ _id: "a1", type: "qualify" });

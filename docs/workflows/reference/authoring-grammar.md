@@ -50,18 +50,19 @@ actions: # required — action definitions
 
 ### Core fields
 
-| Field          | Required | Description                                                                                            |
-| -------------- | -------- | ------------------------------------------------------------------------------------------------------ |
-| `type`         | yes      | Action type slug — unique within the workflow                                                          |
-| `kind`         | yes      | `form`, `check`, or `tracker`                                                                          |
-| `title`        | no       | Human-readable title; derived from slug when omitted                                                   |
-| `action_group` | no       | Group ID this action belongs to                                                                        |
-| `description`  | no       | Authored markdown body shown to whoever works the action (see [Description](#description-description)) |
-| `access`       | yes      | Per-app, per-verb role gate (see below)                                                                |
+| Field              | Required | Description                                                                                               |
+| ------------------ | -------- | --------------------------------------------------------------------------------------------------------- |
+| `type`             | yes      | Action type slug — unique within the workflow                                                             |
+| `kind`             | yes      | `form`, `check`, or `tracker`                                                                             |
+| `title`            | no       | Human-readable title; derived from slug when omitted                                                      |
+| `action_group`     | no       | Group ID this action belongs to                                                                           |
+| `description`      | no       | Authored markdown body shown to whoever works the action (see [Description](#description-description))    |
+| `access`           | yes      | Per-app, per-verb role gate (see below)                                                                   |
+| `universal_fields` | no       | Which universal fields the action's UI shows (see [Universal fields](#universal-fields-universal_fields)) |
 
 ### Runtime-read fields (engine reads at runtime)
 
-`type`, `title`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `required_after_close`, `allow_not_required`, `access`, `status_map`
+`type`, `title`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `required_after_close`, `allow_not_required`, `lock_when_done`, `access`, `status_map`, `universal_fields`
 
 ### Build-time-only fields (consumed by resolvers)
 
@@ -98,7 +99,7 @@ Emits per-verb pages (`-edit`, `-view`, `-review`, `-error`) and a submit endpoi
 
 ### `kind: check`
 
-Served by the per-workflow `{workflow_type}-action` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`).
+Served by the per-workflow `{workflow_type}-action` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`) — narrow those with [`universal_fields`](#universal-fields-universal_fields), which is honoured per action even though one page serves every check action in the workflow.
 
 ```yaml
 - type: send-quote
@@ -170,6 +171,31 @@ description: |
 - **Authored once, read-only** — set in the action YAML; identical for every instance and not editable per instance. It is **not** `message` (the short per-stage `status_map` copy) and **not** a comment (the per-instance free-text channel); an action can have all three.
 - **Which kinds render it** — `form` and `check`. Authoring it on `custom` (owns its working page) or `tracker` (no working surface) is harmless config but not rendered; no validator rejects it there.
 
+## Universal fields (`universal_fields:`)
+
+The two action-level metadata fields — `assignees` and `due_date` — that every action carries independently of any form. They render as chips in the action title bar with a pencil (✎) that opens an edit modal. `universal_fields` declares **which of them the UI shows**.
+
+```yaml
+- type: assign-account-manager
+  kind: check
+  universal_fields: [assignees] # show assignees only — no due date
+```
+
+| Value           | Effect                    |
+| --------------- | ------------------------- |
+| omitted         | both fields (the default) |
+| `[assignees]`   | assignees only            |
+| `[due_date]`    | due date only             |
+| `false` or `[]` | neither                   |
+
+Any other value is rejected at build time: a bare `true`, a string, an unknown field name, or a duplicate entry.
+
+- **All four kinds accept it**, and it applies to every kind with a working surface — `form` and `check` alike. On `custom` (owns its page) and `tracker` (no working surface) it is accepted but not rendered.
+- **Presence only, not permission.** This hides a field from the UI; it is not an access gate. The `{workflow_type}-update-fields` operation still accepts both keys for a caller with the `edit` verb. Use [`access:`](#access-access) to control who may change them.
+- **A hidden field is never written or cleared.** The Update operation treats an absent key as "leave unchanged", so narrowing the list on an action that already has assignees does not wipe them — it just stops showing them.
+- **Resolved per read, never stored.** Like [`description`](#description-description), the list lives in the workflow YAML, not on the action document. Change it and redeploy, and in-flight actions pick it up immediately — there is nothing to migrate.
+- **The ✎ button is always present**, so a shown-but-empty field can still be filled in. When the list is empty the whole chip strip is omitted.
+
 ## Starting actions (`starting_actions:`)
 
 Seed grammar: `{ type, status }`. Legal seed statuses: `action-required` (immediately actionable) and `blocked` (waiting on something else). Any other status is rejected at build time and at `start-workflow` runtime.
@@ -206,6 +232,28 @@ Action-root boolean, valid on `form` and `check` kinds. Default `false`. Opt in 
   allow_not_required: true
   access: { ... }
 ```
+
+## Lock when done (`lock_when_done:`)
+
+Action-root boolean, any kind. Default `false`. Declares the action **final**: once it reaches `done` it cannot be re-submitted.
+
+```yaml
+- type: confirm-setup
+  kind: check
+  lock_when_done: true
+  access: { ... }
+```
+
+By default the FSM permits `submit` from `done` for every kind, so a submitted action stays re-submittable (that is what makes form actions "editable while done"). Set this flag when a submit has side effects that must happen exactly once — creating a record in an external system, starting a downstream workflow — and a second run would be wrong.
+
+Enforced on both sides, the same shape as `allow_not_required`:
+
+- **Presentation** — at `done`, the action's resolved `allowed.edit` is cleared. `submit` requires the `edit` verb, so the re-submit button disappears; every surface's Edit affordance is gated on the same verb, so it disappears too. `view` is untouched, so the action stays readable.
+- **Enforcement** — the engine rejects a `submit` signal for a locked `done` action (`stage_rejects_submit`), so a hand-crafted submission cannot re-run its hooks either.
+
+Only `submit` is gated. `request_changes` still works on a locked `done` action, so a reviewer can pull it back — locking means "not re-submittable as-is", not "frozen".
+
+**Form-kind caveat.** On a form action's **view** page the Edit button is a navigation link that is deliberately not gated on `allowed.edit` (the edit page gates its own writes), so it still renders — the edit page it opens simply offers no Submit. To hide the navigation too, pair the flag with `pages.view.buttons.edit.visible: false`. Check actions need no pairing: their surfaces gate on the verb directly.
 
 ## Titles
 
@@ -312,7 +360,20 @@ pages:
       request_changes: # view page only; default visible false
         successMessage: <string> # override "Changes requested."
         visible: <bool | operator>
+      edit: # the navigation button to the edit page
+        visible: <bool | operator>
+        disabled: <bool | operator>
 ```
+
+Alongside `visible` and `successMessage`, buttons accept three further keys — not uniformly, so check the table before reaching for one:
+
+| Key        | Available on                                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------------------------- |
+| `disabled` | every button — `submit`, `progress`, `not_required`, `approve`, `request_changes`, `resolve_error`, `edit` |
+| `title`    | `submit`, `progress`, `resolve_error` — overrides the button label                                         |
+| `modal`    | `submit`, `not_required`, `approve`, `resolve_error` — `{ title, content }` confirm step                   |
+
+`disabled` OR-combines with the template's own disabled gates (so it can only further restrict). The `edit` button on the `view` and `review` pages carries no signal, so it takes `visible` / `disabled` only.
 
 Button `visible` accepts a boolean or any Lowdefy operator expression. It AND-combines with the server-resolved boolean — authors can only further restrict visibility, never show a button the FSM or role gate would reject.
 

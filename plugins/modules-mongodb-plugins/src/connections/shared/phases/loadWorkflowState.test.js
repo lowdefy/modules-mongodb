@@ -55,9 +55,30 @@ const workflowsConfig = [
           [APP]: { edit: ["account-manager"], review: ["compliance-officer"] },
         },
       },
+      {
+        // Declared final: re-submitting once `done` is rejected by the
+        // lock_when_done gate. Not in seedWorkflow's action docs — the tests
+        // that need it insert their own doc at the stage under test.
+        type: "confirm-setup",
+        kind: "check",
+        lock_when_done: true,
+        access: { [APP]: { view: true, edit: true } },
+      },
     ],
   },
 ];
+
+// Insert a `confirm-setup` action doc at an explicit stage (the lock gate is
+// stage-dependent, so each test picks its own).
+async function seedLockedAction(stage) {
+  await mongo.db.collection("actions").insertOne({
+    _id: "act-locked",
+    workflow_id: "wf-1",
+    type: "confirm-setup",
+    kind: "check",
+    status: [{ stage }],
+  });
+}
 
 function makeContext({ user, connection } = {}) {
   return {
@@ -442,6 +463,62 @@ test("not_required without allow_not_required fails closed, even past an open ed
     code: "access_denied",
     message: expect.stringContaining("allow_not_required"),
   });
+});
+
+// --- `lock_when_done` load-gate ----------------------------------------------
+// The server-side twin of applyLockWhenDone. Hiding the button is presentation;
+// this is what actually stops a hand-crafted re-submit from re-running hooks.
+
+test("submit on a locked action at done is rejected", async () => {
+  await seedWorkflow();
+  await seedLockedAction("done");
+  await expect(
+    loadWorkflowState(makeContext(), {
+      actionId: "act-locked",
+      signal: "submit",
+    }),
+  ).rejects.toMatchObject({
+    code: "stage_rejects_submit",
+    message: expect.stringContaining("lock_when_done"),
+  });
+});
+
+test("submit on a locked action still open (action-required) is allowed", async () => {
+  // The gate is about finality, not about locking the action outright — the
+  // first submit must go through.
+  await seedWorkflow();
+  await seedLockedAction("action-required");
+  const loaded = await loadWorkflowState(makeContext(), {
+    actionId: "act-locked",
+    signal: "submit",
+  });
+  expect(loaded.targetAction._id).toBe("act-locked");
+});
+
+test("submit on an unlocked action at done is allowed (default behaviour preserved)", async () => {
+  // final-audit carries no lock_when_done, so re-submitting from done stays
+  // legal — this flag must not change any existing action's behaviour.
+  await seedWorkflow();
+  await mongo.db
+    .collection("actions")
+    .updateOne({ _id: "act-2" }, { $set: { status: [{ stage: "done" }] } });
+  const loaded = await loadWorkflowState(makeContext(), {
+    actionId: "act-2",
+    signal: "submit",
+  });
+  expect(loaded.targetAction._id).toBe("act-2");
+});
+
+test("lock_when_done does not block non-submit signals at done", async () => {
+  // Locking is specifically about re-submitting; request_changes can still pull
+  // a done action back (the FSM permits it and the verb gate passes).
+  await seedWorkflow();
+  await seedLockedAction("done");
+  const loaded = await loadWorkflowState(makeContext(), {
+    actionId: "act-locked",
+    signal: "request_changes",
+  });
+  expect(loaded.targetAction._id).toBe("act-locked");
 });
 
 test("allow_not_required: true admits not_required for the edit verb", async () => {

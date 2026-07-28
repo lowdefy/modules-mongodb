@@ -2,7 +2,9 @@ import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
 import parseNunjucks from "../../shared/render/parseNunjucks.js";
 import resolveEntityData from "../../shared/render/resolveEntityData.js";
+import resolveUniversalFields from "../../shared/render/resolveUniversalFields.js";
 import {
+  applyLockWhenDone,
   computeAllowed,
   resolveButtons,
 } from "../../shared/render/resolveActionAccess.js";
@@ -22,7 +24,7 @@ import {
  *
  *   {
  *     _id, type, workflow_type, workflow_id, kind, key, status, action_group, description, due_date,
- *     assignees, assignee_docs, created, updated,
+ *     assignees, assignee_docs, universal_fields, created, updated,
  *     entity,               // { ...entity.data routine result, id } — host fields + the always-present instance id
  *     entity_link,          // { pageId, urlQuery, title, name } from the workflow config's `entity` block (name from the routine), or null
  *     required_after_close, message,
@@ -144,12 +146,15 @@ async function GetWorkflowAction(lowdefyContext) {
   }
 
   // ── Step 4: Access gate ──
-  const allowed = computeAllowed({
+  // Role-only at this point; the view gate is a pure role question, so it runs
+  // before the stage-aware `lock_when_done` narrowing below (which never clears
+  // `view`, so the gate's answer cannot change).
+  const roleAllowed = computeAllowed({
     access: action.access,
     app_name,
     userRoles,
   });
-  if (!allowed.view) {
+  if (!roleAllowed.view) {
     return null;
   }
 
@@ -161,7 +166,16 @@ async function GetWorkflowAction(lowdefyContext) {
     (wfConfig?.actions ?? []).find((ac) => ac.type === action.type) ?? {};
 
   // ── Step 5: Button resolution ──
+  // A `lock_when_done` action at `done` is final: the narrowing clears `edit`,
+  // which both hides every surface's Edit affordance and suppresses the
+  // re-submit button (submit requires the edit verb). `loadWorkflowState`
+  // rejects the signal server-side, so this is presentation, not the gate.
   const stage = action.status?.[0]?.stage ?? null;
+  const allowed = applyLockWhenDone({
+    allowed: roleAllowed,
+    stage,
+    lock_when_done: actionConfig.lock_when_done,
+  });
   const buttons = resolveButtons({
     stage,
     allowed,
@@ -306,6 +320,18 @@ async function GetWorkflowAction(lowdefyContext) {
   const message = action[app_name]?.message ?? null;
   const required_after_close = actionConfig.required_after_close ?? null;
 
+  // ── Universal-fields presence list (author config, resolved per read) ──────
+  // Which universal fields (assignees / due_date) this action's UI shows. Author
+  // config on `actionConfig`, never on the action doc — so an author's change
+  // applies to in-flight actions with nothing to migrate. The check surfaces are
+  // shared across actions (one page per workflow type; a host-dropped modal with
+  // no build-time action identity), so this envelope key is the ONLY way they can
+  // gate per action. Form pages get the same list baked at build time by
+  // makeActionPages — the two normalizers are kept in lock-step.
+  const universal_fields = resolveUniversalFields(
+    actionConfig.universal_fields,
+  );
+
   return {
     // Engine fields
     _id: action._id,
@@ -321,6 +347,9 @@ async function GetWorkflowAction(lowdefyContext) {
     due_date: action.due_date ?? null,
     assignees: action.assignees ?? null,
     assignee_docs,
+    // UI presence list for the two universal fields above (author config, not
+    // doc state). The check surfaces gate their chips + edit modal on this.
+    universal_fields,
     // Part 26: the entity object the action page's slot + DataDescriptions read.
     // The host routine result merged with the always-present entity id — id is
     // injected LAST so the instance id always wins over any host-returned `id`.

@@ -3,6 +3,7 @@ import {
   computeAllowed,
   collapseLink,
   resolveButtons,
+  applyLockWhenDone,
   BUTTON_SIGNAL_SOURCES,
 } from "./resolveActionAccess.js";
 import { FSM_TABLES } from "../fsm/tables.js";
@@ -519,3 +520,106 @@ test.each(BUTTON_SIGNALS)(
     expect(tableStages).toEqual(derivedStages);
   },
 );
+
+// ── applyLockWhenDone ──────────────────────────────────────────────────────
+// The `lock_when_done` narrowing: an action declared final loses the `edit`
+// verb once it reaches `done`, which is what hides the Edit affordance and
+// suppresses the re-submit button. `loadWorkflowState` holds the server-side
+// twin (tested there).
+
+const ALL_VERBS = { view: true, edit: true, review: true, error: true };
+
+test("applyLockWhenDone: clears edit for a locked action at done", () => {
+  expect(
+    applyLockWhenDone({
+      allowed: ALL_VERBS,
+      stage: "done",
+      lock_when_done: true,
+    }),
+  ).toEqual({ view: true, edit: false, review: true, error: true });
+});
+
+test("applyLockWhenDone: keeps view on a locked done action (stays readable)", () => {
+  const result = applyLockWhenDone({
+    allowed: ALL_VERBS,
+    stage: "done",
+    lock_when_done: true,
+  });
+  expect(result.view).toBe(true);
+});
+
+test.each([
+  "action-required",
+  "in-progress",
+  "changes-required",
+  "blocked",
+  "in-review",
+  "error",
+])("applyLockWhenDone: no narrowing at stage %s even when locked", (stage) => {
+  expect(
+    applyLockWhenDone({ allowed: ALL_VERBS, stage, lock_when_done: true }),
+  ).toEqual(ALL_VERBS);
+});
+
+test("applyLockWhenDone: unlocked action at done is untouched (default behaviour preserved)", () => {
+  expect(
+    applyLockWhenDone({
+      allowed: ALL_VERBS,
+      stage: "done",
+      lock_when_done: false,
+    }),
+  ).toEqual(ALL_VERBS);
+});
+
+test.each([undefined, null, "true", 1])(
+  "applyLockWhenDone: only a literal true locks (got %p)",
+  (flag) => {
+    expect(
+      applyLockWhenDone({
+        allowed: ALL_VERBS,
+        stage: "done",
+        lock_when_done: flag,
+      }),
+    ).toEqual(ALL_VERBS);
+  },
+);
+
+test("applyLockWhenDone: returns the same object reference when not narrowing", () => {
+  // Cheap identity check — the no-op path must not clone, so callers can rely
+  // on referential equality to detect "nothing changed".
+  const allowed = { ...ALL_VERBS };
+  expect(applyLockWhenDone({ allowed, stage: "done" })).toBe(allowed);
+});
+
+test("lock_when_done at done suppresses the submit button via the cleared edit verb", () => {
+  // The end-to-end reason the narrowing exists: submit requires the edit verb,
+  // so clearing edit is what makes a locked done action non-re-submittable.
+  const locked = applyLockWhenDone({
+    allowed: ALL_VERBS,
+    stage: "done",
+    lock_when_done: true,
+  });
+  expect(resolveButtons({ stage: "done", allowed: locked }).submit).toBe(false);
+
+  const unlocked = applyLockWhenDone({
+    allowed: ALL_VERBS,
+    stage: "done",
+    lock_when_done: false,
+  });
+  expect(resolveButtons({ stage: "done", allowed: unlocked }).submit).toBe(
+    true,
+  );
+});
+
+test("lock_when_done at done leaves request_changes available (view/review verbs survive)", () => {
+  // request_changes accepts view/edit/review, so a locked done action can still
+  // be sent back — locking is about re-submitting, not about freezing the doc.
+  const locked = applyLockWhenDone({
+    allowed: ALL_VERBS,
+    stage: "done",
+    lock_when_done: true,
+  });
+  expect(
+    resolveButtons({ stage: "done", allowed: locked }).request_changes,
+  ).toBe(true);
+});

@@ -173,9 +173,15 @@ blocks:
             blocks:
               - _ref:
                   path: components/universal-fields/universal-fields-chips.yaml
+                  # Per-action presence list off the envelope. This surface is a
+                  # module component dropped by host entity pages, so it has NO
+                  # build-time action identity at all — the loaded action is the
+                  # only possible source.
                   vars:
                     modal_id: universal_fields_edit_modal
                     assignee_docs: current_action.assignee_docs
+                    show:
+                      _state: current_action.universal_fields
                     action_data:
                       due_date:
                         _state: current_action.due_date
@@ -605,6 +611,8 @@ blocks:
       vars:
         modal_id: universal_fields_edit_modal
         state_path: current_action.fields
+        show:
+          _state: current_action.universal_fields
         workflow_type:
           _state: current_action.workflow_type
         action_id:
