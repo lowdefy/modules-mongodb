@@ -108,18 +108,18 @@ Numeric input. Renders a `NumberInput`.
 
 Phone-number input. Renders a `PhoneNumberInput` — the form-side counterpart to the `phoneNumber` field type the view renderer already recognises. The block value is stored at the `key` state path.
 
-| Var             | Type    | Required / Default |
-| --------------- | ------- | ------------------ |
-| `key`           | string  | required           |
-| `title`         | string  | —                  |
-| `placeholder`   | string  | —                  |
-| `visible`       | boolean | `true`             |
-| `required`      | boolean | `false`            |
-| `validate`      | array   | `[]`               |
-| `label_inline`  | boolean | `false`            |
-| `label_span`    | number  | —                  |
-| `default_region`| string  | —                  | ISO region for parsing/formatting (e.g. `ZA`) |
-| `on_change`     | array   | `[]`               |
+| Var              | Type    | Required / Default |
+| ---------------- | ------- | ------------------ | --------------------------------------------- |
+| `key`            | string  | required           |
+| `title`          | string  | —                  |
+| `placeholder`    | string  | —                  |
+| `visible`        | boolean | `true`             |
+| `required`       | boolean | `false`            |
+| `validate`       | array   | `[]`               |
+| `label_inline`   | boolean | `false`            |
+| `label_span`     | number  | —                  |
+| `default_region` | string  | —                  | ISO region for parsing/formatting (e.g. `ZA`) |
+| `on_change`      | array   | `[]`               |
 
 ```yaml
 - component: phone
@@ -243,22 +243,24 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 ### `checkbox_selector`
 
-Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`.
+Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row.
 
-| Var        | Type    | Required / Default |
-| ---------- | ------- | ------------------ |
-| `key`      | string  | required           |
-| `title`    | string  | —                  |
-| `visible`  | boolean | `true`             |
-| `required` | boolean | `false`            |
-| `options`  | array   | `[]`               |
-| `extra`    | string  | —                  |
-| `on_change` | array  | `[]`               |
+| Var         | Type    | Required / Default |
+| ----------- | ------- | ------------------ |
+| `key`       | string  | required           |
+| `title`     | string  | —                  |
+| `visible`   | boolean | `true`             |
+| `required`  | boolean | `false`            |
+| `options`   | array   | `[]`               |
+| `extra`     | string  | —                  |
+| `direction` | string  | `horizontal`       |
+| `on_change` | array   | `[]`               |
 
 ```yaml
 - component: checkbox_selector
   key: channels
   title: Notification channels
+  direction: vertical
   options:
     - { label: Email, value: email }
     - { label: SMS, value: sms }
@@ -269,7 +271,7 @@ Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `s
 Button-group selector. Renders a `ButtonSelector`.
 
 | Var            | Type    | Required / Default |
-| -------------- | ------- | ------------------ |
+| -------------- | ------- | ------------------ | ------------------------------------------------------------ |
 | `key`          | string  | required           |
 | `title`        | string  | —                  |
 | `visible`      | boolean | `true`             |
@@ -344,14 +346,14 @@ Yes/no toggle. Renders a `ButtonSelector` with hardcoded `[Yes / No]` boolean op
 
 Selector sourced from an enum map. Renders a `Selector`. The enum object (`slug → { title, color, icon, ... }`) is converted to `{ label, value, style, tag }` options at build time. Label is hardcoded `align: right / span: 12`.
 
-| Var        | Type    | Required / Default |
-| ---------- | ------- | ------------------ |
-| `key`      | string  | required           |
-| `title`    | string  | —                  |
-| `visible`  | boolean | `true`             |
-| `required` | boolean | `false`            |
-| `enum`     | object  | `{}`               |
-| `on_change` | array  | `[]`               |
+| Var         | Type    | Required / Default |
+| ----------- | ------- | ------------------ |
+| `key`       | string  | required           |
+| `title`     | string  | —                  |
+| `visible`   | boolean | `true`             |
+| `required`  | boolean | `false`            |
+| `enum`      | object  | `{}`               |
+| `on_change` | array   | `[]`               |
 
 ```yaml
 - component: enum_selector
