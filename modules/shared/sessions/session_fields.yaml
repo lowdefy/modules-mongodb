@@ -1,0 +1,170 @@
+# Active-session row fields — shared by the account workspace's Active sessions
+# tile and the user-admin Security tile so both surfaces read identically.
+#
+# This is a whitelist projection: `token` is never selected, because it is a
+# replayable bearer credential and must never reach the browser.
+#
+# The stored User-Agent is a machine string, so it is parsed here into a
+# "Chrome · macOS" label plus a `mobile` flag the row uses to pick its icon, and
+# `expiresAt` becomes relative copy ("in 6 days"). Parsing runs server-side
+# because the row renders from an html template, which has no operators.
+$replaceWith:
+  $let:
+    vars:
+      ua:
+        $ifNull:
+          - $userAgent
+          - ""
+    in:
+      $let:
+        vars:
+          # Match order matters: Edge, Opera and Samsung Internet all also
+          # advertise "Chrome", and every Chromium browser also advertises
+          # "Safari".
+          browser:
+            $switch:
+              branches:
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: Edg[A-Za-z]*/
+                  then: Edge
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: OPR/|Opera
+                  then: Opera
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: SamsungBrowser/
+                  then: Samsung Internet
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: Chrome/|CriOS/
+                  then: Chrome
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: Firefox/|FxiOS/
+                  then: Firefox
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: Safari/
+                  then: Safari
+              default: ""
+          # iOS UAs carry "like Mac OS X", and Android carries "Linux", so the
+          # narrower platform has to win.
+          os:
+            $switch:
+              branches:
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: iPhone|iPod
+                  then: iPhone
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: iPad
+                  then: iPad
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: Android
+                  then: Android
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: Macintosh|Mac OS X
+                  then: macOS
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: Windows
+                  then: Windows
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: CrOS
+                  then: ChromeOS
+                - case:
+                    $regexMatch:
+                      input: $$ua
+                      regex: Linux|X11
+                  then: Linux
+              default: ""
+          mobile:
+            $regexMatch:
+              input: $$ua
+              regex: iPhone|iPod|iPad|Android|Mobile
+        in:
+          label:
+            $switch:
+              branches:
+                - case:
+                    $and:
+                      - $ne:
+                          - $$browser
+                          - ""
+                      - $ne:
+                          - $$os
+                          - ""
+                  then:
+                    $concat:
+                      - $$browser
+                      - " · "
+                      - $$os
+                - case:
+                    $ne:
+                      - $$browser
+                      - ""
+                  then: $$browser
+                - case:
+                    $ne:
+                      - $$os
+                      - ""
+                  then: $$os
+              default: Unknown device
+          mobile: $$mobile
+          ip: $ipAddress
+          # Relative expiry, matching the mock. Clamped at 0 so a session the TTL
+          # sweep has not collected yet reads "today" rather than a negative
+          # count; an absent expiry renders no expiry segment at all.
+          expires_str:
+            $cond:
+              if:
+                $eq:
+                  - $type: $expiresAt
+                  - date
+              then:
+                $let:
+                  vars:
+                    days:
+                      $max:
+                        - 0
+                        - $dateDiff:
+                            startDate: $$NOW
+                            endDate: $expiresAt
+                            unit: day
+                  in:
+                    $switch:
+                      branches:
+                        - case:
+                            $eq:
+                              - $$days
+                              - 0
+                          then: today
+                        - case:
+                            $eq:
+                              - $$days
+                              - 1
+                          then: in 1 day
+                      default:
+                        $concat:
+                          - "in "
+                          - $toString: $$days
+                          - " days"
+              else: ""

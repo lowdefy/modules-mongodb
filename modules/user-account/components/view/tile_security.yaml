@@ -40,6 +40,7 @@ _ref:
           title: Verify email
           size: small
           icon: AiOutlineMail
+          variant: outlined
         events:
           onClick:
             - id: resend_verification
@@ -111,6 +112,7 @@ _ref:
                         properties:
                           title: Change
                           size: small
+                          variant: outlined
                         events:
                           onClick:
                             - id: open_changepw_modal
@@ -181,6 +183,7 @@ _ref:
                                   then: Manage
                                   else: Set up
                               size: small
+                              variant: outlined
                             events:
                               onClick:
                                 - id: open_enroltotp_modal
@@ -198,6 +201,7 @@ _ref:
                               title: Turn off
                               size: small
                               color: danger
+                              variant: outlined
                             events:
                               onClick:
                                 - id: open_disable2fa_modal
@@ -245,6 +249,7 @@ _ref:
                         properties:
                           title: Add passkey
                           size: small
+                          variant: outlined
                         events:
                           onClick:
                             try:

@@ -8,6 +8,7 @@
 id: members_filters
 type: Box
 layout:
+  flex: 1 1 auto
   gap: 8
   align: middle
   selfAlign: middle
@@ -71,6 +72,12 @@ blocks:
     type: SegmentedSelector
     layout:
       flex: 0 1 auto
+    # An inline label column still carries the 8px bottom margin meant for the
+    # stacked layout, so the block measures 8px taller than the other controls
+    # and the row's centre line lifts it. Cancel it here — the label column
+    # itself has no style hook.
+    style:
+      marginBottom: -8
     properties:
       label:
         title: Status
@@ -93,7 +100,8 @@ blocks:
     properties:
       title: Clear
       icon: AiOutlineClear
-      variant: borderless
+      color: default
+      variant: text
     events:
       onClick:
         _build.array.concat:

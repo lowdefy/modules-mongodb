@@ -46,23 +46,25 @@ routine:
       payload:
         type: access-updated
         display:
-          title:
-            _nunjucks:
-              template:
-                _build.if_none:
-                  - _module.var: event_display.access-updated
-                  - _ref:
-                      path: defaults/event_display.yaml
-                      key: access-updated
-              on:
-                user:
-                  _user: true
-                target:
-                  name:
-                    _payload: target_name
-                  email:
-                    _payload: target_email
-          description: null
+          _build.object.fromEntries:
+            - - _build.app: slug
+              - title:
+                  _nunjucks:
+                    template:
+                      _build.if_none:
+                        - _module.var: event_display.access-updated
+                        - _ref:
+                            path: defaults/event_display.yaml
+                            key: access-updated
+                    on:
+                      user:
+                        _user: true
+                      target:
+                        name:
+                          _payload: target_name
+                        email:
+                          _payload: target_email
+                description: null
         references:
           user_ids:
             - _payload: user_id

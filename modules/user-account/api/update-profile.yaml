@@ -57,9 +57,8 @@ routine:
                             - "$profile.profile_created"
                             - "$$REMOVE"
 
-    # Audit event through the events dependency (flat event_display — app_name
-    # keying is retired). The template renders against the freshly-written
-    # contact (profile.name).
+    # Audit event through the events dependency. The template renders against
+    # the freshly-written contact (profile.name).
     - - id: new-event
         type: CallApi
         properties:
@@ -70,18 +69,20 @@ routine:
           payload:
             type: update-profile
             display:
-              title:
-                _nunjucks:
-                  template:
-                    _if_none:
-                      - _module.var: event_display.update-profile
-                      - _ref:
-                          path: defaults/event_display.yaml
-                          key: update-profile
-                  on:
-                    user:
-                      _step: reread_contact
-              description: null
+              _build.object.fromEntries:
+                - - _build.app: slug
+                  - title:
+                      _nunjucks:
+                        template:
+                          _if_none:
+                            - _module.var: event_display.update-profile
+                            - _ref:
+                                path: defaults/event_display.yaml
+                                key: update-profile
+                        on:
+                          user:
+                            _step: reread_contact
+                    description: null
             references:
               contact_ids:
                 - _user: profile.contactId

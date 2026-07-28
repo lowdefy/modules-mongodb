@@ -3,6 +3,8 @@
 # the login identity and is locked. onOk wiring (CallAPI update-profile) is task 13.
 id: modal_profile
 type: Modal
+layout:
+  gap: 16
 properties:
   title: Edit profile
   width: 560

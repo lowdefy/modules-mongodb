@@ -43,7 +43,10 @@ blocks:
         type: Box
         style:
           maxWidth:
-            _module.var: auth_page.max_width
+            _var:
+              key: max_width
+              default:
+                _module.var: auth_page.max_width
         blocks:
           _build.array.concat:
             - - id: auth-card

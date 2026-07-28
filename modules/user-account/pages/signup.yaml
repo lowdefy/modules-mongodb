@@ -44,32 +44,6 @@ _ref:
                 properties:
                   content: Create your account
                   level: 3
-              - id: profile.first_name
-                type: TextInput
-                visible:
-                  _eq:
-                    - _state: signup_view
-                    - form
-                required: true
-                properties:
-                  size: large
-                  label:
-                    title: First name
-                    colon: false
-                    span: 24
-              - id: profile.last_name
-                type: TextInput
-                visible:
-                  _eq:
-                    - _state: signup_view
-                    - form
-                required: true
-                properties:
-                  size: large
-                  label:
-                    title: Last name
-                    colon: false
-                    span: 24
               # Locked on an address-bound entry: the account has to be created
               # on the address the invitation was sent to, so the field states
               # it rather than inviting a value that cannot work.
@@ -143,11 +117,12 @@ _ref:
                             _state: email
                           password:
                             _state: password
-                          name:
-                            _string.concat:
-                              - _state: profile.first_name
-                              - " "
-                              - _state: profile.last_name
+                          # BetterAuth's signup body requires `name`, but the
+                          # canonical profile is captured in onboarding (which
+                          # re-denorms `users.name` from the contact), so the
+                          # account is created bare — same as BetterAuth's own
+                          # magic-link first sign-in.
+                          name: ""
                           # Where the emailed verification link lands after
                           # verifying — the verify-email success render.
                           callbackUrl:

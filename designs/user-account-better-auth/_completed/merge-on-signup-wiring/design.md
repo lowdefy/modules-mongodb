@@ -129,6 +129,21 @@ Not settleable from source alone — needs a real verify/magic-link flow against
 3. Magic-link signup → `user.create.before` sets `profile.contactId` to a contact bearing the correct email.
 4. Build stays green (`pnpm ldf:b`) and the built `link-contact-on-signup.json` now shows `_get`/`_payload` nodes surviving to runtime rather than baked `null`/`""`.
 
+**Ran 2026-07-27 against the local auth-testing rig — all four pass.** Both hook
+bindings fire and complete without error (`email.verified` → `status: continue`,
+`user.create.before` → `status: return`):
+
+| Flow                     | Contact `lowercase_email` | `users.profile.contactId` |
+| ------------------------ | ------------------------- | ------------------------- |
+| Password signup + verify | `probe.pw@demo.test`      | set, own contact          |
+| Magic-link signup        | `probe.magic@demo.test`   | set, own contact          |
+
+Beyond the four: seeding a **pre-existing** contact and then signing up on its
+email links the user to that row — one contact, no duplicate, and `$setOnInsert`
+leaves the seeded profile intact. So the merge (not just the insert) works, which
+is the behaviour F3's empty key had disabled. A scan for the F3 signature
+(`lowercase_email: ''` / `null`, `email: null`) returns zero rows.
+
 ## Related
 
 - Parent: [user-account on BetterAuth](../../design.md) — Decision 7 (merge-on-signup), Decision 8 (shared fragments).

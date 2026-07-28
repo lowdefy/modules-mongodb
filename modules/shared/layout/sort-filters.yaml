@@ -3,15 +3,35 @@ type: Box
 layout:
   gap: 8
   justify: end
+  align: middle
+  selfAlign: middle
+  # `inline: true` makes this a control group a caller can sit next to its
+  # filter row; the default is a standalone row below the filters.
+  flex:
+    _build.if:
+      test:
+        _var:
+          key: inline
+          default: false
+      then: 0 0 auto
+      else: null
 style:
-  padding: 12px 16px 0px 16px
-  margin: auto
+  _build.if:
+    test:
+      _var:
+        key: inline
+        default: false
+    then: {}
+    else:
+      padding: 12px 16px 0px 16px
+      margin: auto
 blocks:
   - id: sort.by
     type: Selector
     layout:
       flex: 1 0 auto
     style:
+      minWidth: 160px
       maxWidth: 160px
     properties:
       disabled:
@@ -66,6 +86,8 @@ blocks:
               then: AiOutlineSortDescending
               else: AiOutlineSortAscending
           hideTitle: true
+          color: primary
+          variant: solid
         events:
           onClick:
             _build.array.concat:

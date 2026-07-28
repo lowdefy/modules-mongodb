@@ -47,39 +47,6 @@ unpolished.
 
 ---
 
-## F16 — Card action buttons render primary-tinted; the wireframe specifies the default (untinted) type
-
-On `/user-account/view` the buttons inside the tile cards (e.g. the Security
-tile's Manage / Set up / Disable, and peers) appear in the primary colour, whereas
-the mockup shows them as the neutral **default** Button type. Primary should be
-reserved for the page's main action, not every card control.
-
-Adjust the Button `variant` / `color` on the card actions to the default
-treatment. Low-risk but repo-wide across the view tiles.
-
-Trivially small on its own — grouped here rather than in `02-polish/` because it's
-the same button-treatment pass as **F25(a)**, on a different page. One agent
-should do both and keep the treatment consistent.
-
----
-
-## F18 — Active-sessions list shows the raw User-Agent string and bare IP instead of the humanised form in the mockups
-
-The Sessions surface renders e.g.
-`Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like
-Gecko) Chrome/150.0.0.0 Safari/537.36` / `127.0.0.1 · expires 2026-07-31`
-verbatim, whereas the mockups show a friendlier rendering — parsed browser + OS
-(e.g. "Chrome on macOS") and a nicer location/time treatment.
-
-Add a User-Agent parse and presentation layer for the session rows: browser / OS /
-device from the UA, plus tidy IP and expiry copy.
-
-Applies to **both** the account workspace Sessions tile and the user-admin `view`
-Security tile if they share the rendering — check before implementing, and prefer
-one shared renderer over two.
-
----
-
 ## F9 — Avatar picker looks unpolished
 
 The user avatar picker (the `profile-avatar` control shown on onboarding and the

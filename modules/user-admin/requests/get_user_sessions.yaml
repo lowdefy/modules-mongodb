@@ -18,19 +18,6 @@ properties:
           _payload: user_id
     - $sort:
         updatedAt: -1
-    # Whitelist projection — token is never selected.
-    - $project:
-        _id: 0
-        ua:
-          $ifNull:
-            - "$userAgent"
-            - Unknown device
-        ip: "$ipAddress"
-        expires_str:
-          $dateToString:
-            date: "$expiresAt"
-            format: "%Y-%m-%d"
-        created_str:
-          $dateToString:
-            date: "$createdAt"
-            format: "%Y-%m-%d"
+    # Whitelist projection — token is never selected. Shared with the
+    # user-account sessions read so both surfaces render the same row shape.
+    - _ref: ../shared/sessions/session_fields.yaml

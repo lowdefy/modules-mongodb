@@ -55,16 +55,20 @@ blocks:
         type: MultipleSelector
         required: true
         properties:
-          title: Roles
+          label:
+            title: Roles
+            # Only shown when the member holds a role the catalog no longer offers.
+            extra:
+              _if:
+                test:
+                  _request: get_user_detail.0.has_orphan
+                then: A role shown here that is no longer in this app can be removed, but not added back.
+                else: null
           # Options from the app role catalog (design Decision 8): value=id, a
           # rich label (name + description subtitle), filterString for search,
           # and a plain tag for the selected chip. Orphaned roles are not in the
           # catalog so they are not options — a held orphan stays selected and can
           # be removed, but not re-added.
-          #
-          # NOTE (running-engine gap): _build.authConfig is not yet available to
-          # module config; design-faithful per the build-red directive, resolves
-          # once the engine ships the catalog projection (upstream ask 7).
           options:
             _build.array.map:
               on:
@@ -95,10 +99,4 @@ blocks:
                               - "</div>"
                           else: ""
                       - "</div>"
-      - id: access_roles_hint
-        type: Html
-        visible:
-          _request: get_user_detail.0.has_orphan
-        properties:
-          html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary); margin-top:-8px;">A role shown here that is no longer in this app can be removed, but not added back.</div>'
     - _module.var: fields.member_attributes

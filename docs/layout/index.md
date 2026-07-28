@@ -74,6 +74,22 @@ The `page` component renders a shared title bar above the content. Key per-page 
 | `page_actions`     | array   | `[]`    | Action blocks to the right of the title.                                                                                               |
 | `show_back_button` | boolean | `false` | Back button to the left of the title.                                                                                                  |
 
+## Auth page
+
+The `auth-page` component is the centered card shell the auth pages render on. Its
+look is set by the `auth_page` module vars, but the card width can be overridden
+per page via an `_ref` var when a page carries a wider form:
+
+```yaml
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: onboarding
+    max_width: 560 # defaults to the `auth_page.max_width` module var
+    blocks: [...]
+```
+
 ## Profile dropdown
 
 Two supported shapes:

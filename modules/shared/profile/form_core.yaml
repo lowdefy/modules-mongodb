@@ -6,9 +6,10 @@ _build.array.concat:
         - id: profile.title
           type: Selector
           layout:
-            span: 3
+            span: 6
           properties:
             title: Title
+            placeholder: Title
             options:
               - Mr
               - Ms
@@ -32,6 +33,11 @@ _build.array.concat:
       type: TextInput
       required: true
       layout:
-        span: 12
+        span:
+          _build.if:
+            test:
+              _var: show_honorific
+            then: 9
+            else: 12
       properties:
         title: Last Name

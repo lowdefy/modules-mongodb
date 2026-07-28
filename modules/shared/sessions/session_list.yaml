@@ -1,0 +1,36 @@
+# Active-session rows — one renderer for the account workspace's Active sessions
+# tile and the user-admin Security tile, fed by sessions/session_fields.yaml.
+# The `request` var names the read that supplies the rows.
+#
+# Rows are display-only: per-session revoke would need the session token, which
+# is never projected to the browser, so there is no per-row action and no
+# "current device" marker. The mock's city segment needs a geo-IP lookup the app
+# does not do, so the sub-line is IP + expiry only.
+#
+# Rows sit flush in the tile card, aligned with the eyebrows above them, and the
+# last row drops its rule so it does not double up with the divider that follows.
+id: sessions_list
+type: Html
+properties:
+  html:
+    _nunjucks:
+      template: |
+        <div style="display:flex; flex-direction:column;">
+        {% for item in sessions %}
+          <div id="bl-{{ loop.index0 }}.session_item" style="display:flex; align-items:center; gap:12px; padding:12px 0; font-size:13px;{% if not loop.last %} border-bottom:1px solid var(--ant-color-border-secondary);{% endif %}">
+            <span style="width:28px; height:28px; border-radius:6px; background:var(--ant-color-fill-quaternary); color:var(--ant-color-text-secondary); display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;">
+              {% if item.mobile %}<svg viewBox="64 64 896 896" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M744 62H280c-35.3 0-64 28.7-64 64v768c0 35.3 28.7 64 64 64h464c35.3 0 64-28.7 64-64V126c0-35.3-28.7-64-64-64zm-8 824H288V134h448v752zM472 784a40 40 0 1080 0 40 40 0 10-80 0z"/></svg>{% else %}<svg viewBox="64 64 896 896" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M956.9 845.1L896.4 632V168c0-17.7-14.3-32-32-32h-704c-17.7 0-32 14.3-32 32v464L67.9 845.1C60.4 866 75.8 888 98 888h828.8c22.2 0 37.6-22 30.1-42.9zM200.4 208h624v395h-624V208zm228.3 608l8.1-37h150.3l8.1 37H428.7zm224 0l-19.1-86.7c-.8-3.7-4.1-6.3-7.8-6.3H398.2c-3.8 0-7 2.6-7.8 6.3L371.3 816H151l42.3-149h638.2l42.3 149H652.7z"/></svg>{% endif %}
+            </span>
+            <span style="flex:1 1 auto; min-width:0;">
+              <div style="color:var(--ant-color-text);">{{ item.label }}</div>
+              <div style="color:var(--ant-color-text-tertiary); font-size:12px;">{{ item.ip }}{% if item.ip and item.expires_str %} · {% endif %}{% if item.expires_str %}expires {{ item.expires_str }}{% endif %}</div>
+            </span>
+          </div>
+        {% else %}
+          <div style="color:var(--ant-color-text-tertiary); font-size:13px;">No active sessions.</div>
+        {% endfor %}
+        </div>
+      on:
+        sessions:
+          _request:
+            _var: request

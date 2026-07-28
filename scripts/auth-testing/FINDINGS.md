@@ -49,8 +49,14 @@ error`) reads a plain string, so it is unaffected — only the inline action-err
       unverified state, or route the user to `verify-email` with the email prefilled.
       (Independent of F1 — stands even once the alert renders.)
 
-- [ ] **F3 — Merge-on-signup creates the contact with an EMPTY email; breaks
-      link-by-email + risks unique-index collision.** After email/password signup + verify,
+- [x] **F3 — Merge-on-signup creates the contact with an EMPTY email; breaks
+      link-by-email + risks unique-index collision.** Fixed by `5484bc1d`, verified live
+      2026-07-27 (see `designs/user-account-better-auth/_completed/merge-on-signup-wiring/design.md`).
+      Root cause was one bug shared with F4, but not the one guessed below: build-time
+      `_var: user.<field>` paths navigating into an unresolved runtime `_payload` node
+      returned their default, so the build baked `null` / `''` into the routine — which is
+      why both merge paths were hit and why the `_payload`-reading `:if` gate still worked.
+      After email/password signup + verify,
       the `email.verified` hook creates the `user-contacts` row (system context) but writes
       `lowercase_email: ''` and `email: null` instead of the verified address
       (`admin@demo.test`). Verified in the DB. **Same root cause as F4** — a server error
@@ -75,8 +81,12 @@ error`) reads a plain string, so it is unaffected — only the inline action-err
       — i.e. onto admin's contact record. So two identities' profiles now collide on one
       contact. Every symptom traces to the empty `lowercase_email` key.
 
-- [ ] **F4 — `users.profile.contactId` is never linked after verification (no `profile`
-      bag on the user).** Post-verify, the `users` doc carries no `profile` object at all,
+- [x] **F4 — `users.profile.contactId` is never linked after verification (no `profile`
+      bag on the user).** Fixed with F3 by `5484bc1d` (same baked-`null` cause — here
+      `userId: _var: user.id`), verified live 2026-07-27: `profile.contactId` links on both
+      paths. Note the diagnosis below is wrong on one point — the `userId` was not "missing
+      from the step invocation", it was frozen to `null` at build time.
+      Post-verify, the `users` doc carries no `profile` object at all,
       so `profile.contactId` (and `profile.profile_created`) are unset — checklist line 59
       ("profile.contactId linked on the user (hook)") fails. The `email.verified` path is
       supposed to write `profile.contactId` back via the `UpdateUserProfile` step
@@ -485,9 +495,10 @@ my other sessions"` **and** `label.disabled: true`. For `CheckboxSwitch` the cap
       • the display projection reads `$<app_name>.title` / `.description` / `.info`
       (lines ~202–206).
       Both assume the **old per-app-keyed display block** (`event.demo.title`). But events were
-      migrated to **flat `event_display`** ("app_name keying is retired", per
-      `update-profile.yaml`): the actual docs have keys `_id, title, description, contact_ids,
-    user_ids, date, created, type, metadata, files` — **no `demo` field**. So the app_name
+      migrated to **flat `event_display`** ("`app_name` keying is retired", per
+      `update-profile.yaml`): the actual docs have keys `_id`, `title`, `description`,
+      `contact_ids`, `user_ids`, `date`, `created`, `type`, `metadata`, `files` — **no `demo`
+      field**. So the `app_name`
       guard excludes **every** event → empty timeline (and the projection would null the real
       top-level `title` even if a row slipped through). This is the **events module's flagship
       read** and affects every timeline consumer, not just user-admin. **Write side is correct

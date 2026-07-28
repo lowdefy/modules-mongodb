@@ -5,126 +5,18 @@ contract, schema, or intended behaviour. Roughly ordered by priority.
 
 Finding IDs are stable — carried over from the auth-testing run. Don't renumber.
 
-**Verification status:** F3, F4, F14 and F28 are code- or DB-verified open as of
-2026-07-27. The rest are behavioural findings from the 2026-07-24 test run and
-have **not** been re-tested since — confirm before planning.
+**Verification status:** F14 is code-verified open as of 2026-07-27. The rest are
+behavioural findings from the 2026-07-24 test run and have **not** been re-tested
+since — confirm before planning.
 
----
-
-## F3 + F4 — Merge-on-signup writes an empty contact email and never links `profile.contactId`
-
-**Highest priority — this is the module's flagship endpoint, and it is actively
-corrupting data.** Treat as one design pass: F3 is the shared root cause, F4 is a
-separate defect on one branch, and they compound.
-
-### F3 — contact created with an EMPTY email; breaks link-by-email and collides on the unique index
-
-After email/password signup + verify, the `email.verified` hook creates the
-`user-contacts` row (system context) but writes `lowercase_email: ''` and
-`email: null` instead of the verified address. Verified in the DB.
-
-**Affects BOTH merge paths.** A magic-link signup (`magic@demo.test`) went
-through the `user.create.before` branch (not `email.verified`) and _still_
-produced a contact with `lowercase_email: ''`. So the empty email is **not** a
-quirk of the `email.verified` payload — the verified email fails to reach the
-shared `create-or-link-contact` upsert on **either** binding.
-
-**The collision has materialized, not just risked.** Because both signups keyed
-the upsert on `lowercase_email: ''`, the magic-link create **matched the
-pre-existing bare contact** and linked `magic@demo.test`'s
-`user.profile.contactId` to it — **two users now share one contact**
-(`aa320f44…`), violating one-user-per-contact. The only reason the partial-unique
-index hasn't fired is that the first user's `profile.contactId` never got set
-(per F4).
-
-**Corruption compounds:** completing onboarding as `magic@demo.test` wrote that
-profile (`given_name: M`, `name: "M L"`) onto the **shared** contact — i.e. onto
-the other identity's record. Two identities' profiles now collide on one contact.
-
-Decision 7 is explicit: the fragment must write the lowercased verified email
-when present, and **omit** the field when absent — never `''` / `null`. Every
-symptom above traces to the empty `lowercase_email` key.
-
-### F4 — `users.profile.contactId` is never linked after verification
-
-Post-verify, the `users` doc carries no `profile` object at all, so
-`profile.contactId` and `profile.profile_created` are unset.
-
-**Confirmed via server error:** `SERVER_ERROR: UpdateUserProfile requires a
-"userId" property.` at
-`@lowdefy/plugin-better-auth/dist/steps/UpdateUserProfile.js:38`, via
-`handleAuthStep → runRoutine → controlIf`, thrown at verify time. The step is
-invoked without a `userId`, so the link-back never runs and (per
-halt-on-first-error) the routine aborts.
-
-**Isolated to the `email.verified` (password) branch.** The magic-link test
-proved the `user.create.before` branch sets `profile.contactId` **inline via
-`:return`** fine — `magic@demo.test`'s user row got it set (to the wrong contact,
-per F3, but set). So F4 is specifically the `email.verified` step invocation
-missing its `userId` arg.
-
-**Knock-on:** `_user.profile.profile_created` (Decision 5) never resolves for
-password signups.
-
-### Sequencing
-
-Fix F3 first (it's the shared root cause and the thing corrupting records), then
-F4's `userId` mapping. **Then run the cleanup in `07-data-cleanup/`** — the demo
-DB holds corrupted records that will otherwise survive the fix and keep
-reproducing the symptoms.
-
----
-
-## F28 — Activity timeline is always empty: `GetEventsTimeline` still reads the retired app_name-keyed schema
-
-**High priority — this is the events module's flagship read** and affects every
-timeline consumer, not just user-admin.
-
-The Activity tile (`user-admin/components/view/tile_activity.yaml`) fetches via
-the events module's `events-timeline` component → `GetEventsTimeline` plugin
-request. Events **are** written and match the target (DB-verified: 4 `log-events`
-rows with `user_ids: ["381b…"]`, plus flat top-level `title` / `description`), yet
-the tile shows "No activity."
-
-Root cause in
-`plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js`
-(verified 2026-07-27):
-
-> **Identifier note.** [`designs/app-operator`](../../app-operator/design.md) renamed the
-> `EventsTimeline` connection property and the engine locals described below from `app_name` to
-> **`display_key`**, and edited this same file. The finding itself still stands — only the
-> identifier changed, not the schema mismatch — but re-verify the line numbers before acting on it.
-
-- the `$match` requires a **top-level field named `<app_name>`** —
-  `{ [app_name]: { $ne: null } }` (line 67, `app_name` = the `display_key` var =
-  the app name, `demo`); and
-- the display projection reads `$<app_name>.title` / `.description` / `.info`
-  (lines 203–205).
-
-Both assume the **old per-app-keyed display block** (`event.demo.title`). But
-events were migrated to **flat `event_display`** ("app_name keying is retired",
-per `update-profile.yaml`): actual docs have keys `_id, title, description,
-contact_ids, user_ids, date, created, type, metadata, files` — **no `demo`
-field**. So the app_name guard excludes **every** event → empty timeline, and the
-projection would null the real top-level `title` even if a row slipped through.
-
-**Write side is correct (flat); the read side and manifest are stale.**
-
-**Fix:** migrate `GetEventsTimeline` to the flat schema — drop or replace the
-`{ [app_name]: { $ne: null } }` guard (a flat `{ title: { $ne: null } }` presence
-check, if any guard is even needed) and read `title` / `description` / `info`
-from the top level. Rebuild the plugin `dist`.
-
-**Also:** update the `events` manifest `display_key` doc
-(`modules/events/module.lowdefy.yaml:25`), which still says "Events store per-app
-display titles keyed by app name" — and **reassess whether `display_key` is still
-needed at all** under the flat model. Note there are further `app_name` reads at
-lines 265, 277, 279, 290, 296 (links/message extraction) that need the same
-treatment.
-
-NB a prior changelog "fix" tightened the timeline to _filter out_ events missing
-the `display_key` field — under the flat schema that guard is exactly what now
-hides everything.
+**F3 + F4 are closed** — fixed by `5484bc1d` (build-time `_var: user.<field>`
+paths baked `null`/`''` into the routine; now runtime `_get`) and verified live on
+2026-07-27 against the auth-testing rig: both hook bindings complete clean,
+contacts carry the real email, `profile.contactId` links on both paths, and a
+pre-existing contact is matched rather than duplicated. Evidence in
+[`merge-on-signup-wiring/design.md`](../../user-account-better-auth/_completed/merge-on-signup-wiring/design.md#verification).
+No data cleanup is needed: the corrupted rows are gone from the test DB and a
+scan for the F3 signature returns zero.
 
 ---
 

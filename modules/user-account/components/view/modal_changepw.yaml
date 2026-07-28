@@ -57,6 +57,9 @@ blocks:
     layout:
       span: 24
     properties:
-      title: Sign out my other sessions
+      # The caption next to a CheckboxSwitch is `description`; `label.disabled`
+      # suppresses the form-item label, which would otherwise fall back to
+      # rendering the block id.
+      description: Sign out my other sessions
       label:
         disabled: true

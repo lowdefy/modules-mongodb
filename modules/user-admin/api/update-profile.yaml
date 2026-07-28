@@ -34,31 +34,33 @@ routine:
       payload:
         type: profile-updated
         display:
-          title:
-            _nunjucks:
-              template:
-                _build.if_none:
-                  - _module.var: event_display.profile-updated
-                  - _ref:
-                      path: defaults/event_display.yaml
-                      key: profile-updated
-              on:
-                user:
-                  _user: true
-                target:
-                  name:
-                    _string.trim:
-                      _string.concat:
-                        - _if_none:
-                            - _payload: profile.given_name
-                            - ""
-                        - " "
-                        - _if_none:
-                            - _payload: profile.family_name
-                            - ""
-                  email:
-                    _payload: email
-          description: null
+          _build.object.fromEntries:
+            - - _build.app: slug
+              - title:
+                  _nunjucks:
+                    template:
+                      _build.if_none:
+                        - _module.var: event_display.profile-updated
+                        - _ref:
+                            path: defaults/event_display.yaml
+                            key: profile-updated
+                    on:
+                      user:
+                        _user: true
+                      target:
+                        name:
+                          _string.trim:
+                            _string.concat:
+                              - _if_none:
+                                  - _payload: profile.given_name
+                                  - ""
+                              - " "
+                              - _if_none:
+                                  - _payload: profile.family_name
+                                  - ""
+                        email:
+                          _payload: email
+                description: null
         references:
           user_ids:
             - _payload: user_id
