@@ -14,8 +14,17 @@ import { verifyChartContract } from "./verifyContract.js";
  * The chart/download pipelines were already validated and run through
  * AnalyticsPipeline by emit-data-parts, so this runs no catalog gate — the rows
  * are in hand. It re-runs the inert spec checks and, for charts, verifies the
- * declared x/y contract AGAINST the actual rows (keys present, y numeric). A
- * mismatch throws an actionable message the agent self-corrects on.
+ * declared x/y contract AGAINST the actual rows (keys present, y numeric).
+ *
+ * Each spec is isolated: a spec that fails its checks is skipped and the rest
+ * of the turn's parts are still returned. Isolation is not cosmetic — this runs
+ * in an onFinish hook whose errors handleAgentChat only console.warns, so a
+ * single throw would drop every chart AND download of the turn from the stream
+ * with nothing shown to the user. The agent cannot self-correct either: its
+ * turn is over by the time this runs, and a declared key that the pipeline
+ * doesn't actually emit is undetectable at render_chart time (no rows yet).
+ * A skipped spec is currently silent to the user — surfacing it needs an error
+ * dataPart type the chat page's onDataPart handles.
  *
  * Params:
  *   charts    — chart specs ({ chart, title, query, x, y }) in tool-call order.
@@ -35,24 +44,33 @@ function buildDataParts({ charts = [], results = [], downloads = [], roles }) {
     resultsArray = Object.assign([], resultsArray);
   }
 
+  // A skipped spec does not spend budget — it produced no part.
   (charts ?? []).forEach((spec, index) => {
     if (budget <= 0) return;
     const rows = resultsArray[index];
     if (rows === null || rows === undefined) return;
-    const { chart, title, x, y } = validateChartSpec({ spec, roles });
-    verifyChartContract({ x, y, rows });
-    parts.push({
-      type: "data-report-chart",
-      data: { title, option: buildEChartsOption({ chart, x, y, rows }) },
-    });
-    budget -= 1;
+    try {
+      const { chart, title, x, y } = validateChartSpec({ spec, roles });
+      verifyChartContract({ x, y, rows });
+      parts.push({
+        type: "data-report-chart",
+        data: { title, option: buildEChartsOption({ chart, x, y, rows }) },
+      });
+      budget -= 1;
+    } catch {
+      // Skip this chart; the turn's other parts still reach the panel.
+    }
   });
 
   (downloads ?? []).forEach((spec) => {
     if (budget <= 0) return;
-    const { label, description, query } = validateExportSpec({ spec, roles });
-    parts.push({ type: "data-report-download", data: { label, description, query } });
-    budget -= 1;
+    try {
+      const { label, description, query } = validateExportSpec({ spec, roles });
+      parts.push({ type: "data-report-download", data: { label, description, query } });
+      budget -= 1;
+    } catch {
+      // Skip this download; the turn's other parts still reach the panel.
+    }
   });
 
   return parts;

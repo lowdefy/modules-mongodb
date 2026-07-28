@@ -76,34 +76,54 @@ test("processes at most 8 specs per turn", () => {
   expect(parts).toHaveLength(8);
 });
 
-test("invalid chart spec throws with an actionable message", () => {
-  expect(() =>
-    buildDataParts({
-      charts: [{ chart: "scatter3d", title: "X", query: chartSpec.query, x: "status", y: ["count"] }],
-      results: [[]],
-      roles,
-    })
-  ).toThrow(/chart "scatter3d" is not one of bar, line, pie/);
+// The turn's parts are built in an onFinish hook whose errors handleAgentChat
+// only console.warns, so one bad spec must never take the turn's other parts
+// down with it. Each case below pairs the bad spec with a good one and asserts
+// the good one still arrives.
+test("an invalid chart spec is skipped, not thrown", () => {
+  const rows = [{ status: "paid", count: 1 }];
+  const parts = buildDataParts({
+    charts: [
+      { chart: "scatter3d", title: "X", query: chartSpec.query, x: "status", y: ["count"] },
+      chartSpec,
+    ],
+    results: [[], rows],
+    downloads: [exportSpec],
+    roles,
+  });
+  expect(parts.map((p) => p.type)).toEqual(["data-report-chart", "data-report-download"]);
+  expect(parts[0].data.title).toBe("Orders by Status");
 });
 
-test("a missing declared column throws (actionable contract error)", () => {
-  expect(() =>
-    buildDataParts({
-      charts: [chartSpec],
-      results: [[{ status: "paid", wrongKey: 5 }]],
-      roles,
-    })
-  ).toThrow(/column "count" is not present/);
+test("a chart whose declared column is missing from its rows is skipped", () => {
+  const parts = buildDataParts({
+    charts: [chartSpec, chartSpec],
+    results: [[{ status: "paid", wrongKey: 5 }], [{ status: "paid", count: 1 }]],
+    roles,
+  });
+  expect(parts).toHaveLength(1);
+  expect(parts[0].data.option.dataset.source).toEqual([{ status: "paid", count: 1 }]);
 });
 
-test("a non-numeric y column throws", () => {
-  expect(() =>
-    buildDataParts({
-      charts: [chartSpec],
-      results: [[{ status: "paid", count: "five" }]],
-      roles,
-    })
-  ).toThrow(/must be numeric/);
+test("a chart with a non-numeric y column is skipped", () => {
+  const parts = buildDataParts({
+    charts: [chartSpec],
+    results: [[{ status: "paid", count: "five" }]],
+    downloads: [exportSpec],
+    roles,
+  });
+  expect(parts.map((p) => p.type)).toEqual(["data-report-download"]);
+});
+
+test("a skipped spec does not spend the per-turn budget", () => {
+  const rows = [{ status: "paid", count: 1 }];
+  const bad = { ...chartSpec, chart: "scatter3d" };
+  const parts = buildDataParts({
+    charts: [bad, ...Array.from({ length: 8 }, () => chartSpec)],
+    results: Array.from({ length: 9 }, () => rows),
+    roles,
+  });
+  expect(parts).toHaveLength(8);
 });
 
 test("zero rows and null value cells build a chart without a verification failure", () => {
@@ -119,11 +139,11 @@ test("zero rows and null value cells build a chart without a verification failur
   expect(withNulls).toHaveLength(1);
 });
 
-test("export validator rejects a contract-shaped payload", () => {
-  expect(() =>
-    buildDataParts({
-      downloads: [{ ...exportSpec, columns: [{ key: "region" }] }],
-      roles,
-    })
-  ).toThrow(/exports carry no presentation contract/);
+test("a contract-shaped export payload is skipped, not thrown", () => {
+  const parts = buildDataParts({
+    downloads: [{ ...exportSpec, columns: [{ key: "region" }] }, exportSpec],
+    roles,
+  });
+  expect(parts).toHaveLength(1);
+  expect(parts[0].data.label).toBe("Orders export");
 });
