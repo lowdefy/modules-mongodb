@@ -83,6 +83,10 @@ _ref:
         properties:
           title: Download Excel
           icon: AiOutlineDownload
+          # Button.type defaults to `primary`; primary is reserved for the
+          # page's main action (Invite user).
+          color: default
+          variant: outlined
         events:
           # Fetch the full merged members+invitations snapshot (get_users_excel_data)
           # then hand it to the xlsx plugin. One sheet, one status column
@@ -157,149 +161,179 @@ _ref:
                 pageId:
                   _module.pageId: invite
     blocks:
-      # Tabs — one strip, two panels. Each slot owns its own filter / table /
-      # pagination blocks (independent state; wired in task 9).
-      - id: users_tabs
-        type: Tabs
-        properties:
-          tabs:
-            - key: members_panel
-              title: Members
-              icon: AiOutlineTeam
-            - key: invitations_panel
-              # Pending-count badge (Decision 2) — the total from the invitations
-              # $facet (not rows.length); hidden when zero.
-              title:
-                _nunjucks:
-                  template: >-
-                    Invitations{% if count and count > 0 %} <span style="display:inline-flex; align-items:center; min-width:18px; height:18px; padding:0 6px; border-radius:9px; font-size:11px; line-height:18px; background:var(--ant-color-fill-secondary); color:var(--ant-color-text-secondary)">{{ count }}</span>{% endif %}
-                  on:
-                    count:
-                      _get:
-                        from:
-                          _request: get_all_invitations
-                        key: 0.total_results
-              icon: AiOutlineMail
-        slots:
-          members_panel:
+      # Filters, table and pagination live in one contained card (F25f) — the
+      # tab strip reads as the card header, matching the tile cards elsewhere.
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            hide_title: true
             blocks:
-              - _ref: components/all_members_filters.yaml
-              # Members sort (shared sort-filters) — owns the default sort/search
-              # state keys; refetches get_all_members on change (Decision 2).
-              - _ref:
-                  path: ../shared/layout/sort-filters.yaml
-                  vars:
-                    search_action:
-                      _ref: actions/members_refetch.yaml
-                    sort_options:
-                      - label: Name
-                        value: name
-                      - label: Email
-                        value: email
-                      - label: Date Created
-                        value: created
-                      - label: Date Updated
-                        value: updated
-                      - label: Signed up
-                        value: signed_up
-              - _ref: components/all_members_table.yaml
-              - _ref:
-                  path: ../shared/layout/pagination.yaml
-                  vars:
-                    request_id: get_all_members
-          # Invitations tab — fully independent state (Decision 2): its sort and
-          # pagination bind under `inv_sort` / `inv_pagination` (inline here,
-          # rather than the shared fragments which own the Members keys), so
-          # neither tab disturbs the other.
-          invitations_panel:
-            blocks:
-              - _ref: components/all_invitations_filters.yaml
-              - id: inv_sort_container
-                type: Box
-                layout:
-                  gap: 8
-                  justify: end
-                style:
-                  padding: 12px 16px 0px 16px
-                  margin: auto
-                blocks:
-                  - id: inv_sort.by
-                    type: Selector
-                    layout:
-                      flex: 1 0 auto
-                    style:
-                      maxWidth: 160px
-                    properties:
-                      placeholder: Sort By
-                      label:
-                        disabled: true
-                      options:
-                        - label: Email
-                          value: email
-                        - label: Invited by
-                          value: inviter_name
-                        - label: Expiry
-                          value: expires_at
-                    events:
-                      onChange:
-                        try:
-                          _ref: actions/invitations_refetch.yaml
-                        debounce:
-                          ms: 300
-                  - id: inv_sort_order
-                    type: Button
-                    properties:
-                      icon:
-                        _if:
-                          test:
-                            _eq:
-                              - _state: inv_sort.order
-                              - -1
-                          then: AiOutlineSortDescending
-                          else: AiOutlineSortAscending
-                      hideTitle: true
-                    events:
-                      onClick:
-                        _build.array.concat:
-                          - - id: set_inv_sort_order
-                              type: SetState
-                              params:
-                                inv_sort.order:
-                                  _if:
-                                    test:
-                                      _eq:
-                                        - _state: inv_sort.order
-                                        - -1
-                                    then: 1
-                                    else: -1
-                          - _ref: actions/invitations_refetch.yaml
-              - _ref: components/all_invitations_table.yaml
-              - id: inv_pagination
-                type: Pagination
-                style:
-                  textAlign: right
+              # Tabs — one strip, two panels. Each slot owns its own filter / table /
+              # pagination blocks (independent state; wired in task 9).
+              - id: users_tabs
+                type: Tabs
                 properties:
-                  size: small
-                  showTotal: true
-                  showSizeChanger: true
-                  total:
-                    _if_none:
-                      - _get:
-                          from:
-                            _request: get_all_invitations
-                          key: 0.total_results
-                      - 0
-                  disabled:
-                    _not:
-                      _request: get_all_invitations
-                  pageSizeOptions:
-                    - 100
-                    - 500
-                    - 1000
-                events:
-                  onChange:
-                    - id: fetch_inv_page
-                      type: Request
-                      messages:
-                        loading: true
-                      params: get_all_invitations
+                  tabs:
+                    - key: members_panel
+                      title: Members
+                      icon: AiOutlineTeam
+                    - key: invitations_panel
+                      # Pending-count badge (Decision 2) — the total from the invitations
+                      # $facet (not rows.length); hidden when zero.
+                      title:
+                        _nunjucks:
+                          template: >-
+                            Invitations{% if count and count > 0 %} <span style="display:inline-flex; align-items:center; min-width:18px; height:18px; padding:0 6px; border-radius:9px; font-size:11px; line-height:18px; background:var(--ant-color-fill-secondary); color:var(--ant-color-text-secondary)">{{ count }}</span>{% endif %}
+                          on:
+                            count:
+                              _get:
+                                from:
+                                  _request: get_all_invitations
+                                key: 0.total_results
+                      icon: AiOutlineMail
+                slots:
+                  members_panel:
+                    blocks:
+                      # One toolbar row: filters flex on the left, sort pinned right.
+                      - id: members_toolbar
+                        type: Box
+                        layout:
+                          gap: 8
+                          align: middle
+                          selfAlign: middle
+                        blocks:
+                          - _ref: components/all_members_filters.yaml
+                          # Members sort (shared sort-filters) — owns the default sort/search
+                          # state keys; refetches get_all_members on change (Decision 2).
+                          - _ref:
+                              path: ../shared/layout/sort-filters.yaml
+                              vars:
+                                inline: true
+                                search_action:
+                                  _ref: actions/members_refetch.yaml
+                                sort_options:
+                                  - label: Name
+                                    value: name
+                                  - label: Email
+                                    value: email
+                                  - label: Date Created
+                                    value: created
+                                  - label: Date Updated
+                                    value: updated
+                                  - label: Signed up
+                                    value: signed_up
+                      - _ref: components/all_members_table.yaml
+                      - _ref:
+                          path: ../shared/layout/pagination.yaml
+                          vars:
+                            request_id: get_all_members
+                  # Invitations tab — fully independent state (Decision 2): its sort and
+                  # pagination bind under `inv_sort` / `inv_pagination` (inline here,
+                  # rather than the shared fragments which own the Members keys), so
+                  # neither tab disturbs the other.
+                  invitations_panel:
+                    blocks:
+                      # One toolbar row: filters flex on the left, sort pinned right.
+                      - id: inv_toolbar
+                        type: Box
+                        layout:
+                          gap: 8
+                          align: middle
+                          selfAlign: middle
+                        blocks:
+                          - _ref: components/all_invitations_filters.yaml
+                          - id: inv_sort_container
+                            type: Box
+                            layout:
+                              flex: 0 0 auto
+                              gap: 8
+                              justify: end
+                              align: middle
+                              selfAlign: middle
+                            blocks:
+                              - id: inv_sort.by
+                                type: Selector
+                                layout:
+                                  flex: 1 0 auto
+                                style:
+                                  minWidth: 160px
+                                  maxWidth: 160px
+                                properties:
+                                  placeholder: Sort By
+                                  label:
+                                    disabled: true
+                                  options:
+                                    - label: Email
+                                      value: email
+                                    - label: Invited by
+                                      value: inviter_name
+                                    - label: Expiry
+                                      value: expires_at
+                                events:
+                                  onChange:
+                                    try:
+                                      _ref: actions/invitations_refetch.yaml
+                                    debounce:
+                                      ms: 300
+                              - id: inv_sort_order
+                                type: Button
+                                layout:
+                                  flex: 0 1 auto
+                                properties:
+                                  icon:
+                                    _if:
+                                      test:
+                                        _eq:
+                                          - _state: inv_sort.order
+                                          - -1
+                                      then: AiOutlineSortDescending
+                                      else: AiOutlineSortAscending
+                                  hideTitle: true
+                                  color: primary
+                                  variant: solid
+                                events:
+                                  onClick:
+                                    _build.array.concat:
+                                      - - id: set_inv_sort_order
+                                          type: SetState
+                                          params:
+                                            inv_sort.order:
+                                              _if:
+                                                test:
+                                                  _eq:
+                                                    - _state: inv_sort.order
+                                                    - -1
+                                                then: 1
+                                                else: -1
+                                      - _ref: actions/invitations_refetch.yaml
+                      - _ref: components/all_invitations_table.yaml
+                      - id: inv_pagination
+                        type: Pagination
+                        style:
+                          textAlign: right
+                        properties:
+                          size: small
+                          showTotal: true
+                          showSizeChanger: true
+                          total:
+                            _if_none:
+                              - _get:
+                                  from:
+                                    _request: get_all_invitations
+                                  key: 0.total_results
+                              - 0
+                          disabled:
+                            _not:
+                              _request: get_all_invitations
+                          pageSizeOptions:
+                            - 100
+                            - 500
+                            - 1000
+                        events:
+                          onChange:
+                            - id: fetch_inv_page
+                              type: Request
+                              messages:
+                                loading: true
+                              params: get_all_invitations
