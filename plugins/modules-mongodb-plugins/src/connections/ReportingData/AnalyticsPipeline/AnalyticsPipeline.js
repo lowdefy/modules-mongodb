@@ -1,5 +1,8 @@
+import { BSON } from "mongodb";
+
 import getMongoDb from "../../mongo/getMongoDb.js";
 import validatePipeline from "../../../analytics/validatePipeline.js";
+import { MAX_RESULT_BYTES } from "../../../analytics/constants.js";
 
 /**
  * AnalyticsPipeline — the ReportingData connection's single, read-only request:
@@ -78,6 +81,14 @@ async function AnalyticsPipeline({ request = {}, connection }) {
     );
   }
 
+  // Check the type before spreading: with filters present, a non-iterable
+  // pipeline would throw a raw TypeError here instead of the validator's
+  // actionable message, so the failure mode would depend on whether a filter
+  // happened to be set.
+  if (query.pipeline !== undefined && !Array.isArray(query.pipeline)) {
+    throw new Error("Invalid pipeline: pipeline must be an array of stages.");
+  }
+
   const match = Array.isArray(filters) ? buildFilterMatch(filters) : null;
   const combined = match ? [match, ...(query.pipeline ?? [])] : query.pipeline;
 
@@ -89,13 +100,33 @@ async function AnalyticsPipeline({ request = {}, connection }) {
   });
 
   const { mongoDb } = await getMongoDb(connection);
-  const rows = await mongoDb
-    .collection(collection)
-    .aggregate(pipeline, {
-      maxTimeMS: connection.maxTimeMS ?? 30000,
-      allowDiskUse: connection.allowDiskUse ?? true,
-    })
-    .toArray();
+  const cursor = mongoDb.collection(collection).aggregate(pipeline, {
+    maxTimeMS: connection.maxTimeMS ?? 30000,
+    allowDiskUse: connection.allowDiskUse ?? true,
+  });
+
+  // Drain with a byte budget rather than .toArray(). The appended
+  // PIPELINE_RESULT_CAP bounds how many documents come back, not how large each
+  // one is, and an allowlisted expression can synthesize an arbitrarily wide
+  // row — so an unbounded .toArray() lets a permitted 1000-row result become
+  // gigabytes of app-process memory. Measuring per document and aborting mid-
+  // stream keeps the peak bounded; checking after the fact would not.
+  const maxBytes = connection.maxResultBytes ?? MAX_RESULT_BYTES;
+  const rows = [];
+  let bytes = 0;
+  try {
+    for await (const row of cursor) {
+      bytes += BSON.calculateObjectSize(row);
+      if (bytes > maxBytes) {
+        throw new Error(
+          `Query result exceeds the ${maxBytes} byte result budget. Narrow the query — project fewer fields, or aggregate instead of returning raw documents.`,
+        );
+      }
+      rows.push(row);
+    }
+  } finally {
+    await cursor.close();
+  }
 
   return rows;
 }

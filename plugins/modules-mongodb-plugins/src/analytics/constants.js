@@ -59,9 +59,11 @@ export const MAX_EXPRESSION_DEPTH = 100;
 // against a broad-but-shallow tree that evades the depth guard).
 export const MAX_PIPELINE_NODES = 10000;
 
-// Max length of an array literal in an expression (`$in`/`$nin`/`$all` operands,
-// `$range` output shape, etc.). Carries forward today's MAX_IN_VALUES, which is
-// otherwise dropped in the new model.
+// Max length of an array literal WRITTEN INTO the pipeline (`$in`/`$nin`/`$all`
+// operands, etc.). Carries forward today's MAX_IN_VALUES, which is otherwise
+// dropped in the new model. This bounds what the agent can type, NOT what a
+// stage produces: `{ $range: [0, 500000] }` is three tokens and a half-million
+// element result. Output size is bounded at execution by MAX_RESULT_BYTES.
 export const MAX_ARRAY_LITERAL_LENGTH = MAX_IN_VALUES;
 
 // Max serialized (JSON) size of the pipeline in bytes — bounds a payload padded
@@ -86,3 +88,13 @@ export const MAX_SAMPLE_SIZE = 1000;
 // as the final top-level stage (and to every `$facet` branch), never trusting an
 // agent-supplied limit to be the bound (design §6). Matches today's MAX_LIMIT.
 export const PIPELINE_RESULT_CAP = 1000;
+
+// Max total size, in bytes, of the documents one request may accumulate in the
+// app process. PIPELINE_RESULT_CAP bounds the row COUNT; nothing in the grammar
+// bounds a row's SIZE — one allowlisted expression (`{ $range: [0, 500000] }`,
+// `{ $push: "$$ROOT" }` over a wide collection) turns 1000 permitted rows into
+// gigabytes. maxTimeMS bounds server compute and allowDiskUse lifts the 100MB
+// in-memory stage limit, so neither bounds what the driver hands back: this is
+// the only place the app-side total can be enforced. Override per connection
+// with `maxResultBytes`.
+export const MAX_RESULT_BYTES = 8000000;

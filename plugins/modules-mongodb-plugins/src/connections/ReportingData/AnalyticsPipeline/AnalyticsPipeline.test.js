@@ -30,15 +30,29 @@ const catalog = {
 
 let aggregate;
 let collection;
+let close;
 
 function connectionWith(overrides = {}) {
   return { databaseUri: "mongodb://mock", catalog, ...overrides };
 }
 
+// The request drains a cursor with a byte budget rather than calling toArray(),
+// so the mock is an async-iterable cursor with close() — the shape the driver
+// returns.
+function mockCursor(docs) {
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const doc of docs) yield doc;
+    },
+    close,
+  };
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
+  close = jest.fn(async () => {});
   // Capture what the request executes; return a fixed result set.
-  aggregate = jest.fn(() => ({ toArray: async () => [{ region: "EU" }] }));
+  aggregate = jest.fn(() => mockCursor([{ region: "EU" }]));
   collection = jest.fn(() => ({ aggregate }));
   getMongoDb.mockResolvedValue({ mongoDb: { collection } });
 });
@@ -173,6 +187,65 @@ test("adversarial: a $where-shaped filter field is rejected by validation", asyn
       connection: connectionWith(),
     }),
   ).rejects.toThrow(/\$where/);
+  expect(aggregate).not.toHaveBeenCalled();
+});
+
+// The row cap bounds how MANY documents come back; nothing in the grammar
+// bounds how BIG one is. `{ $range: [0, 500000] }` is an allowlisted expression
+// that passes validation and yields a multi-megabyte row, so without a byte
+// budget a permitted 1000-row result becomes gigabytes in the app process.
+describe("result byte budget", () => {
+  // ~1KB per document.
+  const fatDoc = { blob: "x".repeat(1000) };
+
+  test("aborts mid-drain once the budget is exceeded, and closes the cursor", async () => {
+    aggregate = jest.fn(() => mockCursor(Array.from({ length: 100 }, () => fatDoc)));
+    collection = jest.fn(() => ({ aggregate }));
+    getMongoDb.mockResolvedValue({ mongoDb: { collection } });
+
+    await expect(
+      AnalyticsPipeline({
+        request: {
+          query: { collection: "demo_orders", pipeline: [] },
+          roles: ["analyst"],
+        },
+        connection: connectionWith({ maxResultBytes: 5000 }),
+      }),
+    ).rejects.toThrow(/exceeds the 5000 byte result budget/);
+    // Aborting mid-stream is the point: the whole result must never be
+    // materialized just to discover it was too large.
+    expect(close).toHaveBeenCalled();
+  });
+
+  test("a result inside the budget is returned in full", async () => {
+    aggregate = jest.fn(() => mockCursor(Array.from({ length: 3 }, () => fatDoc)));
+    collection = jest.fn(() => ({ aggregate }));
+    getMongoDb.mockResolvedValue({ mongoDb: { collection } });
+
+    const rows = await AnalyticsPipeline({
+      request: {
+        query: { collection: "demo_orders", pipeline: [] },
+        roles: ["analyst"],
+      },
+      connection: connectionWith({ maxResultBytes: 5000 }),
+    });
+    expect(rows).toHaveLength(3);
+  });
+});
+
+test("a non-array pipeline fails with the validator's message, filters or not", async () => {
+  for (const filters of [undefined, [{ field: "region", op: "eq", value: "EU" }]]) {
+    await expect(
+      AnalyticsPipeline({
+        request: {
+          query: { collection: "demo_orders", pipeline: { $match: {} } },
+          roles: ["analyst"],
+          filters,
+        },
+        connection: connectionWith(),
+      }),
+    ).rejects.toThrow(/pipeline must be an array of stages/);
+  }
   expect(aggregate).not.toHaveBeenCalled();
 });
 

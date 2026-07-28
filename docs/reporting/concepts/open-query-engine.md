@@ -34,7 +34,7 @@ The agent produces:
 }
 ```
 
-`collection` must be a key of the catalog, and so must every `$lookup.from` the pipeline reaches. Nothing else about the pipeline is trusted: it is validated against three independent default-deny grammars and a set of resource caps, then **reconstructed** — the engine executes a fresh tree built only from nodes it explicitly approved, never the agent's input by reference. A subtree the validator never classified cannot reach the database; a missed case fails closed (rejected), never open.
+`collection` must be a key of the catalog, and so must every `$lookup.from` the pipeline reaches. Nothing else about the pipeline is trusted: it is validated against three independent default-deny grammars and a set of resource caps, then **reconstructed** — the engine executes a fresh tree built only from nodes it explicitly approved. Every object and array is rebuilt key by key; only opaque scalar leaves (`Date`, `ObjectId` and similar BSON values, which carry no operators for the walker to interpret) carry over by identity. A subtree the validator never classified cannot reach the database; a missed case fails closed (rejected), never open.
 
 ### Three grammars, three allowlists
 
@@ -66,22 +66,27 @@ Deferred stages are rejected today with a "not enabled" message; they can be ena
 
 The allowlists decide _what_ is allowed; these caps decide _how much_. They protect both the database and the validator's own recursion:
 
-| Cap                          | Value     | Bounds                                                                                 |
-| ---------------------------- | --------- | -------------------------------------------------------------------------------------- |
-| Total stages                 | 50        | Counting `$facet` branches and `$lookup` sub-pipelines, not just the top level         |
-| Sub-pipeline nesting depth   | 5         | `$lookup.pipeline` / `$facet` branch nesting                                           |
-| `$lookup` stages             | 10        | Anywhere in the pipeline                                                               |
-| `$facet` branches            | 10        | Per `$facet` stage                                                                     |
-| Expression tree depth        | 100       | Explicit guard — deep nesting fails with a validation error, never a stack overflow    |
-| Total classified nodes       | 10,000    | Guards a broad-but-shallow tree                                                        |
-| Array literal length         | 100       | `$in`/`$nin`/`$all` operands and expression arrays                                     |
-| Serialized pipeline size     | 100,000 B | Bounds a payload padded with large `$literal` blobs                                    |
-| Regex pattern length / flags | 200 chars | Flags restricted to `imsu` — `maxTimeMS` alone does not stop catastrophic backtracking |
-| `$sample.size`               | 1,000     | An unindexed `$sample` is a blocking scan                                              |
+| Cap                          | Value       | Bounds                                                                              |
+| ---------------------------- | ----------- | ----------------------------------------------------------------------------------- |
+| Total stages                 | 50          | Counting `$facet` branches and `$lookup` sub-pipelines, not just the top level      |
+| Sub-pipeline nesting depth   | 5           | `$lookup.pipeline` / `$facet` branch nesting                                        |
+| `$lookup` stages             | 10          | Anywhere in the pipeline                                                            |
+| `$facet` branches            | 10          | Per `$facet` stage                                                                  |
+| Expression tree depth        | 100         | Explicit guard — deep nesting fails with a validation error, never a stack overflow |
+| Total classified nodes       | 10,000      | Guards a broad-but-shallow tree                                                     |
+| Array literal length         | 100         | `$in`/`$nin`/`$all` operands written into the pipeline — not what a stage produces  |
+| Serialized pipeline size     | 100,000 B   | Bounds a payload padded with large `$literal` blobs                                 |
+| Regex pattern length / flags | 200 chars   | Flags restricted to `imsu`; a size bound only — see the note below                  |
+| `$sample.size`               | 1,000       | An unindexed `$sample` is a blocking scan                                           |
+| Result size                  | 8,000,000 B | Total size of the returned documents, enforced while draining the cursor            |
+
+The regex cap bounds pattern **size**, not complexity: catastrophic backtracking needs only a few characters (`^(a+)+$`), so the real mitigation there is `maxTimeMS`, and a read-only principal on a replica read preference keeps the blast radius to one query's compute.
 
 ### The always-appended row limit
 
 The engine **always appends a trailing `$limit: 1000`** — as the final top-level stage and to every `$facet` branch — after validation. An agent-supplied `$limit` is never trusted to be the bound (appending only-when-absent would let `$limit: 100000` defeat the cap; a redundant trailing `$limit` is harmless).
+
+The row limit bounds how **many** documents come back, not how **large** each one is — an allowlisted expression like `{ $range: [0, 500000] }` or `{ $push: "$$ROOT" }` turns 1 000 permitted rows into gigabytes. So the request also drains the cursor under a **result byte budget** (`maxResultBytes`, default 8 MB), aborting mid-stream rather than materializing the whole result to discover it was too large. `maxTimeMS` bounds server compute and `allowDiskUse` deliberately lifts the 100 MB in-memory stage limit, so neither bounds what the driver hands back: this budget is what protects the app process.
 
 ### Execution
 
