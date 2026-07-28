@@ -243,18 +243,20 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 ### `checkbox_selector`
 
-Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row.
+Multi-select checkbox group. Renders a `CheckboxSelector`. Label `colon` is hardcoded `false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row.
 
-| Var         | Type    | Required / Default |
-| ----------- | ------- | ------------------ |
-| `key`       | string  | required           |
-| `title`     | string  | —                  |
-| `visible`   | boolean | `true`             |
-| `required`  | boolean | `false`            |
-| `options`   | array   | `[]`               |
-| `extra`     | string  | —                  |
-| `direction` | string  | `horizontal`       |
-| `on_change` | array   | `[]`               |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `options`      | array   | `[]`               |
+| `extra`        | string  | —                  |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
+| `direction`    | string  | `horizontal`       |
+| `on_change`    | array   | `[]`               |
 
 ```yaml
 - component: checkbox_selector

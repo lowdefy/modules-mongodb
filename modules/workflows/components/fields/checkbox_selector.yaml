@@ -17,6 +17,12 @@ vars:
   extra:
     type: string
     required: false
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
   direction:
     type: string
     # Defaulted, not left unset: an unsupplied var resolves to null, and antd
@@ -42,11 +48,26 @@ config:
     title:
       _var: title
     label:
-      span: 12
-      align: right
-      colon: false
-      extra:
-        _var: extra
+      _build.object.assign:
+        - inline:
+            _var:
+              key: label_inline
+              default: false
+          colon: false
+          extra:
+            _var: extra
+        - _build.if:
+            test:
+              _build.ne:
+                - _var:
+                    key: label_span
+                    default: null
+                - null
+            then:
+              span:
+                _var: label_span
+              align: right
+            else: {}
     options:
       _var:
         key: options
