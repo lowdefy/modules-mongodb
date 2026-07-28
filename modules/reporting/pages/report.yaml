@@ -16,6 +16,8 @@ blocks:
         _module.endpointId: resolve-report
       types:
         blocks:
+          # Box wraps the filter row (compileReport emits report_filters).
+          - Box
           - Title
           - Paragraph
           - Statistic
@@ -34,6 +36,16 @@ blocks:
           - _state
           - _api
           - _if_none
+          # A table column carrying a `format` descriptor compiles to a
+          # `__function` cell renderer wrapping `___intl.numberFormat` over
+          # `___args` (compileReport numericCellRenderer). Dynamic resolution
+          # collapses each operator's leading underscores to one and rejects any
+          # type not declared here — so an undeclared _intl fails the WHOLE
+          # report to the fallback slot, not just the column. Keep these three
+          # in step with numericCellRenderer.
+          - _function
+          - _intl
+          - _args
     slots:
       fallback:
         blocks:
