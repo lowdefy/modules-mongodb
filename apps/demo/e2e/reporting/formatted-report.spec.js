@@ -124,27 +124,26 @@ test("the reports list scopes by sub ?? id and hides soft-deleted reports", asyn
   await expect(page.getByText("Other user report (e2e)")).toBeHidden();
 });
 
-// BLOCKED ON A FRAMEWORK GAP, not on this module's config.
+// BLOCKED ON AN E2E-HARNESS GAP — the report page itself works.
 //
-// The report page is a Dynamic block whose resolver reads
-// `_payload: urlQuery.reportId`. `getPageConfig(context, { pageId, urlQuery })`
-// accepts urlQuery and forwards it into the Dynamic payload, but neither caller
-// in the generated server passes it:
+// `lowdefy build --server e2e` scaffolds @lowdefy/server-e2e, which diverges
+// from @lowdefy/server in the two places that hand a Dynamic block its payload:
 //
-//   .lowdefy/server/src/html/renderPage.js:45   getPageConfig(context, { pageId: resolvedPageId })
-//   .lowdefy/server/src/routes/apiPage.js:26    getPageConfig(context, { pageId })
+//                        renderPage.js              apiPage.js
+//   @lowdefy/server      urlQuery: c.req.query()    urlQuery: c.req.query()
+//   @lowdefy/server-e2e  omitted                    omitted
 //
-// Both have the request in scope and never read its query, so a Dynamic block
-// always receives `urlQuery: {}` and resolve-report can never find the report —
-// it rejects "Report not found" and the fallback slot renders. Verified against
-// @lowdefy/server 0.0.0-experimental-20260707145139, and reproduced with this
-// PR's changes reverted, so it is not a regression from them.
+// The report page's resolver reads `_payload: urlQuery.reportId`, so under the
+// e2e server it always receives `urlQuery: {}`, never matches a document, and
+// renders the "Report not found" fallback. Under dev/prod it resolves normally
+// — confirmed by hand on a dev server. So this is a false negative in the
+// harness, not a defect in the module, and un-fixme-ing it needs the e2e server
+// to thread urlQuery the way the real one does (filed upstream).
 //
-// The compile-side half of this assertion is covered without a browser by
-// plugins/modules-mongodb-plugins/src/analytics/compileReport.declared.test.js,
-// which fails if the compiler emits a type the Dynamic block does not declare —
-// the defect this spec was written to catch. Un-fixme this once the server
-// threads urlQuery through.
+// The invariant this spec was written for — that the compiler never emits a
+// type the Dynamic block fails to declare, which is what 404'd every report
+// with a formatted column — is covered without a browser by
+// plugins/modules-mongodb-plugins/src/analytics/compileReport.declared.test.js.
 test.fixme("a saved report with a formatted table column renders", async ({
   ldf,
   page,
