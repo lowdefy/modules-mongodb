@@ -1,43 +1,53 @@
-_build.array.concat:
-  - _build.if:
-      test:
-        _var: show_honorific
-      then:
-        - id: profile.title
-          type: Selector
+# Wrapped in a full-width Box so the name fields keep their own tight gap
+# regardless of the gap the consuming card/modal sets for its other children.
+# span: 24 is required — without it the Box shrinks to content and the child
+# spans have no definite width to resolve against.
+- id: profile_name_row
+  type: Box
+  layout:
+    span: 24
+    gap: 8
+  blocks:
+    _build.array.concat:
+      - _build.if:
+          test:
+            _var: show_honorific
+          then:
+            - id: profile.title
+              type: Selector
+              layout:
+                span: 6
+              properties:
+                title: Title
+                placeholder: Title
+                options:
+                  - Mr
+                  - Ms
+                  - Mrs
+                  - Dr
+                  - Prof
+          else: []
+      - - id: profile.given_name
+          type: TextInput
+          required: true
           layout:
-            span: 6
+            span:
+              _build.if:
+                test:
+                  _var: show_honorific
+                then: 9
+                else: 12
           properties:
-            title: Title
-            placeholder: Title
-            options:
-              - Mr
-              - Ms
-              - Mrs
-              - Dr
-              - Prof
-      else: []
-  - - id: profile.given_name
-      type: TextInput
-      required: true
-      layout:
-        span:
-          _build.if:
-            test:
-              _var: show_honorific
-            then: 9
-            else: 12
-      properties:
-        title: First Name
-    - id: profile.family_name
-      type: TextInput
-      required: true
-      layout:
-        span:
-          _build.if:
-            test:
-              _var: show_honorific
-            then: 9
-            else: 12
-      properties:
-        title: Last Name
+            title: First Name
+        - id: profile.family_name
+          type: TextInput
+          required: true
+          layout:
+            span:
+              _build.if:
+                test:
+                  _var: show_honorific
+                then: 9
+                else: 12
+          properties:
+            title: Last Name
