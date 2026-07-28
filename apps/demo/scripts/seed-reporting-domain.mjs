@@ -7,10 +7,11 @@
  * a database DDL operation, so it lives here (and, in production, in a
  * migration). The `mongodb` driver is already a dependency.
  *
- * The engine stays flat and unchanged: it only queries the VIEWS, which bake in
- * the $lookup/$unwind/current-status logic at a fixed, correct grain. Fan-out
- * (which would double-count) is neutralised inside each view definition, never
- * left to whatever the AI composes.
+ * The catalog exposes both the base collections and these views. The agent
+ * composes its own joins from catalog relationships, so the views are an
+ * optional convenience, not the only way in: each one bakes the
+ * $lookup/$unwind/current-status logic in at a fixed grain, so counts over it
+ * are exact without the agent having to reason about fan-out.
  *
  * Run (needs the Mongo URI):
  *   pnpm --filter @lowdefy/modules-demo reporting:seed

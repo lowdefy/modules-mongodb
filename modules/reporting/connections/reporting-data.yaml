@@ -2,7 +2,9 @@
 # and validatePipeline rejects every write stage. The collections catalog is
 # bound here once (from the module var) so every request validates against the
 # same catalog — a caller cannot substitute a trimmed or stale one. The app
-# supplies the URI secret; the connection is not remappable.
+# supplies the URI secret. An app may remap this connection, but the remap
+# replaces this definition entirely — it must re-bind BOTH the catalog and a
+# read-only principal (docs/reporting/reference/catalog.md).
 id: reporting-data
 type: ReportingData
 properties:

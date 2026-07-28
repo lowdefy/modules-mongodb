@@ -62,7 +62,9 @@
   source: "file:../../modules/reporting"
   # Remap the module's storage + data connections onto MONGODB_URI-backed app
   # connections so the demo needs no REPORTING_MONGODB_URI / REPORTING_DATA_MONGODB_URI
-  # secrets. (ai keeps its bundled Anthropic connection → ANTHROPIC_API_KEY.)
+  # secrets. (ai keeps its bundled gateway connection → AI_GATEWAY_API_KEY.)
+  # Note reporting-analytics points at the app's read-write MONGODB_URI, so the
+  # demo does NOT exercise the read-only principal production must use.
   connections:
     reports-store: reporting-reports
     conversations-store: reporting-conversations

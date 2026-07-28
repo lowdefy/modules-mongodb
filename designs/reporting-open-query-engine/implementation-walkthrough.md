@@ -56,9 +56,9 @@ of exposing it.
 
 ## 3. Chat → agent
 
-`modules/reporting/pages/chat.yaml:128-137` mounts an `AgentChat` block pointed at
+`modules/reporting/pages/chat.yaml:137-146` mounts an `AgentChat` block pointed at
 `_module.agentId: reporting-assistant`, keyed by a client-generated
-`conversationId` (`chat.yaml:20-22`, a `_uuid`).
+`conversationId` (`chat.yaml:14-15`, a `_uuid`).
 
 The agent (`agents/reporting-assistant.yaml`) is an `AIGatewayAgent` with
 `maxSteps: 12`. Its `tools` array (L163-175) is pure wiring — name → endpointId.
@@ -151,7 +151,7 @@ onFinish hook (`agents/reporting-assistant.yaml:176-179`):
    prior hook owns doc creation), then L110-112 returns them as `dataParts` on the
    stream.
 
-Client side, `chat.yaml:145-173` accumulates them: `onDataPart` with a `skip`
+Client side, `chat.yaml:154-182` accumulates them: `onDataPart` with a `skip`
 guard on `_event: type`, appending to `charts` or `downloads` state. The panel at
 L293-309 renders charts through a `List` + `EChart`; downloads (L333-360) are
 buttons that re-run `query-data` live and pipe the response into `DownloadCsv`.
@@ -165,10 +165,10 @@ Two onFinish hooks, in order. `save-conversation.yaml:14-102` upserts the whole
 transcript keyed by `conversationId` + `userId`; on insert it derives a fallback
 title with a `$let`/`$reduce` over the first user message (L38-100 — note L47-49,
 the `as: msg` alias, because the inner `$reduce` rebinds `$$this`). If the model
-produced a real title, `chat.yaml:191-201` persists it over the top via
+produced a real title, `chat.yaml:200-210` persists it over the top via
 `set-conversation-title`.
 
-Restore is where the sharp edges are. `chat.yaml:80-122`: switching conversation
+Restore is where the sharp edges are. `chat.yaml:80-131`: switching conversation
 sets `conversationId` and **clears** messages/charts/downloads first (atomic and
 infallible), then repopulates from a _fresh_ `get-conversation-results` read. The
 comment at L82-88 explains why not from the sidebar list: the list refreshes when

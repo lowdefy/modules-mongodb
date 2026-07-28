@@ -1,6 +1,11 @@
 # Reporting open query engine
 
-The reporting analytics engine today lets the AI fill a small structured spec (`{ dataset, select, measures, filters, sort, limit }`) that a compiler turns into a fixed, read-only, single-collection pipeline emitting only `$match/$group/$project/$sort/$limit`. That makes injection _structurally impossible_ — no AI-supplied string ever becomes an operator, field path, or collection — but it also means the AI can only ask the narrow set of questions the spec grammar can express. This design opens the engine up so the AI composes **near-arbitrary read-only MongoDB aggregation pipelines** — `$lookup`, `$unwind`, array work, window functions, faceting — while a new validation layer plus a read-only database principal keep it safe. Charts, saved reports, and exports ride the same engine: their queries become pipelines paired with an AI-declared presentation contract, and the structured spec is removed entirely. It is a design only; nothing here is implemented yet.
+The reporting analytics engine today lets the AI fill a small structured spec (`{ dataset, select, measures, filters, sort, limit }`) that a compiler turns into a fixed, read-only, single-collection pipeline emitting only `$match/$group/$project/$sort/$limit`. That makes injection _structurally impossible_ — no AI-supplied string ever becomes an operator, field path, or collection — but it also means the AI can only ask the narrow set of questions the spec grammar can express. This design opens the engine up so the AI composes **near-arbitrary read-only MongoDB aggregation pipelines** — `$lookup`, `$unwind`, array work, window functions, faceting — while a new validation layer plus a read-only database principal keep it safe. Charts, saved reports, and exports ride the same engine: their queries become pipelines paired with an AI-declared presentation contract, and the structured spec is removed entirely.
+
+> **Implemented.** This design shipped in the `reporting` module; see
+> [`implementation-walkthrough.md`](implementation-walkthrough.md) for the
+> as-built trace. `docs/reporting/` is the source of truth for behaviour —
+> this file records the rationale.
 
 ## Proposed change
 
