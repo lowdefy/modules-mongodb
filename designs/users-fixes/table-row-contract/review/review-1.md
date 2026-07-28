@@ -19,6 +19,16 @@ the slot after the `$sort`; and dotted AgGrid `field:` paths are already proven 
 
 ### 1. The `$unset` is a breaking change for column paths that resolve today, and the design calls it non-breaking
 
+> **Resolved.** New "Breaking changes" section names four: raw join paths, stripped alias duplicates,
+> `get_all_users` now running in the export, and `picture` leaving export rows — with the single
+> migration (lift to a top-level key in a `get_all_users` `$addFields`, which still runs before the
+> close). `docs/user-admin/how-to/migration.md` added to Files changed; changeset is a minor, module
+> being pre-1.0 at 0.17.0. D2's non-breaking claim rewritten to scope to `filter_match` explicitly.
+>
+> The passkey-leak upside was deliberately left out: the note stays short because the BetterAuth rebuild
+> already changed the schema out from under any v0.x config, and the migration page already tells
+> consumers to expect re-authoring rather than tweaking.
+
 D2 asserts the change is "non-breaking" but scopes that claim only to
 `request_stages.filter_match`. It isn't the only surface affected. Because
 `members_base.yaml` never projects, a consumer can bind a Members column to a raw join path
@@ -100,6 +110,12 @@ instead of aspirational. The cost is a handful of extra keys on an unpaginated o
 
 ### 4. The raw `attributes` bag survives the `$unset`, so the row carries two paths for the same data
 
+> **Resolved.** D2 now states the rule the exclusion list follows — raw `$lookup` payloads, plus every
+> stored field that already ships under a canonical alias — and notes it is derived from the schemas
+> rather than an observed row. `attributes`, `createdAt` and `expiresAt` are all added; the third is
+> the same defect on the invitations branch (`expires_at` / `expires` both alias it), in scope now that
+> #3 and #8 apply the close there. Verified nothing built-in binds the raw forms.
+
 `members_row.yaml` unsets `user`, `contact`, `passkeys`. It does not unset `attributes` — the member
 document's own field, which `members_base` will read to produce `member_attributes`. Both keys ship.
 A consumer can bind `field: attributes.team` or `field: member_attributes.team` and both resolve,
@@ -115,6 +131,18 @@ Same class, lower stakes: `createdAt` survives alongside its alias `signed_up`, 
 contract table either. Either unset it or list it.
 
 ### 5. `picture` cannot be a "declared key" under an exclusion-based row
+
+> **Resolved.** New D8 declares `picture`, `created` and `updated` via `$ifNull` fallbacks to `null` in
+> `members_base`, with the rationale that a stable key set is what lets a blank column be diagnosed
+> (the F26 confusion) and what makes the Verification key-set assertion meaningful. `name` needs
+> nothing.
+>
+> Two related decisions came out of the same discussion. `profile.picture` joins the close stage's
+> exclusion list under #4's alias rule — it holds an ~800-character data-URI SVG, so both paths shipping
+> means the blob rides twice per row; verified safe against `modal_profile`'s subtree round-trip because
+> `write-profile` merges with `$mergeObjects`. And the export appends `$unset: picture` after the close
+> (D4): a spreadsheet has no use for the data URI, and the export fetches every row at once. The list
+> keeps it for the Name column's avatar.
 
 The design wants the contract to "keep `picture` a declared key so its absence is a data problem,
 not a shape problem" — but D2 closes the row by exclusion, so nothing declares anything. The
@@ -138,6 +166,11 @@ independent of data — `created` and `updated` both vanish today when the conta
 ## Contract and documentation
 
 ### 6. The contract table is not one row shape — the export is a different, smaller row
+
+> **Resolved.** Mostly moot after #3 — the uniform close means export rows carry the contract keys.
+> The two surviving divergences get a two-line note rather than a per-read column or a key rename:
+> the export joins stored role ids into a string for `roles`, and adds `expires`. Judged not worth
+> more structure than that.
 
 "Every members read returns rows with these keys" is false for `get_users_excel_data` as designed.
 With the whitelists kept (D4), export rows carry nine keys plus the three bags and omit `_id`,
@@ -167,6 +200,14 @@ example to the new `docs/user-admin/reference/` page).
 
 ### 8. `members_row` is scoped to two reads, not "each read", and the sibling invitations read is untouched
 
+> **Resolved.** The wording half is settled by #3 — the close stage now genuinely runs last in every
+> read. The invitations half is folded in rather than deferred: new D7 applies the stage to
+> `get_all_invitations` so the tab stops shipping the whole `inviter` document. Verified there is no
+> breaking edge — `all_invitations_table.yaml` binds only `inviter_name` / `inviter_id`, and D6 leaves
+> that tab without a `table_columns` slot, so no consumer could have bound a raw path. The stage is
+> renamed `close_row.yaml`, since it is now the shared close for four pipelines rather than a
+> members-specific one.
+
 Proposed change 2 says `members_row.yaml` is "applied as the last stage of each read", but "Files
 changed" applies it to `get_all_members` and `get_user_detail` only — the export keeps its
 whitelists. Reconcile the wording with whichever of #3's options is chosen.
@@ -183,6 +224,9 @@ Non-goals explicitly so it isn't lost.
 
 ### 9. The row shape is verifiable read-only today; the design declares it unverifiable and defers
 
+> **Rejected.** The developer will verify the row shape by hand rather than the design carrying a
+> formal key-set gate. Verification section left as-is, including the demo-comment suggestion.
+
 The Verification section concludes that `pnpm ldf:b` "cannot prove a column resolves" and that
 seeding is "a data change for the developer to make". The seeding call is right and matches the
 repo's write prohibition. But the _shape_ question — does the row carry the three bags, and are
@@ -198,6 +242,12 @@ State the data prerequisite where a demo reader will hit it (a comment in
 `apps/demo/modules/user-admin/vars.yaml` next to the columns), not only in the design.
 
 ### 10. The `member_attributes.team` worked example renders the stored slug, not the label
+
+> **Resolved.** Team column stays and gains a slug→label `cellRenderer` following the Roles column
+> pattern (`all_invitations_table.yaml:41`), so the canonical example shows the complete treatment and
+> the member document stays exercised. The row-contract section (and the docs page built from it) now
+> states the rule plainly: a bag column renders the stored value, and enum-backed fields need
+> formatting at the column.
 
 `apps/demo/modules/user-admin/member_attributes_fields.yaml` defines `member_attributes.team` as a
 `Selector` over `{label: Alpha, value: alpha}`. The row carries the stored value, so
