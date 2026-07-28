@@ -57,13 +57,26 @@ A read-only MongoDB **view** is a saved aggregation over a source collection —
 
 Bake the `$lookup`/`$unwind` and current-status extraction into the view so the grain is fixed once and every count is exact — the agent can't fan it out because the fan-out already happened at a controlled grain.
 
+<!-- prettier-ignore-start -->
+
+`demo_activities_report` (`viewOn: demo_activities`) — one row per activity:
+
 ```js
-// view: demo_activities_report  (viewOn: demo_activities) — one row per activity
-[{ $addFields: { current_stage: { $arrayElemAt: ["$status.stage", 0] } } }][
-  // view: demo_action_assignees  (viewOn: demo_actions) — one row per (action, assignee)
-  { $unwind: { path: "$assignees", preserveNullAndEmptyArrays: false } }
-];
+[{ $addFields: { current_stage: { $arrayElemAt: ["$status.stage", 0] } } }]
 ```
+
+`demo_action_assignees` (`viewOn: demo_actions`) — one row per (action, assignee):
+
+```js
+[
+  { $unwind: { path: "$assignees", preserveNullAndEmptyArrays: false } },
+  { $addFields: { current_stage: { $arrayElemAt: ["$status.stage", 0] } } },
+]
+```
+
+<!-- prettier-ignore-end -->
+
+Both are defined in full in `apps/demo/scripts/seed-reporting-domain.mjs`.
 
 Catalog the view and state its grain plainly:
 

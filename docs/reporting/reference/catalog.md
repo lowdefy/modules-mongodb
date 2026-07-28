@@ -76,7 +76,9 @@ The module wires the catalog onto its own `reporting-data` connection (via `_mod
       _ref: modules/reporting/catalog.yaml
 ```
 
-See `apps/demo/lowdefy.yaml` for the worked example.
+A remap replaces the module's connection **entirely**, so it also replaces the `databaseUri` the module pointed at `REPORTING_DATA_MONGODB_URI`. Point the app connection at a read-only principal too, or the remap silently removes the [second safety layer](../concepts/open-query-engine.md#the-two-layer-security-model) — the validator would be the only thing standing between an AI-authored pipeline and a read-write credential.
+
+See `apps/demo/lowdefy.yaml` for the worked example. (The demo deliberately remaps onto the app's shared read-write URI so it needs no second secret — convenient for a demo, wrong for production.)
 
 ## Display hints are prompt material, not enforcement
 

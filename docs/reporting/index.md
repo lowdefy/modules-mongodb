@@ -68,6 +68,22 @@ connections:
 
 When `ai` is remapped, `AI_GATEWAY_API_KEY` is not needed.
 
+### Protect the pages and endpoints
+
+**Lowdefy pages and API endpoints are public unless the app protects them.** This module's endpoints are not an exception, and `query-data` reaches app data: a catalog entry with no `roles` is readable by any _authenticated_ user, so leaving the app unprotected exposes every role-less cataloged collection to anonymous callers. (`query-data` rejects an unauthenticated caller, but that is a backstop, not a substitute for app-level auth.)
+
+Protect the module's pages and endpoints in the app's `auth` config, for example:
+
+```yaml
+auth:
+  pages:
+    protected: true
+  api:
+    protected: true
+```
+
+Role-gate individual collections with `roles` in the [catalog](reference/catalog.md#roles-semantics) — that is enforced by the engine on every touched collection, including `$lookup` targets.
+
 ## Concepts
 
 - [The open query engine](concepts/open-query-engine.md) — the pipeline model, the three default-deny grammars, resource caps, the always-appended row limit, the two-layer security model, and the grain/fan-out risk

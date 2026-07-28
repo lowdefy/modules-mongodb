@@ -66,8 +66,10 @@ db.createUser({
 Build the read-only user's connection string and set it as the secret the engine reads:
 
 ```
-REPORTING_DATA_MONGODB_URI=mongodb+srv://reporting_ro:<password>@<cluster>/appdata?retryWrites=true&w=majority
+REPORTING_DATA_MONGODB_URI=mongodb+srv://reporting_ro:<password>@<cluster>/appdata?retryWrites=true&w=majority&authSource=admin
 ```
+
+`authSource=admin` matters when you created the user with the `mongosh` snippet above: that creates it in the `admin` database, while the `/appdata` path element sets the default auth database to `appdata`. Without `authSource`, authentication is attempted against `appdata` and fails. Drop it if you created the user in the reporting database instead. (Atlas users are always created in `admin`.)
 
 `REPORTING_MONGODB_URI` (saved reports and conversations) is a **separate** secret and stays a normal read-write user — the engine writes report specs and chat history there. Only `REPORTING_DATA_MONGODB_URI` is the read-only principal.
 
