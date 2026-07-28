@@ -30,8 +30,9 @@
  *      engine queries with — see task 9's provisioning), lists collections and
  *      views, and $samples a bounded number of documents from each.
  *   2. Infers per-field types (union of observed BSON types), flattens sub-
- *      documents one level into dotted paths, notes arrays, and detects
- *      low-cardinality string fields as candidate enums (with observed values).
+ *      documents into dotted paths (--depth levels, default 4), notes arrays,
+ *      and detects low-cardinality string fields as candidate enums (with
+ *      observed values).
  *   3. Optionally asks a model (via the reporting AI gateway — one key, one
  *      access path) to draft per-field descriptions, confirm enum candidates,
  *      propose display hints (money-shaped fields -> `format: currency`), and
@@ -86,6 +87,8 @@
  *     --db <name>       Database to sample (default: the db in the URI).
  *     --out <path>      Output file (default: ./reporting-catalog.draft.yaml).
  *     --sample <n>      Documents to $sample per collection (default: 100).
+ *     --depth <n>       Levels to flatten sub-documents into dotted paths
+ *                       (default: 4). Arrays are never descended into.
  *     --model <id>      Gateway model id (default: $REPORTING_MODEL or the
  *                       module default).
  *     --no-model        Skip the model call; emit a type-inference-only draft.
@@ -102,6 +105,13 @@ import { fileURLToPath } from "url";
 
 // ── Tunables ─────────────────────────────────────────────────────────────────
 export const DEFAULT_SAMPLE_SIZE = 100;
+// How many levels to descend into sub-documents when flattening to dotted
+// paths. Real reporting schemas nest well past one level — a field like
+// `global_attributes.billing.plan` is invisible at depth 1, and an invisible
+// field is one the agent cannot query, since the catalog is the whole of what
+// it knows. 4 covers the nesting seen in practice while still bounding the
+// field count (and so the drafting prompt) on pathologically deep documents.
+export const DEFAULT_FLATTEN_DEPTH = 4;
 export const DEFAULT_OUT = "reporting-catalog.draft.yaml";
 export const DEFAULT_MODEL = "anthropic/claude-sonnet-4.5";
 export const DEFAULT_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
@@ -123,6 +133,7 @@ export function parseArgs(argv) {
     db: undefined,
     out: DEFAULT_OUT,
     sampleSize: DEFAULT_SAMPLE_SIZE,
+    flattenDepth: DEFAULT_FLATTEN_DEPTH,
     model: process.env.REPORTING_MODEL || DEFAULT_MODEL,
     useModel: true,
     help: false,
@@ -138,6 +149,9 @@ export function parseArgs(argv) {
         break;
       case "--sample":
         args.sampleSize = Number(argv[(i += 1)]);
+        break;
+      case "--depth":
+        args.flattenDepth = Number(argv[(i += 1)]);
         break;
       case "--model":
         args.model = argv[(i += 1)];
@@ -155,6 +169,9 @@ export function parseArgs(argv) {
   }
   if (!Number.isFinite(args.sampleSize) || args.sampleSize < 1) {
     throw new Error(`--sample must be a positive integer, got: ${args.sampleSize}`);
+  }
+  if (!Number.isFinite(args.flattenDepth) || args.flattenDepth < 1) {
+    throw new Error(`--depth must be a positive integer, got: ${args.flattenDepth}`);
   }
   return args;
 }
@@ -231,11 +248,13 @@ function redactExample(v) {
 
 /**
  * Infer a per-collection field map from sampled documents. Sub-documents are
- * flattened exactly one level into dotted paths; arrays are noted as `array`
- * and not descended into. Returns:
+ * flattened into dotted paths up to `flattenDepth` levels; arrays are noted as
+ * `array` and not descended into. A sub-document AT the depth limit is recorded
+ * as an `object` field rather than dropped, so the curator can see it exists and
+ * re-run with a deeper --depth if it matters. Returns:
  *   { fields: { [path]: { type, types:[...], values?:[...], examples:[...] } } }
  */
-export function inferSchemaFromSample(docs) {
+export function inferSchemaFromSample(docs, flattenDepth = DEFAULT_FLATTEN_DEPTH) {
   // path -> { typeCounts: Map, present: n, strings: Set|null, examples: [] }
   const paths = new Map();
 
@@ -260,11 +279,12 @@ export function inferSchemaFromSample(docs) {
     }
   };
 
-  // depth 0 = top level; recurse one level into sub-documents (depth < 1).
+  // depth 0 = top level. An empty sub-document has no leaves to record, so it
+  // is recorded as an object field rather than vanishing from the draft.
   const walk = (obj, prefix, depth) => {
     for (const [k, v] of Object.entries(obj)) {
       const path = prefix ? `${prefix}.${k}` : k;
-      if (isPlainObject(v) && depth < 1) {
+      if (isPlainObject(v) && depth < flattenDepth && Object.keys(v).length > 0) {
         walk(v, path, depth + 1);
       } else {
         record(path, v);
@@ -442,12 +462,13 @@ export function commentBlock(text) {
     .join("\n");
 }
 
-function header({ dbName, sampleSize, model, modelUsed, generatedCount }) {
+function header({ dbName, sampleSize, flattenDepth, model, modelUsed, generatedCount }) {
   const lines = [
     "Reporting collections catalog — AI-DRAFTED, HUMAN-CURATED (DO NOT ship as-is).",
     "",
-    `Generated by scripts/gen-reporting-catalog.mjs from database "${dbName}"`,
-    `($sample ${sampleSize} docs/collection; ${generatedCount} collections).`,
+    `Generated by lowdefy-reporting-catalog from database "${dbName}"`,
+    `($sample ${sampleSize} docs/collection; sub-documents flattened ${flattenDepth}`,
+    `levels; ${generatedCount} collections).`,
     modelUsed
       ? `Descriptions/hints/relationships drafted by model "${model}" (temperature 0).`
       : "MODEL SKIPPED — type-inference-only draft (descriptions empty, no relationships).",
@@ -504,6 +525,7 @@ function usage() {
     "  --db <name>     Database to sample (default: the db in the URI).",
     `  --out <path>    Output file (default: ${DEFAULT_OUT}).`,
     `  --sample <n>    Docs to $sample per collection (default: ${DEFAULT_SAMPLE_SIZE}).`,
+    `  --depth <n>     Levels to flatten sub-documents (default: ${DEFAULT_FLATTEN_DEPTH}).`,
     `  --model <id>    Gateway model id (default: $REPORTING_MODEL or ${DEFAULT_MODEL}).`,
     "  --no-model      Skip the model call; emit a type-inference-only draft.",
     "  --help          Print this usage and exit.",
@@ -574,7 +596,7 @@ async function main() {
       } catch (err) {
         console.warn(`  ${c.name}: sample failed (${err.message}) — stub entry.`);
       }
-      inferred[c.name] = inferSchemaFromSample(docs);
+      inferred[c.name] = inferSchemaFromSample(docs, args.flattenDepth);
       if (docs.length === 0) notes[c.name] = "empty or unsampleable";
       else if (c.type === "view") notes[c.name] = "view";
       console.error(
@@ -624,6 +646,7 @@ async function main() {
     meta: {
       dbName,
       sampleSize: args.sampleSize,
+      flattenDepth: args.flattenDepth,
       model: args.model,
       modelUsed,
       generatedCount: collectionNames.length,

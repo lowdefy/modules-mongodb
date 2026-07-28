@@ -69,14 +69,21 @@ Without a gateway key the CLI still produces a useful draft, just type-inference
 
 ## Options
 
-| Option         | Default                                  | Effect                                |
-| -------------- | ---------------------------------------- | ------------------------------------- |
-| `--db <name>`  | the database in the URI                  | Database to sample                    |
-| `--out <path>` | `reporting-catalog.draft.yaml`           | Output file                           |
-| `--sample <n>` | `100`                                    | Documents to `$sample` per collection |
-| `--model <id>` | `$REPORTING_MODEL` or the module default | Gateway model id                      |
-| `--no-model`   | off                                      | Skip the model call entirely          |
-| `--help`       | —                                        | Print usage and exit                  |
+| Option         | Default                                  | Effect                                            |
+| -------------- | ---------------------------------------- | ------------------------------------------------- |
+| `--db <name>`  | the database in the URI                  | Database to sample                                |
+| `--out <path>` | `reporting-catalog.draft.yaml`           | Output file                                       |
+| `--sample <n>` | `100`                                    | Documents to `$sample` per collection             |
+| `--depth <n>`  | `4`                                      | Levels to flatten sub-documents into dotted paths |
+| `--model <id>` | `$REPORTING_MODEL` or the module default | Gateway model id                                  |
+| `--no-model`   | off                                      | Skip the model call entirely                      |
+| `--help`       | —                                        | Print usage and exit                              |
+
+### Nested fields
+
+Sub-documents are flattened into dotted paths (`global_attributes.billing.plan`) down to `--depth` levels, default 4. This matters more than it sounds: the catalog is the whole of what the agent knows, so a field too deep to be drafted is a field it cannot query. Raise `--depth` if your documents nest further; a sub-document sitting at the limit is still recorded as an `object` field, so you can see it exists and re-run deeper.
+
+Arrays are never descended into — an array field is recorded as `array`. To report over array contents at a fixed grain, see [Reporting over complex data](complex-data.md).
 
 ## What it emits, and why it is commented out
 
