@@ -32,6 +32,13 @@ Handle gracefully: unsampleable/empty collections (emit a stub entry, still comm
 
 - `scripts/gen-reporting-catalog.mjs` — create
 
+> **Deviation (post-implementation):** the script now ships as a bin of
+> `@lowdefy/modules-mongodb-plugins` at
+> `plugins/modules-mongodb-plugins/bin/gen-reporting-catalog.mjs`, so consumers
+> can run `lowdefy-reporting-catalog` without copying it out of this repo. A
+> repo-root script would not have been reachable by them. See
+> `docs/reporting/how-to/bootstrap-catalog.md`.
+
 ## Notes
 
 Before writing the model-call code, load the `claude-api` skill if calling Anthropic directly turns out to be simpler than the gateway — but prefer the existing gateway pattern for consistency (one key, one access path). Keep the drafting prompt in the script (visible, reviewable), not a separate file.

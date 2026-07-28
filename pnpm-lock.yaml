@@ -55,6 +55,9 @@ importers:
       '@lowdefy/e2e-utils':
         specifier: latest
         version: 5.4.0(@playwright/test@1.60.0)
+      '@lowdefy/modules-mongodb-plugins':
+        specifier: workspace:*
+        version: link:../../plugins/modules-mongodb-plugins
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.60.0
@@ -506,6 +509,9 @@ importers:
       dompurify:
         specifier: ^3
         version: 3.4.6
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.1
       mongodb:
         specifier: ^6
         version: 6.21.0

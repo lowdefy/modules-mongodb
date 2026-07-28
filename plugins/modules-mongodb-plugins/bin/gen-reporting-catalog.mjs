@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /*
   Copyright 2020-2026 Lowdefy, Inc
 
@@ -76,7 +77,12 @@
  *       matching the reporting module's `model` var default. Overridden by --model.
  *
  * USAGE
- *   node scripts/gen-reporting-catalog.mjs [options]
+ *   Installed as a bin of @lowdefy/modules-mongodb-plugins, which every app
+ *   using the reporting module already depends on — so from the app directory:
+ *
+ *     pnpm exec lowdefy-reporting-catalog [options]     (npx / yarn dlx also work)
+ *
+ *   Options:
  *     --db <name>       Database to sample (default: the db in the URI).
  *     --out <path>      Output file (default: ./reporting-catalog.draft.yaml).
  *     --sample <n>      Documents to $sample per collection (default: 100).
@@ -91,7 +97,7 @@
 
 import { MongoClient } from "mongodb";
 import yaml from "js-yaml";
-import { writeFileSync } from "fs";
+import { realpathSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 
 // ── Tunables ─────────────────────────────────────────────────────────────────
@@ -494,7 +500,7 @@ function usage() {
   return [
     "gen-reporting-catalog.mjs — draft a reporting collections catalog for curation.",
     "",
-    "Usage: node scripts/gen-reporting-catalog.mjs [options]",
+    "Usage: lowdefy-reporting-catalog [options]",
     "  --db <name>     Database to sample (default: the db in the URI).",
     `  --out <path>    Output file (default: ${DEFAULT_OUT}).`,
     `  --sample <n>    Docs to $sample per collection (default: ${DEFAULT_SAMPLE_SIZE}).`,
@@ -631,8 +637,21 @@ async function main() {
   );
 }
 
-// Only run when invoked directly (so helpers are importable for tests).
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+// Only run when invoked directly (so helpers stay importable for tests).
+// Compare REAL paths: run through the package's bin, process.argv[1] is the
+// node_modules/.bin symlink while import.meta.url is already resolved, so a
+// literal comparison never matches and the CLI would exit silently doing
+// nothing.
+function invokedDirectly() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+}
+
+if (invokedDirectly()) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);

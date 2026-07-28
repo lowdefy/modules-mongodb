@@ -91,6 +91,7 @@ Role-gate individual collections with `roles` in the [catalog](reference/catalog
 
 ## How-to
 
+- [Bootstrap a catalog from a live database](how-to/bootstrap-catalog.md) — the `lowdefy-reporting-catalog` CLI: running it, credentials, options, and why every drafted entry arrives commented out
 - [Reporting over complex data](how-to/complex-data.md) — direct joins via catalog relationships, the grain/fan-out risk, and the optional MongoDB-view pattern for fixed grains and field hiding
 
 ## Reference

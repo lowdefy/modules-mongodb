@@ -86,7 +86,7 @@ See `apps/demo/lowdefy.yaml` for the worked example. (The demo deliberately rema
 
 ## The bootstrap workflow
 
-The curated catalog is a trusted, human-owned artifact. To lower the cost of the first draft across many collections, `scripts/gen-reporting-catalog.mjs` drafts one from a live database:
+The curated catalog is a trusted, human-owned artifact. To lower the cost of the first draft across many collections, the `lowdefy-reporting-catalog` CLI — a bin of the plugin package the module already requires — drafts one from a live database. See [Bootstrap a catalog from a live database](../how-to/bootstrap-catalog.md) for installation, credentials and options; in outline it:
 
 1. It connects with the reporting **read-only principal** (the same credential the engine queries with — see the [provisioning steps](../../shared/secrets.md#read-only-reporting-principal-reporting_data_mongodb_uri)), lists collections and views, and `$samples` a bounded number of documents from each.
 2. It infers per-field types, flattens sub-documents one level into dotted paths, notes arrays, and detects low-cardinality string fields as candidate enums.
@@ -99,7 +99,7 @@ Two properties make the draft safe to hand a human:
 
 Re-runs are **schema-drift detection**: collections, fields, relationships, and enum values are emitted in deterministic sorted order, so a re-run against a changed schema diffs cleanly against the curated file. (Descriptions come from the model and may vary slightly; `$sample` is random, so rarely-present fields and observed enum values can flicker between runs.)
 
-This script is never a runtime path — the engine reads only the curated, committed `catalog` var.
+This CLI is never a runtime path — the engine reads only the curated, committed `catalog` var.
 
 ## The view-leak caveat
 
