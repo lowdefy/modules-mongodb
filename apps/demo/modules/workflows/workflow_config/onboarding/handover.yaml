@@ -3,6 +3,11 @@ kind: check
 action_group: onboarding
 blocked_by:
   - kickoff
+# A pure confirmation gate — somebody ticks it when the handover has happened.
+# There is no separate owner to track and no deadline, so neither universal field
+# earns its place. Opting out of both also hides the ✎, so the title bar carries
+# no edit affordance for fields that don't exist.
+universal_fields: false
 description: Hand the account over to customer success.
 access:
   demo:
