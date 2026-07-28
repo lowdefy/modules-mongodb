@@ -7,10 +7,23 @@ type: Api
 routine:
   - :if:
       _eq:
-        - _user: id
+        - _if_none:
+            - _user: sub
+            - _user: id
         - null
     :then:
       - :reject: You must be signed in to generate a report.
+  # An absent request would be concatenated into the prompt as the literal
+  # "null", and the agent would generate an arbitrary report from it. The page
+  # disables its button too; this is the guard for direct callers.
+  - :if:
+      _eq:
+        - _if_none:
+            - _payload: request
+            - ""
+        - ""
+    :then:
+      - :reject: Describe the report you want before generating it.
   - id: run
     type: CallAgent
     properties:

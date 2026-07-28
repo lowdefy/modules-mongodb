@@ -1,24 +1,51 @@
-# userId-scoped delete from the reports-list page.
+# userId-scoped soft delete from the reports-list page.
+#
+# Soft, not hard: the repo convention is that a delete sets a `deleted` change
+# stamp and reads filter it out (docs/shared/soft-delete.md). The stamp is
+# written inline rather than via the events module's `change_stamp` component —
+# reporting declares no dependencies, so it cannot _ref into events — but the
+# shape ({ timestamp, user: { name, id } }) is identical, so a host app reads it
+# with the same predicate as every other module's soft delete.
 id: delete-report
 type: Api
 routine:
   - :if:
       _eq:
-        - _user: id
+        - _if_none:
+            - _user: sub
+            - _user: id
         - null
     :then:
       - :reject: You must be signed in to delete a report.
   - id: delete
-    type: MongoDBDeleteOne
+    type: MongoDBUpdateOne
     connectionId:
       _module.connectionId: reports-store
     properties:
+      # Already-deleted reports are excluded so a repeat delete reports 0
+      # modified rather than overwriting the original stamp's who/when.
       filter:
         _id:
           _payload: reportId
         userId:
-          _user: id
+          _if_none:
+            - _user: sub
+            - _user: id
+        deleted.timestamp:
+          $exists: false
+      update:
+        $set:
+          deleted:
+            timestamp:
+              _date: now
+            user:
+              name:
+                _user: profile.name
+              id:
+                _if_none:
+                  - _user: sub
+                  - _user: id
   - :return:
       ok: true
       deletedCount:
-        _step: delete.deletedCount
+        _step: delete.modifiedCount

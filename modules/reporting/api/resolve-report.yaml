@@ -17,7 +17,13 @@ routine:
         _id:
           _payload: urlQuery.reportId
         userId:
-          _user: id
+          _if_none:
+            - _user: sub
+            - _user: id
+        # A soft-deleted report resolves as not-found (the fallback slot), the
+        # same as one that never existed.
+        deleted.timestamp:
+          $exists: false
   - :if:
       _eq:
         - _step: load_report

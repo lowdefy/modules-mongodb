@@ -5,7 +5,9 @@ type: Api
 routine:
   - :if:
       _eq:
-        - _user: id
+        - _if_none:
+            - _user: sub
+            - _user: id
         - null
     :then:
       - :return: []
@@ -16,7 +18,13 @@ routine:
     properties:
       query:
         userId:
-          _user: id
+          _if_none:
+            - _user: sub
+            - _user: id
+        # Soft-deleted reports are excluded — see docs/shared/soft-delete.md for
+        # why the predicate tests the stamp's timestamp, not the field itself.
+        deleted.timestamp:
+          $exists: false
       options:
         sort:
           updatedAt: -1

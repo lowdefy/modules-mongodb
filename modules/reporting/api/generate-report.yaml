@@ -47,7 +47,9 @@ routine:
   # Reports are per-user; an unauthenticated context cannot save one.
   - :if:
       _eq:
-        - _user: id
+        - _if_none:
+            - _user: sub
+            - _user: id
         - null
     :then:
       - :reject: You must be signed in to save a report.
@@ -71,7 +73,9 @@ routine:
         _id:
           _uuid: true
         userId:
-          _user: id
+          _if_none:
+            - _user: sub
+            - _user: id
         title:
           _payload: spec.title
         description:
@@ -82,6 +86,9 @@ routine:
         # context (conversationId) does not reach them in the current agent
         # system, so the source conversation is not linked in v1.
         sourceConversationId: null
+        # Initialised so live documents have a consistent shape; delete-report
+        # replaces it with a change stamp (docs/shared/soft-delete.md).
+        deleted: null
         createdAt:
           _date: now
         updatedAt:
