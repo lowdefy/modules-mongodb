@@ -1,0 +1,332 @@
+# Overview action card.
+#
+# One collapsible, status-tinted card for a single action — the repeated unit of
+# both overview pages (workflow-overview nests it inside its group list,
+# workflow-group-overview renders it as a flat list). The two pages previously
+# carried byte-for-byte copies of this ~200-line block differing only in the
+# state path of the action, so every change had to be made twice; it lives here
+# instead, parameterised by that path.
+#
+# Reads two page-level state keys directly (identical on both pages, so they are
+# not vars): `collapse_map` (slot key -> expanded?) and `workflow` (whose
+# `form_data` holds the submitted values, keyed by slot key).
+#
+# Vars:
+#   - prefix                    build-time state-path prefix of the action, e.g.
+#                               "groups_list.$.actions.$" or "actions_list.$".
+#                               Also prefixes every block id in here.
+#   - s3_get_policy_request_id  the page's presigned-GET request id, so file
+#                               fields render as downloads (files module's
+#                               download-policy component).
+id:
+  _build.string.concat:
+    - _var: prefix
+    - .card
+type: Card
+layout:
+  gap: 16
+properties:
+  theme:
+    # Status-tinted card head. The status is already on the Tag, but a
+    # whole-band tint is what makes a long, mostly-collapsed workflow
+    # scannable. Driven by antd's Card `headerBg` token rather than a `.header`
+    # CSS slot: per-block `theme:` is how the modules override antd internals,
+    # and the tint is per-card, so an app-level token can't do it.
+    headerBg:
+      _get:
+        from:
+          _ref: components/action_statuses.yaml
+        key:
+          _string.concat:
+            - _state:
+                _build.string.concat:
+                  - _var: prefix
+                  - .status
+            - .color
+        default: "#fafafa"
+    # A collapsed card hides both body blocks but antd still renders the padded
+    # body div — a dead white strip under every band. Zero the padding while
+    # collapsed so the card is just its header.
+    bodyPadding:
+      _if:
+        test:
+          _get:
+            from:
+              _state: collapse_map
+            key:
+              _ref:
+                path: components/overview-action-slot-key.yaml
+                vars:
+                  prefix:
+                    _var: prefix
+            default: false
+        then: 24
+        else: 0
+slots:
+  title:
+    gap: 8
+    align: middle
+    # Area default is flex-wrap: wrap — nowrap holds the row.
+    wrap: nowrap
+    blocks:
+      - id:
+          _build.string.concat:
+            - _var: prefix
+            - .collapse_toggle
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          type: text
+          hideTitle: true
+          icon:
+            _if:
+              test:
+                _get:
+                  from:
+                    _state: collapse_map
+                  key:
+                    _ref:
+                      path: components/overview-action-slot-key.yaml
+                      vars:
+                        prefix:
+                          _var: prefix
+                  default: false
+              then: AiOutlineUp
+              else: AiOutlineDown
+        events:
+          onClick:
+            - id:
+                _build.string.concat:
+                  - _var: prefix
+                  - .toggle
+              type: SetState
+              params:
+                collapse_map:
+                  _js:
+                    args:
+                      id:
+                        _ref:
+                          path: components/overview-action-slot-key.yaml
+                          vars:
+                            prefix:
+                              _var: prefix
+                      map:
+                        _state: collapse_map
+                    fn: |
+                      const map = { ...(args.map || {}) };
+                      const id = args.id;
+                      map[id] = !map[id];
+                      return map;
+      - id:
+          _build.string.concat:
+            - _var: prefix
+            - .status_badge
+        type: Tag
+        layout:
+          flex: 0 0 auto
+        # The repo's three-colour status contract, same as the pills in
+        # shared/layout/title-block.yaml and check-action-surface.yaml: pale
+        # `color` fill, `borderColor` outline, saturated `titleColor` text.
+        # Painted explicitly because antd v6 treats a hex `color` PROP as a seed
+        # and derives its own palette from it, which ignores the enum's pair.
+        style:
+          .element:
+            borderStyle: solid
+            borderWidth: 1
+            background:
+              _get:
+                from:
+                  _ref: components/action_statuses.yaml
+                key:
+                  _string.concat:
+                    - _state:
+                        _build.string.concat:
+                          - _var: prefix
+                          - .status
+                    - .color
+            borderColor:
+              _get:
+                from:
+                  _ref: components/action_statuses.yaml
+                key:
+                  _string.concat:
+                    - _state:
+                        _build.string.concat:
+                          - _var: prefix
+                          - .status
+                    - .borderColor
+            color:
+              _get:
+                from:
+                  _ref: components/action_statuses.yaml
+                key:
+                  _string.concat:
+                    - _state:
+                        _build.string.concat:
+                          - _var: prefix
+                          - .status
+                    - .titleColor
+        properties:
+          title:
+            _get:
+              from:
+                _ref: components/action_statuses.yaml
+              key:
+                _string.concat:
+                  - _state:
+                      _build.string.concat:
+                        - _var: prefix
+                        - .status
+                  - .title
+      - id:
+          _build.string.concat:
+            - _var: prefix
+            - .message
+        type: Paragraph
+        layout:
+          flex: 1 1 auto
+        # antd Typography carries a bottom margin that would push the row
+        # off-centre in the card head. `.element` (not a bare `style:`) is the
+        # slot that reaches the Typography itself — a bare style would land on
+        # the layout wrapper.
+        style:
+          .element:
+            marginBottom: 0
+        properties:
+          strong: true
+          content:
+            _state:
+              _build.string.concat:
+                - _var: prefix
+                - .message
+  # antd card-head `extra` — holds the right edge on its own instead of
+  # competing with the message for row space.
+  extra:
+    blocks:
+      - id:
+          _build.string.concat:
+            - _var: prefix
+            - .link_button
+        type: Button
+        layout:
+          flex: 0 0 auto
+        visible:
+          _ne:
+            - _state:
+                _build.string.concat:
+                  - _var: prefix
+                  - .link
+            - null
+        properties:
+          title:
+            _if_none:
+              - _state:
+                  _build.string.concat:
+                    - _var: prefix
+                    - .link.title
+              - Open
+          type: link
+          icon: AiOutlineArrowRight
+        events:
+          onClick:
+            - id:
+                _build.string.concat:
+                  - _var: prefix
+                  - .link
+              type: Link
+              params:
+                _state:
+                  _build.string.concat:
+                    - _var: prefix
+                    - .link
+blocks:
+  - id:
+      _build.string.concat:
+        - _var: prefix
+        - .body_empty
+    type: Html
+    visible:
+      _and:
+        - _get:
+            from:
+              _state: collapse_map
+            key:
+              _ref:
+                path: components/overview-action-slot-key.yaml
+                vars:
+                  prefix:
+                    _var: prefix
+        - _eq:
+            - _get:
+                from:
+                  _state: workflow.form_data
+                key:
+                  _ref:
+                    path: components/overview-action-slot-key.yaml
+                    vars:
+                      prefix:
+                        _var: prefix
+                default: null
+            - null
+    properties:
+      html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
+  - id:
+      _build.string.concat:
+        - _var: prefix
+        - .body_dataview
+    type: DataDescriptions
+    visible:
+      _and:
+        - _get:
+            from:
+              _state: collapse_map
+            key:
+              _ref:
+                path: components/overview-action-slot-key.yaml
+                vars:
+                  prefix:
+                    _var: prefix
+        - _ne:
+            - _get:
+                from:
+                  _state: workflow.form_data
+                key:
+                  _ref:
+                    path: components/overview-action-slot-key.yaml
+                    vars:
+                      prefix:
+                        _var: prefix
+                default: null
+            - null
+    properties:
+      s3GetPolicyRequestId:
+        _var: s3_get_policy_request_id
+      formConfig:
+        _array.concat:
+          - _if_none:
+              - _state:
+                  _build.string.concat:
+                    - _var: prefix
+                    - .form_meta.form
+              - []
+          - _if_none:
+              - _state:
+                  _build.string.concat:
+                    - _var: prefix
+                    - .form_meta.form_review
+              - []
+      data:
+        form:
+          _get:
+            from:
+              _state: workflow.form_data
+            key:
+              _ref:
+                path: components/overview-action-slot-key.yaml
+                vars:
+                  prefix:
+                    _var: prefix
+            default: null
+        workflow:
+          _state: workflow

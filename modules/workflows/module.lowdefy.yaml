@@ -53,6 +53,12 @@ dependencies:
     description: >
       Supplies the user-multi-selector and user-avatar components the
       universal-fields surface composes (Part 24 / Part 24a).
+  - id: files
+    description: >
+      Provides the download-policy component the two overview pages instantiate
+      into their `requests:` — the presigned S3 GET DataDescriptions needs
+      before a file field inside an action card renders as a download instead of
+      "No files available".
 
 vars:
   workflows_config:
