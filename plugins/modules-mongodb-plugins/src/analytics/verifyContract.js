@@ -19,16 +19,24 @@ function availableColumns(row) {
   return row && typeof row === "object" ? Object.keys(row).join(", ") : "(none)";
 }
 
-// Declared keys must exist in the result — checked against the first row (a
-// pipeline emits a stable row shape). Empty results skip verification.
+// Declared keys must exist SOMEWHERE in the result, not just in row 0. Checking
+// only the first row cuts both ways: `$project` with a conditional, `$unionWith`
+// over differing shapes, or a `$group` whose first bucket lacks an optional
+// field all produce a result where row 0 omits a key that later rows carry —
+// a false failure — while a genuinely mis-declared key still passes any check
+// that stops at a row which happens to hold it. Requiring the key in at least
+// one row catches the mis-declaration without rejecting legitimately sparse
+// output, which renders as blank cells. Empty results skip verification.
 function requireKeys(rows, keys, what) {
   if (!Array.isArray(rows) || rows.length === 0) return;
-  const first = rows[0];
   for (const key of keys) {
-    if (first === null || typeof first !== "object" || !(key in first)) {
+    const present = rows.some(
+      (row) => row !== null && typeof row === "object" && key in row
+    );
+    if (!present) {
       throw new Error(
         `${what}: column "${key}" is not present in the query results ` +
-          `(available columns: ${availableColumns(first)}).`
+          `(available columns: ${availableColumns(rows[0])}).`
       );
     }
   }
