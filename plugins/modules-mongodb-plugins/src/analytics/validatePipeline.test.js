@@ -1,9 +1,17 @@
 import validatePipeline from "./validatePipeline.js";
+import { ALLOWED_STAGES, COLLECTION_SCOPED_STAGES } from "./stageAllowlist.js";
+import { ALLOWED_EXPRESSION_OPERATORS } from "./expressionOperatorAllowlist.js";
+import { ALLOWED_MATCH_OPERATORS } from "./matchOperatorAllowlist.js";
 import {
   MAX_ARRAY_LITERAL_LENGTH,
+  MAX_EXPRESSION_DEPTH,
+  MAX_FACET_BRANCHES,
+  MAX_LOOKUP_COUNT,
+  MAX_PIPELINE_BYTES,
   MAX_PIPELINE_STAGES,
   MAX_REGEX_PATTERN_LENGTH,
   MAX_SAMPLE_SIZE,
+  MAX_SUBPIPELINE_DEPTH,
   PIPELINE_RESULT_CAP,
 } from "./constants.js";
 
@@ -480,4 +488,185 @@ test("error messages name the offending operator", () => {
   expect(() => validate([{ $project: { x: { $rand: {} } } }])).toThrow(
     /\$rand/,
   );
+});
+
+// A value that is neither plain nor an array is a leaf the walkers cannot
+// classify. Returning it untouched would mean a subtree the walker never
+// visited reaches the driver — the one thing "reconstruct, don't forward"
+// exists to prevent. Class instances only arrive via the BSON read-back of a
+// persisted report spec, but the invariant has to hold on that path too.
+describe("non-plain objects", () => {
+  class LookAlike {
+    constructor(extra = {}) {
+      Object.assign(this, extra);
+    }
+  }
+
+  test("an unrecognised class instance is rejected, not forwarded", () => {
+    const evil = new LookAlike({ $where: "sleep(1000)" });
+    expect(() => validate([{ $project: { x: evil } }])).toThrow(
+      /not a supported value type/,
+    );
+    expect(() => validate([{ $match: { a: { $eq: evil } } }])).toThrow(
+      /not a supported value type/,
+    );
+    expect(() =>
+      validate([{ $project: { x: { $literal: { nested: evil } } } }]),
+    ).toThrow(/not a supported value type/);
+  });
+
+  test("an allowlisted BSON leaf passes, but not one carrying operator keys", () => {
+    const oid = new LookAlike({ _bsontype: "ObjectId" });
+    expect(validate([{ $match: { _id: oid } }]).pipeline[0].$match._id).toBe(oid);
+
+    const forged = new LookAlike({ _bsontype: "ObjectId", $where: "sleep(1000)" });
+    expect(() => validate([{ $match: { _id: forged } }])).toThrow(
+      /unexpected key "\$where"/,
+    );
+  });
+
+  test("Code and DBRef are not opaque leaves", () => {
+    // Code is server-side JS; DBRef names a collection and database, which
+    // would reach past the catalog gate entirely.
+    for (const bsonType of ["Code", "DBRef"]) {
+      expect(() =>
+        validate([{ $match: { a: new LookAlike({ _bsontype: bsonType }) } }]),
+      ).toThrow(/not a supported value type/);
+    }
+  });
+
+  test("a BSONRegExp is rebuilt under the pattern and flag caps", () => {
+    const bsonRegExp = (pattern, options) =>
+      new LookAlike({ _bsontype: "BSONRegExp", pattern, options });
+
+    const ok = validate([{ $match: { region: bsonRegExp("^EU", "i") } }]);
+    expect(ok.pipeline[0].$match.region).toEqual(/^EU/i);
+
+    // Without the BSONRegExp branch both of these skipped every regex cap.
+    expect(() =>
+      validate([{ $match: { region: bsonRegExp("a".repeat(201), "i") } }]),
+    ).toThrow(/exceeds the maximum length/);
+    expect(() =>
+      validate([{ $match: { region: bsonRegExp("^EU", "gx") } }]),
+    ).toThrow(/regex flag/);
+  });
+});
+
+// The property that makes "reconstruct, don't forward" checkable: whatever the
+// walker returns, every $-prefixed key in it belongs to one of the three
+// allowlists. A forwarded subtree fails this even when no individual test
+// anticipates its shape.
+test("no $-key outside the allowlists survives into the output", () => {
+  const { pipeline } = validate([
+    { $match: { region: "EU", $and: [{ total: { $gte: 5 } }] } },
+    { $lookup: { from: "demo_companies", localField: "c", foreignField: "_id", as: "co" } },
+    { $unwind: "$co" },
+    {
+      $group: {
+        _id: "$region",
+        total: { $sum: "$total" },
+        first: { $first: { $cond: [{ $gt: ["$total", 0] }, "$total", 0] } },
+      },
+    },
+    { $project: { _id: 0, region: "$_id", total: 1, tag: { $literal: { $where: "data" } } } },
+    { $sort: { total: -1 } },
+  ]);
+
+  const allowed = new Set([
+    ...ALLOWED_STAGES,
+    ...COLLECTION_SCOPED_STAGES,
+    ...ALLOWED_EXPRESSION_OPERATORS,
+    ...ALLOWED_MATCH_OPERATORS,
+  ]);
+  const offenders = [];
+  const walk = (node, insideLiteral) => {
+    if (Array.isArray(node)) return node.forEach((n) => walk(n, insideLiteral));
+    if (node === null || typeof node !== "object") return;
+    for (const [key, value] of Object.entries(node)) {
+      // $literal's argument is opaque data MongoDB never interprets.
+      if (!insideLiteral && key.startsWith("$") && !allowed.has(key)) {
+        offenders.push(key);
+      }
+      walk(value, insideLiteral || key === "$literal");
+    }
+  };
+  walk(pipeline, false);
+  expect(offenders).toEqual([]);
+});
+
+// Half the caps had no test. A cap nobody exercises is a cap that can be
+// refactored away silently, and each of these is load-bearing: they protect the
+// validator's own recursion as much as the database.
+describe("resource caps", () => {
+  const lookup = (as) => ({
+    $lookup: { from: "demo_companies", localField: "company_id", foreignField: "_id", as },
+  });
+
+  test("$lookup count", () => {
+    const ok = Array.from({ length: MAX_LOOKUP_COUNT }, (_, i) => lookup(`c${i}`));
+    expect(() => validate(ok)).not.toThrow();
+    expect(() => validate([...ok, lookup("over")])).toThrow(/\$lookup/);
+  });
+
+  test("$facet branches", () => {
+    const branches = (n) =>
+      Object.fromEntries(Array.from({ length: n }, (_, i) => [`b${i}`, [{ $count: "n" }]]));
+    expect(() => validate([{ $facet: branches(MAX_FACET_BRANCHES) }])).not.toThrow();
+    expect(() => validate([{ $facet: branches(MAX_FACET_BRANCHES + 1) }])).toThrow(
+      /branches/,
+    );
+  });
+
+  test("sub-pipeline nesting depth", () => {
+    // Each level is a $lookup whose sub-pipeline holds the next one.
+    const nest = (depth) => {
+      let pipeline = [{ $count: "n" }];
+      for (let i = 0; i < depth; i += 1) {
+        pipeline = [{ $lookup: { from: "demo_companies", pipeline, as: `l${i}` } }];
+      }
+      return pipeline;
+    };
+    expect(() => validate(nest(MAX_SUBPIPELINE_DEPTH))).not.toThrow();
+    expect(() => validate(nest(MAX_SUBPIPELINE_DEPTH + 1))).toThrow(/nest at most/);
+  });
+
+  test("expression depth fails as a validation error, never a stack overflow", () => {
+    const deep = (n) => {
+      let expr = "$total";
+      for (let i = 0; i < n; i += 1) expr = { $add: [expr, 1] };
+      return expr;
+    };
+    // Each nesting level costs two depth units (the operator object, then its
+    // argument array), plus a few for the stage wrapper — so this just needs to
+    // sit comfortably under the cap, not exactly at it.
+    expect(() => validate([{ $project: { x: deep(MAX_EXPRESSION_DEPTH / 4) } }])).not.toThrow();
+    let error;
+    try {
+      validate([{ $project: { x: deep(MAX_EXPRESSION_DEPTH + 50) } }]);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(Error);
+    expect(error.message).toMatch(/depth/);
+    expect(error).not.toBeInstanceOf(RangeError); // not a blown stack
+  });
+
+  test("serialized pipeline size", () => {
+    // One big $literal blob: the walker does not recurse into it, so only the
+    // byte cap bounds it.
+    const blob = "x".repeat(MAX_PIPELINE_BYTES + 1);
+    expect(() => validate([{ $project: { x: { $literal: blob } } }])).toThrow(/bytes/);
+  });
+
+  test("total classified nodes", () => {
+    // Broad but shallow: evades the depth guard, so the node counter is what
+    // stops it.
+    // Nested short arrays keep the serialized size far under
+    // MAX_PIPELINE_BYTES, so the node counter is provably what stops this
+    // rather than the byte cap.
+    const wide = Array.from({ length: 100 }, () => Array.from({ length: 100 }, () => 1));
+    const pipeline = [{ $project: { x: { $literal: wide } } }];
+    expect(JSON.stringify(pipeline).length).toBeLessThan(MAX_PIPELINE_BYTES);
+    expect(() => validate(pipeline)).toThrow(/nodes/);
+  });
 });

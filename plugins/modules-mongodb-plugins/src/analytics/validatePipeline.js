@@ -45,9 +45,11 @@ import {
  * driver imports, never executes anything.
  *
  * Input arrives on two paths — `JSON.parse` of chat tool input, and BSON
- * deserialization when a persisted report's pipeline is read back — so
- * non-plain scalar instances (`Date`, `ObjectId`) are treated as opaque leaf
- * values, and regexes (`RegExp` from either path) get the pattern/flag caps.
+ * deserialization when a persisted report's pipeline is read back. Only the
+ * second yields class instances, and they are not waved through: a non-plain,
+ * non-array value must be a `Date` or an allowlisted BSON leaf type
+ * (OPAQUE_BSON_TYPES) or it is rejected, and every regex form — `RegExp` and
+ * `BSONRegExp` alike — is rebuilt under the pattern/flag caps.
  *
  * For server-side JS (`$where`/`$function`/`$accumulator`) this validator is
  * the SOLE defense — the read-only principal does not stop eval.
@@ -73,6 +75,52 @@ function isPlainObject(value) {
   if (value === null || typeof value !== "object") return false;
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
+}
+
+// BSON leaf types that carry no operators and name no namespace, so passing the
+// instance through by identity interprets nothing. Deliberately excludes Code
+// (server-side JS), DBRef (names a collection AND a database, which would walk
+// straight past the catalog gate) and BSONRegExp (handled by rebuildRegex, so
+// it gets the pattern/flag caps).
+const OPAQUE_BSON_TYPES = new Set([
+  "ObjectId",
+  "Decimal128",
+  "Long",
+  "Int32",
+  "Double",
+  "Binary",
+  "Timestamp",
+  "MinKey",
+  "MaxKey",
+  "UUID",
+]);
+
+function isBsonRegExp(value) {
+  return value !== null && typeof value === "object" && value._bsontype === "BSONRegExp";
+}
+
+// The walkers reconstruct every object and array key by key; a value that is
+// neither plain nor an array is a leaf they cannot classify. Returning such a
+// value untouched — the old behaviour — broke the invariant this file rests on,
+// because a subtree the walker never visited could still reach the driver. Only
+// JSON reaches the walker from a tool call, but a persisted report spec is read
+// back through BSON and revalidated at resolve time, so real class instances do
+// occur on that path. Allowlist the leaf types and fail closed on the rest.
+function passOpaqueScalar(value, what) {
+  if (value instanceof Date) return value;
+  if (typeof value?._bsontype === "string" && OPAQUE_BSON_TYPES.has(value._bsontype)) {
+    // A genuine BSON leaf carries no operator keys. Checking anyway costs
+    // nothing and stops a look-alike class instance from riding through on a
+    // forged _bsontype with, say, a $where property alongside it.
+    for (const key of Object.keys(value)) {
+      checkKey(key);
+      if (key.startsWith("$")) {
+        fail(`${what} carries an unexpected key "${key}".`);
+      }
+    }
+    return value;
+  }
+  fail(`${what} is not a supported value type.`);
 }
 
 function checkKey(key) {
@@ -121,9 +169,10 @@ function checkRegexFlags(flags) {
 }
 
 // A regex pattern the AI authored is raw and unescaped, so it gets hard caps
-// (length, imsu-only flags) — maxTimeMS alone does not interrupt catastrophic
-// backtracking. Accepts a string pattern or a RegExp instance (BSON path);
-// returns a fresh value, never the input RegExp by reference.
+// (length, imsu-only flags). Accepts a string pattern, a RegExp instance, or a
+// BSONRegExp (the read-back form of a persisted spec — without this branch it
+// would fall to the opaque-leaf path and skip both caps entirely); returns a
+// fresh value, never the input by reference.
 function rebuildRegex(pattern, what) {
   if (typeof pattern === "string") {
     if (pattern.length > MAX_REGEX_PATTERN_LENGTH) {
@@ -132,6 +181,14 @@ function rebuildRegex(pattern, what) {
       );
     }
     return pattern;
+  }
+  if (isBsonRegExp(pattern)) {
+    if (pattern.pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+      fail(
+        `${what} pattern exceeds the maximum length of ${MAX_REGEX_PATTERN_LENGTH}.`,
+      );
+    }
+    return new RegExp(pattern.pattern, checkRegexFlags(pattern.options ?? ""));
   }
   if (pattern instanceof RegExp) {
     if (pattern.source.length > MAX_REGEX_PATTERN_LENGTH) {
@@ -176,13 +233,14 @@ function checkCollectionAccess(name, ctx) {
 function copyOpaqueLiteral(value, ctx) {
   countNode(ctx);
   if (value === null || typeof value !== "object") return value;
-  if (value instanceof RegExp) return rebuildRegex(value, "a literal regex");
+  if (value instanceof RegExp || isBsonRegExp(value))
+    return rebuildRegex(value, "a literal regex");
   const inner = enterDepth(ctx);
   if (Array.isArray(value)) {
     checkArrayLength(value, "a literal array");
     return value.map((element) => copyOpaqueLiteral(element, inner));
   }
-  if (!isPlainObject(value)) return value; // opaque scalar (Date, ObjectId, …)
+  if (!isPlainObject(value)) return passOpaqueScalar(value, "a literal value");
   const out = {};
   for (const key of Object.keys(value)) {
     checkKey(key);
@@ -198,13 +256,14 @@ function copyOpaqueLiteral(value, ctx) {
 function copyQueryLiteral(value, ctx) {
   countNode(ctx);
   if (value === null || typeof value !== "object") return value;
-  if (value instanceof RegExp) return rebuildRegex(value, "a match regex");
+  if (value instanceof RegExp || isBsonRegExp(value))
+    return rebuildRegex(value, "a match regex");
   const inner = enterDepth(ctx);
   if (Array.isArray(value)) {
     checkArrayLength(value, "a literal array");
     return value.map((element) => copyQueryLiteral(element, inner));
   }
-  if (!isPlainObject(value)) return value; // opaque scalar (Date, ObjectId, …)
+  if (!isPlainObject(value)) return passOpaqueScalar(value, "a match value");
   const out = {};
   for (const key of Object.keys(value)) {
     checkKey(key);
@@ -239,13 +298,14 @@ function walkExpression(node, ctx) {
     return node; // field path ("$a.b") or plain literal — copied as-is
   }
   if (node === null || typeof node !== "object") return node;
-  if (node instanceof RegExp) return rebuildRegex(node, "a regex expression");
+  if (node instanceof RegExp || isBsonRegExp(node))
+    return rebuildRegex(node, "a regex expression");
   const inner = enterDepth(ctx);
   if (Array.isArray(node)) {
     checkArrayLength(node, "an expression array");
     return node.map((element) => walkExpression(element, inner));
   }
-  if (!isPlainObject(node)) return node; // opaque scalar (Date, ObjectId, …)
+  if (!isPlainObject(node)) return passOpaqueScalar(node, "an expression value");
   const keys = Object.keys(node);
   for (const key of keys) checkKey(key);
   if (!keys.some((key) => key.startsWith("$"))) {
