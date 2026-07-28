@@ -29,27 +29,33 @@
 #                  per consumer, so the consumer passes it).
 #   - allowed_edit operator leaf — gates the Update button (visible) and the
 #                  inline inputs (disabled). Defaults false.
-#   - show         build-time array of field names to render (default both;
-#                  per-field presence gated via `_build.array.includes`).
+#   - show         presence list of field names to render (default both). Accepts
+#                  a build-time literal array (form pages) OR a runtime operator
+#                  (check surfaces — see universal-fields-chips.yaml for why the
+#                  check surfaces cannot resolve this at build time), so gating is
+#                  runtime `visible` for both. A hidden input is state-pruned,
+#                  which is the behaviour we want: planFieldsUpdate treats an
+#                  absent key as "leave unchanged", so an undeclared field is
+#                  never written or cleared by an Update.
 #   - show_update_button  build-time flag — render the in-body Update button
 #                  (default true). The edit modal sets false and drives the
 #                  Update from its native footer Ok instead (Part 56 addendum).
 #   - on_complete  actions appended after the Update CallAPI (default []).
 id: universal_fields
 type: Box
-# Render nothing when the presence list is empty (the form templates also omit
-# the whole sidebar column — task 11).
+# Render nothing when the presence list is empty or not yet loaded. The form
+# templates additionally omit the whole ref at build time when the list is empty
+# (task 11), so on form pages this is belt-and-braces; on the check surfaces it is
+# the only gate.
 visible:
-  _build.if:
-    test:
-      _build.gt:
-        - _build.array.length:
-            _var:
+  _gt:
+    - _array.length:
+        _if_none:
+          - _var:
               key: show
               default: [assignees, due_date]
-        - 0
-    then: true
-    else: false
+          - []
+    - 0
 layout:
   gap: 16
 blocks:
@@ -60,16 +66,23 @@ blocks:
       gap: 16
     blocks:
       _build.array.concat:
-        # assignees → user-multi-selector (cross-module, Part 24a)
-        - _build.if:
-            test:
-              _build.array.includes:
-                on:
-                  _var:
-                    key: show
-                    default: [assignees, due_date]
-                value: assignees
-            then:
+        # assignees → user-multi-selector (cross-module, Part 24a).
+        # Wrapped in a gated Box because the cross-module component exposes no
+        # `visible` var — a local wrapper beats widening a shared API for one
+        # caller. Block ids are state paths regardless of nesting, so the wrapper
+        # does not move where the selector reads/writes. Bonus: while hidden the
+        # selector never mounts, so its user-fetch request never fires.
+        - - id: universal_fields_assignees_field
+            type: Box
+            visible:
+              _array.includes:
+                - _if_none:
+                    - _var:
+                        key: show
+                        default: [assignees, due_date]
+                    - []
+                - assignees
+            blocks:
               - _ref:
                   module: user-account
                   component: user-multi-selector
@@ -79,31 +92,28 @@ blocks:
                         - _var: state_path
                         - .assignees
                     title: Assignees
-            else: []
         # due_date → DateSelector
-        - _build.if:
-            test:
-              _build.array.includes:
-                on:
-                  _var:
-                    key: show
-                    default: [assignees, due_date]
-                value: due_date
-            then:
-              - id:
-                  _string.concat:
-                    - _var: state_path
-                    - .due_date
-                type: DateSelector
-                properties:
-                  title: Due date
-                  disabled:
-                    _eq:
-                      - _var:
-                          key: allowed_edit
-                          default: false
-                      - false
-            else: []
+        - - id:
+              _string.concat:
+                - _var: state_path
+                - .due_date
+            type: DateSelector
+            visible:
+              _array.includes:
+                - _if_none:
+                    - _var:
+                        key: show
+                        default: [assignees, due_date]
+                    - []
+                - due_date
+            properties:
+              title: Due date
+              disabled:
+                _eq:
+                  - _var:
+                      key: allowed_edit
+                      default: false
+                  - false
         # Update button — rendered only when the consumer hosts the action in the
         # body (show_update_button: true). The edit MODAL passes false and runs
         # the SAME sequence from its native footer Ok instead. The action
