@@ -1,6 +1,15 @@
 # onFinish hook: upsert the full conversation keyed by conversationId, scoped
 # by userId. No-ops headlessly (CallAgent runs have no conversationId). The
 # title is derived from the first user message on insert.
+#
+# userId comes from _user, never from the hook payload. This endpoint is
+# type: Api — HTTP-callable by any authenticated user — and the write is an
+# upsert, so a payload-supplied userId would let a caller who knows another
+# user's id insert attacker-authored conversations into that user's sidebar
+# (a fresh uuid needs no existing document) or overwrite one whose id leaked.
+# Hooks run through invokeEndpoint with the request context, so _user resolves
+# here exactly as it does in a browser-invoked endpoint. Same derivation as
+# set-conversation-title, so both write the same identity key.
 id: save-conversation
 type: Api
 routine:
@@ -20,15 +29,17 @@ routine:
         _id:
           _payload: conversationId
         userId:
-          _payload: userId
+          _if_none:
+            - _user: sub
+            - _user: id
       update:
         $set:
           messages:
             _payload: messages
           userId:
-            _payload: userId
-          agentId:
-            _payload: agentId
+            _if_none:
+              - _user: sub
+              - _user: id
           updatedAt:
             _date: now
         $setOnInsert:

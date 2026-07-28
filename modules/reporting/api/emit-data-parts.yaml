@@ -66,7 +66,10 @@ routine:
           - :log: A chart pipeline failed at turn end — its chart is skipped.
   # buildDataParts holds the fetched rows already, so it needs no catalog: it
   # re-checks the inert spec shapes and verifies each chart's x/y contract
-  # against its rows (throwing an actionable error the agent self-corrects on).
+  # against its rows. A spec that fails is skipped inside buildDataParts, not
+  # thrown — the agent's turn is over so it cannot self-correct, and a throw
+  # here would lose every chart and download of the turn (handleAgentChat only
+  # console.warns a failed hook).
   - :set_state:
       data_parts:
         _analytics.buildDataParts:
@@ -98,8 +101,13 @@ routine:
           filter:
             _id:
               _payload: conversationId
+            # From _user, never the payload — see save-conversation. This
+            # endpoint is HTTP-callable, so a payload-supplied userId would let
+            # a caller $push dataParts into another user's conversation.
             userId:
-              _payload: userId
+              _if_none:
+                - _user: sub
+                - _user: id
           update:
             $push:
               dataParts:
