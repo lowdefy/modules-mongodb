@@ -8,7 +8,7 @@ Apps never `_ref` these files directly.
 
 ### Internal-only
 
-Components are referenced by name in action `form:` blocks; they are **not** exposed via `_module.componentId`. Apps wanting custom fields ship a regular Lowdefy custom block plugin and reference it as `component: <plugin-name>:foo` in `form:` blocks. The form-builder resolver passes through any `component:` name it doesn't recognise as a library component.
+Components are referenced by name in action `form:` blocks; they are **not** exposed via `_module.componentId`. There is no `component:` namespace for plugin blocks — `component:` resolves only against this library, and an unrecognised name is a build error, not a pass-through. Apps add custom fields with a raw inline block or a consumer-supplied field component; see [docs/workflows/reference/form-components.md §Custom components](../../../../docs/workflows/reference/form-components.md#custom-components).
 
 See [workflows-module-concept/action-authoring/spec.md §"Form components library"](../../../../designs/workflows-module-concept/action-authoring/spec.md).
 
@@ -697,14 +697,9 @@ Inline button. Renders a `Button`.
 
 ## Custom components
 
-Apps that need a domain-specific component ship it as a regular Lowdefy custom component in their plugin and reference it in `form:` blocks via `component: <plugin-name>:device_selector`. The form-builder resolver passes through any `component:` name it doesn't recognise as a library component.
+There is no `component:` namespace for plugin blocks. Apps add a domain-specific field either as a raw inline Lowdefy block in the `form:` array, or as a consumer-supplied field component `_ref`'d in from the app side. Both use this library's authoring vocabulary — `key` becomes the block id and the `form_meta` key, `title` is the overview label — and the form-builder maps them in `substituteRawBlock`.
 
-```yaml
-form:
-  - component: my-plugin:device_selector
-    key: form.device
-    title: Device
-```
+See [docs/workflows/reference/form-components.md §Custom components](../../../../docs/workflows/reference/form-components.md#custom-components) for the contract, worked examples, and the two limits (visible labels, nesting).
 
 ## See also
 
