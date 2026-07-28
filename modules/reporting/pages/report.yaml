@@ -22,7 +22,7 @@ blocks:
           - Paragraph
           - Statistic
           - EChart
-          - AgGridAlpine
+          - AgGridBalham
           - Selector
           - DateRangeSelector
           - Button

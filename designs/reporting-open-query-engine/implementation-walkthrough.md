@@ -235,7 +235,7 @@ client.
 - KPI → `Statistic` (L308-339), with separators resolved at compile time via
   `Intl.NumberFormat.formatToParts` (`intlSeparators`, L146-160) so the native
   Statistic formatting matches the table's runtime `_intl` output.
-- chart → `EChart` (L341-356); table → `AgGridAlpine` (L358-370); markdown →
+- chart → `EChart` (L341-356); table → `AgGridBalham` (L358-370); markdown →
   `Markdown`; download → `Button` + `CallAPI` + `DownloadCsv` (L414-438).
 - Filters collect into their own full-width row at the top (L443-452) regardless
   of spec position.

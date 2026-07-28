@@ -31,13 +31,21 @@ import { verifyChartContract } from "./verifyContract.js";
  *   results   — per-chart row arrays, aligned with `charts` (the hook's :for
  *               AnalyticsPipeline step results; sparse entries skip their chart).
  *   downloads — export specs ({ label?, description?, query }).
- *   roles     — viewer roles (unused without a catalog; kept for symmetry).
+ *   roles     — viewer roles, forwarded to the spec validators. They consume
+ *               it only when a `catalog` is also supplied (validateQuery runs
+ *               validatePipeline with it); this caller passes none, because
+ *               the pipelines already ran through AnalyticsPipeline. It stays
+ *               in the signature so the parameter cannot go missing if a
+ *               catalog is ever threaded through here.
  *
- * At most MAX_DATA_PARTS_SPECS chart/export specs are processed per turn.
+ * At most MAX_DATA_PARTS_SPECS charts and MAX_DATA_PARTS_SPECS downloads are
+ * processed per turn — separate budgets, so a chart-heavy turn cannot starve
+ * the downloads it also produced.
  */
 function buildDataParts({ charts = [], results = [], downloads = [], roles }) {
   const parts = [];
-  let budget = MAX_DATA_PARTS_SPECS;
+  let chartBudget = MAX_DATA_PARTS_SPECS;
+  let downloadBudget = MAX_DATA_PARTS_SPECS;
 
   let resultsArray = results ?? [];
   if (!Array.isArray(resultsArray) && typeof resultsArray === "object") {
@@ -46,7 +54,7 @@ function buildDataParts({ charts = [], results = [], downloads = [], roles }) {
 
   // A skipped spec does not spend budget — it produced no part.
   (charts ?? []).forEach((spec, index) => {
-    if (budget <= 0) return;
+    if (chartBudget <= 0) return;
     const rows = resultsArray[index];
     if (rows === null || rows === undefined) return;
     try {
@@ -56,18 +64,18 @@ function buildDataParts({ charts = [], results = [], downloads = [], roles }) {
         type: "data-report-chart",
         data: { title, option: buildEChartsOption({ chart, x, y, rows }) },
       });
-      budget -= 1;
+      chartBudget -= 1;
     } catch {
       // Skip this chart; the turn's other parts still reach the panel.
     }
   });
 
   (downloads ?? []).forEach((spec) => {
-    if (budget <= 0) return;
+    if (downloadBudget <= 0) return;
     try {
       const { label, description, query } = validateExportSpec({ spec, roles });
       parts.push({ type: "data-report-download", data: { label, description, query } });
-      budget -= 1;
+      downloadBudget -= 1;
     } catch {
       // Skip this download; the turn's other parts still reach the panel.
     }

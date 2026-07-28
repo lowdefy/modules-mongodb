@@ -5,6 +5,10 @@
 export const MAX_SECTIONS = 24;
 export const MAX_LABEL_LENGTH = 200;
 export const MAX_MARKDOWN_LENGTH = 5000;
+// Per-KIND cap on the chart / download specs one turn may emit as dataParts.
+// Per kind, not shared: emit-data-parts already slices 8 charts and 8
+// downloads independently, and a single shared budget meant eight charts
+// starved every download in the same turn.
 export const MAX_DATA_PARTS_SPECS = 8;
 export const MAX_IN_VALUES = 100;
 export const MAX_FILTER_OPTIONS = 50;

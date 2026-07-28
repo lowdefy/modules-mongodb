@@ -22,21 +22,26 @@ import validateReportSpec from "./validateReportSpec.js";
  * AnalyticsPipeline regardless. All methods are pure; validation failures throw
  * with messages the model (via tool errors) or the app author can act on.
  */
-const functions = {
-  buildDataParts,
-  compileReport,
-  querySections,
-  validateChartSpec,
-  validateExportSpec,
-  validateReportSpec,
-};
+// A Map, not a plain object: `functions[methodName]` resolves inherited keys,
+// so `_analytics.constructor` would look up Object and invoke it. methodName
+// comes from build-time YAML rather than user input, so this was not
+// exploitable — but the sibling allowlist files mandate Set/Map membership over
+// object indexing precisely so no caller has to re-derive that each time.
+const functions = new Map([
+  ["buildDataParts", buildDataParts],
+  ["compileReport", compileReport],
+  ["querySections", querySections],
+  ["validateChartSpec", validateChartSpec],
+  ["validateExportSpec", validateExportSpec],
+  ["validateReportSpec", validateReportSpec],
+]);
 
 function _analytics({ params, location, methodName }) {
-  const fn = functions[methodName];
+  const fn = functions.get(methodName);
   if (!fn) {
     throw new Error(
       `Operator Error: _analytics.${methodName} is not supported at ${location}. ` +
-        `Supported methods: ${Object.keys(functions).join(", ")}.`
+        `Supported methods: ${[...functions.keys()].join(", ")}.`
     );
   }
   if (params === null || typeof params !== "object" || Array.isArray(params)) {

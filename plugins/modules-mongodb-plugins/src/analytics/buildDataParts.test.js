@@ -65,15 +65,18 @@ test("skips charts whose query failed (sparse results)", () => {
   expect(parts).toHaveLength(1);
 });
 
-test("processes at most 8 specs per turn", () => {
+test("caps charts and downloads separately, so charts cannot starve downloads", () => {
   const rows = [{ status: "paid", count: 1 }];
   const parts = buildDataParts({
-    charts: Array.from({ length: 6 }, () => chartSpec),
-    results: Array.from({ length: 6 }, () => rows),
-    downloads: Array.from({ length: 6 }, () => exportSpec),
+    charts: Array.from({ length: 12 }, () => chartSpec),
+    results: Array.from({ length: 12 }, () => rows),
+    downloads: Array.from({ length: 12 }, () => exportSpec),
     roles,
   });
-  expect(parts).toHaveLength(8);
+  const kinds = parts.map((p) => p.type);
+  expect(kinds.filter((k) => k === "data-report-chart")).toHaveLength(8);
+  // Under one shared budget of 8 this was 0 — the charts consumed it all.
+  expect(kinds.filter((k) => k === "data-report-download")).toHaveLength(8);
 });
 
 // The turn's parts are built in an onFinish hook whose errors handleAgentChat

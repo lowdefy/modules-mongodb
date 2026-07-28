@@ -1,6 +1,7 @@
 import compileReport from "./compileReport.js";
 import querySections from "./querySections.js";
 import testCatalog from "./testDatasets.js";
+import { PIPELINE_RESULT_CAP } from "./constants.js";
 
 const roles = ["analyst"];
 const endpointId = "reporting/query-data";
@@ -78,7 +79,7 @@ test("compiles the full report to blocks", () => {
   });
 
   // Table bound to the status filter: deferred __if_none of __state and snapshot.
-  expect(byId.s3.type).toBe("AgGridAlpine");
+  expect(byId.s3.type).toBe("AgGridBalham");
   expect(byId.s3.properties.rowData).toEqual({
     __if_none: [{ __state: "sections.s3.rows" }, results[2]],
   });
@@ -126,7 +127,7 @@ test("failed sections render as Alert cards while the rest render", () => {
   expect(byId.s1.type).toBe("Alert");
   expect(byId.s1.properties.message).toBe("Revenue by Region");
   expect(byId.s0.type).toBe("Statistic");
-  expect(byId.s3.type).toBe("AgGridAlpine");
+  expect(byId.s3.type).toBe("AgGridBalham");
 });
 
 test("a contract mismatch (missing column) renders that section as an Alert card", () => {
@@ -157,7 +158,7 @@ test("zero rows and null value cells render normally (no verification failure)",
   expect(byId.s0.type).toBe("Statistic");
   expect(byId.s0.properties.value).toBe(0);
   expect(byId.s1.type).toBe("EChart");
-  expect(byId.s3.type).toBe("AgGridAlpine");
+  expect(byId.s3.type).toBe("AgGridBalham");
 });
 
 test("normalizes object-shaped (sparse step) results", () => {
@@ -265,4 +266,44 @@ test("an unusable locale on a table column degrades that section to an Alert", (
   const section = blocks.find((b) => b.id === "s0");
   expect(section.type).toBe("Alert");
   expect(section.properties.description).toMatch(/Column "total" has an unusable number format/);
+});
+
+// A table showing exactly PIPELINE_RESULT_CAP rows reads as the complete answer
+// when it is really the engine's appended $limit. Say so in the heading.
+test("a section landing on the row cap says so in its heading", () => {
+  const rows = Array.from({ length: PIPELINE_RESULT_CAP }, (_, i) => ({
+    region: `r${i}`,
+    total: i,
+  }));
+  const cappedSpec = {
+    title: "T",
+    sections: [
+      {
+        type: "table",
+        label: "Orders",
+        query: ordersByRegion,
+        columns: [{ key: "region" }, { key: "total" }],
+      },
+    ],
+  };
+  const blocks = compileReport({
+    spec: cappedSpec,
+    results: [rows],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
+  expect(blocks.find((b) => b.id === "s0_heading").properties.content).toBe(
+    `Orders — first ${PIPELINE_RESULT_CAP} rows`,
+  );
+
+  // A short result keeps the plain label.
+  const short = compileReport({
+    spec: cappedSpec,
+    results: [rows.slice(0, 3)],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
+  expect(short.find((b) => b.id === "s0_heading").properties.content).toBe("Orders");
 });

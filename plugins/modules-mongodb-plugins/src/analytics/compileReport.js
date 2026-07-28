@@ -1,5 +1,6 @@
 import {
   MAX_FILTER_OPTIONS,
+  PIPELINE_RESULT_CAP,
   REPORT_CURRENCY,
   REPORT_DECIMALS,
   REPORT_LOCALE,
@@ -29,7 +30,11 @@ import {
  *   catalog    — the collections catalog, used ONLY to resolve select-filter
  *                options from a field's enum `values` (a display convenience —
  *                NOT the security gate, which is the per-section AnalyticsPipeline).
- *   roles      — the viewing user's roles (passed through for symmetry).
+ *   roles      — the viewing user's roles, forwarded to validateReportSpec.
+ *                Inert here by design: this call deliberately passes no
+ *                catalog (see below), and roles only take effect alongside
+ *                one. Kept so the pair travels together — querySections does
+ *                pass both.
  *   endpointId — the scoped query-data endpoint id CallAPI targets for filter
  *                re-queries and downloads (the module passes _module.endpointId).
  *
@@ -197,15 +202,23 @@ function filterOptions(filter, sections, catalog) {
   return (values ?? []).slice(0, MAX_FILTER_OPTIONS);
 }
 
-// EChart and AgGridAlpine have no `title` property (their schemas set
+// EChart and AgGridBalham have no `title` property (their schemas set
 // additionalProperties: false), so a section's label renders as a preceding
 // Title block — the same pattern the chat results panel uses for charts.
-function sectionHeading(section) {
+function sectionHeading(section, rows) {
+  // The engine appends a trailing $limit, so a section whose result lands
+  // exactly on the cap was probably truncated. Say so in the heading: a table
+  // silently showing its first 1000 rows reads as the complete answer, and a
+  // reader has no way to tell the difference.
+  const capped = Array.isArray(rows) && rows.length >= PIPELINE_RESULT_CAP;
+  const content = capped
+    ? `${section.label} — first ${PIPELINE_RESULT_CAP} rows`
+    : section.label;
   return {
     id: `${section.id}_heading`,
     type: "Title",
     layout: { span: 24 },
-    properties: { content: section.label, level: 5 },
+    properties: { content, level: 5 },
   };
 }
 
@@ -367,7 +380,7 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
           rows: [],
         });
         option.dataset.source = dataBinding(section, rows);
-        bodyBlocks.push(sectionHeading(section));
+        bodyBlocks.push(sectionHeading(section, rows));
         bodyBlocks.push({
           id: section.id,
           type: "EChart",
@@ -377,10 +390,10 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
       }
 
       if (section.type === "table") {
-        bodyBlocks.push(sectionHeading(section));
+        bodyBlocks.push(sectionHeading(section, rows));
         bodyBlocks.push({
           id: section.id,
-          type: "AgGridAlpine",
+          type: "AgGridBalham",
           layout: { span: 24 },
           properties: {
             rowData: dataBinding(section, rows),

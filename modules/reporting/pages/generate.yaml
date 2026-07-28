@@ -30,6 +30,15 @@ blocks:
       title: Generate report
       icon: AiOutlineRobot
       block: true
+    # Disabled until there is something to generate from: an empty TextArea
+    # sends request: null, which the agent happily turns into an arbitrary
+    # report built from a prompt ending "Request: null".
+    disabled:
+      _eq:
+        - _if_none:
+            - _state: request
+            - ""
+        - ""
     events:
       onClick:
         - id: run_oneshot
