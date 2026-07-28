@@ -102,8 +102,17 @@ blocks:
                 payload:
                   conversationId:
                     _event: key
+            # Drop a response that is no longer for the selected conversation.
+            # Selecting A then B quickly runs two of these chains concurrently;
+            # if A's response lands after B's SetState, state becomes B's id
+            # with A's transcript. AgentChat syncs external messages, so the
+            # next send would persist A's transcript under B.
             - id: set_results
               type: SetState
+              skip:
+                _ne:
+                  - _event: key
+                  - _state: conversationId
               params:
                 messages:
                   _api:

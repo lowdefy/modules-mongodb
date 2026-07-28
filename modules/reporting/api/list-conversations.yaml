@@ -7,8 +7,8 @@
 id: list-conversations
 type: Api
 routine:
-  # Scope by sub ?? id to match the write key: the agent hooks store userId as
-  # _payload.userId, which the framework derives as user.sub ?? user.id.
+  # Scope by sub ?? id to match the write key: save-conversation and
+  # emit-data-parts derive userId the same way from _user.
   - :if:
       _eq:
         - _if_none:
