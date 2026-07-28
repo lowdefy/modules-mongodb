@@ -225,14 +225,35 @@ function failedSectionBlock(section, description) {
   };
 }
 
+// ICU rejects an unknown currency code ("$") or a malformed locale tag with a
+// RangeError. Both are AI-supplied and validateReportSpec only checks they are
+// STRINGS — not that ICU accepts them — so probe the descriptor here, where
+// verifySection's caller turns a throw into one Alert card. A KPI's descriptor
+// would otherwise reach intlSeparators() below, outside that try, and take the
+// whole report down; a table column's would survive compilation and throw
+// inside _intl in the browser instead.
+function verifyFormatUsable(format, where) {
+  if (!format) return;
+  const display = numberDisplay(format);
+  try {
+    new Intl.NumberFormat(display.locale, numberFormatOptions(display));
+  } catch (error) {
+    throw new Error(`${where} has an unusable number format: ${error.message}`);
+  }
+}
+
 // Verifies the section's declared contract against its rows; throws on mismatch.
 function verifySection(section, rows) {
   if (section.type === "kpi") {
     verifyKpiContract({ valueKey: section.valueKey, rows });
+    verifyFormatUsable(section.format, "This KPI");
   } else if (section.type === "chart") {
     verifyChartContract({ x: section.x, y: section.y, rows });
   } else if (section.type === "table") {
     verifyTableContract({ columns: section.columns, rows });
+    for (const column of section.columns) {
+      verifyFormatUsable(column.format, `Column "${column.key}"`);
+    }
   }
 }
 

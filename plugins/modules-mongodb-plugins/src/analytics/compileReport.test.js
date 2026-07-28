@@ -204,3 +204,65 @@ test("kpi bound to a filter defers its value through state", () => {
     __if_none: [{ __state: "sections.s1.rows.0.total" }, 10],
   });
 });
+
+// format.currency / format.locale are AI-supplied and validateReportSpec only
+// checks they are strings — ICU decides whether they are usable. An unusable
+// descriptor must degrade the one section, never the report: for a KPI the
+// RangeError would otherwise escape compileReport entirely (intlSeparators runs
+// outside the per-section try), and for a table column it would survive
+// compilation and throw inside _intl in the browser.
+test("an unusable KPI currency degrades that section to an Alert, not the report", () => {
+  const badSpec = {
+    title: "T",
+    sections: [
+      {
+        type: "kpi",
+        label: "Total",
+        query: orderTotal,
+        valueKey: "total",
+        format: { style: "currency", currency: "$" },
+      },
+      { type: "kpi", label: "Good", query: orderTotal, valueKey: "total", format: zarFormat },
+    ],
+  };
+  const blocks = compileReport({
+    spec: badSpec,
+    results: [[{ total: 10 }], [{ total: 20 }]],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
+  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  expect(byId.s0.type).toBe("Alert");
+  expect(byId.s0.properties.description).toMatch(/unusable number format/);
+  // The rest of the report still renders.
+  expect(byId.s1.type).toBe("Statistic");
+  expect(byId.report_title.properties.content).toBe("T");
+});
+
+test("an unusable locale on a table column degrades that section to an Alert", () => {
+  const badSpec = {
+    title: "T",
+    sections: [
+      {
+        type: "table",
+        label: "Orders",
+        query: ordersByRegion,
+        columns: [
+          { key: "region" },
+          { key: "total", format: { style: "decimal", locale: "not a locale" } },
+        ],
+      },
+    ],
+  };
+  const blocks = compileReport({
+    spec: badSpec,
+    results: [[{ region: "EU", total: 1 }]],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
+  const section = blocks.find((b) => b.id === "s0");
+  expect(section.type).toBe("Alert");
+  expect(section.properties.description).toMatch(/Column "total" has an unusable number format/);
+});
