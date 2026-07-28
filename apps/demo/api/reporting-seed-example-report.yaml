@@ -21,7 +21,9 @@ type: Api
 routine:
   - :if:
       _eq:
-        - _user: id
+        - _if_none:
+            - _user: sub
+            - _user: id
         - null
     :then:
       - :reject: You must be signed in to seed the example report.
@@ -33,9 +35,13 @@ routine:
         _id:
           _string.concat:
             - "example-orders-report-"
-            - _user: id
+            - _if_none:
+                - _user: sub
+                - _user: id
         userId:
-          _user: id
+          _if_none:
+            - _user: sub
+            - _user: id
   - id: insert_report
     type: MongoDBInsertOne
     connectionId: reporting-reports
@@ -44,9 +50,13 @@ routine:
         _id:
           _string.concat:
             - "example-orders-report-"
-            - _user: id
+            - _if_none:
+                - _user: sub
+                - _user: id
         userId:
-          _user: id
+          _if_none:
+            - _user: sub
+            - _user: id
         title: Orders overview (seeded example)
         description: >
           A worked example over the seeded demo_orders collection — a KPI, a
@@ -171,8 +181,12 @@ routine:
       reportId:
         _string.concat:
           - "example-orders-report-"
-          - _user: id
+          - _if_none:
+              - _user: sub
+              - _user: id
       url:
         _string.concat:
           - "/reporting/report?reportId=example-orders-report-"
-          - _user: id
+          - _if_none:
+              - _user: sub
+              - _user: id
