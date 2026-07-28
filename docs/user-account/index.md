@@ -56,6 +56,11 @@ operator console). Both run against the same `contact` / `user` / `member` /
 - **Accept invitation** (`accept` page) — public, takes `?invitationId=…`, serves
   the `authPages.acceptInvitation` role so the invitation email's accept link
   targets it. Ensures a session, then fires one `AcceptInvitation` client action.
+  Its sign-in / create-account buttons carry the invited address on to the
+  `login` / `signup` page as `?email=…`, where the email field is **prefilled and
+  locked** — the invitation is only accepted for a session on that address, so
+  under `policy: tenant` registering a different one would hand that user their
+  own organization and leave the invitation unusable.
 - **Account workspace** (`view` page) — one page, section-scoped edits:
   **Profile** (contact fields), **Security** (email + verification, change
   password, 2FA, passkeys, linked accounts — read-only), **Sessions** (active

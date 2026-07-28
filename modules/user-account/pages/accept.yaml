@@ -148,7 +148,13 @@ _ref:
           fontSize: 13
           color: "var(--ant-color-text-secondary)"
       # Sign up / sign in, then return to this page (invitationId preserved) so
-      # the signed-in render can accept.
+      # the signed-in render can accept. Both buttons also carry the invited
+      # address as `?email=`, which the signup and login pages prefill and lock:
+      # BetterAuth only accepts the invitation for a session on that address, so
+      # any other value is guaranteed to fail — and under `policy: tenant`
+      # registering a different address mints that user their own organization
+      # (no membership, no pending invitation for it), leaving them with an
+      # unusable invitation and an organization nobody asked for.
       - id: accept_signup
         type: Button
         visible:
@@ -179,6 +185,8 @@ _ref:
                     else:
                       _module.pageId: login
                 urlQuery:
+                  email:
+                    _state: invite.email
                   callbackUrl:
                     _string.concat:
                       - "/"
@@ -204,6 +212,8 @@ _ref:
                 pageId:
                   _module.pageId: login
                 urlQuery:
+                  email:
+                    _state: invite.email
                   callbackUrl:
                     _string.concat:
                       - "/"
