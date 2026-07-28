@@ -12,7 +12,7 @@ blocks:
       # Empty-picture fallback: the Avatar block's built-in icon. In practice this
       # rarely fires — any user created through profile/contact creation already has
       # a generated gradient+initial SVG stored in profile.picture.
-      icon: UserOutlined
+      icon: AiOutlineUser
   - id: name
     type: Title
     visible:

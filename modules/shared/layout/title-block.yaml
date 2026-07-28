@@ -45,6 +45,47 @@ blocks:
                       else:
                         back: true
         else: []
+    # Subject avatar (optional) — the person or entity the page is about, to the
+    # left of the status pill and title. Built only when `avatar_src` is wired, so
+    # pages with no subject produce no block. `icon` is the Avatar block's own
+    # fallback for a null src (a user whose picture has not been generated yet).
+    - _build.if:
+        test:
+          _build.ne:
+            - _var:
+                key: avatar_src
+                default: null
+            - null
+        then:
+          - id: title-avatar
+            type: Avatar
+            layout:
+              flex: 0 0 auto
+              # Centre against the taller eyebrow+title column rather than
+              # stretching to the full row height (the row's default cross-axis
+              # alignment is stretch) — same reason as the pill below.
+              selfAlign: middle
+            loading:
+              _var:
+                key: loading
+                default: false
+            skeleton:
+              type: Skeleton
+              properties:
+                width: 48
+                height: 48
+              # Skeleton has no shape prop, so the circle comes from the element.
+              style:
+                .element:
+                  borderRadius: "50%"
+            style:
+              marginRight: 12
+            properties:
+              size: 48
+              src:
+                _var: avatar_src
+              icon: AiOutlineUser
+        else: []
     # Status pill (optional) — caller supplies a status slug + a status-enum
     # map; the pill resolves label + the three-colour contract internally and
     # renders to the left of the title. Built only when `status_enum` is wired,
@@ -168,19 +209,38 @@ blocks:
                     direction: column
                     gap: 8
                   blocks:
-                    - type: Skeleton
-                      properties:
-                        height: 26
-                        width: 280
-                    - type: Skeleton
-                      properties:
-                        height: 13
-                        width: 360
+                    _build.array.concat:
+                      - - type: Skeleton
+                          properties:
+                            height: 26
+                            width: 280
+                      # Second bar only when a subtitle will actually arrive —
+                      # otherwise the skeleton promises a line that never renders.
+                      - _build.if:
+                          test:
+                            _build.or:
+                              - _build.ne:
+                                  - _var:
+                                      key: description
+                                      default: null
+                                  - null
+                              - _build.ne:
+                                  - _var:
+                                      key: doc
+                                      default: null
+                                  - null
+                          then:
+                            - type: Skeleton
+                              properties:
+                                height: 13
+                                width: 360
+                          else: []
                 properties:
                   html:
                     _nunjucks:
                       template: |
                         <h2 class="text-2xl font-semibold" style="margin: 0;">{{ title | safe }}</h2>
+                        {% if description or doc.updated.user.name or doc.created.user.name %}
                         <div class="text-text-secondary text-sm">
                           {% if description %}
                             {{ description | safe }}
@@ -194,6 +254,7 @@ blocks:
                             {% endif %}
                           {% endif %}
                         </div>
+                        {% endif %}
                       on:
                         title:
                           _var: title

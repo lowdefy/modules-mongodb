@@ -11,6 +11,8 @@ _ref:
           {% if profile %}{{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
         on:
           _request: get_contact.0
+    avatar_src:
+      _request: get_contact.0.profile.picture
     loading:
       _not:
         _request: get_contact

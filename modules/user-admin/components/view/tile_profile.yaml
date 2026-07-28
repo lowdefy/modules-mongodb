@@ -1,7 +1,7 @@
 # Profile tile (design Decision 3) — contact fields (fields.profile), read-only
 # in SmartDescriptions. Edit opens modal_profile (write-profile routine, wired
-# in task 13). Fields = shared form_core (name parts) + locked email identity +
-# consumer fields.profile, matching the sibling contacts view.
+# in task 13). Fields = locked email identity + consumer fields.profile, matching
+# the sibling contacts view. The name is not a field here — it is the page title.
 _ref:
   module: layout
   component: card
@@ -35,11 +35,6 @@ _ref:
             _request: get_user_detail.0
           fields:
             _build.array.concat:
-              - _ref:
-                  path: ../shared/profile/form_core.yaml
-                  vars:
-                    show_honorific:
-                      _module.var: fields.show_honorific
               # No `type` — let SmartDescriptions auto-detect the email value and
               # render it as an email (a forced TextInput/string renderer
               # title-cases the first letter, which is wrong for an address).

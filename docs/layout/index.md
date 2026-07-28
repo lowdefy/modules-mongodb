@@ -63,16 +63,17 @@ See `apps/demo/modules/layout/vars.yaml` for a worked example.
 
 The `page` component renders a shared title bar above the content. Key per-page props (passed via `_ref` vars, not module vars):
 
-| Prop               | Type    | Default | Purpose                                                                                                                                |
-| ------------------ | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `title`            | string  | `null`  | Entity name/identifier — the `<h2>` heading. Never concatenate type + name here.                                                       |
-| `type`             | string  | `null`  | Entity-type "eyebrow" rendered uppercase above the title. Convention: view → entity type; edit → `Edit {type}`; create → `New {type}`. |
-| `status`           | string  | `null`  | Status slug looked up in `status_enum`.                                                                                                |
-| `status_enum`      | object  | `null`  | Status-enum map with `{ color, borderColor, titleColor, title }` entries.                                                              |
-| `doc`              | object  | `null`  | Change-stamp doc (`{ created, updated }`) for the subtitle line.                                                                       |
-| `loading`          | boolean | `false` | Shimmer skeletons on title/subtitle/pill while data loads.                                                                             |
-| `page_actions`     | array   | `[]`    | Action blocks to the right of the title.                                                                                               |
-| `show_back_button` | boolean | `false` | Back button to the left of the title.                                                                                                  |
+| Prop               | Type    | Default | Purpose                                                                                                                                        |
+| ------------------ | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`            | string  | `null`  | Entity name/identifier — the `<h2>` heading. Never concatenate type + name here.                                                               |
+| `type`             | string  | `null`  | Entity-type "eyebrow" rendered uppercase above the title. Convention: view → entity type; edit → `Edit {type}`; create → `New {type}`.         |
+| `avatar_src`       | string  | `null`  | Image src for a 48px subject avatar left of the status pill. Wire it on pages about a person; falls back to a user icon when the src is empty. |
+| `status`           | string  | `null`  | Status slug looked up in `status_enum`.                                                                                                        |
+| `status_enum`      | object  | `null`  | Status-enum map with `{ color, borderColor, titleColor, title }` entries.                                                                      |
+| `doc`              | object  | `null`  | Change-stamp doc (`{ created, updated }`) for the subtitle line.                                                                               |
+| `loading`          | boolean | `false` | Shimmer skeletons on title/subtitle/pill while data loads.                                                                                     |
+| `page_actions`     | array   | `[]`    | Action blocks to the right of the title.                                                                                                       |
+| `show_back_button` | boolean | `false` | Back button to the left of the title.                                                                                                          |
 
 ## Auth page
 

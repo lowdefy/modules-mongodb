@@ -15,7 +15,7 @@ blocks:
       size: 64
       src:
         _var: avatar_src
-      icon: UserOutlined
+      icon: AiOutlineUser
   - id: identity_text
     type: Box
     layout:

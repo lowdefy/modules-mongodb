@@ -24,7 +24,7 @@ slots:
         properties:
           title: Go to home page
           type: Link
-          icon: HomeOutlined
+          icon: AiOutlineHome
         events:
           onClick:
             - id: home

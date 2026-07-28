@@ -33,13 +33,18 @@ _ref:
     events:
       onMount:
         _ref: actions/refetch_account.yaml
-    # Title-block: "Account" + subtitle. The mock's avatar is a proposed
-    # title-block slot the shared component does not offer today — not added
-    # here (a shared-component change is out of scope for this page), matching
-    # the user-admin view. Edits are section-scoped (Decision 5), so the
+    # Title-block: avatar + "ACCOUNT" eyebrow + the caller's own name. `title`
+    # carries the entity name only — the page's own label is the eyebrow's job
+    # (docs/layout/index.md). Edits are section-scoped (Decision 5), so the
     # page-actions slot stays empty.
-    title: Account
-    description: Manage your profile, sign-in, and sessions
+    type: Account
+    title:
+      _request: get_account.0.name
+    avatar_src:
+      _request: get_account.0.profile.picture
+    loading:
+      _not:
+        _request: get_account
     breadcrumbs:
       - home: true
         icon: AiOutlineHome

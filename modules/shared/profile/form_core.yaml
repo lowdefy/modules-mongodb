@@ -1,3 +1,5 @@
+# Core profile fields — the honorific and name parts, as a form row.
+#
 # Wrapped in a full-width Box so the name fields keep their own tight gap
 # regardless of the gap the consuming card/modal sets for its other children.
 # span: 24 is required — without it the Box shrinks to content and the child
