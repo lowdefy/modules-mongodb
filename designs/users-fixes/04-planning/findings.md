@@ -20,38 +20,21 @@ scan for the F3 signature returns zero.
 
 ---
 
-## F26 — Custom Members-table column renders a header but no data; the slot contract has a design gap
+## F26 — Custom Members-table column renders a header but no data → designed
 
-The demo injects a Department column via `apps/demo/modules/user-admin/vars.yaml`
-→ `components.table_columns: [{ headerName: Department, field: department, width:
-140 }]` ("worked example of the `table_columns` slot"). The column header shows,
-but every cell is empty — even though the profile carries `department`
-(DB-verified: `contact.profile.department` / `users.profile.department`).
+The demo's Department column (`apps/demo/modules/user-admin/vars.yaml`,
+`components.table_columns`) shows a header with empty cells: the members list row
+carries no `department` and no `profile` bag, and nothing connects a custom column
+to a projection. The same gap is worse on the export, where `download_columns` has
+no escape hatch at all.
 
-Root cause: `get_all_members`
-(`modules/user-admin/requests/stages/members_base.yaml`) flattens only
-name/picture/email/roles_arr/status/created/updated/signed_up — it does **not**
-surface `department`, nor a top-level `profile` bag, so a column bound to
-`field: department` finds nothing. Nothing connects the custom column to a
-projection: the demo's `request_stages` sets only `write: []`, and the base stage
-can't hardcode a consumer's custom field.
-
-**This is a design gap in the slot contract, not just a demo omission.** Adding a
-`table_columns` entry silently gives an empty column unless the consumer _also_
-remembers to project the field via `request_stages.get_all_users` — opt-in
-correctness that drifts, which is exactly what happened here.
-
-**Prefer "one correct way":** have `members_base` carry the `profile` bag (or the
-configured `fields.profile` set) onto the row so any `field: profile.<x>` column
-just works.
-
-**Secondary — field-path inconsistency:** the active slot uses `field: department`
-while the orphan `apps/demo/modules/user-admin/components/table_columns.yaml` uses
-`field: profile.department` (apparently unused). Reconcile to one shape once the
-row contract is decided.
-
-Per the repo rule that every capability ships a build-verified worked example,
-the `table_columns` example should be one whose data resolves end-to-end.
+**Designed → [`../table-row-contract/design.md`](../table-row-contract/design.md).**
+The design gives every members read one shared row shape carrying the `profile`,
+`user_attributes` and `member_attributes` bags under the same names as the
+`fields.*` vars, so a column's `field:` is the same string as the form block id
+that collects it. It also closes the raw `user` / `contact` join payloads that
+every row currently ships, and fixes the export's missing `request_stages`
+injection.
 
 ---
 
