@@ -341,7 +341,7 @@ the close and can keep matching `user.*` / `contact.*`). Four things change:
 
 One migration covers 1, 2 and 4: lift the value to a top-level key in a `get_all_users` `$addFields`,
 which still runs before the close in every read. Goes in
-[`docs/user-admin/how-to/migration.md`](../../../docs/user-admin/how-to/migration.md), and the
+[`docs/user-admin/how-to/migration.md`](../../../../docs/user-admin/how-to/migration.md), and the
 changeset is a minor (the module is pre-1.0 at 0.17.0) carrying the same note. Keep the note short —
 that page already tells a v0.x consumer to expect re-authoring their module config rather than tweaking
 it, so these paths land on config that is being rewritten anyway.
@@ -412,8 +412,8 @@ developer to make — not part of the build gate.
 
 ## Related
 
-- F26 in [`../04-planning/findings.md`](../04-planning/findings.md) — the originating finding.
-- [`designs/user-account-better-auth/design.md`](../../user-account-better-auth/design.md) — parent
+- F26 in [`../04-planning/findings.md`](../../04-planning/findings.md) — the originating finding.
+- [`designs/user-account-better-auth/design.md`](../../../user-account-better-auth/design.md) — parent
   rebuild; Decisions 1/2/3 define the members reads this design reshapes.
-- [`docs/user-admin/concepts/co-location.md`](../../../docs/user-admin/concepts/co-location.md) — the
+- [`docs/user-admin/concepts/co-location.md`](../../../../docs/user-admin/concepts/co-location.md) — the
   same-database precondition the `$lookup`s depend on.

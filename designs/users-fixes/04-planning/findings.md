@@ -20,47 +20,6 @@ scan for the F3 signature returns zero.
 
 ---
 
-## F26 — Custom Members-table column renders a header but no data → designed
-
-The demo's Department column (`apps/demo/modules/user-admin/vars.yaml`,
-`components.table_columns`) shows a header with empty cells: the members list row
-carries no `department` and no `profile` bag, and nothing connects a custom column
-to a projection. The same gap is worse on the export, where `download_columns` has
-no escape hatch at all.
-
-**Designed → [`../table-row-contract/design.md`](../table-row-contract/design.md).**
-The design gives every members read one shared row shape carrying the `profile`,
-`user_attributes` and `member_attributes` bags under the same names as the
-`fields.*` vars, so a column's `field:` is the same string as the form block id
-that collects it. It also closes the raw `user` / `contact` join payloads that
-every row currently ships, and fixes the export's missing `request_stages`
-injection.
-
----
-
-## F13 — Onboarding profile fields should be configurable (required / optional / hidden)
-
-Today onboarding's `fields.profile` (first/last name, etc.) are required, and
-`profile.profile_created` gates entry to the app — so every consumer must collect
-the same fields to get past onboarding.
-
-Add config (a module var, likely alongside the existing profile-field config) so a
-deployment can mark each onboarding field **required**, **optional**, or
-**hidden** — including hiding the whole step for apps that don't want to collect a
-name up front.
-
-**Default stays required** (fine for this deployment); this is about giving
-consumers the escape hatch, not changing the default.
-
-**Open design question:** how is `profile_created` satisfied when all fields are
-optional or hidden — mark complete on first visit, or require an explicit
-continue? Resolve this in the design, don't defer to implementation.
-
-Pairs with **F6** (`02-polish/`): once name is dropped from signup, onboarding is
-the single place it's captured, so its configurability matters more.
-
----
-
 ## F2 — No resend-verification affordance for a locked-out unverified user
 
 A user who signed up, lost or missed the verification email, and later returns to
@@ -106,60 +65,6 @@ pre-existing ones) so an unrelated edit doesn't force their removal, **or** make
 removal the explicit required action with a friendly message ("Role 'old' is no
 longer configured — remove it to save"). At minimum, map `ROLE_NOT_FOUND` to
 human copy naming the offending role.
-
----
-
-## F17 — User avatar dropped from the `/user-account/view` header; the shared page-title component doesn't render it
-
-The implementing agent chose not to edit the shared `page_title` component
-(reasonable — it's cross-module surface), so the signed-in user's avatar is no
-longer rendered in the page header here, and by extension isn't shown consistently
-everywhere the shared header appears.
-
-**Decide where the avatar belongs:** extend the shared page-title/header component
-to render the user avatar (so it appears uniformly across pages — the "one correct
-way"), or add a sanctioned avatar slot that pages opt into.
-
-Needs a design call on the shared header contract.
-
-Pairs with **F14** — even once the header renders an avatar, there's no stored
-`profile.picture` to show.
-
----
-
-## F14 — Avatar selection is never persisted: no `profile.picture` is ever produced
-
-The whole avatar chain the header depends on is `state.profile.picture` →
-`update-profile` API → `write-profile` merges it onto the contact and re-denorms
-it to `users.image` (`modules/shared/contact/write-profile.yaml:104`) → header
-reads `_user.image` (`components/profile-avatar.yaml`,
-`components/user-avatar.yaml`).
-
-**But nothing ever produces `profile.picture`.** In onboarding
-(`pages/onboarding.yaml`) the avatar is only a live CSS-gradient preview: the
-"Change colour" button cycles a top-level `avatar_color_index` state key (seeded
-in `onInit`, L27 / L82–107) that is **(a)** not under `state.profile`, so it's
-excluded from the `payload.profile: _state: profile` save (L172–175), and **(b)**
-never converted into a stored `picture` SVG.
-
-A repo-wide grep for `picture` (re-verified 2026-07-27) finds only _readers_ —
-no generator anywhere. Confirmed against the DB after a full onboarding submit:
-the contact and user `profile` bags have every typed field but **no `picture` /
-`image`**, and the header shows the fallback icon.
-
-Net: the avatar feature is non-functional end-to-end — the colour choice is
-ephemeral and no image is stored.
-
-**Fix needs to** (1) generate the gradient + initial SVG (from initials and the
-chosen `avatar_colors` entry) and (2) write it into `state.profile.picture` (or
-the save payload) so `write-profile` can denorm it.
-
-**Also:** update the stale claim in `user-avatar.yaml:12-14` that "any user …
-already has a generated gradient+initial SVG stored in profile.picture" —
-currently untrue.
-
-Distinct from **F9** (`05-ui-rework/`), which is the picker's _aesthetics_; F14 is
-that its output is never saved.
 
 ---
 
