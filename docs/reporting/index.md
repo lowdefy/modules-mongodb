@@ -37,7 +37,7 @@ Reports are created from the chat surface: the agent's `generate_report` tool pe
 # lowdefy.yaml
 modules:
   - id: reporting
-    source: "github:lowdefy/modules-mongodb/modules/reporting@v0.9.2"
+    source: "github:lowdefy/modules-mongodb/modules/reporting@v0.20.0"
     vars:
       catalog:
         _ref: modules/reporting/catalog.yaml
