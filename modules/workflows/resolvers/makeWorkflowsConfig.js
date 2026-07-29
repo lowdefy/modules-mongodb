@@ -36,6 +36,11 @@ const ACTION_FIELDS = [
   // so GetWorkflowAction can render it (read-time nunjucks) as the envelope's
   // `description`. Lives on `actionConfig.description`, never on the action doc.
   "description",
+  // Part 73: the optional-comment presence flag. Same category as `description`
+  // and `universal_fields` — author config carried onto the blob so
+  // GetWorkflowAction can resolve it per read for the shared check surfaces,
+  // which have no build-time action identity. Never on the action doc.
+  "show_comment",
 ];
 
 const WORKFLOW_FIELDS = [
@@ -637,6 +642,17 @@ function validateAction(workflow, action) {
     fail(
       workflow.type,
       `${where} allow_not_required must be a boolean (got: ${JSON.stringify(action.allow_not_required)}).`,
+    );
+  }
+
+  // Part 73: the optional-comment presence flag. Boolean when present, default
+  // true. Authored on any kind; honoured on form (edit / review pages) and check
+  // (both shared surfaces); accepted-but-unrendered on custom / tracker, which
+  // render no comment box at all — the same posture as `description` above.
+  if ("show_comment" in action && typeof action.show_comment !== "boolean") {
+    fail(
+      workflow.type,
+      `${where} show_comment must be a boolean when present (got: ${JSON.stringify(action.show_comment)}).`,
     );
   }
 

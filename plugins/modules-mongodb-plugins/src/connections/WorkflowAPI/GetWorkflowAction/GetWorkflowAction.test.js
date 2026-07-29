@@ -107,6 +107,9 @@ function makeWorkflowsConfig() {
           // Declares a partial presence list. The check surfaces are shared
           // across actions, so this must reach them via the envelope.
           universal_fields: ["due_date"],
+          // Opts out of the optional comment box (Part 73) — same reasoning:
+          // the shared check surfaces can only learn this from the envelope.
+          show_comment: false,
           access: { "test-app": { view: true, edit: ["account-manager"] } },
         },
         {
@@ -549,6 +552,52 @@ describe("envelope shape", () => {
       buildContext({ request: { action_id: "a1" }, workflowsConfig: [] }),
     );
     expect(result.universal_fields).toEqual(["assignees", "due_date"]);
+  });
+
+  // ── show_comment presence flag ─────────────────────────────────────────────
+  // Same category as universal_fields: author config resolved per read, never
+  // persisted, and the only per-action source the shared check surfaces have.
+  test("show_comment defaults to true when the author declares none", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.show_comment).toBe(true);
+  });
+
+  test("show_comment: false is carried through", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "check-step", kind: "check" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.show_comment).toBe(false);
+  });
+
+  test("show_comment comes from config, not the action doc", async () => {
+    await seedWorkflow();
+    // A stale/bogus value on the doc must be ignored — the doc is never the
+    // source, so an author's config change can't be shadowed by stored state.
+    await seedAction({
+      _id: "a1",
+      type: "check-step",
+      kind: "check",
+      show_comment: true,
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.show_comment).toBe(false);
+  });
+
+  test("show_comment defaults to true when the action has no config entry", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" }, workflowsConfig: [] }),
+    );
+    expect(result.show_comment).toBe(true);
   });
 
   test("description is rendered from config (read-time nunjucks), not the doc", async () => {

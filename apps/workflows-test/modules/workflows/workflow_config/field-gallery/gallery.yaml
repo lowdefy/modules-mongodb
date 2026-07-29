@@ -135,11 +135,14 @@ form:
         value: true
       - label: No
         value: false
-  # Exercises checkbox_selector's direction var (stacked instead of a flowed row).
+  # Exercises checkbox_selector's direction var (stacked instead of a flowed row)
+  # plus its label_inline / label_span vars.
   - key: form.checkbox_selector
     component: checkbox_selector
     title: Checkboxes
     direction: vertical
+    label_inline: true
+    label_span: 12
     options:
       - label: Email
         value: email

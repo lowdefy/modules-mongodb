@@ -2448,6 +2448,60 @@ test("makeWorkflowsConfig: non-string description throws, action named", () => {
   ).toThrow(/do-it/);
 });
 
+// ── Part 73: show_comment presence flag ──────────────────────────────────────
+// Carried onto the blob so GetWorkflowAction can resolve it for the shared check
+// surfaces, which have no build-time action identity.
+
+function showCommentWorkflow(show_comment, kind = "form") {
+  return {
+    ...validWorkflow,
+    actions: [
+      {
+        type: "do-it",
+        kind,
+        ...(kind === "form" ? { form: [{ id: "x", type: "TextInput" }] } : {}),
+        ...(show_comment !== undefined ? { show_comment } : {}),
+      },
+    ],
+  };
+}
+
+test("makeWorkflowsConfig: show_comment false is carried onto the action config", () => {
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [showCommentWorkflow(false)],
+  });
+  expect(out.actions[0].show_comment).toBe(false);
+});
+
+test("makeWorkflowsConfig: show_comment omitted is absent from the config", () => {
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [showCommentWorkflow(undefined)],
+  });
+  expect("show_comment" in out.actions[0]).toBe(false);
+});
+
+test("makeWorkflowsConfig: show_comment false is carried on a check-kind action", () => {
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [showCommentWorkflow(false, "check")],
+  });
+  expect(out.actions[0].show_comment).toBe(false);
+});
+
+test("makeWorkflowsConfig: non-boolean show_comment (string) throws, action named", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [showCommentWorkflow("false")] }),
+  ).toThrow(/show_comment must be a boolean/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [showCommentWorkflow("false")] }),
+  ).toThrow(/do-it/);
+});
+
+test("makeWorkflowsConfig: non-boolean show_comment (number) throws on a check action too", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [showCommentWorkflow(0, "check")] }),
+  ).toThrow(/show_comment must be a boolean/);
+});
+
 // Part 50: denormalised sort indices attached to each action config entry.
 test("makeWorkflowsConfig: attaches decl_index and group_index onto each action config entry", () => {
   const workflow = {

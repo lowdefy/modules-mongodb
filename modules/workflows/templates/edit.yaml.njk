@@ -275,9 +275,7 @@ _ref:
                                   mode: edit
                             - _build.if:
                                 test:
-                                  _var:
-                                    key: action_config.show_comment
-                                    default: true
+                                  _var: action_config.show_comment
                                 then:
                                   - _ref:
                                       path: components/comment-input.yaml
@@ -315,9 +313,7 @@ _ref:
                                       mode: edit
                                 - _build.if:
                                     test:
-                                      _var:
-                                        key: action_config.show_comment
-                                        default: true
+                                      _var: action_config.show_comment
                                     then:
                                       - _ref:
                                           path: components/comment-input.yaml

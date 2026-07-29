@@ -80,6 +80,28 @@ form:
   - key: form.site_visit_required
     component: yes_no_selector
     title: Site visit needed?
+  # Raw inline Lowdefy block — the escape hatch for a one-off field the library
+  # doesn't cover. No `component:`, so it's emitted as a block; `key` becomes
+  # the block id (and the form_meta key, so the value round-trips), and `title`
+  # is the overview label. The visible label is the block's own
+  # `properties.title` — the module can't inject one, since not every block
+  # type accepts it.
+  - key: form.confidence
+    title: Confidence
+    type: RatingSlider
+    properties:
+      title: Confidence
+      max: 5
+      disableIcons: true
+  # Consumer-supplied field component — same authoring vocabulary as the
+  # library, contributed from the app side. See the file for why the seam lives
+  # here rather than behind a `component:` name.
+  - _ref:
+      path: modules/workflows/fields/deal_temperature.yaml
+      key: config
+      vars:
+        key: form.deal_temperature
+        title: Deal temperature
 hooks:
   submit:
     pre:

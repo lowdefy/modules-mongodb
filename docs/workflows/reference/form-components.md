@@ -9,7 +9,7 @@ concepts: [form, components, fields, form-builder]
 
 Built-in field components for action `form:` blocks. The form-builder resolver substitutes each component's block config (with author-supplied vars merged) into the page block tree at build time.
 
-Apps never `_ref` these files directly. A domain-specific field not in this library is added one of two ways: contribute a library component, or — as an escape hatch — write a raw Lowdefy block inline in the `form:` array (see [Custom components](#custom-components)).
+Apps never `_ref` these files directly. A domain-specific field not in this library is added one of three ways: contribute a library component, write a raw Lowdefy block inline in the `form:` array, or ship a consumer-supplied field component from the app side (see [Custom components](#custom-components)).
 
 **Universal action fields (`assignees`, `due_date`) are not form components** — they render in the page templates via the page chrome. Do not include them in `form:` blocks. The authored action [`description`](authoring-grammar.md#description-description) is likewise not a form component — it is set at the action root, not in `form:`.
 
@@ -243,18 +243,21 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 ### `checkbox_selector`
 
-Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row.
+Multi-select checkbox group. Renders a `CheckboxSelector`. Label `colon` is hardcoded `false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row. When `required: true`, required-validation fires on empty array; caller-supplied `validate` is concatenated with that rule.
 
-| Var         | Type    | Required / Default |
-| ----------- | ------- | ------------------ |
-| `key`       | string  | required           |
-| `title`     | string  | —                  |
-| `visible`   | boolean | `true`             |
-| `required`  | boolean | `false`            |
-| `options`   | array   | `[]`               |
-| `extra`     | string  | —                  |
-| `direction` | string  | `horizontal`       |
-| `on_change` | array   | `[]`               |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `validate`     | array   | `[]`               |
+| `options`      | array   | `[]`               |
+| `extra`        | string  | —                  |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
+| `direction`    | string  | `horizontal`       |
+| `on_change`    | array   | `[]`               |
 
 ```yaml
 - component: checkbox_selector
@@ -727,8 +730,18 @@ Inline button. Renders a `Button`.
 
 There is no `component:` namespace for plugin blocks — `component:` resolves only against this library. For anything not covered here:
 
-- **Reused field?** Contribute a library component (a `components/fields/*.yaml` file) so it gets a bare `component:` name and is shared across actions. If a Lowdefy plugin block renders it, wrap that block in the library component.
-- **One-off?** Drop a raw Lowdefy block directly into the `form:` array. Unlike the library entries, a raw block has no `component:` key — you write its real `id`, `type`, and `properties`. The `id` doubles as the state path, the same convention library components apply to `key`. Any block, including a plugin block, works:
+- **Reused across apps?** Contribute a library component (a `components/fields/*.yaml` file) so it gets a bare `component:` name. If a Lowdefy plugin block renders it, wrap that block in the library component.
+- **One-off?** Drop a raw Lowdefy block into the `form:` array (below).
+- **App-specific but reused within the app?** Ship a consumer-supplied field component (below).
+
+### Raw inline blocks
+
+A raw block has no `component:` key — you write its `type` and `properties` directly. Any block type works, including a plugin block. Use the module's field vocabulary rather than block keys:
+
+| Author writes | Becomes                                 | Why                                                           |
+| ------------- | --------------------------------------- | ------------------------------------------------------------- |
+| `key`         | the block `id`, and the `form_meta` key | Binds page state **and** makes the submitted value round-trip |
+| `title`       | `form_meta` label only                  | The overview/review display label                             |
 
 ```yaml
 form:
@@ -736,8 +749,48 @@ form:
     key: device_section
     title: Device
     form:
-      - id: form.device # state path, same convention as library `key`
+      - key: form.device # -> block id, and the form_meta key
+        title: Device # -> overview label
         type: my-plugin:device_selector # plugin block type — resolved by the plugin registry
         properties:
+          title: Device # the block's own visible label
           collection: devices
 ```
+
+Neither `key` nor `title` is a valid Lowdefy block property (the block schema is `additionalProperties: false`, requiring `id` + `type`), so the form-builder maps `key` → `id` and strips both before the node reaches the page tree. Writing `key` **and** `id` on the same entry is an error.
+
+**Use `key`, not a bare `id`.** Only `key` is recorded in `form_meta`, and `GetWorkflowAction` allowlists the stored `form_data` slice by those keys — a field the metadata never saw still saves, but its value is never read back, so it does not prefill on re-edit and does not render in the overview or review views.
+
+Two limits worth knowing:
+
+- **The block's visible label is its own business** (`properties.title` on the antd input blocks). The entry-level `title` is metadata only, because not every block type accepts a title and the module can't inject one generically.
+- **Mapping applies at `form:` entry positions only** — top-level entries and the `form:` of a [structural component](#structure). Inside a raw block's own `blocks:` array you are in plain Lowdefy: use `id`. A `key` nested there would bind state but never reach `form_meta`, so its value would be silently dropped. To group fields, use `component: box` or `component: section`, whose children are walked.
+
+### Consumer-supplied field components
+
+A field that is specific to one app but used by several of its actions doesn't belong in this library, and a module `_ref` cannot escape its own package root — so the app contributes it. The app owns a file that emits a form entry, and the action `_ref`s it; the ref resolves in app context, so the path is app-relative and the module needs no registry of it.
+
+```yaml
+# apps/{app}/modules/workflows/fields/deal_temperature.yaml
+config:
+  key: { _var: key }
+  title: { _var: title }
+  type: SegmentedSelector
+  properties:
+    title: { _var: title }
+    options: [Cold, Warm, Hot]
+```
+
+```yaml
+form:
+  - _ref:
+      path: modules/workflows/fields/deal_temperature.yaml
+      key: config
+      vars:
+        key: form.deal_temperature
+        title: Deal temperature
+```
+
+The emitted entry is a raw block, so the `key`/`title` contract above applies unchanged — which is what gives these components full parity with the library: state binding, value round-trip, overview rendering, id-collision checking, and `viewOnly`.
+
+See `apps/demo/modules/workflows/fields/deal_temperature.yaml` and its use in `sales-pipeline/qualify.yaml` for a worked example of both this and the raw-block form.

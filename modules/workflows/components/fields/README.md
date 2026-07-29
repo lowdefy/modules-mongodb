@@ -8,7 +8,7 @@ Apps never `_ref` these files directly.
 
 ### Internal-only
 
-Components are referenced by name in action `form:` blocks; they are **not** exposed via `_module.componentId`. Apps wanting custom fields ship a regular Lowdefy custom block plugin and reference it as `component: <plugin-name>:foo` in `form:` blocks. The form-builder resolver passes through any `component:` name it doesn't recognise as a library component.
+Components are referenced by name in action `form:` blocks; they are **not** exposed via `_module.componentId`. There is no `component:` namespace for plugin blocks — `component:` resolves only against this library, and an unrecognised name is a build error, not a pass-through. Apps add custom fields with a raw inline block or a consumer-supplied field component; see [docs/workflows/reference/form-components.md §Custom components](../../../../docs/workflows/reference/form-components.md#custom-components).
 
 See [workflows-module-concept/action-authoring/spec.md §"Form components library"](../../../../designs/workflows-module-concept/action-authoring/spec.md).
 
@@ -257,17 +257,20 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 #### `checkbox_selector`
 
-Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row.
+Multi-select checkbox group. Renders a `CheckboxSelector`. Label `colon` is hardcoded `false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row. When `required: true`, required-validation fires on empty array; caller-supplied `validate` is concatenated with that rule.
 
-| Var         | Type    | Required / Default |
-| ----------- | ------- | ------------------ |
-| `key`       | string  | required           |
-| `title`     | string  | —                  |
-| `visible`   | boolean | `true`             |
-| `required`  | boolean | `false`            |
-| `options`   | array   | `[]`               |
-| `extra`     | string  | —                  |
-| `direction` | string  | `horizontal`       |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `validate`     | array   | `[]`               |
+| `options`      | array   | `[]`               |
+| `extra`        | string  | —                  |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
+| `direction`    | string  | `horizontal`       |
 
 ```yaml
 - component: checkbox_selector
@@ -697,14 +700,9 @@ Inline button. Renders a `Button`.
 
 ## Custom components
 
-Apps that need a domain-specific component ship it as a regular Lowdefy custom component in their plugin and reference it in `form:` blocks via `component: <plugin-name>:device_selector`. The form-builder resolver passes through any `component:` name it doesn't recognise as a library component.
+There is no `component:` namespace for plugin blocks. Apps add a domain-specific field either as a raw inline Lowdefy block in the `form:` array, or as a consumer-supplied field component `_ref`'d in from the app side. Both use this library's authoring vocabulary — `key` becomes the block id and the `form_meta` key, `title` is the overview label — and the form-builder maps them in `substituteRawBlock`.
 
-```yaml
-form:
-  - component: my-plugin:device_selector
-    key: form.device
-    title: Device
-```
+See [docs/workflows/reference/form-components.md §Custom components](../../../../docs/workflows/reference/form-components.md#custom-components) for the contract, worked examples, and the two limits (visible labels, nesting).
 
 ## See also
 
