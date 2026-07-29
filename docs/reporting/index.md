@@ -46,6 +46,31 @@ modules:
 
 Declaring a collection in the catalog is the act of exposing it. The agent joins across collections directly via declared `relationships`; for a fixed grain (exact counts) or to hide fields, catalog a read-only MongoDB view — see [Reporting over complex data](how-to/complex-data.md).
 
+### Project context for the agent
+
+The catalog describes the _data_. The optional `app_context` var describes the _business_ — it is injected verbatim into the agent's instructions at build time, under an "About this application" heading between the agent's role and the pipeline-authoring rules:
+
+```yaml
+vars:
+  catalog:
+    _ref: modules/reporting/catalog.yaml
+  app_context: >
+    Acme Freight brokers truckload shipments for shippers and carriers.
+
+
+    Vocabulary users will type: "loads" mean shipments; "customers" mean
+    shippers; "margin" means revenue minus carrier cost.
+
+
+    Conventions to assume unless the user says otherwise: the fiscal year
+    starts in April; a shipment is "open" until it is delivered and invoiced;
+    exclude test accounts (`account.is_test: true`).
+```
+
+Use it for what the catalog cannot express: what the app is for, domain vocabulary and the synonyms users will actually type, business rules the agent should assume (fiscal year, which statuses count as "open", how "active" is defined), and preferences for how to answer. Keep per-field mechanics — types, enum values, display hints, which array holds the current status — in the catalog, where they sit next to the field they describe.
+
+Omitting the var omits the section; the agent works without it. It is prompt material only, never validation: nothing written here widens what the agent may query, which remains exactly what `catalog` declares.
+
 ### Connections
 
 The module bundles four connections; only two point at data you must supply:

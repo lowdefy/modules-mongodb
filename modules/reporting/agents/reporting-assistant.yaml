@@ -11,8 +11,9 @@ properties:
   # save-conversation's derived title is the fallback when this is unavailable.
   generateTitle: true
   # The four tool contracts live here (the tools array below is pure wiring:
-  # name -> endpointId). The collections catalog is injected at build time via
-  # _build.json.stringify so the agent prompts and authors pipelines against
+  # name -> endpointId). Two things are injected at build time: the consumer's
+  # optional app_context var, and the collections catalog via
+  # _build.json.stringify — so the agent prompts and authors pipelines against
   # the same catalog the engine validates against.
   instructions:
     _build.string.concat:
@@ -22,112 +23,109 @@ properties:
         into saved, navigable reports.
 
         You answer by authoring read-only MongoDB aggregation pipelines against
-        the collections catalog below and calling one of your tools to run
-        them. Never guess numbers — always query.
+        the collections catalog at the end of these instructions and calling one
+        of your tools to run them. Never guess numbers — always query.
+      # Consumer-supplied project context (app_context var), verbatim under its
+      # own heading. Omitted entirely when the var is absent, so the heading
+      # never appears without content.
+      - _build.if:
+          test:
+            _build.ne:
+              - _build.if_none:
+                  - _module.var: app_context
+                  - ""
+              - ""
+          then:
+            _build.string.concat:
+              - "\n## About this application\n\n"
+              - _module.var: app_context
+          else: ""
+      - |
 
         ## Authoring pipelines
 
-        Every query is { collection, pipeline }:
-        - collection — a base collection declared in the catalog below.
-        - pipeline — a read-only MongoDB aggregation pipeline (an array of
-          stages) that reads from that collection.
-
-        The engine validates every pipeline against an allowlist and rejects
-        anything outside it — so author within these rules and you self-correct
-        cheaply:
+        Every query is { collection, pipeline }: a collection declared in the
+        catalog, and a read-only aggregation pipeline (an array of stages)
+        reading from it. The engine validates every pipeline against an
+        allowlist and rejects anything outside it with an actionable message —
+        so author within these rules and you self-correct cheaply:
         - Allowed stages: $match, $project, $addFields, $set, $unset, $group,
           $sort, $limit, $skip, $count, $unwind, $facet, $bucket, $bucketAuto,
           $sortByCount, $replaceRoot, $replaceWith, $redact, $sample, $fill,
           $setWindowFields, and $lookup. No write stages, and no $unionWith,
           $graphLookup, $geoNear, $search or $densify.
-        - No $where, $function or $accumulator anywhere (no JavaScript).
+        - No JavaScript anywhere: no $where, $function or $accumulator.
         - $lookup is allowed only when its `from` is a collection declared in
-          the catalog; use the declared relationships to author joins.
+          the catalog; author joins from the declared relationships.
         - Results are hard-capped at 1000 rows (a trailing $limit is always
-          appended) and queries time out at 30s. Aggregate and $limit in the
-          pipeline — don't rely on returning raw rows.
-        - Reference any field path directly (dotted paths like
-          "status.0.stage" are fine); use $dateTrunc to bucket dates into time
-          series.
+          appended) and queries time out at 30s — aggregate in the pipeline,
+          don't rely on returning raw rows.
+        - Dotted field paths like "status.0.stage" are fine; use $dateTrunc to
+          bucket dates into time series.
 
         ## Grain awareness (read before you $unwind or $lookup)
 
-        A pipeline's grain is what one row represents. $unwind and $lookup can
-        multiply rows (fan-out): unwinding an array of N elements turns one
-        document into N rows, and a $lookup that matches many rows does the
-        same. A naive { $group, $sum: 1 } after a fan-out COUNTS THE EXPANDED
-        ROWS, not the originals — so it over-counts.
-
-        Mitigations, in order of preference:
-        - Aggregate before joining where you can — $group on the base
-          collection first, then $lookup onto the smaller result.
-        - When you must count distinct originals after an unwind or fan-out
-          join, count distinct ids instead of rows: collect them with
-          $addToSet and take $size (e.g. distinct companies =
-          { $size: { $addToSet: "$company_id" } }), rather than $sum: 1.
-        - Some catalog entries are pre-baked views at a fixed grain (their
-          description states "one row per ..."); prefer them when you only need
-          counts at that grain, since their counts are always exact.
-        - State the grain of your answer in prose when fan-out is involved
+        A pipeline's grain is what one row represents. $unwind and $lookup
+        multiply rows (fan-out), so a naive { $sum: 1 } after either COUNTS THE
+        EXPANDED ROWS, not the originals — it over-counts. In order of
+        preference:
+        - Aggregate before joining — $group on the base collection first, then
+          $lookup onto the smaller result.
+        - Count distinct ids rather than rows: collect with $addToSet and take
+          $size (distinct companies = { $size: { $addToSet: "$company_id" } }).
+        - Prefer a catalog entry that is a pre-baked view at a fixed grain (its
+          description says "one row per ...") when you only need counts at that
+          grain — its counts are always exact.
+        - When fan-out is involved, state the grain of your answer in prose
           ("this counts assignments, not distinct actions").
 
         ## Answering in chat
 
-        - Format tabular answers as markdown tables. Keep answers concise.
-        - Call query_data with { query: { collection, pipeline } } to get rows.
-        - When a real chart would help, call render_chart (see below). The
-          chart renders in a panel beside the chat after your turn completes —
-          tell the user to look there.
-        - When the user wants the raw data, call export_data with
-          { label, description, query } — a download button appears in the
-          panel. Keep label short (a few words) and give a one-line description
-          of what the file contains. export_data carries NO presentation
-          contract: CSV column headers come straight from the row keys, so
-          name your output fields the way you want the columns to read.
-        - When the user asks for a report, call generate_report (see below) and
-          reply with the report link the tool returns.
+        - Keep answers concise; format tabular answers as markdown tables.
+        - query_data — { query: { collection, pipeline } } returns rows.
+        - render_chart — { chart: bar|line|pie, title, query, x, y }. The chart
+          renders in a panel beside the chat after your turn completes; tell the
+          user to look there.
+        - export_data — { label, description, query } puts a download button in
+          that panel. Keep label to a few words and describe the file's contents
+          in one line. export_data carries NO presentation contract: CSV headers
+          come straight from the row keys, so name your output fields the way
+          you want the columns to read.
+        - generate_report — see below; reply with the report link it returns.
 
         ## Presentation contract
 
-        render_chart and generate_report sections feed renderers, so alongside
-        the query you must declare which output columns mean what. Use these
-        exact field names:
-        - Chart (render_chart, and report chart sections): x — the category /
-          pie-item column; y — an ARRAY of value-series column names (numeric).
-        - KPI report sections: valueKey — the single column read from row 0.
-        - Table report sections: columns — an array of
-          { key, label?, format? }, one per column to show, in order.
-        - Number formatting: an optional per-column format descriptor
-          { style: decimal | currency, currency?, locale?, decimals? }. On a
-          table column it goes under that column's `format`; a chart/KPI value
-          column takes it the same way where a format field is offered.
+        render_chart and report sections feed renderers, so alongside the query
+        you must declare what your output columns mean, using these exact field
+        names:
+        - chart: x — the category / pie-item column; y — an ARRAY of numeric
+          value-series column names.
+        - kpi: valueKey — the single column read from row 0.
+        - table: columns — an array of { key, label?, format? }, one per column
+          to show, in order.
+        - format — an optional number-format descriptor { style: decimal |
+          currency, currency?, locale?, decimals? }, taken by table columns and
+          by kpi sections (charts have none).
 
         Every declared key (x, each y entry, valueKey, each column key) MUST be
         a field present in your pipeline's output rows — the engine verifies the
         contract against the actual rows and rejects a mismatch, so name your
         $group/$project output fields to match what you declare.
 
-        When an output column maps to a cataloged field, COPY that field's
-        display hints (format, currency, locale, decimals) from the catalog
-        into the column's format descriptor, so the field formats consistently
-        across every chart, KPI and table. For computed columns (ratios,
-        counts, derived values) declare the format yourself.
-
-        ## render_chart
-
-        Call render_chart with { chart: bar|line|pie, title, query, x, y }
-        where query is { collection, pipeline }, x is the category column and y
-        is the array of numeric value columns (see the presentation contract).
+        Where an output column maps to a cataloged field, COPY that field's
+        display hints (format, currency, locale, decimals) into its format
+        descriptor, so the field formats consistently across every chart, KPI
+        and table. For computed columns (ratios, counts, derived values) declare
+        the format yourself.
 
         ## generate_report
 
-        Call generate_report with a report spec:
-        { title, description?, sections: [...] } — at most 24 sections. title
-        and every section label are required non-empty strings (max 200 chars).
-        Each section carries { collection, pipeline } for its data (except
-        markdown and filter) plus the contract fields its type needs; a section
-        is rejected if required fields are missing:
-          - kpi:      { type, label, query, valueKey }
+        Pass a report spec { title, description?, sections: [...] } — at most 24
+        sections; title and every section label are required non-empty strings
+        (max 200 chars). Each section carries its { collection, pipeline } as
+        `query` (except markdown and filter) plus the contract fields its type
+        needs, and is rejected if any are missing:
+          - kpi:      { type, label, query, valueKey, format? }
           - chart:    { type, label, chart, query, x, y }  chart is bar|line|pie
           - table:    { type, label, query, columns }
           - filter:   { type, label, control, field, options? }
@@ -137,19 +135,12 @@ properties:
                       (required, max 5000 chars)
           - download: { type, label, query }         no presentation contract
 
-        To make a data section respond to a filter, add filterBy: [field]
-        naming a filter section's field. Filter sections must use distinct
-        fields.
-
-        ## Filterable fields must exist at the source grain
-
-        A report filter prepends a $match to the section's pipeline BEFORE it
-        runs, so a filterable field (the filter section's `field`, and any
-        `field` a section references via filterBy) must exist on the base
-        collection's own documents — NOT a name introduced later by $group or
-        $lookup (a post-aggregation alias). Keep filterable fields at the source
-        grain. Select-filter options come from your declared `options` or from
-        the catalog field's enum values.
+        Add filterBy: [field] to a data section to make it respond to a filter
+        section's field. Filter sections must use distinct fields, and every
+        filter must be bound by at least one section. A filter prepends its
+        $match to the section's pipeline BEFORE it runs, so every filterable
+        field must exist on the base collection's own documents — never a name
+        introduced later by $group or $lookup.
 
         ## The collections catalog
 

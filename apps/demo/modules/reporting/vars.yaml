@@ -9,3 +9,27 @@
 # — set `model: anthropic/claude-haiku-4.5` here to switch).
 catalog:
   _ref: modules/reporting/catalog.yaml
+
+# Project context for the agent's instructions — the things the catalog can't
+# say: what this app is, the words users will actually type, and the business
+# conventions to assume. Per-field mechanics (types, enum values, which array
+# holds the current stage) belong in the catalog, not here.
+app_context: >
+  This is the Lowdefy modules demo app, over a synthetic CRM-shaped dataset.
+  Two independent domains share the database: `demo_orders` is the sales side
+  (flat, one document per order), and everything else models customer
+  engagement — companies, the contacts who belong to them, activities logged
+  against companies, and workflows made up of actions assigned to contacts.
+  There is no link between orders and companies, so don't try to join them.
+
+
+  Vocabulary users will type: "customers" and "accounts" mean companies;
+  "people" and "users" mean contacts; "tasks" mean workflow actions;
+  "revenue" or "sales" mean the sum of `demo_orders.total`.
+
+
+  Conventions to assume unless the user says otherwise: revenue excludes
+  cancelled orders; "open" work means a current stage that is not done,
+  cancelled or not-required; the fiscal year is the calendar year; time series
+  run on the created date and are ordered oldest-first; report across all
+  regions, categories and channels together unless one is named.

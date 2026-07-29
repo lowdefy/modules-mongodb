@@ -59,6 +59,19 @@ vars:
       collection joins at a fixed grain), declare a read-only MongoDB view as
       a first-class catalog entry — see the "reporting over complex data"
       guide.
+  app_context:
+    type: string
+    description: >
+      Project context injected verbatim into the reporting agent's
+      instructions, under an "About this application" heading between the
+      agent's role and the pipeline-authoring rules. Use it for what the
+      catalog cannot express: what the app is for, domain vocabulary and
+      synonyms users will type, business rules the agent should assume (fiscal
+      year, which statuses count as "open", how "active" is defined), and
+      preferences for how to answer. Markdown is fine. Omitted from the prompt
+      entirely when not set — the agent works without it, and it is never
+      validation: nothing here widens what the agent may query, which remains
+      exactly what `catalog` declares.
   reports_collection:
     type: string
     default: report_layouts

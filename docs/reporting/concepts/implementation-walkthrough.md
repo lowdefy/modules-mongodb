@@ -44,12 +44,12 @@ it declares a [presentation contract](../reference/presentation-contract.md)
 
 ## 2. Build time: the catalog is the whole security model
 
-`modules/reporting/module.lowdefy.yaml:35-61` declares one required var,
+`modules/reporting/module.lowdefy.yaml:35-61` declares the one required var,
 `catalog`. It is simultaneously the data dictionary, the allowlist, and the
 authorization boundary — see [The collections catalog](../reference/catalog.md).
 It gets bound in exactly two places:
 
-**Into the prompt** — `agents/reporting-assistant.yaml:160-162` appends
+**Into the prompt** — `agents/reporting-assistant.yaml:151-153` appends
 `_build.json.stringify` of the catalog to the end of the instruction string at
 build time. The agent's whole world-model of the database is this object.
 
@@ -75,11 +75,12 @@ of exposing it.
 `conversationId` (`chat.yaml:14-15`, a `_uuid`).
 
 The agent (`agents/reporting-assistant.yaml`) is an `AIGatewayAgent` with
-`maxSteps: 12`. Its `tools` array (L163-175) is pure wiring — name → endpointId.
-All four tool _contracts_ live in the instruction prose (L17-159), which is why
-the prompt is long: it teaches the pipeline grammar (L36-51), grain/fan-out
-hazards (L52-72), the presentation contract (L90-114), and the report-section
-shapes (L124-142).
+`maxSteps: 12`. Its `tools` array (L154-166) is pure wiring — name → endpointId.
+All four tool _contracts_ live in the instruction prose (L18-153), which is why
+the prompt is long: it teaches the pipeline grammar (L45-64), grain/fan-out
+hazards (L66-80), the presentation contract (L96-119), and the report-section
+shapes (L121-143). The consumer's optional `app_context` var is spliced in at
+L31-42, between the agent's role and those rules.
 
 Teaching the grammar in the prompt is deliberate — the validator's rejections are
 actionable strings, so the agent self-corrects cheaply within its step budget
@@ -146,7 +147,7 @@ re-sent on every later step and turn. Returning chart rows would blow up the
 context window for the rest of the conversation.
 
 So the rows are fetched exactly once, at turn end, by the `emit-data-parts`
-onFinish hook (`agents/reporting-assistant.yaml:176-179`):
+onFinish hook (`agents/reporting-assistant.yaml:167-170`):
 
 1. `emit-data-parts.yaml:16-50` — `_mql.expr` pulls the validated specs out of
    `toolResults` by `toolName`, capped at 8 per turn.
@@ -264,7 +265,7 @@ until a filter fires, then live ones. The triples land back at
 `AnalyticsPipeline.js:51-67`, which builds the `$match` itself and revalidates the
 combined pipeline.
 
-That is why the prompt has the section at `reporting-assistant.yaml:144-152`:
+That is why the prompt says, at `reporting-assistant.yaml:138-143`:
 since the `$match` is _prepended_, a filterable field must exist at the source
 grain, not be a post-`$group` alias — the same limitation stated in
 [The presentation contract](../reference/presentation-contract.md).
