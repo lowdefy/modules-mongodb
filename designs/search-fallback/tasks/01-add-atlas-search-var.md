@@ -49,7 +49,7 @@ Also update each module's `request_stages` parent `description:` if it repeats t
 - `atlas_search` is declared with `type: boolean`, `default: true`, and a description in all four manifests.
 - `filter_match` in `contacts`, `companies`, `activities` describes plain `$match` clauses and declares `type: array`; `deals` gains no `filter_match`.
 - No manifest still describes `filter_match` as Atlas Search compound clauses (`git grep -n "Atlas Search compound" modules/` returns nothing).
-- `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b` succeeds.
+- `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
 - Behaviour is unchanged — no request reads the new var yet.
 
 ## Files

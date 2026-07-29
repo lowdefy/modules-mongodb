@@ -15,7 +15,7 @@ Several modules build their list pages, Excel exports, and the rich contact-sele
 2. Split text search from structural filtering in all affected requests: structural filters (and the consumer filter hook) always run as a standard `$match`; only the free-text term toggles between an Atlas `$search` text stage and a case-insensitive `$regex` `$or`.
 3. Centralise the text-stage / regex-clause construction in one shared `_ref` under `modules/shared/search/` so all requests build it identically ("one correct way").
 4. Have the shared text stage emit `returnStoredSource: true` by default, with a per-caller opt-out: `activities` and `deals` pass `false` so their post-write refetches read live documents (decision 3). Skip `$search` entirely when there is no search term.
-5. Commit the Atlas Search index definitions (one `default.search.json` per searchable collection, in the ensure-index CI tool format, with `storedSource: true` on the two collections whose requests read the stored copy) and document both the search indexes and the regular `mongod` indexes the fallback/browse paths need.
+5. Document the Atlas Search index requirement per module — following the repo's existing per-module index-reference convention — alongside the regular `mongod` indexes the browse and fallback paths need. Creation stays the consuming app's job, as it already is for regular indexes.
 6. Convert the consumer filter hook (`request_stages.filter_match`) from Atlas-compound syntax to standard `$match` syntax so it works unchanged in both modes (a breaking change to that var; the demo does not use it).
 
 ## Background: how search works today
@@ -41,12 +41,12 @@ The structural clauses all have exact plain-`$match` equivalents. Only the free-
 
 The other two are **already split**:
 
-- `contacts/requests/search_contacts.yaml` (the rich-selector typeahead) — text-only `$search` followed by a standard `$match` carrying the structural filters, with its own consumer hook: the component-level `filter` var (already plain `$match`, see decision 4), not `request_stages.filter_match`. It has no `$facet`/score sort/pagination, so `score_addfields`/`use_score` are inapplicable — only the stage-1 `lead` toggle and the regex clause apply.
+- `contacts/requests/search_contacts.yaml` (the rich-selector typeahead) — text-only `$search` followed by a standard `$match` carrying the structural filters, with its own consumer hook: the component-level `filter` var (already plain `$match`, see decision 4), not `request_stages.filter_match`. It has no `$facet`/score sort/pagination, so `score_addfields`/`use_score` are inapplicable — only the stage-1 `text_lead` toggle and the regex clause apply.
 - `deals/requests/get_deals_list.yaml` — text-only `$search` followed by a `$match` whose body is already a `$and` array, then `$lookup` + `$facet`. It needs the toggle, the regex clause, and the score-sort gate (its facet `$sort` currently reads `score: -1` unconditionally, which relies on the missing field sorting as null when there is no term). Its `$search` searches `name` by text+wildcard **plus a boosted keyword-analyzer wildcard on `_id`** (the deal code), and it does not lowercase the term — see decision 2's note on `should_extra`.
 
 Decision 2's filters→`$match` restructure therefore lands on the **5** filters-in-`$search` requests; the other two are brought into the same fallback story by the toggle + regex clause alone.
 
-5 of the 7 requests already set `returnStoredSource: true`; `activities/get_activities.yaml` and `deals/get_deals_list.yaml` are the exceptions — `activities` deliberately so (`modules/activities/CHANGELOG.md:126`, PR #68), which decision 3 preserves. **No search-index definition is committed anywhere in the repo** — the `storedSource` config these requests depend on is entirely undocumented, so a fresh Atlas project (or local setup) has no reference for what to create.
+5 of the 7 requests already set `returnStoredSource: true`; `activities/get_activities.yaml` and `deals/get_deals_list.yaml` are the exceptions — `activities` deliberately so (`modules/activities/CHANGELOG.md:126`, PR #68), which decision 3 preserves. **No module documents its search-index requirement** — the `storedSource` config these requests depend on is stated nowhere, so a fresh Atlas project has no reference for what to create. (`docs/deals/index.md` is the sole partial exception: it names the `deals` search index and its fields, but predates this restructure.)
 
 ## Key decisions
 
@@ -139,7 +139,7 @@ Decision 2's emergent property narrows the exposure for every request, opted out
 
 **The footgun (documented prominently):** if `storedSource` omits a field that a post-`$search` `$match` references, `returnStoredSource` docs silently lack it. A `hidden: { $ne: true }` filter then stops excluding hidden docs (missing ≠ `true`), and positive `equals`-style filters exclude everything. Mitigation: configure **`storedSource: true`** (store the whole document) — see decision 5. The two callers that opt out of `returnStoredSource` are immune by construction: their `$match` always runs on live documents from `mongod`.
 
-**This footgun is already live, not hypothetical.** `search_contacts` today runs `returnStoredSource: true` and then `$match`es on `hidden`, `disabled`, and `global_attributes.company_ids`. With no search index committed anywhere, if the deployed `default` index doesn't store those fields the filter is _already silently wrong on Atlas_. So `storedSource: true` (decision 5) isn't only fallback-enabling — it closes a pre-existing latent correctness gap, which strengthens the case for storing the whole document by default.
+**This footgun is already live, not hypothetical.** `search_contacts` today runs `returnStoredSource: true` and then `$match`es on `hidden`, `disabled`, and `global_attributes.company_ids`. With no search index documented anywhere, if the deployed `default` index doesn't store those fields the filter is _already silently wrong on Atlas_. So `storedSource: true` (decision 5) isn't only fallback-enabling — it closes a pre-existing latent correctness gap, which strengthens the case for storing the whole document by default.
 
 ### 4. Flag shape: boolean `atlas_search`, default `true`
 
@@ -192,18 +192,25 @@ Because the structural filters are now standard `$match`, the consumer hook `req
 
 They differ on every axis — who sets it (app config vs. a page composing the selector block), which request it feeds (faceted list vs. capped typeahead), shape (array vs. object), and starting syntax — so unifying them would mean reworking the already-correct selector for no functional gain. Post-redesign both are plain `$match`, so they are consistent in _syntax_; they remain distinct in _name and layer_ by design.
 
-### 5. Index definitions: committed JSON + docs, `storedSource: true`
+### 5. Index requirements: documented per module, following the existing convention
 
-We commit one Atlas Search index definition per searchable collection, in the ensure-index CI tool format (`{ name, mappings, storedSource }`), named **`default`** (no `$search` stage specifies a non-default `index:` — most omit the option entirely and `deals/get_deals_list.yaml` sets `index: default` explicitly):
+The gap this design closes is that **nothing tells a consumer what search index to create** — the `storedSource` config the requests depend on is stated nowhere. The repo already has a convention for closing exactly that gap, and this design uses it rather than inventing a second mechanism:
 
-- `modules/contacts/search-indexes/default.search.json` → `user-contacts` (`profile.name`, `lowercase_email`). It serves both `get_all_contacts`/`get_contact_excel_data` and the `search_contacts` typeahead. It is **not** needed by `user-admin`, which reads the same `user-contacts` collection but no longer uses `$search` at all (see the scope correction) — `user-admin`'s list needs regular `mongod` indexes only, documented alongside the rest.
-- `modules/companies/search-indexes/default.search.json` → `companies` (maps **`name`** + `lowercase_email`). **Coupling to the `name_field` var:** the committed JSON is static and maps the default `name`, but `get_all_companies` searches `_module.var: name_field` (consumer-overridable). A consumer who sets `name_field` to another field must **regenerate this search index to map that field** and redeploy it to Atlas — otherwise Atlas `$search` silently returns no text matches on the overridden field, while the regex fallback (which reads the same var at query time) still works, producing a confusing mode-dependent discrepancy. This obligation is documented in decision 6's `docs/shared/search.md` and the companies module reference. (We don't template the index JSON on `name_field`: it's consumed by external index tooling, not the Lowdefy build, so there's no clean templating hook, and `name` is the near-universal default.)
-- `modules/activities/search-indexes/default.search.json` → `activities` (`title`, `description.text`).
-- `modules/deals/search-indexes/default.search.json` → `deals` (`name`, plus `_id` with a `keywordAnalyzer` multi — `get_deals_list` searches the deal code through `path: { value: _id, multi: keywordAnalyzer }`, which requires the index to declare that multi analyzer: `"_id": { "type": "string", "multi": { "keywordAnalyzer": { "type": "string", "analyzer": "lucene.keyword" } } }`).
+- `docs/user-account/reference/indexes.md` and `docs/workflows/reference/indexes.md` — per-module index reference pages, opening with the module-creates-nothing statement and giving each index its `createIndex` snippet, the query sites that need it, and why it is shaped that way.
+- `docs/deals/index.md`'s `## Required indexes` section states the division of labour outright: "The module documents the contract; the app owns creating them (e.g. under its own `actions/indexes/indexes/{app}/deals/` via `splice-actions`)." It **already documents this module's Atlas Search index** in prose.
 
-Because filters moved to `$match`, the index **mappings only need the text fields** as `string` — none of the `token`/filter-field mappings a filters-in-`$search` index would carry. For the two collections whose requests keep `returnStoredSource: true` (`user-contacts`, `companies`), every field is carried through for the `$match` by **`storedSource: true`** (store the whole document), the simplest correct default; it eliminates the missing-field footgun from decision 3 at the cost of extra index storage.
+So we document the search-index contract per module and leave creation to the app, the same way the regular `mongod` indexes are handled. **We do not commit index-definition JSON into the module tree.** That would be a second mechanism for one job, inconsistent with the regular-index half of this very decision, and it cannot deliver what committing files appears to buy: `splice-actions`' tree is `indexes/{project}/{collection}/{name}.json`, and `{project}` is per-app, so a file from this repo is never copied verbatim regardless.
 
-The `activities` and `deals` definitions **omit `storedSource`**, because those requests pass `returnStoredSource: false` (decision 3) and never read `mongot`'s stored copy — storing whole documents there would cost index storage for a path no query takes. The asymmetry is not drift: each index stores exactly what its own requests ask `mongot` to return. Example (`user-contacts`):
+Documenting rather than shipping files also removes two problems the file approach creates. The collection binding is simply a sentence (`deals` already writes "an index named `default` on `deals`") instead of something a path has to encode. And the design makes no claim about any external tool's accepted schema — `storedSource` is documented as a **requirement of the index**, which the app satisfies with whatever tooling it uses, rather than asserted to be a field `splice-actions` forwards. That claim was unverifiable from this repo: the tool's reference documents `{ name, mappings }` only, and its writer is not vendored here.
+
+Per module, the documented contract is an index named **`default`** (no `$search` stage specifies a non-default `index:` — most omit the option entirely and `deals/get_deals_list.yaml` sets `index: default` explicitly), with `dynamic: false` and **only the text fields** mapped as `string`. Because filters moved to `$match`, none of the `token`/filter-field mappings a filters-in-`$search` index would carry are needed:
+
+- **`contacts`** → the mapped `user-contacts` collection: `profile.name`, `lowercase_email`. Serves `get_all_contacts`, `get_contact_excel_data`, and the `search_contacts` typeahead. **Requires stored source covering the whole document**, because all three query with `returnStoredSource: true` and then `$match` on fields the mappings do not include — see the footgun in decision 3. Not required by `user-admin`, which reads the same collection but no longer uses `$search` at all.
+- **`companies`** → `companies`: **`name`** + `lowercase_email`, also with whole-document stored source. **Coupling to the `name_field` var:** `get_all_companies` searches `_module.var: name_field`, which a consumer can override; the documented contract maps the default `name`. A consumer who overrides it must map their field instead, or Atlas `$search` silently returns no text matches on it while the regex fallback — which reads the var at query time — still works, producing a mode-dependent discrepancy.
+- **`activities`** → `activities`: `title`, `description.text`. **No stored source needed** — `get_activities` passes `returnStoredSource: false` (decision 3), so nothing reads `mongot`'s copy and storing documents would cost index storage for a path no query takes.
+- **`deals`** → `deals`: `name`, plus `_id` with a `keywordAnalyzer` multi, since `get_deals_list` searches the deal code through `path: { value: _id, multi: keywordAnalyzer }` and that requires the index to declare the analyzer. Also no stored source, for the same reason as `activities`. This corrects the existing paragraph in `docs/deals/index.md`, which describes the pre-restructure requirement.
+
+Each page carries an illustrative mappings block — the equivalent of `user-account`'s `createIndex` snippets — so a consumer has something concrete to adapt:
 
 ```json
 {
@@ -222,14 +229,14 @@ The `activities` and `deals` definitions **omit `storedSource`**, because those 
 }
 ```
 
-**The definition is versioned with the module.** These files ship inside the module, so the definition at a given module version describes what _that version's_ pipelines require — the narrowed `dynamic: false` mappings are correct only for versions where the filters have moved into `$match`. A deployment reads the definition from the module version it actually runs, and the module CHANGELOG records that this version changes the definition, so a consumer upgrading knows to update their cluster's index and someone on an older version knows to read that version's file.
+**The contract is versioned with the module.** The documentation ships with the module, so the requirement described at a given version is what that version's pipelines need — these narrowed mappings are correct only from the version where filters move into `$match`. The module CHANGELOG records that this version changes the requirement, so a consumer upgrading knows to update their cluster's index, and someone on an older version reads that version's docs.
 
-Regular `mongod` indexes also matter — for the no-term browse path (decision 2) on Atlas _and_ for the fallback regex mode's filter/sort. These are documented per collection (fields such as `hidden`, `disabled`, `deleted.timestamp`, `removed`, `updated.timestamp`, and the configured sort fields); they are normal indexes, so they're described in docs and left to the consuming app's index tooling to format. `user-admin` needs only these — its members search is always a regex `$match`, so it has no search-index requirement at all.
+Regular `mongod` indexes matter too — for the no-term browse path (decision 2) on Atlas _and_ for the fallback regex mode's filter/sort. They go on the same four pages, in the same style (fields such as `hidden`, `disabled`, `deleted.timestamp`, `removed`, `updated.timestamp`, and each list's configured sort fields). `user-admin` has **no search-index requirement at all** — its members search is always a regex `$match` — so it gets no index reference page here; its indexes are outside this design's scope, and the only note it needs is the one in decision 6.
 
 ### 6. Documentation
 
 - `docs/shared/search.md` — new shared concept page: the `atlas_search` flag, what the fallback does and its limits (substring, no ranking, unindexed scan), the `returnStoredSource` + `storedSource: true` requirement, the missing-field footgun, and the freshness-vs-lookup trade behind `activities`/`deals` opting out of stored source (decision 3). Linked from each searchable module's `index.md`.
-- Per-module reference: the committed `default.search.json` plus the required regular `mongod` indexes. The companies reference also documents the `name_field`-override → regenerate-search-index coupling (decision 5).
+- Per-module index reference: the `default` search index requirement (mapped fields, and whether stored source is needed) plus the required regular `mongod` indexes, in the style of `docs/user-account/reference/indexes.md`. The companies page also documents the `name_field`-override → remap-the-search-index coupling (decision 5).
 - `docs/user-admin/index.md` links the same shared page, stating that the module needs **no** `atlas_search` var because its members search is always a plain-`$match` regex. Without that note a reader comparing modules reads the missing var as an oversight.
 - Manifest `description:` for the new `atlas_search` var (drives generated `docs/{module}/reference/vars.md` via `pnpm docs:gen`).
 
@@ -277,10 +284,11 @@ Because `term` is runtime, the splice points that consume `text_lead`/`score_add
 - **2 requests adjusted** (already split — toggle + regex clause, plus the score-sort gate for `deals`): `contacts/requests/search_contacts.yaml`, `deals/requests/get_deals_list.yaml`.
 - `modules/user-admin/requests/stages/members_filter.yaml` — `_object.assign` → `$and`, and its `$regex` routed through the shared `regex_value.yaml` (decision 2). No `atlas_search` var, no `$search`.
 
-**New shared + index files:**
+**New shared files:**
 
 - `modules/shared/search/*.yaml` — the text-stage builder (five files, see [§Shared builder](#shared-builder)).
-- `modules/{contacts,companies,activities,deals}/search-indexes/default.search.json`.
+
+No index-definition files are added; the index requirements are documented per module (decision 5).
 
 **Demo + docs:**
 
@@ -295,7 +303,7 @@ Because `term` is runtime, the splice points that consume `text_lead`/`score_add
 - The `basic-contact-selector` (`get_contacts_for_selector`) — already non-Atlas, unchanged.
 - Giving `user-admin` an `atlas_search` var, or moving it onto `$search` when the flag is `true`. Its members search is a plain-`$match` regex over post-`$lookup` fields, so it is already portable; reintroducing Atlas surface the module deliberately dropped would mean indexing fields that only coexist after the joins. Its unindexed-on-Atlas cost is documented, not fixed here. (The module is not untouched, though — `members_filter.yaml` adopts the `$and` idiom and the shared escaping, decision 2.)
 - Replicating relevance ranking in fallback mode — fallback intentionally uses field sort.
-- Index-management tooling — we commit index JSON in the existing ensure-index format and document the regular indexes; running them against a cluster stays the consuming app's job.
+- Index-management tooling, and shipping index-definition files — we document the search and regular index requirements per module; creating them on a cluster stays the consuming app's job, exactly as it already is for regular indexes.
 - Atlas Search features beyond `text`/`wildcard` (synonyms, fuzzy, faceting) — none are used today.
 
 ## Migration note

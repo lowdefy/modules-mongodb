@@ -2,23 +2,23 @@
 
 ## Overview
 
-These tasks implement `designs/search-fallback/design.md`: an `atlas_search` module var that selects Atlas `$search` (default) or a plain-MongoDB regex fallback, the restructure that pulls structural filters out of `$search` into a standard `$match`, a shared text-stage builder under `modules/shared/search/`, the committed Atlas Search index definitions, and the docs.
+These tasks implement `designs/search-fallback/design.md`: an `atlas_search` module var that selects Atlas `$search` (default) or a plain-MongoDB regex fallback, the restructure that pulls structural filters out of `$search` into a standard `$match`, a shared text-stage builder under `modules/shared/search/`, the per-module Atlas Search index requirements documented in `docs/`, and the docs.
 
 ## Tasks
 
-| #   | File                             | Summary                                                                                       | Depends On    |
-| --- | -------------------------------- | --------------------------------------------------------------------------------------------- | ------------- |
-| 1   | `01-add-atlas-search-var.md`     | Add the `atlas_search` var to 4 manifests; restate `filter_match` as `$match` syntax          | —             |
-| 2   | `02-shared-search-builder.md`    | Create `modules/shared/search/*` and convert `contacts/get_all_contacts` as its first caller  | 1             |
-| 3   | `03-contacts-excel-request.md`   | Convert `contacts/get_contact_excel_data` (build-concat pipeline root, sort outside a facet)  | 2             |
-| 4   | `04-contacts-search-selector.md` | Add the toggle + regex clause to `contacts/search_contacts` (already split)                   | 2             |
-| 5   | `05-companies-requests.md`       | Convert both companies requests, incl. the `name_field` path                                  | 2             |
-| 6   | `06-activities-request.md`       | Convert `activities/get_activities`; adds `returnStoredSource` and fixes the date-range merge | 2             |
-| 7   | `07-deals-request.md`            | Add the toggle + regex clause + score-sort gate to `deals/get_deals_list`                     | 2             |
-| 8   | `08-search-index-definitions.md` | Commit `default.search.json` for the 4 searchable collections                                 | —             |
-| 9   | `09-demo-wiring.md`              | Wire demo `true` / `workflows-test` `false`; build both apps in CI                            | 3, 4, 5, 6, 7 |
-| 10  | `10-docs-and-changeset.md`       | `docs/shared/search.md`, module index links, `pnpm docs:gen`, changeset                       | 1, 8, 9       |
-| 11  | `11-user-admin-and-idiom.md`     | `user-admin`'s `members_filter` → `$and` idiom + shared regex escaping                        | 2             |
+| #   | File                             | Summary                                                                                                | Depends On    |
+| --- | -------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------- |
+| 1   | `01-add-atlas-search-var.md`     | Add the `atlas_search` var to 4 manifests; restate `filter_match` as `$match` syntax                   | —             |
+| 2   | `02-shared-search-builder.md`    | Create `modules/shared/search/*` and convert `contacts/get_all_contacts` as its first caller           | 1             |
+| 3   | `03-contacts-excel-request.md`   | Convert `contacts/get_contact_excel_data` (build-concat pipeline root, sort outside a facet)           | 2             |
+| 4   | `04-contacts-search-selector.md` | Add the toggle + regex clause to `contacts/search_contacts` (already split)                            | 2             |
+| 5   | `05-companies-requests.md`       | Convert both companies requests, incl. the `name_field` path                                           | 2             |
+| 6   | `06-activities-request.md`       | Convert `activities/get_activities`; passes `returnStoredSource: false` and fixes the date-range merge | 2             |
+| 7   | `07-deals-request.md`            | Add the toggle + regex clause + score-sort gate to `deals/get_deals_list`                              | 2             |
+| 8   | `08-search-index-definitions.md` | Document the search + regular index requirements for the 4 searchable modules                          | —             |
+| 9   | `09-demo-wiring.md`              | Wire demo `true` / `workflows-test` `false`; build both apps in CI                                     | 3, 4, 5, 6, 7 |
+| 10  | `10-docs-and-changeset.md`       | `docs/shared/search.md`, module index links, `pnpm docs:gen`, changeset                                | 1, 8, 9, 11   |
+| 11  | `11-user-admin-and-idiom.md`     | `user-admin`'s `members_filter` → `$and` idiom + shared regex escaping                                 | 2             |
 
 ## Ordering Rationale
 
@@ -31,16 +31,16 @@ These tasks implement `designs/search-fallback/design.md`: an `atlas_search` mod
 - 3 — pipeline root is a `_build.array.concat` and the `$sort` sits outside any `$facet`.
 - 4 — already split; no facet, no score, and its consumer hook is the component-level `filter` var, not `filter_match`.
 - 5 — one searched path is `{ _module.var: name_field }`, an operator rather than a literal.
-- 6 — the only request missing `returnStoredSource`, and the one whose two `updated.timestamp` bounds motivated `$and` over shallow merge.
+- 6 — passes `returnStoredSource: false` to preserve PR #68's deliberate opt-out, and is the request whose two `updated.timestamp` bounds motivated `$and` over shallow merge.
 - 7 — `deals`, added to scope at task time; carries the Atlas-only `_id` keyword clause via `should_extra`, and an unconditional `score` sort to gate.
 
 **App wiring after the requests (9).** Setting the flag before the requests honour it would leave both apps' pipelines running against a flag nothing reads. Task 9 wires each app for the database it actually runs on — `apps/demo` on Atlas (`true`), `apps/workflows-test` on its plain e2e `mongod` (`false`) — which is also what leaves both branches of the shared builder compiled, without the demo carrying config that exists only to be tested. It adds both `ldf:b` runs to CI, which today builds no app at all.
 
-**Index definitions (8) are independent** — pure new files, no config coupling — so they can run at any point; they are placed late only because task 10's docs reference them.
+**Index documentation (8) is independent** — docs only, no config coupling — so it can run at any point. It follows the repo's existing convention (`docs/user-account/reference/indexes.md`, `docs/deals/index.md`'s `## Required indexes`): the module documents the contract, the app creates the indexes. No index-definition files are committed — see design decision 5.
 
-**Docs last (10).** `docs/{module}/reference/vars.md` is generated from the manifests, so it must run after task 1, and `pnpm docs:check` runs in CI — an out-of-date generated file fails the build.
+**Docs last (10).** `docs/{module}/reference/vars.md` is generated from the manifests, so it must run after task 1, and `pnpm docs:check` runs in CI — an out-of-date generated file fails the build. It also depends on **11**, because its changeset bumps `user-admin` and describes that task's escaping fix.
 
-**`user-admin` (11) needs only task 2**, for `regex_value.yaml`. It is independent of 3-9 and can run any time after 2 — listed last because it is the one task outside the four searchable modules. It exists so the repo ends with a single `$match`-composition idiom rather than two contradicting ones (design decision 2), and it fixes that module's unescaped `$regex` on the way.
+**`user-admin` (11) needs only task 2**, for `regex_value.yaml`. It is independent of 3-9 and can run any time after 2 (but before 10) — listed last because it is the one task outside the four searchable modules. It exists so the repo ends with a single `$match`-composition idiom rather than two contradicting ones (design decision 2), and it fixes that module's unescaped `$regex` on the way.
 
 ## Scope
 
@@ -62,5 +62,5 @@ The design's decision-4 open question ("how consumers set this app-wide") is als
 `origin/design/org-aware-modules` (not an ancestor of this branch) touches the same pipelines and adds `docs/shared/atlas-search-indexes.md`, whose index recipe is `dynamic: true` + `token` mappings for the filter fields + explicit `storedSource.include` lists. This design supersedes that recipe: filters move out of `$search`, so token mappings for filter fields are no longer needed, and `storedSource: true` replaces the include lists. That branch also splices a tenant `organizationId` clause into the `$search` compound. Whichever lands second must reconcile:
 
 - the tenant clause moves from the `$search` compound into the `$match` `$and` array (where it also works in fallback mode);
-- `docs/shared/atlas-search-indexes.md` and `docs/shared/search.md` must not both describe index requirements — fold the former into the latter;
-- `organizationId` still needs its `token` mapping in each `default.search.json` if the tenant clause remains inside `$search`.
+- `docs/shared/atlas-search-indexes.md` must not compete with `docs/shared/search.md` plus the per-module index references — fold it into those;
+- `organizationId` still needs its `token` mapping in each module's documented `default` index if the tenant clause remains inside `$search`.

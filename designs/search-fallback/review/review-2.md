@@ -138,7 +138,9 @@ an already-narrow term match) rather than leaving it unsaid.
 
 > **Resolved**, but not as a deploy-ordering rule. The version coupling the finding identifies is real and the mechanism that handles it already exists: the definition ships **inside** the module, so the file at a given module version describes what that version's pipelines require, and a deployment reads the definition from the version it actually runs. Applying a newer version's index to an older deployment is using the wrong version's file, not a migration-ordering trap.
 >
-> Recorded as a versioning statement in decision 5 and task 8's notes, plus an explicit changeset line (task 10): this version **changes** the index definition, so a consumer must update their cluster's index when upgrading, and the per-module CHANGELOG carries the version-to-version history for anyone on an older version. The ordering/rollback framing and the proposed "never deploy ahead of the module" warning are deliberately not adopted — `tasks.md:38` stands as written, since the file ships with the version and writing it early couples to nothing.
+> Recorded as a versioning statement in decision 5 and task 8, plus an explicit changeset line (task 10): this version **changes** the index requirement, so a consumer must update their cluster's index when upgrading, and the per-module CHANGELOG carries the version-to-version history for anyone on an older version. The ordering/rollback framing and the proposed "never deploy ahead of the module" warning are deliberately not adopted.
+>
+> Superseded in part by #6's resolution: the requirement is now documented per module rather than committed as definition files, so what is versioned with the module is its index reference page. The versioning point is unchanged; only the artifact it applies to is.
 
 Decision 5 narrows the index to `dynamic: false` with only the text fields mapped, on the
 grounds that "because filters moved to `$match`, the index mappings only need the text fields."
@@ -200,6 +202,12 @@ mechanism, the design should name it, because "the shared builder is the one cor
 holds if both of its branches compile in CI.
 
 ### 6. The index-definition file layout drops the collection binding, and `storedSource` is not part of the documented tool format
+
+> **Resolved by removing the mechanism both halves criticise.** Both observations are correct — the collection binding is the tool's directory, not a field in the object, and the documented format is `{ name, mappings }` with no `storedSource`. But the deeper problem is that committing definition files was reinventing something the repo already has a convention for: `docs/user-account/reference/indexes.md` and `docs/workflows/reference/indexes.md` document per-module index contracts, and `docs/deals/index.md`'s `## Required indexes` states the division of labour outright ("The module documents the contract; the app owns creating them … via `splice-actions`") and already documents the `deals` search index in prose.
+>
+> Decision 5 and task 8 are rewritten onto that convention: the search-index requirement is documented per module alongside the regular `mongod` indexes, with an illustrative mappings block, and no `.search.json` files are added. Decision 5 was also internally inconsistent before this — it documented regular indexes and committed search indexes for the same audience.
+>
+> That dissolves both halves. The collection is a sentence rather than something a path must encode (`deals` already writes "an index named `default` on `deals`"), and the design no longer asserts anything about `splice-actions`' accepted schema: `storedSource` is documented as a **requirement of the index**, satisfied by whatever tooling the app uses. Worth recording that the unverified claim stayed unverified — the writer is not vendored in this repo and GitHub search for it returned nothing from this account — which is itself a reason not to depend on it. Committing files could never have delivered what it appeared to, either: the tool's tree is `indexes/{project}/{collection}/{name}.json` and `{project}` is per-app, so a file from this repo was never copyable verbatim.
 
 Decision 5 and task 8 place the definitions at `modules/{module}/search-indexes/default.search.json`
 and describe the format as "the ensure-index CI tool format (`{ name, mappings, storedSource }`)".

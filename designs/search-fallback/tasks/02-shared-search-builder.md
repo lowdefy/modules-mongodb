@@ -11,7 +11,7 @@ This task creates the shared builder that all seven searchable requests will use
 Both of those mechanisms are verified against this project's Lowdefy build, not assumed:
 
 - A runtime `_array.concat` at `properties.pipeline` builds successfully, and a runtime `_if` returning `[]` / `[stage]` survives into the built request artifact unevaluated (checked in `apps/demo/.lowdefy/server/build/pages/contacts/all/requests/get_all_contacts.json`).
-- `_build.if` with a `_var`-supplied test wrapping a runtime `_if` in its branches is the shape `modules/contacts/requests/search_contacts.yaml:61` already uses.
+- `_build.if` with a `_var`-supplied test wrapping a runtime `_if` in its branches is the shape `modules/contacts/requests/search_contacts.yaml:61` already uses. The load-bearing half — a `_module.var` operator resolving *before* `_build.*` sees the test, which is what callers rely on when they pass `atlas_search: { _module.var: atlas_search }` — is demonstrated by `modules/contacts/components/contact-selector.yaml.njk:207-209` (`_build.if: { test: { _module.var: use_verified } }`) and `modules/user-admin/api/reinstate.yaml:11-13` (`_build.not: { _module.var: suspension }` inside a `_build.if` test). `search_contacts.yaml:61` does **not** show this: its test is a plain `_var` the caller substitutes with a literal boolean.
 - `_string.replace` is `String.prototype.replace`, is available server-side (where request properties evaluate), and the escape expression below was verified to escape metacharacters and neuter them.
 
 **Emergent property to preserve:** when there is no term, `$search` is skipped entirely, so the browse/filter/paginate path is `$match` + `$sort` on both Atlas and local MongoDB — identical behaviour in both modes. Only an actual text query diverges.
@@ -22,7 +22,7 @@ Both of those mechanisms are verified against this project's Lowdefy build, not 
 
 Five files, one per splice point, each ref'd independently with `_ref: { path: ../shared/search/<file>.yaml, vars: {...} }` (the relative-path idiom already used for `../shared/profile/*`). Do **not** try to expose them as keys of one file — a `_ref` combining `path` + `key` + `vars` has no precedent in this repo.
 
-Every piece that lands in a pipeline or `$and` position returns an **array** (`[]` or `[clause]`), so a gated-off piece disappears through `_array.concat` instead of leaving an empty object behind.
+Every **gated** piece that lands in a pipeline or `$and` position returns an **array** (`[]` or `[clause]`), so a gated-off piece disappears through `_array.concat` instead of leaving an empty object behind. The rule is about things that appear or disappear: a var that always contributes exactly one clause slot (the selector's `filter`, default `{}` — task 4) sits directly as a `$and` entry, because wrapping it in a one-element array would relocate its empty default rather than remove it. That is safe — `$and` accepts `{}` entries, verified on mongod 8.3.4; only `$and: []` is rejected.
 
 **`modules/shared/search/text_lead.yaml`** — the Atlas text stage. Vars: `atlas_search`, `term`, `paths`, `should_extra` (default `[]`), `returnStoredSource` (default `true`).
 
@@ -270,7 +270,7 @@ The `$unwind`/`$addFields`/`$replaceRoot` tail is unchanged and belongs in the s
 
 - `modules/shared/search/` contains the five files above; the escape pattern appears in `regex_value.yaml` and nowhere else.
 - `modules/contacts/requests/get_all_contacts.yaml` has no `$search` clause of its own — its Atlas stage comes only from `text_lead.yaml` — and its structural filters are a `$match` `$and`.
-- `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b` succeeds.
+- `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
 - With the demo left at the default (`atlas_search` unset → `true`), the built artifact `apps/demo/.lowdefy/server/build/pages/contacts/all/requests/get_all_contacts.json` shows: an outer `_array.concat`; a `_if`-gated `$search` with `returnStoredSource: true` and text/wildcard `should` clauses only (no `filter`/`mustNot`); a `$match` with `$and`; no `$or` regex clause anywhere (the build gate dropped it); and the `$sort` `_if` test resolved to a runtime `_ne` on the payload.
 - Temporarily setting `atlas_search: false` in `apps/demo/modules/contacts/vars.yaml` and rebuilding shows the inverse: **no** `$search` and **no** `$meta: searchScore` anywhere in that artifact, a `$or` of two `$regex` clauses inside the `$match` `$and`, and the `$sort` test collapsed to the literal `false`. Revert the var afterwards — task 9 owns the demo wiring.
 

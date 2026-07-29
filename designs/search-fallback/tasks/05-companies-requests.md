@@ -69,7 +69,7 @@ vars:
                     - null
 ```
 
-The first `or` entry needs a **dynamic key**, since `name_field` is a var, not a literal. `_object.defineProperty` is the idiom this repo already uses for exactly that (see the `$sort` construction in these same files). If the build resolves `_module.var` early enough that a plain mapping key works, prefer the plainer form — verify against the built artifact rather than assuming.
+The first `or` entry needs a **dynamic key**, since `name_field` is a var, not a literal. `_object.defineProperty` is the idiom this repo already uses for exactly that (see the `$sort` construction in these same files), and it is the _only_ option here: Lowdefy resolves operators in value positions, and a YAML mapping key is a scalar string, so `{ _module.var: name_field }` cannot stand as a key. (Nunjucks interpolation is the one way to build a key from a var, and the design rules it out for this module for the same reason — the path is an operator, not a literal string. See the shared-builder section's "Why the regex fan-out is split across two files.") Do not look for a plainer form.
 
 **Score projection** — remove `score: { $meta: searchScore }` from the `$addFields` stage and splice `_ref` `../shared/search/score_addfields.yaml` before it. Keep `display_name` (and, in the Excel request, `updated_at`/`created_at`) in the remaining `$addFields`.
 
@@ -83,7 +83,7 @@ The first `or` entry needs a **dynamic key**, since `name_field` is a var, not a
 - `mustNot: exists deleted.timestamp` is now `deleted.timestamp: { $exists: false }` inside the `$match` `$and` in both files.
 - Both files search `{ _module.var: name_field }` + `lowercase_email` in Atlas mode **and** in fallback mode — the two modes must not disagree about which field is the company name.
 - `display_name` still projects via `$getField` off `name_field`, and the list page's sort/columns are unaffected.
-- `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b` succeeds.
+- `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
 - Built artifacts for the companies list page confirm: gated `$search` under the default flag; `$or` with the `name` key resolved from the var (the demo leaves `name_field` at its default) and no `$search`/`$meta` when the flag is temporarily flipped to `false`.
 
 ## Files
@@ -94,4 +94,4 @@ The first `or` entry needs a **dynamic key**, since `name_field` is a var, not a
 ## Notes
 
 - The two requests must keep an identical `$match` clause set — the export is meant to return exactly the rows the list shows.
-- A consumer who overrides `name_field` must also regenerate `modules/companies/search-indexes/default.search.json` to map that field, or Atlas `$search` silently returns no text matches on it while the regex fallback (which reads the var at query time) still works. Task 8 commits the index; task 10 documents the obligation.
+- A consumer who overrides `name_field` must also map that field in their `default` search index, or Atlas `$search` silently returns no text matches on it while the regex fallback (which reads the var at query time) still works. Task 8 documents the index requirement and this coupling; task 10 repeats it in the shared concept page.
