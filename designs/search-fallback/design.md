@@ -1,10 +1,10 @@
 # Atlas Search fallback (search portability)
 
-Several modules build their list pages, Excel exports, and the rich contact-selector typeahead on MongoDB Atlas `$search`, which only exists on Atlas (it needs the `mongot` process). On a community/local MongoDB server every one of these pipelines hard-fails, so the demo — and any self-hosted deployment — can't list contacts, companies, activities, or deals. This design makes text search **portable**: a module-level flag selects Atlas `$search` (the default) or a plain-MongoDB regex fallback, and the structural filtering is restructured so the same pipeline works in both modes. It also commits and documents the Atlas Search index definitions the modules have always silently depended on.
+Several modules build their list pages, Excel exports, and the rich contact-selector typeahead on MongoDB Atlas `$search`, which only exists on Atlas (it needs the `mongot` process). On a community/local MongoDB server every one of these pipelines hard-fails, so a self-hosted deployment can't list contacts, companies, activities, or deals — and neither can local development or an e2e run against a plain `mongod`, which is why `apps/workflows-test` cannot exercise the contacts module's selector today. This design makes text search **portable**: a module-level flag selects Atlas `$search` (the default) or a plain-MongoDB regex fallback, and the structural filtering is restructured so the same pipeline works in both modes. It also commits and documents the Atlas Search index definitions the modules have always silently depended on.
 
 > **Scope correction (re-audited at task time).** The inventory below was written against an older tree. Two changes:
 >
-> - **`user-admin` is out of scope.** The BetterAuth rebuild removed `$search` from the module entirely — `get_all_users` / `get_user_excel_data` no longer exist, and `requests/stages/members_filter.yaml` is already a plain-`$match` case-insensitive regex over the post-`$lookup` name/email fields, with `request_stages.filter_match` already declared as plain `$match` clauses. It needs no `atlas_search` var and no request changes. Its search is _always_ the unindexed regex path, even on Atlas; that is documented, not changed.
+> - **`user-admin` is out of scope for the fallback itself.** The BetterAuth rebuild removed `$search` from the module entirely — `get_all_users` / `get_user_excel_data` no longer exist, and `requests/stages/members_filter.yaml` is already a plain-`$match` case-insensitive regex over the post-`$lookup` name/email fields, with `request_stages.filter_match` already declared as plain `$match` clauses. It needs no `atlas_search` var. Its search is _always_ the unindexed regex path, even on Atlas; that is documented, not changed. **One change does land there:** `members_filter.yaml` adopts the `$and` composition idiom and the shared escaping, so the repo has a single idiom and the members search stops interpolating raw user input into `$regex` — see decision 2.
 > - **`deals` is in scope.** The module landed after this design was written and `requests/get_deals_list.yaml` leads with `$search`, so the demo's deal list hard-fails on local MongoDB — the design's own goal is not met without it. Like `search_contacts` it is **already split** (text-only `$search` followed by a `$match` with a `$and` array), so it needs only the stage-1 toggle, the regex clause, and the score-sort gate. It carries one Atlas-specific extra clause (a boosted keyword-analyzer wildcard on `_id`, the deal code) that the shared builder takes verbatim.
 >
 > Net: **7 requests across 4 modules** (`contacts`, `companies`, `activities`, `deals`) — 5 of them filters-in-`$search`, 2 already split.
@@ -14,8 +14,8 @@ Several modules build their list pages, Excel exports, and the rich contact-sele
 1. Add a boolean `atlas_search` var (default `true`) to every module that does text search (`contacts`, `companies`, `activities`, `deals`). When `false`, requests use a regex fallback instead of `$search`.
 2. Split text search from structural filtering in all affected requests: structural filters (and the consumer filter hook) always run as a standard `$match`; only the free-text term toggles between an Atlas `$search` text stage and a case-insensitive `$regex` `$or`.
 3. Centralise the text-stage / regex-clause construction in one shared `_ref` under `modules/shared/search/` so all requests build it identically ("one correct way").
-4. Standardise `returnStoredSource: true` across all `$search` stages (adds it to `activities`, which is currently missing it) and skip `$search` entirely when there is no search term.
-5. Commit the Atlas Search index definitions (one `default.search.json` per searchable collection, in the ensure-index CI tool format, with `storedSource: true`) and document both the search indexes and the regular `mongod` indexes the fallback/browse paths need.
+4. Have the shared text stage emit `returnStoredSource: true` by default, with a per-caller opt-out: `activities` and `deals` pass `false` so their post-write refetches read live documents (decision 3). Skip `$search` entirely when there is no search term.
+5. Commit the Atlas Search index definitions (one `default.search.json` per searchable collection, in the ensure-index CI tool format, with `storedSource: true` on the two collections whose requests read the stored copy) and document both the search indexes and the regular `mongod` indexes the fallback/browse paths need.
 6. Convert the consumer filter hook (`request_stages.filter_match`) from Atlas-compound syntax to standard `$match` syntax so it works unchanged in both modes (a breaking change to that var; the demo does not use it).
 
 ## Background: how search works today
@@ -46,7 +46,7 @@ The other two are **already split**:
 
 Decision 2's filters→`$match` restructure therefore lands on the **5** filters-in-`$search` requests; the other two are brought into the same fallback story by the toggle + regex clause alone.
 
-5 of the 7 requests already set `returnStoredSource: true`; `activities/get_activities.yaml` and `deals/get_deals_list.yaml` are the exceptions. **No search-index definition is committed anywhere in the repo** — the `storedSource` config these requests depend on is entirely undocumented, so a fresh Atlas project (or local setup) has no reference for what to create.
+5 of the 7 requests already set `returnStoredSource: true`; `activities/get_activities.yaml` and `deals/get_deals_list.yaml` are the exceptions — `activities` deliberately so (`modules/activities/CHANGELOG.md:126`, PR #68), which decision 3 preserves. **No search-index definition is committed anywhere in the repo** — the `storedSource` config these requests depend on is entirely undocumented, so a fresh Atlas project (or local setup) has no reference for what to create.
 
 ## Key decisions
 
@@ -103,15 +103,41 @@ The `$sort` inside the facet uses `score` only when `atlas_search && term`; othe
 
 **Merge semantics — `$and`, not shallow assign.** The `$match` body combines three sources that can collide on a key: the structural filters, the `regex_clause` (`{ $or: [...] }`), and the consumer `request_stages.filter_match`. A shallow `_object.assign` is last-writer-wins keyed by top-level field, so collisions vanish silently — concretely, `get_activities` filters `updated.timestamp` twice (`filter.date_from` → `$gte`, `filter.date_to` → `$lte`); merged as two assign entries the second clobbers the first and one bound is lost. Likewise a consumer `filter_match` using `$or` would clobber the regex clause's `$or`. So the `$match` body wraps the clauses in a top-level **`$and`** array (empty entries dropped), which composes any clauses without key collisions and is collision-proof by construction rather than by authoring discipline. The `$and` array is never empty — every one of these requests carries at least one unconditional structural clause (`hidden`/`disabled`, `deleted.timestamp`, `removed`) — so the `$and: []` MongoDB rejects cannot arise. (The doubled `updated.timestamp` bounds may still be authored as one nested object for tidiness, but `$and` no longer _requires_ it.)
 
+**`$and` is the repo-wide idiom, so `user-admin` adopts it too.** `modules/user-admin/requests/stages/members_filter.yaml` solves the identical problem — compose four optional `$match` clauses — and its header documents the opposite choice: merge into one object via `_object.assign` rather than wrap in `$and`, so that with no filter set the stage is the canonical match-all `$match: {}`, since `$and: []` is rejected by MongoDB. Leaving that stand would put two documented, mutually-contradicting idioms for one job in neighbouring modules — the drift "one correct way" exists to prevent.
+
+The stated obstacle does not survive scrutiny: `members_filter.yaml` already seeds its `_array.concat` with `{}`, so the `$and` form yields `$and: [{}]` with no filter set, which MongoDB accepts (verified — see [§Shared builder](#shared-builder)). Only the empty array is rejected. So `user-admin` converts to the `$and` shape, and while that stage is open it also routes its `$regex` through the shared `regex_value.yaml`, which closes a live defect: it currently interpolates `filter.search` into `$regex` **unescaped**, so a `(` in the members search box errors and `.*` matches everything.
+
+This is the module's **only** change. `user-admin` still gets no `atlas_search` var and no `$search` — see the scope correction and non-goals.
+
 **Emergent property:** when there's no search term, `$search` is skipped entirely, so the browse / filter / paginate path becomes `$match`+`$sort` on **both** Atlas and local — identical behaviour. Only an actual text query diverges between modes. This shrinks the surface that needs Atlas-specific testing to "did someone type in the search box."
 
-### 3. `returnStoredSource` makes filters-in-`$match` fast (no perf regression)
+### 3. What filters-in-`$match` costs, and why the trade is worth taking
 
-The classic reason to keep filters inside the `$search.compound` is to filter on the search index before the `_id`→full-document hydration round-trip from `mongot` back to `mongod`. That rationale only holds **without** stored source. With `returnStoredSource: true` and a `storedSource`-configured index, `$search` returns documents straight from `mongot`, skipping the hydration round-trip — so a `$match` over those returned docs costs no extra round trip. Moving filters to `$match` is therefore comparably fast _and_ readable _and_ works unchanged in fallback mode.
+The classic reason to keep filters inside the `$search.compound` is to filter on the search index before the `_id`→full-document hydration round-trip from `mongot` back to `mongod`. That rationale only holds **without** stored source. With `returnStoredSource: true` and a `storedSource`-configured index, `$search` returns documents straight from `mongot`, skipping the hydration round-trip — so a `$match` over those returned docs costs no extra round trip. Moving filters to `$match` is therefore comparably fast per document _and_ readable _and_ works unchanged in fallback mode.
 
-This is already the de-facto pattern (5 of the 7 requests). We standardise it: the shared text-stage builder always emits `returnStoredSource: true`, which also fixes the `activities` and `deals` inconsistencies.
+**Per-document cost is not the whole story: volume changes too.** Filters inside `$search` let `mongot` narrow on both dimensions at once and return only survivors. After the restructure `mongot`'s result set is scoped by the **text term alone**, and `mongod` discards the rest. The regular `mongod` indexes of decision 5 do not help here — `$match` runs on the `$search` output stream, not the collection — so this is a genuine cost, not one an index closes.
 
-**The footgun (documented prominently):** if `storedSource` omits a field that a post-`$search` `$match` references, `returnStoredSource` docs silently lack it. A `hidden: { $ne: true }` filter then stops excluding hidden docs (missing ≠ `true`), and positive `equals`-style filters exclude everything. Mitigation: configure **`storedSource: true`** (store the whole document) — see decision 5.
+It is concentrated in one request. `get_all_contacts` filters only on `hidden`/`disabled` and `get_all_companies` only on `deleted.timestamp` — non-selective predicates excluding a small minority, so their volume barely moves. **`get_activities` is the sharp case**: six selective filters (`type`, `status.stage`, `contacts.contact_id`, `company_ids`, and two `updated.timestamp` bounds), so "activities whose title or description contains `*a**`" versus "…that are also meetings, in stage `done`, for one contact, in a date window" can differ by orders of magnitude — and it is also the request that opts out of stored source, so it pays the hydration for that whole pre-filter set. (`get_deals_list` is unaffected: its `removed: null` clause already sits in a `$match` after `$search` today, and it already swaps in `$match: {}` when there is no term.)
+
+**The counterweight, which is why the trade is worth taking.** Today `$search` runs on _every_ list load, because the structural filters live inside it — so even a plain browse with an empty search box pays a `mongot` round-trip and cannot use regular `mongod` indexes for the filter or the sort. Under this design a no-term load skips `$search` entirely and is a plain indexed `$match` + `$sort`. Ranking the shapes:
+
+- **Term present:** filters-in-`$search` (today) > filters-in-`$match` with stored source > filters-in-`$match` without it.
+- **No term:** this design (no `$search` at all) > today.
+
+So the restructure does not give up performance wholesale; it moves cost off every list load and onto the subset where a user has actually typed something. Accepted at CRM-scale collections, where the text-matched set is bounded by the term and hydration is an `_id`-keyed batch fetch. Filters-in-`$search` is not free either: its compound syntax diverges from the plain-`$match` path everywhere else, which is what produced the silently-never-matching `status.0.stage` clause (`modules/activities/CHANGELOG.md`).
+
+This is already the de-facto pattern (5 of the 7 requests), so the shared text-stage builder emits `returnStoredSource: true` by default.
+
+**Two callers opt out — and that is a preserved decision, not an inconsistency to fix.** `activities/get_activities.yaml` omits the flag _deliberately_: `modules/activities/CHANGELOG.md:126` (PR #68) records dropping it "so post-write refetches return the live doc immediately instead of waiting on Atlas Search index replication." Stored source returns `mongot`'s copy of the document, which lags writes, so editing an activity and refetching the list showed the pre-edit values. `text_lead.yaml` therefore takes `returnStoredSource` as a `_ref` var (default `true`), and `activities` and `deals` pass `false` — `deals`' list is refetched after every deal write and carries the same exposure. These are builder-internal `_ref` vars, not module vars: no manifest entry, no consumer-facing surface.
+
+Because the filters now run _after_ `$search`, the two modes cost differently:
+
+- `returnStoredSource: true` — `mongot` returns the text-matched documents with their bodies; `mongod` filters them and never touches the collection.
+- `returnStoredSource: false` — `mongot` returns `_id`s and `mongod` hydrates the **whole text-matched set** before the filters narrow it, paying a full-document lookup for documents it then discards. That is the price of freshness, and it lands only when a term is present. `activities` is plausibly the largest of the four collections, so the cost is real rather than nominal; it is stated in `docs/shared/search.md` instead of left to be rediscovered.
+
+Decision 2's emergent property narrows the exposure for every request, opted out or not: with no search term there is no `$search` stage at all, so a post-write refetch on an unfiltered list reads live from `mongod` — better than today. The residual case for the five that keep stored source is "a search term is active, the user edits a visible row, the list refetches", where those rows come from `mongot`'s copy and can show pre-edit values. Accepted for those five; the two whose write flows make that routine opt out. (Note the flag governs only document _contents_: which rows `$search` returns always depends on the `mongot` index, so a newly created record does not appear in a term-filtered list in either mode.)
+
+**The footgun (documented prominently):** if `storedSource` omits a field that a post-`$search` `$match` references, `returnStoredSource` docs silently lack it. A `hidden: { $ne: true }` filter then stops excluding hidden docs (missing ≠ `true`), and positive `equals`-style filters exclude everything. Mitigation: configure **`storedSource: true`** (store the whole document) — see decision 5. The two callers that opt out of `returnStoredSource` are immune by construction: their `$match` always runs on live documents from `mongod`.
 
 **This footgun is already live, not hypothetical.** `search_contacts` today runs `returnStoredSource: true` and then `$match`es on `hidden`, `disabled`, and `global_attributes.company_ids`. With no search index committed anywhere, if the deployed `default` index doesn't store those fields the filter is _already silently wrong on Atlas_. So `storedSource: true` (decision 5) isn't only fallback-enabling — it closes a pre-existing latent correctness gap, which strengthens the case for storing the whole document by default.
 
@@ -131,16 +157,31 @@ atlas_search:
     and an unindexed scan, so suitable for development or small collections.
 ```
 
-Boolean (not an enum) because regex is the only fallback we have a concrete need for; an enum would be speculative surface. It reads naturally as "default Atlas." The demo wires it so `pnpm ldf:b` + a local MongoDB works end-to-end.
+Boolean (not an enum) because regex is the only fallback we have a concrete need for; an enum would be speculative surface. It reads naturally as "default Atlas."
 
-**How consumers set this app-wide: repeated per module entry, no shared config file.** This design originally proposed setting the flag once in `app_config.yaml` and `_ref`-ing it per module entry, by analogy with `app_name`. That analogy is gone: [`designs/app-operator`](../app-operator/design.md) removed the `app_name` var in favour of Lowdefy's `_app: slug` operator and **deleted `app_config.yaml` from every app**. So the boolean is simply set on each searchable module entry (four entries in the demo), and no shared-config file is reintroduced.
+**Each app is wired for the database it actually runs on, which is also what keeps both branches compiled.** `apps/demo` sets `true`: it is the consumer-facing reference and the general deployment target, running against a real MongoDB with Atlas Search, so it should show the production wiring. `apps/workflows-test` sets `false`: it exercises module config against a plain e2e `mongod`, and its field-render sweep renders the contacts module's `contact-selector`, whose typeahead leads with `$search`. Building each app therefore compiles a different branch of the shared builder, so neither half can rot — without the demo carrying configuration that exists only to be tested. The demo is a reference for consumers, not a test matrix.
 
-The drift objection that killed `app_config.yaml` does not transfer, because the two failure modes are not comparable:
+**How consumers set this app-wide: one value in `app_config.yaml`, `_ref`'d per module entry.** `atlas_search` describes a property of the deployment's database — whether Atlas Search exists — so it is identical for every searchable module in an app. Repeating the literal on four entries makes one app-level fact live in four places. Instead each app holds it once:
 
-- **`app_name` drift was silent and permanent.** Miss one entry and event/notification writes key under the wrong app for the lifetime of the document — nothing surfaces at build or at read time, and the damage is in stored data.
-- **`atlas_search` drift fails loudly and immediately, and touches nothing stored.** Miss one entry on a community server and that module's list page hard-fails on its first load with an unrecognised-`$search` error. The flag only selects a query mechanism; no write path reads it.
+```yaml
+# apps/demo/app_config.yaml
+atlas_search: true
+```
 
-A shared file would also not be free of the same class of mistake (a new module entry that forgets to `_ref` it), so it buys consistency in exactly the case that already fails loudly. There is no operator route either: `_app` reads only app metadata (`slug`, `name`, `version`, `description`) and cannot carry an arbitrary app-level flag, and `_secret` is server-runtime-only, which would forfeit decision 2's build-time collapse. Repeat the boolean.
+and each searchable module entry reads it:
+
+```yaml
+atlas_search:
+  _ref:
+    path: app_config.yaml
+    key: atlas_search
+```
+
+**This reintroduces a file [`designs/app-operator`](../app-operator/design.md) deleted, deliberately and without conflict.** That design did not reject the shared-config pattern; `app_config.yaml` held exactly one key (`app_name`), `_app: slug` replaced it, and the file was removed because nothing read it any more (its tasks 7 and 8). A one-key file whose key becomes obsolete gets deleted; that says nothing about the next app-level key. `atlas_search` is a better fit for the file than `app_name` ever was — `app_name` was app _identity_, which the platform can now supply via `_app`, whereas this is deployment _capability_, which no operator exposes. It holds this one key; do not populate it speculatively.
+
+There is no operator route: `_app` reads only app metadata (`slug`, `name`, `version`, `description`) and cannot carry an arbitrary app-level flag, and `_secret` is server-runtime-only, which would forfeit decision 2's build-time collapse.
+
+To be clear about what the shared file does and does not buy: it does **not** eliminate drift, because a newly added module entry can still forget the `_ref`. What it gives is a single source of truth for which mode the app is in, and one edit to switch it. The residual drift is also the benign kind — unlike `app_name`, where missing one entry silently keyed stored documents under the wrong app forever, a missed `atlas_search` fails loudly on that module's first list-page load and touches nothing stored.
 
 Because the structural filters are now standard `$match`, the consumer hook `request_stages.filter_match` must also be standard `$match` syntax (not Atlas compound). This is a **breaking change** to that var, but it then works identically in both modes — one syntax instead of two. The demo does not pass `filter_match` (only `request_stages.write`), so blast radius is low; the change is called out in the module CHANGELOGs and the migration note below.
 
@@ -153,14 +194,16 @@ They differ on every axis — who sets it (app config vs. a page composing the s
 
 ### 5. Index definitions: committed JSON + docs, `storedSource: true`
 
-We commit one Atlas Search index definition per searchable collection, in the ensure-index CI tool format (`{ name, mappings, storedSource }`), named **`default`** (our `$search` stages specify no `index:`, so Atlas uses `default`):
+We commit one Atlas Search index definition per searchable collection, in the ensure-index CI tool format (`{ name, mappings, storedSource }`), named **`default`** (no `$search` stage specifies a non-default `index:` — most omit the option entirely and `deals/get_deals_list.yaml` sets `index: default` explicitly):
 
 - `modules/contacts/search-indexes/default.search.json` → `user-contacts` (`profile.name`, `lowercase_email`). It serves both `get_all_contacts`/`get_contact_excel_data` and the `search_contacts` typeahead. It is **not** needed by `user-admin`, which reads the same `user-contacts` collection but no longer uses `$search` at all (see the scope correction) — `user-admin`'s list needs regular `mongod` indexes only, documented alongside the rest.
 - `modules/companies/search-indexes/default.search.json` → `companies` (maps **`name`** + `lowercase_email`). **Coupling to the `name_field` var:** the committed JSON is static and maps the default `name`, but `get_all_companies` searches `_module.var: name_field` (consumer-overridable). A consumer who sets `name_field` to another field must **regenerate this search index to map that field** and redeploy it to Atlas — otherwise Atlas `$search` silently returns no text matches on the overridden field, while the regex fallback (which reads the same var at query time) still works, producing a confusing mode-dependent discrepancy. This obligation is documented in decision 6's `docs/shared/search.md` and the companies module reference. (We don't template the index JSON on `name_field`: it's consumed by external index tooling, not the Lowdefy build, so there's no clean templating hook, and `name` is the near-universal default.)
 - `modules/activities/search-indexes/default.search.json` → `activities` (`title`, `description.text`).
 - `modules/deals/search-indexes/default.search.json` → `deals` (`name`, plus `_id` with a `keywordAnalyzer` multi — `get_deals_list` searches the deal code through `path: { value: _id, multi: keywordAnalyzer }`, which requires the index to declare that multi analyzer: `"_id": { "type": "string", "multi": { "keywordAnalyzer": { "type": "string", "analyzer": "lucene.keyword" } } }`).
 
-Because filters moved to `$match`, the index **mappings only need the text fields** as `string` — none of the `token`/filter-field mappings a filters-in-`$search` index would carry. Every field is carried through for the `$match` by **`storedSource: true`** (store the whole document), the simplest correct default; it eliminates the missing-field footgun from decision 3 at the cost of extra index storage. Example:
+Because filters moved to `$match`, the index **mappings only need the text fields** as `string` — none of the `token`/filter-field mappings a filters-in-`$search` index would carry. For the two collections whose requests keep `returnStoredSource: true` (`user-contacts`, `companies`), every field is carried through for the `$match` by **`storedSource: true`** (store the whole document), the simplest correct default; it eliminates the missing-field footgun from decision 3 at the cost of extra index storage.
+
+The `activities` and `deals` definitions **omit `storedSource`**, because those requests pass `returnStoredSource: false` (decision 3) and never read `mongot`'s stored copy — storing whole documents there would cost index storage for a path no query takes. The asymmetry is not drift: each index stores exactly what its own requests ask `mongot` to return. Example (`user-contacts`):
 
 ```json
 {
@@ -179,11 +222,13 @@ Because filters moved to `$match`, the index **mappings only need the text field
 }
 ```
 
+**The definition is versioned with the module.** These files ship inside the module, so the definition at a given module version describes what _that version's_ pipelines require — the narrowed `dynamic: false` mappings are correct only for versions where the filters have moved into `$match`. A deployment reads the definition from the module version it actually runs, and the module CHANGELOG records that this version changes the definition, so a consumer upgrading knows to update their cluster's index and someone on an older version knows to read that version's file.
+
 Regular `mongod` indexes also matter — for the no-term browse path (decision 2) on Atlas _and_ for the fallback regex mode's filter/sort. These are documented per collection (fields such as `hidden`, `disabled`, `deleted.timestamp`, `removed`, `updated.timestamp`, and the configured sort fields); they are normal indexes, so they're described in docs and left to the consuming app's index tooling to format. `user-admin` needs only these — its members search is always a regex `$match`, so it has no search-index requirement at all.
 
 ### 6. Documentation
 
-- `docs/shared/search.md` — new shared concept page: the `atlas_search` flag, what the fallback does and its limits (substring, no ranking, unindexed scan), the `returnStoredSource` + `storedSource: true` requirement, and the missing-field footgun. Linked from each searchable module's `index.md`.
+- `docs/shared/search.md` — new shared concept page: the `atlas_search` flag, what the fallback does and its limits (substring, no ranking, unindexed scan), the `returnStoredSource` + `storedSource: true` requirement, the missing-field footgun, and the freshness-vs-lookup trade behind `activities`/`deals` opting out of stored source (decision 3). Linked from each searchable module's `index.md`.
 - Per-module reference: the committed `default.search.json` plus the required regular `mongod` indexes. The companies reference also documents the `name_field`-override → regenerate-search-index coupling (decision 5).
 - `docs/user-admin/index.md` links the same shared page, stating that the module needs **no** `atlas_search` var because its members search is always a plain-`$match` regex. Without that note a reader comparing modules reads the missing var as an oversight.
 - Manifest `description:` for the new `atlas_search` var (drives generated `docs/{module}/reference/vars.md` via `pnpm docs:gen`).
@@ -192,15 +237,17 @@ Regular `mongod` indexes also matter — for the no-term browse path (decision 2
 
 `modules/shared/search/` holds the single source of truth for text-stage construction, referenced by all 7 requests with `_ref` + `vars` (the relative-path `_ref` idiom already used for `../shared/profile/*`, `../shared/layout/*`, `../shared/sessions/*`). It is **one file per splice point** — each is ref'd independently, so no `_ref` needs to combine `path` + `key` + `vars`, a combination with no precedent in this repo.
 
-Every piece composes the two gating dimensions from decision 2: a build-time `_build.if` on `atlas_search` (passed in as `{ _module.var: atlas_search }`, which resolves before `_build.*` — the same shape `search_contacts.yaml` already uses for `_build.if` + `_var`) wrapping a runtime `_if` on `term`. Every piece that lands in a pipeline or `$and` position returns an **array** (`[]` or `[clause]`), so gated-off pieces vanish through `_array.concat` rather than leaving an empty object behind.
+**What counts as "no term".** All four gated pieces test the term against the **empty string**, not `null`: `_ne: [ { _if_none: [ { _var: term }, "" ] }, "" ]`. Three states must read as absent — the key missing (a list request before its filter block is touched), `null`, and the `""` a cleared input leaves behind — and `_if_none` collapses the first two into the third so one test covers all three. `search_contacts` already gates on `""` for precisely this reason: its term is the `ContactSelector` search box, and clearing the box yields `""`. Centralising the test also tightens the five list/Excel requests, whose current `_ne: [filter.search, null]` lets `""` through into a `$search` with an empty `text` query — which Atlas rejects, and which in fallback mode would become `{ $regex: "", $options: i }`, matching every document.
 
-| File                   | Vars                                            | Returns                                                                                                                      |
-| ---------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `text_lead.yaml`       | `atlas_search`, `term`, `paths`, `should_extra` | `[ { $search: { returnStoredSource: true, compound: { should: [...] } } } ]` when atlas (build) && term (runtime), else `[]` |
-| `regex_value.yaml`     | `term`                                          | `{ $regex: <escaped term>, $options: i }` — owns escaping, nothing else                                                      |
-| `regex_clause.yaml`    | `atlas_search`, `term`, `or`                    | `[ { $or: <or> } ]` when !atlas (build) && term (runtime), else `[]`                                                         |
-| `score_addfields.yaml` | `atlas_search`, `term`                          | `[ { $addFields: { score: { $meta: searchScore } } } ]` when atlas && term, else `[]`                                        |
-| `use_score.yaml`       | `atlas_search`, `term`                          | the `$sort` `_if` test — build-collapses to `false` when !atlas, else a runtime predicate on `term`                          |
+Every piece composes the two gating dimensions from decision 2: a build-time `_build.if` on `atlas_search` (passed in as `{ _module.var: atlas_search }`, which resolves before `_build.*` — precedent: `modules/contacts/components/contact-selector.yaml.njk:207-209` uses `_build.if: { test: { _module.var: use_verified } }`, and `modules/user-admin/api/reinstate.yaml:11-13` uses `_build.not: { _module.var: suspension }` inside a `_build.if` test) wrapping a runtime `_if` on `term`. Every **gated** piece that lands in a pipeline or `$and` position returns an **array** (`[]` or `[clause]`), so a gated-off piece vanishes through `_array.concat` rather than leaving an empty object behind. The rule is about things that appear or disappear; a var that always contributes exactly one clause slot (the selector's `filter`, default `{}`) sits directly as an `$and` entry, because wrapping it in a one-element array would relocate its empty default rather than remove it. That is safe: `$and` accepts `{}` entries — verified on mongod 8.3.4, where `$and: [{a:1}, {}]`, `$and: [{}]`, and `$match: { $and: [{hidden:{$ne:true}}, {}, {}] }` all parse, and only `$and: []` is rejected (`BadValue: $and argument must be a non-empty array`).
+
+| File                   | Vars                                                                                   | Returns                                                                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `text_lead.yaml`       | `atlas_search`, `term`, `paths`, `should_extra`, `returnStoredSource` (default `true`) | `[ { $search: { returnStoredSource: <var>, compound: { should: [...] } } } ]` when atlas (build) && term (runtime), else `[]` |
+| `regex_value.yaml`     | `term`                                                                                 | `{ $regex: <escaped term>, $options: i }` — owns escaping, nothing else                                                       |
+| `regex_clause.yaml`    | `atlas_search`, `term`, `or`                                                           | `[ { $or: <or> } ]` when !atlas (build) && term (runtime), else `[]`                                                          |
+| `score_addfields.yaml` | `atlas_search`, `term`                                                                 | `[ { $addFields: { score: { $meta: searchScore } } } ]` when atlas && term, else `[]`                                         |
+| `use_score.yaml`       | `atlas_search`, `term`                                                                 | the `$sort` `_if` test — build-collapses to `false` when !atlas, else a runtime predicate on `term`                           |
 
 **Why the regex fan-out is split across two files.** Building `$or: [ { <path>: <regex> }, … ]` from a `paths` list needs iteration with a dynamic key, and every available mechanism is either unproven here or breaks a caller: `_array.map` + `_function` would put the term's runtime operator inside a `_function` body (no precedent in this repo, and the `__`-prefix scoping rules make it a guess), a `_build.array.map` callback has no precedent either, and a `.yaml.njk` loop cannot interpolate `companies`' `paths` because one of them is `{ _module.var: name_field }` — an operator, not a literal string. So the fan-out is authored per request (2 clauses each; 3 for `deals`), each clause getting its regex value from `regex_value.yaml`. The security-relevant part — escaping — stays single-source, which is the point.
 
@@ -228,6 +275,7 @@ Because `term` is runtime, the splice points that consume `text_lead`/`score_add
 - `modules/{contacts,companies,activities,deals}/module.lowdefy.yaml` — add `atlas_search` var; restate `request_stages.filter_match` description as `$match` syntax in the three modules that declare it (`deals` has no such var).
 - **5 request files restructured** (filters → `$match`, text via shared builder): `contacts/requests/{get_all_contacts,get_contact_excel_data}.yaml`, `companies/requests/{get_all_companies,get_company_excel_data}.yaml`, `activities/requests/get_activities.yaml`.
 - **2 requests adjusted** (already split — toggle + regex clause, plus the score-sort gate for `deals`): `contacts/requests/search_contacts.yaml`, `deals/requests/get_deals_list.yaml`.
+- `modules/user-admin/requests/stages/members_filter.yaml` — `_object.assign` → `$and`, and its `$regex` routed through the shared `regex_value.yaml` (decision 2). No `atlas_search` var, no `$search`.
 
 **New shared + index files:**
 
@@ -236,13 +284,16 @@ Because `term` is runtime, the splice points that consume `text_lead`/`score_add
 
 **Demo + docs:**
 
-- `apps/demo/modules/{contacts,companies,activities,deals}/vars.yaml` — set `atlas_search: false` on each entry so a local-MongoDB build works end-to-end (there is no shared config file — see decision 4).
+- `apps/demo/app_config.yaml` (reinstated, `atlas_search: true`) and `apps/workflows-test/app_config.yaml` (`atlas_search: false`) — see decision 4.
+- `apps/demo/modules/{contacts,companies,activities,deals}/vars.yaml` — `_ref` the app's `atlas_search` value.
+- `apps/workflows-test/modules.yaml` — `_ref` the same on its `contacts`/`companies` entries, plus new `deals` + `activities` entries so all four modules' fallback branches compile against its plain e2e `mongod`.
+- `.github/workflows/ci.yaml` — build both apps, so each flag branch is gated rather than merely available (CI currently builds no app).
 - `docs/shared/search.md` (new); module `index.md` links; regenerated `docs/{module}/reference/vars.md`; a changeset for the four module packages.
 
 ## Non-goals
 
 - The `basic-contact-selector` (`get_contacts_for_selector`) — already non-Atlas, unchanged.
-- `user-admin` — out of scope entirely (see the scope correction). Its members search is a plain-`$match` regex over post-`$lookup` fields, so it is already portable. Giving it an `atlas_search` var, or moving it onto `$search` when the flag is `true`, would reintroduce Atlas surface the module deliberately dropped and would mean indexing fields that only coexist after the joins. Its unindexed-on-Atlas cost is documented, not fixed here.
+- Giving `user-admin` an `atlas_search` var, or moving it onto `$search` when the flag is `true`. Its members search is a plain-`$match` regex over post-`$lookup` fields, so it is already portable; reintroducing Atlas surface the module deliberately dropped would mean indexing fields that only coexist after the joins. Its unindexed-on-Atlas cost is documented, not fixed here. (The module is not untouched, though — `members_filter.yaml` adopts the `$and` idiom and the shared escaping, decision 2.)
 - Replicating relevance ranking in fallback mode — fallback intentionally uses field sort.
 - Index-management tooling — we commit index JSON in the existing ensure-index format and document the regular indexes; running them against a cluster stays the consuming app's job.
 - Atlas Search features beyond `text`/`wildcard` (synonyms, fuzzy, faceting) — none are used today.

@@ -24,7 +24,7 @@ Five files, one per splice point, each ref'd independently with `_ref: { path: .
 
 Every piece that lands in a pipeline or `$and` position returns an **array** (`[]` or `[clause]`), so a gated-off piece disappears through `_array.concat` instead of leaving an empty object behind.
 
-**`modules/shared/search/text_lead.yaml`** — the Atlas text stage. Vars: `atlas_search`, `term`, `paths`, `should_extra` (default `[]`).
+**`modules/shared/search/text_lead.yaml`** — the Atlas text stage. Vars: `atlas_search`, `term`, `paths`, `should_extra` (default `[]`), `returnStoredSource` (default `true`).
 
 ```yaml
 # Atlas $search text stage — the only Atlas-only stage in the searchable
@@ -36,6 +36,11 @@ Every piece that lands in a pipeline or `$and` position returns an **array** (`[
 # or out per request by a runtime _if returning [] or [stage] — which is why
 # callers must assemble the pipeline with a runtime _array.concat, never
 # _build.array.concat.
+#
+# returnStoredSource defaults to true: mongot returns the matched documents
+# itself, so the $match below costs mongod no collection access. Callers whose
+# list is refetched straight after a write pass false — mongot's copy lags index
+# replication, so a stored-source row can show pre-edit values.
 _build.if:
   test:
     _var: atlas_search
@@ -45,11 +50,14 @@ _build.if:
         _ne:
           - _if_none:
               - _var: term
-              - null
-          - null
+              - ""
+          - ""
       then:
         - $search:
-            returnStoredSource: true
+            returnStoredSource:
+              _var:
+                key: returnStoredSource
+                default: true
             compound:
               should:
                 _array.concat:
@@ -112,8 +120,8 @@ _build.if:
         _ne:
           - _if_none:
               - _var: term
-              - null
-          - null
+              - ""
+          - ""
       then:
         - $or:
             _var: or
@@ -133,8 +141,8 @@ _build.if:
         _ne:
           - _if_none:
               - _var: term
-              - null
-          - null
+              - ""
+          - ""
       then:
         - $addFields:
             score:
@@ -156,8 +164,8 @@ _build.if:
     _ne:
       - _if_none:
           - _var: term
-          - null
-      - null
+          - ""
+      - ""
   else: false
 ```
 
@@ -279,5 +287,5 @@ The `$unwind`/`$addFields`/`$replaceRoot` tail is unchanged and belongs in the s
 
 - `apps/demo/lowdefy.yaml` already watches `../../modules/shared` under `cli.watch`, so the new directory is picked up by the dev server without config changes.
 - The `$and` array can never be empty here — `hidden`/`disabled` are unconditional — so MongoDB's rejection of `$and: []` cannot arise. Keep at least one unconditional structural clause in the first group when applying this pattern elsewhere.
-- Do not "simplify" the two `_if_none` wrappers in the builder gates: `filter.search` is absent (not null) before the filter block is touched, and `_ne: [undefined, null]` is not a reliable test.
+- **The gates test against `""`, not `null`, in all four files — do not "simplify" them.** Three cases have to read as "no term": absent (`filter.search` before the filter block is touched), `null`, and the **empty string** a cleared input leaves behind. `_if_none` normalises the first two to `""` and the `_ne` then rejects all three in one test. Testing `null` instead would let `""` through into `$search` with `text: { query: "" }`, which Atlas rejects, and in fallback mode into `{ $regex: "", $options: i }`, which matches every document.
 - Comments in the builder files should state the constraint (build vs runtime gating, why the outer concat must be runtime), not the history of this task.

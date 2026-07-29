@@ -1,25 +1,54 @@
-# Task 9: Wire the demo to the fallback and build-verify both branches
+# Task 9: Wire both apps to their real deployment mode, so both flag branches compile
 
 ## Context
 
-Tasks 2–7 made all seven searchable requests honour `atlas_search`. The demo runs against a local MongoDB, which has no `mongot` process, so every `$search` pipeline hard-fails there today — the whole point of this design. This task flips the demo to the fallback so `pnpm ldf:b` plus a local MongoDB works end-to-end.
+Tasks 2–7 made all seven searchable requests honour `atlas_search`. Two apps in this repo consume the searchable modules, they run against different databases, and each should simply be wired for the database it actually uses. That also happens to give both branches of the flag permanent build coverage, without the demo pretending to be a test harness.
 
-Per the design's decision 4, the flag is **repeated on each module entry**; there is no shared config file. `designs/app-operator` deleted `apps/demo/app_config.yaml` and there is no operator route (`_app` reads only app metadata — `slug`, `name`, `version`, `description`; `_secret` is server-runtime-only and would forfeit the build-time collapse). Drift here fails loudly on the first list-page load and touches nothing stored, so repetition is acceptable.
+- **`apps/demo` — `atlas_search: true`.** The demo is the consumer-facing reference and the general deployment target; it runs against a real MongoDB with Atlas Search. It should show the production wiring, which is the default.
+- **`apps/workflows-test` — `atlas_search: false`.** This app exists to exercise module config, and its e2e stack runs a plain (non-Atlas) MongoDB via `@lowdefy/community-plugin-e2e-mdb`. It already carries `contacts` and `companies` entries with no vars, present "solely to satisfy the build-time dependency graph", and its `field-render-sweep` spec renders `form.contact` / `form.stakeholders` (`e2e/workflows/field-render-sweep.spec.js:60-62`) — which wrap the contacts module's `contact-selector`, whose typeahead is the `$search`-leading `search_contacts`. So `false` is the correct setting there on its own merits, not a coverage device.
 
-Because the demo pins `false`, the Atlas branch would otherwise never be built. This task therefore also owns verifying both branches compile.
+Because the two apps sit on opposite sides of the flag, a build of each compiles a different branch of the shared builder. That only gates anything if something builds them, and CI currently builds no app at all — `.github/workflows/ci.yaml` runs `pnpm install` and `pnpm docs:check` and nothing else. This task adds both builds.
+
+Per the design's decision 4, each app holds the flag **once** in `app_config.yaml` and every searchable module entry `_ref`s it. That file was deleted by `designs/app-operator` because its only key (`app_name`) became obsolete when `_app: slug` replaced it — not because the pattern was rejected. This task reinstates it for a new app-level key.
 
 ## Task
 
-**1. Set the flag on each searchable module entry.** Add `atlas_search: false` to:
+**1. Reinstate `app_config.yaml` in both apps.**
 
-- `apps/demo/modules/contacts/vars.yaml`
-- `apps/demo/modules/companies/vars.yaml`
-- `apps/demo/modules/activities/vars.yaml`
-- `apps/demo/modules/deals/vars.yaml`
+```yaml
+# apps/demo/app_config.yaml
+# Deployment capability, read by every searchable module entry. This app runs
+# against a MongoDB with Atlas Search — see docs/shared/search.md.
+atlas_search: true
+```
 
-Put it near the top of each file with a short comment stating why — the demo targets a local MongoDB with no Atlas Search — and pointing at `docs/shared/search.md`. Write the comment once per file in a form that reads as current configuration, not as a change log.
+```yaml
+# apps/workflows-test/app_config.yaml
+# The e2e stack runs a plain mongod with no Atlas Search, so text search uses
+# the regex fallback — see docs/shared/search.md.
+atlas_search: false
+```
 
-**2. Build-verify the fallback branch.** Run `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b` and inspect the built request artifacts under `apps/demo/.lowdefy/server/build/pages/**/requests/`:
+One key each. Do not add other keys speculatively — the file earns its keys as app-level values appear.
+
+**2. Read it from the demo's searchable entries.** In each of `apps/demo/modules/{contacts,companies,activities,deals}/vars.yaml`:
+
+```yaml
+atlas_search:
+  _ref:
+    path: app_config.yaml
+    key: atlas_search
+```
+
+`_ref` paths in entry vars resolve from the app root — the pre-deletion files used exactly this shape (`path: app_config.yaml`, no `../`).
+
+**3. Do the same on `workflows-test`, and give it the two missing modules.** Add the same `_ref` to its `contacts` and `companies` entries in `apps/workflows-test/modules.yaml`.
+
+Then add a `deals` entry so `activities` and `deals` also compile their fallback branches (`deals` depends on `activities`, so wiring `deals` pulls it in). Follow the file's existing conventions: entries are order-sensitive — a module must be listed after every module it depends on — and the existing comment block explains why the dependency-only entries are there. Give both the same `_ref`, plus only whatever other vars the build requires; leave everything else on defaults, matching how `contacts`/`companies` are already wired there.
+
+**4. Build-verify each branch in the app that owns it.**
+
+Demo (Atlas branch) — `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b`, then inspect the built request artifacts under `apps/demo/.lowdefy/server/build/pages/**/requests/`:
 
 | Request                      | Artifact path                                       |
 | ---------------------------- | --------------------------------------------------- |
@@ -30,34 +59,43 @@ Put it near the top of each file with a short comment stating why — the demo t
 | `get_activities`             | activities list page requests                       |
 | `get_deals_list`             | deals list page requests                            |
 
-For every one of them assert: **no `$search`**, **no `$meta: searchScore`**, a `$or` of `$regex` clauses inside the `$match` `$and`, and (where applicable) the `$sort` `_if` test collapsed to the literal `false`. A quick sweep:
+For each, assert a `_if`-gated `$search` carrying text/wildcard `should` clauses only — no `filter`/`mustNot` inside the `$search` — `returnStoredSource: true` except on `get_activities`/`get_deals_list`, which must show `false`, and **no** `$or` regex clause anywhere.
+
+`workflows-test` (fallback branch) — `pnpm --filter @lowdefy/modules-workflows-test ldf:b`, then assert the inverse:
 
 ```bash
-grep -rl '"\$search"' apps/demo/.lowdefy/server/build/pages   # expect no matches
-grep -rl 'searchScore' apps/demo/.lowdefy/server/build/pages  # expect no matches
+grep -rl '"\$search"' apps/workflows-test/.lowdefy/server/build/pages   # expect no matches
+grep -rl 'searchScore' apps/workflows-test/.lowdefy/server/build/pages  # expect no matches
 ```
 
-**3. Build-verify the Atlas branch.** Temporarily flip all four entries to `atlas_search: true` (or comment the lines out to fall through to the manifest default), rebuild, and assert the inverse: each artifact carries a `_if`-gated `$search` with `returnStoredSource: true` and text/wildcard `should` clauses only — no `filter`/`mustNot` inside the `$search` — and no `$or` regex clause survives. Then restore `false` and rebuild once more so the committed state is the fallback.
+plus a `$or` of `$regex` clauses inside the `$match` `$and`, and the `$sort` `_if` test collapsed to the literal `false` where applicable.
 
-**4. Confirm the demo runs.** A build check is not a smoke test. With a local MongoDB reachable, load the contacts, companies, activities, and deals list pages and confirm each lists rows, that typing in the search box narrows results by substring (`joh` → `John`), and that the contact-selector typeahead returns matches. If no local MongoDB is available in this environment, stop and report the smoke test as outstanding rather than claiming it passed — the build check alone does not cover it.
+**5. Add both builds to CI.** In `.github/workflows/ci.yaml`, run `ldf:b` for `apps/demo` and `apps/workflows-test` after `pnpm install`. Neither needs secrets or network beyond npm — the build scripts supply a build-only `NEXTAUTH_SECRET` placeholder. This is what makes the two-app coverage a gate rather than a convention: without it, a wrong operator name in either half of the shared builder ships unnoticed.
+
+**6. Confirm the apps run.** A build check is not a smoke test. On a deployment with Atlas Search reachable, load the demo's contacts, companies, activities, and deals list pages and confirm each lists rows, that typing in the search box narrows results by substring (`joh` → `John`), and that the contact-selector typeahead returns matches. For the fallback path, the same via `workflows-test`'s e2e run. If neither environment is available here, stop and report the smoke test as outstanding rather than claiming it passed.
 
 ## Acceptance Criteria
 
-- All four demo module entries set `atlas_search: false`, each with a one-line reason.
-- `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b` succeeds and no built artifact under `apps/demo/.lowdefy/server/build/pages` contains `$search` or `searchScore`.
-- The temporary `true` build was run and confirmed to produce the gated `$search` (text-only) in every one of the seven requests; the committed state is back to `false`.
-- Search on all four list pages plus the contact selector works against a local MongoDB — or the smoke test is explicitly reported as not run, with the reason.
+- `apps/demo/app_config.yaml` (`atlas_search: true`) and `apps/workflows-test/app_config.yaml` (`atlas_search: false`) exist, one key each, each with a one-line reason.
+- Every searchable module entry in both apps reads the flag via `_ref` to its app's `app_config.yaml` — no literal `true`/`false` on any entry.
+- `workflows-test` has entries for all four searchable modules.
+- Both `ldf:b` runs succeed.
+- No artifact under `apps/workflows-test/.lowdefy/server/build/pages` contains `$search` or `searchScore`; every one of the seven requests in the demo build carries the gated text-only `$search`, with `returnStoredSource: false` on `get_activities` and `get_deals_list`.
+- `.github/workflows/ci.yaml` builds both apps.
+- Search works on the demo's four list pages plus the contact selector against Atlas, and in `workflows-test`'s fallback path — or the smoke test is explicitly reported as not run, with the reason.
 
 ## Files
 
-- `apps/demo/modules/contacts/vars.yaml` — modify — add `atlas_search: false`.
-- `apps/demo/modules/companies/vars.yaml` — modify — same.
-- `apps/demo/modules/activities/vars.yaml` — modify — same.
-- `apps/demo/modules/deals/vars.yaml` — modify — same.
+- `apps/demo/app_config.yaml` — create — `atlas_search: true`.
+- `apps/workflows-test/app_config.yaml` — create — `atlas_search: false`.
+- `apps/demo/modules/{contacts,companies,activities,deals}/vars.yaml` — modify — `_ref` the app's `atlas_search`.
+- `apps/workflows-test/modules.yaml` — modify — same `_ref` on `contacts`/`companies`, plus new `deals` and `activities` entries.
+- `.github/workflows/ci.yaml` — modify — build both apps.
 
 ## Notes
 
 - Never start `lowdefy dev` / `lowdefy start` / `pnpm e2e` in the foreground — they never exit. Use `pnpm ldf:b` for the build checks, and if a live server is genuinely needed, start it in the background and poll `/api/auth/session`.
 - The `:i` (Infisical) script variants do not work in the sandbox; plain `ldf:b` needs no secrets.
-- `user-admin` gets no flag. Its members list already runs a plain-`$match` regex, so it works on local MongoDB unchanged.
-- Do not add a shared config file or an `_ref`-ed helper to avoid the four-way repetition — that decision is settled in the design.
+- `user-admin` gets no flag in either app. Its members list already runs a plain-`$match` regex, so it works on any MongoDB unchanged.
+- Adding `deals`/`activities` to `workflows-test` is for config coverage — no spec needs to exercise their pages, they only need to build. Do not add pages or e2e specs for them.
+- `app_config.yaml` holds `atlas_search` only. Do not migrate anything else into it, and in particular do not reintroduce `app_name` — `_app: slug` supersedes it (`designs/app-operator`).

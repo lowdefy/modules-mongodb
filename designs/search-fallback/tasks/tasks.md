@@ -16,8 +16,9 @@ These tasks implement `designs/search-fallback/design.md`: an `atlas_search` mod
 | 6   | `06-activities-request.md`       | Convert `activities/get_activities`; adds `returnStoredSource` and fixes the date-range merge | 2             |
 | 7   | `07-deals-request.md`            | Add the toggle + regex clause + score-sort gate to `deals/get_deals_list`                     | 2             |
 | 8   | `08-search-index-definitions.md` | Commit `default.search.json` for the 4 searchable collections                                 | —             |
-| 9   | `09-demo-wiring.md`              | Set `atlas_search: false` on the 4 demo module entries; build-verify both branches            | 3, 4, 5, 6, 7 |
+| 9   | `09-demo-wiring.md`              | Wire demo `true` / `workflows-test` `false`; build both apps in CI                            | 3, 4, 5, 6, 7 |
 | 10  | `10-docs-and-changeset.md`       | `docs/shared/search.md`, module index links, `pnpm docs:gen`, changeset                       | 1, 8, 9       |
+| 11  | `11-user-admin-and-idiom.md`     | `user-admin`'s `members_filter` → `$and` idiom + shared regex escaping                        | 2             |
 
 ## Ordering Rationale
 
@@ -33,11 +34,13 @@ These tasks implement `designs/search-fallback/design.md`: an `atlas_search` mod
 - 6 — the only request missing `returnStoredSource`, and the one whose two `updated.timestamp` bounds motivated `$and` over shallow merge.
 - 7 — `deals`, added to scope at task time; carries the Atlas-only `_id` keyword clause via `should_extra`, and an unconditional `score` sort to gate.
 
-**Demo wiring after the requests (9).** Flipping the demo to `atlas_search: false` before the requests honour the flag would leave the demo's `$search` pipelines running against a flag nothing reads. Task 9 also owns build-verifying _both_ flag branches, since the demo pins `false` and the `true` path would otherwise go unbuilt.
+**App wiring after the requests (9).** Setting the flag before the requests honour it would leave both apps' pipelines running against a flag nothing reads. Task 9 wires each app for the database it actually runs on — `apps/demo` on Atlas (`true`), `apps/workflows-test` on its plain e2e `mongod` (`false`) — which is also what leaves both branches of the shared builder compiled, without the demo carrying config that exists only to be tested. It adds both `ldf:b` runs to CI, which today builds no app at all.
 
 **Index definitions (8) are independent** — pure new files, no config coupling — so they can run at any point; they are placed late only because task 10's docs reference them.
 
 **Docs last (10).** `docs/{module}/reference/vars.md` is generated from the manifests, so it must run after task 1, and `pnpm docs:check` runs in CI — an out-of-date generated file fails the build.
+
+**`user-admin` (11) needs only task 2**, for `regex_value.yaml`. It is independent of 3-9 and can run any time after 2 — listed last because it is the one task outside the four searchable modules. It exists so the repo ends with a single `$match`-composition idiom rather than two contradicting ones (design decision 2), and it fixes that module's unescaped `$regex` on the way.
 
 ## Scope
 
@@ -49,10 +52,10 @@ These tasks implement `designs/search-fallback/design.md`: an `atlas_search` mod
 
 The design was written against an older tree. Both corrections are now recorded in `design.md` under "Scope correction":
 
-- **`user-admin` dropped.** The BetterAuth rebuild removed `$search` from the module; `get_all_users` / `get_user_excel_data` no longer exist, `stages/members_filter.yaml` is already a plain-`$match` regex, and its `filter_match` is already documented as plain `$match`. No `atlas_search` var, no request changes — only a docs note that its search is always the unindexed regex path.
+- **`user-admin` dropped from the fallback work.** The BetterAuth rebuild removed `$search` from the module; `get_all_users` / `get_user_excel_data` no longer exist, `stages/members_filter.yaml` is already a plain-`$match` regex, and its `filter_match` is already documented as plain `$match`. No `atlas_search` var, and a docs note that its search is always the unindexed regex path. It does keep **one** task (11), added at action-review time: `members_filter.yaml` adopts the `$and` composition idiom so the repo does not end with two contradicting ones, and picks up the shared regex escaping it currently lacks.
 - **`deals` added.** `deals/requests/get_deals_list.yaml` leads with `$search`, so the demo's deal list hard-fails on local MongoDB and the design's stated goal is unmet without it.
 
-The design's decision-4 open question ("how consumers set this app-wide") is also resolved in `design.md`: the boolean is repeated per module entry, with no shared config file — `atlas_search` drift fails loudly on first page load and touches nothing stored, unlike the silent stored-data drift that killed `app_config.yaml`.
+The design's decision-4 open question ("how consumers set this app-wide") is also resolved in `design.md`: each app holds the boolean once in `app_config.yaml` and every searchable module entry `_ref`s it. That file is **reinstated** by task 9 — `designs/app-operator` deleted it because its only key (`app_name`) became obsolete when `_app: slug` replaced it, not because the shared-config pattern was rejected, and `atlas_search` is deployment capability rather than app identity, which no operator exposes.
 
 ### Coordination note — unmerged branch overlap
 

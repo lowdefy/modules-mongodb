@@ -47,27 +47,27 @@ The `filter: [ exists: { path: _id } ]` baseline clause disappears with the hand
               $ne: true
             disabled:
               $ne: true
-          - _build.if:
-              test:
-                _var: company_only_contacts
-              then:
-                _if:
-                  test:
-                    _gt:
-                      - _array.length:
-                          _if_none:
-                            - _user: global_attributes.company_ids
-                            - []
-                      - 0
-                  then:
-                    global_attributes.company_ids:
-                      $in:
-                        _user: global_attributes.company_ids
-                  else: {}
-              else: {}
           - _var:
               key: filter
               default: {}
+        - _build.if:
+            test:
+              _var: company_only_contacts
+            then:
+              _if:
+                test:
+                  _gt:
+                    - _array.length:
+                        _if_none:
+                          - _user: global_attributes.company_ids
+                          - []
+                    - 0
+                then:
+                  - global_attributes.company_ids:
+                      $in:
+                        _user: global_attributes.company_ids
+                else: []
+            else: []
         - _ref:
             path: ../shared/search/regex_clause.yaml
             vars:
@@ -90,7 +90,9 @@ The `filter: [ exists: { path: _id } ]` baseline clause disappears with the hand
                           _payload: input
 ```
 
-`{}` entries are harmless inside `$and` alongside the unconditional `hidden`/`disabled` clause, and the first group's three entries keep their current authored form.
+Note the split between the two groups. The `company_only_contacts` scoping is a **gate** — it appears or disappears — so it moves out of the first literal group and becomes its own `_array.concat` entry returning `[clause]` or `[]`, matching every other gated piece in the design. The consumer `filter` var stays a direct entry in the first group: it always contributes exactly one clause slot, and wrapping it in a one-element array would only relocate its `{}` default, not remove it.
+
+That `{}` default is fine where it sits — **verified**, not assumed (mongod 8.3.4): `$and: [{a:1}, {}]`, `$and: [{}]`, and `$match: { $and: [{hidden:{$ne:true}}, {}, {}] }` all parse; only `$and: []` is rejected (`BadValue: $and argument must be a non-empty array`), and the unconditional `hidden`/`disabled` clause means the array is never empty here.
 
 **3. Update the file's header comment.** It currently says apps without Atlas Search "can drop stage 1" and describes the required index as covering `profile.name`, `profile.picture`, `lowercase_email`, `global_attributes.*`, `hidden`, `disabled`. Both statements are now wrong: the stage is dropped by the `atlas_search` flag, and the index requirement is `storedSource: true` (whole document) with only the text fields mapped — see the committed `modules/contacts/search-indexes/default.search.json` (task 8). Rewrite the comment to describe the current pipeline and point at the search index file; do not narrate the change.
 
@@ -110,5 +112,6 @@ The `filter: [ exists: { path: _id } ]` baseline clause disappears with the hand
 ## Notes
 
 - The typeahead gains one behaviour change on the Atlas path: `text_lead` lowercases the query (`_string.toLowerCase`), which this request does not do today. That is deliberate and is what makes the `wildcard` clause match the lowercase-stored `lowercase_email`; the five list/export requests already do it.
+- **The empty-term gate must be preserved, and it is — by the builder, not this file.** This request's term is `_state: <id>_input` from the `ContactSelector` search box (`contact-selector.yaml.njk:90-91`), and clearing that box leaves `""`, not `null` — which is why the hand-authored `should` gates on `_eq: [{ _if_none: [{ _payload: input }, ""] }, ""]` today. The shared gates test `""` for exactly this reason (task 2), so the behaviour carries over unchanged. Verify it: with the box cleared, the built artifact's gate must reject `""`, not just `null` — otherwise Atlas gets `text: { query: "" }` and the typeahead errors where it currently returns the unranked top-10.
 - Do not touch `modules/contacts/requests/get_contacts_for_selector.yaml` (the `basic-contact-selector`) — it never used `$search` and is explicitly out of scope.
 - The component-level `filter` var is not being unified with `request_stages.filter_match`. They differ in who sets them, which request they feed, and their shape (object vs array); after this design both are plain `$match`, which is as close as they get.

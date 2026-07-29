@@ -52,7 +52,9 @@ In `modules/deals/requests/get_deals_list.yaml`:
             allowAnalyzedField: true
 ```
 
-The `index: default` option on the current `$search` is dropped — `default` is what Atlas uses when no `index` is given, and the shared builder specifies none. Note the builder also adds `returnStoredSource: true`, which this request does not set today; that makes `storedSource: true` on the deals search index (task 8) load-bearing.
+The `index: default` option on the current `$search` is dropped — `default` is what Atlas uses when no `index` is given, and the shared builder specifies none.
+
+**Pass `returnStoredSource: false`.** This request does not set the flag today and must not gain it: the deals list is refetched after every deal write, and `mongot`'s stored copy lags index replication, so a stored-source row can come back showing pre-edit values whenever a search term is active. This matches `activities` (task 6), where the same exposure was fixed deliberately in PR #68. Consequence: the deals search index (task 8) omits `storedSource`, since no query here reads the stored copy. Comment the call-site var with that reason.
 
 **2. Add the regex clause to the existing `$match` `$and`.** Append one more entry to its `_array.concat`, leaving the `removed: null` clause and the six existing filter `_if`s untouched:
 
