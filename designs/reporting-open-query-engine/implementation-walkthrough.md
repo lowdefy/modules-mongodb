@@ -135,11 +135,11 @@ context window for the rest of the conversation.
 So the rows are fetched exactly once, at turn end, by the `emit-data-parts`
 onFinish hook (`agents/reporting-assistant.yaml:167-170`):
 
-1. `emit-data-parts.yaml:16-50` — `_mql.expr` pulls the validated specs out of
+1. `emit-data-parts.yaml:17-51` — `_mql.expr` pulls the validated specs out of
    `toolResults` by `toolName`, capped at 8 per turn.
-2. L51-66 — `:for` over the chart specs, one `AnalyticsPipeline` each, each inside
+2. L52-67 — `:for` over the chart specs, one `AnalyticsPipeline` each, each inside
    `:try` so a failed query skips its chart instead of killing the hook.
-3. L70-80 — `_analytics.buildDataParts` (`buildDataParts.js:29-59`) rebuilds each
+3. L71-81 — `_analytics.buildDataParts` (`buildDataParts.js:29-59`) rebuilds each
    ECharts option. It runs **no catalog gate** — the rows are already in hand —
    but it does run `verifyChartContract` (`verifyContract.js:54-57`), which checks
    the declared `x`/`y` against the _actual_ rows: keys present, y-columns
@@ -162,7 +162,7 @@ end), **downloads are live** (query stored, executed on click).
 
 ## 6. Conversation persistence
 
-Two onFinish hooks, in order. `save-conversation.yaml:14-102` upserts the whole
+Two onFinish hooks, in order. `save-conversation.yaml:15-103` upserts the whole
 transcript keyed by `conversationId` + `userId`; on insert it derives a fallback
 title with a `$let`/`$reduce` over the first user message (L38-100 — note L47-49,
 the `as: msg` alias, because the inner `$reduce` rebinds `$$this`). If the model
@@ -255,16 +255,7 @@ That is why the prompt says, at `reporting-assistant.yaml:138-143`:
 since the `$match` is _prepended_, a filterable field must exist at the source
 grain, not be a post-`$group` alias.
 
-## 9. The one-shot path
-
-`pages/generate.yaml:35-53` → `api/generate-oneshot.yaml`, which runs the _same_
-agent headlessly via `CallAgent` (L14-26), then digs the last `generate_report`
-result out of `run.toolResults` (L27-41) and returns its id and url; the page then
-`Link`s straight to the report. Both onFinish hooks no-op headlessly because there
-is no `conversationId` (`save-conversation.yaml:7-13`,
-`emit-data-parts.yaml:9-14`).
-
-## 10. Invariants worth keeping in your head
+## 9. Invariants worth keeping in your head
 
 1. **One boundary.** Chat tool, report section, filter re-query, panel download —
    four callers, one `AnalyticsPipeline` request, one `validatePipeline` walk.

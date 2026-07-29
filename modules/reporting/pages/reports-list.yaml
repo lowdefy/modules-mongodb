@@ -37,7 +37,7 @@ blocks:
               - []
         - 0
     properties:
-      content: No saved reports yet — generate one from the chat or generate page.
+      content: No saved reports yet — ask the assistant for one from the chat page.
   - id: reports
     type: List
     blocks:
