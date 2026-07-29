@@ -12,6 +12,25 @@ test("resolves a direct target cell", () => {
   ).toBe("action-required");
 });
 
+test("require narrowly reopens not-required, and no-ops elsewhere", () => {
+  // Hit: the dedicated narrow reopener for not-required.
+  expect(
+    resolveSignal({
+      action: action("form", "not-required"),
+      signal: "require",
+      actionConfig: {},
+    }),
+  ).toBe("action-required");
+  // No-op: require must not reopen a completed action (kept narrow, unlike activate).
+  expect(
+    resolveSignal({
+      action: action("form", "done"),
+      signal: "require",
+      actionConfig: {},
+    }),
+  ).toBeNull();
+});
+
 test("returns null for a signal with no entry in the current stage", () => {
   // unblock no-ops from a non-blocked state.
   expect(

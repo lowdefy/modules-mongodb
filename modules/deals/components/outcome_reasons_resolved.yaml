@@ -1,0 +1,7 @@
+# Resolved outcome-reason display config: the minimal shipped default
+# (other-won/other-lost) with the host's `outcome_reasons` var merged over it.
+# _ref'd wherever a stored reason slug resolves to a label (deal_list_card, view
+# workspace list) so an unset reason still renders a sane fallback.
+_build.object.assign:
+  - _ref: defaults/outcome_reasons.yaml
+  - _module.var: outcome_reasons

@@ -1,5 +1,66 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.20.0
+
+## 0.19.0
+
+### Minor Changes
+
+- [#129](https://github.com/lowdefy/modules-mongodb/pull/129) [`339a42b`](https://github.com/lowdefy/modules-mongodb/commit/339a42b9d1766df645c82614da133c881124504f) Thanks [@Saiby100](https://github.com/Saiby100)! - Honour `universal_fields` on `kind: check` actions. The flag chooses which of the two action-level fields (`assignees`, `due_date`) an action's UI shows — it has worked on form actions since it shipped, but check actions silently ignored it and always rendered both. Declaring `universal_fields: [due_date]` on a check action now hides the assignees chip and drops the assignees input from the ✎ edit modal, on both the standalone check page and the in-context check modal.
+
+  Each check action's declaration is honoured independently even though one `{workflow_type}-action` page serves them all. The presence list is resolved from workflow config on every read (like `description`), so it is never stored on the action document — change it and redeploy, and in-flight actions pick it up with nothing to migrate.
+
+  This is presence, not permission: hiding a field does not gate who may change it (use `access:` for that), and a hidden field is never written or cleared, so narrowing the list on an action that already has assignees stops showing them rather than wiping them. `universal_fields` is now documented in the authoring grammar reference, where it was previously missing entirely.
+
+## 0.18.0
+
+### Patch Changes
+
+- [#126](https://github.com/lowdefy/modules-mongodb/pull/126) [`87c465c`](https://github.com/lowdefy/modules-mongodb/commit/87c465c5ee4a7e286d35bd36fed1478f76cb84f9) Thanks [@Yianni99](https://github.com/Yianni99)! - Removed the redundant status-colored dot from workflow actions: the leading bullet on each action in the WorkflowProgress panel, and the dot beside the status text on action events in the EventsTimeline card. The status colour is already carried by the surrounding button/text, so the dot added visual noise. Timeline node markers, group icons, and the standard ActionSteps step list are unchanged.
+
+## 0.17.0
+
+## 0.16.0
+
+### Minor Changes
+
+- [#118](https://github.com/lowdefy/modules-mongodb/pull/118) [`cdd1772`](https://github.com/lowdefy/modules-mongodb/commit/cdd1772bdd70ac5d01f8cc6cab245924a07b8748) Thanks [@Saiby100](https://github.com/Saiby100)! - Add a checkable-tree multi-select field for workflow action forms. Report types (or any grouping) show as parent nodes and their items as checkable leaves; checking a group selects all its items. The selection now also renders on the read-only view page instead of showing nothing.
+
+## 0.15.0
+
+## 0.14.1
+
+### Patch Changes
+
+- [#115](https://github.com/lowdefy/modules-mongodb/pull/115) [`c75bad2`](https://github.com/lowdefy/modules-mongodb/commit/c75bad2bfbefde062b3e689618dffb9fcdfb7538) Thanks [@Yianni99](https://github.com/Yianni99)! - Align the suite to lowdefy 5.5.1 and migrate block stylesheets to CSS Modules.
+
+  Blocks that shipped a global `style.css` — `ActionSteps`, `DataDescriptions`,
+  `EventsTimeline`, `SmartDescriptions`, `WorkflowProgress` — now import a
+  `style.module.css` whose selectors are wrapped in `:global(...)` inside
+  `@layer components`, matching the convention used by the official
+  `@lowdefy/blocks-antd` blocks. The Turbopack build in lowdefy 5.5.1 rejects
+  global-CSS imports from transpiled first-party packages; the rendered class
+  names are unchanged, so consumers see no visual difference.
+
+## 0.14.0
+
+### Minor Changes
+
+- [#114](https://github.com/lowdefy/modules-mongodb/pull/114) [`f8b6d19`](https://github.com/lowdefy/modules-mongodb/commit/f8b6d197d010ce025a6e6443184f079d6170fe66) Thanks [@Saiby100](https://github.com/Saiby100)! - Add the WorkflowProgress block and the workflows module's `workflow-progress` component — a presentation variant of `actions-on-entity` that renders an entity's workflows as collapsible sections of grouped, status-colored action buttons, with progress rings, done-fractions, and the shared check-action click handling baked in.
+
+## 0.13.0
+
+### Minor Changes
+
+- [#109](https://github.com/lowdefy/modules-mongodb/pull/109) [`ee7ee3c`](https://github.com/lowdefy/modules-mongodb/commit/ee7ee3c6371452876025e81b110f4df09fcfe626) Thanks [@Saiby100](https://github.com/Saiby100)! - Add the `require` signal: a narrow, pre-hook-only cascade that reopens a `not-required` form/check action back to `action-required`. It is the `not-required` counterpart of `unblock` (which narrowly reopens `blocked`) and is kept distinct from the broad `activate` so a cascade can re-enable a skipped action without accidentally reopening completed (`done`) work. Enables patterns like a boolean form field that toggles a dependent action between `action-required` and `not-required` indefinitely.
+
+## 0.12.0
+
+### Patch Changes
+
+- [#105](https://github.com/lowdefy/modules-mongodb/pull/105) [`70622be`](https://github.com/lowdefy/modules-mongodb/commit/70622be1ff6e42e50f8e39474a520e9120aa4570) Thanks [@Saiby100](https://github.com/Saiby100)! - Center the ContactSelector row actions (verify/edit buttons) within their
+  fixed-width container instead of right-aligning them.
+
 ## 0.11.0
 
 ### Minor Changes

@@ -4,9 +4,6 @@
 # (part 19), then renders the workflow header + action cards. The workflow
 # title, entity back-link, and per-action form metadata all ride the API
 # response (part 46) — this page reads no module config vars.
-#
-# Path-stub dependencies (won't build until other parts ship):
-#   - ../components/workflow-header.yaml         (part 18)
 _ref:
   module: layout
   component: page
@@ -15,12 +12,8 @@ _ref:
     content_width: 1100
     title:
       _state: workflow.title
+    # No back_link → the title-block falls back to browser-history back.
     show_back_button: true
-    back_link:
-      pageId:
-        _state: workflow.entity_link.pageId
-      urlQuery:
-        _state: workflow.entity_link.urlQuery
     # Breadcrumb trail: Home / [entity list] / entity / workflow (terminal).
     breadcrumbs:
       _ref:
@@ -29,10 +22,12 @@ _ref:
           tail:
             - label:
                 _state: workflow.title
-    # Eyebrow names the entity this workflow hangs off ("{type}: {name}", e.g.
-    # "Company: Acme Corp") — same data as the breadcrumb trail, above the title.
+    # Eyebrow names the entity this workflow hangs off ("Company: Acme Corp");
+    # the subtitle underneath adds its id, linked to the record.
     type:
       _ref: components/overview-entity-eyebrow.yaml
+    description:
+      _ref: components/overview-entity-subtitle.yaml
     status:
       _state: workflow.status.0.stage
     status_enum:
@@ -40,6 +35,65 @@ _ref:
     loading:
       _not:
         _state: workflow
+    # Expand/collapse-all lives in the title bar's right-hand actions slot: it is
+    # a page-scoped control (it rewrites the whole collapse_map in one SetState),
+    # and putting it here spends the empty right edge instead of a dedicated
+    # toolbar row above the cards.
+    page_actions:
+      - id: collapse_all_toggle
+        type: Button
+        layout:
+          # Without an explicit flex a block falls into the 24-span column grid
+          # (flex 0 0 100%) rather than sizing to its label.
+          flex: 0 0 auto
+        properties:
+          type: default
+          size: small
+          title:
+            _js:
+              args:
+                groups:
+                  _state: groups_list
+                map:
+                  _state: collapse_map
+              fn: |
+                const groups = args.groups || [];
+                const ids = [];
+                for (const g of groups) for (const a of (g.actions || [])) ids.push(a.key ? a.type + '.' + a.key : a.type);
+                const map = args.map || {};
+                const allExpanded = ids.length > 0 && ids.every((id) => map[id]);
+                return allExpanded ? 'Collapse all' : 'Expand all';
+        events:
+          onClick:
+            - id: toggle_all
+              type: SetState
+              params:
+                collapse_map:
+                  _js:
+                    args:
+                      groups:
+                        _state: groups_list
+                      map:
+                        _state: collapse_map
+                    fn: |
+                      const groups = args.groups || [];
+                      const ids = [];
+                      for (const g of groups) for (const a of (g.actions || [])) ids.push(a.key ? a.type + '.' + a.key : a.type);
+                      const map = args.map || {};
+                      const allExpanded = ids.length > 0 && ids.every((id) => map[id]);
+                      if (allExpanded) return {};
+                      const next = {};
+                      for (const id of ids) next[id] = true;
+                      return next;
+    # Presigned S3 GET, so file fields inside the action cards download rather
+    # than rendering "No files available" (DataDescriptions needs the policy
+    # request id). Instantiated id: download_policy_workflow_overview.
+    requests:
+      - _ref:
+          module: files
+          component: download-policy
+          vars:
+            block_id: workflow_overview
     events:
       onMount:
         # workflow_id presence guard.
@@ -120,6 +174,11 @@ _ref:
             layout:
               gap: 8
               selfAlign: middle
+              # `align` centres the icon against the title; `selfAlign` above
+              # only places this Box in its parent. Without it the row stretches
+              # and the icon top-aligns while the h5 sits lower on its own
+              # line-height.
+              align: middle
             blocks:
               - id: groups_list.$.group_icon
                 type: Icon
@@ -136,6 +195,11 @@ _ref:
                 type: Title
                 layout:
                   flex: 1 1 auto
+                # antd headings carry a bottom margin, which would offset the
+                # centring above.
+                style:
+                  .element:
+                    marginBottom: 0
                 properties:
                   level: 5
                   content:
@@ -149,145 +213,9 @@ _ref:
               .element:
                 gap: 8px
             blocks:
-              - id: groups_list.$.actions.$.card
-                type: Card
-                layout:
-                  gap: 16
-                blocks:
-                  - id: groups_list.$.actions.$.header
-                    type: Box
-                    layout:
-                      gap: 8
-                      selfAlign: middle
-                      justify: space-between
-                    blocks:
-                      - id: groups_list.$.actions.$.title_row
-                        type: Box
-                        layout:
-                          gap: 8
-                          selfAlign: middle
-                        blocks:
-                          - id: groups_list.$.actions.$.status_badge
-                            type: Tag
-                            layout:
-                              flex: 0 0 auto
-                            properties:
-                              color:
-                                _get:
-                                  from:
-                                    _ref: components/action_statuses.yaml
-                                  key:
-                                    _string.concat:
-                                      - _state: groups_list.$.actions.$.status
-                                      - .titleColor
-                              title:
-                                _get:
-                                  from:
-                                    _ref: components/action_statuses.yaml
-                                  key:
-                                    _string.concat:
-                                      - _state: groups_list.$.actions.$.status
-                                      - .title
-                          - id: groups_list.$.actions.$.message
-                            layout:
-                              flex: 1 1 auto
-                            type: Paragraph
-                            properties:
-                              content:
-                                _state: groups_list.$.actions.$.message
-                          - id: groups_list.$.actions.$.link_button
-                            type: Button
-                            layout:
-                              flex: 0 0 auto
-                            visible:
-                              _ne:
-                                - _state: groups_list.$.actions.$.link
-                                - null
-                            properties:
-                              title:
-                                _if_none:
-                                  - _state: groups_list.$.actions.$.link.title
-                                  - Open
-                              type: link
-                            events:
-                              onClick:
-                                - id: groups_list.$.actions.$.link
-                                  type: Link
-                                  params:
-                                    _state: groups_list.$.actions.$.link
-                  - id: groups_list.$.actions.$.body_empty
-                    type: Html
-                    visible:
-                      _eq:
-                        - _get:
-                            from:
-                              _state: workflow.form_data
-                            key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: groups_list.$.actions.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: groups_list.$.actions.$.type
-                                    - .
-                                    - _state: groups_list.$.actions.$.key
-                                else:
-                                  _state: groups_list.$.actions.$.type
-                            default: null
-                        - null
-                    properties:
-                      html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
-                  - id: groups_list.$.actions.$.body_dataview
-                    type: DataDescriptions
-                    visible:
-                      _ne:
-                        - _get:
-                            from:
-                              _state: workflow.form_data
-                            key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: groups_list.$.actions.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: groups_list.$.actions.$.type
-                                    - .
-                                    - _state: groups_list.$.actions.$.key
-                                else:
-                                  _state: groups_list.$.actions.$.type
-                            default: null
-                        - null
-                    properties:
-                      formConfig:
-                        _array.concat:
-                          - _if_none:
-                              - _state: groups_list.$.actions.$.form_meta.form
-                              - []
-                          - _if_none:
-                              - _state: groups_list.$.actions.$.form_meta.form_review
-                              - []
-                      data:
-                        form:
-                          _get:
-                            from:
-                              _state: workflow.form_data
-                            key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: groups_list.$.actions.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: groups_list.$.actions.$.type
-                                    - .
-                                    - _state: groups_list.$.actions.$.key
-                                else:
-                                  _state: groups_list.$.actions.$.type
-                            default: null
-                        workflow:
-                          _state: workflow
+              # One collapsible, status-tinted card per action.
+              - _ref:
+                  path: components/overview-action-card.yaml
+                  vars:
+                    prefix: groups_list.$.actions.$
+                    s3_get_policy_request_id: download_policy_workflow_overview

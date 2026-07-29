@@ -22,7 +22,7 @@
       #    cascade-touched actions, so filter by type) ──
       # The new-event endpoint flattens the `references` payload onto the event
       # doc's top level (_object.assign), so reference arrays are top-level
-      # fields (action_ids, lead_ids, …), not nested under `references`.
+      # fields (action_ids, deal_ids, …), not nested under `references`.
       - $lookup:
           from: actions
           let:
@@ -85,10 +85,10 @@
           body: "<p>Your quote was approved.</p>"
           links:
             button:
-              pageId: lead-view
+              pageId: deals/view
               urlQuery:
                 _id:
-                  $first: $lead_ids
+                  $first: $deal_ids
           type: quote-approved
           event_type: action-approve
           event_id: $_id

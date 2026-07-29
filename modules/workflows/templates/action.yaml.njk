@@ -29,9 +29,12 @@
 # and the comment; the signal buttons are the shell's floating `actions` slot
 # (right-aligned — check carries no buttons.extra, so no grow spacer); the RHS is
 # History only (details_slot empty). The check page is per-workflow-TYPE (not
-# per-action), so `action_config.universal_fields` is not available — the
-# chips/modal default to both fields (matching the pre-addendum check surface)
-# and self-hide per-field at runtime when unset.
+# per-action), so `action_config.universal_fields` is not available at build time
+# — the chips/modal instead read the presence list off the loaded action
+# (`current_action.universal_fields`, from the GetWorkflowAction envelope) and
+# gate per field at runtime. This is why the universal-fields components gate
+# with `visible` rather than `_build.if`: one page serves every check action in
+# the workflow, and they may declare different lists.
 #
 # Mode derivation (D3) — copied VERBATIM from check-action-modal.yaml. The mode is
 # derived from the GetWorkflowAction RESPONSE (`_request: get_workflow_action.*`),
@@ -97,11 +100,27 @@ _ref:
           vars:
             modal_id: universal_fields_edit_modal
             assignee_docs: current_action.assignee_docs
+            # Per-action presence list off the envelope — this page is
+            # per-workflow-TYPE, so the only per-action source is the loaded
+            # action. Null until the request resolves → both fields hidden on
+            # first paint (see the component header).
+            show:
+              _state: current_action.universal_fields
             action_data:
               due_date:
                 _state: current_action.due_date
               stage:
                 _state: current_action.stage
+      # Wide layout: the History drawer trigger (portals to <body>). Check pages
+      # have no Details — the entity slot is in the MIDDLE — so it is History only.
+{%- if history_in_drawer %}
+      - _ref:
+          path: components/history-details-drawer.yaml
+          vars:
+            reference_field:
+              _var: reference_field
+            details_slot: []
+{%- endif %}
     breadcrumbs:
       _ref:
         path: components/action-breadcrumbs.yaml
@@ -211,6 +230,10 @@ _ref:
             # Check puts the entity slot in the MIDDLE, not a Details section (D7),
             # so the RHS is History only.
             details_slot: []
+            left_variant:
+              _var: left_variant
+            history_in_drawer:
+              _var: history_in_drawer
             middle:
               # 1. Workflow-closed banner — bare full-width alert, first (the
               #    hard-stop notice; Part 64 layout model). Gated on
@@ -726,6 +749,8 @@ _ref:
           vars:
             modal_id: universal_fields_edit_modal
             state_path: current_action.fields
+            show:
+              _state: current_action.universal_fields
             workflow_type:
               _state: current_action.workflow_type
             action_id:

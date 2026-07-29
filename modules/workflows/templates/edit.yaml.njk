@@ -9,9 +9,12 @@
 # Stale-URL allowlist: [action-required, in-progress, changes-required].
 # Escape hatch: review's Edit-link sets _input: skip_status_redirect=true.
 #
-# Outer-card suppression rule (v0 parity): if action_config.form[0].form is
-# truthy at build time, the first form entry owns its own outer chrome — drop the
-# outer layout.card wrap to avoid the double-card nesting.
+# Outer-card suppression rule: if action_config.form[0].component is `section`
+# at build time, the first form entry renders its own Card (section is the only
+# structural component that does) — drop the outer layout.card wrap to avoid the
+# double-card nesting. All other first entries (including the other structural
+# components controlled_list / box / label / file_upload, which emit no card) get
+# the outer form_card, so the description, form body, and comment share one card.
 #
 # Layout (Part 56 addendum; Part 64): universal-fields chips + ✎ ride the title
 # bar's page_actions; a bare workflow-closed banner sits above the working
@@ -67,28 +70,42 @@ _ref:
     # Universal-fields chips (assignees avatars + due pill + ✎ → edit modal) in the
     # title bar's page_actions, only when the action declares universal fields.
     page_actions:
-      _build.if:
-        test:
-          _build.gt:
-            - _build.array.length:
-                _var:
-                  key: action_config.universal_fields
-                  default: []
-            - 0
-        then:
-          - _ref:
-              path: components/universal-fields/universal-fields-chips.yaml
+      _build.array.concat:
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: action_config.universal_fields
+                      default: []
+                - 0
+            then:
+              - _ref:
+                  path: components/universal-fields/universal-fields-chips.yaml
+                  vars:
+                    modal_id: universal_fields_edit_modal
+                    show:
+                      _var: action_config.universal_fields
+                    assignee_docs: action.assignee_docs
+                    action_data:
+                      due_date:
+                        _state: action.due_date
+                      stage:
+                        _state: action.status.0.stage
+            else: []
+        # Wide layout: the bundled trigger button + drawer. The antd Drawer
+        # portals to <body>, so it opens on the right despite living here.
+{%- if history_in_drawer %}
+        - - _ref:
+              path: components/history-details-drawer.yaml
               vars:
-                modal_id: universal_fields_edit_modal
-                show:
-                  _var: action_config.universal_fields
-                assignee_docs: action.assignee_docs
-                action_data:
-                  due_date:
-                    _state: action.due_date
-                  stage:
-                    _state: action.status.0.stage
-        else: []
+                reference_field:
+                  _var: reference_field
+                details_slot:
+                  _var: entity_view_slot
+{%- else %}
+        - []
+{%- endif %}
     show_back_button: true
     content_width:
       _var:
@@ -183,8 +200,8 @@ _ref:
         # Three-tier shell: left (entity workflows) + middle (closed banner +
         # form body with description lead-in + floating action bar) + RHS
         # (Details? above History). The middle body is wrapped in a Card unless
-        # the first form entry owns its own outer chrome (outer-card suppression
-        # on form[0].form).
+        # the first form entry is a `section` (which renders its own Card —
+        # outer-card suppression on form[0].component == section).
         - - _ref:
               path: components/action-workspace.yaml
               vars:
@@ -194,6 +211,10 @@ _ref:
                   _var: reference_field
                 details_slot:
                   _var: entity_view_slot
+                left_variant:
+                  _var: left_variant
+                history_in_drawer:
+                  _var: history_in_drawer
                 middle:
                   _build.array.concat:
                     # Workflow-closed banner — bare full-width alert above the
@@ -222,13 +243,19 @@ _ref:
                               _state: action.changes_requested
                     - _build.if:
                         test:
-                          _build.ne:
+                          _build.eq:
                             - _var:
-                                key: action_config.form.0.form
+                                key: action_config.form.0.component
                                 default: null
-                            - null
+                            - section
                         then:
-                          # First form entry owns outer chrome — render directly.
+                          # First form entry is a `section` — the only structural
+                          # component that renders its own Card. It owns the outer
+                          # chrome, so drop the outer form_card to avoid double-card
+                          # nesting. Other structural components (controlled_list,
+                          # box, label, file_upload) emit only a Box/Label with no
+                          # card, so they fall through to the else branch and get
+                          # wrapped like any other field.
                           # The description lead-in is prepended here too (it must
                           # land inside whichever container holds the form).
                           _build.array.concat:
@@ -246,12 +273,19 @@ _ref:
                                   form:
                                     _var: action_config.form
                                   mode: edit
-                            - - _ref:
-                                  path: components/comment-input.yaml
-                                  vars:
-                                    comment_path: comment
-                                    visibility_path: comment_internal
-                                    placeholder: Add a comment (optional).
+                            - _build.if:
+                                test:
+                                  _var:
+                                    key: action_config.show_comment
+                                    default: true
+                                then:
+                                  - _ref:
+                                      path: components/comment-input.yaml
+                                      vars:
+                                        comment_path: comment
+                                        visibility_path: comment_internal
+                                        placeholder: Add a comment (optional).
+                                else: []
                             - _var:
                                 key: page_config.formFooter
                                 default: []
@@ -279,12 +313,19 @@ _ref:
                                       form:
                                         _var: action_config.form
                                       mode: edit
-                                - - _ref:
-                                      path: components/comment-input.yaml
-                                      vars:
-                                        comment_path: comment
-                                        visibility_path: comment_internal
-                                        placeholder: Add a comment (optional).
+                                - _build.if:
+                                    test:
+                                      _var:
+                                        key: action_config.show_comment
+                                        default: true
+                                    then:
+                                      - _ref:
+                                          path: components/comment-input.yaml
+                                          vars:
+                                            comment_path: comment
+                                            visibility_path: comment_internal
+                                            placeholder: Add a comment (optional).
+                                    else: []
                                 - _var:
                                     key: page_config.formFooter
                                     default: []
@@ -404,6 +445,19 @@ _ref:
                         events:
                           onClick:
                             _build.array.concat:
+                              # Opt-in draft-save validation (page_config.validate_on_draft).
+                              - _build.if:
+                                  test:
+                                    _var:
+                                      key: page_config.validate_on_draft
+                                      default: false
+                                  then:
+                                    - id: validate_draft
+                                      type: Validate
+                                      params:
+                                        regex:
+                                          - ^form\.
+                                  else: []
                               - _var:
                                   key: page_config.events.onProgress
                                   default: []

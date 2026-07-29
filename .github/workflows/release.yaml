@@ -33,9 +33,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      - name: Upgrade npm for OIDC trusted publishing
-        run: npm install -g npm@latest
-
       - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@v1

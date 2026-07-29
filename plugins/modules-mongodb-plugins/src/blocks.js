@@ -4,3 +4,4 @@ export { default as DataDescriptions } from "./blocks/DataDescriptions/DataDescr
 export { default as EventsTimeline } from "./blocks/EventsTimeline/EventsTimeline.js";
 export { default as FileManager } from "./blocks/FileManager/FileManager.js";
 export { default as SmartDescriptions } from "./blocks/SmartDescriptions/SmartDescriptions.js";
+export { default as WorkflowProgress } from "./blocks/WorkflowProgress/WorkflowProgress.js";

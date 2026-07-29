@@ -6,6 +6,10 @@ type:
   _var:
     key: mode
     default: Selector
+required:
+  _var:
+    key: required
+    default: false
 requests:
   - _ref: requests/get_companies_for_selector.yaml
 events:

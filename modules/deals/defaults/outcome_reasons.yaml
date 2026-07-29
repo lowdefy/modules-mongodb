@@ -1,0 +1,10 @@
+# Minimal shipped default deal outcome-reason display config. `outcome` is
+# the won/lost discriminator. Host apps typically fully replace this via the
+# `outcome_reasons` var with their own reason taxonomy; these two entries are
+# the fallback so an unset reason still renders a sane label.
+other-won:
+  title: Other (Won)
+  outcome: won
+other-lost:
+  title: Other (Lost)
+  outcome: lost

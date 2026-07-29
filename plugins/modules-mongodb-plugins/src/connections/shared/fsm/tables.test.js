@@ -14,6 +14,7 @@ const FORM_SIGNALS = [
   "error",
   "unblock",
   "activate",
+  "require",
   "block",
   "internal_cancel_action",
 ];
@@ -78,7 +79,9 @@ const EXPECTED_FORM = {
     request_changes: "changes-required",
     activate: "action-required",
   },
-  "not-required": {},
+  "not-required": {
+    require: "action-required",
+  },
 };
 
 const TRACKER_SIGNALS = [

@@ -3,7 +3,7 @@ import { Badge, ConfigProvider, Steps, Typography, theme } from "antd";
 import { cn, renderHtml, withBlockDefaults } from "@lowdefy/block-utils";
 import withTheme from "@lowdefy/blocks-antd/blocks/withTheme.js";
 import { type } from "@lowdefy/helpers";
-import "./style.css";
+import "./style.module.css";
 
 const actionStepStatusMap = {
   blocked: "wait",

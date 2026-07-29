@@ -104,6 +104,9 @@ function makeWorkflowsConfig() {
           action_group: "phase-1",
           allow_not_required: true,
           required_after_close: false,
+          // Declares a partial presence list. The check surfaces are shared
+          // across actions, so this must reach them via the envelope.
+          universal_fields: ["due_date"],
           access: { "test-app": { view: true, edit: ["account-manager"] } },
         },
         {
@@ -111,6 +114,8 @@ function makeWorkflowsConfig() {
           kind: "form",
           action_group: "phase-1",
           allow_not_required: false,
+          // Opts out of both universal fields.
+          universal_fields: false,
           access: { "test-app": { view: true, edit: ["account-manager"] } },
           form_meta: {
             form: [
@@ -488,6 +493,62 @@ describe("envelope shape", () => {
     );
     expect(result.message).toBe("qualify message");
     expect(result.required_after_close).toBe(true);
+  });
+
+  // ── universal_fields presence list ─────────────────────────────────────────
+  // Author config resolved per read, never persisted on the action doc. The
+  // check surfaces (per-workflow-type page + the host-dropped modal) are shared
+  // across actions, so the envelope is their only per-action source.
+  test("universal_fields defaults to both fields when the author declares none", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.universal_fields).toEqual(["assignees", "due_date"]);
+  });
+
+  test("universal_fields carries a partial list through verbatim", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "check-step", kind: "check" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.universal_fields).toEqual(["due_date"]);
+  });
+
+  test("universal_fields: false resolves to an empty list", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "keyed-form" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.universal_fields).toEqual([]);
+  });
+
+  test("universal_fields comes from config, not the action doc", async () => {
+    await seedWorkflow();
+    // A stale/bogus value on the doc must be ignored — the doc is never the
+    // source, so an author's config change can't be shadowed by stored state.
+    await seedAction({
+      _id: "a1",
+      type: "check-step",
+      kind: "check",
+      universal_fields: ["assignees"],
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.universal_fields).toEqual(["due_date"]);
+  });
+
+  test("universal_fields defaults to both when the action has no config entry", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" }, workflowsConfig: [] }),
+    );
+    expect(result.universal_fields).toEqual(["assignees", "due_date"]);
   });
 
   test("description is rendered from config (read-time nunjucks), not the doc", async () => {

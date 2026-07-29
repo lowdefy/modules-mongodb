@@ -29,6 +29,8 @@ Single-line text input. Renders a `TextInput`.
 | `validate`     | array   | `[]`               | Caller-supplied validate rules                  |
 | `label_inline` | boolean | `false`            |                                                 |
 | `label_span`   | number  | —                  | When set, adds `span` + `align: right` to label |
+| `disabled`     | boolean | `false`            | Renders the input read-only                     |
+| `extra`        | string  | —                  | Helper text shown below the label               |
 | `on_change`    | array   | `[]`               | Actions wired to the block's onChange           |
 
 ```yaml
@@ -98,6 +100,33 @@ Numeric input. Renders a `NumberInput`.
   title: Quantity
   precision: 0
   min: 1
+```
+
+## Phone
+
+### `phone`
+
+Phone-number input. Renders a `PhoneNumberInput` — the form-side counterpart to the `phoneNumber` field type the view renderer already recognises. The block value is stored at the `key` state path.
+
+| Var              | Type    | Required / Default |
+| ---------------- | ------- | ------------------ | --------------------------------------------- |
+| `key`            | string  | required           |
+| `title`          | string  | —                  |
+| `placeholder`    | string  | —                  |
+| `visible`        | boolean | `true`             |
+| `required`       | boolean | `false`            |
+| `validate`       | array   | `[]`               |
+| `label_inline`   | boolean | `false`            |
+| `label_span`     | number  | —                  |
+| `default_region` | string  | —                  | ISO region for parsing/formatting (e.g. `ZA`) |
+| `on_change`      | array   | `[]`               |
+
+```yaml
+- component: phone
+  key: form.contact.cell_number
+  title: Contact number
+  default_region: ZA
+  placeholder: 82 123 4567
 ```
 
 ## Date
@@ -214,22 +243,24 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 ### `checkbox_selector`
 
-Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`.
+Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row.
 
-| Var        | Type    | Required / Default |
-| ---------- | ------- | ------------------ |
-| `key`      | string  | required           |
-| `title`    | string  | —                  |
-| `visible`  | boolean | `true`             |
-| `required` | boolean | `false`            |
-| `options`  | array   | `[]`               |
-| `extra`    | string  | —                  |
-| `on_change` | array  | `[]`               |
+| Var         | Type    | Required / Default |
+| ----------- | ------- | ------------------ |
+| `key`       | string  | required           |
+| `title`     | string  | —                  |
+| `visible`   | boolean | `true`             |
+| `required`  | boolean | `false`            |
+| `options`   | array   | `[]`               |
+| `extra`     | string  | —                  |
+| `direction` | string  | `horizontal`       |
+| `on_change` | array   | `[]`               |
 
 ```yaml
 - component: checkbox_selector
   key: channels
   title: Notification channels
+  direction: vertical
   options:
     - { label: Email, value: email }
     - { label: SMS, value: sms }
@@ -240,7 +271,7 @@ Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `s
 Button-group selector. Renders a `ButtonSelector`.
 
 | Var            | Type    | Required / Default |
-| -------------- | ------- | ------------------ |
+| -------------- | ------- | ------------------ | ------------------------------------------------------------ |
 | `key`          | string  | required           |
 | `title`        | string  | —                  |
 | `visible`      | boolean | `true`             |
@@ -250,6 +281,8 @@ Button-group selector. Renders a `ButtonSelector`.
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
 | `colon`        | boolean | `true`             |
+| `disabled`     | boolean | `false`            |
+| `theme`        | object  | —                  | Ant theme tokens for the block (e.g. checked-button colours) |
 | `on_change`    | array   | `[]`               |
 
 ```yaml
@@ -313,14 +346,14 @@ Yes/no toggle. Renders a `ButtonSelector` with hardcoded `[Yes / No]` boolean op
 
 Selector sourced from an enum map. Renders a `Selector`. The enum object (`slug → { title, color, icon, ... }`) is converted to `{ label, value, style, tag }` options at build time. Label is hardcoded `align: right / span: 12`.
 
-| Var        | Type    | Required / Default |
-| ---------- | ------- | ------------------ |
-| `key`      | string  | required           |
-| `title`    | string  | —                  |
-| `visible`  | boolean | `true`             |
-| `required` | boolean | `false`            |
-| `enum`     | object  | `{}`               |
-| `on_change` | array  | `[]`               |
+| Var         | Type    | Required / Default |
+| ----------- | ------- | ------------------ |
+| `key`       | string  | required           |
+| `title`     | string  | —                  |
+| `visible`   | boolean | `true`             |
+| `required`  | boolean | `false`            |
+| `enum`      | object  | `{}`               |
+| `on_change` | array   | `[]`               |
 
 ```yaml
 - component: enum_selector

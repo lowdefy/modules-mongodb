@@ -78,7 +78,10 @@ blocks:
             - _no_files
         type: Paragraph
         properties:
-          content: No files
+          content:
+            _var:
+              key: empty_text
+              default: No files
           type: secondary
           style:
             fontSize: 12

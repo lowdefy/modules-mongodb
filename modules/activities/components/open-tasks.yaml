@@ -1,0 +1,198 @@
+# Compact open-tasks card — the activities-owned sibling of workflows'
+# `open-actions` (rework Task 5, pairs with Task 4). Where `open-actions`
+# surfaces an entity's open workflow actions, this surfaces the entity's
+# open `kind: task` docs from activities' own `actions` collection —
+# filtered by `entity_type` + `entity_id`, the shape `create-task` /
+# `update-task` write (task 3). Reads no workflow-engine data. Styled to
+# match `open-actions` so the two compose into one "what's open" row.
+#
+# "Open" = the current stage (`status.0.stage`, flattened here to `stage`)
+# is not `done` — the only terminal stage create-task/update-task accept
+# today, kept as `$ne` rather than `$eq: action-required` so a future
+# non-terminal stage still surfaces without a query change.
+#
+# Vars:
+#   entity_type — (required) the task doc's `entity_type` to filter on
+#                 (e.g. "deal").
+#   entity_id   — (required) the entity's id.
+#   on_click    — optional action list run when a task card is clicked,
+#                 after `state.selected_task` is set to the clicked task
+#                 doc — the same open contract `task-modal` documents.
+#                 Wire this to open a host-owned `task-modal` instance,
+#                 e.g. `CallMethod { blockId: <id>, method: toggleOpen }`.
+#                 Default [].
+id: open_tasks_card
+type: Box
+layout:
+  gap: 8
+requests:
+  - id: get_open_tasks_for_entity
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: actions-collection
+    payload:
+      entity_type:
+        _var: entity_type
+      entity_id:
+        _var: entity_id
+    properties:
+      pipeline:
+        - $match:
+            kind: task
+            entity_type:
+              _payload: entity_type
+            entity_id:
+              _payload: entity_id
+        - $addFields:
+            stage:
+              $arrayElemAt:
+                - $status.stage
+                - 0
+        - $match:
+            stage:
+              $ne: done
+        - $addFields:
+            overdue:
+              $cond:
+                - $and:
+                    - $ne:
+                        - $due_date
+                        - null
+                    - $lt:
+                        - $due_date
+                        - $$NOW
+                - true
+                - false
+            has_due:
+              $cond:
+                - $eq:
+                    - $due_date
+                    - null
+                - 1
+                - 0
+        - $sort:
+            has_due: 1
+            due_date: 1
+            created.timestamp: 1
+        - $project:
+            kind: 1
+            stage: 1
+            title: 1
+            description: 1
+            due_date: 1
+            assignees: 1
+            overdue: 1
+events:
+  onMount:
+    - id: fetch_open_tasks
+      type: Request
+      params: get_open_tasks_for_entity
+    - id: set_open_tasks
+      type: SetState
+      params:
+        open_tasks:
+          _if_none:
+            - _request: get_open_tasks_for_entity
+            - []
+blocks:
+  - id: open_tasks_empty
+    type: Html
+    visible:
+      _eq:
+        - _array.length:
+            _if_none:
+              - _state: open_tasks
+              - []
+        - 0
+    properties:
+      html: |
+        <div style="font-size: 11px; color: var(--ant-color-text-tertiary); padding: 8px 0;">No open tasks.</div>
+  - id: open_tasks
+    type: List
+    layout:
+      direction: column
+      gap: 4
+    blocks:
+      - id: open_tasks.$.card
+        type: Card
+        properties:
+          size: small
+          hoverable: true
+          style:
+            border:
+              _string.concat:
+                - '1px dashed '
+                - _if:
+                    test:
+                      _eq:
+                        - _state: open_tasks.$.overdue
+                        - true
+                    then: 'var(--ant-color-error-border)'
+                    else: 'var(--ant-color-warning-border)'
+            borderLeft:
+              _string.concat:
+                - '4px solid '
+                - _if:
+                    test:
+                      _eq:
+                        - _state: open_tasks.$.overdue
+                        - true
+                    then: 'var(--ant-color-error-border)'
+                    else: 'var(--ant-color-warning-border)'
+            background: var(--ant-color-bg-container)
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: select_open_task
+                  type: SetState
+                  params:
+                    selected_task:
+                      _state: open_tasks.$
+              - _var:
+                  key: on_click
+                  default: []
+        blocks:
+          - id: open_tasks.$.text
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  template: |
+                    <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: {{ label_color }}; margin-bottom: 4px;">&#10003;&nbsp;{{ label }}</div>
+                    <div style="font-size: 11px; color: var(--ant-color-text); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ title }}</div>
+                  on:
+                    label_color:
+                      _if:
+                        test:
+                          _eq:
+                            - _state: open_tasks.$.overdue
+                            - true
+                        then: 'var(--ant-color-error)'
+                        else: 'var(--ant-color-warning)'
+                    label:
+                      _if:
+                        test:
+                          _eq:
+                            - _state: open_tasks.$.overdue
+                            - true
+                        then: Overdue Task
+                        else: Task
+                    title:
+                      _if_none:
+                        - _state: open_tasks.$.title
+                        - ''
+          - id: open_tasks.$.due
+            type: Html
+            visible:
+              _ne:
+                - _state: open_tasks.$.due_date
+                - null
+            properties:
+              html:
+                _string.concat:
+                  - '<div style="font-size: 10px; color: var(--ant-color-text-tertiary); margin-top: 4px;">Due '
+                  - _dayjs.format:
+                      on:
+                        _state: open_tasks.$.due_date
+                      format: 'D MMM YYYY'
+                  - '</div>'

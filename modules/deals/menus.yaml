@@ -1,0 +1,10 @@
+id: default
+links:
+  - id: deals
+    type: MenuLink
+    pageId:
+      _module.pageId: all
+    properties:
+      title:
+        _module.var: label_plural
+      icon: AiOutlineFund

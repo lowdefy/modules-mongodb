@@ -1,5 +1,90 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.20.0
+
+### Minor Changes
+
+- [#131](https://github.com/lowdefy/modules-mongodb/pull/131) [`8b25037`](https://github.com/lowdefy/modules-mongodb/commit/8b25037e8bd8c7692d9bd63f95e3ac4abc9ee4cb) Thanks [@Yianni99](https://github.com/Yianni99)! - The `checkbox_selector` form component takes a `direction` var (`horizontal` — the existing behaviour — or `vertical`). Setting it to `vertical` stacks the checkboxes one per line instead of flowing them across the row, which reads better once an action's option list is long enough that a wrapped row is hard to scan.
+
+- [#131](https://github.com/lowdefy/modules-mongodb/pull/131) [`41fef2d`](https://github.com/lowdefy/modules-mongodb/commit/41fef2d792179f2b2dc9d18e7864c774fafefb64) Thanks [@Yianni99](https://github.com/Yianni99)! - Workflow and action-group overview pages: each action card now reads at a glance. The card header is tinted with its status colour and the status badge picks up the same pale-fill/outline/saturated-text treatment as the workflow status pill above it, so a long list of collapsed actions can be scanned without opening anything. The action message is emphasised, the link button carries a right-arrow, and a collapsed card is now just its coloured header instead of a header plus an empty white body.
+
+  Uploaded files inside an action's data now download instead of showing "No files available" — both pages wire the files module's download policy.
+
+  The title bar now states which record the workflow belongs to: a new line beneath the title shows the entity's id, linked straight to its record. Expand/collapse-all has moved into the title bar's actions area, freeing the row it used to occupy above the cards, and reads as a button rather than plain text. The group heading's icon is also aligned with its title rather than sitting above it.
+
+## 0.19.0
+
+### Minor Changes
+
+- [#129](https://github.com/lowdefy/modules-mongodb/pull/129) [`339a42b`](https://github.com/lowdefy/modules-mongodb/commit/339a42b9d1766df645c82614da133c881124504f) Thanks [@Saiby100](https://github.com/Saiby100)! - Honour `universal_fields` on `kind: check` actions. The flag chooses which of the two action-level fields (`assignees`, `due_date`) an action's UI shows — it has worked on form actions since it shipped, but check actions silently ignored it and always rendered both. Declaring `universal_fields: [due_date]` on a check action now hides the assignees chip and drops the assignees input from the ✎ edit modal, on both the standalone check page and the in-context check modal.
+
+  Each check action's declaration is honoured independently even though one `{workflow_type}-action` page serves them all. The presence list is resolved from workflow config on every read (like `description`), so it is never stored on the action document — change it and redeploy, and in-flight actions pick it up with nothing to migrate.
+
+  This is presence, not permission: hiding a field does not gate who may change it (use `access:` for that), and a hidden field is never written or cleared, so narrowing the list on an action that already has assignees stops showing them rather than wiping them. `universal_fields` is now documented in the authoring grammar reference, where it was previously missing entirely.
+
+## 0.18.0
+
+### Minor Changes
+
+- [#123](https://github.com/lowdefy/modules-mongodb/pull/123) [`fb72ec0`](https://github.com/lowdefy/modules-mongodb/commit/fb72ec081a64eb0bced8856758e635effd96b2a4) Thanks [@Yianni99](https://github.com/Yianni99)! - Action-form text fields (`text_input`) support native max-length capping. A new `max_length` field option maps to the TextInput `maxLength` property, stopping input at the limit instead of erroring after over-long input; `show_count` maps to `showCount` for a live "n/max" counter and defaults to on whenever `max_length` is set.
+
+- [#126](https://github.com/lowdefy/modules-mongodb/pull/126) [`79824a6`](https://github.com/lowdefy/modules-mongodb/commit/79824a615dabb129038dfc7b618ee3a361d6ede9) Thanks [@Yianni99](https://github.com/Yianni99)! - Workflow action pages support an optional wide layout. Setting `page_layout: wide` on a workflow renders all of its action pages — view, edit, review, error, and the per-workflow check page — with the workflow-progress panel on the left, the form expanded to the full width, and the record's Details and History moved into a right-side drawer opened from a header button. Workflows that omit `page_layout` (or set it to `standard`) keep the existing three-column layout unchanged, and an unrecognized value is rejected at build time.
+
+- [#123](https://github.com/lowdefy/modules-mongodb/pull/123) [`fb72ec0`](https://github.com/lowdefy/modules-mongodb/commit/fb72ec081a64eb0bced8856758e635effd96b2a4) Thanks [@Yianni99](https://github.com/Yianni99)! - Workflow and action-group overview pages: the back arrow now returns to the previous page instead of always jumping to the entity view (the entity stays reachable via the breadcrumb), and each action is individually collapsible with an Expand/Collapse-all toggle, all collapsed by default.
+
+  Adds two per-action options: `show_comment` (default `true`) — set `false` to hide the free-form comment box on an action's edit and review pages; and `pages.edit.validate_on_draft` (default `false`) — set `true` to validate the form (like Submit) before the edit page's Save Draft saves.
+
+## 0.17.0
+
+## 0.16.0
+
+### Minor Changes
+
+- [#118](https://github.com/lowdefy/modules-mongodb/pull/118) [`cdd1772`](https://github.com/lowdefy/modules-mongodb/commit/cdd1772bdd70ac5d01f8cc6cab245924a07b8748) Thanks [@Saiby100](https://github.com/Saiby100)! - Add a checkable-tree multi-select field for workflow action forms. Report types (or any grouping) show as parent nodes and their items as checkable leaves; checking a group selects all its items. The selection now also renders on the read-only view page instead of showing nothing.
+
+## 0.15.0
+
+### Minor Changes
+
+- [#111](https://github.com/lowdefy/modules-mongodb/pull/111) [`8923ca1`](https://github.com/lowdefy/modules-mongodb/commit/8923ca1501e8ae7af3ee721bd9738134d0f03681) Thanks [@Yianni99](https://github.com/Yianni99)! - Add the **open-actions** component — a compact, colour-keyed card list of an
+  entity's OPEN workflow actions, for hosts that want a lighter summary than
+  the full `actions-on-entity` stepper. Takes the same `entity_id` +
+  `entity_connection_id` vars, fetches via the existing `get-entity-workflows`
+  endpoint, flattens every workflow's groups, and keeps only non-terminal
+  actions (everything except `done`/`not-required`), styled off the
+  `action_statuses` enum. Actions-only — never reads tasks or activities.
+
+## 0.14.1
+
+## 0.14.0
+
+### Minor Changes
+
+- [#114](https://github.com/lowdefy/modules-mongodb/pull/114) [`f8b6d19`](https://github.com/lowdefy/modules-mongodb/commit/f8b6d197d010ce025a6e6443184f079d6170fe66) Thanks [@Saiby100](https://github.com/Saiby100)! - Add the WorkflowProgress block and the workflows module's `workflow-progress` component — a presentation variant of `actions-on-entity` that renders an entity's workflows as collapsible sections of grouped, status-colored action buttons, with progress rings, done-fractions, and the shared check-action click handling baked in.
+
+## 0.13.0
+
+## 0.12.0
+
+### Minor Changes
+
+- [#105](https://github.com/lowdefy/modules-mongodb/pull/105) [`b853551`](https://github.com/lowdefy/modules-mongodb/commit/b85355143b18f2a76d7f8ff77fdd7080acf6a619) Thanks [@Saiby100](https://github.com/Saiby100)! - Extend the form-field library. Add a `phone` field (wraps `PhoneNumberInput` —
+  the form-side counterpart to the `phoneNumber` view field type), add
+  `disabled`/`extra` vars to `text_input`, and `disabled`/`theme` vars to
+  `button_selector`. Also migrate `location` off the deprecated
+  `layout.contentGutter` (→ `layout.gap`), which newer Lowdefy builds reject.
+  Together these let consuming apps author read-only text, themed toggles, and
+  phone inputs as first-class library components instead of raw blocks.
+
+### Patch Changes
+
+- [#105](https://github.com/lowdefy/modules-mongodb/pull/105) [`d913ed6`](https://github.com/lowdefy/modules-mongodb/commit/d913ed626c972f103ce297ade1db425a3c0e864d) Thanks [@Saiby100](https://github.com/Saiby100)! - Fix outer-card suppression on the form-action edit/error pages. The templates
+  dropped the outer form card whenever the first form entry declared a sub-form,
+  assuming it owned its own card chrome — but only the `section` field renders a
+  Card. A form led by a `controlled_list` (or `box`/`label`/`file_upload`) thus
+  rendered with no card, and its comment input fell outside any card. Suppression
+  now triggers only when the first entry's component is `section`.
+
 ## 0.11.0
 
 ## 0.10.1

@@ -76,7 +76,7 @@ const ContactListItem = ({
         </div>
       </div>
       {showActions && (
-        <Space size={4} style={{ width: 120, justifyContent: "flex-end" }}>
+        <Space size={4} style={{ width: 120, justifyContent: "center" }}>
           {showVerify ? (
             <Button
               size="small"

@@ -7,12 +7,9 @@
         icon: AiOutlineContacts
       links:
         _build.array.concat:
-          - - id: leads
-              type: MenuLink
-              pageId: lead-list
-              properties:
-                title: Leads
-                icon: AiOutlineUserAdd
+          - _ref:
+              module: deals
+              menu: default
           - _ref:
               module: companies
               menu: default

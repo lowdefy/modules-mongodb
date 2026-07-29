@@ -6,6 +6,7 @@ import {
 } from "./hookSignals.js";
 import { collectTrackerEdges } from "./trackerEdges.js";
 import { humanizeSlug } from "./humanizeSlug.js";
+import { PAGE_LAYOUTS } from "./pageLayouts.js";
 
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
 // (form, form_review, form_error, pages, hooks, event) are excluded —
@@ -772,6 +773,20 @@ function validateEntityView(workflow) {
   }
 }
 
+// Optional `page_layout` selects the action-page layout variant. Closed enum;
+// absent → standard (defaulted downstream by makeActionPages' workspaceVars).
+// Build-time-only UI field — not carried on the runtime blob (absent from
+// WORKFLOW_FIELDS); consumed by makeActionPages against the raw workflow YAML.
+function validatePageLayout(workflow) {
+  if (!("page_layout" in workflow)) return;
+  if (!PAGE_LAYOUTS.includes(workflow.page_layout)) {
+    fail(
+      workflow.type,
+      `invalid page_layout "${workflow.page_layout}" (expected one of: ${PAGE_LAYOUTS.join(", ")}).`,
+    );
+  }
+}
+
 function validateWorkflow(workflow) {
   if ("entity_type" in workflow) {
     fail(
@@ -873,6 +888,8 @@ function validateWorkflow(workflow) {
       `workflow title must be a string when present (got: ${JSON.stringify(workflow.title)}).`,
     );
   }
+
+  validatePageLayout(workflow);
 
   validateWorkflowEvent(workflow);
 

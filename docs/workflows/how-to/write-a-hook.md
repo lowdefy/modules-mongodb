@@ -210,7 +210,7 @@ hooks:
       routine: [...]
 ```
 
-Valid signal keys: `submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`. Engine-internal signals (`unblock`, `activate`, `block`, `internal_*`) have no hook-dispatch point.
+Valid signal keys: `submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`. Engine-internal / pre-hook cascade signals (`unblock`, `activate`, `require`, `block`, `internal_*`) have no hook-dispatch point — you fire them against _other_ actions via `actions[]`, you don't attach hooks to them.
 
 ### 7. Verify the hook runs via the build
 

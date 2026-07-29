@@ -1,0 +1,7 @@
+# Read-only usage — the events module owns writes to this collection.
+id: events-collection
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: log-events

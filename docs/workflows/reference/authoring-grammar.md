@@ -34,6 +34,7 @@ entity: # required — the workflow's entity wiring
 entity_view: # optional — build-time, read-only UI hint; never part of the engine config
   slot: { ... } # a Lowdefy block ref rendering a read-only view of the entity
 title: <string> # optional — human-readable title; derived from slug when omitted
+page_layout: standard | wide # optional — action-page layout variant (default standard); see concepts/action-pages.md
 starting_actions: # required — seed actions at workflow start
   - { type: <slug>, status: action-required | blocked }
 action_groups: # optional — ordered group definitions
@@ -49,18 +50,19 @@ actions: # required — action definitions
 
 ### Core fields
 
-| Field          | Required | Description                                                                                            |
-| -------------- | -------- | ------------------------------------------------------------------------------------------------------ |
-| `type`         | yes      | Action type slug — unique within the workflow                                                          |
-| `kind`         | yes      | `form`, `check`, or `tracker`                                                                          |
-| `title`        | no       | Human-readable title; derived from slug when omitted                                                   |
-| `action_group` | no       | Group ID this action belongs to                                                                        |
-| `description`  | no       | Authored markdown body shown to whoever works the action (see [Description](#description-description)) |
-| `access`       | yes      | Per-app, per-verb role gate (see below)                                                                |
+| Field              | Required | Description                                                                                               |
+| ------------------ | -------- | --------------------------------------------------------------------------------------------------------- |
+| `type`             | yes      | Action type slug — unique within the workflow                                                             |
+| `kind`             | yes      | `form`, `check`, or `tracker`                                                                             |
+| `title`            | no       | Human-readable title; derived from slug when omitted                                                      |
+| `action_group`     | no       | Group ID this action belongs to                                                                           |
+| `description`      | no       | Authored markdown body shown to whoever works the action (see [Description](#description-description))    |
+| `access`           | yes      | Per-app, per-verb role gate (see below)                                                                   |
+| `universal_fields` | no       | Which universal fields the action's UI shows (see [Universal fields](#universal-fields-universal_fields)) |
 
 ### Runtime-read fields (engine reads at runtime)
 
-`type`, `title`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `required_after_close`, `allow_not_required`, `access`, `status_map`
+`type`, `title`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `required_after_close`, `allow_not_required`, `access`, `status_map`, `universal_fields`
 
 ### Build-time-only fields (consumed by resolvers)
 
@@ -97,7 +99,7 @@ Emits per-verb pages (`-edit`, `-view`, `-review`, `-error`) and a submit endpoi
 
 ### `kind: check`
 
-Served by the per-workflow `{workflow_type}-action` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`).
+Served by the per-workflow `{workflow_type}-action` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`) — narrow those with [`universal_fields`](#universal-fields-universal_fields), which is honoured per action even though one page serves every check action in the workflow.
 
 ```yaml
 - type: send-quote
@@ -168,6 +170,31 @@ description: |
 - **Templated, read-time** — supports `{{ var }}` nunjucks against the action instance (e.g. `{{ key }}` on an instanced action). Rendered fresh on every read, so it can never go stale. Autoescaping is on.
 - **Authored once, read-only** — set in the action YAML; identical for every instance and not editable per instance. It is **not** `message` (the short per-stage `status_map` copy) and **not** a comment (the per-instance free-text channel); an action can have all three.
 - **Which kinds render it** — `form` and `check`. Authoring it on `custom` (owns its working page) or `tracker` (no working surface) is harmless config but not rendered; no validator rejects it there.
+
+## Universal fields (`universal_fields:`)
+
+The two action-level metadata fields — `assignees` and `due_date` — that every action carries independently of any form. They render as chips in the action title bar with a pencil (✎) that opens an edit modal. `universal_fields` declares **which of them the UI shows**.
+
+```yaml
+- type: assign-account-manager
+  kind: check
+  universal_fields: [assignees] # show assignees only — no due date
+```
+
+| Value           | Effect                    |
+| --------------- | ------------------------- |
+| omitted         | both fields (the default) |
+| `[assignees]`   | assignees only            |
+| `[due_date]`    | due date only             |
+| `false` or `[]` | neither                   |
+
+Any other value is rejected at build time: a bare `true`, a string, an unknown field name, or a duplicate entry.
+
+- **All four kinds accept it**, and it applies to every kind with a working surface — `form` and `check` alike. On `custom` (owns its page) and `tracker` (no working surface) it is accepted but not rendered.
+- **Presence only, not permission.** This hides a field from the UI; it is not an access gate. The `{workflow_type}-update-fields` operation still accepts both keys for a caller with the `edit` verb. Use [`access:`](#access-access) to control who may change them.
+- **A hidden field is never written or cleared.** The Update operation treats an absent key as "leave unchanged", so narrowing the list on an action that already has assignees does not wipe them — it just stops showing them.
+- **Resolved per read, never stored.** Like [`description`](#description-description), the list lives in the workflow YAML, not on the action document. Change it and redeploy, and in-flight actions pick it up immediately — there is nothing to migrate.
+- **The ✎ button is always present**, so a shown-but-empty field can still be filled in. When the list is empty the whole chip strip is omitted.
 
 ## Starting actions (`starting_actions:`)
 

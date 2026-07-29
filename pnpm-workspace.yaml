@@ -15,20 +15,67 @@ packages:
 overrides:
   dayjs: 1.11.20
 
-# These three live here, not under a "pnpm" key in package.json: pnpm 10 (the
-# repo pins pnpm@10.6.2) no longer reads that key and silently ignores it —
-# it only warns. A dropped patchedDependencies is invisible and undoes the
-# AgentChat fix below on the next fresh install.
-packageExtensions:
-  "@lowdefy/client":
-    dependencies:
-      antd: 6.3.1
-
-onlyBuiltDependencies:
-  - mongodb-memory-server
-
 # AgentChat keys useChat by conversationId. Without the patch, useChat captures
 # the transport at mount, so switching conversations persists the continued
 # chat under the mount-time id.
 patchedDependencies:
   "@lowdefy/blocks-antd-x": patches/@lowdefy__blocks-antd-x.patch
+
+# These keys live here, not under a "pnpm" key in package.json: pnpm 10+ (the
+# repo pins pnpm@11.12.0) no longer reads that key and silently ignores it — it
+# only warns. A dropped patchedDependencies is invisible and undoes the
+# AgentChat fix above on the next fresh install.
+packageExtensions:
+  "@lowdefy/client":
+    dependencies:
+      antd: "6.3.1"
+
+# pnpm 11 replaced onlyBuiltDependencies/ignoredBuiltDependencies with allowBuilds
+# (package -> boolean) and fails install on any un-reviewed build script.
+# mongodb-memory-server needs its postinstall; @swc/core and sharp ship prebuilt
+# binaries via optional deps, so their install scripts are intentionally skipped.
+allowBuilds:
+  mongodb-memory-server: true
+  "@swc/core": false
+  sharp: false
+  # @sentry/cli (pulled in via the lowdefy 5.5.x server's @sentry/nextjs) ships a
+  # prebuilt binary; its postinstall download is not needed for the build.
+  "@sentry/cli": false
+
+minimumReleaseAgeExclude:
+  - '@lowdefy/actions-core@5.5.1'
+  - '@lowdefy/ai-utils@5.5.1'
+  - '@lowdefy/ajv@5.5.1'
+  - '@lowdefy/api@5.5.1'
+  - '@lowdefy/block-utils@5.5.1'
+  - '@lowdefy/blocks-aggrid@5.5.1'
+  - '@lowdefy/blocks-antd-x@5.5.1'
+  - '@lowdefy/blocks-antd@5.5.1'
+  - '@lowdefy/blocks-basic@5.5.1'
+  - '@lowdefy/blocks-loaders@5.5.1'
+  - '@lowdefy/blocks-markdown@5.5.1'
+  - '@lowdefy/blocks-tiptap@5.5.1'
+  - '@lowdefy/build@5.5.1'
+  - '@lowdefy/client@5.5.1'
+  - '@lowdefy/e2e-utils@5.5.1'
+  - '@lowdefy/engine@5.5.1'
+  - '@lowdefy/errors@5.5.1'
+  - '@lowdefy/helpers@5.5.1'
+  - '@lowdefy/layout@5.5.1'
+  - '@lowdefy/logger@5.5.1'
+  - '@lowdefy/node-utils@5.5.1'
+  - '@lowdefy/nunjucks@5.5.1'
+  - '@lowdefy/operators-dayjs@5.5.1'
+  - '@lowdefy/operators-js@5.5.1'
+  - '@lowdefy/operators-mql@5.5.1'
+  - '@lowdefy/operators-nunjucks@5.5.1'
+  - '@lowdefy/operators-uuid@5.5.1'
+  - '@lowdefy/operators@5.5.1'
+  - '@lowdefy/plugin-aws@5.5.1'
+  - '@lowdefy/plugin-next-auth@5.5.1'
+  - lowdefy@5.5.1
+  - '@lowdefy/blocks-echarts@5.5.1'
+  - '@lowdefy/connection-axios-http@5.5.1'
+  - '@lowdefy/operators-change-case@5.5.1'
+  - '@lowdefy/operators-diff@5.5.1'
+  - '@lowdefy/operators-yaml@5.5.1'

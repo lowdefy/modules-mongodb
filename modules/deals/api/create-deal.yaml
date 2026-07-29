@@ -1,0 +1,120 @@
+id: create-deal
+type: Api
+routine:
+  - :set_state:
+      workflow_id:
+        _uuid: true
+      event_id:
+        _uuid: true
+
+  - id: insert_deal
+    type: MongoDBInsertConsecutiveId
+    connectionId:
+      _module.connectionId: deals-collection
+    properties:
+      prefix: "D-"
+      length: 5
+      doc:
+        name:
+          _payload: form.name
+        description:
+          _payload: form.description
+        company_id:
+          _payload: form.company_id
+        # Generic host-field passthrough — whatever the host's `fields` blocks
+        # bind under state.attributes.* is persisted verbatim. The module knows
+        # no domain-specific field keys.
+        attributes:
+          _if_none:
+            - _payload: attributes
+            - {}
+        salesperson:
+          contact_id:
+            _user: id
+          name:
+            _user: profile.name
+          email:
+            _user: email
+        status:
+          - stage:
+              _module.var: initial_stage
+            created:
+              _ref:
+                module: events
+                component: change_stamp
+        outcome: null
+        deal_tags:
+          _if_none:
+            - _payload: form.deal_tags
+            - []
+        created:
+          _ref:
+            module: events
+            component: change_stamp
+        updated:
+          _ref:
+            module: events
+            component: change_stamp
+        removed: null
+
+  - id: start_workflow
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          # {workflow_type}-start, built at build time from the module's
+          # workflow_type var — never a literal. The workflows module generates
+          # one such endpoint per configured workflow type.
+          id:
+            _build.string.concat:
+              - _module.var: workflow_type
+              - "-start"
+          module: workflows
+      payload:
+        entity:
+          id:
+            _step: insert_deal.insertedId
+
+  # The module mints the workflow id; surface it for the event + return below.
+  - :set_state:
+      workflow_id:
+        _step: start_workflow.response.workflow_id
+
+  - id: event_create_deal
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: create-deal
+        display:
+          _build.object.fromEntries:
+            - - _module.var: app_name
+              - title:
+                  _nunjucks:
+                    template: |
+                      <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> created deal {{ deal_id }}.
+                    on:
+                      user:
+                        _user: true
+                      deal_id:
+                        _step: insert_deal.insertedId
+                description: null
+        references:
+          deal_ids:
+            - _step: insert_deal.insertedId
+          company_ids:
+            - _payload: form.company_id
+        metadata:
+          deal_id:
+            _step: insert_deal.insertedId
+          workflow_id:
+            _state: workflow_id
+
+  - :return:
+      deal_id:
+        _step: insert_deal.insertedId
+      workflow_id:
+        _state: workflow_id

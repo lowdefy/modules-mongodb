@@ -94,7 +94,11 @@ const form = {
     request_changes: "changes-required",
     activate: "action-required",
   },
-  "not-required": {},
+  // `require` is the narrow reopener for `not-required` (the counterpart of
+  // `unblock` for `blocked`); kept distinct from broad `activate`.
+  "not-required": {
+    require: "action-required",
+  },
 };
 
 // --- Tracker kind. The `none` row carries only the birth signals `activate` /

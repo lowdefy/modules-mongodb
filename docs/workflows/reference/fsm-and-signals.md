@@ -43,6 +43,7 @@ The engine resolves every status change as a **signal** against a per-kind finit
 | `block`                           | `action-required`, `in-progress`, `in-review`, `changes-required`, `error`            | `blocked`         | Pre-hooks only                                 |
 | `error`                           | `action-required`, `in-progress`, `in-review`, `changes-required`, `blocked`          | `error`           | Pre-hooks only                                 |
 | `activate`                        | `blocked`, `in-progress`, `in-review`, `changes-required`, `error`, `done`            | `action-required` | Pre-hooks                                      |
+| `require`                         | `not-required`                                                                        | `action-required` | Pre-hooks                                      |
 | `internal_cancel_action`          | `action-required`, `in-progress`, `in-review`, `changes-required`, `error`, `blocked` | `not-required`    | Engine `CancelWorkflow` cascade                |
 | `internal_mirror_child_active`    | `blocked`, `action-required`, `done`, `not-required` (tracker only)                   | `in-progress`     | Engine tracker subscription                    |
 | `internal_mirror_child_completed` | `blocked`, `action-required`, `in-progress`, `not-required` (tracker only)            | `done`            | Engine tracker subscription                    |
@@ -55,23 +56,25 @@ The engine resolves every status change as a **signal** against a per-kind finit
 
 So: reach for `unblock` when the intent is "this dependency is satisfied, release it if (and only if) it was waiting" — it's safe to fire repeatedly and the engine does. Reach for `activate` when the intent is "force this back to actionable regardless of where it is" — a deliberate, author-driven reset, never auto-fired by the engine.
 
+**`require` — reopening `not-required`.** `activate` deliberately does **not** accept `not-required` (a skipped action stays sticky). To bring a `not-required` action back to `action-required`, pre-hooks fire the dedicated narrow `require` signal. It's the `not-required` counterpart of `unblock`: it accepts **only `not-required`** and no-ops everywhere else, so a cascade can reopen a skipped action without accidentally reopening a completed (`done`) or in-progress sibling. Typical use: a boolean form field whose pre-hook fires `not_required` when the flag is off and `require` when it's on, toggling a dependent action indefinitely.
+
 `internal_*` signals are engine-internal conventions. Pre-hooks should not emit them.
 
 ## FSM tables
 
 ### Form kind
 
-| Current ↓ / Signal → | `submit`              | `progress`    | `not_required` | `approve` | `request_changes`  | `resolve_error` | `error` | `unblock`         | `activate`        | `block`   | `internal_cancel_action` |
-| -------------------- | --------------------- | ------------- | -------------- | --------- | ------------------ | --------------- | ------- | ----------------- | ----------------- | --------- | ------------------------ |
-| `none` (creation)    | —                     | —             | —              | —         | `changes-required` | —               | `error` | —                 | `action-required` | `blocked` | —                        |
-| `blocked`            | —                     | —             | `not-required` | —         | —                  | —               | `error` | `action-required` | `action-required` | —         | `not-required`           |
-| `action-required`    | `in-review` or `done` | `in-progress` | `not-required` | —         | —                  | —               | `error` | —                 | —                 | `blocked` | `not-required`           |
-| `in-progress`        | `in-review` or `done` | `in-progress` | `not-required` | —         | —                  | —               | `error` | —                 | `action-required` | `blocked` | `not-required`           |
-| `in-review`          | —                     | —             | `not-required` | `done`    | `changes-required` | —               | `error` | —                 | `action-required` | `blocked` | `not-required`           |
-| `changes-required`   | `in-review` or `done` | —             | `not-required` | —         | —                  | —               | `error` | —                 | `action-required` | `blocked` | `not-required`           |
-| `error`              | —                     | —             | `not-required` | —         | —                  | `in-review`     | —       | —                 | `action-required` | `blocked` | `not-required`           |
-| `done`               | `in-review` or `done` | —             | —              | —         | `changes-required` | —               | —       | —                 | `action-required` | —         | —                        |
-| `not-required`       | —                     | —             | —              | —         | —                  | —               | —       | —                 | —                 | —         | —                        |
+| Current ↓ / Signal → | `submit`              | `progress`    | `not_required` | `approve` | `request_changes`  | `resolve_error` | `error` | `unblock`         | `activate`        | `require`         | `block`   | `internal_cancel_action` |
+| -------------------- | --------------------- | ------------- | -------------- | --------- | ------------------ | --------------- | ------- | ----------------- | ----------------- | ----------------- | --------- | ------------------------ |
+| `none` (creation)    | —                     | —             | —              | —         | `changes-required` | —               | `error` | —                 | `action-required` | —                 | `blocked` | —                        |
+| `blocked`            | —                     | —             | `not-required` | —         | —                  | —               | `error` | `action-required` | `action-required` | —                 | —         | `not-required`           |
+| `action-required`    | `in-review` or `done` | `in-progress` | `not-required` | —         | —                  | —               | `error` | —                 | —                 | —                 | `blocked` | `not-required`           |
+| `in-progress`        | `in-review` or `done` | `in-progress` | `not-required` | —         | —                  | —               | `error` | —                 | `action-required` | —                 | `blocked` | `not-required`           |
+| `in-review`          | —                     | —             | `not-required` | `done`    | `changes-required` | —               | `error` | —                 | `action-required` | —                 | `blocked` | `not-required`           |
+| `changes-required`   | `in-review` or `done` | —             | `not-required` | —         | —                  | —               | `error` | —                 | `action-required` | —                 | `blocked` | `not-required`           |
+| `error`              | —                     | —             | `not-required` | —         | —                  | `in-review`     | —       | —                 | `action-required` | —                 | `blocked` | `not-required`           |
+| `done`               | `in-review` or `done` | —             | —              | —         | `changes-required` | —               | —       | —                 | `action-required` | —                 | —         | —                        |
+| `not-required`       | —                     | —             | —              | —         | —                  | —               | —       | —                 | —                 | `action-required` | —         | —                        |
 
 The `submit` landing (`in-review` vs `done`) is action-global: `in-review` when **any** app's `access` block declares the `review` verb for the action; `done` otherwise.
 

@@ -18,11 +18,21 @@ Every action a user opens — whether a `kind: form` action or a `kind: check` a
 └──────────────────┴────────────────────────┴───────────────────────────┘
 ```
 
-The action's **universal fields** (`assignees`, `due_date`) live in the title bar, not the right column: assignees render as avatars and the due date as a pill in the title bar's right-aligned actions, and a pencil (✎) button beside them opens a modal that edits both. The modal's **Update** saves the fields independently of any form submit or signal. The action's authored [`description`](../reference/authoring-grammar.md#description-description) — a separate, workflow-authored markdown field, **not** a universal field and not editable per instance — renders read-only as a chrome-less lead-in at the top of the middle column when set.
+The action's **universal fields** (`assignees`, `due_date`) live in the title bar, not the right column: assignees render as avatars and the due date as a pill in the title bar's right-aligned actions, and a pencil (✎) button beside them opens a modal that edits both. The modal's **Update** saves the fields independently of any form submit or signal. An action can show just one of them, or neither, via [`universal_fields`](../reference/authoring-grammar.md#universal-fields-universal_fields) — the chips and the modal honour the same list. Form pages resolve it at build time; the check page and the in-context check modal read it off the loaded action, since both are shared across actions. The action's authored [`description`](../reference/authoring-grammar.md#description-description) — a separate, workflow-authored markdown field, **not** a universal field and not editable per instance — renders read-only as a chrome-less lead-in at the top of the middle column when set.
 
 - **Left** — the `actions-on-entity` widget: every workflow attached to this entity with its action list. The current action's row links back to its own page.
 - **Middle** — the authored description lead-in (when set), then the action surface, then a floating (sticky) action bar. For a form action the surface is the form (edit / view / review / error verb); for a check action it is the check surface (the optional `entity_view` review subject + a comment field). The action bar holds the action's buttons — any workflow-defined `buttons.extra` on the left, the standard signal verbs on the right — docked at the bottom of the column. The edit page's progress ("Save Draft") and submit ("Submit") button titles can be relabelled per action via `page_config.buttons.progress.title` / `page_config.buttons.submit.title`.
 - **Right** — a single card with an optional **Details** section stacked above the **History** timeline (no tabs). History is always present (the action-filtered events timeline) and fills the remaining card height, scrolling internally. The **Details** section appears only when the workflow declares an `entity_view` slot (form pages only — see below); on the check page it is absent (the entity is the middle review subject), leaving History as the sole section.
+
+## Wide layout (`page_layout: wide`)
+
+The three-tier layout above is the default (`page_layout: standard`). Setting `page_layout: wide` on the workflow definition switches **all** of that workflow's action pages to a wider variant, for form-heavy actions that need more horizontal room:
+
+- **Left** — the `workflow-progress` surface replaces the `actions-on-entity` step list. Same data (an entity's workflows and their actions), a more compact presentation.
+- **Middle** — the action surface takes over the full width the right column vacated.
+- **Right** — the column is removed. The optional **Details** section and the **History** timeline move into a right-side **drawer**, opened from a button in the title bar. The button (and drawer) read "Details & History" when the workflow declares an `entity_view` slot, "History" when it does not; the drawer refetches History each time it opens.
+
+The choice is per workflow and applies to every one of its action pages — the form verbs and the [per-workflow check page](#the-per-workflow-check-page) alike. On the check page there is no form and no Details section, so only the left-panel swap and the History drawer apply. Workflows that omit `page_layout` (or set `standard`) are unchanged.
 
 ## The per-workflow check page
 

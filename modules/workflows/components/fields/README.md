@@ -193,6 +193,45 @@ Multi-select dropdown. Renders a `MultipleSelector`. Caller-supplied `validate` 
     - { label: Internal, value: internal }
 ```
 
+#### `tree_multiple_selector`
+
+Checkable-tree multi-select. Renders a `TreeMultipleSelector`. Options are a flat array of rows; `primaryKey`/`parentKey` name the fields that build the hierarchy (a row whose `parentKey` matches another row's `primaryKey` nests under it — omit both to render flat). `checkable` defaults on, and `showCheckedStrategy: SHOW_CHILD` stores only leaf values (checking a group cascades to its leaves without storing the group). Caller-supplied `validate` is concatenated with a required-fires-on-empty-array rule when `required: true`. On the read-only view page the stored values render as tags.
+
+| Var                    | Type    | Required / Default |
+| ---------------------- | ------- | ------------------ |
+| `key`                  | string  | required           |
+| `title`                | string  | —                  |
+| `visible`              | boolean | `true`             |
+| `required`             | boolean | `false`            |
+| `validate`             | array   | `[]`               |
+| `options`              | array   | `[]`               |
+| `primaryKey`           | string  | `null`             |
+| `parentKey`            | string  | `null`             |
+| `checkable`            | boolean | `true`             |
+| `showCheckedStrategy`  | string  | `SHOW_CHILD`       |
+| `showSearch`           | boolean | `true`             |
+| `treeDefaultExpandAll` | boolean | `false`            |
+| `allowClear`           | boolean | `true`             |
+| `placeholder`          | string  | —                  |
+| `maxTagCount`          | number  | —                  |
+| `extra`                | string  | —                  |
+| `label_inline`         | boolean | `false`            |
+| `label_span`           | number  | —                  |
+| `label_disabled`       | boolean | `false`            |
+| `on_change`            | array   | `[]`               |
+
+```yaml
+- component: tree_multiple_selector
+  key: form.reports
+  title: Reports
+  primaryKey: id
+  parentKey: parentId
+  options:
+    _js: |
+      # rows: { id, value, label, parentId, selectable } — parents carry no value
+      ...
+```
+
 #### `radio_selector`
 
 Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon: false`.
@@ -218,21 +257,23 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 #### `checkbox_selector`
 
-Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`.
+Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row.
 
-| Var        | Type    | Required / Default |
-| ---------- | ------- | ------------------ |
-| `key`      | string  | required           |
-| `title`    | string  | —                  |
-| `visible`  | boolean | `true`             |
-| `required` | boolean | `false`            |
-| `options`  | array   | `[]`               |
-| `extra`    | string  | —                  |
+| Var         | Type    | Required / Default |
+| ----------- | ------- | ------------------ |
+| `key`       | string  | required           |
+| `title`     | string  | —                  |
+| `visible`   | boolean | `true`             |
+| `required`  | boolean | `false`            |
+| `options`   | array   | `[]`               |
+| `extra`     | string  | —                  |
+| `direction` | string  | `horizontal`       |
 
 ```yaml
 - component: checkbox_selector
   key: channels
   title: Notification channels
+  direction: vertical
   options:
     - { label: Email, value: email }
     - { label: SMS, value: sms }

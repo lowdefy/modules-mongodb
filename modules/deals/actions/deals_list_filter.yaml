@@ -1,0 +1,22 @@
+# Shared filter/search action for the deals list page. Every filter control and
+# the search box ref this: reset to page 1 (so a narrowed result set never lands
+# the user on an empty page), refetch, and store the results for the card list.
+- id: reset_pagination
+  type: SetState
+  params:
+    pagination:
+      current: 1
+      skip: 0
+      pageSize: 20
+- id: fetch_deals_list
+  type: Request
+  messages:
+    loading: true
+  params: get_deals_list
+- id: set_deals_list_results
+  type: SetState
+  params:
+    deals_list_results:
+      _if_none:
+        - _request: get_deals_list.0.results
+        - []

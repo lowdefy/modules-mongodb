@@ -1,0 +1,93 @@
+# Compact open-actions card — a lighter sibling of `actions-on-entity`. Where
+# `actions-on-entity` renders the full per-workflow ActionSteps stepper, this
+# surfaces just the entity's currently OPEN actions as small colour-keyed cards,
+# for sidebars/summaries. "Open" = every status except the two terminal ones
+# (`done`, `not-required`) — the same terminal set the engine's own
+# `deriveGroupStatus.js` treats as closed. Actions-only: never reads tasks or
+# any activities collection.
+#
+# Rendering: a SINGLE reactive `_nunjucks` Html block driven by a `_js` flatten
+# of `entity_workflows` state. Both re-evaluate on every render, so the list
+# recomputes whenever `entity_workflows` changes — including when a host (e.g.
+# the deal view) reseeds it on selection change — with no host wiring, no item
+# cap, and one flatten per render. Navigation is an anchor href to each action's
+# page (the compact-card idiom).
+#
+# Vars:
+#   entity_id            — (required) the entity whose open actions render.
+#   entity_connection_id — (required) the entity's connection id.
+id: open_actions_card
+type: Box
+events:
+  onMount:
+    - id: call_entity_workflows
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: get-entity-workflows
+        payload:
+          entity:
+            id:
+              _var: entity_id
+            connection_id:
+              _var: entity_connection_id
+    - id: set_entity_workflows
+      type: SetState
+      params:
+        entity_workflows:
+          _actions: call_entity_workflows.response.response.workflows
+blocks:
+  - id: open_actions_html
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          # `actions` is recomputed from entity_workflows on every render (see
+          # header) — reactive, uncapped.
+          template: |
+            {% if actions.length == 0 %}
+            <div style="font-size: 11px; color: var(--ant-color-text-tertiary); padding: 8px 0;">No open actions.</div>
+            {% else %}
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+            {% for a in actions %}
+            <a {% if a.href %}href="{{ a.href }}" {% endif %}style="display: block; text-decoration: none; padding: 8px 10px; border-radius: 6px; border: 1px solid {{ a.border }}; background: color-mix(in srgb, {{ a.border }} 18%, transparent); cursor: {% if a.href %}pointer{% else %}default{% endif %};">
+              <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: {{ a.title_color }}; margin-bottom: 4px;">{{ a.label }}</div>
+              <div style="font-size: 11px; color: var(--ant-color-text); line-height: 1.4;">{{ a.message }}</div>
+            </a>
+            {% endfor %}
+            </div>
+            {% endif %}
+          on:
+            actions:
+              _js:
+                args:
+                  - _ref: components/action_statuses.yaml
+                fn: |
+                  const statuses = args[0] || {};
+                  const TERMINAL = ['done', 'not-required'];
+                  const out = [];
+                  const wfs = state('entity_workflows') || [];
+                  for (const wf of wfs) {
+                    for (const g of (wf.groups || [])) {
+                      for (const act of (g.actions || [])) {
+                        if (TERMINAL.includes(act.status)) continue;
+                        const sc = statuses[act.status] || {};
+                        let href = null;
+                        if (act.link && act.link.pageId) {
+                          const uq = act.link.urlQuery || {};
+                          const qs = Object.keys(uq)
+                            .map(function (k) { return k + '=' + uq[k]; })
+                            .join('&');
+                          href = '/' + act.link.pageId + (qs ? '?' + qs : '');
+                        }
+                        out.push({
+                          label: g.title || wf.title || 'Action',
+                          message: act.message || '',
+                          border: sc.borderColor || 'var(--ant-color-primary-border)',
+                          title_color: sc.titleColor || 'var(--ant-color-primary)',
+                          href: href,
+                        });
+                      }
+                    }
+                  }
+                  return out;

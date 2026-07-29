@@ -1,0 +1,131 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "workflows": {
+      "type": "array",
+      "default": [],
+      "description": "The get-entity-workflows response `workflows` array. Each workflow renders as a collapsible titled group; its `groups` render as labelled sections of status-colored action buttons.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "_id": { "type": "string" },
+          "workflow_type": {
+            "type": "string",
+            "description": "Stable workflow slug (e.g. 'onboarding'). Used as the collapse key by defaultActiveKeys/activeKeys and reported by onChange."
+          },
+          "title": {
+            "type": "string",
+            "description": "Workflow title shown on the collapsible row."
+          },
+          "icon": {
+            "type": "string",
+            "description": "Optional Antd/Lucide icon name shown on the workflow row. Omitted when absent (no icon slot)."
+          },
+          "groups": {
+            "type": "array",
+            "description": "Action groups within the workflow, ordered by `order`. Each is a labelled section.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "id": { "type": "string" },
+                "order": {
+                  "type": "number",
+                  "description": "Section sort order."
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Section label. Omit to render an unlabelled section."
+                },
+                "icon": {
+                  "type": "string",
+                  "description": "Optional Antd/Lucide icon name shown left of the section title. Omitted when absent."
+                },
+                "actions": {
+                  "type": "array",
+                  "description": "Actions in the group, rendered as status-colored buttons.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                      "_id": { "type": "string" },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "blocked",
+                          "action-required",
+                          "in-progress",
+                          "done",
+                          "error",
+                          "not-required",
+                          "in-review",
+                          "changes-required"
+                        ],
+                        "description": "Per-action status. Drives the button's fill/border/text color."
+                      },
+                      "message": {
+                        "type": "string",
+                        "description": "Button label. Sanitized HTML supported. Struck through when status is 'not-required'. For neat buttons, author this as a short action title (see the workflows `status_map` authoring note)."
+                      },
+                      "link": {
+                        "type": "object",
+                        "description": "Server-resolved navigation target. Omit or set disabled to render a non-clickable button (e.g. a blocked action).",
+                        "additionalProperties": true,
+                        "properties": {
+                          "pageId": { "type": "string" },
+                          "urlQuery": { "type": "object" },
+                          "input": { "type": "object" },
+                          "newTab": { "type": "boolean", "default": false },
+                          "disabled": { "type": "boolean", "default": false }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "actionStatusConfig": {
+      "type": "object",
+      "description": "Map of action status key → display config from the shared `action_statuses` enum. `color` is the button fill, `borderColor` the border, `titleColor` the text, `title` the tooltip label. Pass `_ref: components/action_statuses.yaml`.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "color": { "type": "string" },
+          "borderColor": { "type": "string" },
+          "titleColor": { "type": "string" },
+          "title": { "type": "string" }
+        }
+      }
+    },
+    "workflowOverviewPageId": {
+      "type": "string",
+      "description": "When set, each workflow row shows a 'Workflow Overview' icon-button linking to this pageId with `urlQuery: { workflow_id: workflow._id }`. Omit to hide the button."
+    },
+    "disableTooltip": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, action buttons render without their hover tooltip (verb label / status name / blocked hint)."
+    },
+    "activeActionId": {
+      "type": "string",
+      "description": "The _id of the action currently being viewed. When it matches an action's _id, that button renders with a 'current' highlight. Omit on entity-view pages (no current action)."
+    },
+    "defaultActiveKeys": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "workflow_type slugs (e.g. 'onboarding') expanded on mount. When omitted, workflows with any non-terminal action start open. Overrides the terminal heuristic when set. Ignored when `activeKeys` is set."
+    },
+    "activeKeys": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Controlled expansion: the workflow_type slugs that are open. When set, drives expansion directly and takes precedence over `defaultActiveKeys` and user toggles — pair with the onChange event to update it."
+    }
+  }
+}

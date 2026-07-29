@@ -354,6 +354,7 @@ export const fieldTypeRegistry = {
       "device_type_selector",
       "button_selector",
       "multiple_selector",
+      "tree_multiple_selector",
     ],
   },
 

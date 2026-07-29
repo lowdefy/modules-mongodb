@@ -1,4 +1,5 @@
 import { humanizeSlug } from "./humanizeSlug.js";
+import { DEFAULT_PAGE_LAYOUT } from "./pageLayouts.js";
 
 const VERBS = ["edit", "view", "review", "error"];
 
@@ -25,6 +26,7 @@ const ACTION_FIELDS_FOR_TEMPLATE = [
   "interactions",
   "event",
   "universal_fields",
+  "show_comment",
 ];
 
 // Part 24 / Part 64: the default for the UI presence list. Normalized onto the
@@ -68,6 +70,13 @@ function resolveWorkflowTitle(workflow, titleAcronyms) {
 // templates source the breadcrumb name from `entity_link.name` on the action
 // response (resolved server-side from the entity.data routine).
 function workspaceVars(workflow, workflowTitle) {
+  // The optional `page_layout` enum selects the action-page layout; absent →
+  // standard. It is not consumed by templates directly — it is translated here
+  // into the two layout vars the shell and templates branch on. `wide` swaps the
+  // left step-list for workflow-progress and moves Details + History into a
+  // drawer so the form fills the freed width. Validated in makeWorkflowsConfig.
+  const pageLayout = workflow.page_layout ?? DEFAULT_PAGE_LAYOUT;
+  const isWide = pageLayout === "wide";
   return {
     connection_id: workflow.entity.connection_id,
     reference_field: workflow.entity.ref_key,
@@ -75,6 +84,8 @@ function workspaceVars(workflow, workflowTitle) {
     entity_view_slot: workflow.entity_view?.slot ?? [],
     list_page_id: workflow.entity.list_page_id ?? "",
     list_title: workflow.entity.list_title ?? "",
+    left_variant: isWide ? "progress" : "steps",
+    history_in_drawer: isWide,
   };
 }
 

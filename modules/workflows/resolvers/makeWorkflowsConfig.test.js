@@ -2515,3 +2515,33 @@ test("makeWorkflowsConfig: decl_index/group_index default to -1 group when a wor
     group_index: -1,
   });
 });
+
+test("makeWorkflowsConfig: accepts page_layout wide", () => {
+  const workflow = { ...validWorkflow, page_layout: "wide" };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [workflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: accepts page_layout standard", () => {
+  const workflow = { ...validWorkflow, page_layout: "standard" };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [workflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: accepts a workflow with no page_layout", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [validWorkflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: rejects an unrecognized page_layout value", () => {
+  const workflow = { ...validWorkflow, page_layout: "wode" };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /invalid page_layout "wode" \(expected one of: standard, wide\)/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /onboarding/,
+  );
+});
