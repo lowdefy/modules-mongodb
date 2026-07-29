@@ -21,10 +21,10 @@ overrides:
 patchedDependencies:
   "@lowdefy/blocks-antd-x": patches/@lowdefy__blocks-antd-x.patch
 
-# These keys live here, not under a "pnpm" key in package.json: pnpm 10+ (the
-# repo pins pnpm@11.12.0) no longer reads that key and silently ignores it — it
-# only warns. A dropped patchedDependencies is invisible and undoes the
-# AgentChat fix above on the next fresh install.
+# These keys live here, not under a "pnpm" key in package.json: pnpm 10+ no
+# longer reads that key and silently ignores it — it only warns. A dropped
+# patchedDependencies is invisible and undoes the AgentChat fix above on the
+# next fresh install.
 packageExtensions:
   "@lowdefy/client":
     dependencies:
