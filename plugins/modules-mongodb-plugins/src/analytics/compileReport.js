@@ -182,11 +182,22 @@ function numericCellRenderer(display) {
 // A table column: a column carrying a `format` descriptor is numeric — it
 // right-aligns and formats via _intl; a column without one renders plain text
 // (enum tag styling was deliberately dropped). `label` becomes the header.
+//
+// Alignment goes through the block's own `cell` config rather than ag-grid's
+// `type: "numericColumn"`. The Lowdefy AgGrid block renders every cell as a
+// FLEX container, so numericColumn's `text-align: right` moves nothing — it
+// right-aligns the header only, leaving each header and its values on opposite
+// edges of the column. `cell.align` is what the block turns into
+// `cellStyle.justifyContent`, which does move the content.
+//
+// `cell` carries no `type`: processColDefs substitutes its own renderer only
+// when `cell.type` is a string, so leaving it out keeps the _intl renderer
+// below.
 function tableColumnDef(column) {
   const def = { field: column.key };
   if (column.label !== undefined) def.headerName = column.label;
   if (column.format) {
-    def.type = "numericColumn";
+    def.cell = { align: "right" };
     def.cellRenderer = numericCellRenderer(numberDisplay(column.format));
   }
   return def;

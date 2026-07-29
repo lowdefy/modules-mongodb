@@ -89,7 +89,14 @@ test("compiles the full report to blocks", () => {
   const cols = Object.fromEntries(byId.s3.properties.columnDefs.map((c) => [c.field, c]));
   expect(cols.region.cellRenderer).toBeUndefined();
   expect(cols.region.headerName).toBe("Region");
-  expect(cols.total.type).toBe("numericColumn");
+  // Right-alignment via the block's `cell.align`, not ag-grid's numericColumn:
+  // the block renders cells as flex containers, so numericColumn right-aligns
+  // the header only and leaves the values on the opposite edge. `cell` carries
+  // no `type`, which is what keeps the _intl cellRenderer below from being
+  // replaced by the block's own renderer.
+  expect(cols.total.cell).toEqual({ align: "right" });
+  expect(cols.total.type).toBeUndefined();
+  expect(cols.region.cell).toBeUndefined();
   expect(cols.total.cellRenderer.__function["___intl.numberFormat"].options).toMatchObject({
     style: "currency",
     currency: "ZAR",
