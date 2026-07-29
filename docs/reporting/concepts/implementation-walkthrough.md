@@ -23,7 +23,7 @@ authoring, start at the [module index](../index.md); for the engine's model and
 security posture in consumer terms, read [The open query engine](open-query-engine.md).
 
 The same walkthrough is kept alongside the design at
-`designs/reporting-open-query-engine/implementation-walkthrough.md`. Line
+`designs/reporting/open-query-engine/implementation-walkthrough.md`. Line
 references are signposts against the tree at the time of writing, not guarantees.
 
 ## 1. The shape of the thing
