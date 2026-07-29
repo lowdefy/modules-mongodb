@@ -24,14 +24,30 @@ const spec = {
   title: "Q2 Revenue by Region",
   description: "Revenue and order counts, filterable by status.",
   sections: [
-    { type: "kpi", label: "Total Revenue", query: orderTotal, valueKey: "total", format: zarFormat },
-    { type: "chart", chart: "bar", label: "Revenue by Region", query: ordersByRegion, x: "region", y: ["total"] },
+    {
+      type: "kpi",
+      label: "Total Revenue",
+      query: orderTotal,
+      valueKey: "total",
+      format: zarFormat,
+    },
+    {
+      type: "chart",
+      chart: "bar",
+      label: "Revenue by Region",
+      query: ordersByRegion,
+      x: "region",
+      y: ["total"],
+    },
     { type: "filter", control: "select", field: "status", label: "Status" },
     {
       type: "table",
       label: "Orders",
       query: ordersByRegion,
-      columns: [{ key: "region", label: "Region" }, { key: "total", label: "Total", format: zarFormat }],
+      columns: [
+        { key: "region", label: "Region" },
+        { key: "total", label: "Total", format: zarFormat },
+      ],
       filterBy: ["status"],
     },
     { type: "download", label: "Download CSV", query: ordersByRegion },
@@ -55,7 +71,13 @@ test("querySections returns kpi, chart and table queries in order", () => {
 });
 
 test("compiles the full report to blocks", () => {
-  const blocks = compileReport({ spec, results, catalog: testCatalog, roles, endpointId });
+  const blocks = compileReport({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
 
   expect(byId.report_title.properties.content).toBe("Q2 Revenue by Region");
@@ -86,7 +108,9 @@ test("compiles the full report to blocks", () => {
 
   // Table columns: plain text column bare, formatted (numeric) column
   // right-aligns and formats via _intl. No tag renderer anywhere.
-  const cols = Object.fromEntries(byId.s3.properties.columnDefs.map((c) => [c.field, c]));
+  const cols = Object.fromEntries(
+    byId.s3.properties.columnDefs.map((c) => [c.field, c]),
+  );
   expect(cols.region.cellRenderer).toBeUndefined();
   expect(cols.region.headerName).toBe("Region");
   // Right-alignment via the block's `cell.align`, not ag-grid's numericColumn:
@@ -97,16 +121,25 @@ test("compiles the full report to blocks", () => {
   expect(cols.total.cell).toEqual({ align: "right" });
   expect(cols.total.type).toBeUndefined();
   expect(cols.region.cell).toBeUndefined();
-  expect(cols.total.cellRenderer.__function["___intl.numberFormat"].options).toMatchObject({
+  expect(
+    cols.total.cellRenderer.__function["___intl.numberFormat"].options,
+  ).toMatchObject({
     style: "currency",
     currency: "ZAR",
   });
   expect(JSON.stringify(byId.s3)).not.toContain("nunjucks");
 
   // Filter control: moved into the top filter row, options from catalog values.
-  const filter = byId.report_filters.blocks.find((b) => b.id === "filter_status");
+  const filter = byId.report_filters.blocks.find(
+    (b) => b.id === "filter_status",
+  );
   expect(filter.type).toBe("Selector");
-  expect(filter.properties.options).toEqual(["pending", "paid", "shipped", "cancelled"]);
+  expect(filter.properties.options).toEqual([
+    "pending",
+    "paid",
+    "shipped",
+    "cancelled",
+  ]);
   const [call, set] = filter.events.onChange;
   expect(call.type).toBe("CallAPI");
   expect(call.params.endpointId).toBe(endpointId);
@@ -115,7 +148,9 @@ test("compiles the full report to blocks", () => {
     { field: "status", op: "eq", value: { __state: "filter_status" } },
   ]);
   expect(set.type).toBe("SetState");
-  expect(set.params["sections.s3.rows"]).toEqual({ __api: `${endpointId}.response` });
+  expect(set.params["sections.s3.rows"]).toEqual({
+    __api: `${endpointId}.response`,
+  });
 
   // Download: CallAPI (pipeline-only payload) then DownloadCsv.
   const download = byId.s4;
@@ -129,7 +164,13 @@ test("compiles the full report to blocks", () => {
 
 test("failed sections render as Alert cards while the rest render", () => {
   const sparseResults = [results[0], undefined, results[2]];
-  const blocks = compileReport({ spec, results: sparseResults, catalog: testCatalog, roles, endpointId });
+  const blocks = compileReport({
+    spec,
+    results: sparseResults,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s1.type).toBe("Alert");
   expect(byId.s1.properties.message).toBe("Revenue by Region");
@@ -139,16 +180,34 @@ test("failed sections render as Alert cards while the rest render", () => {
 
 test("a contract mismatch (missing column) renders that section as an Alert card", () => {
   const badResults = [[{ wrongKey: 4200 }], results[1], results[2]];
-  const blocks = compileReport({ spec, results: badResults, catalog: testCatalog, roles, endpointId });
+  const blocks = compileReport({
+    spec,
+    results: badResults,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s0.type).toBe("Alert");
-  expect(byId.s0.properties.description).toMatch(/column "total" is not present/);
+  expect(byId.s0.properties.description).toMatch(
+    /column "total" is not present/,
+  );
   expect(byId.s1.type).toBe("EChart");
 });
 
 test("a non-numeric chart y column renders that section as an Alert card", () => {
-  const badResults = [results[0], [{ region: "EU", total: "lots" }], results[2]];
-  const blocks = compileReport({ spec, results: badResults, catalog: testCatalog, roles, endpointId });
+  const badResults = [
+    results[0],
+    [{ region: "EU", total: "lots" }],
+    results[2],
+  ];
+  const blocks = compileReport({
+    spec,
+    results: badResults,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s1.type).toBe("Alert");
   expect(byId.s1.properties.description).toMatch(/must be numeric/);
@@ -160,7 +219,13 @@ test("zero rows and null value cells render normally (no verification failure)",
     [{ region: null, total: null }], // chart: null group key + null value tolerated
     [], // table: zero rows
   ];
-  const blocks = compileReport({ spec, results: emptyAndNull, catalog: testCatalog, roles, endpointId });
+  const blocks = compileReport({
+    spec,
+    results: emptyAndNull,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s0.type).toBe("Statistic");
   expect(byId.s0.properties.value).toBe(0);
@@ -182,14 +247,20 @@ test("normalizes object-shaped (sparse step) results", () => {
 });
 
 test("compiled output never contains _secret", () => {
-  const blocks = compileReport({ spec, results, catalog: testCatalog, roles, endpointId });
+  const blocks = compileReport({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
   expect(JSON.stringify(blocks)).not.toContain("_secret");
 });
 
 test("requires the query-data endpointId", () => {
-  expect(() => compileReport({ spec, results, catalog: testCatalog, roles })).toThrow(
-    /endpointId .* required/
-  );
+  expect(() =>
+    compileReport({ spec, results, catalog: testCatalog, roles }),
+  ).toThrow(/endpointId .* required/);
 });
 
 test("kpi bound to a filter defers its value through state", () => {
@@ -197,7 +268,13 @@ test("kpi bound to a filter defers its value through state", () => {
     title: "T",
     sections: [
       { type: "filter", control: "select", field: "status", label: "Status" },
-      { type: "kpi", label: "Total", query: orderTotal, valueKey: "total", filterBy: ["status"] },
+      {
+        type: "kpi",
+        label: "Total",
+        query: orderTotal,
+        valueKey: "total",
+        filterBy: ["status"],
+      },
     ],
   };
   const blocks = compileReport({
@@ -230,7 +307,13 @@ test("an unusable KPI currency degrades that section to an Alert, not the report
         valueKey: "total",
         format: { style: "currency", currency: "$" },
       },
-      { type: "kpi", label: "Good", query: orderTotal, valueKey: "total", format: zarFormat },
+      {
+        type: "kpi",
+        label: "Good",
+        query: orderTotal,
+        valueKey: "total",
+        format: zarFormat,
+      },
     ],
   };
   const blocks = compileReport({
@@ -258,7 +341,10 @@ test("an unusable locale on a table column degrades that section to an Alert", (
         query: ordersByRegion,
         columns: [
           { key: "region" },
-          { key: "total", format: { style: "decimal", locale: "not a locale" } },
+          {
+            key: "total",
+            format: { style: "decimal", locale: "not a locale" },
+          },
         ],
       },
     ],
@@ -272,7 +358,9 @@ test("an unusable locale on a table column degrades that section to an Alert", (
   });
   const section = blocks.find((b) => b.id === "s0");
   expect(section.type).toBe("Alert");
-  expect(section.properties.description).toMatch(/Column "total" has an unusable number format/);
+  expect(section.properties.description).toMatch(
+    /Column "total" has an unusable number format/,
+  );
 });
 
 // A table showing exactly PIPELINE_RESULT_CAP rows reads as the complete answer
@@ -312,5 +400,69 @@ test("a section landing on the row cap says so in its heading", () => {
     roles,
     endpointId,
   });
-  expect(short.find((b) => b.id === "s0_heading").properties.content).toBe("Orders");
+  expect(short.find((b) => b.id === "s0_heading").properties.content).toBe(
+    "Orders",
+  );
+});
+
+// A numeric column the agent did not format still deserves right-alignment —
+// a count flush-left beside right-aligned money reads as a different kind of
+// value. Numeric-ness is judged from the resolve-time rows, conservatively.
+describe("unformatted numeric columns", () => {
+  const tableSpec = (columns) => ({
+    title: "T",
+    sections: [
+      { type: "table", label: "Orders", query: ordersByRegion, columns },
+    ],
+  });
+
+  const colsFor = (columns, rows) => {
+    const blocks = compileReport({
+      spec: tableSpec(columns),
+      results: [rows],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    return Object.fromEntries(
+      blocks
+        .find((b) => b.id === "s0")
+        .properties.columnDefs.map((c) => [c.field, c]),
+    );
+  };
+
+  test("right-aligns a numeric column, and renders it raw", () => {
+    const cols = colsFor(
+      [{ key: "region" }, { key: "orders" }],
+      [
+        { region: "EU", orders: 24 },
+        { region: "US", orders: 8 },
+      ],
+    );
+    expect(cols.orders.cell).toEqual({ align: "right" });
+    // No format was declared, so no formatter is invented for it.
+    expect(cols.orders.cellRenderer).toBeUndefined();
+    expect(cols.region.cell).toBeUndefined();
+  });
+
+  test("nulls are skipped, but one non-numeric value disqualifies the column", () => {
+    const withNulls = colsFor(
+      [{ key: "orders" }],
+      [{ orders: null }, { orders: 24 }],
+    );
+    expect(withNulls.orders.cell).toEqual({ align: "right" });
+
+    const mixed = colsFor(
+      [{ key: "orders" }],
+      [{ orders: 24 }, { orders: "n/a" }],
+    );
+    expect(mixed.orders.cell).toBeUndefined();
+  });
+
+  test("no rows, or only empty cells, is no evidence — alignment is left alone", () => {
+    expect(colsFor([{ key: "orders" }], []).orders.cell).toBeUndefined();
+    expect(
+      colsFor([{ key: "orders" }], [{ orders: null }]).orders.cell,
+    ).toBeUndefined();
+  });
 });

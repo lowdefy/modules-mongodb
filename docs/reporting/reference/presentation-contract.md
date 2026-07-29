@@ -25,6 +25,8 @@ Each query-backed section carries `query: { collection, pipeline }` plus its con
 
 `x` is the category (or pie-item) column; `y` is the value series. A KPI reads `valueKey` out of the first row. Table columns render as plain text; there is no enum-tag styling.
 
+**Numeric table columns right-align.** A column carrying a `format` always does. A column without one is right-aligned when every non-empty value in the result is a number — so counts line up with formatted money instead of sitting flush-left beside it. Empty cells are ignored when deciding; a single non-numeric value, or a result with no rows to judge from, leaves the column aligned as text. Alignment never changes the value: an unformatted column still renders raw, since inventing a format would impose decimals and grouping the agent did not ask for.
+
 ### The `format` descriptor
 
 KPI sections and table columns may declare a number format:

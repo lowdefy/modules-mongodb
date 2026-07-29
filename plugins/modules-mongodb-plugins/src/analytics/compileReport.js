@@ -6,7 +6,9 @@ import {
   REPORT_LOCALE,
 } from "./constants.js";
 import buildEChartsOption from "./buildEChartsOption.js";
-import validateReportSpec, { catalogFieldValues } from "./validateReportSpec.js";
+import validateReportSpec, {
+  catalogFieldValues,
+} from "./validateReportSpec.js";
 import {
   verifyChartContract,
   verifyKpiContract,
@@ -80,7 +82,7 @@ function boundFilters(section, filterSectionsByField) {
     if (control === "daterange") {
       extra.push(
         { field, op: "gte", value: { __state: `${key}.0` } },
-        { field, op: "lte", value: { __state: `${key}.1` } }
+        { field, op: "lte", value: { __state: `${key}.1` } },
       );
     } else {
       extra.push({ field, op: "eq", value: { __state: key } });
@@ -133,16 +135,26 @@ function dataBinding(section, rows) {
 // any field the descriptor omits; a null format is a plain grouped decimal.
 function numberDisplay(format) {
   const locale = format?.locale || REPORT_LOCALE;
-  const decimals = Number.isInteger(format?.decimals) ? format.decimals : REPORT_DECIMALS;
+  const decimals = Number.isInteger(format?.decimals)
+    ? format.decimals
+    : REPORT_DECIMALS;
   if (format?.style === "currency") {
-    return { style: "currency", decimals, currency: format.currency || REPORT_CURRENCY, locale };
+    return {
+      style: "currency",
+      decimals,
+      currency: format.currency || REPORT_CURRENCY,
+      locale,
+    };
   }
   return { style: "decimal", decimals, locale };
 }
 
 // Intl.NumberFormat options for a display descriptor.
 function numberFormatOptions(display) {
-  const base = { minimumFractionDigits: display.decimals, maximumFractionDigits: display.decimals };
+  const base = {
+    minimumFractionDigits: display.decimals,
+    maximumFractionDigits: display.decimals,
+  };
   return display.style === "currency"
     ? { style: "currency", currency: display.currency, ...base }
     : { style: "decimal", ...base };
@@ -153,9 +165,10 @@ function numberFormatOptions(display) {
 // its live numeric value natively while matching the table's runtime _intl
 // output — e.g. en-ZA yields "R", a space group and a comma decimal.
 function intlSeparators(display) {
-  const parts = new Intl.NumberFormat(display.locale, numberFormatOptions(display)).formatToParts(
-    11111.11
-  );
+  const parts = new Intl.NumberFormat(
+    display.locale,
+    numberFormatOptions(display),
+  ).formatToParts(11111.11);
   const find = (type) => parts.find((p) => p.type === type)?.value;
   return {
     symbol: find("currency") ?? "",
@@ -179,6 +192,27 @@ function numericCellRenderer(display) {
   };
 }
 
+// Whether a column holds numbers, judged from the resolve-time rows — the same
+// rows verifyContract inspects. Used to right-align columns the agent did not
+// give a `format`: a count sitting flush-left beside right-aligned money reads
+// as a different kind of value than it is.
+//
+// Conservative on purpose. Null and undefined cells are skipped (a missing
+// group key is normal output), but one non-numeric value disqualifies the
+// column, and a column with no rows or only empty cells yields no evidence and
+// is left alone rather than guessed at.
+function isNumericColumn(key, rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return false;
+  let sawNumber = false;
+  for (const row of rows) {
+    const value = row?.[key];
+    if (value === null || value === undefined) continue;
+    if (typeof value !== "number") return false;
+    sawNumber = true;
+  }
+  return sawNumber;
+}
+
 // A table column: a column carrying a `format` descriptor is numeric — it
 // right-aligns and formats via _intl; a column without one renders plain text
 // (enum tag styling was deliberately dropped). `label` becomes the header.
@@ -193,12 +227,16 @@ function numericCellRenderer(display) {
 // `cell` carries no `type`: processColDefs substitutes its own renderer only
 // when `cell.type` is a string, so leaving it out keeps the _intl renderer
 // below.
-function tableColumnDef(column) {
+function tableColumnDef(column, rows) {
   const def = { field: column.key };
   if (column.label !== undefined) def.headerName = column.label;
   if (column.format) {
     def.cell = { align: "right" };
     def.cellRenderer = numericCellRenderer(numberDisplay(column.format));
+  } else if (isNumericColumn(column.key, rows)) {
+    // Numeric but unformatted: align it, but render the raw value — inventing a
+    // format here would impose decimals and grouping the agent did not ask for.
+    def.cell = { align: "right" };
   }
   return def;
 }
@@ -206,9 +244,14 @@ function tableColumnDef(column) {
 // A select filter's options: the agent's declared `options`, else the enum
 // `values` cataloged for the field in one of its bound sections' collections.
 function filterOptions(filter, sections, catalog) {
-  if (filter.options !== undefined) return filter.options.slice(0, MAX_FILTER_OPTIONS);
-  const boundSections = sections.filter((s) => (s.filterBy ?? []).includes(filter.field));
-  const collections = boundSections.map((s) => s.query?.collection).filter(Boolean);
+  if (filter.options !== undefined)
+    return filter.options.slice(0, MAX_FILTER_OPTIONS);
+  const boundSections = sections.filter((s) =>
+    (s.filterBy ?? []).includes(filter.field),
+  );
+  const collections = boundSections
+    .map((s) => s.query?.collection)
+    .filter(Boolean);
   const values = catalogFieldValues(catalog, filter.field, collections);
   return (values ?? []).slice(0, MAX_FILTER_OPTIONS);
 }
@@ -309,7 +352,7 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
   });
 
   const filterSectionsByField = new Map(
-    sections.filter((s) => s.type === "filter").map((s) => [s.field, s])
+    sections.filter((s) => s.type === "filter").map((s) => [s.field, s]),
   );
 
   // Filter controls collect into a single row at the top of the report,
@@ -357,7 +400,9 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
             ? inlined
             : {
                 __if_none: [
-                  { __state: `sections.${section.id}.rows.0.${section.valueKey}` },
+                  {
+                    __state: `sections.${section.id}.rows.0.${section.valueKey}`,
+                  },
                   inlined,
                 ],
               };
@@ -408,7 +453,9 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
           layout: { span: 24 },
           properties: {
             rowData: dataBinding(section, rows),
-            columnDefs: section.columns.map(tableColumnDef),
+            columnDefs: section.columns.map((column) =>
+              tableColumnDef(column, rows),
+            ),
             defaultColDef: { sortable: true, resizable: true },
           },
         });
@@ -417,7 +464,7 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
 
     if (section.type === "filter") {
       const boundSections = sections.filter((s) =>
-        (s.filterBy ?? []).includes(section.field)
+        (s.filterBy ?? []).includes(section.field),
       );
       const onChange = requeryActions({
         boundSections,
