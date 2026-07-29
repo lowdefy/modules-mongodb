@@ -47,6 +47,9 @@ properties:
                   # Resolve role ids → { label, orphan } against the catalog.
                   - _ref: requests/stages/roles_from_catalog.yaml
                 - _module.var: request_stages.get_all_users
+                # Close the row LAST — after the consumer slot, so it still sees
+                # the raw joins and anything it adds survives.
+                - - _ref: requests/stages/close_row.yaml
         - $unwind: "$count"
         - $unwind: "$results"
         - $addFields:

@@ -15,7 +15,7 @@ _ref:
     title:
       _request: get_user_detail.0.name
     avatar_src:
-      _request: get_user_detail.0.profile.picture
+      _request: get_user_detail.0.picture
     status:
       _request: get_user_detail.0.status_slug
     status_enum:

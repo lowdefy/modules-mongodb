@@ -81,6 +81,12 @@ Every person already has an avatar to show: `write-profile` generates a gradient
 into `profile.picture` at write time, and all three reads project the whole `profile` subdoc, so
 `profile.picture` is available on each page without a read change.
 
+> **Update.** No longer true for the `user-admin` detail read.
+> [`table-row-contract`](../table-row-contract/design.md) strips `profile.picture` from every
+> `user-admin` read (it is a duplicate of the top-level `picture` alias, and an ~800-character data
+> URI to ship twice). `modules/user-admin/pages/view.yaml` binds `get_user_detail.0.picture`
+> instead. The `user-account` and `contacts` reads are untouched and still carry `profile.picture`.
+
 ### `identity-header.yaml` becomes unused
 
 `modules/shared/layout/identity-header.yaml` — the primary-tinted avatar + name + email card from

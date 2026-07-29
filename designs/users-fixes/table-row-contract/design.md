@@ -219,8 +219,15 @@ path — `modal_profile` seeds `state.profile` from the detail read and posts th
 leaves the stored value intact.
 
 The list is derived from the collection schemas, not from an observed row: the wire-row listing above
-omits `attributes` only because the demo member has no attributes stored. Nothing built-in binds the
-raw forms — the resend action reads `member_attributes`, the Invitations table reads `expires_at`.
+omits `attributes` only because the demo member has no attributes stored.
+
+One built-in binds a stripped path: `pages/view.yaml:18` reads
+`get_user_detail.0.profile.picture` for the detail page's title-block avatar, shipped by the sibling
+`profile-identity` work after this design's first review. It is rebound to the top-level `picture`
+alias that `members_base` already emits on that read — the cheaper half of the trade, since the
+alternative is dropping `profile.picture` from the exclusion list and carrying the data-URI blob
+twice per row. Nothing else binds a raw form: the resend action reads `member_attributes`, the
+Invitations table reads `expires_at`.
 
 `request_stages.filter_match` is unaffected: it runs before the close and can keep matching on
 `user.*` / `contact.*`. Consumer _columns_ bound to those paths are not — see Breaking changes.
@@ -357,13 +364,17 @@ it, so these paths land on config that is being rewritten anyway.
 - `modules/user-admin/requests/get_all_invitations.yaml` — apply `close_row` as the last stage of the
   `$facet` `results` sub-pipeline, so the Invitations tab stops shipping the whole `inviter` document
   (D7).
+- `modules/user-admin/pages/view.yaml` — rebind the title-block `avatar_src` from
+  `get_user_detail.0.profile.picture` to `get_user_detail.0.picture` (D2).
 
 **Module — manifest and docs**
 
 - `modules/user-admin/module.lowdefy.yaml` — `table_columns` / `download_columns` descriptions state
   the bindable row keys; `get_all_users` description becomes accurate now that the export applies it.
-- `docs/user-admin/` — a reference page for the row contract (the table above), linked from
-  `docs/user-admin/index.md`; regenerate `reference/vars.md` via `pnpm docs:gen`.
+  `filter_match`'s description is corrected too — it claims the "members/invitations list filter" but
+  is only injected in the members read, and D6 leaves the Invitations tab without the slot.
+- `docs/user-admin/reference/row-contract.md` — **new**; the row contract (the table above), linked
+  from `docs/user-admin/index.md`; regenerate `reference/vars.md` via `pnpm docs:gen`.
 - `docs/user-admin/how-to/migration.md` — the Breaking changes migration note.
 - `docs/shared/slots.md` — `get_all_*` is documented as "stages appended to the list-page read
   pipeline" (`:45`); widen it now that `get_all_users` also applies to the Excel export, and point

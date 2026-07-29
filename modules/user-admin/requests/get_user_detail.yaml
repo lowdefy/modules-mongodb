@@ -1,10 +1,10 @@
 # User detail read (design Decision 3). Native aggregation rooted on the target's
 # `user-members` row (matched by the urlQuery userId, scoped to the pinned org),
 # joined to `users` + `user-contacts`. Reuses the shared members base shape
-# (name/email/picture/status/roles_arr/dates) and the catalog role-resolve, then
-# projects the flat detail shape the tiles and edit modals bind to:
+# (name/email/picture/status/roles_arr/dates plus the three editable bags —
+# profile / user_attributes / member_attributes) and the catalog role-resolve,
+# then adds the fields only the detail page needs:
 #   user_id / member_id / contact_id — the ids the write routines take
-#   profile / member_attributes / user_attributes — the three editable bags
 #   status_slug — lowercase active|suspended for the title-block status pill
 #   email_verified / two_factor_enabled / banned / passkey_count — Security-tile facts
 # Returns a single-element array; the page binds get_user_detail.0.*.
@@ -36,18 +36,6 @@ properties:
             user_id: "$userId"
             member_id: "$_id"
             contact_id: "$contact._id"
-            profile:
-              $ifNull:
-                - "$contact.profile"
-                - {}
-            member_attributes:
-              $ifNull:
-                - "$attributes"
-                - {}
-            user_attributes:
-              $ifNull:
-                - "$user.attributes"
-                - {}
             email_verified:
               $eq:
                 - "$user.emailVerified"
@@ -93,4 +81,7 @@ properties:
                     - true
                 - suspended
                 - active
+        # Close the row last — everything above still reads the raw joins
+        # (contact._id, $passkeys, user.*); nothing below them does.
+        - _ref: requests/stages/close_row.yaml
         - $limit: 1

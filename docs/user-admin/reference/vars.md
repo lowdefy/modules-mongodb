@@ -44,8 +44,8 @@ Component overrides appended to the built-in surfaces: table_columns, download_c
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `table_columns` | array | `[]` |  | Extra column definitions appended to the Members list table. |
-| `download_columns` | array | `[]` |  | Extra columns appended to the Excel export (merged members + invitations). |
+| `table_columns` | array | `[]` |  | Extra AgGrid column definitions appended to the Members list table. A column's `field:` binds a key on the shared members row — the three configurable bags ride under the same names as the `fields.*` vars, so `field: profile.department` is the same path as the form block id that collects it. See the row contract reference for the full bindable key set; a `field:` outside it renders an empty column. |
+| `download_columns` | array | `[]` |  | Extra columns appended to the Excel export (merged members + invitations). A column's `value:` binds the same row paths as `table_columns` `field:` — the export closes its row the same way — with three divergences: `roles` is a joined string, `expires` is added, and `picture` is dropped. Invitation rows carry `member_attributes` but no `profile` or `user_attributes`, so a profile-bound column is blank for them. See the row contract reference. |
 | `filters` | array | `[]` |  | Extra filter blocks rendered alongside the built-in search on the `all` page. Pair with `filter_requests` for custom data sources. |
 | `main_slots` | array | `[]` |  | Extra blocks appended to the main column on the `view` page. |
 | `sidebar_slots` | array | `[]` |  | Extra blocks appended to the sidebar column on the `view` page. |
@@ -56,6 +56,6 @@ MongoDB pipeline stage overrides for reads (list pipeline, filter match, export)
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `filter_match` | array | `[]` |  | Plain $match clauses appended to the members/invitations list filter (Decision 2 — Atlas $search is gone from this module; this extends the post-$lookup regex filter, it is NOT a path to reintroduce $search). |
-| `get_all_users` | array | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the `all` list and the Excel export aggregations. |
+| `filter_match` | array | `[]` |  | Plain $match clauses appended to the Members list filter (Decision 2 — Atlas $search is gone from this module; this extends the post-$lookup regex filter, it is NOT a path to reintroduce $search). Runs before the row is closed, so it can still match raw `user.*` / `contact.*` paths. |
+| `get_all_users` | array | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the `all` list read and after the union on the Excel export. In both it runs before the row is closed, so it sees the raw `user` / `contact` / `inviter` join payloads and anything it adds survives onto the row — the escape hatch for a column the three field bags don't cover. On the export it runs over member AND invitation rows. |
 | `write` | array | `[]` |  | Pipeline update stages appended to the contact write on the profile routine (passed to the shared write-profile fragment's `write_stages` _var). Used for derived fields beyond the built-in profile write. |

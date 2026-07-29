@@ -1,4 +1,4 @@
-# Members base stages (design Decision 1/2) — shared by the list read and the
+# Members base stages — shared by the members list, the detail read and the
 # Excel export. Root is `user-members` for the pinned org (org-scoped with the
 # server-side `_organization` operator). Joins the auth `user` and the app
 # `user-contacts` record, then flattens the display shape:
@@ -10,6 +10,19 @@
 #                    permanent bans only, so banExpires is never consulted)
 #   created/updated— the contact change-stamp timestamps
 #   signed_up      — member.createdAt (when the person accepted into this app)
+#
+# It also normalises the three configurable field bags under exactly the names
+# the `fields.*` vars use, so a `table_columns` `field:` / `download_columns`
+# `value:` is the same path string as the form block id that collects the field:
+#   profile           — fields.profile           (contact.profile)
+#   user_attributes   — fields.user_attributes   (user.attributes)
+#   member_attributes — fields.member_attributes (member.attributes)
+#
+# `picture`, `created` and `updated` are wrapped in $ifNull so the keys exist
+# even when their source doesn't: $addFields OMITS a field whose source path is
+# missing, and `created`/`updated` both vanish when the contact $lookup finds no
+# match (reachable — the $unwind below preserves empties). A blank column is then
+# always a data question, never a shape question.
 #
 # Co-location precondition (Decision 1): the user-contacts $lookup returns empty
 # if the read connection and the auth adapter resolve to different databases —
@@ -36,7 +49,10 @@
       $ifNull:
         - "$contact.profile.name"
         - "$user.name"
-    picture: "$contact.profile.picture"
+    picture:
+      $ifNull:
+        - "$contact.profile.picture"
+        - null
     email: "$user.email"
     roles_arr:
       $split:
@@ -51,6 +67,24 @@
             - true
         - Suspended
         - Active
-    created: "$contact.created.timestamp"
-    updated: "$contact.updated.timestamp"
+    created:
+      $ifNull:
+        - "$contact.created.timestamp"
+        - null
+    updated:
+      $ifNull:
+        - "$contact.updated.timestamp"
+        - null
     signed_up: "$createdAt"
+    profile:
+      $ifNull:
+        - "$contact.profile"
+        - {}
+    user_attributes:
+      $ifNull:
+        - "$user.attributes"
+        - {}
+    member_attributes:
+      $ifNull:
+        - "$attributes"
+        - {}
