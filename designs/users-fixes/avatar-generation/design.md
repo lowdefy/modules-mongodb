@@ -24,7 +24,13 @@ already is, in all three server-side profile write seams.
 5. Delete the three client-side `generate_avatar` SetState actions, and drop the read-only avatar
    preview from `contacts`' two forms (D9). `generate-avatar-svg.js.njk` is superseded by the new
    derivation fragment, which the colour picker rebinds to for its live preview.
-6. Wrap the payload-injected profile object in `$literal` in all three seams (D6).
+6. Wrap every payload-derived value these stages inject into MQL in `$literal`, in all three seams —
+   the profile bag, `email` / `lowercase_email`, `global_attributes` and the derived scalars (D6).
+7. Simplify the colour picker to a single state key, so its cursor cannot disagree with the gradient
+   on screen (D7a).
+8. Close a write-authorization gap in `create-contact` by minting the contact `_id` server-side, so a
+   payload can no longer name an existing document to overwrite (D10). Not an avatar change; folded in
+   because it lives in the stages being rewritten.
 
 ## Current state
 
@@ -37,9 +43,9 @@ whether that form remembered a `generate_avatar` SetState before its `CallAPI`:
 
 | Write path                                          | Picker / preview           | Stores `picture` |
 | --------------------------------------------------- | -------------------------- | ---------------- |
-| `contacts/pages/new.yaml:92`                        | preview, **random** colour | yes              |
-| `contacts/pages/edit.yaml:129`                      | preview                    | yes              |
-| `contacts/components/contact-selector.yaml.njk:190` | inline modal               | yes              |
+| `contacts/pages/new.yaml:91`                        | preview, **random** colour | yes              |
+| `contacts/pages/edit.yaml:128`                      | preview                    | yes              |
+| `contacts/components/contact-selector.yaml.njk:186` | inline modal               | yes              |
 | `user-account/pages/onboarding.yaml`                | picker, colour **index 0** | **no**           |
 | `user-account/components/view/modal_profile.yaml`   | picker                     | **no**           |
 | `user-admin/components/view/modal_profile.yaml`     | **none**                   | **no**           |
@@ -76,7 +82,7 @@ pick an index. Same id → same index → same gradient on every page."
 
 No code does this. `modules/shared/profile/avatar-picker-seed.yaml:15-19` seeds palette index 0
 unconditionally, so every user who completes onboarding gets the same red gradient;
-`contacts/pages/new.yaml:33-43` and `contact-selector.yaml.njk:176-186` pick randomly on init.
+`contacts/pages/new.yaml:33-43` and `contact-selector.yaml.njk:169-185` pick randomly on init.
 
 The defect is the index-0 seed and the fact that three files each decide independently, not the absence
 of a hash specifically — the requirement is a roughly uniform spread, which random-on-init already
@@ -183,14 +189,17 @@ is unneeded, and the guarantee is the fragment's existing contract.
 wholesale into `write-profile.yaml` does not work cleanly — the fragment would need four or five new
 vars to cover what contacts does and user-account/user-admin don't:
 
-| Need                        | `write-profile`    | `create-contact`         | `update-contact`                |
-| --------------------------- | ------------------ | ------------------------ | ------------------------------- |
-| Target                      | UpdateOne by `_id` | **upsert** by `_id`      | UpdateOne + extra filter clause |
-| `global_attributes`         | no                 | yes                      | yes                             |
-| `email` / `lowercase_email` | no                 | yes (insert-only)        | no (immutable)                  |
-| `created` stamp             | no                 | yes (`$ifNull` preserve) | no                              |
-| Denorm to the auth user     | yes                | no (no user row)         | no                              |
-| Returns an upserted id      | no                 | yes                      | no                              |
+| Need                        | `write-profile`    | `create-contact`            | `update-contact`                |
+| --------------------------- | ------------------ | --------------------------- | ------------------------------- |
+| Target                      | UpdateOne by `_id` | insert, server-minted `_id` | UpdateOne + extra filter clause |
+| `global_attributes`         | no                 | yes                         | yes                             |
+| `email` / `lowercase_email` | no                 | yes (insert-only)           | no (immutable)                  |
+| `created` stamp             | no                 | yes                         | no                              |
+| Denorm to the auth user     | yes                | no (no user row)            | no                              |
+| Returns the new id          | no                 | yes                         | no                              |
+
+(The `create-contact` column describes its shape after D10, which turns the client-keyed upsert into a
+server-minted insert. The targets differ either way, which is the point here.)
 
 Adding `upsert`, `insert_fields`, `global_attributes` and `extra_filter` vars would turn the shared
 fragment into a small framework, and every consumer would pay to learn surface that exists for one
@@ -220,19 +229,33 @@ build (`validateEndpoint.js` checks only cron uniqueness), so a collision would 
 today's ordering is correct only by coincidence, because both steps resolve the same contact `_id`.
 `update-contact` has no sibling fragment and keeps the plain `read_contact`.
 
-### D6 — `$literal` around the injected profile object
+### D6 — every payload-derived value in these stages gets `$literal`
 
-All three seams inject the payload's profile object directly into an aggregation pipeline
-(`$mergeObjects: [{$ifNull: ["$profile", {}]}, <payload profile>]`). In expression context a string
-beginning with `$` is a field path, not a literal, so a `given_name` of `$email` today stores the
-contact's email address instead of the name.
+All three seams inject payload values directly into an aggregation-pipeline update. In expression
+context a string beginning with `$` is a field path, not a literal, so a `given_name` of `$email`
+stores the contact's email address instead of the name.
 
-Obscure but real, and present in `write-profile.yaml:42-48`, `create-contact.yaml:52-57` and
-`update-contact.yaml:28-33`. Stage 1 keeps injecting the payload profile (D2), so it needs the wrapper
-exactly as today; stage 2's derived scalars are user-derived strings injected into a `$set` and need it
-too — a `given_name` of `$email` would make the derived `name` begin with `$`. Closing it costs nothing
-beyond writing `$literal`. Fixed here rather than left as a separate finding, because every line it
-touches is being rewritten anyway.
+The rule is stated over the stage rather than field by field, so a field added later inherits it:
+**anything in these pipeline stages that originates in the payload — or is derived from it — is wrapped
+in `$literal`.** That covers, today:
+
+| Site                                                     | Value                                                  |
+| -------------------------------------------------------- | ------------------------------------------------------ |
+| `write-profile.yaml:42-48`                               | the merged `profile` object                            |
+| `create-contact.yaml:52-57`, `update-contact.yaml:28-33` | the merged `profile` object                            |
+| `create-contact.yaml:39-43`                              | `email`, and `lowercase_email` derived from it         |
+| `create-contact.yaml:58-63`, `update-contact.yaml:34-39` | the `global_attributes` merge                          |
+| stage 2, all three seams                                 | the three derived scalars from `derive-profile.js.njk` |
+
+Stage 1 keeps injecting the payload bags (D2), so it needs the wrapper exactly as today. Stage 2's
+derived scalars need it too, being payload-derived strings: a `given_name` of `$email` makes the derived
+`name` begin with `$`.
+
+The sibling fields are not a lesser case. `global_attributes` is arbitrary consumer-supplied data, so a
+`$`-prefixed value in it is unremarkable; and `$` is legal in an email local-part under RFC 5322, so
+`$profile@example.com` is a deliverable address that would write the profile bag into `email`. Closing
+all of it costs nothing beyond writing `$literal`, and is done here rather than left as a separate
+finding because every line it touches is being rewritten anyway.
 
 ### D7 — Colour selection joins the derivation: random once, then stored
 
@@ -259,8 +282,8 @@ else in the repo reads it.
 `avatar-picker-seed.yaml` survives, with its `index: 0` replaced by a random palette entry. The picker
 still needs a seeded value in state rather than letting the derivation draw: its preview re-evaluates
 on every keystroke in the name fields, and an unseeded draw would re-roll the gradient each time. Its
-"Change colour" button is unchanged and still writes an explicit `profile.avatar_color`, which the
-derivation honours ahead of both the stored value and a fresh draw.
+"Change colour" button still writes an explicit `profile.avatar_color`, which the derivation honours
+ahead of both the stored value and a fresh draw.
 
 **Accepted cost — a palette change does not migrate.** Because a resolved `{from, to}` pair is stored,
 a consumer who later changes the `avatar_colors` var leaves existing contacts on their old colours
@@ -272,17 +295,58 @@ rewritten — `docs/shared/avatar-colors.md`'s "same gradient on every page" is 
 which storage keeps, not a claim about read-time resolution.
 
 The palette is a module var (`avatar_colors`), declared already in all three modules
-(`user-account/module.lowdefy.yaml:32`, `user-admin/module.lowdefy.yaml:170`,
-`contacts/module.lowdefy.yaml:103`), so the value exists and only has to be threaded to the
-derivation.
+(`user-account/module.lowdefy.yaml:32`, `user-admin/module.lowdefy.yaml:188`,
+`contacts/module.lowdefy.yaml:103`), so the value exists and only has to be threaded to the derivation.
 
 For `write-profile.yaml` that means a new **required `_ref` var**, not a `_module.var` read inside
 `shared/`. The file's header states it is var-free precisely so it resolves in any consumer, and a
-fragment spliced into three different modules' routines should not reach for the host's vars. (The
-rule is not uniform across `shared/` today — `avatar-picker.yaml:78` reads `_module.var:
-avatar_colors` directly — but that is a block fragment resolved in one module's page tree, not a
-routine fragment shared across three.) `contacts`' two APIs read `_module.var: avatar_colors`
-directly, as they already do for `request_stages.write`.
+fragment spliced into three different modules' routines should not reach for the host's vars. (The rule
+is not uniform across `shared/` today — `avatar-picker.yaml:78` reads `_module.var: avatar_colors`
+directly — but that is a block fragment resolved in one module's page tree, not a routine fragment
+shared across three.) `contacts`' two APIs read `_module.var: avatar_colors` directly, as they already
+do for `request_stages.write`.
+
+### D7a — the colour picker keeps no cursor
+
+`avatar-picker.yaml`'s Change-colour button does not read the gradient it is changing. It bumps a
+separate page-state integer, `avatar_color_index` (`:67-83`), then resolves that index against the
+palette and writes the result to `profile.avatar_color` (`:84-92`). Two keys must agree, and they are
+seeded in two different places — `avatar-picker-seed.yaml` sets the colour, while both host pages set
+`avatar_color_index: 0` inline (`onboarding.yaml:30`, `modal_profile.yaml:27`). With D7's random
+seed they disagree from the first render: the preview shows a random entry while the cursor reads 0, so
+the first click jumps to entry 1 — a visible backwards jump, and nothing warns, because
+`validateStateReferences.js` catches an unwritten key rather than two keys that simply disagree.
+
+The cursor is deleted. `profile.avatar_color` becomes the only state the button reads: one SetState
+whose `_js` finds the current `{from, to}` pair's index in the palette and returns the next entry,
+wrapping at the end. Both host pages drop their `avatar_color_index` seeding.
+
+This is a case where `_js` beats operator chaining: the palette's `from` values are not unique
+(`#c62828` at indexes 0 and 15, `#6a1b9a` at 2 and 17, and five more pairs), so recovering the position
+means matching both fields. One state key that cannot desync is worth more than keeping the lookup in
+plain operators.
+
+### D7b — an unnamed profile gets no picture and a null name
+
+`user-admin/api/invite.yaml` takes `profile?` as optional (`:22`) — an operator can invite by email
+alone — and splices `write-profile` at `:108` with `profile: {_payload: profile}`. So the derivation
+must handle an empty bag, and this is the one case where today's behaviour is worth preserving rather
+than replacing.
+
+**`picture` is left unset when both `given_name` and `family_name` are empty after trimming.** The
+generator's current fallback is `?` initials (`generate-avatar-svg.js.njk:9`), which in a gradient
+circle reads as a deliberate identity. An invitee who has not onboarded has no identity to show yet, and
+`user-avatar.yaml:15` already renders the Avatar block's `AiOutlineUser` icon when `src` is empty — the
+honest signal. Once they onboard and supply a name, the seam derives a real avatar on that write.
+
+**`name` is `null`, not `" "`.** Today's MQL `$concat` returns null when either input is null, so an
+unnamed profile stores a null name. A JavaScript derivation that concatenates two empty strings would
+store a single space instead — truthy, so it renders as blank text at every name display rather than
+letting a fallback show. The derivation must return null for this case explicitly.
+
+`avatar_color` is still drawn and stored for an unnamed profile. It costs nothing and means the colour is
+fixed from the invite onward, so the avatar does not change colour when the invitee finally supplies a
+name.
 
 ### D8 — One `_js` implementation, via the `args` form
 
@@ -333,11 +397,47 @@ page-title avatar, which renders the same person from the stored `picture` a few
 
 Both forms drop it and `avatar-preview.yaml` is deleted. Two things follow:
 
-- Nothing on the create path needs to anticipate the colour the write will choose, so `new.yaml` keeps
-  minting its contact `_id` inline in the CallAPI payload (`:105-106`) and never has to hold one in
-  state. The design stays independent of the client knowing the contact id before the write.
+- Nothing on the create path needs to anticipate the colour the write will choose, so no form has to
+  know the contact `_id` before the write. That leaves D10 free to take the id away from the client
+  entirely.
 - The create form gives no preview of the avatar the contact will get. Acceptable: it was never
   influenceable, and the stored picture is visible on the contact's pages immediately after save.
+
+### D10 — `create-contact` mints the contact id server-side
+
+Not an avatar concern, but it is closed here because the same stages are being rewritten and the
+alternative is shipping a known write-authorization gap.
+
+`create-contact`'s `insert` step upserts on `filter: {_id: {_payload: _id}}` with `upsert: true`
+(`:17-30`), while its `skip` fires only when `check-existing` matched — and `check-existing` queries
+`lowercase_email` (`:4-15`). So a payload carrying a **known** `_id` with a **novel** email walks past
+the guard, the upsert filter matches that existing document, and the `$set` overwrites its `email`,
+`lowercase_email`, `profile` and `global_attributes`. Only `_id` and `created` survive, via their
+`$ifNull` preserves. Contact ids appear in detail and edit page URLs, so a target is obtained by
+observation rather than guessing.
+
+The filter takes a server-minted id instead: `{_id: {_uuid: true}}`, which `_uuid` supports server-side
+(`build/plugins/operators/server.js:11,40`). The filter can then never match an existing row, so the
+step always inserts and the payload's `_id` is never read. This removes the capability rather than
+guarding one route through it.
+
+Nothing downstream depends on the client's id. Both callers already read the authoritative value from
+the response — `contact-selector.yaml.njk:230` and `new.yaml:128` both use
+`_actions: create_contact.response.response.contactId`, which `:147-159` resolves from
+`insert.upsertedId` or the matched contact. Retry safety is unaffected: it comes from `check-existing`'s
+email match, not from the upsert, so a retried create still converges on one contact rather than
+duplicating.
+
+Three cleanups follow, all in code this design already touches: `new.yaml`'s inline
+`_id: {_uuid: true}` (`:106-107`) and `contact-selector`'s `generate_id` SetState (`:157-165`) are
+deleted, and the `$ifNull` preserves on `_id` and `created` (`:35-38`, `:46-51`) become dead once the
+step can only insert. `contact-selector` also passes the whole `_state: <id>_contact` bag to
+`appendContact` beside the response id, so that bag no longer carries an `_id` — it must read the
+returned `contactId` for both.
+
+The upsert-matching path is also what produced the null-redirect bug the `contacts` changelog records:
+`insert.upsertedId` is populated only on a real insert, so a matched upsert returned a null
+`contactId`. That failure mode goes with it.
 
 ## Breaking changes
 
@@ -349,6 +449,10 @@ Both forms drop it and `avatar-preview.yaml` is deleted. Two things follow:
    nothing recolours until it is rewritten. Users with a stored colour are unaffected, including those
    whose stored colour is onboarding's index-0 red: they keep it. Clearing `profile.avatar_color` in a
    migration is what would redistribute them (D7).
+3. **`create-contact` ignores a payload's `_id`.** The contact id is minted server-side (D10). A
+   consumer that posted an `_id` and assumed the created contact would carry it must read `contactId`
+   off the response instead — which both in-repo callers already do. This is the security fix, so the
+   old behaviour is not preserved behind a flag.
 
 `request_stages.write` is unaffected: the caller's stages still come after the derived `$set`, so a
 consumer stage that overrides `profile.name` or `profile.picture` still wins — which is what D4's
@@ -365,7 +469,8 @@ its changes ride in the three consuming packages'.)
 
 - `modules/shared/profile/derive-profile.js.njk` — **new**; merge, derive `name`, resolve the gradient
   (incoming `avatar_color`, else stored, else a random palette draw — persisted, D7), derive `picture`.
-  Args: `stored`, `incoming`, `palette`.
+  Args: `stored`, `incoming`, `palette`. Returns `picture: undefined` and `name: null` for a profile with
+  no `given_name` and no `family_name` (D7b).
 - `modules/shared/profile/generate-avatar-svg.js.njk` — **delete**; superseded, and its `prefix`
   var no longer has a purpose (D8).
 - `modules/shared/profile/avatar-picker-seed.yaml` — **kept**; replace the unconditional `index: 0`
@@ -373,6 +478,9 @@ its changes ride in the three consuming packages'.)
   `profile.avatar_color` is absent, is unchanged.
 - `modules/shared/profile/avatar-picker.yaml` — its preview binds `derive-profile.js.njk` through
   `_get`. No new vars: the seed supplies `profile.avatar_color` before the preview reads it (D7).
+  Replace the two-action `cycle_avatar_color_index` / `set_avatar_color` pair (`:67-92`) with one
+  SetState that advances `profile.avatar_color` directly, and drop the `avatar_color_index` note from
+  its header comment (D7a).
 - `modules/shared/profile/avatar-preview.yaml` — **delete** (D9); `contacts`' forms were its only
   consumer.
 - `modules/shared/contact/write-profile.yaml` — read-first restructure (D2): add
@@ -390,32 +498,40 @@ its changes ride in the three consuming packages'.)
 
 **contacts**
 
-- `modules/contacts/api/create-contact.yaml` — derive through the shared fragment; keep the upsert,
-  the insert-only fields, the `check-existing` guard and stage 1 as-is. **No read step is needed
-  here**: `insert` is skipped whenever `check-existing` matched (`:19-22`), so it only ever runs for a
+- `modules/contacts/api/create-contact.yaml` — derive through the shared fragment; keep the
+  insert-only fields, the `check-existing` guard and stage 1 as-is. **No read step is needed here**:
+  `insert` is skipped whenever `check-existing` matched (`:19-22`), so it only ever runs for a
   genuinely new contact and the stored bag is always empty. The derivation runs against the payload
-  alone, with `stored: {}`. Stage 2's `$concat` becomes a `$set` of the derived scalars.
+  alone, with `stored: {}`. Stage 2's `$concat` becomes a `$set` of the derived scalars. `$literal`-wrap
+  `email`, `lowercase_email`, `global_attributes` and the profile bag (D6). Separately
+  (D10): the filter becomes `{_id: {_uuid: true}}` so the step can only insert, and the now-unreachable
+  `$ifNull` preserves on `_id` (`:35-38`) and `created` (`:46-51`) are dropped.
 - `modules/contacts/api/update-contact.yaml` — add `read_contact`; keep stage 1's `$mergeObjects` for
-  `profile` and `global_attributes` and replace stage 2's `$concat` with the derived scalars. Keep the
-  `apps.<slug>.is_user` filter clause.
+  `profile` and `global_attributes` (both `$literal`-wrapped, D6) and replace stage 2's `$concat` with
+  the derived scalars. Keep the `apps.<slug>.is_user` filter clause.
 - `modules/contacts/components/form_profile.yaml` — drop the `avatar-preview.yaml` `_ref` at `:8` and
   its comment (D9). This is the only change either `contacts` form needs for the avatar to disappear.
 - `modules/contacts/pages/new.yaml` — delete `generate_avatar` and the random `profile.avatar_color`
-  init (`:33-43`). The payload's inline `_id: {_uuid: true}` is **unchanged** — D9 removes the reason to
-  mint it into state.
+  init (`:33-43`); delete the payload's inline `_id: {_uuid: true}` (`:106-107`), now server-minted
+  (D10). The post-create redirect already reads `contactId` off the response (`:128`) and is unchanged.
 - `modules/contacts/pages/edit.yaml` — delete `generate_avatar`. Keeps its page-title avatar, which is
   what renders the contact after D9.
-- `modules/contacts/components/contact-selector.yaml.njk` — delete `pick_avatar_color` and the
-  inline picture generation.
+- `modules/contacts/components/contact-selector.yaml.njk` — delete `pick_avatar_color` and the inline
+  picture generation; delete the `generate_id` SetState (`:157-165`, D10) and give `appendContact` the
+  returned `contactId` for its `contact` bag as well as its `contactId` arg (`:221-230`), since the
+  state bag no longer carries an `_id`.
 
 **user-account / user-admin**
 
-- `modules/user-account/pages/onboarding.yaml` — no change to its `avatar-picker-seed` ref (`:31`) or
-  its picker ref (`:48`); the seed file itself changes, not the call sites (D7).
-- `modules/user-account/components/view/modal_profile.yaml` — same (`:28`, `:54`).
-- `modules/user-account/components/user-avatar.yaml` — the comment at `:12-14` claims every user
-  already has a stored SVG. False today, true after this change; rewrite it to state the fallback's
-  purpose rather than assert the claim.
+- `modules/user-account/pages/onboarding.yaml` — drop the inline `avatar_color_index` seeding
+  (`:30`, D7a). Its `avatar-picker-seed` and picker refs are unchanged — the seed file changes, not
+  the call site.
+- `modules/user-account/components/view/modal_profile.yaml` — same (`:27`).
+- `modules/user-account/components/user-avatar.yaml` — the comment at `:12-14` claims the icon fallback
+  "rarely fires" because every user has a stored SVG. That stays false after this change, for a
+  different reason: D7b leaves `picture` unset for a profile with no name, so the fallback is what
+  renders for an invitee who has not onboarded. Rewrite it to say that, rather than to assert the claim.
+  The `icon: AiOutlineUser` behaviour itself is unchanged.
 - `modules/user-admin/components/view/modal_profile.yaml` — no config change; gains a correct avatar
   because the seam now derives one. Worth a verification note, not an edit.
 
@@ -427,10 +543,11 @@ its changes ride in the three consuming packages'.)
   `avatar_color`, stores it, and honours an explicit pick ahead of it. Keep the guarantee it is really
   making — same person, same colours everywhere — and add that a palette change does **not** migrate
   existing contacts, because both the colour and the rendered `picture` are stored (D7).
-- `docs/user-account/concepts/write-pathways.md` — `:36-56` describes the fragment as pairing "two
-  writes in one routine" and enumerates the `_ref` vars each caller passes. Both are now wrong: four
-  DB operations, and the new `avatar_colors` var.
-- `docs/user-account/how-to/migration.md`, `docs/contacts/index.md` — the breaking-change notes above.
+- `docs/user-account/concepts/write-pathways.md` — `:42-43` describes the fragment as pairing "two
+  writes in one routine" and `:65` enumerates the `_ref` vars each caller passes. Both are now wrong:
+  four DB operations, and the new `avatar_colors` var.
+- `docs/user-account/how-to/migration.md`, `docs/contacts/index.md` — the breaking-change notes above,
+  including that `create-contact` now mints the `_id` and a payload's is ignored (D10).
 - Changesets for `user-account`, `user-admin`, `contacts`.
 
 **Demo**
@@ -445,26 +562,40 @@ prove the derivation runs, because that needs a real write against a real databa
 check — save a profile through each of the four write paths and confirm `user-contacts.profile.picture`,
 `users.profile.picture` and `users.image` all carry the same fresh URI — is a `/r:dev-test` step.
 
-Two things specifically worth testing, because they are the cases that are broken today: renaming a
-user through user-admin's modal (no picker) should update the initials, and an invited user should
-have an avatar before their first login.
+Three things specifically worth testing, because they are the cases that are broken today: renaming a
+user through user-admin's modal (no picker) should update the initials; an invited user should have an
+avatar before their first login; and `create-contact` should ignore a payload `_id` — post a known
+contact's `_id` with a fresh email and confirm a new contact is created and the named one is untouched
+(D10). The last needs a real request, so it belongs in the same `/r:dev-test` pass.
+
+Also worth confirming under D10 that both create paths still land on the right record, since they now
+depend entirely on the returned `contactId`: `new.yaml`'s post-create redirect, and
+`contact-selector`'s `appendContact`.
 
 ## Non-goals
 
 - **Photo upload.** D1 explains why the seam is the right home for it. Nothing is built here.
-- **The picker's aesthetics.** F9 in `05-ui-rework/`.
-- **Where the avatar renders in the shared page header.** F17 — it pairs with this one (a header
-  avatar needs a stored picture to show) but it is a separate call about the shared header contract.
+- **The picker's aesthetics.** Already done — F9 in
+  [`../_completed/05-ui-rework/findings.md`](../_completed/05-ui-rework/findings.md), which shipped the
+  labelled 64px row this design's D7a rewires. F9 deliberately left the write-path half to this design.
+- **Where the avatar renders in the shared page header.** It pairs with this one (a header avatar needs
+  a stored picture to show) but it is a separate call about the shared page-title contract: whether the
+  shared component renders the signed-in user's avatar itself, or exposes a slot pages opt into.
 - **Folding contacts' writes into `write-profile.yaml`.** D5 explains why only the derivation is
   shared. If the two write shapes converge later, the fragment is the place to revisit.
+- **A wider write-authorization audit.** D10 closes the one gap in the stages this design rewrites. It
+  does not review whether `update-contact`, which necessarily operates on a client-supplied `_id`, is
+  adequately authorized — that is a separate question about endpoint permissions, not about how the
+  create path mints ids.
 
 ## Related
 
-- F14 in [`../04-planning/findings.md`](../04-planning/findings.md) — the originating finding; its
-  "no generator anywhere" claim needs the correction in Current state.
+- **F14** — the originating finding, retired from `../04-planning/findings.md` when this design was
+  written, because this design is its resolution. Its "no generator anywhere" claim was already stale;
+  Current state carries the correction.
 - [`designs/_completed/avatar-svg-js/design.md`](../../_completed/avatar-svg-js/design.md) — D8
   reverses its Decision 1 and explains why the premise changed.
-- [`../table-row-contract/design.md`](../_completed/table-row-contract/design.md) — D2 there strips
+- [`../_completed/table-row-contract/design.md`](../_completed/table-row-contract/design.md) — D2 there strips
   `profile.picture` from the wire row in favour of the top-level `picture` alias. This design
   strengthens that: once the write recomputes `picture`, a payload's copy is ignored entirely, so the
   `$mergeObjects` round-trip argument stops being load-bearing.

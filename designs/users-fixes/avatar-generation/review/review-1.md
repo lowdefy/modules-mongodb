@@ -122,7 +122,11 @@ fragment header that `read_contact` is taken by the sibling fragment.
 > `avatar-picker.yaml`, which carries the "Change colour" button, is used only by `user-account`, so on
 > `contacts`' two forms it renders a 100px `?` on a random gradient the author cannot influence, and on
 > `edit.yaml` it duplicates the page-title avatar a few pixels above it. `avatar-preview.yaml` is deleted
-> and `form_profile.yaml:8` drops the ref; `new.yaml`'s `_id` handling is untouched.
+> and `form_profile.yaml:8` drops the ref.
+>
+> `new.yaml`'s `_id` handling was left untouched by this resolution, and **D10 subsequently removed it
+> anyway** — the contact `_id` is now minted server-side, so the inline `_id: {_uuid: true}` in the
+> CallAPI payload is deleted. D10 is the current word on the client id, not this annotation.
 
 D7's justification is that determinism makes "the picker's preview and the write agree".
 On the create path it does the opposite.
@@ -203,6 +207,15 @@ right now the atomicity change isn't mentioned at all.
 
 ### 7. D6 wraps `profile` in `$literal` but leaves the identical bug on three sibling fields
 
+> **Resolved.** No case for `profile` alone — the asymmetry was an oversight. D6 is restated as a rule
+> over the stage rather than a list of fields: anything in these pipeline stages that originates in the
+> payload, or is derived from it, gets `$literal`, so a field added later inherits it. A table names all
+> current sites, including the three from this finding (`create-contact.yaml:39-43` `email` /
+> `lowercase_email`, and the `global_attributes` merges at `create-contact.yaml:58-63` and
+> `update-contact.yaml:34-39`) plus stage 2's derived scalars. D6 also records why the siblings are not
+> a lesser case: `global_attributes` is arbitrary consumer data, and `$` is legal in an email local-part
+> under RFC 5322, so `$profile@example.com` would write the profile bag into `email`.
+
 D6 is correct that a payload string beginning with `$` is read as a field path. But the
 same rewritten stages inject other payload values into expression context:
 
@@ -216,6 +229,16 @@ An email of `$profile` stores the profile bag; a `global_attributes` value of
 rewritten anyway" — applies verbatim. Wrap all of them, or say why `profile` alone.
 
 ### 8. Dropping the `avatar_color_index` seed leaves the cursor unbacked and out of sync
+
+> **Resolved.** The premise shifted — `avatar-picker-seed.yaml` is kept, not deleted (D7) — but the
+> desync is real and D7's random seed makes it worse: the preview shows a random entry while both host
+> pages still seed the cursor to 0, so the first click visibly jumps to entry 1. Resolved by the
+> finding's second option, in new **D7a**: the cursor is deleted outright and `profile.avatar_color`
+> becomes the only state the Change-colour button reads — one SetState that finds the current
+> `{from, to}` pair's index in the palette and advances to the next entry. Both host pages drop their
+> `avatar_color_index` seeding. `_js` is justified here because the palette's `from` values are not
+> unique (`#c62828` at 0 and 15, `#6a1b9a` at 2 and 17, plus five more), so the position can only be
+> recovered by matching both fields.
 
 Files changed says onboarding and `user-account/.../modal_profile.yaml` "drop
 `avatar_color_index` seeding and the `avatar-picker-seed` ref"
@@ -312,6 +335,18 @@ mention that `update-contact.yaml` goes from one DB op to two — a 100% increas
 contacts edit path, still cheap, but the design's own framing invites the number.
 
 ### 13. Unstated behaviour for an empty name
+
+> **Resolved.** Decided in new **D7b**, taking the finding's own recommendation: with no `given_name`
+> and no `family_name` after trimming, the derivation leaves `picture` unset, so `user-avatar.yaml:14`'s
+> `AiOutlineUser` renders — the honest signal for an invitee with no identity yet — rather than a `?` in
+> a gradient circle, which reads as a deliberate one.
+>
+> A second half the finding did not name: the derivation must return `name: null` explicitly. Today's
+> MQL `$concat` yields null when either input is null, but a JS derivation concatenating two empty
+> strings would store `" "` — truthy, so it renders as blank text wherever a null currently lets a
+> fallback show. `avatar_color` is still drawn and stored, so the colour does not change when the
+> invitee later supplies a name. The `user-avatar.yaml` comment rewrite in Files changed is restated to
+> describe this case rather than to claim the fallback rarely fires.
 
 `user-admin/api/invite.yaml:108-119` passes `profile: {_payload: profile}`, and the
 invite payload's profile is optional (`invite.yaml:22`). Today that derives
