@@ -43,15 +43,6 @@
           properties:
             title: Chat
             icon: AiOutlineMessage
-        - id: reporting-generate
-          type: MenuLink
-          pageId:
-            _module.pageId:
-              module: reporting
-              id: generate
-          properties:
-            title: Generate
-            icon: AiOutlineRobot
         - id: reporting-reports
           type: MenuLink
           pageId:

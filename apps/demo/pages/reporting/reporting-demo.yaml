@@ -1,7 +1,7 @@
 # App-owned landing page for testing the reporting module. Seeds the demo_orders
 # collection the data dictionary describes, then links out to the module's own
-# surfaces (chat, one-shot generate, saved reports). The surfaces themselves are
-# standalone pages exported by the reporting module.
+# surfaces (chat, saved reports). The surfaces themselves are standalone pages
+# exported by the reporting module.
 _ref:
   module: layout
   component: page
@@ -36,7 +36,7 @@ _ref:
             The module's storage and analytics connections are remapped onto the
             demo's MONGODB_URI, so the only extra secret needed is
             AI_GATEWAY_API_KEY (the AI gateway that backs the reporting agent).
-            Add it before the chat and generate surfaces will work.
+            Add it before the chat surface will work.
 
       - id: seed_card
         type: Card
@@ -195,22 +195,6 @@ _ref:
                       _module.pageId:
                         module: reporting
                         id: chat
-          - id: open_generate
-            type: Button
-            layout:
-              flex: 0 1 auto
-            properties:
-              title: Generate a report
-              icon: AiOutlineRobot
-            events:
-              onClick:
-                - id: go_generate
-                  type: Link
-                  params:
-                    pageId:
-                      _module.pageId:
-                        module: reporting
-                        id: generate
           - id: open_reports
             type: Button
             layout:

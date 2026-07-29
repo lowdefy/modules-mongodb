@@ -1,6 +1,7 @@
 # onFinish hook: upsert the full conversation keyed by conversationId, scoped
-# by userId. No-ops headlessly (CallAgent runs have no conversationId). The
-# title is derived from the first user message on insert.
+# by userId. No-ops when the payload carries no conversationId — there is
+# nothing to key the upsert on, and this endpoint is HTTP-callable. The title
+# is derived from the first user message on insert.
 #
 # userId comes from _user, never from the hook payload. This endpoint is
 # type: Api — HTTP-callable by any authenticated user — and the write is an

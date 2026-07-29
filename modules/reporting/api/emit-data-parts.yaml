@@ -2,7 +2,8 @@
 # toolResults, run each chart's query once (bounded, inside :try — a failed
 # query skips its chart), and return chart + download dataParts for the chat
 # page's adjacent panel. Tools cannot write to the stream — dataParts are
-# written only from onFinish hook responses. No-ops headlessly.
+# written only from onFinish hook responses. No-ops when the payload carries no
+# conversationId — the parts have nowhere to be snapshotted.
 id: emit-data-parts
 type: Api
 routine:

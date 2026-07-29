@@ -189,9 +189,19 @@ The catalog carries everything the engine enforces and everything that is _per f
 
 It is **prompt material, not policy** — the same posture as catalog display hints. Nothing written there widens what the agent may query: `collection`, every `$lookup.from`, and the role union are still resolved solely through `catalog`, and `validatePipeline` never sees this string. Contrast with `catalog`, where adding a key _is_ an authorization change. Consumers should still treat it as they treat the catalog's `description` fields — it reaches the model provider, so it is not the place for secrets.
 
-Injected as a `_build.if` branch on the concat (`agents/reporting-assistant.yaml:31-42`) rather than an always-present section, because an unset var resolves to `null` and would otherwise be concatenated as the literal `"null"` under a live heading — the same failure mode already guarded at `generate-oneshot.yaml:16-26`.
+Injected as a `_build.if` branch on the concat (`agents/reporting-assistant.yaml:31-42`) rather than an always-present section, because an unset var resolves to `null` and would otherwise be concatenated as the literal `"null"` under a live heading — an empty-string-or-absent check on every value that reaches a prompt by concatenation.
 
 **Prompt trim, same change:** the instruction prose was cut ~20% (143 → 111 lines) with no steering removed. The `render_chart` section was folded into the tool list it duplicated, the "filterable fields at the source grain" section into the `generate_report` filter description, and the grain-awareness mitigations tightened. Two contract facts were made precise while rewording, both verified against the validators rather than the old prose: `format` is accepted on table columns and `kpi` sections but **not** on charts (`validateChartSpec.js` returns only `chart`/`title`/`query`/`x`/`y`), and every filter section must be bound by at least one section (`validateReportSpec.js:298-302`) — a rejection the prompt had not mentioned.
+
+### One-shot surface removed (2026-07-29)
+
+The module originally shipped two agent surfaces: the chat page, and a one-shot `generate` page — a textarea plus a button that called `generate-oneshot`, which ran the same agent headlessly through `CallAgent`, dug the last `generate_report` result out of `run.toolResults`, and linked straight to the finished report. **Removed** — it did not earn its surface.
+
+It exposed no capability the chat surface lacks: same agent, same tools, same `generate_report` endpoint, same persisted spec. Its only distinction was skipping the conversation — and conversation is exactly where report authoring gets its correctness. The agent explores with `query_data` before it commits to a spec, can misjudge grain or fan-out (the [accepted correctness risk](#correctness-is-deferred-not-designed-in)), and self-corrects on validator rejections mid-turn. Headless, a plausible-but-wrong report is produced silently, the user's only recourse is rephrasing the whole request, and nothing about the run is inspectable afterwards: with no `conversationId`, both onFinish hooks no-op, so there is no saved conversation, no results panel, and no trace of what the agent queried on the way. The chat surface already ends at a report URL, so the one-shot path bought a shorter click path in exchange for the run's entire audit trail.
+
+Against that, its cost was ongoing: an exported page, an HTTP-callable endpoint, a menu entry and demo button, a docs surface table row and walkthrough section, and its own duplicate empty-request guard (the page disabled its button, the endpoint rejected a `null` payload — the same check in two places, because a `type: Api` endpoint is callable directly).
+
+Removal is config-only — nothing in the engine, the validators, or the report path is touched, and no persisted data references it. Restoring it is a revert: the page and endpoint were self-contained.
 
 ## Charts, reports, and exports on the open engine
 

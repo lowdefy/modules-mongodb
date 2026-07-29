@@ -7,7 +7,7 @@ concepts: [open-query-engine, collections-catalog, presentation-contract]
 
 # AI Chat Reporting
 
-Chat to your data and generate saved, navigable reports. The module ships a reporting agent (chat and one-shot surfaces), an **open query engine** over an app-supplied collections catalog, and report pages compiled server-side from AI-generated report specs.
+Chat to your data and generate saved, navigable reports. The module ships a reporting agent chat surface, an **open query engine** over an app-supplied collections catalog, and report pages compiled server-side from AI-generated report specs.
 
 The agent answers questions by authoring near-arbitrary read-only MongoDB aggregation pipelines — `$lookup`, `$unwind`, array work, window functions, faceting — which a validation layer plus a read-only database principal keep safe. The [collections catalog](reference/catalog.md) — the `catalog` var — is both the agent's knowledge of what it can query (embedded in its instructions at build time) and the allowlist the engine validates every pipeline against, as well as the confidentiality/authorization boundary. The agent can only describe and query what the catalog declares.
 
@@ -19,16 +19,17 @@ None. `reporting` is self-contained — its pages do not wrap in the `layout` mo
 
 ## When to use
 
-Add `reporting` to an app whose users need to explore data conversationally and save the results as reusable reports. You supply a declarative `catalog` describing your queryable collections; the module provides the chat surface, the one-shot "describe a report, get a URL" surface, the saved-reports list, and the report renderer.
+Add `reporting` to an app whose users need to explore data conversationally and save the results as reusable reports. You supply a declarative `catalog` describing your queryable collections; the module provides the chat surface, the saved-reports list, and the report renderer.
 
 Surfaces exported as pages:
 
 | Page           | Surface                                                              |
 | -------------- | -------------------------------------------------------------------- |
 | `chat`         | Conversational — `AgentChat` with an adjacent charts/downloads panel |
-| `generate`     | One-shot — describe a report, get its URL                            |
 | `reports-list` | Saved reports with open and [soft delete](../shared/soft-delete.md)  |
 | `report`       | Report renderer (`Dynamic` block over `resolve-report`)              |
+
+Reports are created from the chat surface: the agent's `generate_report` tool persists a spec and returns its URL.
 
 ## Quickstart
 
