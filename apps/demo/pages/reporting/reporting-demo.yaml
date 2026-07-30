@@ -132,14 +132,22 @@ _ref:
             type: Paragraph
             properties:
               content: >
-                Seeds a worked-example report over the demo_orders collection so
-                the report surface is reproducible without driving the chat
-                agent. It exercises the open engine's presentation contract
-                end-to-end: a currency-formatted KPI and table column (sourced
-                from the catalog's demo_orders.total display hint), a
-                pipeline-backed bar chart with an x/y contract, a Region select
-                filter bound to every section (the server-built $match re-query
-                path), and a CSV download section. Seed the demo orders first.
+                Seeds a worked-example report over the demo_orders,
+                demo_activities and demo_contacts collections so the report
+                surface is reproducible without driving the chat agent. It
+                exercises the open engine's presentation contract end-to-end: a
+                currency-formatted KPI and table column (sourced from the
+                catalog's demo_orders.total display hint), a pipeline-backed
+                bar chart with an x/y contract, every filter control — a Region
+                multiselect, a Created daterange, an Activity type single
+                select, and two company multiselects whose options come from a
+                query over demo_companies (looked-up labels), one match: any
+                over activities and one match: all over contacts — and a CSV
+                download section. Activity type and Activity companies are bound
+                to the same sections, so a select and a multiselect can be
+                compared side by side, and every filter moves a KPI or chart
+                rather than only a table further down. Seed the demo orders and
+                the reporting domain first.
           - id: seed_report_btn
             type: Button
             layout:

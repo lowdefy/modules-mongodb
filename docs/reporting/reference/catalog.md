@@ -29,7 +29,7 @@ catalog:
       region:
         type: string
         description: Customer region
-        values: [North, South, East, West] # enum values — feed select-filter options
+        values: [North, South, East, West] # enum values — feed select/multiselect filter options
       total:
         type: number
         description: Order total, money.
@@ -82,7 +82,7 @@ See `apps/demo/lowdefy.yaml` for the worked example. (The demo deliberately rema
 
 ## Display hints are prompt material, not enforcement
 
-`format`, `currency`, `locale`, `decimals`, and a field's enum `values` are **prompt material only.** The agent copies them into the [presentation contracts](presentation-contract.md) it authors, so a field formats consistently across every chart, KPI, table, and report that touches it. The engine never enforces them against the data — they shape the agent's output, nothing more. (Enum `values` do double as the fallback option source for a report's select filters.)
+`format`, `currency`, `locale`, `decimals`, and a field's enum `values` are **prompt material only.** The agent copies them into the [presentation contracts](presentation-contract.md) it authors, so a field formats consistently across every chart, KPI, table, and report that touches it. The engine never enforces them against the data — they shape the agent's output, nothing more. (Enum `values` do double as the fallback option source for a report's select/multiselect filters — see [Filter binding](presentation-contract.md#filter-binding).)
 
 ## The bootstrap workflow
 

@@ -1,16 +1,19 @@
 import {
   MAX_FILTER_OPTIONS,
+  MAX_QUERY_FILTER_OPTIONS,
   PIPELINE_RESULT_CAP,
   REPORT_CURRENCY,
   REPORT_DECIMALS,
   REPORT_LOCALE,
 } from "./constants.js";
 import buildEChartsOption from "./buildEChartsOption.js";
+import { orderedQueries } from "./querySections.js";
 import validateReportSpec, {
   catalogFieldValues,
 } from "./validateReportSpec.js";
 import {
   verifyChartContract,
+  verifyFilterOptionsContract,
   verifyKpiContract,
   verifyTableContract,
 } from "./verifyContract.js";
@@ -77,14 +80,26 @@ function safeFilename(label) {
 function boundFilters(section, filterSectionsByField) {
   const extra = [];
   for (const field of section.filterBy ?? []) {
-    const control = filterSectionsByField.get(field).control;
+    const filter = filterSectionsByField.get(field);
     const key = filterStateKey(field);
-    if (control === "daterange") {
+    if (filter.control === "daterange") {
       extra.push(
         { field, op: "gte", value: { __state: `${key}.0` } },
         { field, op: "lte", value: { __state: `${key}.1` } },
       );
+    } else if (filter.control === "multiselect") {
+      // The spec's `match` is the author's intent, the triple's `op` is the
+      // query it compiles to: AnalyticsPipeline's FILTER_OPS maps in → $in
+      // (any of the selected values) and all → $all (every one of them).
+      // Defaulted to "any" by validateReportSpec, so the fallback here only
+      // covers a section that never went through it.
+      extra.push({
+        field,
+        op: filter.match === "all" ? "all" : "in",
+        value: { __state: key },
+      });
     } else {
+      // select — the remaining control (FILTER_CONTROLS is closed at three).
       extra.push({ field, op: "eq", value: { __state: key } });
     }
   }
@@ -241,19 +256,95 @@ function tableColumnDef(column, rows) {
   return def;
 }
 
-// A select filter's options: the agent's declared `options`, else the enum
-// `values` cataloged for the field in one of its bound sections' collections.
-function filterOptions(filter, sections, catalog) {
-  if (filter.options !== undefined)
-    return filter.options.slice(0, MAX_FILTER_OPTIONS);
-  const boundSections = sections.filter((s) =>
-    (s.filterBy ?? []).includes(filter.field),
-  );
-  const collections = boundSections
-    .map((s) => s.query?.collection)
-    .filter(Boolean);
-  const values = catalogFieldValues(catalog, filter.field, collections);
-  return (values ?? []).slice(0, MAX_FILTER_OPTIONS);
+// Why a filter's optionsQuery produced no usable options list, or undefined if
+// it did. The three outcomes get three descriptions: one message covering all
+// of them would misdescribe two.
+function optionsQueryFailure({ valueKey, labelKey }, rows) {
+  if (!Array.isArray(rows)) {
+    // A null/missing results entry: the options query failed validation or was
+    // denied by the viewer's roles inside the resolver's :try. That :catch only
+    // logs, so no error text reaches here — say what is known rather than
+    // fabricating the gate's message.
+    return (
+      "The options for this filter failed to load — the options query may " +
+      "reference data no longer available."
+    );
+  }
+  try {
+    verifyFilterOptionsContract({ valueKey, labelKey, rows });
+  } catch (error) {
+    return error.message;
+  }
+  // Zero rows is a legitimate outcome for a section's RESULT rows, but not for
+  // an options list: a control the user cannot operate is a failure, not
+  // information.
+  if (rows.length === 0) return "No options available.";
+  return undefined;
+}
+
+// Caps a list and reports whether it was cut, along with the cap that cut it.
+// Every options source goes through this: a dropdown silently missing the value
+// someone is looking for is indistinguishable from that value not existing, and
+// that is as true of a 60-value catalog enum as of a 600-row options query.
+// The two caps differ because the sources do (see constants.js).
+function capped(values, cap) {
+  return {
+    options: values.slice(0, cap),
+    truncated: values.length > cap,
+    cap,
+  };
+}
+
+// A select/multiselect filter's options, in precedence order: the agent's
+// declared `options`, else an `optionsQuery`'s rows as { label, value } pairs,
+// else the enum `values` cataloged for the field in one of its bound sections'
+// collections.
+//
+// Returns { options, truncated, cap } for a usable list, or { failure } when an
+// optionsQuery produced none and no catalog values back it up — the caller
+// renders that as an Alert in the filter row.
+function filterOptions({ filter, sections, catalog, roles, rows }) {
+  if (filter.options !== undefined) {
+    return capped(filter.options, MAX_FILTER_OPTIONS);
+  }
+
+  const catalogOptions = () => {
+    const boundSections = sections.filter((s) =>
+      (s.filterBy ?? []).includes(filter.field),
+    );
+    const collections = boundSections
+      .map((s) => s.query?.collection)
+      .filter(Boolean);
+    // Role-gated inside catalogFieldValues: a viewer who may not query the
+    // collection gets nothing from it, which is what keeps the failure branch
+    // below from turning a role denial into a source of cataloged values.
+    return catalogFieldValues(catalog, filter.field, collections, roles);
+  };
+
+  if (filter.optionsQuery) {
+    const failure = optionsQueryFailure(filter.optionsQuery, rows);
+    if (failure) {
+      // The catalog stays the fallback whenever a query fails to produce a
+      // usable list — a stale-but-operable control beats an Alert.
+      const values = catalogOptions();
+      if (values) return capped(values, MAX_FILTER_OPTIONS);
+      return { failure };
+    }
+    const { valueKey, labelKey } = filter.optionsQuery;
+    const list = capped(rows, MAX_QUERY_FILTER_OPTIONS);
+    return {
+      ...list,
+      options: list.options.map((row) => ({
+        label: row[labelKey],
+        value: row[valueKey],
+      })),
+    };
+  }
+
+  // No query: the catalog's values, or the empty list a filter with neither
+  // source has always rendered (validateReportSpec rejects that combination at
+  // save time, where the catalog is present).
+  return capped(catalogOptions() ?? [], MAX_FILTER_OPTIONS);
 }
 
 // EChart and AgGridBalham have no `title` property (their schemas set
@@ -343,12 +434,9 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
       fail("results must be the resolver's per-section step results.");
     }
   }
-  const querySectionIds = sections
-    .filter((s) => ["kpi", "chart", "table"].includes(s.type))
-    .map((s) => s.id);
   const rowsBySectionId = new Map();
-  querySectionIds.forEach((id, index) => {
-    rowsBySectionId.set(id, resultsArray[index] ?? null);
+  orderedQueries(sections).forEach((entry, index) => {
+    rowsBySectionId.set(entry.id, resultsArray[index] ?? null);
   });
 
   const filterSectionsByField = new Map(
@@ -480,17 +568,40 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
           events: { onChange },
         });
       } else {
-        filterBlocks.push({
-          id: filterStateKey(section.field),
-          type: "Selector",
-          layout: { span: 6 },
-          properties: {
-            title: section.label,
-            allowClear: true,
-            options: filterOptions(section, sections, catalog),
-          },
-          events: { onChange },
+        const sourced = filterOptions({
+          filter: section,
+          sections,
+          catalog,
+          roles,
+          rows: rowsBySectionId.get(section.id),
         });
+        if (sourced.failure) {
+          // No usable options: the control is replaced by an Alert in the
+          // filter row. Its bound sections still render their resolve-time
+          // rows, they simply never re-query.
+          filterBlocks.push(failedSectionBlock(section, sourced.failure));
+        } else {
+          filterBlocks.push({
+            id: filterStateKey(section.field),
+            type:
+              section.control === "multiselect"
+                ? "MultipleSelector"
+                : "Selector",
+            layout: { span: 6 },
+            properties: {
+              // Truncation is stated, never silent — the same way sectionHeading
+              // says so for a capped table. The cap comes from whichever source
+              // supplied the list, so the number in the title is the one that
+              // actually cut it.
+              title: sourced.truncated
+                ? `${section.label} — first ${sourced.cap}`
+                : section.label,
+              allowClear: true,
+              options: sourced.options,
+            },
+            events: { onChange },
+          });
+        }
       }
     }
 
@@ -537,7 +648,10 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
         {
           id: "report_filters",
           type: "Box",
-          layout: { span: 24, contentGutter: 16 },
+          // `gap`, not the deprecated `contentGutter` — @lowdefy/layout still
+          // resolves the old name but logs a deprecation warning on every
+          // report render, and the Dynamic block surfaces it per resolve.
+          layout: { span: 24, gap: 8 },
           blocks: filterBlocks,
         },
       ]

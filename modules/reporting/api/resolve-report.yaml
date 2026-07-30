@@ -54,8 +54,24 @@ routine:
                 _user: roles
         # Leave the failed iteration's step result unset — compileReport
         # renders the sparse entry as an Alert card.
+        #
+        # :catch receives no error object (controlTry discards it and there is
+        # no _error operator), so the gate's message cannot reach the Alert and
+        # the viewer gets an honest generic description. This log line is
+        # therefore the ONLY place the failure is diagnosable, so it carries
+        # enough to identify which query failed for whom. `sectionType: filter`
+        # means an optionsQuery failed rather than a data section.
         :catch:
-          - :log: A report section pipeline failed validation or execution for this viewer.
+          - :log:
+              msg: A report section pipeline failed validation or execution for this viewer.
+              reportId:
+                _payload: urlQuery.reportId
+              sectionId:
+                _item: section.id
+              sectionType:
+                _item: section.type
+              collection:
+                _item: section.query.collection
   - :return:
       blocks:
         _analytics.compileReport:

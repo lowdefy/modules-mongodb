@@ -91,8 +91,14 @@ function collect(blocks) {
 
 // Exercises every section type and every optional feature the compiler branches
 // on: number formats on both a KPI and a table column (the _intl path), a bound
-// select filter and a bound daterange filter (the __state/__api re-query path),
-// an unbound section (inlined rows), a download (DownloadCsv), and markdown.
+// filter per control — select, daterange and multiselect (the __state/__api
+// re-query path) — with the multiselect sourcing its options from a query so the
+// MultipleSelector branch is actually emitted, an unbound section (inlined
+// rows), a download (DownloadCsv), and markdown.
+//
+// Every control must appear here: this test is the only guard on the block-type
+// declaration, and a control the fixture never emits is a control whose type
+// could go undeclared unnoticed.
 const spec = {
   title: "Everything",
   description: "Exercises every compiler branch.",
@@ -103,6 +109,22 @@ const spec = {
       control: "daterange",
       field: "created_at",
       label: "Created",
+    },
+    {
+      type: "filter",
+      control: "multiselect",
+      field: "region",
+      label: "Regions",
+      match: "any",
+      optionsQuery: {
+        collection: "demo_orders",
+        pipeline: [
+          { $group: { _id: "$region" } },
+          { $project: { _id: 0, region: "$_id", name: "$_id" } },
+        ],
+        valueKey: "region",
+        labelKey: "name",
+      },
     },
     { type: "markdown", content: "## Notes" },
     {
@@ -131,7 +153,7 @@ const spec = {
       },
       x: "region",
       y: ["total"],
-      filterBy: ["status"],
+      filterBy: ["status", "region"],
     },
     {
       type: "table",
@@ -160,7 +182,10 @@ const spec = {
   ],
 };
 
+// Aligned to orderedQueries, which interleaves the multiselect's options query
+// at its section's position — ahead of the kpi, chart and table.
 const results = [
+  [{ region: "EU", name: "EU" }],
   [{ total: 10 }],
   [{ region: "EU", total: 10 }],
   [{ region: "EU", total: 10 }],
