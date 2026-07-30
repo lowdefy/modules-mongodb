@@ -165,9 +165,11 @@ form:
   - key: form.yes_no_selector
     component: yes_no_selector
     title: Yes / No
-  - key: form.enum_selector
-    component: enum_selector
-    title: Enum selector
+  # Not a component of its own — exercises the `enum` var every options-taking
+  # selector accepts, as the alternative to a hand-written `options` array.
+  - key: form.enum_backed
+    component: selector
+    title: Enum-backed selector
     enum:
       open:
         title: Open

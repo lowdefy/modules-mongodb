@@ -141,6 +141,10 @@ Same var set as `date_selector`.
 
 ### Choice
 
+#### Options and enums
+
+Every selector in this section except `tree_multiple_selector` takes its choices either as `options` (an array of `{ label, value }` pairs plus per-option extras the block reads — `color`, `disabled`, `style`, `filterString`, `tag`) or as `enum` (a map, slug → `{ title, color, icon }`). The enum map is converted to options by `helpers/enum_options.yaml`, which is wired as the default of those selectors' `options` var — so `options` wins whenever it is supplied, and an operator-valued `enum` still resolves. On read-only surfaces (`DataDescriptions`) an enum-driven value renders as its title; an options-driven one renders the formatted raw value. `tree_multiple_selector` is `options`-only: a flat enum map cannot express the `primaryKey`/`parentKey` hierarchy the component exists for, and `getTreeData` drops per-option colour and icon anyway, so `multiple_selector` is the better home for flat enum choices.
+
 #### `selector`
 
 Single-select dropdown. Renders a `Selector`.
@@ -152,6 +156,7 @@ Single-select dropdown. Renders a `Selector`.
 | `visible`      | boolean | `true`             |
 | `required`     | boolean | `false`            |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | `null`             |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -178,6 +183,7 @@ Multi-select dropdown. Renders a `MultipleSelector`. Caller-supplied `validate` 
 | `required`     | boolean | `false`            |
 | `validate`     | array   | `[]`               |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | —                  |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -243,6 +249,7 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 | `visible`        | boolean | `true`             |
 | `required`       | boolean | `false`            |
 | `options`        | array   | `[]`               |
+| `enum`           | object  | `{}`               |
 | `extra`          | string  | —                  |
 | `label_disabled` | boolean | `false`            |
 
@@ -267,6 +274,7 @@ Multi-select checkbox group. Renders a `CheckboxSelector`. Label `colon` is hard
 | `required`     | boolean | `false`            |
 | `validate`     | array   | `[]`               |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | —                  |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -293,6 +301,7 @@ Button-group selector. Renders a `ButtonSelector`.
 | `visible`      | boolean | `true`             |
 | `required`     | boolean | `false`            |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | —                  |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -352,26 +361,6 @@ Yes/no toggle. Renders a `ButtonSelector` with hardcoded `[Yes / No]` boolean op
   key: form.device_online
   title: Is the device online?
   required: true
-```
-
-#### `enum_selector`
-
-Selector sourced from an enum map. Renders a `Selector`. The enum object (slug → `{ title, color, icon, ... }`) is converted to `{ label, value, style, tag }` options at build time via `_mql.aggregate`. Label is hardcoded `align: right / span: 12`.
-
-| Var        | Type    | Required / Default |
-| ---------- | ------- | ------------------ |
-| `key`      | string  | required           |
-| `title`    | string  | —                  |
-| `visible`  | boolean | `true`             |
-| `required` | boolean | `false`            |
-| `enum`     | object  | `{}`               |
-
-```yaml
-- component: enum_selector
-  key: status
-  title: Status
-  enum:
-    _global: enums.ticket_statuses
 ```
 
 ### Contact

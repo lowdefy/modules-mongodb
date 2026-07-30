@@ -3,7 +3,7 @@ import { getFieldTypeConfig } from "../fieldTypes/getFieldTypeConfig.js";
 import renderArray from "./renderArray.js";
 
 function renderFieldValue(structure, Icon, methods, properties) {
-  const { value, fieldType, isArray } = structure;
+  const { value, fieldType, isArray, enumMap } = structure;
   const config = getFieldTypeConfig(fieldType);
 
   // Handle arrays
@@ -20,7 +20,14 @@ function renderFieldValue(structure, Icon, methods, properties) {
 
   // Non-arrays - use render function from registry
   if (config && config.render) {
-    return config.render({ value, Icon, methods, properties, fieldType });
+    return config.render({
+      value,
+      Icon,
+      methods,
+      properties,
+      fieldType,
+      enumMap,
+    });
   }
 
   // Fallback for types without render functions

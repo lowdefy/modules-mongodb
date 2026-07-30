@@ -65,7 +65,18 @@ const STRUCTURAL_COMPONENTS = [
   "file_upload",
 ];
 
-const METADATA_FIELDS = ["component", "key", "required", "title", "validate"];
+// `enum` rides along so the overview card's read-only DataDescriptions can show
+// an enum-backed selector's title instead of its stored slug. `options` stays
+// out: authored options are often operators that read form state, which cannot
+// resolve in the card's context.
+const METADATA_FIELDS = [
+  "component",
+  "key",
+  "required",
+  "title",
+  "validate",
+  "enum",
+];
 
 function pickMetadata(entry) {
   const node = {};

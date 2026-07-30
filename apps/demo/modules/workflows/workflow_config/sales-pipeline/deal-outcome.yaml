@@ -9,15 +9,22 @@ access:
     view: true
     edit: true
 form:
+  # Driven by an `enum` map rather than an `options` array, so the buttons carry
+  # the won/lost colours and the read-only surfaces show "Won" / "Lost" instead
+  # of the stored slug. The stored value is still the slug.
   - key: form.outcome_type
     component: button_selector
     title: Outcome
     required: true
-    options:
-      - label: Won
-        value: won
-      - label: Lost
-        value: lost
+    enum:
+      won:
+        title: Won
+        color: "#52c41a"
+        icon: AiOutlineCheckCircle
+      lost:
+        title: Lost
+        color: "#ff4d4f"
+        icon: AiOutlineCloseCircle
     # Clear a stale reason when the outcome flips so the filtered list re-applies.
     on_change:
       - id: reset_reason_on_outcome_change

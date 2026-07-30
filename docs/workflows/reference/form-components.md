@@ -165,6 +165,36 @@ Start + end date picker. Renders a `DateRangeSelector` with `format: DD MMMM YYY
 
 ## Choice
 
+### Options and enums
+
+Every selector below takes its choices two ways (`tree_multiple_selector` excepted — see the note below):
+
+- `options` — an array of `{ label, value }` pairs, plus any per-option extras the block reads (`color`, `disabled`, `style`, `filterString`, `tag`).
+- `enum` — an enum map, `slug → { title, color, icon }`, converted to options for you: `title` becomes the label, the slug becomes the stored value, `color` tints the selected value and `icon` shows on a `multiple_selector` tag. Key order is preserved.
+
+`options` wins when both are set. `enum` may be an operator (`_global: enums.ticket_statuses`, `_module.var: statuses`), and it resolves before conversion.
+
+On read-only surfaces an `enum`-driven selector shows the entry's title, colour and icon instead of the stored slug — the `DataDescriptions` block resolves it. An `options`-driven one shows the formatted raw value, as before. See [DataDescriptions](../../plugins/data-descriptions.md).
+
+```yaml
+# Equivalent choices, authored both ways.
+- component: selector
+  key: status
+  title: Status
+  options:
+    - { label: Open, value: open }
+    - { label: Closed, value: closed }
+
+- component: selector
+  key: status
+  title: Status
+  enum:
+    open: { title: Open, color: "#1890ff", icon: AiOutlineFolderOpen }
+    closed: { title: Closed, color: "#52c41a", icon: AiOutlineCheck }
+```
+
+`tree_multiple_selector` takes `options` only. Its whole point is a hierarchy built from `primaryKey` / `parentKey` on each row, which a flat enum map cannot express — and for flat choices `multiple_selector` is the better component anyway, since it renders each option's colour and icon on the tag while the tree renders plain text.
+
 ### `selector`
 
 Single-select dropdown. Renders a `Selector`.
@@ -176,6 +206,7 @@ Single-select dropdown. Renders a `Selector`.
 | `visible`      | boolean | `true`             |
 | `required`     | boolean | `false`            |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | `null`             |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -202,6 +233,7 @@ Multi-select dropdown. Renders a `MultipleSelector`. When `required: true`, requ
 | `required`     | boolean | `false`            |
 | `validate`     | array   | `[]`               |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | —                  |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -228,6 +260,7 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 | `visible`        | boolean | `true`             |
 | `required`       | boolean | `false`            |
 | `options`        | array   | `[]`               |
+| `enum`           | object  | `{}`               |
 | `extra`          | string  | —                  |
 | `label_disabled` | boolean | `false`            |
 | `on_change`      | array   | `[]`               |
@@ -253,6 +286,7 @@ Multi-select checkbox group. Renders a `CheckboxSelector`. Label `colon` is hard
 | `required`     | boolean | `false`            |
 | `validate`     | array   | `[]`               |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | —                  |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -280,6 +314,7 @@ Button-group selector. Renders a `ButtonSelector`.
 | `visible`      | boolean | `true`             |
 | `required`     | boolean | `false`            |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | —                  |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -343,27 +378,6 @@ Yes/no toggle. Renders a `ButtonSelector` with hardcoded `[Yes / No]` boolean op
   key: form.device_online
   title: Is the device online?
   required: true
-```
-
-### `enum_selector`
-
-Selector sourced from an enum map. Renders a `Selector`. The enum object (`slug → { title, color, icon, ... }`) is converted to `{ label, value, style, tag }` options at build time. Label is hardcoded `align: right / span: 12`.
-
-| Var         | Type    | Required / Default |
-| ----------- | ------- | ------------------ |
-| `key`       | string  | required           |
-| `title`     | string  | —                  |
-| `visible`   | boolean | `true`             |
-| `required`  | boolean | `false`            |
-| `enum`      | object  | `{}`               |
-| `on_change` | array   | `[]`               |
-
-```yaml
-- component: enum_selector
-  key: status
-  title: Status
-  enum:
-    _global: enums.ticket_statuses
 ```
 
 ## Contact

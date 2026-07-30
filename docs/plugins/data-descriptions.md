@@ -16,7 +16,6 @@ The block ships a registry of field-type renderers — change stamps, contacts, 
 - id: lot_view
   type: DataDescriptions
   properties:
-    title: Lot details
     column: 2
     bordered: true
     data:
@@ -61,12 +60,12 @@ The `data` is the source object. The `formConfig` describes which keys to show, 
 
 Each item in a `form` array is one of:
 
-| Item shape                                     | Renders as                                                                                                                                                                 |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `{ component: "section", title, form: [...] }` | A nested section. Top-level sections become a separate `Descriptions` block; deeper sections wrap in an Antd `Card` with `type="inner"`.                                   |
-| `{ component: "box", form: [...] }`            | A transparent container. Children are merged into the current level. Useful for grouping items without introducing a visual section.                                       |
-| `{ key: "path.to.field", title?, component? }` | A single field. `key` supports dot notation. `title` overrides the auto-formatted label. `component` is a renderer hint (see below).                                       |
-| `{ key: "items", title, form: [...] }`         | An array field. The block iterates the array at `key`, applies the nested `form` to each item (replacing `$` in nested keys with the index), and renders each as `Item N`. |
+| Item shape                                            | Renders as                                                                                                                                                                                                         |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `{ component: "section", title, form: [...] }`        | A nested section. Top-level sections become a separate `Descriptions` block; deeper sections wrap in an Antd `Card` with `type="inner"`.                                                                           |
+| `{ component: "box", form: [...] }`                   | A transparent container. Children are merged into the current level. Useful for grouping items without introducing a visual section.                                                                               |
+| `{ key: "path.to.field", title?, component?, enum? }` | A single field. `key` supports dot notation. `title` overrides the auto-formatted label. `component` is a renderer hint (see below). `enum` names a selector's enum map (see [Selector titles](#selector-titles)). |
+| `{ key: "items", title, form: [...] }`                | An array field. The block iterates the array at `key`, applies the nested `form` to each item (replacing `$` in nested keys with the index), and renders each as `Item N`.                                         |
 
 Fields with `null` or `undefined` values are skipped silently.
 
@@ -74,22 +73,40 @@ Fields with `null` or `undefined` values are skipped silently.
 
 The `component` property on a field is a hint passed to the renderer registry. Recognised values:
 
-| Hint                                                                                                          | Field type                                     |
-| ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `text_input`, `text_area`                                                                                     | `string` / `longText`                          |
-| `tiptap_input`, `html`                                                                                        | `richText` (full-width)                        |
-| `selector`, `radio_selector`, `enum_selector`, `device_type_selector`, `button_selector`, `multiple_selector` | `selector` (renders as tags)                   |
-| `checkbox_switch`, `yes_no_selector`                                                                          | `boolean` (renders Yes/No)                     |
-| `number`                                                                                                      | `number`                                       |
-| `date_selector`                                                                                               | `date`                                         |
-| `date_range_selector`                                                                                         | `dateRange`                                    |
-| `phone_number_input`                                                                                          | `phoneNumber` (with flag and `tel:` link)      |
-| `location`                                                                                                    | `location` (with Google Maps link, full-width) |
-| `file_download`, `file_upload`                                                                                | `file` / `fileList`                            |
-| `change_stamp`, `timestamp`                                                                                   | `changeStamp` (renders `by <user> on <date>`)  |
-| `contact_selector_number_required`                                                                            | `contact` (renders icon + name with link)      |
+| Hint                                                                                                                   | Field type                                     |
+| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `text_input`, `text_area`                                                                                              | `string` / `longText`                          |
+| `tiptap_input`, `html`                                                                                                 | `richText` (full-width)                        |
+| `selector`, `radio_selector`, `device_type_selector`, `button_selector`, `multiple_selector`, `tree_multiple_selector` | `selector` (renders as tags)                   |
+| `checkbox_switch`, `yes_no_selector`                                                                                   | `boolean` (renders Yes/No)                     |
+| `number`                                                                                                               | `number`                                       |
+| `date_selector`                                                                                                        | `date`                                         |
+| `date_range_selector`                                                                                                  | `dateRange`                                    |
+| `phone_number_input`                                                                                                   | `phoneNumber` (with flag and `tel:` link)      |
+| `location`                                                                                                             | `location` (with Google Maps link, full-width) |
+| `file_download`, `file_upload`                                                                                         | `file` / `fileList`                            |
+| `change_stamp`, `timestamp`                                                                                            | `changeStamp` (renders `by <user> on <date>`)  |
+| `contact_selector_number_required`                                                                                     | `contact` (renders icon + name with link)      |
 
 Without a hint, the renderer is auto-detected from the value. Hints take precedence and are useful when the value alone is ambiguous (e.g. a status string that should render as a tag).
+
+### Selector titles
+
+A selector stores a slug, not the text the user picked. Pass the field's `enum` map — the same `{ slug: { title, color, icon } }` the writable selector takes — and the `selector` renderer shows the matching entry's `title`, tinted with its `color` and prefixed with its `icon`.
+
+Nothing else resolves: a field whose choices came from an `options` array, an enum value matching no entry, and a field with no `enum` at all all fall back to formatting the raw value, so `lost-to-competitor` shows as "Lost To Competitor".
+
+Workflow action forms get this for free: the authored `form` config is passed to the block as-is, carrying whatever the field declared.
+
+```yaml
+formConfig:
+  - key: outcome
+    component: button_selector
+    title: Outcome
+    enum:
+      won: { title: Won, color: "#52c41a", icon: AiOutlineCheckCircle }
+      lost: { title: Lost, color: "#ff4d4f", icon: AiOutlineCloseCircle }
+```
 
 ### Theme
 
