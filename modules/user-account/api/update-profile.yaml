@@ -38,6 +38,8 @@ routine:
             _user: id
           profile:
             _payload: profile
+          avatar_colors:
+            _module.var: avatar_colors
           write_stages:
             _build.array.concat:
               # Consumer-supplied write-stage extensions.

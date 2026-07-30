@@ -23,57 +23,85 @@ routine:
     connectionId:
       _module.connectionId: contacts-collection
     properties:
+      # A server-minted id, so the filter can never match an existing document and
+      # this step can only ever insert. A payload's `_id` is not read: the guard
+      # above matches on `lowercase_email`, so a known `_id` with a novel email would
+      # otherwise walk past it and overwrite that contact. Callers read the
+      # authoritative id off the response's `contactId`.
       filter:
         _id:
-          _payload: _id
+          _uuid: true
       options:
         upsert: true
       update:
         _build.array.concat:
-          # Stage 1: Insert-only fields + merge data objects
+          # Stage 1: Insert-only fields + merge data objects. Every payload-derived
+          # value is `$literal`-wrapped — in expression context a string beginning
+          # with `$` reads as a field path, and `$` is legal in an email local-part.
           - - $set:
-                _id:
-                  $ifNull:
-                    - $_id
-                    - _payload: _id
                 email:
-                  _payload: email
-                lowercase_email:
-                  _string.toLowerCase:
+                  $literal:
                     _payload: email
+                lowercase_email:
+                  $literal:
+                    _string.toLowerCase:
+                      _payload: email
                 hidden: false
                 disabled: false
                 created:
-                  $ifNull:
-                    - $created
-                    - _ref:
-                        module: events
-                        component: change_stamp
+                  _ref:
+                    module: events
+                    component: change_stamp
                 profile:
                   $mergeObjects:
                     - $ifNull:
                         - "$$ROOT.profile"
                         - {}
-                    - _payload: profile
+                    - $literal:
+                        _payload: profile
                 global_attributes:
                   $mergeObjects:
                     - $ifNull:
                         - "$$ROOT.global_attributes"
                         - {}
-                    - _payload: global_attributes
+                    - $literal:
+                        _payload: global_attributes
                 updated:
                   _ref:
                     module: events
                     component: change_stamp
-          # Stage 2: Compute derived fields (sees merged profile from stage 1)
+          # Stage 2: the write-owned derived fields — `name`, `avatar_color` and
+          # `picture` — from the one shared derivation, merged onto stage 1's bag.
+          # `stored: {}` because this step is skipped whenever `check-existing`
+          # matched, so it only runs for a genuinely new contact.
           - - $set:
-                profile.name:
-                  $concat:
-                    - $trim:
-                        input: "$profile.given_name"
-                    - " "
-                    - $trim:
-                        input: "$profile.family_name"
+                profile:
+                  $mergeObjects:
+                    - "$profile"
+                    - $literal:
+                        _js:
+                          fn:
+                            _ref:
+                              path: ../shared/profile/derive-profile.js.njk
+                          args:
+                            stored: {}
+                            incoming:
+                              _payload: profile
+                            palette:
+                              _module.var: avatar_colors
+          # Stage 3: an unnamed profile carries no picture, so the Avatar block's
+          # person icon renders rather than initials that claim an identity.
+          - - $set:
+                profile.picture:
+                  $cond:
+                    if:
+                      $eq:
+                        - $ifNull:
+                            - "$profile.name"
+                            - null
+                        - null
+                    then: "$$REMOVE"
+                    else: "$profile.picture"
           # Consumer pipeline stages
           - _module.var: request_stages.write
 

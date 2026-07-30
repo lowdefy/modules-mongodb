@@ -1,6 +1,19 @@
 id: update-contact
 type: Api
 routine:
+  # The stored profile, which the derivation needs: a payload that omits
+  # `given_name` must still derive a name from the value already on the contact.
+  # Queried on `_id` alone — the `apps.<slug>.is_user` clause belongs on the write,
+  # where it decides whether the row is written at all.
+  - id: read_contact
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: contacts-collection
+    properties:
+      query:
+        _id:
+          _payload: _id
+
   - id: update
     type: MongoDBUpdateOne
     connectionId:
@@ -22,7 +35,12 @@ routine:
                   $ne: true
       update:
         _build.array.concat:
-          # Stage 1: Merge data objects
+          # Stage 1: Merge data objects. The merges are done in MQL rather than in
+          # the routine because they are atomic per document — a routine-side merge
+          # would let one form save revert a field another had just written. Every
+          # payload-derived value is `$literal`-wrapped: in expression context a
+          # string beginning with `$` reads as a field path, and `global_attributes`
+          # is arbitrary consumer data.
           - - $set:
                 # email and lowercase_email are NOT updated — email is immutable after creation
                 profile:
@@ -30,26 +48,50 @@ routine:
                     - $ifNull:
                         - "$$ROOT.profile"
                         - {}
-                    - _payload: profile
+                    - $literal:
+                        _payload: profile
                 global_attributes:
                   $mergeObjects:
                     - $ifNull:
                         - "$$ROOT.global_attributes"
                         - {}
-                    - _payload: global_attributes
+                    - $literal:
+                        _payload: global_attributes
                 updated:
                   _ref:
                     module: events
                     component: change_stamp
-          # Stage 2: Compute derived fields (sees merged profile from stage 1)
+          # Stage 2: the write-owned derived fields — `name`, `avatar_color` and
+          # `picture` — from the one shared derivation, merged onto stage 1's bag.
           - - $set:
-                profile.name:
-                  $concat:
-                    - $trim:
-                        input: "$profile.given_name"
-                    - " "
-                    - $trim:
-                        input: "$profile.family_name"
+                profile:
+                  $mergeObjects:
+                    - "$profile"
+                    - $literal:
+                        _js:
+                          fn:
+                            _ref:
+                              path: ../shared/profile/derive-profile.js.njk
+                          args:
+                            stored:
+                              _step: read_contact.profile
+                            incoming:
+                              _payload: profile
+                            palette:
+                              _module.var: avatar_colors
+          # Stage 3: an unnamed profile carries no picture, so the Avatar block's
+          # person icon renders rather than initials that claim an identity.
+          - - $set:
+                profile.picture:
+                  $cond:
+                    if:
+                      $eq:
+                        - $ifNull:
+                            - "$profile.name"
+                            - null
+                        - null
+                    then: "$$REMOVE"
+                    else: "$profile.picture"
           # Consumer pipeline stages
           - _module.var: request_stages.write
 

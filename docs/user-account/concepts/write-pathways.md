@@ -39,16 +39,23 @@ Profile fields live only on the app-owned `contact` — that is the source of
 truth. But the layout header, avatar, and menus read `_user.name` / `_user.image`
 / `_user.profile.*`, so a bare contact write would leave those stale.
 
-The fix is the shared **`write-profile`** fragment, which pairs two writes in one
-routine:
+The fix is the shared **`write-profile`** fragment, which pairs the contact write
+with the re-denorm in one routine — four database operations:
 
-1. A **change-stamped contact write** to `user-contacts` (the `update-profile`
-   API, with any `request_stages.write` appended).
-2. An **`UpdateUserProfile`** step that re-denormalizes the contact's `profile`
+1. A **read** of the stored profile, which the derived fields need: a payload that
+   omits `given_name` must still derive a name from the value already on the contact.
+2. A **change-stamped contact write** to `user-contacts` (the `update-profile`
+   API, with any `request_stages.write` appended). Its pipeline merges the incoming
+   fields atomically, then sets the fields the write owns — `profile.name`,
+   `profile.avatar_color` and `profile.picture` (see
+   [Avatar colors](../../shared/avatar-colors.md)).
+3. A **re-read** of the freshly-written contact, so the denorm copies what actually
+   landed — including anything a consumer's `request_stages.write` changed.
+4. An **`UpdateUserProfile`** step that re-denormalizes the contact's `profile`
    fragment onto the auth `user.profile` bag, plus the `name` / `image` display
    copies onto top-level `user.name` / `user.image`.
 
-Because the two are inseparable in one fragment, contact profile data can never be
+Because these are inseparable in one fragment, contact profile data can never be
 written without the denormalized `user.profile` bag being refreshed in the same
 routine. A caller's own save additionally runs `UpdateSession` so the change shows
 without a reload. `user.email` is **not** part of this — email change is a
@@ -63,7 +70,8 @@ its bag, the other's writes would leave the target's `_user` stale. So the
 `_ref`'d by **relative path** from both modules — not a manifest export. A shared
 file resolves in any consumer with no dependency edge; a cross-module `_ref` would
 force a needless `user-admin → user-account` dependency. Each caller passes its own
-target ids, audit event, and write-stage extensions as `_ref` vars.
+target ids, audit event, gradient palette (`avatar_colors`), and write-stage
+extensions as `_ref` vars.
 
 Freshness is therefore a **cross-module invariant enforced mechanically**, not
 single-writer discipline: the bag drifts only if a contact is edited entirely

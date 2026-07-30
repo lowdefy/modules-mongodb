@@ -126,7 +126,8 @@ the routine, and the seam reads first to give the derivation the stored bag:
 2. (inline in step 3)   derive name, avatar_color and picture from stored + incoming
 3. write_contact        pipeline update:
                           stage 1 — $set profile: $mergeObjects [stored, incoming] + change stamp
-                          stage 2 — $set the three derived scalars
+                          stage 2 — $set profile: $mergeObjects [stage 1's bag, derived keys]
+                          stage 3 — $set profile.picture: $$REMOVE when name is null
                           then write_stages
 4. reread_contact       MongoDBFindOne
 5. denorm_user_profile  UpdateUserProfile (guarded on user_id)
@@ -165,6 +166,24 @@ changed).
 There is no separate "compute" step type in a routine, so the derivation is inline in step 3's
 properties, where its result is used. The denorm continues to read `reread_contact`, so the
 expression appears once.
+
+**It must appear exactly once, and that constrains stage 2's shape.** Every occurrence of the `_js`
+call is an independent evaluation, so writing one per derived scalar would draw a fresh random
+colour for each — the stored `avatar_color` would then disagree with the colour baked into
+`picture`. Stage 2 therefore makes a single call that returns all three keys at once, and merges
+that object onto stage 1's result:
+
+```yaml
+- $set:
+    profile:
+      $mergeObjects:
+        - "$profile"
+        - $literal: { <the one derive-profile call> }
+```
+
+This is also why the derivation returns **only** the derived keys and not the merged bag (D5).
+Merging the whole read snapshot back over stage 1's output would revert a concurrent writer's
+untouched fields — the lost update this decision exists to avoid.
 
 ### D3 — The derivation cannot live in MQL
 
@@ -209,15 +228,17 @@ What is actually duplicated and actually drifting is the **derivation** — merg
 name, derive the picture. That extracts cleanly and is the same in all three. So the layering is:
 
 - `modules/shared/profile/derive-profile.js.njk` — **new**. Takes the stored and incoming profile bags
-  plus the palette; returns the merged bag with `name`, `avatar_color` and `picture` set (D7). Three
-  args, no contact id.
+  plus the palette; merges them internally and returns **only the three derived keys** —
+  `name`, `avatar_color` (D7) and `picture`. Three args, no contact id. It returns the derived keys
+  rather than the merged bag so stage 2 can merge them onto stage 1's result without reverting a
+  concurrent writer's fields (D2).
 - `modules/shared/contact/write-profile.yaml` — uses it, then writes, re-reads and denorms. It gains
   one required `_ref` var, `avatar_colors` (the palette), which every splice site must now pass.
 - `contacts`' two APIs — use it directly, keeping their own write shapes and their own
   `request_stages.write` append.
 
-Each seam keeps its stage 1 `$mergeObjects` and swaps stage 2's MQL `$concat` for a `$set` of the
-three routine-derived scalars (D2). `write-profile` and
+Each seam keeps its stage 1 `$mergeObjects` and swaps stage 2's MQL `$concat` for a `$mergeObjects`
+of the routine-derived keys, followed by stage 3's picture strip (D2, D7b). `write-profile` and
 `update-contact` gain a read step to supply the stored bag; `create-contact` does not need one,
 because its insert only runs when no contact matched.
 
@@ -239,13 +260,13 @@ The rule is stated over the stage rather than field by field, so a field added l
 **anything in these pipeline stages that originates in the payload — or is derived from it — is wrapped
 in `$literal`.** That covers, today:
 
-| Site                                                     | Value                                                  |
-| -------------------------------------------------------- | ------------------------------------------------------ |
-| `write-profile.yaml:42-48`                               | the merged `profile` object                            |
-| `create-contact.yaml:52-57`, `update-contact.yaml:28-33` | the merged `profile` object                            |
-| `create-contact.yaml:39-43`                              | `email`, and `lowercase_email` derived from it         |
-| `create-contact.yaml:58-63`, `update-contact.yaml:34-39` | the `global_attributes` merge                          |
-| stage 2, all three seams                                 | the three derived scalars from `derive-profile.js.njk` |
+| Site                                                     | Value                                                |
+| -------------------------------------------------------- | ---------------------------------------------------- |
+| `write-profile.yaml:42-48`                               | the merged `profile` object                          |
+| `create-contact.yaml:52-57`, `update-contact.yaml:28-33` | the merged `profile` object                          |
+| `create-contact.yaml:39-43`                              | `email`, and `lowercase_email` derived from it       |
+| `create-contact.yaml:58-63`, `update-contact.yaml:34-39` | the `global_attributes` merge                        |
+| stage 2, all three seams                                 | the derived-keys object from `derive-profile.js.njk` |
 
 Stage 1 keeps injecting the payload bags (D2), so it needs the wrapper exactly as today. Stage 2's
 derived scalars need it too, being payload-derived strings: a `given_name` of `$email` makes the derived
@@ -339,6 +360,30 @@ circle reads as a deliberate identity. An invitee who has not onboarded has no i
 `user-avatar.yaml:15` already renders the Avatar block's `AiOutlineUser` icon when `src` is empty — the
 honest signal. Once they onboard and supply a name, the seam derives a real avatar on that write.
 
+**The strip happens in the seam, not in the derivation**, because the picker's live preview reads
+`picture` off the same call (D8) and wants the opposite. On `onboarding.yaml` both name fields start
+empty — the page seeds `profile: {_user: profile}`, which carries no names for an email-signup user —
+so a derivation that omitted the key would leave the preview an empty circle, and "Change colour"
+would appear to do nothing, since the gradient is only visible through the SVG. So the derivation
+always returns a `picture`, keeping the `?` fallback for the preview, and each seam adds one MQL stage
+that removes it when the derived `name` is null:
+
+```yaml
+- $set:
+    profile.picture:
+      $cond:
+        if:
+          $eq:
+            - $ifNull: ["$profile.name", null]
+            - null
+        then: "$$REMOVE"
+        else: "$profile.picture"
+```
+
+One extra stage per seam, no second `_js` evaluation, and the "unnamed profiles carry no picture"
+policy sits at the write seam that owns the stored value — where D1 argues this class of decision
+belongs.
+
 **`name` is `null`, not `" "`.** Today's MQL `$concat` returns null when either input is null, so an
 unnamed profile stores a null name. A JavaScript derivation that concatenates two empty strings would
 store a single space instead — truthy, so it renders as blank text at every name display rather than
@@ -381,7 +426,7 @@ is the ref-resolver hook, not a text loader, and `_js` would reject the result. 
 one-line comment saying the `.njk` suffix is load-bearing for exactly this reason, since with no vars
 left it otherwise reads as vestigial.
 
-And it returns the whole derived profile object rather than a bare URI, so the picker's preview binds
+And it returns an object of derived keys rather than a bare URI, so the picker's preview binds
 `src` through `_get … key: picture` against the same call. One implementation, two call shapes.
 
 ### D9 — `contacts`' forms drop the avatar preview
@@ -431,9 +476,15 @@ duplicating.
 Three cleanups follow, all in code this design already touches: `new.yaml`'s inline
 `_id: {_uuid: true}` (`:106-107`) and `contact-selector`'s `generate_id` SetState (`:157-165`) are
 deleted, and the `$ifNull` preserves on `_id` and `created` (`:35-38`, `:46-51`) become dead once the
-step can only insert. `contact-selector` also passes the whole `_state: <id>_contact` bag to
-`appendContact` beside the response id, so that bag no longer carries an `_id` — it must read the
-returned `contactId` for both.
+step can only insert.
+
+`contact-selector`'s `appendContact` call needs no change, despite the state bag it passes no longer
+carrying an `_id`. The block builds its row as `{contact_id, name, email, verified}` from the separate
+`contactId` **arg** plus `contact.profile.given_name` / `.family_name` / `contact.email`, and never
+reads `contact._id`
+(`plugins/modules-mongodb-plugins/src/blocks/ContactSelector/hooks/contactActions/appendContact.js:34-41`).
+The same contract means dropping client-side picture generation costs the picker's list nothing — the
+row never rendered `profile.picture` either.
 
 The upsert-matching path is also what produced the null-redirect bug the `contacts` changelog records:
 `insert.upsertedId` is populated only on a real insert, so a matched upsert returned a null
@@ -469,8 +520,10 @@ its changes ride in the three consuming packages'.)
 
 - `modules/shared/profile/derive-profile.js.njk` — **new**; merge, derive `name`, resolve the gradient
   (incoming `avatar_color`, else stored, else a random palette draw — persisted, D7), derive `picture`.
-  Args: `stored`, `incoming`, `palette`. Returns `picture: undefined` and `name: null` for a profile with
-  no `given_name` and no `family_name` (D7b).
+  Args: `stored`, `incoming`, `palette`. Returns exactly `{name, picture, avatar_color}` — the derived
+  keys only, never the merged bag (D2). Returns `name: null` for a profile with no `given_name` and no
+  `family_name`, and keeps the `?` initials fallback for `picture`, which the seams strip in stage 3
+  (D7b). The initials branches and the SVG are a verbatim port of the file it supersedes.
 - `modules/shared/profile/generate-avatar-svg.js.njk` — **delete**; superseded, and its `prefix`
   var no longer has a purpose (D8).
 - `modules/shared/profile/avatar-picker-seed.yaml` — **kept**; replace the unconditional `index: 0`
@@ -484,8 +537,9 @@ its changes ride in the three consuming packages'.)
 - `modules/shared/profile/avatar-preview.yaml` — **delete** (D9); `contacts`' forms were its only
   consumer.
 - `modules/shared/contact/write-profile.yaml` — read-first restructure (D2): add
-  `read_profile_contact`; keep stage 1's atomic `$mergeObjects` (now `$literal`-wrapped) and replace
-  stage 2's `$concat` with a `$set` of the three `derive-profile.js.njk` scalars; keep
+  `read_profile_contact`; keep stage 1's atomic `$mergeObjects` (its payload bag now
+  `$literal`-wrapped), replace stage 2's `$concat` with a `$mergeObjects` of the one
+  `derive-profile.js.njk` call's keys, and add stage 3's `picture` strip (D7b); keep
   `reread_contact`, the caller's `write_stages` last, and the guarded denorm. Adds a required
   `avatar_colors` `_ref` var to its header var block; notes that `read_contact` is taken by the
   sibling `create-or-link-contact` fragment.
@@ -502,13 +556,16 @@ its changes ride in the three consuming packages'.)
   insert-only fields, the `check-existing` guard and stage 1 as-is. **No read step is needed here**:
   `insert` is skipped whenever `check-existing` matched (`:19-22`), so it only ever runs for a
   genuinely new contact and the stored bag is always empty. The derivation runs against the payload
-  alone, with `stored: {}`. Stage 2's `$concat` becomes a `$set` of the derived scalars. `$literal`-wrap
+  alone, with `stored: {}`. Stage 2's `$concat` becomes the `$mergeObjects` of the derived keys, plus
+  stage 3's `picture` strip. `$literal`-wrap
   `email`, `lowercase_email`, `global_attributes` and the profile bag (D6). Separately
   (D10): the filter becomes `{_id: {_uuid: true}}` so the step can only insert, and the now-unreachable
   `$ifNull` preserves on `_id` (`:35-38`) and `created` (`:46-51`) are dropped.
-- `modules/contacts/api/update-contact.yaml` — add `read_contact`; keep stage 1's `$mergeObjects` for
-  `profile` and `global_attributes` (both `$literal`-wrapped, D6) and replace stage 2's `$concat` with
-  the derived scalars. Keep the `apps.<slug>.is_user` filter clause.
+- `modules/contacts/api/update-contact.yaml` — add `read_contact`, querying on `_id` alone (the
+  `apps.<slug>.is_user` clause stays on the write, where it decides whether the row is written at all);
+  keep stage 1's `$mergeObjects` for `profile` and `global_attributes` (both `$literal`-wrapped, D6),
+  replace stage 2's `$concat` with the derived keys and add stage 3's `picture` strip. Keep the
+  `apps.<slug>.is_user` filter clause.
 - `modules/contacts/components/form_profile.yaml` — drop the `avatar-preview.yaml` `_ref` at `:8` and
   its comment (D9). This is the only change either `contacts` form needs for the avatar to disappear.
 - `modules/contacts/pages/new.yaml` — delete `generate_avatar` and the random `profile.avatar_color`
@@ -517,9 +574,9 @@ its changes ride in the three consuming packages'.)
 - `modules/contacts/pages/edit.yaml` — delete `generate_avatar`. Keeps its page-title avatar, which is
   what renders the contact after D9.
 - `modules/contacts/components/contact-selector.yaml.njk` — delete `pick_avatar_color` and the inline
-  picture generation; delete the `generate_id` SetState (`:157-165`, D10) and give `appendContact` the
-  returned `contactId` for its `contact` bag as well as its `contactId` arg (`:221-230`), since the
-  state bag no longer carries an `_id`.
+  picture generation; delete the `generate_id` SetState (`:157-165`, D10). `appendContact` (`:221-230`)
+  is left as-is — the block reads the id from the separate `contactId` arg, never from the `contact`
+  bag (D10).
 
 **user-account / user-admin**
 

@@ -1,7 +1,8 @@
 # Seeds the gradient avatar-picker.yaml previews. Ref this into the host's init
-# event after the `profile` subtree has been seeded — without it the shared SVG
-# generator falls back to its grey defaults (#37474f/#546e7a), which reads as a
-# broken avatar rather than as an unchosen colour.
+# event after the `profile` subtree has been seeded. Without it the preview's own
+# derivation would draw a fresh colour on every keystroke in the name fields, so the
+# gradient would flicker while the user types; seeding it fixes the colour for the
+# session, and the write persists whatever is in state.
 #
 # Skipped when the profile already carries a colour, so a choice that came back
 # from the database is never overwritten.
@@ -16,4 +17,9 @@ params:
     _get:
       from:
         _module.var: avatar_colors
-      key: 0
+      key:
+        _math.floor:
+          _product:
+            - _math.random: true
+            - _array.length:
+                _module.var: avatar_colors

@@ -27,7 +27,6 @@ _ref:
           params:
             profile:
               _user: profile
-            avatar_color_index: 0
         - _ref: ../shared/profile/avatar-picker-seed.yaml
     blocks:
       _build.array.concat:

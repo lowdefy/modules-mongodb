@@ -21,11 +21,29 @@
 #                    no-ops when absent (the contact write still lands). All other
 #                    callers always pass a user_id.
 #   profile        — the profile fields to merge onto the contact (object)
+#   avatar_colors  — the `{from, to}` gradient palette the derivation draws from
+#                    when the profile carries no `avatar_color` (the caller's
+#                    `avatar_colors` module var)
 #   write_stages   — extra MongoDB update stages appended to the contact write
 #                    (the caller's `request_stages.write`; pass [] if none)
 #
 # It is a YAML sequence of routine steps — splice it into a routine with
-# `_build.array.concat` so the steps flatten inline.
+# `_build.array.concat` so the steps flatten inline. Routine steps share one flat
+# namespace across splices, so the read step is `read_profile_contact` rather than
+# `read_contact` — the sibling `create-or-link-contact` fragment already owns that
+# id, and `user-admin/api/invite.yaml` splices both into one routine. Nothing in the
+# build rejects a duplicate step id, so a collision would shadow silently.
+
+# The stored profile, which the derivation needs: a payload that omits `given_name`
+# must still derive a name from the value already on the contact.
+- id: read_profile_contact
+  type: MongoDBFindOne
+  connectionId:
+    _var: connection_id
+  properties:
+    query:
+      _id:
+        _var: contact_id
 
 - id: write_contact
   type: MongoDBUpdateOne
@@ -38,27 +56,59 @@
     update:
       _build.array.concat:
         # Stage 1: merge the incoming profile fields onto the existing bag and
-        # stamp the write.
+        # stamp the write. The merge is done in MQL rather than in the routine
+        # because it is atomic per document — a routine-side merge would let one
+        # form save revert a field another had just written. `$literal` because a
+        # payload string beginning with `$` would otherwise read as a field path.
         - - $set:
               profile:
                 $mergeObjects:
                   - $ifNull:
                       - "$profile"
                       - {}
-                  - _var: profile
+                  - $literal:
+                      _if_none:
+                        - _var: profile
+                        - {}
               updated:
                 _ref:
                   module: events
                   component: change_stamp
-        # Stage 2: recompute the derived display name (sees stage 1's merge).
+        # Stage 2: the write-owned derived fields — `name`, `avatar_color` and
+        # `picture`. One call, merged onto stage 1's bag: a second call would draw a
+        # second random colour, and merging the whole derived bag would revert
+        # fields stage 1 preserved.
         - - $set:
-              profile.name:
-                $concat:
-                  - $trim:
-                      input: "$profile.given_name"
-                  - " "
-                  - $trim:
-                      input: "$profile.family_name"
+              profile:
+                $mergeObjects:
+                  - "$profile"
+                  - $literal:
+                      _js:
+                        fn:
+                          _ref:
+                            path: ../shared/profile/derive-profile.js.njk
+                        args:
+                          stored:
+                            _step: read_profile_contact.profile
+                          incoming:
+                            _var: profile
+                          palette:
+                            _var: avatar_colors
+        # Stage 3: an unnamed profile carries no picture, so the Avatar block's
+        # person icon renders rather than initials that claim an identity. The
+        # derivation still returns one — the colour picker's preview needs it before
+        # a name is typed.
+        - - $set:
+              profile.picture:
+                $cond:
+                  if:
+                    $eq:
+                      - $ifNull:
+                          - "$profile.name"
+                          - null
+                      - null
+                  then: "$$REMOVE"
+                  else: "$profile.picture"
         # Caller-supplied write-stage extensions.
         - _var: write_stages
 

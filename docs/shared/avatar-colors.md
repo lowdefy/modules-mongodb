@@ -10,7 +10,7 @@ concepts:
 
 # Avatar colors
 
-Modules that render user/contact avatars (`contacts`, `user-account`, `user-admin`) deterministically pick an avatar gradient from a shared palette so the same person always shows the same colors across the app.
+Modules that render user/contact avatars (`contacts`, `user-account`, `user-admin`) pick an avatar gradient from a shared palette and store it, so the same person always shows the same colors across the app.
 
 ## Default palette
 
@@ -28,7 +28,18 @@ Modules reference this file as the default for the `avatar_colors` var.
 
 ## How modules pick a color
 
-A hash of the user id is taken modulo the palette length to pick an index. Same id → same index → same gradient on every page. New users land on whatever index their hash produces, with the palette's distribution determining the spread.
+The **write** owns the choice, in one place for every write path. When a profile is saved, the seam resolves the gradient in this order:
+
+1. An explicit pick, if the profile carries one — the "Change colour" button on the onboarding page and the profile edit modal writes `profile.avatar_color` directly.
+2. Otherwise the colour already stored on the contact, so it stays put across every later save.
+3. Otherwise one random draw from the palette.
+
+Whatever it resolves to is **stored** on `profile.avatar_color`, and the rendered avatar is stored alongside it as an SVG data URI on `profile.picture`. That is what makes the guarantee hold: same person, same colors on every page, because nothing re-picks at read time.
+
+Two consequences worth knowing:
+
+- **A palette change does not migrate existing people.** Because a resolved `{ from, to }` pair is stored, changing the `avatar_colors` var only affects profiles that have no colour yet. Clearing `profile.avatar_color` in a migration is the escape hatch — the next write through any seam then draws from the new palette.
+- **A profile with no name carries no picture at all.** Rather than an avatar showing `?`, which reads as a deliberate identity, the Avatar block's person icon renders. An invited user who has not onboarded is the case this covers; the seam derives a real avatar on the write that first supplies a name.
 
 ## Overriding
 

@@ -46,6 +46,15 @@ modules:
 
 The is_user guard and per-app access flags read the app's own `slug` — nothing to pass. To extend forms, lists, or pipelines, see [Slots](../shared/slots.md). See `apps/demo/modules/contacts/vars.yaml` for a worked example.
 
+## Write behaviour
+
+Both write APIs derive part of the contact themselves, so a payload does not get to set these:
+
+- **`create-contact` mints the contact `_id` server-side.** A payload's `_id` is ignored. Read the created id off the response's `contactId` — as both in-module callers already do. The API still de-duplicates on `lowercase_email`, so a retried create converges on one contact rather than duplicating.
+- **`profile.name`, `profile.avatar_color` and `profile.picture` are computed by the write**, from `given_name`, `family_name` and the `avatar_colors` palette. A payload's `picture` is ignored — the avatar can no longer go stale when a contact is renamed. See [Avatar colors](../shared/avatar-colors.md).
+
+`request_stages.write` still runs **after** these, so a consumer stage that overrides a derived field wins.
+
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
