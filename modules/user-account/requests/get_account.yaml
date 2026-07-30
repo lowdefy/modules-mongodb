@@ -8,6 +8,9 @@
 #   email_verified — Security-tile verified badge / resend gate
 #   two_factor_enabled — Security-tile 2FA on/off state
 #   contact_id     — the own-contact id (also on _user.profile.contactId)
+#   name           — the title-block display name, falling back to the auth user's
+#                    own name so a not-yet-onboarded caller still gets a title
+#                    (the same chain the members_base stage uses)
 # Returns a single-element array; the page binds get_account.0.*.
 id: get_account
 type: MongoDBAggregation
@@ -39,6 +42,10 @@ properties:
             - "$twoFactorEnabled"
             - true
         contact_id: "$profile.contactId"
+        name:
+          $ifNull:
+            - "$contact.profile.name"
+            - "$name"
         profile:
           $ifNull:
             - "$contact.profile"

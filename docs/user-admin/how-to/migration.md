@@ -42,6 +42,43 @@ see [Same-database co-location](../concepts/co-location.md).
 and `avatar_colors` carry over in kind. `event_display` templates now receive
 `user` (acting admin) and `target` (edited/invited user).
 
+## Column paths
+
+The rows every members read returns are now a
+[documented, closed set of keys](../reference/row-contract.md). A
+`components.table_columns` `field:` or `components.download_columns` `value:`
+outside that set renders an empty column. Four kinds of path stop resolving:
+
+1. **Raw join paths** — `user.emailVerified`, `contact.updated.by`, and anything
+   else under `user.*` or `contact.*`. The reads used to ship both whole source
+   documents on every row, so these resolved with no configuration at all.
+2. **Alias duplicates** — `attributes.*` (bind `member_attributes.*`), `createdAt`
+   (bind `signed_up`, or `created` on invitation rows), `expiresAt` (bind
+   `expires_at` on the Invitations tab, `expires` in the export), and
+   `profile.picture` (bind the top-level `picture`).
+3. **`picture` in the export** — dropped there, kept on the list.
+4. **Contact fields** are now reachable directly: bind `profile.<field>` rather
+   than lifting it through a stage.
+
+One migration covers 1–3 — lift the value to a top-level key in a
+`request_stages.get_all_users` `$addFields`, which still runs before the row is
+closed in every read:
+
+```yaml
+request_stages:
+  get_all_users:
+    - $addFields:
+        email_verified: "$user.emailVerified"
+```
+
+Note that `get_all_users` now also runs on the **Excel export**, over member and
+invitation rows alike — the manifest always documented this; the request never
+applied it. A stage reading `$contact.*` yields nulls on the invitation half, and a
+`$project` or `$replaceRoot` in that slot will break the export. Use `$addFields`.
+
+`request_stages.filter_match` is unaffected: it still runs before the row is closed
+and can keep matching raw `user.*` / `contact.*` paths.
+
 ## Pages
 
 | v0.x                      | Now                                                         |

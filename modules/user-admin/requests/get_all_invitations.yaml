@@ -82,6 +82,10 @@ properties:
                   _payload: pagination.pageSize
               # Resolve role ids → { label, orphan } against the catalog.
               - _ref: requests/stages/roles_from_catalog.yaml
+              # Close the row last, so the whole joined `inviter` user document
+              # stops shipping on every row (the table reads only the flattened
+              # inviter_name / inviter_id).
+              - _ref: requests/stages/close_row.yaml
         - $unwind: "$count"
         - $unwind: "$results"
         - $addFields:

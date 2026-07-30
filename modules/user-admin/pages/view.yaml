@@ -9,12 +9,13 @@ _ref:
   vars:
     id: view
     page_type: sidebar
-    # Title-block: status pill (Active / Suspended) + name, hydrated from the
-    # detail read. The mock's avatar is a proposed title-block slot the shared
-    # component does not offer today — not added here (a shared-component change
-    # is out of scope for the view page).
+    # Title-block: avatar + status pill (Active / Suspended) + "USER" eyebrow +
+    # name, all hydrated from the detail read.
+    type: User
     title:
       _request: get_user_detail.0.name
+    avatar_src:
+      _request: get_user_detail.0.picture
     status:
       _request: get_user_detail.0.status_slug
     status_enum:

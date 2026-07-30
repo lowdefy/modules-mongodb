@@ -245,6 +245,10 @@ blocks:
                               _var:
                                 key: type
                                 default: null
+                            avatar_src:
+                              _var:
+                                key: avatar_src
+                                default: null
                             status:
                               _var:
                                 key: status

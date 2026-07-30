@@ -2,17 +2,10 @@ id: contact_details
 type: Box
 blocks:
   _build.array.concat:
-    # Identity header
-    - - _ref:
-          path: ../shared/layout/identity-header.yaml
-          vars:
-            avatar_src:
-              _request: get_contact.0.profile.picture
-            name:
-              _request: get_contact.0.profile.name
-            email:
-              _request: get_contact.0.email
-    # Profile SmartDescriptions
+    # Profile SmartDescriptions. Bound to the whole contact row (not just the
+    # profile subdoc) so `email` resolves alongside the `profile.*` paths, matching
+    # the sibling user-admin and user-account views. The name is not a field here —
+    # it is the page title.
     - - id: profile_view
         type: SmartDescriptions
         properties:
@@ -20,15 +13,15 @@ blocks:
           column: 1
           size: small
           data:
-            profile:
-              _request: get_contact.0.profile
+            _request: get_contact.0
           fields:
             _build.array.concat:
-              - _ref:
-                  path: ../shared/profile/form_core.yaml
-                  vars:
-                    show_honorific:
-                      _module.var: fields.show_honorific
+              # No `type` — let SmartDescriptions auto-detect the email value and
+              # render it as an email (a forced TextInput/string renderer
+              # title-cases the first letter, which is wrong for an address).
+              - - id: email
+                  properties:
+                    title: Email
               - _module.var: fields.profile
     # Attributes SmartDescriptions (only when fields are provided)
     - - id: attributes_view

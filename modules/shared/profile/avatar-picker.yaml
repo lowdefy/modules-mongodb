@@ -1,0 +1,92 @@
+# Avatar preview + colour picker — the labelled form row used by the onboarding
+# page and the profile edit modal. Left: the 64px preview. Right: the "Avatar"
+# field label above a quiet Change colour button.
+#
+# The preview is the shared avatar SVG, so the initials, the `?` empty-name
+# fallback and the gradient all come from the one implementation that also
+# produces the saved `profile.picture`. It reads `state.profile.avatar_color`,
+# which the host seeds with avatar-picker-seed.yaml.
+#
+# `avatar_color_index` is only a cursor for the Change colour button; the gradient
+# itself lives in `profile.avatar_color` so it travels with the profile subtree.
+#
+# Both children need `flex: 0 0 auto` — a child block with no flex value spans the
+# full row, which would stack the preview above the label instead of beside it.
+id: avatar_picker
+type: Box
+layout:
+  span: 24
+  gap: 16
+style:
+  marginBottom: 20
+blocks:
+  - id: avatar_picker_face
+    type: Avatar
+    layout:
+      flex: 0 0 auto
+      selfAlign: middle
+    properties:
+      size: large
+      theme:
+        containerSizeLG: 64
+      src:
+        _js:
+          _ref:
+            path: ../shared/profile/generate-avatar-svg.js.njk
+            vars:
+              prefix: profile
+  - id: avatar_picker_field
+    type: Box
+    layout:
+      flex: 0 0 auto
+      selfAlign: middle
+      gap: 6
+    blocks:
+      # The form's own field-label styling — the row reads as a field, so it is
+      # labelled like one rather than with a section eyebrow.
+      - id: avatar_picker_label
+        type: Html
+        properties:
+          html: Avatar
+        style:
+          fontSize: 13
+          fontWeight: 500
+          color: "var(--ant-color-text-secondary)"
+      - id: avatar_picker_button
+        type: Button
+        properties:
+          title: Change colour
+          icon: AiOutlineReload
+          size: small
+          shape: round
+          variant: outlined
+        events:
+          onClick:
+            # Advance the cursor, then resolve it to a gradient. Two actions
+            # rather than one so the index expression isn't written twice.
+            - id: cycle_avatar_color_index
+              type: SetState
+              params:
+                avatar_color_index:
+                  _if:
+                    test:
+                      _gte:
+                        - _sum:
+                            - _state: avatar_color_index
+                            - 1
+                        - _array.length:
+                            _module.var: avatar_colors
+                    then: 0
+                    else:
+                      _sum:
+                        - _state: avatar_color_index
+                        - 1
+            - id: set_avatar_color
+              type: SetState
+              params:
+                profile.avatar_color:
+                  _get:
+                    from:
+                      _module.var: avatar_colors
+                    key:
+                      _state: avatar_color_index

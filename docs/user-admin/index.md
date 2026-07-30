@@ -139,6 +139,7 @@ modules:
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
+- [Members row contract](reference/row-contract.md) — the row keys a `table_columns` or `download_columns` entry may bind
 - [Same-database co-location](concepts/co-location.md) — the hard read precondition
 - [Migrating from v0.x](how-to/migration.md) — var renames/removals, page renames, dropped deps
 
