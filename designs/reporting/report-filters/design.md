@@ -274,6 +274,7 @@ Resolved 2026-07-29 against the source rather than deferred to implementation.
 - **Additional ops** (`$nin`, `$regex`, numeric ranges on non-date fields) — no concrete need yet; `FILTER_OPS` stays default-deny and small.
 - **Cross-filter dependency** (a company list narrowed by the selected region) — a real want, but it makes options a function of live state rather than of resolve time, which is a different mechanism.
 - **Chat-surface filters** — filters exist only on saved reports; the chat surface re-asks instead.
+- **Where the filter controls sit on the page, and how a control conveys what it scopes.** This design keeps the existing single row at the top of the report. Manual testing showed that is a real problem once a report carries two independent filter groups — a control whose bound sections are all below the fold is indistinguishable from a broken filter — but it is a layout decision, so it belongs to [`reporting/ux`](../ux/design.md#the-filter-row-says-nothing-about-what-it-scopes), which owns the report page's shape. The demo compensates by hand, binding every filter to at least one KPI or chart.
 
 ## Risks
 

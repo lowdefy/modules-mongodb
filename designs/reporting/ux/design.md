@@ -17,7 +17,7 @@ This design makes both jobs legible and gives saved reports a life cycle: **crea
 | 5     | Delete confirm · recovery · empty states | new                          |
 | 6     | `/reporting/report?reportId=…`           | page exists                  |
 
-Filter work — multi-select, array-field semantics, looked-up options — is **out of scope here** and designed in [`designs/reporting/report-filters/design.md`](../report-filters/design.md). Plates 3 and 6 show its UI; the engine reasoning lives there.
+Filter **mechanics** — multi-select, array-field semantics, looked-up options — are **out of scope here** and designed in [`designs/reporting/report-filters/design.md`](../report-filters/design.md). Plates 3 and 6 show its UI; the engine reasoning lives there. Filter **placement** on the report page is in scope here, and is the one open problem the implemented filters left behind — see [the filter row says nothing about what it scopes](#the-filter-row-says-nothing-about-what-it-scopes).
 
 ## Proposed change
 
@@ -210,6 +210,20 @@ There is no client-storage action — the set is `CallAPI`, `CallMethod`, `CopyT
 
 `AgentConversations` also has no collapsed mode of its own, so the rail's icon strip is a `Box` of `Button`s shown when the rail is hidden. The antd `Splitter` block — per-panel `collapsible` and `resizable` with an `onCollapse` event — could carry both edges instead, and is worth a look at build time if the hand-rolled strips read as two features rather than one pattern.
 
+### The filter row says nothing about what it scopes
+
+**Open, and the one UX problem the report page currently has.** `compileReport` collects every filter control into a single full-width row at the top of the report, regardless of where its filter sections sit in the spec. Nothing on a control indicates which sections subscribe to it. Since `filterBy` is per-section, a report can carry two independent filter groups — one over orders, one over activities — and selecting a control in the first moves nothing a viewer happens to be looking at.
+
+Found in manual testing of the report-filters demo: a company multi-select whose only bound sections were two tables below the fold read as a **broken filter**, and stayed convincing enough to survive a full trace through the compiled config, the payload, the server-built `$match`, the operator semantics, and the block source before the actual cause — nothing bound to it was on screen — became clear. If it fooled the person who wrote the compiler, it will fool a user. The demo report now works around it by hand, giving every filter at least one bound KPI or chart, but an agent-authored report has no such guarantee: the agent chooses `filterBy` per section, and nothing stops it binding a filter only to a table at the bottom.
+
+This is deliberately left open rather than decided here, because the plates do not draw a multi-group report and the right answer depends on what plate 6 becomes. Three candidates, in increasing cost:
+
+1. **Name the scope in the control's title** — `Companies (activities)`. One line in `compileReport`, no layout change, but it duplicates section labels into the control and grows with the number of bound sections.
+2. **Group the filter row by bound section set** — one sub-row per distinct group, each labelled with what it drives. Keeps filters together at the top; reads oddly when groups overlap partially (a filter bound to two of three sections).
+3. **Render each filter beside the sections it drives** — abandons the single row, which is the honest fix and the largest change: filters stop being page furniture and become part of a section group.
+
+Whichever wins, the failure it prevents is a viewer concluding the feature is broken, so a decision should not wait for a complaint — by construction the complaint reads as a bug report about filters, not about layout.
+
 ### The `Dynamic` types list is a whole-report failure mode
 
 The report page compiles server-side into a `Dynamic` block, and **an undeclared block, action or operator type fails the entire report to the fallback slot** — not the one section that used it. Plate 6 adds Fix-in-chat and Remove-section inside compiled sections, so `types.actions` needs `Link` alongside the existing `CallAPI` / `SetState` / `DownloadCsv`, and `Modal` joins `types.blocks` if per-section expand is compiled rather than rendered by the page. Any compiler change that emits a new block type has to land with its declaration in the same commit.
@@ -317,7 +331,7 @@ Resolved 2026-07-30, from reading the installed block source ([Block feasibility
 - **Notifications** of any kind — including "request a fix" on a broken section a non-owner can see.
 - **A purge / permanent delete.**
 - **Scheduled or emailed reports.**
-- **Filter mechanics** — see [`report-filters`](../report-filters/design.md).
+- **Filter mechanics** — see [`report-filters`](../report-filters/design.md). Filter _placement_ is in scope; see [the filter row says nothing about what it scopes](#the-filter-row-says-nothing-about-what-it-scopes).
 
 ## Risks
 
