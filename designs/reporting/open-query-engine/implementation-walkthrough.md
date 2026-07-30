@@ -17,11 +17,11 @@ signposts, not guarantees.
 
 Three layers, and the split matters:
 
-| Layer            | Where                                                | Role                                                       |
-| ---------------- | ---------------------------------------------------- | ---------------------------------------------------------- |
-| **Config** (YAML) | `modules/reporting/`                                 | pages, agent definition, API routines, connections          |
-| **Engine** (JS)  | `plugins/modules-mongodb-plugins/src/analytics/`     | validators, compilers, chart builders — pure, no I/O        |
-| **Boundary** (JS) | `plugins/.../src/connections/ReportingData/`         | the one place a pipeline reaches MongoDB                    |
+| Layer             | Where                                            | Role                                                 |
+| ----------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| **Config** (YAML) | `modules/reporting/`                             | pages, agent definition, API routines, connections   |
+| **Engine** (JS)   | `plugins/modules-mongodb-plugins/src/analytics/` | validators, compilers, chart builders — pure, no I/O |
+| **Boundary** (JS) | `plugins/.../src/connections/ReportingData/`     | the one place a pipeline reaches MongoDB             |
 
 The central design bet: **the AI authors raw MongoDB aggregation pipelines**, and
 safety comes from a default-deny grammar walker rather than from restricting the

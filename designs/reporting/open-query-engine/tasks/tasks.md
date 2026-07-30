@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implements `designs/reporting-open-query-engine/design.md`: replace the structured analytics query spec with AI-authored, allowlist-validated MongoDB aggregation pipelines across every reporting surface (chat, charts, saved reports, exports), backed by a collections catalog and a read-only MongoDB principal. This is a breaking replacement — the structured spec, its compiler, and old persisted reports are dropped, no compatibility path.
+Implements `designs/reporting/open-query-engine/design.md`: replace the structured analytics query spec with AI-authored, allowlist-validated MongoDB aggregation pipelines across every reporting surface (chat, charts, saved reports, exports), backed by a collections catalog and a read-only MongoDB principal. This is a breaking replacement — the structured spec, its compiler, and old persisted reports are dropped, no compatibility path.
 
 ## Tasks
 
@@ -29,6 +29,6 @@ One naming decision made here (the design leaves it open): the module var is ren
 
 ## Scope
 
-**Source:** `designs/reporting-open-query-engine/design.md`
+**Source:** `designs/reporting/open-query-engine/design.md`
 **Context files considered:** none exist (design.md is the only design file)
 **Review files skipped:** `review/review-1.md`, `review/consistency-1.md`
