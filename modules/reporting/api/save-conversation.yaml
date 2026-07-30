@@ -1,11 +1,15 @@
 # onFinish hook: upsert the full conversation keyed by conversationId, scoped
-# by userId. No-ops when the payload carries no conversationId — there is
+# by user_id. No-ops when the payload carries no conversationId — there is
 # nothing to key the upsert on, and this endpoint is HTTP-callable. The title
 # is derived from the first user message on insert.
 #
-# userId comes from _user, never from the hook payload. This endpoint is
+# `conversationId` and `messages` stay camelCase because they are the agent
+# framework's own onFinish payload keys, not fields this module names — the
+# document fields it does name are snake_case.
+#
+# user_id comes from _user, never from the hook payload. This endpoint is
 # type: Api — HTTP-callable by any authenticated user — and the write is an
-# upsert, so a payload-supplied userId would let a caller who knows another
+# upsert, so a payload-supplied user id would let a caller who knows another
 # user's id insert attacker-authored conversations into that user's sidebar
 # (a fresh uuid needs no existing document) or overwrite one whose id leaked.
 # Hooks run through invokeEndpoint with the request context, so _user resolves
@@ -29,7 +33,7 @@ routine:
       filter:
         _id:
           _payload: conversationId
-        userId:
+        user_id:
           _if_none:
             - _user: sub
             - _user: id
@@ -37,15 +41,15 @@ routine:
         $set:
           messages:
             _payload: messages
-          userId:
+          user_id:
             _if_none:
               - _user: sub
               - _user: id
-          updatedAt:
-            _date: now
+          updated:
+            _ref: defaults/change_stamp.yaml
         $setOnInsert:
-          createdAt:
-            _date: now
+          created:
+            _ref: defaults/change_stamp.yaml
           title:
             _mql.expr:
               on:

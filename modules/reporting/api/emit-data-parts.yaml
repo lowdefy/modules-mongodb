@@ -1,7 +1,7 @@
 # onFinish hook: read the validated chart/export specs from the turn's
 # toolResults, run each chart's query once (bounded, inside :try — a failed
-# query skips its chart), and return chart + download dataParts for the chat
-# page's adjacent panel. Tools cannot write to the stream — dataParts are
+# query skips its chart), and return chart + download data parts for the chat
+# page's adjacent panel. Tools cannot write to the stream — the parts are
 # written only from onFinish hook responses. No-ops when the payload carries no
 # conversationId — the parts have nowhere to be snapshotted.
 id: emit-data-parts
@@ -84,10 +84,10 @@ routine:
             _user: roles
   # Snapshot this turn's built parts onto the conversation doc so reopening it
   # restores the Results panel. save-conversation (the prior onFinish hook)
-  # owns the doc lifecycle (messages, title, createdAt); this hook only appends
-  # `dataParts` per turn, mirroring the live panel's onDataPart accumulation.
+  # owns the doc lifecycle (messages, title, created); this hook only appends
+  # `data_parts` per turn, mirroring the live panel's onDataPart accumulation.
   # upsert is false: the prior hook has already created the doc, and creating it
-  # here would leave a title-less, createdAt-less doc if that hook had failed.
+  # here would leave a title-less, created-less doc if that hook had failed.
   - :if:
       _gt:
         - _array.length:
@@ -103,19 +103,23 @@ routine:
             _id:
               _payload: conversationId
             # From _user, never the payload — see save-conversation. This
-            # endpoint is HTTP-callable, so a payload-supplied userId would let
-            # a caller $push dataParts into another user's conversation.
-            userId:
+            # endpoint is HTTP-callable, so a payload-supplied user id would let
+            # a caller $push parts into another user's conversation.
+            user_id:
               _if_none:
                 - _user: sub
                 - _user: id
           update:
             $push:
-              dataParts:
+              data_parts:
                 $each:
                   _state: data_parts
           options:
             upsert: false
+  # `dataParts` is the agent framework's key for parts written back to the
+  # stream (handleAgentChat reads `responseData.dataParts`), not a field this
+  # module names — so it stays camelCase while the persisted field above is
+  # snake_case.
   - :return:
       dataParts:
         _state: data_parts

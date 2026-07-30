@@ -17,7 +17,7 @@ routine:
       _module.connectionId: reports-store
     properties:
       query:
-        userId:
+        user_id:
           _if_none:
             - _user: sub
             - _user: id
@@ -27,12 +27,12 @@ routine:
           $exists: false
       options:
         sort:
-          updatedAt: -1
+          updated.timestamp: -1
         limit: 200
         projection:
           title: 1
           description: 1
-          createdAt: 1
-          updatedAt: 1
+          created: 1
+          updated: 1
   - :return:
       _step: find_reports

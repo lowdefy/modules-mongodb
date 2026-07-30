@@ -163,9 +163,9 @@ onFinish hook (`agents/reporting-assistant.yaml:167-170`):
 4. `buildEChartsOption.js:11-41` shapes the option using the ECharts `dataset` +
    explicit `encode` form. The AI contributes a kind, a query and two column
    names; every other line of chart config is server-authored.
-5. L87-109 — pushes the parts onto the conversation doc (`upsert: false` — the
-   prior hook owns doc creation), then L110-112 returns them as `dataParts` on the
-   stream.
+5. L91-118 — pushes the parts onto the conversation doc as `data_parts` (`upsert:
+false` — the prior hook owns doc creation), then L119-125 returns them as
+   `dataParts` — the framework's own stream key, not a field this module names.
 
 Client side, `chat.yaml:154-182` accumulates them: `onDataPart` with a `skip`
 guard on `_event: type`, appending to `charts` or `downloads` state. The panel at
@@ -177,9 +177,9 @@ end), **downloads are live** (query stored, executed on click).
 
 ## 6. Conversation persistence
 
-Two onFinish hooks, in order. `save-conversation.yaml:15-103` upserts the whole
-transcript keyed by `conversationId` + `userId`; on insert it derives a fallback
-title with a `$let`/`$reduce` over the first user message (L38-100 — note L47-49,
+Two onFinish hooks, in order. `save-conversation.yaml:20-107` upserts the whole
+transcript keyed by `conversationId` + `user_id`; on insert it derives a fallback
+title with a `$let`/`$reduce` over the first user message (L42-104 — note L67-70,
 the `as: msg` alias, because the inner `$reduce` rebinds `$$this`). If the model
 produced a real title, `chat.yaml:200-210` persists it over the top via
 `set-conversation-title`.
@@ -190,14 +190,14 @@ infallible), then repopulates from a _fresh_ `get-conversation-results` read. Th
 comment at L82-88 explains why not from the sidebar list: the list refreshes when
 the stream ends client-side, which races the server's onFinish save, so it can be
 a turn behind — and continuing from a stale transcript would overwrite the saved
-doc. `list-conversations.yaml:34-36` projects `messages` and `dataParts` _out_ to
+doc. `list-conversations.yaml:34-36` projects `messages` and `data_parts` _out_ to
 make that mistake impossible.
 
 There is also a framework patch here — `patches/@lowdefy__blocks-antd-x.patch`,
 commit `7df0cca2`. `AgentChat` called `useChat` with a transport but no `id`, so
 AI SDK v5 created the Chat instance once per mount and captured the mount-time
 `conversationId` URL. Every send in a page session posted under that id, so
-continuing a restored conversation forked a duplicate doc without its dataParts.
+continuing a restored conversation forked a duplicate doc without its `data_parts`.
 The patch adds `id: effectiveConversationId`. It is interim — the fix belongs
 upstream in `blocks-antd-x`.
 
@@ -232,7 +232,7 @@ client.
 
 `api/resolve-report.yaml`:
 
-- L11-20 — load the spec, userId-scoped; L21-27 whole-report failure → the Dynamic
+- L11-20 — load the spec, user_id-scoped; L21-27 whole-report failure → the Dynamic
   block's fallback slot (a 404 `Result`).
 - L31-38 — `_analytics.querySections` (`querySections.js:19-24`) returns just the
   kpi/chart/table sections in order. **No catalog is passed here** (L28-30) — it

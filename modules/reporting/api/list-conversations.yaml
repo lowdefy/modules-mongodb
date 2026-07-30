@@ -1,5 +1,5 @@
 # Conversation list for the chat page's sidebar, most recent first. Carries
-# titles/metadata only: messages and dataParts are excluded — selecting a
+# titles/metadata only: messages and data_parts are excluded — selecting a
 # conversation restores both via a fresh get-conversation-results read (a
 # list snapshot races the onFinish save and can be a turn behind, and a stale
 # restore would overwrite the saved transcript on the next turn). The list is
@@ -8,7 +8,7 @@ id: list-conversations
 type: Api
 routine:
   # Scope by sub ?? id to match the write key: save-conversation and
-  # emit-data-parts derive userId the same way from _user.
+  # emit-data-parts derive user_id the same way from _user.
   - :if:
       _eq:
         - _if_none:
@@ -23,16 +23,16 @@ routine:
       _module.connectionId: conversations-store
     properties:
       query:
-        userId:
+        user_id:
           _if_none:
             - _user: sub
             - _user: id
       options:
         sort:
-          updatedAt: -1
+          updated.timestamp: -1
         limit: 30
         projection:
-          dataParts: 0
+          data_parts: 0
           messages: 0
   - :return:
       _step: find_conversations

@@ -488,7 +488,7 @@ test.each(["options", "optionsQuery"])(
             {
               type: "filter",
               control: "daterange",
-              field: "createdAt",
+              field: "order_date",
               label: "Created",
               [key]: key === "options" ? ["a"] : regionOptionsQuery,
             },
@@ -558,7 +558,7 @@ test("match: all on a multiselect is accepted and normalized; rejected on select
           {
             type: "filter",
             control: "daterange",
-            field: "createdAt",
+            field: "order_date",
             label: "Created",
             match: "all",
           },

@@ -1,11 +1,12 @@
-# userId-scoped soft delete from the reports-list page.
+# user_id-scoped soft delete from the reports-list page.
 #
 # Soft, not hard: the repo convention is that a delete sets a `deleted` change
-# stamp and reads filter it out (docs/shared/soft-delete.md). The stamp is
-# written inline rather than via the events module's `change_stamp` component —
-# reporting declares no dependencies, so it cannot _ref into events — but the
-# shape ({ timestamp, user: { name, id } }) is identical, so a host app reads it
-# with the same predicate as every other module's soft delete.
+# stamp and reads filter it out (docs/shared/soft-delete.md). The stamp comes
+# from this module's own defaults/change_stamp.yaml rather than the events
+# module's component — reporting declares no dependencies, so it cannot _ref
+# into events — but the shape ({ timestamp, user: { name, id } }) is identical,
+# so a host app reads it with the same predicate as every other module's soft
+# delete.
 id: delete-report
 type: Api
 routine:
@@ -26,8 +27,8 @@ routine:
       # modified rather than overwriting the original stamp's who/when.
       filter:
         _id:
-          _payload: reportId
-        userId:
+          _payload: report_id
+        user_id:
           _if_none:
             - _user: sub
             - _user: id
@@ -36,15 +37,7 @@ routine:
       update:
         $set:
           deleted:
-            timestamp:
-              _date: now
-            user:
-              name:
-                _user: profile.name
-              id:
-                _if_none:
-                  - _user: sub
-                  - _user: id
+            _ref: defaults/change_stamp.yaml
   - :return:
       ok: true
       deletedCount:
