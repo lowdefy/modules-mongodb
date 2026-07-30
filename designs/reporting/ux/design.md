@@ -6,6 +6,8 @@ This design makes both jobs legible and gives saved reports a life cycle: **crea
 
 **[`wireframes.html`](wireframes.html) is part of this design.** Six annotated plates with numbered callouts; open it in a browser (it is self-contained, light/dark, and its chart palettes are CVD-validated). Where this document and the wireframes differ, this document is the decision — see [Deviations from the wireframes](#deviations-from-the-wireframes).
 
+**[`wireframes-blocks.html`](wireframes-blocks.html) is the same deck built.** Each surface redrawn as it lands in the blocks we actually have, every region labelled with the block behind it, and each bend from the drawing marked where it happens. Read it beside the plates when implementing; the reasoning is in [Block feasibility](#block-feasibility).
+
 | Plate | Surface                                  | Status                       |
 | ----- | ---------------------------------------- | ---------------------------- |
 | 1     | `/reporting/chat` — first run            | new                          |
@@ -21,9 +23,9 @@ Filter work — multi-select, array-field semantics, looked-up options — is **
 
 **Chat surface (plates 1–2)**
 
-1. Rework the welcome into **two tracks of starters** — exploratory prompts and report-shaped prompts — plus a line naming what the assistant can see, derived from the catalog's collection descriptions. Clicking a starter fills the composer rather than sending it.
+1. Rework the welcome into **two tracks of starters** — exploratory prompts and report-shaped prompts — plus a line naming what the assistant can see, derived from the catalog's collection descriptions. Clicking a starter fills the composer rather than sending it. Both halves of this are built _outside_ `AgentChat` and rest on one new block method — see [Block feasibility](#the-one-thing-the-blocks-cannot-do-fill-the-composer).
 2. Make the **results panel visible when empty**, explaining its own shape, instead of `visible: false` until the first chart.
-3. Make **both side panels collapsible**, with the state persisted per user and both collapsed by default on a narrow viewport.
+3. Make **both side panels collapsible**, with the state held for the session (`SetGlobal` — see [Block feasibility](#collapse-state-is-session-scoped-not-persisted)) and both collapsed by default on a narrow viewport.
 4. Give the conversations rail **search, recency grouping (Today / Previous 7 days / Older), rename, and soft delete**, which needs an `updated` timestamp and a snippet from `list-conversations`.
 5. Add a **`data-report-table` part** so tabular answers become panel artefacts, and scope the panel All / Charts / Tables / Exports.
 6. **Prompt the agent to sketch inline with mermaid** where a shape is simple (one series, ≤6 categories) and to name the panel for the full chart. Prompt-only — no block change.
@@ -99,7 +101,7 @@ Only charts and downloads stream back today, so a tabular answer — the single 
 
 ### Three columns, both sides collapsible
 
-Left is history, middle is now, right is what you produced. Both side panels collapse to strips (the rail to icons, the panel to counts) so the transcript can run full-width when the user is reading rather than producing, and the two collapses are mirror images so they read as one pattern. Collapse state persists per user; on a narrow viewport both start collapsed. The expanded layout is 232px / fluid / 348px with a ~62ch measure on the middle column, so prose stays readable at any width.
+Left is history, middle is now, right is what you produced. Both side panels collapse to strips (the rail to icons, the panel to counts) so the transcript can run full-width when the user is reading rather than producing, and the two collapses are mirror images so they read as one pattern. Collapse state is kept for the session and follows the user between pages ([why not persisted](#collapse-state-is-session-scoped-not-persisted)); on a narrow viewport both start collapsed. The expanded layout is 232px / fluid / 348px with a ~62ch measure on the middle column, which is the chat block's own `maxWidth` — so prose stays readable at any width.
 
 ### Private by default; publishing is role-gated, binary, and reversible
 
@@ -151,6 +153,67 @@ Open, favourite, download a section, duplicate — and the edit actions are _abs
 
 The new `create-report` endpoint **can**, because the sheet is a page calling `CallAPI` where `_state: conversationId` is in hand. So the link is populated on the sheet path (which is now the primary path) and absent on the tool path. The UI must therefore treat it as **optional**: no `conversationId`, no continue-in-chat affordance — not a broken button. This is a reason to prefer the sheet path, not a blocker for either.
 
+## Block feasibility
+
+Every surface in the plates was checked against the blocks the demo actually installs — `@lowdefy/blocks-antd`, `-basic`, `-antd-x`, `-echarts`, `-aggrid`, and this repo's plugin blocks — reading the block source, not the docs. [`wireframes-blocks.html`](wireframes-blocks.html) redraws all six plates as they land in real blocks, annotated with the block behind each region; this section is the summary and the decisions that came out of it.
+
+**The verdict: one required block change, one optional one, and three places where the drawing bends.** The required change is a `setInput` method on `AgentChat`, without which the empty state cannot teach the report path. The optional one is a `menu` cell for `AgGridBalham`, which restores plate 4's kebab popover and which every list page in this repo would use.
+
+### The one thing the blocks cannot do: fill the composer
+
+A starter that **fills** the composer instead of sending it (plate 1, callout 3) is not reachable from config. `AgentChat`'s prompt handler calls `sendMessage({ text })` directly, the `@ant-design/x` `Sender` is mounted uncontrolled (a ref, cleared after send — no `value` prop), and the block's registered methods are `regenerate`, `setMessages`, `sendMessage`, `clearMessages`, `deleteMessage`, `stop`, `clearError`, `scrollToBottom`. None of them writes the input.
+
+The fix is a **`setInput` method on `AgentChat`**: make the `Sender` controlled from local state and register the setter. It is small, and the package is already patched in this repo (`patches/@lowdefy__blocks-antd-x.patch`, which keys `useChat` by conversation), so patch-then-upstream is a proven path here.
+
+That one method also settles the **two-track welcome**. `welcome` takes `{ title, description, icon, prompts[], variant }` and the block flattens `prompts` into a single row, mapping only `key` / `label` / `description` — the `children` that `@ant-design/x` uses for grouped columns are dropped, and the block declares no areas, so nothing can be composed inside it. Rather than grow the `welcome` schema, **leave `welcome` unset and render the empty state as ordinary blocks above the chat**, shown while `messages` is empty: two `Box` tracks, `Title` / `Paragraph` copy, starter chips as `Button`s calling `setInput`. That is more layout freedom than the schema would ever have given, and it is only viable because `setInput` exists. One change, both callouts.
+
+### What the blocks already do, unchanged
+
+The conversation rail carries more than the current page uses. `AgentConversations` takes a per-item `menu` and fires `onMenuClick` with the action key and the conversation key — that is rename and soft delete, with `danger: true` on the delete item. Recency grouping is `group` plus `timestamp` on each item with the `groupable` property, and group order follows first appearance in `items` (verified in `@ant-design/x`'s `useGroupable` — a plain reduce, no alphabetical sort), so ordering the items by recency yields Today → Previous 7 days → Older with no sort hook. There is no search property, but `items` is config-driven, so a `Search` block above the rail filtering the array _is_ the feature.
+
+The results panel is all existing blocks: `SegmentedSelector` for All / Charts / Tables / Exports, a `List` of `Card`s, `CheckboxSwitch` bound to `charts.$.selected` for selection, `Modal` for expand, `AgGridBalham` for a table result, `EChart` for a chart, and the `ScrollTo` action for "the panel scrolls to the newest card". The save sheet is `Modal` + `TextInput` + `ControlledList` + `CheckboxSwitch` + `Selector` + `SegmentedSelector`. `MultipleSelector` supports `{ label, value }` options and tag display natively, so plate 6's filter tags are compiler work, not block work.
+
+### Where the drawing bends
+
+1. **Drag-to-reorder becomes ↑ / ↓.** No block does drag reordering. `ControlledList` registers `moveItemUp(index)`, `moveItemDown(index)` and `removeItem(index)` as `CallMethod` targets, which is the whole job for a list that is typically two to four rows. A sortable list is not worth a block for this.
+2. **The trace line's title is the tool name.** A tool call renders as a `ThoughtChain` item whose title is hard-coded to the raw tool name. The _description_ is authorable: when a tool returns `{ display: "…" }` the description becomes its first 80 characters and the full `display` markdown renders behind the collapse. So "4,812 rows · 0.4s" and "expanding shows the pipeline" are both real; "Read **orders**" as the heading is not, and `query_data` is an honest enough label to accept.
+3. **The reports list's row menu opens a `Modal` until a menu cell exists.** See [the reports list is a grid](#the-reports-list-is-a-grid-like-every-other-list-in-this-repo) — every column of plate 4 has a cell type except the kebab, and a dropdown cell is the one thing the grid has no renderer for.
+
+### The reports list is a grid, like every other list in this repo
+
+Every module list here — contacts, companies, activities, user-admin — is an `AgGridBalham` with `onRowClick` into a `Link` and built-in cells doing the display work. The reports list is the same kind of thing, so it is the same block, and the cells cover plate 4 almost completely:
+
+| Column     | Cell                                                                                                                  |
+| ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| ★          | `buttons` with one icon button, `hideTitle`, and `iconField` — a row-data path, so filled or outline is per row       |
+| Report     | `_function` cellRenderer for the title-plus-description pair, with `wrapText` / `autoHeight` (the user-admin pattern) |
+| Contents   | `tag` — `TagCell` renders an **array** as one tag per item, which is the contents pills exactly                       |
+| Updated    | `date`                                                                                                                |
+| Visibility | `tag` with a `colorMap`, read-only                                                                                    |
+| ⋯          | nothing — see below                                                                                                   |
+
+`selector`, `multipleSelector`, `switch`, `textInput` and `paragraphInput` cells landed in [PR 2201](https://github.com/lowdefy/lowdefy/pull/2201) and are **already on `vite-hono`** (commit `17c1392b`, an ancestor of the branch) and in the experimental build the demo installs — the `cell.type` enum on the display grid lists all of them. Nothing needs porting.
+
+They do not, however, solve the row menu, and the `selector` cell should not be pressed into that job: it is an input, so the chosen action is written back into the row node and rendered as the cell's value, it carries clear / search / placeholder affordances, and it announces as a combobox. A menu of verbs is not a value.
+
+**Visibility stays a read-only `tag`** for the same reason in reverse: a two-option `selector` on every row would make publishing to the whole app a single mis-click on a list, where the design deliberately makes it a named act. The capability existing is not an argument for using it.
+
+**So the one real gap is a `menu` cell** — an antd `Dropdown` whose `items[]` each carry an `eventName`, with the `*Field` row-data resolution, `hidden` / `disabled` and `danger` that `ButtonsCell` already implements. It is a small, generic addition in the same shape as PR 2201, it belongs upstream because every list page in this repo will eventually want it, and it is the natural companion PR to the one that added these cells.
+
+Until it exists, the kebab is a single `⋯` button in a `buttons` cell opening a `Modal` of actions — the owner's five and the non-owner's two, chosen by `hiddenField` on the row's `isOwner`. That is a worse popover, not a worse feature, and swapping it for the cell later touches one column definition.
+
+### Collapse state is session-scoped, not persisted
+
+There is no client-storage action — the set is `CallAPI`, `CallMethod`, `CopyToClipboard`, `DisplayMessage`, `Fetch`, `Link`, `Login`, `Logout`, `Publish`, `Request`, `Reset`, `ResetValidation`, `ScrollTo`, `SetDarkMode`, `SetFocus`, `SetGlobal`, `SetLocale`, `SetState`, `Subscribe`, `Throw`, `Unsubscribe`, `UpdateSession`, `Validate`, `Wait` — and `SetGlobal` lives in memory for the session, not across reloads. So persisting the collapse per user, as plate 2's callout 1 draws it, costs a `ui_state` document and a write per toggle, for a preference that is re-expressed with one click.
+
+**Decision: `SetGlobal`, session-scoped, with both panels collapsed by default on a narrow viewport.** The state follows the user between the chat, list and report pages within a session and resets on reload. If a real complaint appears, the endpoint is a later, additive change — nothing about the UI has to move.
+
+`AgentConversations` also has no collapsed mode of its own, so the rail's icon strip is a `Box` of `Button`s shown when the rail is hidden. The antd `Splitter` block — per-panel `collapsible` and `resizable` with an `onCollapse` event — could carry both edges instead, and is worth a look at build time if the hand-rolled strips read as two features rather than one pattern.
+
+### The `Dynamic` types list is a whole-report failure mode
+
+The report page compiles server-side into a `Dynamic` block, and **an undeclared block, action or operator type fails the entire report to the fallback slot** — not the one section that used it. Plate 6 adds Fix-in-chat and Remove-section inside compiled sections, so `types.actions` needs `Link` alongside the existing `CallAPI` / `SetState` / `DownloadCsv`, and `Modal` joins `types.blocks` if per-section expand is compiled rather than rendered by the page. Any compiler change that emits a new block type has to land with its declaration in the same commit.
+
 ## Data model
 
 Additions to the report document (existing fields unchanged):
@@ -188,13 +251,14 @@ Conversation documents gain `deleted` (same stamp shape, initialised `null`) and
 
 ## Files changed (anticipated)
 
-- `modules/reporting/pages/chat.yaml` — fixed rail/panel widths with a fluid measure-capped middle; both panels collapsible with persisted state; panel visible-when-empty; starter chips filling the composer; the table part routed into a new state array; result selection and the Save-as-report action.
-- `modules/reporting/pages/reports-list.yaml` — rebuilt as a table with toolbar (scope segmented control, search, sort), row menus, favourite toggle, contents pills, footer recovery link, and the empty/zero-result states.
+- `modules/reporting/pages/chat.yaml` — fixed rail/panel widths with a fluid measure-capped middle; both panels collapsible with session-scoped state; panel visible-when-empty; starter chips filling the composer; the table part routed into a new state array; result selection and the Save-as-report action.
+- `modules/reporting/pages/reports-list.yaml` — rebuilt as an `AgGridBalham` with toolbar (scope segmented control, search, sort), `buttons` / `tag` / `date` cells, the row action menu, footer recovery link, and the empty/zero-result states.
 - `modules/reporting/pages/report.yaml` — provenance line, per-section `⤓`, Continue-in-chat (owner-only, conditional on `conversationId`), owner-only section recoveries.
 - New `modules/reporting/pages/reports-deleted.yaml` — the recovery page.
 - New `modules/reporting/pages/components/save_report_sheet.yaml` — the confirm sheet, opened by both routes.
 - `modules/reporting/api/` — new `create-report`, `set-report-visibility`, `set-report-favourite`, `set-report-title`, `duplicate-report`, `restore-report`, `delete-conversation`; rewritten `list-reports`; changed `resolve-report`, `list-conversations`, `emit-data-parts`.
-- `modules/reporting/agents/reporting-assistant.yaml` — the mermaid-sketch prompt and the table-part contract.
+- `modules/reporting/agents/reporting-assistant.yaml` — the mermaid-sketch prompt and the table-part contract, plus a `display` string on the query tool's output so the trace line reads as a summary rather than a key list.
+- `patches/@lowdefy__blocks-antd-x.patch` — the `setInput` method on `AgentChat` (controlled `Sender` plus `registerMethod`), to be upstreamed. The only block change the deck requires.
 - `modules/reporting/module.lowdefy.yaml` — `share_roles` and the copy vars, with full `description`/`type`/`default` per var (then `pnpm docs:gen`).
 - `apps/demo/` — see below.
 - `docs/reporting/` — the index's surfaces table, a how-to for the save-as-report flow, a concepts page for ownership/visibility/retirement, and regenerated `reference/vars.md`.
@@ -218,6 +282,10 @@ Recorded here so the plates can stay as drawn.
 1. **"Last ran" is not persisted.** Plate 4's list mentions when a report last ran. Persisting `lastRunAt` means a write on every report open, for a fact that is really "last opened". The list column shows `updatedAt` (when the spec last changed); the report header states the run time at resolve, which is free and honest. Plate 4's column label should read _Updated_.
 2. **The read predicate is `deleted.timestamp: { $exists: false }`**, not `deleted: null` as the plates' notes phrase it. The plates describe the idiom loosely; `docs/shared/soft-delete.md` is canonical, and it treats a document as live whether `deleted` is absent, null, or an object without a timestamp.
 3. **`conversationId` is optional in the UI.** The plates show Continue-in-chat unconditionally; it is absent on reports created through the agent tool path (see [the report ↔ chat link](#the-report--chat-link-and-the-one-thing-that-blocks-it)).
+4. **Sections reorder with ↑ / ↓, not a drag handle.** Plate 3 draws `⣿` grips. No block does drag reordering; `ControlledList` exposes `moveItemUp` / `moveItemDown` / `removeItem` as methods. See [Block feasibility](#block-feasibility).
+5. **The tool trace line is titled with the tool name.** Plate 2's `Read orders · 4,812 rows · 0.4s` becomes a `query_data` heading with the row count and duration as its description, and the pipeline behind the collapse.
+6. **Collapse state is session-scoped**, not persisted per user as plate 2's callout 1 draws it. No client storage action exists; the decision and its escape hatch are in [Block feasibility](#collapse-state-is-session-scoped-not-persisted).
+7. **The row kebab opens a `Modal`, not a popover.** Plate 4 draws a dropdown; `AgGridBalham` has a cell type for every other column but none for a menu. A `menu` cell upstream restores the popover — [why](#the-reports-list-is-a-grid-like-every-other-list-in-this-repo).
 
 ## Resolved questions
 
@@ -230,6 +298,15 @@ Resolved 2026-07-29.
 5. **Does reporting already soft-delete correctly?** Reports yes (`delete-report` writes the stamp, owner-scoped, and won't overwrite an existing one). Conversations have no delete at all, so that endpoint is new.
 6. **Can reporting reuse the events module's `change_stamp` component?** No — reporting declares no dependencies, so it writes the identical stamp shape inline. Already true of `delete-report`; keep it for the new writers.
 7. **Where does the publish capability come from?** A `share_roles` string array var, checked server-side on `set-report-visibility`. Modelled on an existing app's saved-exports pattern: per-user documents matched on the creator's id, plus a set everyone can read.
+
+Resolved 2026-07-30, from reading the installed block source ([Block feasibility](#block-feasibility)).
+
+8. **Can a starter fill the composer instead of sending it?** Not today, and it is the only hard blocker in the deck. The `Sender` is uncontrolled and no block method writes the input — it needs a `setInput` method on `AgentChat`.
+9. **Can the welcome show two tracks?** Not inside the block: `welcome.prompts` is flattened to one row and `AgentChat` has no areas. Render the empty state as ordinary blocks above the chat with `welcome` unset — which needs `setInput` to be worth anything, so it is the same change.
+10. **Can the rail group by recency, rename and delete?** Yes, all three, with no block change: item `group` / `timestamp` plus `groupable`, and a per-item `menu` firing `onMenuClick`. Group order follows item order, so sorting by recency is the whole implementation. Search is a `Search` block above it filtering `items`.
+11. **Can sections be dragged to reorder?** No. `ControlledList` moves items by method call; ↑ / ↓ is the shape.
+12. **Can UI state persist across reloads?** No client-storage action exists, and `SetGlobal` is session-memory. Session-scoped is the decision; a `ui_state` document is the additive fallback.
+13. **Does the reports table use AgGrid, and do the new input cells help?** Yes to the grid — it is the pattern every other module list here follows, and the built-in cells cover every column but the kebab (`tag` renders an array as multiple pills; `buttons` takes a per-row `iconField` for the ★). The `selector` / `switch` / `textInput` / `paragraphInput` cells from PR 2201 are already on `vite-hono` and in the installed build, so there is nothing to port — but they are the wrong tool for a row menu, and an inline visibility selector would make publishing a mis-click. The gap is a `menu` cell; the interim is `⋯` opening a `Modal`.
 
 ## Non-goals
 
@@ -248,7 +325,7 @@ Resolved 2026-07-29.
 - **The list endpoint carries the authorization boundary.** Scope, search, sort and paging all now happen server-side, which is correct, but it means a bug in the scope match is a confidentiality bug rather than a display bug. It needs tests per scope, including "shared" excluding deleted and "deleted" being owner-only.
 - **Two creation paths for reports** (the sheet and the agent tool) means two callers of the same validation. Contained by both going through `validateReportSpec` and one insert shape, but the tool path's missing `conversationId` is a real, permanent asymmetry.
 - **`favourite_of` on the report doc** is a shared-document write per favourite. Fine at module scale, hot at hundreds of users per report; the join-collection swap is known but unbuilt.
-- **Persisted panel/rail collapse state** is per-user UI state, which the module has no store for today. Cheapest home is the conversations store or local storage; picking wrong means either a write per toggle or state that does not follow the user across devices.
+- **The `setInput` patch is ours until it is upstreamed.** The deck's discoverability story rests on one method that does not exist in a released block, carried as a patch on `@lowdefy/blocks-antd-x`. A version bump that reworks `AgentChat`'s sender re-opens it. Contained by the patch being small and by the same package already carrying one. The `AgGridBalham` `menu` cell is the second upstream ask but not a risk: the list ships with `⋯` opening a `Modal` and swaps to the cell in one column definition.
 - **Restore-to-private will occasionally annoy** someone who deliberately deleted a published report and wanted it back exactly as it was. Accepted: the failure mode in the other direction is republishing to the whole app without anyone re-reading the numbers.
 
 ## Related
@@ -256,4 +333,5 @@ Resolved 2026-07-29.
 - [`designs/reporting/report-filters/design.md`](../report-filters/design.md) — multi-select, array-field semantics, and looked-up filter options (plates 3 and 6).
 - [`designs/reporting/open-query-engine/design.md`](../open-query-engine/design.md) — the engine, the presentation contract, and the two-layer security model this design does not touch.
 - [`wireframes.html`](wireframes.html) — the six plates, with per-plate callout notes and a closing table mapping every proposal to the files it lands in.
+- [`wireframes-blocks.html`](wireframes-blocks.html) — the same six surfaces redrawn as they land in real Lowdefy blocks, with every region labelled by the block behind it and the deviations marked where the build differs from the drawing.
 - `docs/shared/soft-delete.md` — the retirement idiom.
