@@ -1,6 +1,9 @@
 # gallery — a single form action whose `form:` references EVERY field component
-# in modules/workflows/components/fields/ (29) exactly once, with minimal valid
-# config each. This is the roster the render sweep enumerates.
+# in modules/workflows/components/fields/ (28) exactly once, with minimal valid
+# config each. This is the roster the render sweep enumerates. Two entries sit
+# outside the roster and re-use a component already in it — form.enum_backed
+# (`selector`) and form.enum_backed_checkboxes (`checkbox_selector`) — to
+# exercise the `enum` options source on both a single- and multi-select.
 #
 # Six entries double as the behavior-spec representatives (one per field family):
 #   form.text_input    (text)      — required: true, drives required-validation.
@@ -179,6 +182,17 @@ form:
         title: Closed
         color: "#52c41a"
         icon: AiOutlineCheck
+  # The multi-select side of the same var: the stored value is an array of slugs,
+  # so it exercises the read-only renderer's array path.
+  - key: form.enum_backed_checkboxes
+    component: checkbox_selector
+    title: Enum-backed checkboxes
+    direction: vertical
+    enum:
+      weekly:
+        title: Weekly review
+      monthly:
+        title: Monthly review
 
   # ── Files ─────────────────────────────────────────────────────────────────────
   - key: form.file_upload
@@ -199,7 +213,7 @@ form:
   # Including it fails the build with `Block type "PlacesAutocomplete" was used
   # but is not defined`. It is therefore excluded here — covering it would require
   # fabricating a stub plugin (fake coverage). This is a field-gallery FINDING:
-  # the module ships an unrenderable field. Roster coverage is 28/29 until the
+  # the module ships an unrenderable field. Roster coverage is 27/28 until the
   # `location` block dependency is resolved (ship the blocks via a declared
   # plugin, or remove/fix the field). The render sweep's literal key list names
   # this exclusion explicitly so the gap stays visible in review.

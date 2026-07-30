@@ -374,6 +374,7 @@ export const fieldTypeRegistry = {
     componentHints: [
       "selector",
       "radio_selector",
+      "checkbox_selector",
       "device_type_selector",
       "button_selector",
       "multiple_selector",

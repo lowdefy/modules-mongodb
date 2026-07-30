@@ -73,20 +73,20 @@ Fields with `null` or `undefined` values are skipped silently.
 
 The `component` property on a field is a hint passed to the renderer registry. Recognised values:
 
-| Hint                                                                                                                   | Field type                                     |
-| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `text_input`, `text_area`                                                                                              | `string` / `longText`                          |
-| `tiptap_input`, `html`                                                                                                 | `richText` (full-width)                        |
-| `selector`, `radio_selector`, `device_type_selector`, `button_selector`, `multiple_selector`, `tree_multiple_selector` | `selector` (renders as tags)                   |
-| `checkbox_switch`, `yes_no_selector`                                                                                   | `boolean` (renders Yes/No)                     |
-| `number`                                                                                                               | `number`                                       |
-| `date_selector`                                                                                                        | `date`                                         |
-| `date_range_selector`                                                                                                  | `dateRange`                                    |
-| `phone_number_input`                                                                                                   | `phoneNumber` (with flag and `tel:` link)      |
-| `location`                                                                                                             | `location` (with Google Maps link, full-width) |
-| `file_download`, `file_upload`                                                                                         | `file` / `fileList`                            |
-| `change_stamp`, `timestamp`                                                                                            | `changeStamp` (renders `by <user> on <date>`)  |
-| `contact_selector_number_required`                                                                                     | `contact` (renders icon + name with link)      |
+| Hint                                                                                                                                        | Field type                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `text_input`, `text_area`                                                                                                                   | `string` / `longText`                          |
+| `tiptap_input`, `html`                                                                                                                      | `richText` (full-width)                        |
+| `selector`, `radio_selector`, `checkbox_selector`, `device_type_selector`, `button_selector`, `multiple_selector`, `tree_multiple_selector` | `selector` (renders as tags)                   |
+| `checkbox_switch`, `yes_no_selector`                                                                                                        | `boolean` (renders Yes/No)                     |
+| `number`                                                                                                                                    | `number`                                       |
+| `date_selector`                                                                                                                             | `date`                                         |
+| `date_range_selector`                                                                                                                       | `dateRange`                                    |
+| `phone_number_input`                                                                                                                        | `phoneNumber` (with flag and `tel:` link)      |
+| `location`                                                                                                                                  | `location` (with Google Maps link, full-width) |
+| `file_download`, `file_upload`                                                                                                              | `file` / `fileList`                            |
+| `change_stamp`, `timestamp`                                                                                                                 | `changeStamp` (renders `by <user> on <date>`)  |
+| `contact_selector_number_required`                                                                                                          | `contact` (renders icon + name with link)      |
 
 Without a hint, the renderer is auto-detected from the value. Hints take precedence and are useful when the value alone is ambiguous (e.g. a status string that should render as a tag).
 
