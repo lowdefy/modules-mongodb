@@ -7,6 +7,41 @@ import { type } from "@lowdefy/helpers";
 import S3Download from "@lowdefy/plugin-aws/blocks/S3Download/S3Download.js";
 import { DangerousHtml } from "@lowdefy/blocks-basic/blocks";
 import formatValue from "../utils/formatValue.js";
+import resolveEnumDisplay from "../utils/resolveEnumDisplay.js";
+
+// A selector value is a stored slug. When the field config carries an `enum`
+// map, show that entry's title, colour and icon. Everything else — including
+// values from an `options` array — keeps formatting the raw value.
+function renderSelectorTag(value, { Icon, enumMap }) {
+  const match = resolveEnumDisplay(value, enumMap);
+  if (match) {
+    const style = match.color
+      ? {
+          color: match.color,
+          border: `1px solid ${match.color}`,
+          backgroundColor: `color-mix(in srgb, ${match.color} 12%, transparent)`,
+        }
+      : undefined;
+    return (
+      <span className="dataview-tag" style={style}>
+        {match.icon && Icon ? (
+          <>
+            <Icon
+              blockId={`selector-icon-${match.icon}`}
+              properties={match.icon}
+            />{" "}
+          </>
+        ) : null}
+        {match.label}
+      </span>
+    );
+  }
+  // Handle objects (extract displayable value)
+  const displayValue = type.isObject(value)
+    ? value.name || value.label || value.id || value._id || String(value)
+    : String(value);
+  return <span className="dataview-tag">{formatValue(displayValue)}</span>;
+}
 
 export const fieldTypeRegistry = {
   // null/undefined (highest priority)
@@ -324,33 +359,22 @@ export const fieldTypeRegistry = {
   selector: {
     priority: 98,
     detect: () => false, // Only detected via componentHints
-    render: ({ value }) => {
-      // Handle objects (extract displayable value)
-      const displayValue = type.isObject(value)
-        ? value.name || value.label || value.id || value._id || String(value)
-        : String(value);
-      return <span className="dataview-tag">{formatValue(displayValue)}</span>;
-    },
-    renderArray: ({ value }) => (
+    render: ({ value, Icon, enumMap }) =>
+      renderSelectorTag(value, { Icon, enumMap }),
+    renderArray: ({ value, Icon, enumMap }) => (
       <div className="dataview-tags">
-        {value.map((item, index) => {
-          // Handle objects (extract displayable value)
-          const displayValue = type.isObject(item)
-            ? item.name || item.label || item.id || item._id || String(item)
-            : String(item);
-          return (
-            <span className="dataview-tag" key={index}>
-              {formatValue(displayValue)}
-            </span>
-          );
-        })}
+        {value.map((item, index) => (
+          <React.Fragment key={index}>
+            {renderSelectorTag(item, { Icon, enumMap })}
+          </React.Fragment>
+        ))}
       </div>
     ),
     fullWidth: false,
     componentHints: [
       "selector",
       "radio_selector",
-      "enum_selector",
+      "checkbox_selector",
       "device_type_selector",
       "button_selector",
       "multiple_selector",

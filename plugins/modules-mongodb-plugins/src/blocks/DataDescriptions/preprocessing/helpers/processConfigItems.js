@@ -95,6 +95,10 @@ function processConfigItems(data, formItems, level) {
         fieldType: typeInfo.type,
         isArray: typeInfo.isArray,
         fullWidth: typeInfo.config?.fullWidth ?? false,
+        // Carried so renderers can show an enum entry's title for a stored slug
+        // instead of formatting the raw value. Renamed to keep the reserved word
+        // out of the render-arg destructuring.
+        enumMap: item.enum ?? null,
       });
     }
   });
