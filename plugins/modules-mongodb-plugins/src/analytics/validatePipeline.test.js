@@ -274,6 +274,15 @@ test("$in over the array cap is rejected", () => {
   );
 });
 
+test("a full-cap $in of realistic id strings clears the byte and node budgets too", () => {
+  const ids = Array.from({ length: MAX_ARRAY_LITERAL_LENGTH }, (_, i) =>
+    i.toString(16).padStart(24, "0"),
+  );
+  expect(() =>
+    validate([{ $match: { company_id: { $in: ids } } }]),
+  ).not.toThrow();
+});
+
 test("pathological nesting fails with a validation error, not a stack overflow", () => {
   let query = { total: 1 };
   for (let i = 0; i < 100000; i += 1) query = { $and: [query] };
@@ -517,9 +526,14 @@ describe("non-plain objects", () => {
 
   test("an allowlisted BSON leaf passes, but not one carrying operator keys", () => {
     const oid = new LookAlike({ _bsontype: "ObjectId" });
-    expect(validate([{ $match: { _id: oid } }]).pipeline[0].$match._id).toBe(oid);
+    expect(validate([{ $match: { _id: oid } }]).pipeline[0].$match._id).toBe(
+      oid,
+    );
 
-    const forged = new LookAlike({ _bsontype: "ObjectId", $where: "sleep(1000)" });
+    const forged = new LookAlike({
+      _bsontype: "ObjectId",
+      $where: "sleep(1000)",
+    });
     expect(() => validate([{ $match: { _id: forged } }])).toThrow(
       /unexpected key "\$where"/,
     );
@@ -559,7 +573,14 @@ describe("non-plain objects", () => {
 test("no $-key outside the allowlists survives into the output", () => {
   const { pipeline } = validate([
     { $match: { region: "EU", $and: [{ total: { $gte: 5 } }] } },
-    { $lookup: { from: "demo_companies", localField: "c", foreignField: "_id", as: "co" } },
+    {
+      $lookup: {
+        from: "demo_companies",
+        localField: "c",
+        foreignField: "_id",
+        as: "co",
+      },
+    },
     { $unwind: "$co" },
     {
       $group: {
@@ -568,7 +589,14 @@ test("no $-key outside the allowlists survives into the output", () => {
         first: { $first: { $cond: [{ $gt: ["$total", 0] }, "$total", 0] } },
       },
     },
-    { $project: { _id: 0, region: "$_id", total: 1, tag: { $literal: { $where: "data" } } } },
+    {
+      $project: {
+        _id: 0,
+        region: "$_id",
+        total: 1,
+        tag: { $literal: { $where: "data" } },
+      },
+    },
     { $sort: { total: -1 } },
   ]);
 
@@ -599,22 +627,33 @@ test("no $-key outside the allowlists survives into the output", () => {
 // validator's own recursion as much as the database.
 describe("resource caps", () => {
   const lookup = (as) => ({
-    $lookup: { from: "demo_companies", localField: "company_id", foreignField: "_id", as },
+    $lookup: {
+      from: "demo_companies",
+      localField: "company_id",
+      foreignField: "_id",
+      as,
+    },
   });
 
   test("$lookup count", () => {
-    const ok = Array.from({ length: MAX_LOOKUP_COUNT }, (_, i) => lookup(`c${i}`));
+    const ok = Array.from({ length: MAX_LOOKUP_COUNT }, (_, i) =>
+      lookup(`c${i}`),
+    );
     expect(() => validate(ok)).not.toThrow();
     expect(() => validate([...ok, lookup("over")])).toThrow(/\$lookup/);
   });
 
   test("$facet branches", () => {
     const branches = (n) =>
-      Object.fromEntries(Array.from({ length: n }, (_, i) => [`b${i}`, [{ $count: "n" }]]));
-    expect(() => validate([{ $facet: branches(MAX_FACET_BRANCHES) }])).not.toThrow();
-    expect(() => validate([{ $facet: branches(MAX_FACET_BRANCHES + 1) }])).toThrow(
-      /branches/,
-    );
+      Object.fromEntries(
+        Array.from({ length: n }, (_, i) => [`b${i}`, [{ $count: "n" }]]),
+      );
+    expect(() =>
+      validate([{ $facet: branches(MAX_FACET_BRANCHES) }]),
+    ).not.toThrow();
+    expect(() =>
+      validate([{ $facet: branches(MAX_FACET_BRANCHES + 1) }]),
+    ).toThrow(/branches/);
   });
 
   test("sub-pipeline nesting depth", () => {
@@ -622,12 +661,16 @@ describe("resource caps", () => {
     const nest = (depth) => {
       let pipeline = [{ $count: "n" }];
       for (let i = 0; i < depth; i += 1) {
-        pipeline = [{ $lookup: { from: "demo_companies", pipeline, as: `l${i}` } }];
+        pipeline = [
+          { $lookup: { from: "demo_companies", pipeline, as: `l${i}` } },
+        ];
       }
       return pipeline;
     };
     expect(() => validate(nest(MAX_SUBPIPELINE_DEPTH))).not.toThrow();
-    expect(() => validate(nest(MAX_SUBPIPELINE_DEPTH + 1))).toThrow(/nest at most/);
+    expect(() => validate(nest(MAX_SUBPIPELINE_DEPTH + 1))).toThrow(
+      /nest at most/,
+    );
   });
 
   test("expression depth fails as a validation error, never a stack overflow", () => {
@@ -639,7 +682,9 @@ describe("resource caps", () => {
     // Each nesting level costs two depth units (the operator object, then its
     // argument array), plus a few for the stage wrapper — so this just needs to
     // sit comfortably under the cap, not exactly at it.
-    expect(() => validate([{ $project: { x: deep(MAX_EXPRESSION_DEPTH / 4) } }])).not.toThrow();
+    expect(() =>
+      validate([{ $project: { x: deep(MAX_EXPRESSION_DEPTH / 4) } }]),
+    ).not.toThrow();
     let error;
     try {
       validate([{ $project: { x: deep(MAX_EXPRESSION_DEPTH + 50) } }]);
@@ -655,7 +700,9 @@ describe("resource caps", () => {
     // One big $literal blob: the walker does not recurse into it, so only the
     // byte cap bounds it.
     const blob = "x".repeat(MAX_PIPELINE_BYTES + 1);
-    expect(() => validate([{ $project: { x: { $literal: blob } } }])).toThrow(/bytes/);
+    expect(() => validate([{ $project: { x: { $literal: blob } } }])).toThrow(
+      /bytes/,
+    );
   });
 
   test("total classified nodes", () => {
@@ -664,7 +711,9 @@ describe("resource caps", () => {
     // Nested short arrays keep the serialized size far under
     // MAX_PIPELINE_BYTES, so the node counter is provably what stops this
     // rather than the byte cap.
-    const wide = Array.from({ length: 100 }, () => Array.from({ length: 100 }, () => 1));
+    const wide = Array.from({ length: 100 }, () =>
+      Array.from({ length: 100 }, () => 1),
+    );
     const pipeline = [{ $project: { x: { $literal: wide } } }];
     expect(JSON.stringify(pipeline).length).toBeLessThan(MAX_PIPELINE_BYTES);
     expect(() => validate(pipeline)).toThrow(/nodes/);

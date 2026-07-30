@@ -48,8 +48,18 @@ import { MAX_RESULT_BYTES } from "../../../analytics/constants.js";
 
 // Fixed, default-deny map from the filter-triple op vocabulary to Mongo query
 // operators. An op outside this map throws (never silently skips) — the report
-// filter UI emits only these ops, so anything else is a probe.
-const FILTER_OPS = { eq: "$eq", gte: "$gte", lte: "$lte" };
+// filter UI emits only these ops, so anything else is a probe. Each op is
+// named after the Mongo operator it maps to, not the author's intent —
+// that's why the spec's `match: any` compiles to `op: in` here: `match` is
+// the spec author's intent, `op` is the query it becomes. Triples are
+// server-built and never appear in a persisted spec.
+const FILTER_OPS = {
+  eq: "$eq",
+  gte: "$gte",
+  lte: "$lte",
+  in: "$in",
+  all: "$all",
+};
 
 function buildFilterMatch(filters) {
   const clauses = [];
@@ -57,6 +67,15 @@ function buildFilterMatch(filters) {
     // A null/undefined value means "no constraint" (an unset filter control) —
     // drop the triple rather than matching on null.
     if (value === null || value === undefined) continue;
+    // An empty array means the same thing for a multiselect: MultipleSelector's
+    // onChange always calls setValue with an array, so clearing the last tag
+    // sets [], never null — the null branch above never sees it. `$in: []`
+    // matches nothing, so without this drop clearing a multiselect would blank
+    // the section instead of widening back to everything. Applied to every op,
+    // not just in/all: no control can produce an empty array for eq or a range
+    // bound, so the uniform rule loses no expressible query and is one line
+    // instead of a per-op branch.
+    if (Array.isArray(value) && value.length === 0) continue;
     const mongoOp = FILTER_OPS[op];
     if (!mongoOp) {
       throw new Error(`Unsupported filter operator "${op}".`);

@@ -124,6 +124,77 @@ test("filters: all-null triples produce no $match", async () => {
   expect(executed[0]).toEqual({ $sort: { total: -1 } });
 });
 
+test("filter triples: in/all ops build $in/$all clauses", async () => {
+  await AnalyticsPipeline({
+    request: {
+      query: {
+        collection: "demo_orders",
+        pipeline: [{ $sort: { total: -1 } }],
+      },
+      roles: ["analyst"],
+      filters: [
+        { field: "region", op: "in", value: ["EU", "US"] },
+        { field: "status", op: "all", value: ["open", "flagged"] },
+      ],
+    },
+    connection: connectionWith(),
+  });
+
+  const [executed] = aggregate.mock.calls[0];
+  expect(executed[0]).toEqual({
+    $match: {
+      $and: [
+        { region: { $in: ["EU", "US"] } },
+        { status: { $all: ["open", "flagged"] } },
+      ],
+    },
+  });
+  expect(executed[1]).toEqual({ $sort: { total: -1 } });
+});
+
+test("filter triples: an empty-array value is dropped like null, for any op", async () => {
+  await AnalyticsPipeline({
+    request: {
+      query: {
+        collection: "demo_orders",
+        pipeline: [{ $sort: { total: -1 } }],
+      },
+      roles: ["analyst"],
+      filters: [
+        { field: "region", op: "in", value: [] }, // cleared multiselect → dropped
+        { field: "status", op: "eq", value: "open" },
+      ],
+    },
+    connection: connectionWith(),
+  });
+
+  const [executed] = aggregate.mock.calls[0];
+  expect(executed[0]).toEqual({
+    $match: { $and: [{ status: { $eq: "open" } }] },
+  });
+});
+
+test("filters: an all-empty-array/null filters array yields no $match", async () => {
+  await AnalyticsPipeline({
+    request: {
+      query: {
+        collection: "demo_orders",
+        pipeline: [{ $sort: { total: -1 } }],
+      },
+      roles: ["analyst"],
+      filters: [
+        { field: "region", op: "in", value: [] },
+        { field: "status", op: "eq", value: null },
+      ],
+    },
+    connection: connectionWith(),
+  });
+
+  const [executed] = aggregate.mock.calls[0];
+  // No $match was prepended — the section's own pipeline runs unchanged.
+  expect(executed[0]).toEqual({ $sort: { total: -1 } });
+});
+
 test("unknown filter op throws (default-deny) before any DB call", async () => {
   await expect(
     AnalyticsPipeline({
@@ -199,7 +270,9 @@ describe("result byte budget", () => {
   const fatDoc = { blob: "x".repeat(1000) };
 
   test("aborts mid-drain once the budget is exceeded, and closes the cursor", async () => {
-    aggregate = jest.fn(() => mockCursor(Array.from({ length: 100 }, () => fatDoc)));
+    aggregate = jest.fn(() =>
+      mockCursor(Array.from({ length: 100 }, () => fatDoc)),
+    );
     collection = jest.fn(() => ({ aggregate }));
     getMongoDb.mockResolvedValue({ mongoDb: { collection } });
 
@@ -218,7 +291,9 @@ describe("result byte budget", () => {
   });
 
   test("a result inside the budget is returned in full", async () => {
-    aggregate = jest.fn(() => mockCursor(Array.from({ length: 3 }, () => fatDoc)));
+    aggregate = jest.fn(() =>
+      mockCursor(Array.from({ length: 3 }, () => fatDoc)),
+    );
     collection = jest.fn(() => ({ aggregate }));
     getMongoDb.mockResolvedValue({ mongoDb: { collection } });
 
@@ -234,7 +309,10 @@ describe("result byte budget", () => {
 });
 
 test("a non-array pipeline fails with the validator's message, filters or not", async () => {
-  for (const filters of [undefined, [{ field: "region", op: "eq", value: "EU" }]]) {
+  for (const filters of [
+    undefined,
+    [{ field: "region", op: "eq", value: "EU" }],
+  ]) {
     await expect(
       AnalyticsPipeline({
         request: {

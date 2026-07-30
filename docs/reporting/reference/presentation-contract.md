@@ -45,10 +45,10 @@ The agent copies these from the catalog's per-field [display hints](catalog.md#d
 
 Because the contract can't be checked statically, it is verified once rows are in hand — at turn end for chat charts, and at report-view time for KPI/chart/table sections:
 
-- **Declared columns must exist** in the result (checked against the first row — a pipeline emits a stable row shape).
+- **Declared columns must exist in at least one row** — not necessarily the first. A pipeline doesn't guarantee a stable row shape: a conditional `$project`, a `$unionWith` over differing shapes, or a `$group` whose first bucket lacks an optional field can all make row 0 an unreliable sample. A key present in some rows but absent from others is legitimate sparse output (it renders as blank cells); a key absent from every row is the mismatch that fails.
 - **Value columns must be numeric** where present (`y` on a chart, `valueKey` on a KPI). `null` cells are tolerated — a null group key is normal pipeline output.
 
-**Verification applies to non-empty results only.** Zero rows is a legitimate outcome (a filter narrowing to nothing): a chart renders empty, a KPI renders zero, a table renders empty. It is never treated as an error.
+**Verification of a section's result rows applies to non-empty results only.** Zero rows is a legitimate outcome (a filter narrowing to nothing): a chart renders empty, a KPI renders zero, a table renders empty. It is never treated as an error — with one exception: a [filter's options list](#filter-binding) is not a result, and an empty one is a failure, because it's the control the user operates, not an answer to a question.
 
 When a contract _does_ mismatch the rows (a wrong `x`/`y`/`valueKey`/column key), it is a **rendering** failure, never a safety one:
 
@@ -57,6 +57,50 @@ When a contract _does_ mismatch the rows (a wrong `x`/`y`/`valueKey`/column key)
 
 ## Filter binding
 
-A saved report can carry `filter` sections (`control: select | daterange`) that other sections subscribe to via `filterBy: [field, …]`. At re-query time the server builds a `{ field, op, value }` `$match` and **prepends** it to the section's pipeline, before any other stage.
+A saved report can carry `filter` sections that other sections subscribe to via `filterBy: [field, …]`. At re-query time the server builds one or more `{ field, op, value }` triples from the filter's live value, combines them into a `$match`, and **prepends** it to the section's pipeline, before any other stage.
 
-**Documented limitation: a bound filter field must exist on the base-collection documents — not a post-`$group` or post-`$lookup` alias.** Because the filter `$match` runs first, pre-aggregation, it can only see raw source fields (and this lets it use indexes). Keep filterable fields at the source grain; the agent is prompted to do so. A `select` filter needs an options source — either explicit `options` on the filter section, or enum `values` declared for the field in the catalog.
+| Control       | Value shape             | Semantics                                                                                                                |
+| ------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `select`      | a single value          | equals                                                                                                                   |
+| `multiselect` | an array of values      | `match: any` (default) — the field equals any selected value; `match: all` — the field must satisfy every selected value |
+| `daterange`   | two bounds (start, end) | the field is between them, inclusive                                                                                     |
+
+`match` only makes sense on `multiselect`; `all` is meant for a field that holds an **array** (every selected value must appear in it). The engine doesn't check the catalog's declared field `type` before choosing the op — catalog types are prompt material for the agent, never enforcement — so `all` on a scalar field is not rejected; it just behaves like "the field equals one of the values, and you happened to pick one," since a scalar can't contain more than one of them at once.
+
+**An empty multi-select means no constraint**, not "match nothing": clearing the control widens the bound sections back to their unfiltered rows, the same as never touching the control at all.
+
+### Options: three sources, in precedence order
+
+A `select` or `multiselect` filter needs a list of options to show. In order:
+
+1. **Declared `options`** — an explicit list the agent types straight into the spec, capped at 50 values.
+2. **`optionsQuery`** — the filter section's own query, resolved server-side; its rows become the options, capped at 500.
+3. **The field's catalog enum `values`** — the fallback when neither of the above is declared, capped at 50 values.
+
+Only `select` and `multiselect` accept an options source. Either key on a `daterange` is a validation error rather than a silently ignored one: the control shows no list, and an `optionsQuery` there would still cost a query on every report open for rows nothing reads.
+
+`options` and `optionsQuery` are mutually exclusive on one filter section — declaring both is a validation error at save time.
+
+The catalog enum fallback is **role-gated**: a collection the viewer may not query contributes no values. A field's enum `values` are contents of the collection that declares them, so serving them to a viewer refused that collection would route around the gate the pipeline itself passes through.
+
+`optionsQuery: { collection, pipeline, valueKey, labelKey }` is for a filter whose options aren't a short fixed list: a foreign-key filter that should show names rather than ids, a pre-filtered list (only active records), or the distinct values of an array field. It is a query section like any other — it resolves **on every report open**, through the same pipeline validation and per-viewer role gate as any section's `query`. `valueKey` and `labelKey` name the columns the resolved rows are read from ({ label, value } pairs) and are themselves a presentation contract: they're verified against the returned rows the same way a table's `columns` are verified against its result.
+
+**`valueKey` must project a string or a number.** The value round-trips through browser state — it goes out with the compiled options and comes back in the re-query payload — and only scalars survive that trip intact. A `Date` does; an **ObjectId does not**: it arrives at the browser as a bare hex string and, coming back, no longer equals the ObjectId stored in the field. Left unchecked that is the worst kind of failure — a filter listing exactly the right names that matches nothing and reports no error — so a non-scalar `valueKey` is a contract mismatch (below). Project it with `$toString`, and only where the filtered field stores strings too; if the field itself holds ObjectIds, it cannot be filtered this way at all.
+
+### When an options list can't be produced
+
+If `optionsQuery` fails or comes back unusable, the filter's catalog enum `values` are tried as a fallback before giving up — a stale-but-operable control beats an error. Only when that fallback is also unavailable does the control degrade to an **Alert card** in the filter row, naming which of three outcomes occurred:
+
+- **Failed or denied** — the options query couldn't be run (it failed pipeline validation, or the viewer's roles don't allow one of its collections). The report doesn't have the underlying error text to show, so the Alert says the options failed to load rather than guessing at a reason.
+- **Contract mismatch** — the query ran, but `valueKey` or `labelKey` isn't a column the rows actually have, or `valueKey` holds something other than a string or number.
+- **No rows** — the query ran and matched nothing. An empty options list is a failure here (see [Verification against actual rows](#verification-against-actual-rows)), unlike an empty section result.
+
+The sections that filter is bound to are unaffected: they keep rendering their resolve-time rows and simply never re-query, since the control that would trigger a re-query isn't there.
+
+**Truncation is stated, not silent — whichever source supplied the list.** An options list over its source's cap is sliced, and the control's title gains a suffix naming the cap that cut it: `{label} — first 500` for a query-sourced list, `{label} — first 50` for a declared or cataloged one. A missing option then reads as "the list was cut" rather than "that value doesn't exist."
+
+### Limitations
+
+**A bound filter field must exist on the base-collection documents — not a post-`$group` or post-`$lookup` alias.** Because the filter `$match` runs first, pre-aggregation, it can only see raw source fields (and this lets it use indexes). Keep filterable fields at the source grain; the agent is prompted to do so.
+
+**A bound filter matches documents, not array elements.** The `$match` it prepends selects whole documents whose field satisfies the filter — it does not reach inside an array to drop the elements that don't. A section that `$unwind`s a filtered array field will still include every element of a matching document, selected ones and unselected ones alike. Bind array-field filters on sections that count or aggregate at the **document** grain; when a section must group by the array element itself, prefer a catalogued view at the unwound grain (see [Reporting over complex data](../how-to/complex-data.md)) so the filter's document-level match lines up with the section's per-element rows.

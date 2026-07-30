@@ -128,9 +128,27 @@ properties:
           - kpi:      { type, label, query, valueKey, format? }
           - chart:    { type, label, chart, query, x, y }  chart is bar|line|pie
           - table:    { type, label, query, columns }
-          - filter:   { type, label, control, field, options? }
-                      control is select or daterange; a select needs options
-                      (or the field must declare enum values in the catalog)
+          - filter:   { type, label, control, field, options?, match?,
+                        optionsQuery? }              no other keys allowed
+                      control is select | multiselect | daterange. A select or
+                      multiselect needs an options source: declared options,
+                      then optionsQuery rows, then the field's catalog enum
+                      values — first one present wins.
+                      match: any | all, multiselect only, default any — any
+                      matches documents carrying any selected value, all
+                      matches those carrying all of them; use all only on a
+                      field the catalog declares type: array.
+                      optionsQuery: { collection, pipeline, valueKey, labelKey }
+                      — rows become options; valueKey is the compared id,
+                      labelKey what the user reads. Mutually exclusive with
+                      options, and only valid on select/multiselect. Use it for
+                      a foreign-key filter (project id and name from the target
+                      collection, sorted by name), a pre-filtered list, or an
+                      array field's distinct values ($unwind + $group).
+                      valueKey must project a string or a number: the value
+                      travels to the browser and back, and an ObjectId does not
+                      survive that trip — wrap it in $toString, and only where
+                      the filtered field stores strings too.
           - markdown: { type, content }              no label; content only
                       (required, max 5000 chars)
           - download: { type, label, query }         no presentation contract
@@ -140,7 +158,14 @@ properties:
         filter must be bound by at least one section. A filter prepends its
         $match to the section's pipeline BEFORE it runs, so every filterable
         field must exist on the base collection's own documents — never a name
-        introduced later by $group or $lookup.
+        introduced later by $group or $lookup. That $match also constrains
+        documents, not array elements: filtering an array field to a subset of
+        values keeps every document carrying any (or all) of them, but a
+        section that then $unwinds that same array emits ALL of its elements,
+        not just the selected ones. Bind an array-field filter only on
+        sections that count or aggregate documents; when a section must group
+        by the array element itself, prefer a catalogued view at the unwound
+        grain instead, if the catalog has one.
 
         ## The collections catalog
 

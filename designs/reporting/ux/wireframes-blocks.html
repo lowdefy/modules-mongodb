@@ -1,0 +1,2881 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!--
+  The reporting UX deck redrawn as it lands in real Lowdefy blocks: same six
+  surfaces as wireframes.html, every region labelled with the block behind it,
+  and each deviation from the drawing marked where it happens. Checked against
+  the installed source of @lowdefy/blocks-antd, -basic, -antd-x, -echarts and
+  -aggrid, not the docs. Shares wireframes.html's stylesheet verbatim so the
+  two decks read as one system; the block-map additions are in a second style
+  block below. Self-contained — open it from disk. Light/dark follows the OS.
+-->
+<style>
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+<title>Reporting UX, built from blocks — block feasibility map</title>
+
+<style>
+  /* ── Tokens ─────────────────────────────────────────────────────────── */
+  :root {
+    --ground: #eef1ef;
+    --surface: #fcfcfb;
+    --surface-2: #f4f7f5;
+    --surface-3: #eaefec;
+    --ink: #151c1a;
+    --ink-2: #3d4a46;
+    --muted: #6b7873;
+    --rule: #d3dad6;
+    --rule-2: #e4e9e6;
+    --accent: #0b7a5c;
+    --accent-ink: #085f48;
+    --accent-soft: #e2efea;
+    --new: #b0722a;
+    --new-soft: #f6ecdd;
+    --warn: #a3591c;
+    --warn-soft: #f8eede;
+    --s1: #0b7a5c;
+    --s2: #8c5bb0;
+    --s3: #b0722a;
+    --grid: rgba(11, 122, 92, 0.09);
+    --shadow: 0 14px 30px -24px rgba(10, 30, 24, 0.55);
+    --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, ui-sans-serif, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #101413;
+      --surface: #191f1d;
+      --surface-2: #202725;
+      --surface-3: #262e2b;
+      --ink: #e7ece9;
+      --ink-2: #bcc7c2;
+      --muted: #8b9994;
+      --rule: #2d3532;
+      --rule-2: #232a28;
+      --accent: #22a57f;
+      --accent-ink: #56c4a2;
+      --accent-soft: #123028;
+      --new: #bc8a34;
+      --new-soft: #2c2315;
+      --warn: #d09a4a;
+      --warn-soft: #2c2315;
+      --s1: #22a57f;
+      --s2: #a374cc;
+      --s3: #bc8a34;
+      --grid: rgba(34, 165, 127, 0.13);
+      --shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.9);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101413;
+    --surface: #191f1d;
+    --surface-2: #202725;
+    --surface-3: #262e2b;
+    --ink: #e7ece9;
+    --ink-2: #bcc7c2;
+    --muted: #8b9994;
+    --rule: #2d3532;
+    --rule-2: #232a28;
+    --accent: #22a57f;
+    --accent-ink: #56c4a2;
+    --accent-soft: #123028;
+    --new: #bc8a34;
+    --new-soft: #2c2315;
+    --warn: #d09a4a;
+    --warn-soft: #2c2315;
+    --s1: #22a57f;
+    --s2: #a374cc;
+    --s3: #bc8a34;
+    --grid: rgba(34, 165, 127, 0.13);
+    --shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.9);
+  }
+
+  :root[data-theme="light"] {
+    --ground: #eef1ef;
+    --surface: #fcfcfb;
+    --surface-2: #f4f7f5;
+    --surface-3: #eaefec;
+    --ink: #151c1a;
+    --ink-2: #3d4a46;
+    --muted: #6b7873;
+    --rule: #d3dad6;
+    --rule-2: #e4e9e6;
+    --accent: #0b7a5c;
+    --accent-ink: #085f48;
+    --accent-soft: #e2efea;
+    --new: #b0722a;
+    --new-soft: #f6ecdd;
+    --warn: #a3591c;
+    --warn-soft: #f8eede;
+    --s1: #0b7a5c;
+    --s2: #8c5bb0;
+    --s3: #b0722a;
+    --grid: rgba(11, 122, 92, 0.09);
+    --shadow: 0 14px 30px -24px rgba(10, 30, 24, 0.55);
+  }
+
+  /* ── Page shell ─────────────────────────────────────────────────────── */
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .deck-head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 20px;
+    padding: 11px 28px;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .deck-head b {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .deck-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 14px;
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .deck-nav a {
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+  }
+  .deck-nav a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  /* ── Opening ────────────────────────────────────────────────────────── */
+  .open {
+    display: grid;
+    gap: 22px;
+    padding: 60px 0 30px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+  .open h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(30px, 4.6vw, 47px);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0;
+    max-width: 22ch;
+  }
+  .lede {
+    max-width: 64ch;
+    font-size: 17px;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .lede em {
+    font-style: normal;
+    color: var(--ink);
+    box-shadow: inset 0 -0.45em 0 var(--accent-soft);
+  }
+
+  .jobs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px;
+    margin-top: 6px;
+  }
+  .job {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 16px 18px;
+    display: grid;
+    gap: 6px;
+    align-content: start;
+  }
+  .job h3 {
+    font-family: var(--display);
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .job p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .job .said {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    border-top: 1px dashed var(--rule);
+    padding-top: 8px;
+    margin-top: 2px;
+  }
+
+  .flowline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .flowline span.step {
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    padding: 4px 11px;
+  }
+  .flowline span.arrow {
+    color: var(--accent);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    align-items: center;
+  }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid var(--rule);
+    background: var(--surface-2);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .tag.is-new {
+    border-color: color-mix(in srgb, var(--new) 45%, transparent);
+    background: var(--new-soft);
+    color: var(--new);
+  }
+  .tag.is-now {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+
+  /* ── Plates ─────────────────────────────────────────────────────────── */
+  .plate {
+    padding: 54px 0 10px;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    gap: 20px;
+  }
+  .plate:last-of-type {
+    border-bottom: none;
+  }
+  .plate-head {
+    display: grid;
+    gap: 7px;
+  }
+  .plate-head .kicker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .plate-head .kicker b {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .plate-head h2 {
+    font-family: var(--display);
+    font-size: clamp(23px, 2.9vw, 30px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .plate-head p {
+    margin: 0;
+    max-width: 68ch;
+    color: var(--ink-2);
+  }
+
+  .scrollx {
+    overflow-x: auto;
+    border-radius: 7px;
+  }
+  .frame {
+    min-width: 940px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .frame.narrow {
+    min-width: 720px;
+  }
+  .frame-chrome {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--surface-3);
+    border-bottom: 1px solid var(--rule);
+  }
+  .frame-chrome .dots {
+    display: flex;
+    gap: 5px;
+  }
+  .frame-chrome .dots i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--rule);
+    display: block;
+  }
+  .frame-chrome .url {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 2px 9px;
+  }
+
+  /* callout chips, keyed to the notes list under each plate */
+  .c {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1;
+    vertical-align: 2px;
+    margin: 0 0 0 5px;
+  }
+  .c.n {
+    background: var(--new);
+  }
+
+  .notes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+    gap: 12px 26px;
+  }
+  .notes li {
+    display: grid;
+    grid-template-columns: 15px 1fr;
+    gap: 10px;
+    align-items: start;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  .notes li > .c {
+    margin: 3px 0 0;
+  }
+  .notes b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .notes code,
+  .impl code,
+  .plate-head code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    padding: 0.5px 4px;
+  }
+
+  /* ── Mock app primitives ────────────────────────────────────────────── */
+  .m-app {
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .m-top {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 0 16px;
+    height: 46px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+  }
+  .m-brand {
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  .m-tabs {
+    display: flex;
+    gap: 18px;
+    font-size: 12.5px;
+    color: var(--muted);
+    align-items: center;
+  }
+  .m-tabs .on {
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: inset 0 -2px 0 var(--accent);
+    padding-bottom: 12px;
+    margin-bottom: -12px;
+  }
+  .m-avatar {
+    margin-left: auto;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-size: 11px;
+    font-weight: 650;
+    display: grid;
+    place-items: center;
+  }
+
+  .m-chat {
+    display: grid;
+    grid-template-columns: 232px minmax(320px, 1fr) 348px;
+    min-height: 560px;
+  }
+  .m-chat > * {
+    min-width: 0;
+  }
+  .m-rail {
+    border-right: 1px solid var(--rule);
+    background: var(--surface-2);
+    padding: 14px 12px;
+    display: grid;
+    gap: 12px;
+    align-content: start;
+  }
+  .m-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 4px;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 12.5px;
+    font-weight: 550;
+    white-space: nowrap;
+  }
+  .m-btn.pri {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .m-btn.ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+  }
+  .m-btn.sm {
+    height: 25px;
+    padding: 0 9px;
+    font-size: 11.5px;
+  }
+  .m-btn.block {
+    width: 100%;
+  }
+  .m-field {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 28px;
+    padding: 0 9px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .m-label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+  }
+  .m-conv {
+    display: grid;
+    gap: 2px;
+  }
+  .m-conv-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 9px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+    color: var(--ink-2);
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+  .m-conv-item .txt {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-conv-item .when {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .m-conv-item.on {
+    background: var(--surface);
+    border-left-color: var(--accent);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: 0 1px 0 var(--rule-2);
+  }
+  .m-conv-item.hov {
+    background: var(--surface);
+  }
+  .m-rail-foot {
+    margin-top: 4px;
+    padding-top: 11px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .m-count {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    background: var(--surface-3);
+    border-radius: 100px;
+    padding: 1px 7px;
+    color: var(--muted);
+  }
+
+  /* transcript */
+  .m-thread {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    background: var(--surface);
+    min-height: 0;
+  }
+  .m-scroll {
+    padding: 22px 26px 8px;
+    display: grid;
+    gap: 16px;
+    align-content: start;
+  }
+  .m-turn {
+    display: grid;
+    gap: 8px;
+    max-width: 62ch;
+  }
+  .m-turn.user {
+    justify-items: end;
+    margin-left: auto;
+  }
+  .m-bubble {
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    border-radius: 12px 12px 3px 12px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .m-role {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .m-say {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+  .m-say strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .m-trace {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 100px;
+    padding: 3px 10px;
+    width: fit-content;
+  }
+  .m-trace .cv {
+    color: var(--accent);
+  }
+  .m-trace.open {
+    border-radius: 5px;
+    display: grid;
+    gap: 6px;
+    padding: 7px 10px;
+    width: 100%;
+  }
+  .m-trace pre {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  /* an inline mermaid sketch — deliberately plainer than a panel chart:
+     mermaid brings its own theme, square marks, no hover layer */
+  .m-mermaid {
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 8px 10px 4px;
+    display: grid;
+    gap: 4px;
+    position: relative;
+  }
+  .mm-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+  }
+  .mm-title {
+    fill: var(--ink-2);
+    font-family: var(--display);
+    font-size: 10px;
+  }
+  .mm-ax {
+    stroke: var(--muted);
+    stroke-width: 1;
+    opacity: 0.5;
+  }
+  .mm-lab {
+    fill: var(--muted);
+    font-family: var(--sans);
+    font-size: 8px;
+  }
+  .fmm {
+    fill: var(--s2);
+    opacity: 0.62;
+  }
+
+  .m-typing {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--accent);
+  }
+  .m-typing i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: block;
+    opacity: 0.45;
+  }
+  .m-typing i:nth-child(2) {
+    opacity: 0.75;
+  }
+  .m-typing i:nth-child(3) {
+    opacity: 1;
+  }
+
+  .m-composer {
+    border-top: 1px solid var(--rule);
+    padding: 12px 26px 16px;
+    display: grid;
+    gap: 9px;
+    background: var(--surface);
+  }
+  .m-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .m-chip {
+    font-size: 11.5px;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    padding: 3px 10px;
+    white-space: nowrap;
+  }
+  .m-chip.lead {
+    border-style: dashed;
+    color: var(--muted);
+    background: transparent;
+  }
+  .m-input {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 9px 11px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 10px;
+    min-height: 54px;
+    box-shadow: 0 1px 0 var(--rule-2);
+  }
+  .m-input .ph {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .m-hint {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* results panel */
+  .m-panel {
+    border-left: 1px solid var(--rule);
+    background: var(--surface-2);
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    min-height: 0;
+  }
+  .m-panel-head {
+    padding: 12px 14px 10px;
+    display: grid;
+    gap: 9px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .m-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .m-panel-title h4 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .m-panel-title .m-btn {
+    margin-left: auto;
+  }
+  .m-seg {
+    display: inline-flex;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--surface);
+    width: fit-content;
+    font-size: 11.5px;
+  }
+  .m-seg span {
+    padding: 3px 10px;
+    color: var(--muted);
+    border-right: 1px solid var(--rule);
+  }
+  .m-seg span:last-child {
+    border-right: none;
+  }
+  .m-seg span.on {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .m-cards {
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+  .m-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 10px 11px;
+    display: grid;
+    gap: 8px;
+  }
+  .m-card.sel {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .m-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .m-check {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+  }
+  .m-check.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-size: 9px;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+  }
+  .m-card-head .t {
+    font-size: 12.5px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-kind {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+  .m-acts {
+    display: flex;
+    gap: 3px;
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .m-acts i {
+    width: 21px;
+    height: 21px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    border: 1px solid transparent;
+    font-style: normal;
+  }
+  .m-card .cap {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .m-panel-foot {
+    border-top: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+  }
+  .m-panel-foot .n {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .m-panel-foot .m-btn {
+    margin-left: auto;
+  }
+
+  /* empty / first-run chat */
+  .m-welcome {
+    display: grid;
+    gap: 26px;
+    justify-items: center;
+    text-align: center;
+    padding: 54px 40px 30px;
+    align-content: start;
+  }
+  .m-welcome h3 {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .m-welcome p {
+    margin: 0;
+    max-width: 52ch;
+    color: var(--ink-2);
+    font-size: 13.5px;
+  }
+  .m-tracks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(210px, 1fr));
+    gap: 12px;
+    text-align: left;
+    width: 100%;
+    max-width: 620px;
+  }
+  .m-track {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface-2);
+    padding: 12px;
+    display: grid;
+    gap: 7px;
+    align-content: start;
+  }
+  .m-track h5 {
+    margin: 0;
+    font-size: 12.5px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .m-track h5 span.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: block;
+  }
+  .m-track h5 span.dot.b {
+    background: var(--s3);
+  }
+  .m-track .sub {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin: 0;
+  }
+  .m-starter {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .m-panel-empty {
+    padding: 26px 18px;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    align-content: start;
+  }
+  .m-panel-empty .box {
+    width: 100%;
+    height: 74px;
+    border: 1px dashed var(--rule);
+    border-radius: 6px;
+    background: repeating-linear-gradient(135deg, transparent 0 7px, var(--grid) 7px 8px);
+  }
+
+  /* list page */
+  .m-page {
+    padding: 22px 26px 30px;
+    display: grid;
+    gap: 16px;
+    background: var(--surface);
+  }
+  .m-page-head {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .m-page-head h3 {
+    font-family: var(--display);
+    font-size: 23px;
+    font-weight: 600;
+    margin: 0 0 2px;
+    letter-spacing: -0.01em;
+  }
+  .m-page-head p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    max-width: 58ch;
+  }
+  .m-page-head .m-btn {
+    margin-left: auto;
+  }
+  .m-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 2px;
+  }
+  .m-toolbar .m-field {
+    min-width: 210px;
+  }
+  .m-toolbar .right {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .m-table {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .m-tr {
+    display: grid;
+    grid-template-columns: 34px minmax(220px, 2.2fr) minmax(150px, 1fr) 108px 132px 34px;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--rule-2);
+  }
+  .m-tr:last-child {
+    border-bottom: none;
+  }
+  .m-tr.head {
+    background: var(--surface-2);
+    border-bottom-color: var(--rule);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 12px;
+  }
+  .m-tr.hov {
+    background: var(--surface-2);
+  }
+  /* filter picker rows in the save sheet */
+  .m-fgrid {
+    display: grid;
+    grid-template-columns: 16px minmax(76px, auto) minmax(112px, auto) 1fr;
+    align-items: center;
+    gap: 7px 10px;
+    font-size: 12px;
+  }
+  .m-fgrid b {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .m-fon,
+  .m-foff {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-align: center;
+  }
+  .m-fon {
+    color: var(--accent);
+  }
+  .m-foff {
+    color: var(--muted);
+  }
+  .m-fctl {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 2px 8px;
+    color: var(--muted);
+    font-size: 11.5px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .m-fctl.on {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  /* any-of / all-of toggle, shown only on array fields */
+  .m-mtoggle {
+    display: inline-flex;
+    border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-left: 6px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+  .m-mtoggle span {
+    padding: 0 4px;
+    color: var(--muted);
+  }
+  .m-mtoggle span.on {
+    background: color-mix(in srgb, var(--accent) 26%, transparent);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .m-fval {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+  }
+  .m-tr.gone .title,
+  .m-tr.gone .m-meta {
+    opacity: 0.66;
+  }
+  .m-star {
+    text-align: center;
+    color: var(--rule);
+    font-size: 14px;
+    line-height: 1;
+  }
+  .m-star.on {
+    color: var(--new);
+  }
+  .m-tr .title {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .m-tr .title b {
+    font-size: 13px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-tr .title span {
+    font-size: 11.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .m-pill {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    padding: 1.5px 6px;
+    white-space: nowrap;
+  }
+  .m-vis {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .m-vis.on {
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .m-when {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .m-who {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--ink-2);
+    min-width: 0;
+  }
+  .m-who i {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    color: var(--muted);
+    font-style: normal;
+    font-size: 9.5px;
+    font-weight: 650;
+    display: grid;
+    place-items: center;
+  }
+  .m-who span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-kebab {
+    text-align: center;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .m-menu {
+    position: relative;
+  }
+  .m-menu-pop {
+    position: absolute;
+    right: 0;
+    top: 6px;
+    z-index: 5;
+    width: 152px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    box-shadow: 0 10px 22px -14px rgba(10, 30, 24, 0.5);
+    padding: 4px;
+    display: grid;
+    gap: 1px;
+    text-align: left;
+    font-size: 12px;
+    letter-spacing: normal;
+  }
+  .m-menu-pop b {
+    font-weight: 400;
+    color: var(--ink-2);
+    padding: 5px 8px;
+    border-radius: 3px;
+    display: flex;
+    gap: 8px;
+  }
+  .m-menu-pop b.hov {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+  .m-menu-pop b.danger {
+    color: #a33a2e;
+  }
+  .m-menu-pop hr {
+    border: none;
+    border-top: 1px solid var(--rule-2);
+    margin: 3px 0;
+  }
+
+  .m-empty {
+    border: 1px dashed var(--rule);
+    border-radius: 6px;
+    padding: 34px 22px;
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    text-align: center;
+    background: var(--surface-2);
+  }
+  .m-empty h5 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .m-empty p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    max-width: 46ch;
+  }
+
+  /* report view */
+  .m-crumb {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .m-filters {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface-2);
+  }
+  .m-tagv {
+    font-size: 10.5px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    white-space: nowrap;
+  }
+  .m-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .m-kpi {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 13px 14px;
+    display: grid;
+    gap: 3px;
+    background: var(--surface);
+  }
+  .m-kpi .lab {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .m-kpi .val {
+    font-family: var(--display);
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .m-kpi .cap {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .m-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 12px;
+  }
+  .m-sec {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 13px 14px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+  .m-sec-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .m-sec-head h5 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .m-sec-head .m-acts {
+    font-size: 11px;
+  }
+  .m-alert {
+    border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+    background: var(--warn-soft);
+    border-radius: 5px;
+    padding: 11px 12px;
+    display: grid;
+    gap: 6px;
+  }
+  .m-alert b {
+    font-size: 12.5px;
+    color: var(--warn);
+  }
+  .m-alert p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .m-dtable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .m-dtable th,
+  .m-dtable td {
+    text-align: left;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--rule-2);
+    white-space: nowrap;
+  }
+  .m-dtable th {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom-color: var(--rule);
+  }
+  .m-dtable td.num,
+  .m-dtable th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .m-legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--ink-2);
+  }
+  .m-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .m-legend i {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: block;
+  }
+  .sw1 {
+    background: var(--s1);
+  }
+  .sw2 {
+    background: var(--s2);
+  }
+
+  /* chart svg helpers */
+  .f1 {
+    fill: var(--s1);
+  }
+  .f2 {
+    fill: var(--s2);
+  }
+  .st1 {
+    stroke: var(--s1);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .gl {
+    stroke: var(--rule);
+    stroke-width: 1;
+  }
+  .axl {
+    fill: var(--muted);
+    font-family: var(--mono);
+    font-size: 8px;
+  }
+  .dl {
+    fill: var(--ink-2);
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 600;
+  }
+  .area1 {
+    fill: var(--s1);
+    opacity: 0.13;
+  }
+  .ring {
+    stroke: var(--surface);
+    stroke-width: 2;
+  }
+  .tip {
+    fill: var(--ink);
+  }
+  .tiptxt {
+    fill: var(--surface);
+    font-family: var(--mono);
+    font-size: 8px;
+  }
+
+  /* ── Implications ───────────────────────────────────────────────────── */
+  .impl {
+    padding: 54px 0 0;
+    display: grid;
+    gap: 18px;
+  }
+  .impl h2 {
+    font-family: var(--display);
+    font-size: clamp(23px, 2.9vw, 30px);
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .impl > p {
+    margin: 0;
+    max-width: 68ch;
+    color: var(--ink-2);
+  }
+  .impl-wrap {
+    overflow-x: auto;
+  }
+  .impl-table {
+    width: 100%;
+    min-width: 700px;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  .impl-table th,
+  .impl-table td {
+    text-align: left;
+    vertical-align: top;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .impl-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface-2);
+  }
+  .impl-table td:first-child {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .impl-table td {
+    color: var(--ink-2);
+  }
+  .deck-foot {
+    padding: 44px 0 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .wrap,
+    .deck-head {
+      padding-left: 18px;
+      padding-right: 18px;
+    }
+    .m-tracks {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<style>
+  /* ── Block-map additions ────────────────────────────────────────────── */
+  .blk {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.01em;
+    line-height: 1.5;
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    white-space: nowrap;
+  }
+  .blk.chg {
+    border-color: color-mix(in srgb, var(--new) 50%, transparent);
+    background: var(--new-soft);
+    color: var(--new);
+  }
+  .blk.mut {
+    border-color: var(--rule);
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  .brow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+  }
+  .zone {
+    position: relative;
+    border: 1px dashed color-mix(in srgb, var(--accent) 42%, transparent);
+    border-radius: 6px;
+    padding: 15px 11px 11px;
+    display: grid;
+    gap: 10px;
+    background: color-mix(in srgb, var(--accent-soft) 38%, transparent);
+  }
+  .zone.chg {
+    border-color: color-mix(in srgb, var(--new) 52%, transparent);
+    background: color-mix(in srgb, var(--new-soft) 42%, transparent);
+  }
+  .zone > .zlab {
+    position: absolute;
+    top: -9px;
+    left: 10px;
+  }
+  .bendbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 10px;
+    padding: 8px 11px;
+    border: 1px solid color-mix(in srgb, var(--new) 34%, transparent);
+    background: var(--new-soft);
+    border-radius: 5px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .bendbar b {
+    color: var(--new);
+    font-weight: 650;
+  }
+  .yaml {
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.75;
+    white-space: pre;
+    overflow-x: auto;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 11px 13px;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .yaml .k {
+    color: var(--accent-ink);
+  }
+  .yaml .add {
+    color: var(--new);
+    font-weight: 650;
+  }
+  .split2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px;
+  }
+</style>
+
+<header class="deck-head">
+  <b>Reporting · built from blocks</b>
+  <span class="tag">block map v1</span>
+  <nav class="deck-nav">
+    <a href="#b1">B1 · First run</a>
+    <a href="#b2">B2 · Conversation</a>
+    <a href="#b3">B3 · Save sheet</a>
+    <a href="#b4">B4 · Reports list</a>
+    <a href="#b5">B5 · Confirm &amp; empty</a>
+    <a href="#b6">B6 · Report</a>
+    <a href="#inv">Inventory</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section class="open">
+    <p class="eyebrow">modules/reporting · block feasibility · 30 Jul 2026</p>
+    <h1>The same six surfaces, drawn in the blocks we actually have.</h1>
+    <p class="lede">
+      The UX deck drew what the module should do. This one draws what it is made of: every
+      region labelled with the block behind it, checked against the installed source of
+      <code>@lowdefy/blocks-antd</code>, <code>-basic</code>, <code>-antd-x</code>,
+      <code>-echarts</code> and <code>-aggrid</code>. Almost all of it is config. One block
+      method has to be added, and three places bend away from the drawing — each marked where
+      it happens rather than listed at the end.
+    </p>
+
+    <div class="jobs">
+      <div class="job">
+        <h3>Builds as drawn</h3>
+        <p>
+          The rail's recency groups, rename and delete; the results panel with selection; the
+          save sheet; the list, its menus and its empty states; the whole report page. No block
+          change, no workaround.
+        </p>
+        <p class="said">Config, not code.</p>
+      </div>
+      <div class="job">
+        <h3>Bends</h3>
+        <p>
+          Section reorder becomes ↑ / ↓ rather than a drag handle. The trace line is titled with
+          the tool's name. The list's kebab opens a modal until the grid has a menu cell — the one
+          column plate 4 draws that no cell type covers.
+        </p>
+        <p class="said">Three, all marked in place.</p>
+      </div>
+      <div class="job">
+        <h3>Blocked</h3>
+        <p>
+          A starter that fills the composer instead of sending it. The sender is uncontrolled and
+          no method writes it — so <code>AgentChat</code> gains <code>setInput</code>, and the
+          welcome moves outside the block entirely.
+        </p>
+        <p class="said">One method. It unlocks both.</p>
+      </div>
+    </div>
+
+    <p class="legend">
+      <span><span class="blk">Block</span> the block behind a region</span>
+      <span><span class="blk chg">AgentChat.setInput</span> needs a block change</span>
+      <span><span class="blk mut">operator</span> a state read or operator, not a block</span>
+      <span>Dashed frames group blocks that live together in one <code>Box</code>.</span>
+    </p>
+  </section>
+
+  <!-- ── B1 ──────────────────────────────────────────────────────────── -->
+  <article class="plate" id="b1">
+    <div class="plate-head">
+      <p class="kicker"><b>Build 1</b> <span>/reporting/chat — first run</span> <span class="tag is-new">1 block change</span></p>
+      <h2>The welcome is page blocks, not block properties</h2>
+      <p>
+        <code>AgentChat.welcome</code> flattens its prompts into one row and the block has no
+        areas, so a two-track empty state cannot be built inside it. Leave <code>welcome</code>
+        unset — the block then renders nothing in its place — and put the empty state above the
+        chat as ordinary blocks, shown while <code>_state.messages</code> is empty. That buys
+        full layout freedom, and it only works because the starters can fill the composer.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/chat</span>
+        </div>
+        <div class="m-app">
+          <div class="m-top">
+            <span class="m-brand">Acme Freight</span>
+            <span class="m-tabs"><span class="on">Ask</span><span>Reports</span><span>Orders</span></span>
+            <span class="m-avatar">JM</span>
+          </div>
+          <div class="m-chat">
+            <div class="m-rail">
+              <span class="m-field">⌕ <span>Search chats</span> <span class="blk">Search</span></span>
+              <div class="m-conv">
+                <span class="m-label">Recent</span>
+                <div class="m-panel-empty" style="padding:14px 4px">
+                  <span style="font-size:11.5px">Your chats will appear here.</span>
+                </div>
+              </div>
+              <div class="brow"><span class="blk">AgentConversations</span><span class="blk mut">creation.label</span></div>
+              <div class="m-rail-foot">
+                <span>Reports</span><span class="m-count">0</span>
+              </div>
+            </div>
+
+            <div class="m-thread">
+              <div class="zone chg" style="margin:18px 14px 0">
+                <span class="zlab blk chg">Box · visible: messages is empty<span class="c">1</span></span>
+                <div>
+                  <div class="brow" style="margin-bottom:5px"><span class="blk">Title</span><span class="blk">Paragraph</span></div>
+                  <h3 style="font-family:var(--display);font-size:20px;margin:0;font-weight:600">Ask about your orders</h3>
+                  <p style="margin:6px 0 0;font-size:12.5px;color:var(--ink-2)">
+                    Ask in plain language — revenue, regions, channels, order status. When an
+                    answer is worth keeping, save it as a report.
+                  </p>
+                </div>
+                <div class="m-tracks">
+                  <div class="m-track">
+                    <h5><span class="dot"></span> Get an answer</h5>
+                    <p class="sub">One question, one answer. Follow it with another.</p>
+                    <span class="m-starter">Revenue by region this quarter</span>
+                    <span class="m-starter">Which category is growing fastest?</span>
+                    <span class="m-starter">How many orders are still pending?</span>
+                  </div>
+                  <div class="m-track">
+                    <h5><span class="dot b"></span> Build a report</h5>
+                    <p class="sub">A saved page with filters you can open next month.</p>
+                    <span class="m-starter">Monthly revenue by channel, as a report</span>
+                    <span class="m-starter">Report: order status by region</span>
+                    <span class="m-starter">Top categories, filterable by month</span>
+                  </div>
+                </div>
+                <div class="brow">
+                  <span class="blk">Box · layout.span 12</span>
+                  <span class="blk">Button ×6 · type text</span>
+                  <span class="blk chg">onClick → CallMethod chat.setInput<span class="c n">2</span></span>
+                </div>
+                <p style="font-size:11.5px;color:var(--muted);margin:0">
+                  I can read: orders, companies, contacts, activities.
+                  <span class="blk mut">_module.var: catalog<span class="c n">3</span></span>
+                </p>
+              </div>
+
+              <div class="m-composer">
+                <div class="m-input">
+                  <span class="ph">Ask about your data…</span>
+                  <span class="m-btn pri sm">Send ↑</span>
+                </div>
+                <span class="m-hint" style="display:flex;gap:6px;align-items:center">
+                  <span class="blk">AgentChat · welcome unset<span class="c">4</span></span>
+                  <span>height: calc(100dvh - 210px) · maxWidth: 720</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="m-panel">
+              <div class="m-panel-head">
+                <div class="m-panel-title"><h4>Results</h4><span class="blk">Title</span></div>
+              </div>
+              <div class="m-panel-empty">
+                <div class="box"></div>
+                <b style="color:var(--ink-2);font-size:12.5px">Charts, tables and exports land here</b>
+                <span>They stay put while the conversation moves on, so you can compare answers side by side.</span>
+                <span class="blk" style="margin-top:8px">Box · always rendered<span class="c">5</span></span>
+              </div>
+              <div></div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>The empty state is a sibling of the chat, not a property of it.</b> A <code>Box</code> with <code>visible</code> testing <code>_array.length</code> of <code>_state.messages</code>, holding whatever blocks the copy needs. <code>AgentChat</code> with no <code>welcome</code> renders an empty message area, so the two never collide.</span></li>
+      <li><span class="c n">2</span><span><b>The one block change in the whole deck.</b> Each starter is a <code>Button</code> whose <code>onClick</code> is a <code>CallMethod</code> against the chat block. The method does not exist yet: the sender is mounted uncontrolled and the registered methods are <code>sendMessage</code>, <code>setMessages</code>, <code>clearMessages</code>, <code>regenerate</code>, <code>deleteMessage</code>, <code>stop</code>, <code>clearError</code>, <code>scrollToBottom</code>. Adding <code>setInput</code> is a controlled <code>Sender</code> plus one <code>registerMethod</code> line, carried as a patch and upstreamed.</span></li>
+      <li><span class="c n">3</span><span><b>The scope line reads the catalog var</b> at build time — <code>_module.var: catalog</code> through an <code>_object.keys</code>, or a small <code>_js</code> over the entries' descriptions. No new var, and it cannot drift from what the engine will actually allow.</span></li>
+      <li><span class="c">4</span><span><b>The chat's own height and measure are properties</b>, not CSS wrestling: <code>height</code> takes any CSS length and <code>maxWidth</code> a pixel number (default 800), and the block already centres itself. The 62ch measure is <code>maxWidth</code> and nothing else.</span></li>
+      <li><span class="c">5</span><span><b>Visible-when-empty is the absence of a condition.</b> Today the whole column carries <code>visible:</code> tied to the chart and download arrays; the panel simply stops carrying it, and the empty copy lives in a <code>Box</code> shown when both arrays are empty.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── B2 ──────────────────────────────────────────────────────────── -->
+  <article class="plate" id="b2">
+    <div class="plate-head">
+      <p class="kicker"><b>Build 2</b> <span>/reporting/chat — mid-conversation</span> <span class="tag is-now">blocks exist</span> <span class="tag is-new">1 bend</span></p>
+      <h2>Three columns, and every part of them already ships</h2>
+      <p>
+        The rail groups, renames and deletes with properties the current page does not use yet.
+        The panel is a <code>List</code> of <code>Card</code>s with a <code>CheckboxSwitch</code>
+        per card. The one bend is in the transcript: a tool call's heading is the tool's name,
+        and only its description is ours to write.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/chat</span>
+        </div>
+        <div class="m-app">
+          <div class="m-top">
+            <span class="m-brand">Acme Freight</span>
+            <span class="m-tabs"><span class="on">Ask</span><span>Reports</span><span>Orders</span></span>
+            <span class="m-avatar">JM</span>
+          </div>
+          <div class="m-chat">
+            <!-- rail -->
+            <div class="m-rail">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span class="m-btn pri sm" style="flex:1 1 auto">+ New chat</span>
+                <span class="m-btn ghost sm" style="padding:0 6px">⇥</span>
+              </div>
+              <span class="m-field">⌕ <span>Search chats</span></span>
+              <div class="brow">
+                <span class="blk">Search</span>
+                <span class="blk mut">filters items in _js<span class="c">1</span></span>
+              </div>
+              <div class="m-conv">
+                <span class="m-label">Today</span>
+                <div class="m-conv-item on"><span class="txt">Q3 revenue by region</span><span class="when">now</span></div>
+                <div class="m-conv-item hov"><span class="txt">Pending orders over $5k</span><span class="when">⋯</span></div>
+                <span class="m-label" style="margin-top:8px">Previous 7 days</span>
+                <div class="m-conv-item"><span class="txt">Channel mix, retail vs online</span><span class="when">Mon</span></div>
+                <div class="m-conv-item"><span class="txt">Cancelled order rate by category</span><span class="when">Sun</span></div>
+                <span class="m-label" style="margin-top:8px">Older</span>
+                <div class="m-conv-item"><span class="txt">Toys seasonality</span><span class="when">Jun</span></div>
+              </div>
+              <div class="brow">
+                <span class="blk">AgentConversations</span>
+                <span class="blk">items[].group + groupable<span class="c n">2</span></span>
+                <span class="blk">menu → onMenuClick<span class="c n">3</span></span>
+              </div>
+              <div class="m-rail-foot">
+                <span>Reports</span><span class="m-count">12</span>
+                <span class="m-btn ghost sm" style="margin-left:auto">Open →</span>
+              </div>
+            </div>
+
+            <!-- transcript -->
+            <div class="m-thread">
+              <div class="m-scroll">
+                <div class="m-turn user">
+                  <span class="m-bubble">Revenue by region for Q3, and how does that compare to Q2?</span>
+                </div>
+
+                <div class="m-turn">
+                  <span class="m-role">Assistant</span>
+                  <span class="m-trace"><span class="cv">▸</span> <b>query_data</b> · Read orders · 4,812 rows · 0.4s<span class="c n">4</span></span>
+                  <p class="m-say" style="margin:0">
+                    Q3 revenue was <strong>$2.41M</strong>, up 8.6% on Q2. <strong>West</strong> drove
+                    the growth (+$96k, +14%); <strong>South</strong> was flat and <strong>East</strong>
+                    slipped 3% on a drop in Electronics.
+                  </p>
+                  <div class="m-mermaid">
+                    <span class="mm-tag">mermaid · xychart-beta<span class="c">5</span></span>
+                    <svg viewBox="0 0 320 108" width="100%" height="108" role="img" aria-label="Sketch bar chart: Q3 revenue by region, West highest.">
+                      <text class="mm-title" x="160" y="12" text-anchor="middle">Q3 revenue by region</text>
+                      <line class="mm-ax" x1="40" y1="88" x2="310" y2="88" />
+                      <line class="mm-ax" x1="40" y1="20" x2="40" y2="88" />
+                      <text class="mm-lab" x="35" y="91" text-anchor="end">0</text>
+                      <text class="mm-lab" x="35" y="26" text-anchor="end">800k</text>
+                      <rect class="fmm" x="62" y="46" width="34" height="42" />
+                      <rect class="fmm" x="130" y="56" width="34" height="32" />
+                      <rect class="fmm" x="198" y="53" width="34" height="35" />
+                      <rect class="fmm" x="266" y="25" width="34" height="63" />
+                      <g class="mm-lab" text-anchor="middle">
+                        <text x="79" y="100">North</text><text x="147" y="100">South</text>
+                        <text x="215" y="100">East</text><text x="283" y="100">West</text>
+                      </g>
+                    </svg>
+                  </div>
+                  <p class="m-say" style="margin:0">
+                    The Q2 comparison, with exact values on hover, is in <strong>Results</strong> →
+                  </p>
+                  <div class="brow">
+                    <span class="blk">AgentChat · messageDisplay.renderMermaid</span>
+                    <span class="blk mut">markdown + mermaid only<span class="c">6</span></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="m-composer">
+                <div class="m-chips">
+                  <span class="m-chip lead">Try</span>
+                  <span class="m-chip">Break East down by month</span>
+                  <span class="m-chip">Save this as a report</span>
+                  <span class="blk">suggestions · sends on click<span class="c n">7</span></span>
+                </div>
+                <div class="m-input">
+                  <span class="ph">Ask a follow-up…</span>
+                  <span class="m-btn sm">■ Stop</span>
+                </div>
+                <span class="m-hint">The assistant reads data only — it never changes your records. <span class="blk">Paragraph, below the block</span></span>
+              </div>
+            </div>
+
+            <!-- results panel -->
+            <div class="m-panel">
+              <div class="m-panel-head">
+                <div class="m-panel-title">
+                  <h4>Results</h4><span class="m-count">4</span>
+                  <span class="m-btn sm">⇤ Hide</span>
+                </div>
+                <div class="m-seg">
+                  <span class="on">All 4</span><span>Charts 2</span><span>Tables 1</span><span>Exports 1</span>
+                </div>
+                <div class="brow" style="margin-top:7px">
+                  <span class="blk">SegmentedSelector<span class="c">8</span></span>
+                  <span class="blk mut">visible: per card</span>
+                </div>
+              </div>
+
+              <div class="m-cards">
+                <div class="m-card sel">
+                  <div class="m-card-head">
+                    <span class="m-check on">✓</span><span class="m-kind">Table</span>
+                    <span class="t">East by category</span>
+                    <span class="m-acts"><i>⤢</i><i>⤓</i><i>⋯</i></span>
+                  </div>
+                  <table class="m-dtable">
+                    <tr><th>Category</th><th class="num">Q3</th><th class="num">Δ</th></tr>
+                    <tr><td>Electronics</td><td class="num">$188,402</td><td class="num">−$41,120</td></tr>
+                    <tr><td>Clothing</td><td class="num">$142,910</td><td class="num">+$6,240</td></tr>
+                  </table>
+                  <div class="brow">
+                    <span class="blk">CheckboxSwitch · id results.$.selected<span class="c">9</span></span>
+                    <span class="blk">AgGridBalham</span>
+                    <span class="blk">Button ⤢ → Modal</span>
+                  </div>
+                </div>
+
+                <div class="m-card sel">
+                  <div class="m-card-head">
+                    <span class="m-check on">✓</span><span class="m-kind">Chart</span>
+                    <span class="t">Revenue by region</span>
+                    <span class="m-acts"><i>⤢</i><i>⋯</i></span>
+                  </div>
+                  <svg viewBox="0 0 300 84" width="100%" height="80" role="img" aria-label="Grouped bar chart: revenue by region, Q2 versus Q3.">
+                    <line class="gl" x1="2" y1="70" x2="298" y2="70" />
+                    <rect class="f1" x="14" y="26" width="20" height="44" rx="3" />
+                    <rect class="f2" x="36" y="18" width="20" height="52" rx="3" />
+                    <rect class="f1" x="88" y="38" width="20" height="32" rx="3" />
+                    <rect class="f2" x="110" y="37" width="20" height="33" rx="3" />
+                    <rect class="f1" x="162" y="32" width="20" height="38" rx="3" />
+                    <rect class="f2" x="184" y="35" width="20" height="35" rx="3" />
+                    <rect class="f1" x="236" y="30" width="20" height="40" rx="3" />
+                    <rect class="f2" x="258" y="16" width="20" height="54" rx="3" />
+                    <text class="axl" x="35" y="80" text-anchor="middle">North</text>
+                    <text class="axl" x="109" y="80" text-anchor="middle">South</text>
+                    <text class="axl" x="183" y="80" text-anchor="middle">East</text>
+                    <text class="axl" x="257" y="80" text-anchor="middle">West</text>
+                  </svg>
+                  <div class="brow"><span class="blk">List → Card</span><span class="blk">EChart</span></div>
+                </div>
+
+                <div class="m-card">
+                  <div class="m-card-head">
+                    <span class="m-check"></span><span class="m-kind">Export</span>
+                    <span class="t">East orders, Q3</span>
+                    <span class="m-acts"><i>⤓</i></span>
+                  </div>
+                  <span class="cap">1,204 rows · orders · CSV</span>
+                  <div class="brow"><span class="blk">Button → CallAPI → DownloadCsv</span></div>
+                </div>
+
+                <div class="brow">
+                  <span class="blk mut">_array.filter over state<span class="c">10</span></span>
+                  <span class="blk">Button → CallMethod modal.open</span>
+                  <span class="blk">ScrollTo · newest card</span>
+                </div>
+              </div>
+
+              <div class="m-panel-foot">
+                <span class="n">2 selected</span>
+                <span class="m-btn ghost sm">Clear</span>
+                <span class="m-btn pri sm">Save as report →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame narrow" style="min-width:700px">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/chat — both panels collapsed</span>
+        </div>
+        <div class="m-app">
+          <div class="m-chat" style="grid-template-columns:52px 1fr 60px;min-height:200px">
+            <div class="m-rail" style="justify-items:center;gap:9px">
+              <span class="m-btn sm" style="padding:0 8px">＋</span>
+              <span class="m-btn sm" style="padding:0 8px">⌕</span>
+              <span class="m-btn sm" style="padding:0 8px">⇤</span>
+              <span class="blk" style="writing-mode:vertical-rl;margin-top:6px">Box + Button ×3<span class="c n">11</span></span>
+            </div>
+            <div class="m-thread" style="padding:20px 24px">
+              <p class="m-say" style="margin:0;max-width:62ch">
+                With both strips collapsed the transcript runs the full width of the page — the
+                chat block's own <code>maxWidth</code> keeps the measure honest, so nothing has to
+                move when the panels do.
+              </p>
+              <div class="brow" style="margin-top:12px">
+                <span class="blk mut">visible: _global rail_open</span>
+                <span class="blk mut">SetGlobal on toggle<span class="c n">12</span></span>
+              </div>
+            </div>
+            <div class="m-rail" style="border-left:1px solid var(--rule);border-right:none;justify-items:center;gap:9px">
+              <span class="m-btn sm" style="padding:0 8px">⇥</span>
+              <span class="m-count">4</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>Rail search is not a block property — it does not need to be.</b> <code>AgentConversations</code> has no search, but its <code>items</code> come from config, so a <code>Search</code> block above it filtering the array before it reaches the block is the whole feature, and it searches the snippet as well as the title.</span></li>
+      <li><span class="c n">2</span><span><b>Recency grouping ships.</b> Each item takes <code>group</code> and <code>timestamp</code>, and the <code>groupable</code> property renders the headings. Group order follows the order the items arrive in (the block's grouping is a plain reduce, with no alphabetical sort), so ordering by recency server-side gives Today → Previous 7 days → Older with nothing else to configure.</span></li>
+      <li><span class="c n">3</span><span><b>Rename and delete ship too.</b> A <code>menu</code> array renders the hover <code>⋯</code> and <code>onMenuClick</code> fires with the action key and the conversation key — enough to open a rename <code>Modal</code> or call the new soft delete. <code>danger: true</code> colours the delete item.</span></li>
+      <li><span class="c n">4</span><span><b>The bend.</b> A tool call renders as a thought-chain row whose <b>title is the raw tool name</b>; only the description is authorable, and it comes from a <code>display</code> string on the tool's output (first 80 characters), with the full markdown — the pipeline — behind the collapse. So the row reads <code>query_data · Read orders · 4,812 rows · 0.4s</code> rather than leading with "Read orders". Accepted: the honest label costs nothing.</span></li>
+      <li><span class="c">5</span><span><b>Mermaid needs no change at all.</b> <code>messageDisplay.renderMermaid</code> defaults true and mermaid 11 ships inside the chat block, so an <code>xychart-beta</code> or <code>pie</code> fence renders as an inline sketch. This is prompt work, not block work.</span></li>
+      <li><span class="c">6</span><span><b>And the ceiling is real.</b> The block classifies only text, reasoning, tool, file and status parts; custom <code>data-*</code> parts are explicitly not rendered inline and the schema has no areas. Markdown and mermaid are the entire in-thread vocabulary — which is why the panel exists.</span></li>
+      <li><span class="c n">7</span><span><b>Composer chips send immediately, and that is correct here.</b> <code>suggestions</code> (or a <code>data-suggestions</code> part from the agent) render above the composer and send on click. A follow-up you picked is one you meant; only the first-run starters need editing before sending.</span></li>
+      <li><span class="c">8</span><span><b>The panel scope is a <code>SegmentedSelector</code></b> writing to state, with each card's <code>visible</code> testing it. <code>Tabs</code> would work too, but the segmented control keeps the counts on one line and matches the list page's scope switcher — one pattern, two surfaces.</span></li>
+      <li><span class="c">9</span><span><b>Selection is a <code>CheckboxSwitch</code> whose id is the state path</b> (<code>results.$.selected</code>), so ticking a card writes into the same array the panel renders from and the footer count is an <code>_array.filter</code> over it. No selection machinery.</span></li>
+      <li><span class="c">10</span><span><b>Save as report opens a <code>Modal</code> by method call</b>, passing the filtered selection through state. The typed path — the agent's tool — opens the same modal, so both routes converge exactly as the UX deck asks.</span></li>
+      <li><span class="c n">11</span><span><b>The collapsed rail is hand-rolled</b>: <code>AgentConversations</code> has no collapsed mode, so the strip is a <code>Box</code> of three <code>Button</code>s shown when the rail is hidden. The antd <code>Splitter</code> block — collapsible, resizable, with an <code>onCollapse</code> event — could carry both edges instead if the two hand-rolled strips start reading as two features rather than one pattern.</span></li>
+      <li><span class="c n">12</span><span><b>Collapse state is session-scoped.</b> There is no client-storage action and <code>SetGlobal</code> lives in memory, so the state follows the user between pages and resets on reload. Persisting it costs a document and a write per toggle for a preference that is one click to re-express; the endpoint stays available as a later, additive change.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── B3 ──────────────────────────────────────────────────────────── -->
+  <article class="plate" id="b3">
+    <div class="plate-head">
+      <p class="kicker"><b>Build 3</b> <span>Save as report — confirm sheet</span> <span class="tag is-now">blocks exist</span> <span class="tag is-new">1 bend</span></p>
+      <h2>A modal, a controlled list, and one row per candidate filter</h2>
+      <p>
+        Everything here is an input block bound to a state path, which is why the sheet's shape
+        maps onto the report spec without a translation step. The bend is the drag handle:
+        <code>ControlledList</code> moves items by method call, so the grips become arrows.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame narrow" style="min-width:680px">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/chat — Save as report</span>
+        </div>
+        <div class="m-app m-page" style="max-width:640px;margin:0 auto;padding:22px">
+          <div class="m-page-head" style="align-items:flex-start">
+            <div>
+              <h3 style="font-size:19px">Save as report</h3>
+              <p>3 results from “Q3 revenue by region”. You can add more later from any chat.</p>
+            </div>
+            <span class="blk" style="margin-left:auto">Modal · width 640<span class="c">1</span></span>
+          </div>
+
+          <div style="display:grid;gap:6px">
+            <span class="m-label">Report name</span>
+            <span class="m-field" style="height:32px;color:var(--ink)">Q3 revenue by region and category</span>
+            <div class="brow">
+              <span class="blk">TextInput · id report.title</span>
+              <span class="blk mut">default from conversation title<span class="c">2</span></span>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:7px">
+            <span class="m-label">Sections</span>
+            <div class="m-table">
+              <div class="m-tr" style="grid-template-columns:52px 62px 1fr 88px 26px">
+                <span class="m-kebab" style="letter-spacing:2px">↑↓</span><span class="m-kind">KPI</span>
+                <span class="title"><b>Q3 revenue</b></span><span class="m-when">from chart</span><span class="m-kebab">✕</span>
+              </div>
+              <div class="m-tr" style="grid-template-columns:52px 62px 1fr 88px 26px">
+                <span class="m-kebab" style="letter-spacing:2px">↑↓</span><span class="m-kind">Chart</span>
+                <span class="title"><b>Revenue by region, Q2 vs Q3</b></span><span class="m-when">bar</span><span class="m-kebab">✕</span>
+              </div>
+              <div class="m-tr" style="grid-template-columns:52px 62px 1fr 88px 26px">
+                <span class="m-kebab" style="letter-spacing:2px">↑↓</span><span class="m-kind">Table</span>
+                <span class="title"><b>East by category</b></span><span class="m-when">3 columns</span><span class="m-kebab">✕</span>
+              </div>
+            </div>
+            <div class="bendbar">
+              <b>Bend:</b>
+              <span>
+                no block does drag reordering. <code>ControlledList</code> registers
+                <code>moveItemUp(index)</code>, <code>moveItemDown(index)</code> and
+                <code>removeItem(index)</code> as <code>CallMethod</code> targets, so each row
+                carries ↑ ↓ ✕ instead of a grip.<span class="c n">3</span>
+              </span>
+              <span class="blk">ControlledList · hideAddButton</span>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:7px">
+            <span class="m-label">Filters this report carries</span>
+            <div class="m-fgrid">
+              <span class="m-fon">✓</span>
+              <b>Order date</b>
+              <span class="m-fctl">Date range</span>
+              <span class="m-fval">createdAt</span>
+
+              <span class="m-fon">✓</span>
+              <b>Region</b>
+              <span class="m-fctl on">Choose several ▾</span>
+              <span class="m-fval">North, South, East, West</span>
+
+              <span class="m-foff">+</span>
+              <b>Company</b>
+              <span class="m-fctl">Choose several ▾</span>
+              <span class="m-fval">looked up from companies</span>
+
+              <span class="m-fon">✓</span>
+              <b>Tags</b>
+              <span class="m-fctl on">
+                Choose several ▾
+                <span class="m-mtoggle"><span>any</span><span class="on">all</span></span>
+              </span>
+              <span class="m-fval">list field · priority, urgent, backorder</span>
+            </div>
+            <div class="brow">
+              <span class="blk">List over catalog candidates<span class="c">4</span></span>
+              <span class="blk">CheckboxSwitch · filters.$.on</span>
+              <span class="blk">Selector · filters.$.control</span>
+              <span class="blk">SegmentedSelector · filters.$.match<span class="c">5</span></span>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:7px">
+            <span class="m-label">Who can see it</span>
+            <div class="m-seg" style="font-size:12px">
+              <span class="on">Only me</span><span>Everyone</span>
+            </div>
+            <div class="brow">
+              <span class="blk">SegmentedSelector</span>
+              <span class="blk mut">visible: _user.roles ∩ share_roles<span class="c n">6</span></span>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:9px;padding-top:4px">
+            <span class="m-hint" style="margin-right:auto">Saved reports re-run their queries each time they're opened.</span>
+            <span class="m-btn">Cancel</span>
+            <span class="m-btn pri">Save report</span>
+            <span class="blk">Button → CallAPI create-report</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b><code>Modal</code> or <code>Drawer</code>, opened by method call</b> from the panel footer and from the agent's tool path. One component, two callers — the sheet has no idea which route opened it, which is what makes "both routes converge" true rather than aspirational.</span></li>
+      <li><span class="c">2</span><span><b>Every field is an input block whose id is its state path</b>, so the payload sent to <code>create-report</code> is the state subtree — no field-by-field mapping, and adding a field to the sheet adds it to the payload.</span></li>
+      <li><span class="c n">3</span><span><b>The bend, stated plainly.</b> Arrows are not a downgrade worth a block: the list is two to four rows, and a sortable list block would be new surface owned forever for a gesture used once per report. If a real case argues otherwise, a <code>sortable</code> property on <code>ControlledList</code> is the additive change.</span></li>
+      <li><span class="c">4</span><span><b>The filter rows are a <code>List</code> over catalog-derived candidates</b> — date fields, plus enum fields that have something to populate a dropdown from. The engine already narrows this set the same way at compile time, so the sheet offers exactly what the report will be able to render.</span></li>
+      <li><span class="c">5</span><span><b>The any / all toggle is a <code>SegmentedSelector</code> shown only for array-typed fields</b>, writing <code>match</code> onto the filter section. The engine work behind it is designed and in flight in <code>report-filters</code>; the sheet needs no block it does not have.</span></li>
+      <li><span class="c n">6</span><span><b>The visibility row is absent, not disabled</b>, for a user without a publish role — a <code>visible</code> test intersecting <code>_user.roles</code> with the <code>share_roles</code> var. The server checks it again on write, because a hidden control is a courtesy and the match is the authorization.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── B4 ──────────────────────────────────────────────────────────── -->
+  <article class="plate" id="b4">
+    <div class="plate-head">
+      <p class="kicker"><b>Build 4</b> <span>/reporting/reports-list</span> <span class="tag is-now">blocks exist</span> <span class="tag is-new">1 bend</span></p>
+      <h2>A grid, like every other list in this repo</h2>
+      <p>
+        Contacts, companies, activities and user-admin are all <code>AgGridBalham</code> with
+        <code>onRowClick</code> into a <code>Link</code>; the reports list is the same kind of
+        thing and is the same block. Every column below is a built-in cell — including the pills,
+        which <code>tag</code> renders one per array item — except the kebab, which is the single
+        thing the grid has no renderer for.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/reports-list</span>
+        </div>
+        <div class="m-app">
+          <div class="m-top">
+            <span class="m-brand">Acme Freight</span>
+            <span class="m-tabs"><span>Ask</span><span class="on">Reports</span><span>Orders</span></span>
+            <span class="m-avatar">JM</span>
+          </div>
+          <div class="m-page">
+            <div class="m-page-head">
+              <div>
+                <h3>Reports</h3>
+                <p>Saved answers that re-run on open. Favourite the ones you check often.</p>
+              </div>
+              <span class="m-btn pri">+ New report</span>
+              <span class="blk">Button → Link chat</span>
+            </div>
+
+            <div class="m-toolbar">
+              <span class="m-field">⌕ <span>Search reports</span></span>
+              <div class="m-seg">
+                <span class="on">Mine 8</span><span>Shared 4</span><span>★ Favourites 3</span>
+              </div>
+              <span class="right">
+                <span class="m-label">Sort</span>
+                <span class="m-field">Last updated ▾</span>
+              </span>
+            </div>
+            <div class="brow">
+              <span class="blk">Search</span>
+              <span class="blk">SegmentedSelector</span>
+              <span class="blk">Selector</span>
+              <span class="blk mut">onChange → CallAPI list-reports<span class="c">1</span></span>
+            </div>
+
+            <div class="m-table">
+              <div class="m-tr head">
+                <span></span><span>Report</span><span>Contents</span><span>Updated</span><span>Visibility</span><span></span>
+              </div>
+
+              <div class="m-tr">
+                <span class="m-star on">★</span>
+                <span class="title"><b>Monthly revenue by channel</b><span>Online vs retail vs partner, rolling 12 months</span></span>
+                <span class="m-meta"><span class="m-pill">2 charts</span><span class="m-pill">1 KPI</span><span class="m-pill">2 filters</span></span>
+                <span class="m-when">2 hours ago</span>
+                <span class="m-vis">Only me</span>
+                <span class="m-kebab">⋯</span>
+              </div>
+
+              <div class="m-tr hov">
+                <span class="m-star on">★</span>
+                <span class="title"><b>Order status by region</b><span>Pending, paid, shipped, cancelled — current snapshot</span></span>
+                <span class="m-meta"><span class="m-pill">1 chart</span><span class="m-pill">table</span></span>
+                <span class="m-when">Yesterday</span>
+                <span class="m-vis on">◎ Everyone</span>
+                <span class="m-kebab m-menu">⋯
+                  <span class="m-menu-pop" style="width:200px">
+                    <b class="hov">★ Remove favourite</b>
+                    <b>✎ Rename</b>
+                    <b>⧉ Duplicate</b>
+                    <b>↩ Open source chat</b>
+                    <b>◎ Unpublish</b>
+                    <hr />
+                    <b class="danger">🗑 Delete</b>
+                    <hr />
+                    <b style="color:var(--new);font-family:var(--mono);font-size:10px">
+                      needs a menu cell<span class="c n">4</span>
+                    </b>
+                  </span>
+                </span>
+              </div>
+
+              <div class="m-tr">
+                <span class="m-star">☆</span>
+                <span class="title"><b>Top companies by revenue</b><span>Joined to companies · top 25</span></span>
+                <span class="m-meta"><span class="m-pill">table</span><span class="m-pill">export</span></span>
+                <span class="m-when">12 Jul</span>
+                <span class="m-vis">Only me <span class="blk mut" style="margin-left:4px">cell.tag, read-only<span class="c">6</span></span></span>
+                <span class="m-kebab">⋯</span>
+              </div>
+            </div>
+
+            <div class="brow">
+              <span class="blk">AgGridBalham · onRowClick → Link<span class="c">2</span></span>
+              <span class="blk">cell.buttons · iconField<span class="c">3</span></span>
+              <span class="blk">cell.tag · array → pills</span>
+              <span class="blk">cell.date</span>
+              <span class="blk chg">cell.menu — does not exist<span class="c n">4</span></span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span class="m-hint">Showing 6 of 8 · <b style="color:var(--accent)">Load more</b></span>
+              <span class="blk">Button · cursor in state<span class="c">5</span></span>
+              <span class="m-hint" style="margin-left:auto">Recently deleted</span>
+              <span class="blk">Button → Link</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="split2">
+      <div class="bendbar" style="display:grid;gap:6px;border-color:color-mix(in srgb, var(--accent) 30%, transparent);background:var(--accent-soft)">
+        <b style="color:var(--accent-ink)">The cells already there</b>
+        <span>
+          <code>selector</code>, <code>multipleSelector</code>, <code>switch</code>,
+          <code>textInput</code> and <code>paragraphInput</code> cells landed in
+          <b>PR 2201</b> and are on <code>vite-hono</code> (<code>17c1392b</code>, an ancestor of
+          the branch) and in the experimental build the demo installs — the display grid's
+          <code>cell.type</code> enum lists all of them. Nothing to port.
+        </span>
+        <span>
+          They are not the answer here, though. A <code>selector</code> is an <i>input</i>: the
+          chosen option is written back into the row node and rendered as the cell's value, and it
+          carries clear, search and placeholder affordances. A menu of verbs is not a value.
+        </span>
+      </div>
+      <div class="bendbar" style="display:grid;gap:6px">
+        <b>The cell that is missing</b>
+        <span>
+          A <code>menu</code> cell: an antd <code>Dropdown</code> whose <code>items[]</code> each
+          carry an <code>eventName</code>, with the <code>*Field</code> row-data resolution,
+          <code>hidden</code> / <code>disabled</code> and <code>danger</code> that
+          <code>ButtonsCell</code> already implements. Small, generic, the same shape as PR 2201 —
+          and every list page in this repo will want it.
+        </span>
+        <span>
+          Until then the kebab is one <code>⋯</code> button in a <code>buttons</code> cell opening
+          a <code>Modal</code> of actions. A worse popover, not a worse feature, and swapping it
+          later touches one column definition.
+        </span>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>Every toolbar control is an input writing to state</b>, with one shared <code>CallAPI</code> re-fetch on change. The scope match is the authorization boundary, so it has to be a request parameter — which conveniently makes the whole toolbar one code path.</span></li>
+      <li><span class="c">2</span><span><b>Row click opens the report</b> — <code>onRowClick</code> into a <code>Link</code>, the same wiring every other module list here uses. The ★ and ⋯ cells stop propagation, so they act on the row without opening it.</span></li>
+      <li><span class="c">3</span><span><b>The ★ is a one-button <code>buttons</code> cell.</b> <code>hideTitle</code> leaves the icon alone, and <code>iconField</code> is a <b>row-data path</b>, so filled or outline comes from the row rather than a shared condition. The event carries the row, which is all <code>set-report-favourite</code> needs — and it works on shared reports, because favouriting is a read-side marker.</span></li>
+      <li><span class="c n">4</span><span><b>The one column with no cell type.</b> Plate 4's menu holds five owner actions and two for a non-owner — too many to sit inline as buttons, and the grid has no dropdown renderer. The interim is a <code>⋯</code> button opening a <code>Modal</code>, with <code>hiddenField</code> on the row's <code>isOwner</code> choosing which actions it lists. The fix is a <code>menu</code> cell upstream; see the cards above.</span></li>
+      <li><span class="c">5</span><span><b>Load more appends</b> — the cursor lives in state, the response concatenates onto the rows already rendered. <code>Pagination</code> exists if numbered pages are ever wanted, but a cursor is what the endpoint returns.</span></li>
+      <li><span class="c">6</span><span><b>Visibility stays a read-only tag, on purpose.</b> A two-option <code>selector</code> cell would work now that the cell exists — and would turn publishing to the whole app into a single mis-click on a list, where the design makes it a named act in the menu. The capability existing is not an argument for using it.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── B5 ──────────────────────────────────────────────────────────── -->
+  <article class="plate" id="b5">
+    <div class="plate-head">
+      <p class="kicker"><b>Build 5</b> <span>Delete · recover · empty states</span> <span class="tag is-now">blocks exist</span></p>
+      <h2>The states nobody designs are the cheapest ones to build</h2>
+      <p>
+        A confirm, a small page of rows, and two empty states. Nothing here needs anything the
+        module does not already import — which is worth saying, because these are exactly the
+        screens that get skipped on the grounds that they must be fiddly.
+      </p>
+    </div>
+
+    <div class="split2">
+      <div class="frame narrow" style="min-width:0">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">delete a published report</span>
+        </div>
+        <div class="m-app m-page" style="padding:18px">
+          <div style="display:grid;gap:9px">
+            <h3 style="font-family:var(--display);font-size:17px;font-weight:600;margin:0">
+              Delete “Order status by region”?
+            </h3>
+            <p style="margin:0;font-size:12.5px;color:var(--ink-2)">
+              This report is published, so it will disappear for everyone in the app. Anyone who
+              favourited it will lose it.
+            </p>
+            <p style="margin:0;font-size:12.5px;color:var(--muted)">
+              Nothing is queried again and no data is touched — reports only ever read.
+            </p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px">
+              <span class="m-btn">Keep it</span>
+              <span class="m-btn" style="border-color:#a33a2e;color:#a33a2e">Delete report</span>
+            </div>
+            <div class="brow">
+              <span class="blk">ConfirmModal · okButton.danger<span class="c">1</span></span>
+              <span class="blk mut">content: _if published</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="frame narrow" style="min-width:0">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">reports-list?deleted=1</span>
+        </div>
+        <div class="m-app m-page" style="padding:18px">
+          <div class="m-page-head">
+            <div>
+              <p class="m-crumb">Reports ›</p>
+              <h3 style="font-size:17px">Recently deleted</h3>
+            </div>
+          </div>
+          <div class="m-table">
+            <div class="m-tr gone" style="grid-template-columns:minmax(160px,2.2fr) 130px 92px">
+              <span class="title"><b>2025 pilot — partner channel</b><span>Superseded</span></span>
+              <span class="m-when">deleted by You · 4 Jun</span>
+              <span class="m-btn sm">↺ Restore</span>
+            </div>
+            <div class="m-tr gone" style="grid-template-columns:minmax(160px,2.2fr) 130px 92px">
+              <span class="title"><b>Toys seasonality (draft)</b><span>Was published</span></span>
+              <span class="m-when">deleted by You · 2 Jun</span>
+              <span class="m-btn sm">↺ Restore</span>
+            </div>
+          </div>
+          <div class="brow">
+            <span class="blk">List → Box rows</span>
+            <span class="blk">Button → CallAPI restore-report</span>
+            <span class="blk mut">_dayjs on the delete stamp<span class="c">2</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame narrow" style="min-width:700px">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/reports-list — empty states</span>
+        </div>
+        <div class="m-app m-page" style="grid-template-columns:1fr 1fr;display:grid;gap:14px">
+          <div class="m-empty">
+            <span class="m-label">No reports yet</span>
+            <h5>Reports start as questions</h5>
+            <p>Ask about your orders in the chat. When an answer is worth keeping, save the results as a report — it'll show up here.</p>
+            <span class="m-btn pri sm">Ask about your data →</span>
+            <div class="brow" style="justify-content:center;margin-top:9px">
+              <span class="blk">Result · title, subTitle, extra<span class="c">3</span></span>
+            </div>
+          </div>
+          <div class="m-empty">
+            <span class="m-label">No matches</span>
+            <h5>Nothing matches “margin”</h5>
+            <p>No report titles or descriptions contain that. Try a different word, or look in the shared scope.</p>
+            <div style="display:flex;gap:7px">
+              <span class="m-btn sm">Clear search</span><span class="m-btn sm">Search all scopes</span>
+            </div>
+            <div class="brow" style="justify-content:center;margin-top:9px">
+              <span class="blk">Result</span>
+              <span class="blk mut">visible: search set and 0 rows<span class="c">4</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b><code>ConfirmModal</code> takes the whole confirm</b> — title, content, and a danger-styled OK — and its content is an operator, so the published-report sentence appears by <code>_if</code> rather than by a second modal.</span></li>
+      <li><span class="c">2</span><span><b>The delete stamp renders with <code>_dayjs</code></b> against the same <code>{ timestamp, user }</code> shape every module in this repo writes. The recovery page is a <code>list-reports</code> call with <code>scope: deleted</code> and a restore button — no block, no operator, and no idiom that is new here.</span></li>
+      <li><span class="c">3</span><span><b>Both empty states are the <code>Result</code> block</b>, which already carries a title, sub-title and an extra slot for the buttons. The report page's not-found fallback uses it today, so the three empty surfaces in this module look alike for free.</span></li>
+      <li><span class="c">4</span><span><b>Zero-results is a different block from empty</b>, chosen by whether a search term is set. Same shape, different copy and different escapes — which is the whole point of drawing them separately.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── B6 ──────────────────────────────────────────────────────────── -->
+  <article class="plate" id="b6">
+    <div class="plate-head">
+      <p class="kicker"><b>Build 6</b> <span>/reporting/report?reportId=…</span> <span class="tag is-now">page exists</span> <span class="tag is-new">declare the types</span></p>
+      <h2>Compiled server-side, so the block list is a contract</h2>
+      <p>
+        The report page is one <code>Dynamic</code> block resolving a spec the server compiled.
+        Every block, action and operator the compiler can emit must be declared in
+        <code>types</code> — and an undeclared type does not degrade one section, it fails the
+        whole report to the fallback slot. That makes the list below part of the design, not
+        boilerplate.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/report?reportId=rp_8f21</span>
+        </div>
+        <div class="m-app">
+          <div class="m-page">
+            <div class="m-page-head">
+              <div>
+                <p class="m-crumb">Reports ›</p>
+                <h3>Monthly revenue by channel <span class="m-star on" style="font-size:16px">★</span></h3>
+                <p>Rolling 12 months · created by you, 4 Jun · ran just now</p>
+              </div>
+              <span class="m-btn" style="margin-left:auto">↩ Continue in chat</span>
+              <span class="m-btn">⋯</span>
+            </div>
+            <div class="brow">
+              <span class="blk">Paragraph · provenance<span class="c">1</span></span>
+              <span class="blk">Button → Link chat<span class="c n">2</span></span>
+              <span class="blk">DropdownMenu</span>
+            </div>
+
+            <div class="m-filters">
+              <span class="m-label">Filters</span>
+              <span class="m-field" style="color:var(--ink)">Order date · Last 12 months ▾</span>
+              <span class="m-field" style="color:var(--ink);gap:4px">Region ·
+                <span class="m-tagv">North ✕</span><span class="m-tagv">West ✕</span> ▾
+              </span>
+              <span class="m-btn ghost sm">Reset</span>
+              <span class="m-hint" style="margin-left:auto">Applies to 3 of 4 sections</span>
+            </div>
+            <div class="brow">
+              <span class="blk">DateRangeSelector</span>
+              <span class="blk">MultipleSelector · {label, value}<span class="c">3</span></span>
+              <span class="blk mut">onChange → CallAPI query-data</span>
+            </div>
+
+            <div class="m-kpis">
+              <div class="m-kpi">
+                <span class="lab">Revenue, 12 months</span>
+                <span class="val">$9.24M</span>
+                <span class="cap">4,812 orders · paid and shipped</span>
+              </div>
+              <div class="m-kpi">
+                <span class="lab">Average order value</span>
+                <span class="val">$1,920</span>
+                <span class="cap">Across all channels</span>
+              </div>
+              <div class="m-kpi">
+                <span class="lab">Online share</span>
+                <span class="val">58.4%</span>
+                <span class="cap">Of revenue, not order count</span>
+              </div>
+            </div>
+            <div class="brow"><span class="blk">Statistic ×n<span class="c">4</span></span><span class="blk mut">no ⤓ on a KPI</span></div>
+
+            <div class="m-sec">
+              <div class="m-sec-head">
+                <h5>Monthly revenue by channel</h5>
+                <span class="m-acts"><i>⤓</i></span>
+              </div>
+              <div class="m-legend"><span><i class="sw1"></i> Online</span><span><i class="sw2"></i> Retail</span></div>
+              <svg viewBox="0 0 700 150" width="100%" height="150" role="img" aria-label="Grouped bar chart: monthly revenue by channel, online and retail.">
+                <line class="gl" x1="46" y1="120" x2="694" y2="120" />
+                <line class="gl" x1="46" y1="80" x2="694" y2="80" stroke-dasharray="2 4" />
+                <line class="gl" x1="46" y1="40" x2="694" y2="40" stroke-dasharray="2 4" />
+                <text class="axl" x="42" y="123" text-anchor="end">0</text>
+                <text class="axl" x="42" y="83" text-anchor="end">200k</text>
+                <text class="axl" x="42" y="43" text-anchor="end">400k</text>
+                <g>
+                  <rect class="f1" x="56" y="72" width="16" height="48" rx="3" /><rect class="f2" x="74" y="88" width="16" height="32" rx="3" />
+                  <rect class="f1" x="128" y="66" width="16" height="54" rx="3" /><rect class="f2" x="146" y="90" width="16" height="30" rx="3" />
+                  <rect class="f1" x="200" y="60" width="16" height="60" rx="3" /><rect class="f2" x="218" y="84" width="16" height="36" rx="3" />
+                  <rect class="f1" x="272" y="54" width="16" height="66" rx="3" /><rect class="f2" x="290" y="80" width="16" height="40" rx="3" />
+                  <rect class="f1" x="344" y="46" width="16" height="74" rx="3" /><rect class="f2" x="362" y="76" width="16" height="44" rx="3" />
+                  <rect class="f1" x="416" y="40" width="16" height="80" rx="3" /><rect class="f2" x="434" y="72" width="16" height="48" rx="3" />
+                  <rect class="f1" x="488" y="34" width="16" height="86" rx="3" /><rect class="f2" x="506" y="68" width="16" height="52" rx="3" />
+                  <rect class="f1" x="560" y="28" width="16" height="92" rx="3" /><rect class="f2" x="578" y="64" width="16" height="56" rx="3" />
+                  <rect class="f1" x="632" y="22" width="16" height="98" rx="3" /><rect class="f2" x="650" y="60" width="16" height="60" rx="3" />
+                </g>
+                <g class="axl" text-anchor="middle">
+                  <text x="73" y="135">Nov</text><text x="145" y="135">Dec</text><text x="217" y="135">Jan</text>
+                  <text x="289" y="135">Feb</text><text x="361" y="135">Mar</text><text x="433" y="135">Apr</text>
+                  <text x="505" y="135">May</text><text x="577" y="135">Jun</text><text x="649" y="135">Jul</text>
+                </g>
+              </svg>
+              <div class="brow">
+                <span class="blk">Title · section heading<span class="c">5</span></span>
+                <span class="blk">EChart · height 400</span>
+                <span class="blk">Button ⤓ → CallAPI → DownloadCsv</span>
+              </div>
+            </div>
+
+            <div class="m-sections">
+              <div class="m-sec">
+                <div class="m-sec-head"><h5>Channel detail</h5><span class="m-acts"><i>⤓</i></span></div>
+                <table class="m-dtable">
+                  <tr><th>Channel</th><th class="num">Revenue</th><th class="num">Orders</th><th class="num">AOV</th></tr>
+                  <tr><td>Online</td><td class="num">$5,396,120</td><td class="num">2,884</td><td class="num">$1,871</td></tr>
+                  <tr><td>Retail</td><td class="num">$2,918,440</td><td class="num">1,402</td><td class="num">$2,081</td></tr>
+                </table>
+                <div class="brow">
+                  <span class="blk">AgGridBalham</span>
+                  <span class="blk mut">_function + _intl cell renderer<span class="c">6</span></span>
+                </div>
+              </div>
+
+              <div class="m-sec">
+                <div class="m-sec-head"><h5>Revenue by region</h5></div>
+                <div class="m-alert">
+                  <b>⚠ This section can't be shown</b>
+                  <p>
+                    It charts a column called <code>region_total</code>, which the query no longer
+                    returns. The rest of the report is unaffected.
+                  </p>
+                  <div style="display:flex;gap:7px;padding-top:2px">
+                    <span class="m-btn sm">Fix in chat</span>
+                    <span class="m-btn ghost sm">Remove section</span>
+                  </div>
+                </div>
+                <div class="brow">
+                  <span class="blk">Alert</span>
+                  <span class="blk chg">Button → Link · declare it<span class="c n">7</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="split2">
+      <div>
+        <p class="m-label" style="margin-bottom:6px">pages/report.yaml — the types contract</p>
+        <pre class="yaml"><span class="k">types:</span>
+  <span class="k">blocks:</span>
+    - Box
+    - Title
+    - Paragraph
+    - Statistic
+    - EChart
+    - AgGridBalham
+    - Selector
+    - <span class="add">MultipleSelector</span>
+    - DateRangeSelector
+    - Button
+    - Alert
+    - Markdown
+  <span class="k">actions:</span>
+    - CallAPI
+    - SetState
+    - DownloadCsv
+    - <span class="add">Link</span>          <span style="color:var(--muted)"># fix-in-chat</span>
+  <span class="k">operators:</span>
+    - _state
+    - _api
+    - _if_none
+    - _function
+    - _intl
+    - _args</pre>
+      </div>
+      <div class="bendbar" style="display:grid;gap:6px;align-content:start">
+        <b>Why this list is load-bearing</b>
+        <span>
+          <code>Dynamic</code> resolves the compiled config against these declarations and rejects
+          anything undeclared — <b>failing the entire report to the fallback slot</b>, not the one
+          section that used it. So a compiler change that emits a new block type is not done until
+          the declaration lands with it, in the same commit.
+        </span>
+        <span>
+          <code>MultipleSelector</code> is declared (the multi-select filter work in flight emits
+          it). <code>Link</code> is the one this deck adds, for the owner-only Fix-in-chat on a
+          broken section.
+        </span>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>Provenance is a <code>Paragraph</code> the compiler emits</b> from the report doc plus the resolve timestamp — "ran just now" is free at resolve time, which is why the list column says <i>Updated</i> and nothing persists a last-run.</span></li>
+      <li><span class="c n">2</span><span><b>Continue in chat is a <code>Button</code> with a <code>Link</code> action</b>, present only when the report carries a <code>conversationId</code> and the viewer owns it. Reports made through the agent's tool path have no conversation id, so the affordance is absent rather than broken.</span></li>
+      <li><span class="c">3</span><span><b>The filter tags need no block work.</b> <code>MultipleSelector</code> takes <code>{ label, value }</code> options natively and renders the selection as removable tags — so ids bind the <code>$match</code> while labels show, which is exactly what a looked-up option list needs.</span></li>
+      <li><span class="c">4</span><span><b>KPIs are <code>Statistic</code></b>, one per section, and carry no download: a single number you can already read has nothing to export. Every query-backed section carries its own <code>⤓</code> instead — a <code>Button</code> running the section's query and handing it to <code>DownloadCsv</code>, which the compiler already emits for download sections today.</span></li>
+      <li><span class="c">5</span><span><b>Section headings are separate <code>Title</code> blocks</b> because <code>EChart</code> and <code>AgGridBalham</code> both set <code>additionalProperties: false</code> and have no title property. The compiler already does this; it is worth knowing before someone tries to pass one.</span></li>
+      <li><span class="c">6</span><span><b>Formatted columns are a <code>_function</code> cell renderer over <code>_intl.numberFormat</code></b>, which is why those two operators are declared. Unformatted all-numeric columns are right-aligned rather than formatted — a count lines up beside money without inventing decimals.</span></li>
+      <li><span class="c n">7</span><span><b>The two recoveries on a broken section are owner-only</b>, and both write to the spec. They are ordinary <code>Button</code>s inside the <code>Alert</code> — one navigating to the chat with the report as context, one calling an endpoint to drop the section. The only new requirement is the <code>Link</code> declaration.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── INVENTORY ───────────────────────────────────────────────────── -->
+  <section class="impl" id="inv">
+    <h2>The inventory, and the one change</h2>
+    <p>
+      Every surface in the UX deck, the blocks behind it, and whether it builds today. Read the
+      middle column as the shopping list: all of it is already installed by the demo except the
+      one row marked <span class="tag is-new">block change</span>.
+    </p>
+
+    <div class="impl-wrap">
+      <table class="impl-table">
+        <thead>
+          <tr><th>Surface</th><th>Blocks</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Welcome, two tracks</td>
+            <td><code>Box</code>, <code>Title</code>, <code>Paragraph</code>, <code>Button</code> — outside <code>AgentChat</code>, <code>welcome</code> unset</td>
+            <td>Builds today. <code>welcome.prompts</code> is a flat row with no areas, so the empty state moves out of the block rather than growing its schema.</td>
+          </tr>
+          <tr>
+            <td>Starter fills the composer</td>
+            <td><code>Button</code> → <code>CallMethod</code> <code>chat.setInput</code></td>
+            <td><span class="tag is-new">block change</span> The sender is uncontrolled and no method writes it. Add <code>setInput</code> to <code>AgentChat</code>: controlled <code>Sender</code> plus one <code>registerMethod</code>. Patch first, upstream after — the package already carries a patch in this repo.</td>
+          </tr>
+          <tr>
+            <td>Conversation rail</td>
+            <td><code>AgentConversations</code> (<code>items[].group</code>, <code>timestamp</code>, <code>groupable</code>, <code>menu</code>), <code>Search</code></td>
+            <td>Builds today, using properties the page does not set yet. Search filters <code>items</code> before they reach the block; group order follows item order, so sorting by recency is the implementation.</td>
+          </tr>
+          <tr>
+            <td>Collapsible panels</td>
+            <td><code>Box</code> + <code>Button</code> strips, or <code>Splitter</code></td>
+            <td>Builds today, session-scoped via <code>SetGlobal</code>. No client-storage action exists, so persistence across reloads would need a <code>ui_state</code> document — deferred, additive.</td>
+          </tr>
+          <tr>
+            <td>Inline sketches</td>
+            <td><code>AgentChat</code> · <code>messageDisplay.renderMermaid</code></td>
+            <td>Builds today, prompt-only. Mermaid ships inside the block and defaults on.</td>
+          </tr>
+          <tr>
+            <td>Tool trace line</td>
+            <td><code>AgentChat</code> thought chain</td>
+            <td>Partly ours: the title is the raw tool name; the description and the collapsed body come from a <code>display</code> string on the tool output. Accepted as drawn-with-a-prefix.</td>
+          </tr>
+          <tr>
+            <td>Results panel</td>
+            <td><code>SegmentedSelector</code>, <code>List</code>, <code>Card</code>, <code>CheckboxSwitch</code>, <code>EChart</code>, <code>AgGridBalham</code>, <code>Modal</code>, <code>ScrollTo</code></td>
+            <td>Builds today. Selection is an input block bound to the state path the panel renders from.</td>
+          </tr>
+          <tr>
+            <td>Save-as-report sheet</td>
+            <td><code>Modal</code>, <code>TextInput</code>, <code>ControlledList</code>, <code>CheckboxSwitch</code>, <code>Selector</code>, <code>SegmentedSelector</code></td>
+            <td>Builds today, with ↑ / ↓ / ✕ instead of drag grips — <code>ControlledList</code> exposes <code>moveItemUp</code>, <code>moveItemDown</code> and <code>removeItem</code> as methods.</td>
+          </tr>
+          <tr>
+            <td>Reports list</td>
+            <td><code>AgGridBalham</code> — <code>buttons</code>, <code>tag</code>, <code>date</code> cells — plus <code>Search</code>, <code>SegmentedSelector</code>, <code>Selector</code></td>
+            <td>Builds today, matching every other module list in this repo. <code>tag</code> renders an array as one pill per item; <code>buttons</code> takes a per-row <code>iconField</code> for the ★.</td>
+          </tr>
+          <tr>
+            <td>Row action menu</td>
+            <td><code>buttons</code> cell → <code>Modal</code>, or a new <code>menu</code> cell</td>
+            <td><span class="tag is-new">optional block change</span> The grid has no dropdown renderer. PR 2201's <code>selector</code> / <code>switch</code> / <code>textInput</code> / <code>paragraphInput</code> cells are already on <code>vite-hono</code> and in the installed build, but a selector is an input and a menu of verbs is not a value. A <code>menu</code> cell — antd <code>Dropdown</code>, <code>items[].eventName</code>, the <code>*Field</code> resolution <code>ButtonsCell</code> already has — is the companion PR. Ships without it as <code>⋯</code> → <code>Modal</code>.</td>
+          </tr>
+          <tr>
+            <td>Confirm, recovery, empty</td>
+            <td><code>ConfirmModal</code>, <code>List</code>, <code>Button</code>, <code>Result</code></td>
+            <td>Builds today. <code>Result</code> already backs the report page's not-found fallback, so the empty surfaces match for free.</td>
+          </tr>
+          <tr>
+            <td>Report page</td>
+            <td><code>Dynamic</code> over <code>Statistic</code>, <code>EChart</code>, <code>AgGridBalham</code>, <code>MultipleSelector</code>, <code>DateRangeSelector</code>, <code>Alert</code>, <code>Button</code></td>
+            <td>Builds today, but the <code>types</code> list is a contract: an undeclared block, action or operator fails the whole report to the fallback slot. <code>MultipleSelector</code> is declared; <code>Link</code> lands with Fix-in-chat.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="max-width:68ch;color:var(--ink-2);margin:0">
+      <b>One method, and the reason it is worth a patch.</b> Everything the UX deck asks for is
+      config except a starter that fills the composer — and that is not a detail of the empty
+      state, it is the empty state's whole argument. A starter you cannot edit before sending is
+      a demo; a starter that lands in the composer is a prompt the user makes their own, which is
+      the difference between teaching the report path and performing it. <code>setInput</code> is
+      a controlled sender and one registered method, it unblocks the two-track welcome as a
+      side-effect by letting the whole empty state live outside the block, and the package is
+      already patched in this repo for an unrelated fix.
+    </p>
+    <p style="max-width:68ch;color:var(--ink-2);margin:0">
+      <b>And one cell, which is not this deck's to demand.</b> The grid's missing dropdown is a
+      gap in <code>@lowdefy/blocks-aggrid</code>, not in reporting: contacts, companies,
+      activities and user-admin will all meet it the first time a list row needs more than two
+      actions. It is worth building for that reason rather than this one — and the reports list
+      ships either way, because <code>⋯</code> opening a <code>Modal</code> is a smaller
+      compromise than leaving the repo's one list page that is not a grid.
+    </p>
+  </section>
+
+  <p class="deck-foot">
+    modules/reporting · block map v1 · six surfaces · checked against the installed block source
+  </p>
+</main>
+
+</body>
+</html>

@@ -10,11 +10,24 @@ export const MAX_MARKDOWN_LENGTH = 5000;
 // downloads independently, and a single shared budget meant eight charts
 // starved every download in the same turn.
 export const MAX_DATA_PARTS_SPECS = 8;
-export const MAX_IN_VALUES = 100;
 export const MAX_FILTER_OPTIONS = 50;
+// Options cap for a filter whose options are resolved server-side from a
+// query (not typed into the persisted spec). MAX_FILTER_OPTIONS bounds what
+// the agent types into a persisted spec (a payload-size concern); query-
+// sourced options are resolved server-side per report open and already
+// bounded by PIPELINE_RESULT_CAP, so the same number is needlessly tight.
+// INVARIANT: must stay <= MAX_ARRAY_LITERAL_LENGTH — a full multi-select
+// selection becomes ONE $in/$all operand in the server-built filter $match,
+// which the validator caps at MAX_ARRAY_LITERAL_LENGTH. Violating this
+// rejects an ordinary selection, and rejects it silently — the failed
+// CallAPI aborts before its SetState, so bound sections keep stale rows.
+export const MAX_QUERY_FILTER_OPTIONS = 500;
 
 export const CHART_TYPES = ["bar", "line", "pie"];
-export const FILTER_CONTROLS = ["select", "daterange"];
+export const FILTER_CONTROLS = ["select", "multiselect", "daterange"];
+// A multiselect filter's match mode, selecting between the `in` ($in, any
+// of) and `all` ($all, all of) filter-triple ops.
+export const FILTER_MATCH_MODES = ["any", "all"];
 
 // Number-format styles a presentation contract may declare on a KPI or table
 // column (`format: { style, currency?, locale?, decimals? }`). The agent copies
@@ -64,11 +77,15 @@ export const MAX_EXPRESSION_DEPTH = 100;
 export const MAX_PIPELINE_NODES = 10000;
 
 // Max length of an array literal WRITTEN INTO the pipeline (`$in`/`$nin`/`$all`
-// operands, etc.). Carries forward today's MAX_IN_VALUES, which is otherwise
-// dropped in the new model. This bounds what the agent can type, NOT what a
-// stage produces: `{ $range: [0, 500000] }` is three tokens and a half-million
+// operands, etc.). This bounds what the agent can type, NOT what a stage
+// produces: `{ $range: [0, 500000] }` is three tokens and a half-million
 // element result. Output size is bounded at execution by MAX_RESULT_BYTES.
-export const MAX_ARRAY_LITERAL_LENGTH = MAX_IN_VALUES;
+// INVARIANT: MAX_QUERY_FILTER_OPTIONS must stay <= MAX_ARRAY_LITERAL_LENGTH —
+// a full multi-select selection becomes ONE $in/$all operand in the
+// server-built filter $match, which this cap bounds. Violating this rejects
+// an ordinary selection, and rejects it silently — the failed CallAPI aborts
+// before its SetState, so bound sections keep stale rows.
+export const MAX_ARRAY_LITERAL_LENGTH = 500;
 
 // Max serialized (JSON) size of the pipeline in bytes — bounds a payload padded
 // with large `$literal` blobs, which the walker does not recurse into but must

@@ -97,8 +97,9 @@ Every tool bottoms out at the same place. Take `query_data`:
 `AnalyticsPipeline.js:69-101`:
 
 - L81-82 — report filter triples become a leading `$match`, built server-side from
-  a **fixed** op map (`FILTER_OPS = { eq, gte, lte }`, L49); an unknown op throws
-  (L58-60), never silently skips.
+  a **fixed** op map (`FILTER_OPS = { eq, gte, lte, in, all }`, L49); an unknown op
+  throws (L58-60), never silently skips. A null, undefined or empty-array value
+  drops its triple — "no constraint", not "match nothing".
 - L84-89 — the combined pipeline goes through `validatePipeline`. The
   server-built `$match` is _not_ exempt: it walks like any other stage, so a
   hostile field name is caught by the same gate.
@@ -211,7 +212,12 @@ spec. `api/generate-report.yaml`:
   section's pipeline goes through `validateQuery` → `validatePipeline`
   (validate-before-persist). The second pass at L270-312 checks filter bindings:
   distinct fields, every `filterBy` resolves to a filter section, every filter is
-  bound by something, and a select filter has an options source.
+  bound by something, and a select or multiselect filter has an options source
+  (declared `options`, an `optionsQuery`, or catalog enum `values`). The enum
+  lookup, `catalogFieldValues`, skips collections the viewer's roles don't allow
+  — a no-op on this path (a bound section over an unreadable collection already
+  failed `validatePipeline` above), but load-bearing at compile time, where
+  `compileReport` calls the same function with no pipeline gate in front of it.
 - L65-88 — insert the spec **raw**. The comment at L2-7 is the key decision: the
   reconstructed pipeline is discarded and the AI's verbatim pipeline is stored,
   because _resolve-time revalidation is the guarantee_, not sanitization-at-write.

@@ -1,7 +1,11 @@
 import compileReport from "./compileReport.js";
 import querySections from "./querySections.js";
 import testCatalog from "./testDatasets.js";
-import { PIPELINE_RESULT_CAP } from "./constants.js";
+import {
+  MAX_FILTER_OPTIONS,
+  MAX_QUERY_FILTER_OPTIONS,
+  PIPELINE_RESULT_CAP,
+} from "./constants.js";
 
 const roles = ["analyst"];
 const endpointId = "reporting/query-data";
@@ -68,6 +72,67 @@ test("querySections returns kpi, chart and table queries in order", () => {
   const sections = querySections({ spec, roles });
   expect(sections.map((s) => s.id)).toEqual(["s0", "s1", "s3"]);
   expect(sections[0].query).toEqual(orderTotal);
+});
+
+// Regression guard for the orderedQueries refactor: a filter's optionsQuery
+// entry rides the same resolver list as the data sections, interleaved at its
+// spec position (s1, between the kpi at s0 and the table at s2). If
+// compileReport recomputed its own kpi/chart/table-only id list (the old
+// behaviour) instead of importing orderedQueries, the table would read the
+// filter's result instead of its own — this asserts each data section renders
+// the distinguishable rows the resolver returned for IT.
+test("a filter's optionsQuery entry interleaved between data sections keeps each data section aligned with its own rows", () => {
+  const kpiQuery = {
+    collection: "demo_orders",
+    pipeline: [{ $group: { _id: null, total: { $sum: "$total" } } }],
+  };
+  const interleavedSpec = {
+    title: "T",
+    sections: [
+      {
+        type: "kpi",
+        label: "Total",
+        query: kpiQuery,
+        valueKey: "total",
+        filterBy: ["region"],
+      },
+      {
+        type: "filter",
+        control: "select",
+        field: "region",
+        label: "Region",
+        optionsQuery: {
+          collection: "demo_orders",
+          pipeline: [
+            { $group: { _id: "$region", label: { $first: "$region" } } },
+          ],
+          valueKey: "_id",
+          labelKey: "label",
+        },
+      },
+      {
+        type: "table",
+        label: "Orders",
+        query: ordersByRegion,
+        columns: [{ key: "region" }, { key: "total" }],
+      },
+    ],
+  };
+  const kpiRows = [{ total: 111 }];
+  const optionsRows = [{ _id: "north", label: "North" }];
+  const tableRows = [{ region: "EU", total: 222 }];
+  const blocks = compileReport({
+    spec: interleavedSpec,
+    results: [kpiRows, optionsRows, tableRows],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+  });
+  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  expect(byId.s0.properties.value).toEqual({
+    __if_none: [{ __state: "sections.s0.rows.0.total" }, 111],
+  });
+  expect(byId.s2.properties.rowData).toEqual(tableRows);
 });
 
 test("compiles the full report to blocks", () => {
@@ -464,5 +529,351 @@ describe("unformatted numeric columns", () => {
     expect(
       colsFor([{ key: "orders" }], [{ orders: null }]).orders.cell,
     ).toBeUndefined();
+  });
+});
+
+// Each control emits its own block type and its own filter triples, and a
+// filter whose options come from a query resolves them from the rows the
+// resolver returned for ITS section.
+describe("filter controls", () => {
+  // One table bound to all three controls, so a single compile exercises every
+  // block type and every triple shape. Only the table carries a query, so the
+  // results array holds one entry.
+  const allControlsSpec = (match) => ({
+    title: "T",
+    sections: [
+      { type: "filter", control: "select", field: "status", label: "Status" },
+      {
+        type: "filter",
+        control: "multiselect",
+        field: "region",
+        label: "Regions",
+        ...(match === undefined ? {} : { match }),
+      },
+      {
+        type: "filter",
+        control: "daterange",
+        field: "createdAt",
+        label: "Created",
+      },
+      {
+        type: "table",
+        label: "Orders",
+        query: ordersByRegion,
+        columns: [{ key: "region" }, { key: "total" }],
+        filterBy: ["status", "region", "createdAt"],
+      },
+    ],
+  });
+
+  const filterRow = (spec, results) => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const row = blocks.find((b) => b.id === "report_filters");
+    return {
+      blocks,
+      byId: Object.fromEntries(blocks.map((b) => [b.id, b])),
+      filters: Object.fromEntries(row.blocks.map((b) => [b.id, b])),
+    };
+  };
+
+  const tableRows = [{ region: "EU", total: 1 }];
+
+  test("each control emits its own block type, all inside the filter row", () => {
+    const { filters } = filterRow(allControlsSpec(), [tableRows]);
+    expect(filters.filter_status.type).toBe("Selector");
+    expect(filters.filter_region.type).toBe("MultipleSelector");
+    expect(filters.filter_createdAt.type).toBe("DateRangeSelector");
+  });
+
+  // `match` is the author's intent; the triple's op is the query it compiles to
+  // (AnalyticsPipeline's FILTER_OPS: in → $in, all → $all).
+  test("triples per control: eq, in / all, and a gte+lte pair", () => {
+    const { filters } = filterRow(allControlsSpec(), [tableRows]);
+    expect(
+      filters.filter_region.events.onChange[0].params.payload.filters,
+    ).toEqual([
+      { field: "status", op: "eq", value: { __state: "filter_status" } },
+      { field: "region", op: "in", value: { __state: "filter_region" } },
+      {
+        field: "createdAt",
+        op: "gte",
+        value: { __state: "filter_createdAt.0" },
+      },
+      {
+        field: "createdAt",
+        op: "lte",
+        value: { __state: "filter_createdAt.1" },
+      },
+    ]);
+
+    const all = filterRow(allControlsSpec("all"), [tableRows]);
+    expect(
+      all.filters.filter_region.events.onChange[0].params.payload.filters,
+    ).toContainEqual({
+      field: "region",
+      op: "all",
+      value: { __state: "filter_region" },
+    });
+
+    // `match: any` is the default a bare multiselect normalizes to.
+    const any = filterRow(allControlsSpec("any"), [tableRows]);
+    expect(
+      any.filters.filter_region.events.onChange[0].params.payload.filters,
+    ).toContainEqual({
+      field: "region",
+      op: "in",
+      value: { __state: "filter_region" },
+    });
+  });
+
+  // company_id carries no catalog `values`, so this filter's only options
+  // source is its query — which is what makes the degradation cases below
+  // reach the Alert rather than falling back to the catalog.
+  const companySpec = (field = "company_id") => ({
+    title: "T",
+    sections: [
+      {
+        type: "filter",
+        control: "multiselect",
+        field,
+        label: "Companies",
+        optionsQuery: {
+          collection: "demo_companies",
+          pipeline: [{ $project: { _id: 1, name: 1 } }],
+          valueKey: "_id",
+          labelKey: "name",
+        },
+      },
+      {
+        type: "table",
+        label: "Orders",
+        query: ordersByRegion,
+        columns: [{ key: "region" }],
+        filterBy: [field],
+      },
+    ],
+  });
+
+  test("optionsQuery rows become { label, value } options in row order", () => {
+    const { filters } = filterRow(companySpec(), [
+      [
+        { _id: "c2", name: "Beta" },
+        { _id: "c1", name: "Alpha" },
+      ],
+      tableRows,
+    ]);
+    expect(filters.filter_company_id.properties.options).toEqual([
+      { label: "Beta", value: "c2" },
+      { label: "Alpha", value: "c1" },
+    ]);
+    expect(filters.filter_company_id.properties.title).toBe("Companies");
+  });
+
+  // A dropdown silently missing the company someone is looking for is
+  // indistinguishable from that company not existing.
+  test("rows over the cap are sliced and the title says so", () => {
+    const rows = Array.from(
+      { length: MAX_QUERY_FILTER_OPTIONS + 5 },
+      (_, i) => ({ _id: `c${i}`, name: `Company ${i}` }),
+    );
+    const capped = filterRow(companySpec(), [rows, tableRows]);
+    expect(capped.filters.filter_company_id.properties.options).toHaveLength(
+      MAX_QUERY_FILTER_OPTIONS,
+    );
+    expect(capped.filters.filter_company_id.properties.title).toBe(
+      `Companies — first ${MAX_QUERY_FILTER_OPTIONS}`,
+    );
+
+    const short = filterRow(companySpec(), [
+      rows.slice(0, MAX_QUERY_FILTER_OPTIONS),
+      tableRows,
+    ]);
+    expect(short.filters.filter_company_id.properties.title).toBe("Companies");
+  });
+
+  // Four ways an options list can be unusable, four descriptions: one message
+  // covering all of them would misdescribe three.
+  test.each([
+    ["the query failed or was denied", null, /failed to load/],
+    [
+      // An ObjectId reaches the browser as a bare hex string and then never
+      // equals the ObjectId in the field: the filter would show the right
+      // names and match nothing, reporting no error at all. Failing the
+      // contract turns that silence into an Alert naming $toString.
+      "valueKey holds a value that cannot survive the round-trip",
+      [{ _id: { _bsontype: "ObjectId" }, name: "Alpha" }],
+      /must be a string or number to match on.*\$toString/s,
+    ],
+    [
+      "valueKey names a column no row carries",
+      [{ label: "Alpha", name: "Alpha" }],
+      /column "_id" is not present/,
+    ],
+    ["the query returned no rows", [], /No options available/],
+  ])("a filter whose options %s degrades to an Alert", (_case, rows, match) => {
+    const { byId, filters } = filterRow(companySpec(), [rows, tableRows]);
+    // The Alert takes the control's place in the filter row, keyed by section id.
+    expect(filters.s0.type).toBe("Alert");
+    expect(filters.s0.properties.message).toBe("Companies");
+    expect(filters.s0.properties.description).toMatch(match);
+    expect(filters.filter_company_id).toBeUndefined();
+    // The bound section still renders its resolve-time rows.
+    expect(byId.s1.type).toBe("AgGridBalham");
+  });
+
+  test("a failed optionsQuery falls back to the field's catalog values", () => {
+    const spec = {
+      title: "T",
+      sections: [
+        {
+          type: "filter",
+          control: "select",
+          field: "status",
+          label: "Status",
+          optionsQuery: {
+            collection: "demo_orders",
+            pipeline: [
+              { $group: { _id: "$status", name: { $first: "$status" } } },
+            ],
+            valueKey: "_id",
+            labelKey: "name",
+          },
+        },
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }],
+          filterBy: ["status"],
+        },
+      ],
+    };
+    const { filters } = filterRow(spec, [null, tableRows]);
+    expect(filters.filter_status.type).toBe("Selector");
+    expect(filters.filter_status.properties.options).toEqual([
+      "pending",
+      "paid",
+      "shipped",
+      "cancelled",
+    ]);
+  });
+
+  // Nested array foreign keys are the case query-sourced options exist for, and
+  // the control's block id doubles as its page-state key — so a dotted field
+  // yields a nested state path that the triple must read back unchanged.
+  test("a dotted filter field yields a nested state path, read back by the triple", () => {
+    const field = "global_attributes.company_ids";
+    const { filters } = filterRow(companySpec(field), [
+      [{ _id: "c1", name: "Alpha" }],
+      tableRows,
+    ]);
+    const control = filters[`filter_${field}`];
+    expect(control.type).toBe("MultipleSelector");
+    expect(control.events.onChange[0].params.payload.filters).toEqual([
+      { field, op: "in", value: { __state: `filter_${field}` } },
+    ]);
+  });
+
+  // A catalog enum can outgrow its cap too, and the reason to say so doesn't
+  // depend on where the list came from.
+  test("catalog-sourced options are capped, and the title says so at their own cap", () => {
+    const values = Array.from(
+      { length: MAX_FILTER_OPTIONS + 5 },
+      (_, i) => `v${i}`,
+    );
+    const catalog = {
+      demo_orders: {
+        description: "Orders",
+        fields: { status: { type: "string", values } },
+      },
+    };
+    const spec = {
+      title: "T",
+      sections: [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }],
+          filterBy: ["status"],
+        },
+      ],
+    };
+    const row = compileReport({
+      spec,
+      results: [tableRows],
+      catalog,
+      roles,
+      endpointId,
+    }).find((b) => b.id === "report_filters");
+    const control = row.blocks[0];
+    expect(control.properties.options).toHaveLength(MAX_FILTER_OPTIONS);
+    expect(control.properties.title).toBe(
+      `Status — first ${MAX_FILTER_OPTIONS}`,
+    );
+  });
+
+  // A field's enum `values` are contents of the collection that declares them.
+  // Serving them to a viewer who may not query that collection would route
+  // around the gate validatePipeline enforces on the pipeline — and the path
+  // that matters most is this one: the optionsQuery was DENIED, and the catalog
+  // is the fallback. Being refused the query must not hand over the values.
+  test("a role-gated collection's enum values are not served as fallback options", () => {
+    const gated = {
+      demo_secrets: {
+        roles: ["admin"],
+        description: "Restricted",
+        fields: { status: { type: "string", values: ["alpha", "beta"] } },
+      },
+    };
+    const spec = {
+      title: "T",
+      sections: [
+        {
+          type: "filter",
+          control: "select",
+          field: "status",
+          label: "Status",
+          optionsQuery: {
+            collection: "demo_secrets",
+            pipeline: [{ $group: { _id: "$status" } }],
+            valueKey: "_id",
+            labelKey: "_id",
+          },
+        },
+        {
+          type: "table",
+          label: "Rows",
+          query: { collection: "demo_secrets", pipeline: [{ $limit: 1 }] },
+          columns: [{ key: "status" }],
+          filterBy: ["status"],
+        },
+      ],
+    };
+    // The denial arrives as a null results entry — the resolver's :try caught it.
+    const compile = (viewerRoles) =>
+      compileReport({
+        spec,
+        results: [null, tableRows],
+        catalog: gated,
+        roles: viewerRoles,
+        endpointId,
+      }).find((b) => b.id === "report_filters").blocks[0];
+
+    const denied = compile(["analyst"]);
+    expect(denied.type).toBe("Alert");
+    expect(denied.properties.description).toMatch(/failed to load/);
+
+    // An admin, who may query it, still gets the fallback.
+    const allowed = compile(["admin"]);
+    expect(allowed.type).toBe("Selector");
+    expect(allowed.properties.options).toEqual(["alpha", "beta"]);
   });
 });

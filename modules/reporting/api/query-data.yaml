@@ -35,7 +35,9 @@ payloadSchema:
       description: >
         Report filter triples applied as a leading $match before the pipeline
         (report filter re-queries only). Values arrive as deferred __state
-        reads resolved client-side; null/undefined values drop the triple.
+        reads resolved client-side; null/undefined values drop the triple, and
+        so does an empty array. A value may itself be an array — a multiselect
+        selection compiled to $in/$all.
       items:
         type: object
         required:

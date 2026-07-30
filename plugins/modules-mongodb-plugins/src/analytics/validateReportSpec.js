@@ -1,6 +1,7 @@
 import {
   CHART_TYPES,
   FILTER_CONTROLS,
+  FILTER_MATCH_MODES,
   FORMAT_STYLES,
   MAX_FILTER_OPTIONS,
   MAX_LABEL_LENGTH,
@@ -18,7 +19,7 @@ import validateChartSpec, { validateQuery } from "./validateChartSpec.js";
  *   { type: kpi,      label, query, valueKey, format?, filterBy? }
  *   { type: chart,    chart, label, query, x, y, filterBy? }
  *   { type: table,    label, query, columns: [{ key, label?, format? }], filterBy? }
- *   { type: filter,   control: select|daterange, field, label, options? }
+ *   { type: filter,   control: select|multiselect|daterange, field, label, options?, match?, optionsQuery? }
  *   { type: markdown, content }
  *   { type: download, label, query }
  *
@@ -60,7 +61,9 @@ function validateFormat(format, where) {
     fail(`${where} format must be an object.`);
   }
   if (!FORMAT_STYLES.includes(format.style)) {
-    fail(`${where} format.style "${format.style}" is not one of ${FORMAT_STYLES.join(", ")}.`);
+    fail(
+      `${where} format.style "${format.style}" is not one of ${FORMAT_STYLES.join(", ")}.`,
+    );
   }
   if (format.currency !== undefined && typeof format.currency !== "string") {
     fail(`${where} format.currency must be a string.`);
@@ -70,7 +73,9 @@ function validateFormat(format, where) {
   }
   if (
     format.decimals !== undefined &&
-    (!Number.isInteger(format.decimals) || format.decimals < 0 || format.decimals > 20)
+    (!Number.isInteger(format.decimals) ||
+      format.decimals < 0 ||
+      format.decimals > 20)
   ) {
     fail(`${where} format.decimals must be an integer between 0 and 20.`);
   }
@@ -89,13 +94,39 @@ function isPlausibleField(field) {
   return typeof field === "string" && field !== "" && !field.startsWith("$");
 }
 
+// Whether `roles` satisfies a catalog entry's role gate. Same rule
+// validatePipeline's checkCollectionAccess applies: an absent or empty `roles`
+// list means any authenticated user may query the collection (role-gating is
+// opt-in), otherwise the viewer must hold one of the listed roles.
+function readableCollection(catalog, name, roles) {
+  const required = catalog?.[name]?.roles ?? [];
+  if (required.length === 0) return true;
+  const held = Array.isArray(roles) ? roles : [];
+  return required.some((role) => held.includes(role));
+}
+
 // The enum `values` declared for a field anywhere among the given catalog
-// collections — a select filter's options fall back to these (design: options
-// come from the agent's declared `options` OR the catalog field's values).
-export function catalogFieldValues(catalog, field, collections) {
+// collections — a select/multiselect filter's options fall back to these
+// (design: options come from the agent's declared `options`, an optionsQuery,
+// OR the catalog field's values).
+//
+// Role-gated: a collection the viewer may not query contributes nothing. The
+// catalog is the confidentiality boundary, and a field's enum `values` are
+// contents of the collection that declares them — serving them to a viewer who
+// cannot query that collection would route around the same gate validatePipeline
+// enforces on the pipeline itself. It matters most on the path where an
+// optionsQuery was DENIED and compileReport falls back here: without this, being
+// refused the query is what hands the viewer the cataloged values.
+//
+// `roles` is required rather than optional-with-a-default: an omitted argument
+// would silently mean "no roles held", which fails closed but looks like a
+// missing options source rather than a denial. Callers pass the viewer's roles.
+export function catalogFieldValues(catalog, field, collections, roles) {
   if (!catalog || typeof catalog !== "object") return null;
-  const names = collections && collections.length ? collections : Object.keys(catalog);
+  const names =
+    collections && collections.length ? collections : Object.keys(catalog);
   for (const name of names) {
+    if (!readableCollection(catalog, name, roles)) continue;
     const values = catalog?.[name]?.fields?.[field]?.values;
     if (Array.isArray(values) && values.length > 0) return values;
   }
@@ -124,7 +155,8 @@ function validateReportSpec({ spec, catalog, roles }) {
 
   // ── First pass: per-section validation ──
   const sections = spec.sections.map((section, index) => {
-    if (!section || typeof section !== "object") fail(`section ${index} must be an object.`);
+    if (!section || typeof section !== "object")
+      fail(`section ${index} must be an object.`);
     const id = `s${index}`;
 
     if (section.type === "kpi") {
@@ -135,10 +167,14 @@ function validateReportSpec({ spec, catalog, roles }) {
         fail: (m) => fail(`section ${index} (kpi) ${m}`),
       });
       if (typeof section.valueKey !== "string" || section.valueKey === "") {
-        fail(`section ${index} (kpi) requires a valueKey (the column read from row 0).`);
+        fail(
+          `section ${index} (kpi) requires a valueKey (the column read from row 0).`,
+        );
       }
       if (section.valueKey.length > MAX_LABEL_LENGTH) {
-        fail(`section ${index} (kpi) valueKey exceeds ${MAX_LABEL_LENGTH} characters.`);
+        fail(
+          `section ${index} (kpi) valueKey exceeds ${MAX_LABEL_LENGTH} characters.`,
+        );
       }
       const format =
         section.format !== undefined
@@ -158,11 +194,26 @@ function validateReportSpec({ spec, catalog, roles }) {
     if (section.type === "chart") {
       const label = validateLabel(section, index);
       const { chart, query, x, y } = validateChartSpec({
-        spec: { chart: section.chart, title: label, query: section.query, x: section.x, y: section.y },
+        spec: {
+          chart: section.chart,
+          title: label,
+          query: section.query,
+          x: section.x,
+          y: section.y,
+        },
         catalog,
         roles,
       });
-      return { id, type: "chart", chart, label, query, x, y, filterBy: section.filterBy ?? [] };
+      return {
+        id,
+        type: "chart",
+        chart,
+        label,
+        query,
+        x,
+        y,
+        filterBy: section.filterBy ?? [],
+      };
     }
 
     if (section.type === "table") {
@@ -182,54 +233,186 @@ function validateReportSpec({ spec, catalog, roles }) {
         // Strict keys: no `tag` (enum tag styling dropped) or other extras.
         for (const key of Object.keys(col)) {
           if (!["key", "label", "format"].includes(key)) {
-            fail(`section ${index} (table) column ${ci} has an unexpected key "${key}" (allowed: key, label, format).`);
+            fail(
+              `section ${index} (table) column ${ci} has an unexpected key "${key}" (allowed: key, label, format).`,
+            );
           }
         }
         if (typeof col.key !== "string" || col.key === "") {
           fail(`section ${index} (table) column ${ci} requires a key.`);
         }
         if (col.key.length > MAX_LABEL_LENGTH) {
-          fail(`section ${index} (table) column ${ci} key exceeds ${MAX_LABEL_LENGTH} characters.`);
+          fail(
+            `section ${index} (table) column ${ci} key exceeds ${MAX_LABEL_LENGTH} characters.`,
+          );
         }
         const out = { key: col.key };
         if (col.label !== undefined) {
-          if (typeof col.label !== "string" || col.label.length > MAX_LABEL_LENGTH) {
-            fail(`section ${index} (table) column ${ci} label must be a string of at most ${MAX_LABEL_LENGTH} characters.`);
+          if (
+            typeof col.label !== "string" ||
+            col.label.length > MAX_LABEL_LENGTH
+          ) {
+            fail(
+              `section ${index} (table) column ${ci} label must be a string of at most ${MAX_LABEL_LENGTH} characters.`,
+            );
           }
           out.label = col.label;
         }
         if (col.format !== undefined) {
-          out.format = validateFormat(col.format, `section ${index} (table) column ${ci}`);
+          out.format = validateFormat(
+            col.format,
+            `section ${index} (table) column ${ci}`,
+          );
         }
         return out;
       });
-      return { id, type: "table", label, query, columns, filterBy: section.filterBy ?? [] };
+      return {
+        id,
+        type: "table",
+        label,
+        query,
+        columns,
+        filterBy: section.filterBy ?? [],
+      };
     }
 
     if (section.type === "filter") {
       const label = validateLabel(section, index);
+
+      // Strict keys: an allowed-key list catches misspellings (`optionsquery`)
+      // and stray keys that would otherwise be silently dropped. `id` is on the
+      // list although the agent never writes it — this validator ASSIGNS it, so
+      // excluding it would make a normalized section the one thing that cannot
+      // be re-validated. It is ignored, not read: the id below is always
+      // derived from the section's position.
+      for (const key of Object.keys(section)) {
+        if (
+          ![
+            "id",
+            "type",
+            "label",
+            "control",
+            "field",
+            "options",
+            "match",
+            "optionsQuery",
+          ].includes(key)
+        ) {
+          fail(
+            `section ${index} (filter) has an unexpected key "${key}" (allowed: type, label, control, field, options, match, optionsQuery).`,
+          );
+        }
+      }
+
       if (!FILTER_CONTROLS.includes(section.control)) {
         fail(
           `section ${index} (filter) control "${section.control}" is not one of ` +
-            `${FILTER_CONTROLS.join(", ")}.`
+            `${FILTER_CONTROLS.join(", ")}.`,
         );
       }
       if (!isPlausibleField(section.field)) {
-        fail(`section ${index} (filter) requires a field (a non-'$'-prefixed base-collection field name).`);
+        fail(
+          `section ${index} (filter) requires a field (a non-'$'-prefixed base-collection field name).`,
+        );
       }
       if (section.options !== undefined) {
-        if (!Array.isArray(section.options) || section.options.length > MAX_FILTER_OPTIONS) {
+        if (
+          !Array.isArray(section.options) ||
+          section.options.length > MAX_FILTER_OPTIONS
+        ) {
           fail(
             `section ${index} (filter) options must be an array of at most ` +
-              `${MAX_FILTER_OPTIONS} values.`
+              `${MAX_FILTER_OPTIONS} values.`,
           );
         }
         for (const option of section.options) {
           if (typeof option !== "string" && typeof option !== "number") {
-            fail(`section ${index} (filter) options must be strings or numbers.`);
+            fail(
+              `section ${index} (filter) options must be strings or numbers.`,
+            );
           }
         }
       }
+
+      // An options source only means something on a control that shows a list.
+      // A daterange carrying `options` or `optionsQuery` is a misunderstanding,
+      // and neither key is inert: compileReport's daterange branch reads no
+      // options at all, and querySections would still run the optionsQuery on
+      // every report open, spending a query per open on rows nothing reads.
+      if (
+        !["select", "multiselect"].includes(section.control) &&
+        (section.options !== undefined || section.optionsQuery !== undefined)
+      ) {
+        fail(
+          `section ${index} (filter) options and optionsQuery are only valid on a select or multiselect control.`,
+        );
+      }
+
+      // `match` selects the in ($in)/all ($all) filter-triple op and only
+      // makes sense on a multiselect control (whose state value is an array).
+      // Deliberately NOT checked against the catalog's `type: array` — catalog
+      // types are prompt material, never enforcement (see design notes).
+      let match;
+      if (section.control === "multiselect") {
+        match = section.match ?? "any";
+        if (!FILTER_MATCH_MODES.includes(match)) {
+          fail(
+            `section ${index} (filter) match "${match}" is not one of ${FILTER_MATCH_MODES.join(", ")}.`,
+          );
+        }
+      } else if (section.match !== undefined) {
+        fail(
+          `section ${index} (filter) match is only valid on a multiselect control.`,
+        );
+      }
+
+      if (section.options !== undefined && section.optionsQuery !== undefined) {
+        fail(
+          `section ${index} (filter) declares both options and optionsQuery — pick one source, they are not merged.`,
+        );
+      }
+
+      // optionsQuery rows become { label, value } options at compile time.
+      // Validate the query half like any other query-backed section, then
+      // re-attach valueKey/labelKey — validateQuery only returns
+      // { collection, pipeline }, so dropping them here would silently lose
+      // the presentation contract and yield a dropdown of blank options.
+      let optionsQuery;
+      if (section.optionsQuery !== undefined) {
+        const query = validateQuery(section.optionsQuery, {
+          catalog,
+          roles,
+          fail: (m) => fail(`section ${index} (filter) optionsQuery ${m}`),
+        });
+        if (
+          typeof section.optionsQuery.valueKey !== "string" ||
+          section.optionsQuery.valueKey === ""
+        ) {
+          fail(`section ${index} (filter) optionsQuery requires a valueKey.`);
+        }
+        if (section.optionsQuery.valueKey.length > MAX_LABEL_LENGTH) {
+          fail(
+            `section ${index} (filter) optionsQuery valueKey exceeds ${MAX_LABEL_LENGTH} characters.`,
+          );
+        }
+        if (
+          typeof section.optionsQuery.labelKey !== "string" ||
+          section.optionsQuery.labelKey === ""
+        ) {
+          fail(`section ${index} (filter) optionsQuery requires a labelKey.`);
+        }
+        if (section.optionsQuery.labelKey.length > MAX_LABEL_LENGTH) {
+          fail(
+            `section ${index} (filter) optionsQuery labelKey exceeds ${MAX_LABEL_LENGTH} characters.`,
+          );
+        }
+        optionsQuery = {
+          ...query,
+          valueKey: section.optionsQuery.valueKey,
+          labelKey: section.optionsQuery.labelKey,
+        };
+      }
+
       return {
         id,
         type: "filter",
@@ -237,6 +420,8 @@ function validateReportSpec({ spec, catalog, roles }) {
         field: section.field,
         label,
         options: section.options,
+        match,
+        optionsQuery,
       };
     }
 
@@ -245,7 +430,9 @@ function validateReportSpec({ spec, catalog, roles }) {
         fail(`section ${index} (markdown) requires content.`);
       }
       if (section.content.length > MAX_MARKDOWN_LENGTH) {
-        fail(`section ${index} (markdown) content exceeds ${MAX_MARKDOWN_LENGTH} characters.`);
+        fail(
+          `section ${index} (markdown) content exceeds ${MAX_MARKDOWN_LENGTH} characters.`,
+        );
       }
       return { id, type: "markdown", content: section.content };
     }
@@ -262,7 +449,7 @@ function validateReportSpec({ spec, catalog, roles }) {
 
     fail(
       `section ${index} type "${section.type}" is not one of kpi, chart, table, filter, ` +
-        `markdown, download.`
+        `markdown, download.`,
     );
   });
 
@@ -279,33 +466,46 @@ function validateReportSpec({ spec, catalog, roles }) {
     }
     for (const field of section.filterBy ?? []) {
       if (!isPlausibleField(field)) {
-        fail(`section ${section.id} filterBy must list non-'$'-prefixed field names.`);
+        fail(
+          `section ${section.id} filterBy must list non-'$'-prefixed field names.`,
+        );
       }
       if (!filterFields.has(field)) {
         fail(
           `section ${section.id} filterBy references "${field}" but the report has no filter ` +
-            `section with that field.`
+            `section with that field.`,
         );
       }
     }
   }
 
   // A filter must be bound by at least one section, and — when validating
-  // before persist (catalog present) — a select filter must have an options
-  // source (declared `options`, or enum `values` on the field in one of its
-  // bound sections' collections). Options are RESOLVED at compile time, not
-  // here (the raw spec is what persists).
+  // before persist (catalog present) — a select/multiselect filter must have
+  // an options source (declared `options`, `optionsQuery`, or enum `values`
+  // on the field in one of its bound sections' collections). Options are
+  // RESOLVED at compile time, not here (the raw spec is what persists).
   for (const filter of filterSections) {
-    const boundSections = sections.filter((s) => (s.filterBy ?? []).includes(filter.field));
+    const boundSections = sections.filter((s) =>
+      (s.filterBy ?? []).includes(filter.field),
+    );
     if (boundSections.length === 0) {
-      fail(`filter "${filter.field}" is not bound by any section (add filterBy to a section).`);
+      fail(
+        `filter "${filter.field}" is not bound by any section (add filterBy to a section).`,
+      );
     }
-    if (catalog && filter.control === "select" && filter.options === undefined) {
-      const collections = boundSections.map((s) => s.query?.collection).filter(Boolean);
-      if (!catalogFieldValues(catalog, filter.field, collections)) {
+    if (
+      catalog &&
+      ["select", "multiselect"].includes(filter.control) &&
+      filter.options === undefined &&
+      filter.optionsQuery === undefined
+    ) {
+      const collections = boundSections
+        .map((s) => s.query?.collection)
+        .filter(Boolean);
+      if (!catalogFieldValues(catalog, filter.field, collections, roles)) {
         fail(
-          `filter "${filter.field}" has no options: pass options on the filter section or declare ` +
-            `enum values for the field in the catalog.`
+          `filter "${filter.field}" has no options: pass options on the filter section, declare ` +
+            `optionsQuery, or declare enum values for the field in the catalog.`,
         );
       }
     }
