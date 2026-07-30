@@ -126,11 +126,12 @@ _ref:
                           # Where the emailed verification link lands after
                           # verifying — the verify-email success render.
                           callbackUrl:
-                            _string.concat:
-                              - "/"
-                              - _module.pageId: verify-email
-                              - "?verified=1&email="
-                              - _state: email
+                            pageId:
+                              _module.pageId: verify-email
+                            urlQuery:
+                              verified: "1"
+                              email:
+                                _state: email
                       - :if:
                           _not:
                             _actions: signup_do.response.token
@@ -307,11 +308,12 @@ _ref:
                     email:
                       _state: signup_email
                     callbackUrl:
-                      _string.concat:
-                        - "/"
-                        - _module.pageId: verify-email
-                        - "?verified=1&email="
-                        - _state: signup_email
+                      pageId:
+                        _module.pageId: verify-email
+                      urlQuery:
+                        verified: "1"
+                        email:
+                          _state: signup_email
           # Only where the address is the user's to change — on an address-bound
           # entry (`?email=`) starting over would mean registering a second
           # account on an address the invitation cannot be accepted for.

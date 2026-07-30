@@ -187,12 +187,13 @@ _ref:
                 urlQuery:
                   email:
                     _state: invite.email
+                  # The engine consumes `?callbackUrl=` raw, so the value has to
+                  # carry `basePath` itself. Take the live URL rather than
+                  # rebuilding it from the page id, which would drop it.
                   callbackUrl:
                     _string.concat:
-                      - "/"
-                      - _module.pageId: accept
-                      - "?invitationId="
-                      - _url_query: invitationId
+                      - _location: pathname
+                      - _location: search
       - id: accept_login
         type: Button
         visible:
@@ -214,12 +215,13 @@ _ref:
                 urlQuery:
                   email:
                     _state: invite.email
+                  # The engine consumes `?callbackUrl=` raw, so the value has to
+                  # carry `basePath` itself. Take the live URL rather than
+                  # rebuilding it from the page id, which would drop it.
                   callbackUrl:
                     _string.concat:
-                      - "/"
-                      - _module.pageId: accept
-                      - "?invitationId="
-                      - _url_query: invitationId
+                      - _location: pathname
+                      - _location: search
 
       # ---- Signed in, email matches ----
       - id: accept_title_signedin

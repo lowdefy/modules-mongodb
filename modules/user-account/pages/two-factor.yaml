@@ -76,7 +76,7 @@ _ref:
             disabled: true
       # Verify the TOTP code. TwoFactorVerify sets the session cookie itself but
       # does not navigate, so on success we navigate to the callbackUrl carried
-      # from login (?callbackUrl=), completing sign-in.
+      # from login (?callbackUrl=), or home, completing sign-in.
       - id: tf_verify
         type: Button
         visible:
@@ -104,10 +104,23 @@ _ref:
               - id: tf_totp_continue
                 type: Link
                 params:
-                  url:
-                    _if_none:
-                      - _url_query: callbackUrl
-                      - "/"
+                  # `url` is an external target: a value with no scheme gets
+                  # `https://` prefixed, which promotes the first path segment
+                  # to the hostname. Resolving the inbound `?callbackUrl=`
+                  # against the current origin keeps it on-site; `home: true`
+                  # covers the no-query case, which `url` cannot express.
+                  _if:
+                    test:
+                      _ne:
+                        - _url_query: callbackUrl
+                        - null
+                    then:
+                      url:
+                        _string.concat:
+                          - _location: origin
+                          - _url_query: callbackUrl
+                    else:
+                      home: true
             catch:
               - id: tf_totp_error
                 type: DisplayMessage
@@ -219,10 +232,23 @@ _ref:
               - id: tf_backup_continue
                 type: Link
                 params:
-                  url:
-                    _if_none:
-                      - _url_query: callbackUrl
-                      - "/"
+                  # `url` is an external target: a value with no scheme gets
+                  # `https://` prefixed, which promotes the first path segment
+                  # to the hostname. Resolving the inbound `?callbackUrl=`
+                  # against the current origin keeps it on-site; `home: true`
+                  # covers the no-query case, which `url` cannot express.
+                  _if:
+                    test:
+                      _ne:
+                        - _url_query: callbackUrl
+                        - null
+                    then:
+                      url:
+                        _string.concat:
+                          - _location: origin
+                          - _url_query: callbackUrl
+                    else:
+                      home: true
             catch:
               - id: tf_backup_error
                 type: DisplayMessage

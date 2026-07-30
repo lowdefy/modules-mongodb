@@ -272,10 +272,11 @@ _ref:
                     disabled: true
 
               # Primary submit — email/password via the one `Login` action.
-              # On session success `Login` navigates to the callbackUrl itself
-              # (from the `?callbackUrl=` set by the unauthenticated-page
-              # redirect); a 2FA-enrolled user gets no session but a
-              # `twoFactorRedirect` outcome, routed to the two-factor page.
+              # On session success `Login` resolves its own destination — the
+              # `?callbackUrl=` set by the unauthenticated-page redirect, else
+              # the app home — so no `callbackUrl` param is passed. A
+              # 2FA-enrolled user gets no session but a `twoFactorRedirect`
+              # outcome, routed to the two-factor page.
               - id: login_submit
                 type: Button
                 visible:
@@ -300,15 +301,6 @@ _ref:
                             _state: email
                           password:
                             _state: password
-                          # Login navigates only when it has a destination —
-                          # normally the ?callbackUrl= set by the protected-page
-                          # redirect. A direct visit to the login page has no
-                          # query, and a successful sign-in would silently stay
-                          # on the login page; default to the app root.
-                          callbackUrl:
-                            _if_none:
-                              - _url_query: callbackUrl
-                              - /
                       - :if:
                           _eq:
                             - _actions: login_do.response.twoFactorRedirect
@@ -513,7 +505,8 @@ _ref:
 
         # --- Passkey (signin state) — rendered only when passkey is enabled ---
         # PasskeySignIn runs the WebAuthn assertion ceremony in the browser and
-        # navigates to the callbackUrl on success.
+        # resolves its own destination on success, the same way the email path
+        # does.
         - _build.if:
             test:
               _build.authConfig: passkey.enabled
@@ -534,14 +527,6 @@ _ref:
                   onClick:
                     - id: passkey_signin
                       type: PasskeySignIn
-                      params:
-                        # Same dead-end as the email path: PasskeySignIn only
-                        # navigates when it has a destination; default a direct
-                        # login-page visit to the app root.
-                        callbackUrl:
-                          _if_none:
-                            - _url_query: callbackUrl
-                            - /
             else: []
 
         # --- Link-sent result (magic-link) — the send returns { status: true }
