@@ -696,5 +696,5 @@ See [docs/workflows/reference/form-components.md §Custom components](../../../.
 ## See also
 
 - [Action authoring spec](../../../../designs/workflows-module-concept/action-authoring/spec.md) — full grammar for `form:` blocks.
-- [Form-builder resolver design (part 15)](../../../../designs/workflows-module/parts/15-resolver-form-builder/design.md) — how component references are substituted at build time.
-- [Page templates (part 16)](../../../../designs/workflows-module/parts/16-page-templates/design.md) — where universal fields (`assignees`, `due_date`, `description`) live.
+- [Form-builder resolver design (part 15)](../../../../designs/workflows-module/parts/_completed/15-resolver-form-builder/design.md) — how component references are substituted at build time.
+- [Page templates (part 16)](../../../../designs/workflows-module/parts/_completed/16-page-templates/design.md) — where universal fields (`assignees`, `due_date`, `description`) live.
