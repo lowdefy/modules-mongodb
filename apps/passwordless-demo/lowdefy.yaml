@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260723122111
+lowdefy: 0.0.0-experimental-20260730112404
 name: Passwordless Demo App
 slug: passwordless-demo
 
@@ -46,24 +46,7 @@ auth:
     enabled: true
     expiresIn: 1800
   email:
-    from:
-      _secret: AUTH_FROM_ADDRESS
-    provider:
-      type: smtp
-      properties:
-        host:
-          _secret: SMTP_HOST
-        port:
-          _secret: SMTP_PORT
-        secure:
-          _eq:
-            - _secret: SMTP_SECURE
-            - "true"
-        auth:
-          user:
-            _secret: SMTP_USER
-          pass:
-            _secret: SMTP_PASS
+    connectionId: auth-smtp
   # CRITICAL passwordless override. The user-account manifest declares a STATIC
   # authPages.signUp: signup — the role cannot read _build.authConfig inside the
   # auth block (self-reference) so it always points at the signup page id. But
@@ -99,6 +82,30 @@ modules:
 
 menus:
   _ref: menus.yaml
+
+connections:
+  # The transport for every auth email, referenced by auth.email.connectionId
+  # above. SMTP is a framework built-in, so it needs no plugin pin. Fully
+  # env-driven: the same config points at a local catcher in dev and a real
+  # provider in prod (docs/shared/secrets.md).
+  - id: auth-smtp
+    type: SMTP
+    properties:
+      from:
+        _secret: AUTH_FROM_ADDRESS
+      host:
+        _secret: SMTP_HOST
+      port:
+        _secret: SMTP_PORT
+      secure:
+        _eq:
+          - _secret: SMTP_SECURE
+          - "true"
+      auth:
+        user:
+          _secret: SMTP_USER
+        pass:
+          _secret: SMTP_PASS
 
 pages:
   - _ref: pages/router.yaml
