@@ -7,7 +7,7 @@ concepts: [indexes, mongodb, atlas-search, stored-source, search, contacts]
 
 # Contacts — Indexes
 
-The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collection backing the `contacts-collection` connection (default `user-contacts`) before running the list, Excel export, and contact-selector flows.
+The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collection backing the module's `contacts-collection` connection before running the list, Excel export, and contact-selector flows. That connection names `user-contacts`; an app that keeps its people somewhere else remaps the connection in its module entry to one of its own and applies the indexes there.
 
 **This contract is versioned with the module.** The search mappings below are narrow because every structural filter runs in a plain `$match` _after_ `$search`; they are correct from the module version that moved the filters onward. The module CHANGELOG records the version that changed the requirement, so an app upgrading knows to update its cluster's index, and an app still on an earlier version should read that version's copy of this page.
 
@@ -34,13 +34,13 @@ An Atlas Search index named **`default`** — no `$search` stage in the module n
 }
 ```
 
-`profile.name` and `lowercase_email` are the only mapped fields, and both as `string` — they are the two text paths every `$search` in this module searches, with a `text` clause for whole-token relevance and a `wildcard: *term*` clause for substring matching. Nothing else needs mapping: the structural filters (`hidden`, `disabled`, and any consumer `request_stages.filter_match` clauses) are plain `$match` clauses, so `mongot` never evaluates them and needs no `token` mappings for them.
+`profile.name` and `lowercase_email` are the only mapped fields, and both as `string` — they are the two text paths every `$search` in this module searches, with a `text` clause for whole-token relevance and a `wildcard: *term*` clause for substring matching. Nothing else needs mapping: the structural filters (`hidden`, `disabled`, the selector's `global_attributes.company_ids` scope, its `filter` var, and any consumer `request_stages.filter_match` clauses) are plain `$match` clauses, so `mongot` never evaluates them and needs no `token` mappings for them.
 
-| Query site               | Searches                                                                                                                      | Stored source |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `get_all_contacts`       | `profile.name`, `lowercase_email` (list page search box)                                                                      | Yes           |
-| `get_contact_excel_data` | `profile.name`, `lowercase_email` (Excel export)                                                                              | Yes           |
-| `search_contacts`        | `profile.name`, `lowercase_email` (`contact-selector` typeahead, instantiated per selector as `<selector_id>_contact_search`) | Yes           |
+| Query site               | Searches                                                                                                                                                                                                                                    | Stored source |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `get_all_contacts`       | `profile.name`, `lowercase_email` (list page search box)                                                                                                                                                                                    | Yes           |
+| `get_contact_excel_data` | `profile.name`, `lowercase_email` (Excel export)                                                                                                                                                                                            | Yes           |
+| `search_contacts`        | `profile.name`, `lowercase_email` (`contact-selector` typeahead, instantiated per selector as `<selector_id>_contact_search` with dots in the selector id replaced by underscores — `edit.ticket.subs` → `edit_ticket_subs_contact_search`) | Yes           |
 
 `user-admin` reads the same `user-contacts` collection but uses **no** `$search` — its members filter is always a plain-`$match` regex — so this index is not a `user-admin` requirement.
 
@@ -60,7 +60,7 @@ These matter in two situations, both of which bypass `$search` entirely:
 - **The browse path on Atlas.** With no search term the requests skip `$search` and run as a plain `$match` + `$sort`, which is the majority of list loads.
 - **Fallback mode.** With `atlas_search: false` there is no `$search` at all; text matching becomes a `$regex` `$or` inside the same `$match`.
 
-| Index                                 | Serves                                       |
+| Index                                 | Sort it mirrors                              |
 | ------------------------------------- | -------------------------------------------- |
 | `{ "updated.timestamp": -1, _id: 1 }` | The default list/Excel sort (`Date Updated`) |
 | `{ "created.timestamp": -1, _id: 1 }` | The `Date Created` sort option               |
@@ -74,8 +74,10 @@ db["user-contacts"].createIndex({ "profile.name": 1, _id: 1 })
 db["user-contacts"].createIndex({ email: 1, _id: 1 })
 ```
 
-**Each index is the sort field plus `_id`, because that is the sort the requests build** — `$sort: { <sort.by>: <order>, _id: 1 }`, the `_id` key being the stable tiebreaker that keeps pagination from repeating or skipping rows. Without an index matching the sort, MongoDB performs a blocking sort over the whole filtered set on every page load.
+**Each index is a sort field plus `_id`, mirroring the sort the requests build** — `$sort: { <sort.by>: <order>, _id: 1 }`, the `_id` key being the stable tiebreaker that keeps pagination from repeating or skipping rows.
 
-**The unconditional exclusion is a residual filter, not an index prefix.** Every one of these queries filters `hidden: { $ne: true }` and `disabled: { $ne: true }`. Do not lead a compound index with those fields: `$ne` produces a multi-interval index scan, which destroys the ordering the sort needs, so a `{ hidden: 1, disabled: 1, "updated.timestamp": -1 }` index would serve the filter and then still pay for a blocking sort. They are also ineligible for a `partialFilterExpression`, which does not accept `$ne`. Index the sort field and let MongoDB apply the two exclusions as a residual filter — they are low-selectivity negations that exclude a small minority of contacts, so there is little for a dedicated index to narrow.
+**They serve the `$match`, not the `$sort`.** `get_all_contacts` sorts inside `$facet` and `get_contact_excel_data` sorts behind an `$addFields`; probed on mongod 7.0.24, both shapes keep the sort out of the query plan, so it runs in the aggregation layer as a blocking sort over the whole filtered set. The `$limit` pushdown a top-level sort gets goes with it — the same filter and sort plan as `LIMIT <- FETCH <- IXSCAN` at top level, but inside `$facet` the cursor streams every matching document into the sort. That cost is fixed by the pipeline's shape; no index removes it. What an index earns is the filter: where the `$match` bounds an index's leading field the plan is `FETCH <- IXSCAN` rather than a collection scan, and the documents then reach the aggregation layer already in index order, so the sort's input is pre-ordered. The `hidden`/`disabled` exclusions bound nothing on their own (probed: a collection scan), so on this collection these indexes pay off for the reads that do bound a sort field — a consumer `request_stages.filter_match` clause, the selector's `filter` var, or a host app's own date-ordered query.
 
-**Switching a deployment to `atlas_search: false` without these indexes gives performance acceptable only at small scale.** The fallback's `$regex` is an unindexed scan whatever indexes exist — a leading-wildcard pattern cannot use an index — so on a large `user-contacts` collection every keystroke-driven search reads the collection. Nothing here makes fallback text search fast; the indexes keep the far more common no-term browse, filter, and paginate path fast in both modes.
+**The unconditional exclusions are residual filters, not index prefixes.** Every one of these queries filters `hidden: { $ne: true }` and `disabled: { $ne: true }`. They are low-selectivity negations that exclude a small minority of contacts, so a compound index leading with them narrows almost nothing. `$ne` also compiles to multi-interval index bounds — probed on mongod 7.0.24, `[MinKey, true)` plus `(true, MaxKey]` — so a `{ hidden: 1, disabled: 1, "updated.timestamp": -1 }` index cannot supply a trailing sort key's order either: a top-level sort on `updated.timestamp` over that index plans as `FETCH <- SORT <- IXSCAN`. They are ineligible for a `partialFilterExpression` as well, which rejects `$ne` as a `$not` expression while accepting `$exists: true`. Index the sort fields and let MongoDB apply the two exclusions as residual filters.
+
+**Switching a deployment to `atlas_search: false` without these indexes gives performance acceptable only at small scale.** The fallback's `$regex` is unanchored, so it cannot use an index to narrow — a leading wildcard gives nothing to seek on — and the predicate is evaluated against every document the query's other `$and` clauses let through. On this collection those other clauses are the `hidden`/`disabled` exclusions, which let nearly everything through, so on a large `user-contacts` collection a keystroke-driven search reads nearly every contact. Nothing here makes fallback text search fast; what the indexes serve is the filtered read, in both modes.

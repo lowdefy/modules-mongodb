@@ -7,7 +7,7 @@ concepts: [indexes, mongodb, atlas-search, stored-source, search, activities]
 
 # Activities — Indexes
 
-The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collection backing the `activities-collection` connection (default `activities`) before running the list and Excel export flows.
+The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collection backing the module's `activities-collection` connection before running the list and Excel export flows. That connection names `activities`; an app that keeps its activities somewhere else remaps the connection in its module entry to one of its own and applies the indexes there.
 
 **This contract is versioned with the module.** The search mappings below are narrow because every structural filter runs in a plain `$match` _after_ `$search`; they are correct from the module version that moved the filters onward. The module CHANGELOG records the version that changed the requirement, so an app upgrading knows to update its cluster's index, and an app still on an earlier version should read that version's copy of this page.
 
@@ -45,11 +45,9 @@ Nothing else needs mapping. The list's type, stage, contact, company and date-ra
 
 ### Stored source is deliberately **not** required
 
-`get_activities` passes `returnStoredSource: false`. `mongot` returns matched `_id`s and `mongod` hydrates the live documents from the collection, so the `$match` that follows always sees current documents. Nothing reads `mongot`'s stored copy, and configuring `storedSource` would cost index storage on a path no query takes.
+`get_activities` passes `returnStoredSource: false`. `mongot` returns matched `_id`s and `mongod` hydrates the live documents from the collection, so the `$match` that follows always sees current documents, and configuring `storedSource` would cost index storage on a path no query takes.
 
-This is not an oversight, and the asymmetry with [`contacts`](../../contacts/reference/indexes.md) and [`companies`](../../companies/reference/indexes.md) — which do require whole-document stored source — is the point. The activities list is refetched immediately after every write, and `mongot`'s copy lags index replication: with stored source, editing an activity and refetching the list returns the pre-edit values. Reading live documents trades a hydration round trip for that freshness.
-
-The trade also means this module gets no benefit from the missing-field footgun mitigation the other two need, because a live document cannot be missing a field the index failed to store. See [Search](../../shared/search.md) for the full trade-off.
+The asymmetry with [`contacts`](../../contacts/reference/indexes.md) and [`companies`](../../companies/reference/indexes.md), which do require whole-document stored source, is deliberate: the activities list is refetched immediately after every write and `mongot`'s copy lags index replication, so a stored-source read would return pre-edit values. [Search](../../shared/search.md) states the trade and what it costs.
 
 ## Regular `mongod` indexes
 
@@ -58,11 +56,11 @@ These matter in two situations, both of which bypass `$search` entirely:
 - **The browse path on Atlas.** With no search term the list request skips `$search` and runs as a plain `$match` + `$sort`, which is the majority of list loads. The Excel export never uses `$search` at all.
 - **Fallback mode.** With `atlas_search: false` there is no `$search`; text matching becomes a `$regex` `$or` inside the same `$match`.
 
-| Index                                 | Serves                                                                   |
-| ------------------------------------- | ------------------------------------------------------------------------ |
-| `{ "updated.timestamp": -1, _id: 1 }` | The default list sort (`Date Updated`) and the Excel export's fixed sort |
-| `{ "created.timestamp": -1, _id: 1 }` | The `Date Created` sort option                                           |
-| `{ title: 1, _id: 1 }`                | The `Title` sort option                                                  |
+| Index                                 | Sort it mirrors                                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `{ "updated.timestamp": -1, _id: 1 }` | The default list sort (`Date Updated`) and the Excel export's fixed sort; also bounds the date-range filter |
+| `{ "created.timestamp": -1, _id: 1 }` | The `Date Created` sort option                                                                              |
+| `{ title: 1, _id: 1 }`                | The `Title` sort option                                                                                     |
 
 ```
 db.activities.createIndex({ "updated.timestamp": -1, _id: 1 })
@@ -70,10 +68,12 @@ db.activities.createIndex({ "created.timestamp": -1, _id: 1 })
 db.activities.createIndex({ title: 1, _id: 1 })
 ```
 
-**Each index is the sort field plus `_id`, because that is the sort the list request builds** — `$sort: { <sort.by>: <order>, _id: 1 }`, the `_id` key being the stable tiebreaker that keeps pagination from repeating or skipping rows. Without an index matching the sort, MongoDB performs a blocking sort over the whole filtered set on every page load. The `{ "updated.timestamp": -1 }` index does double duty: the Excel export sorts by that field unconditionally.
+**Each index is a sort field plus `_id`, mirroring the sort the list request builds** — `$sort: { <sort.by>: <order>, _id: 1 }`, the `_id` key being the stable tiebreaker that keeps pagination from repeating or skipping rows.
 
-**The unconditional exclusion is a residual filter, not an index prefix.** Both requests filter `deleted.timestamp: { $exists: false }`. Do not lead a compound index with it: an `$exists` predicate does not give the equality bound an index needs to preserve the sort order, so the query would serve the filter from the index and still pay for a blocking sort. It is also ineligible for a `partialFilterExpression`, which accepts `$exists: true` but not `$exists: false`. Index the sort field and let MongoDB apply the exclusion as a residual filter.
+**They serve the `$match`, not the `$sort`.** The list request sorts inside `$facet`; probed on mongod 7.0.24, that keeps the sort out of the query plan, so it runs in the aggregation layer as a blocking sort over the whole filtered set. The `$limit` pushdown a top-level sort gets goes with it — the same filter and sort plan as `LIMIT <- FETCH <- IXSCAN` at top level, but inside `$facet` the cursor streams every matching document into the sort. The Excel export's `$sort` is at top level but runs after `$addFields` and two `$lookup`s, which is equally unservable — probed, an `$addFields` alone is enough to leave the `$sort` in the aggregation layer. That cost is fixed by the pipelines' shape; no index removes it.
 
-The optional filters — `type`, the stage (`status.stage` on the list, `status.0.stage` on the Excel export), `contacts.contact_id`, `company_ids`, and the `updated.timestamp` range — drop out of the `$match` when unset, so they cost nothing on a plain load. A deployment whose users lean on one of them heavily may want a compound index leading with that field, but the sort indexes above are what every load needs.
+What an index earns is the filter: where the `$match` bounds an index's leading field the plan is `FETCH <- IXSCAN` rather than a collection scan, and the documents then reach the aggregation layer already in index order, so the sort's input is pre-ordered. The list's date-range filter is the one built-in predicate that lands on a documented index — with `date_from` or `date_to` set, both requests bound `updated.timestamp` and plan as `FETCH <- IXSCAN` on `{ "updated.timestamp": -1, _id: 1 }` (probed). The other optional filters — `type`, the stage (`status.stage` on the list, `status.0.stage` on the Excel export), `contacts.contact_id`, `company_ids` — drop out of the `$match` when unset; a deployment whose users lean on one of them heavily may want a compound index leading with that field.
 
-**Switching a deployment to `atlas_search: false` without these indexes gives performance acceptable only at small scale.** The fallback's `$regex` is an unindexed scan whatever indexes exist — a leading-wildcard pattern cannot use an index — so on a large `activities` collection every search reads the collection. Nothing here makes fallback text search fast; the indexes keep the far more common no-term browse, filter, and paginate path fast in both modes.
+**The unconditional exclusion is a residual filter, not an index prefix.** Both requests filter `deleted.timestamp: { $exists: false }`. Its bound covers nearly the whole collection — soft-deleted activities are a small minority — so a compound index leading with it narrows almost nothing while its scan reads nearly every key and fetches nearly every document. Selectivity is the objection, not ordering: probed on mongod 7.0.24, `$exists: false` compiles to a single `[null, null]` interval plus a residual filter, and a `{ "deleted.timestamp": 1, "updated.timestamp": -1 }` index does supply the trailing key's order. The predicate is also ineligible for a `partialFilterExpression`, which rejects `$exists: false` as a `$not` expression while accepting `$exists: true`. Index the sort fields and let MongoDB apply the exclusion as a residual filter.
+
+**Switching a deployment to `atlas_search: false` without these indexes gives performance acceptable only at small scale.** The fallback's `$regex` is unanchored, so it cannot use an index to narrow — a leading wildcard gives nothing to seek on — and the predicate is evaluated against every document the query's other `$and` clauses let through. A type, stage, contact, company or date filter narrows that set first; a search box with nothing else set does not, so on a large `activities` collection that search reads nearly every activity. Nothing here makes fallback text search fast; what the indexes serve is the filtered read — the date-range browse most of all — in both modes.
