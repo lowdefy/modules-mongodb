@@ -131,7 +131,7 @@ vars:
         description: Extra blocks appended to the main column on the deal detail page.
       info_grid_slots:
         default: []
-        description: Extra blocks appended to the deal's info grid.
+        description: Extra blocks inserted into the deal's info grid, before the built-in People and Files tiles.
       sidebar_slots:
         default: []
         description: Extra blocks appended to the sidebar column on the deal detail page.
