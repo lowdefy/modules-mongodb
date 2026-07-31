@@ -91,7 +91,7 @@ Conversation documents already carry `owner`, `created`, `updated`, `messages`, 
 | --------- | ---------------------- | ------------------------------------------------------------------------------- |
 | `deleted` | `null` \| change stamp | Same shape and read predicate as everywhere else; `docs/shared/soft-delete.md`. |
 
-Recency grouping and the rail's sort read the existing `updated.timestamp` — no new field. The stamp comes from `modules/reporting/defaults/change_stamp.yaml`, `_ref`'d like every other writer's — same reasoning as [ownership](../ownership/design.md#reporting-writes-the-change-stamp-inline).
+Recency grouping and the rail's sort read the existing `updated.timestamp` — no new field. The stamp comes from `modules/reporting/defaults/change_stamp.yaml`, `_ref`'d like every other writer's — same reasoning as [ownership](../ownership/design.md#reporting-writes-its-own-change-stamp-for-now).
 
 `conversationId`, `messages`, `steps` and `toolResults` stay camelCase wherever they appear here: they are the `AgentChat` block's property and the agent framework's `onFinish` payload keys, not names this module chooses. Same for `dataParts` as the key the framework reads stream parts back from — the field it persists to is `data_parts`.
 

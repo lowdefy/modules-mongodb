@@ -3,10 +3,10 @@
 # Soft, not hard: the repo convention is that a delete sets a `deleted` change
 # stamp and reads filter it out (docs/shared/soft-delete.md). The stamp comes
 # from this module's own defaults/change_stamp.yaml rather than the events
-# module's component — reporting declares no dependencies, so it cannot _ref
-# into events — but the shape ({ timestamp, user: { name, id } }) is identical,
-# so a host app reads it with the same predicate as every other module's soft
-# delete.
+# module's exported component, because reporting declares no dependencies — a
+# deferred choice, not a limitation; see the note in that file. The shape
+# ({ timestamp, user: { name, id } }) is identical either way, so a host app
+# reads it with the same predicate as every other module's soft delete.
 id: delete-report
 type: Api
 routine:
