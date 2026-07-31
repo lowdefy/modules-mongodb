@@ -189,8 +189,8 @@ to get a fresh set is to enrol again.
 **Replacing an authenticator turns two-factor off for the duration of the
 flow.** BetterAuth's enable call deletes the caller's existing authenticator
 row and writes a new one with a fresh secret, but never touches the
-account-level two-factor flag itself — so enrolment first switches two-factor
-off, then re-enables against the new secret, rotating the secret and
+account-level two-factor flag itself — so the replacement flow first switches
+two-factor off, then re-enables against the new secret, rotating the secret and
 invalidating the previous authenticator. Two-factor comes back on only once
 the user confirms a code from the new authenticator. **An abandoned
 replacement therefore leaves the account with two-factor off** until the user
