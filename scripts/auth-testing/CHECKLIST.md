@@ -10,7 +10,8 @@ Infra, env, and the helper scripts (`bootstrap-admin`, `reset-db`, `mail-link`) 
 documented in [`README.md`](./README.md).
 
 **Legend:** `[ ]` to do · `[x]` done · `[~]` pending build · `[-]` skipped/N-A this run
-**Verify in Compass** = check the document state in the `demo-auth-test` DB.
+**Verify in Compass** = check the document state in your environment's DB
+(`demo-auth-test` on the local rig, `modules-mongodb-demo-tenant-test` on QA).
 
 > **Magic-link build has landed** (2026-07-24). The demo runs a **mixed** deployment
 > (`emailAndPassword` + `magicLink` both enabled), so magic-link renders as an
@@ -22,6 +23,14 @@ documented in [`README.md`](./README.md).
 ---
 
 ## Phase 0 — Environment & bootstrap
+
+Two environments back this checklist ([README §8](./README.md#8-atlas--sendgrid--tester-facing-passes)
+has the split): the **local rig** — docker Mongo + Mailpit, `demo-auth-test` — for
+dev iteration, and **QA** — Atlas `modules-mongodb-demo-tenant-test` + SendGrid —
+for tester-facing passes. Run 0a or 0b, not both. The ticks below were recorded on
+the local rig.
+
+### Phase 0a — Local rig
 
 - [x] Mongo + Mailpit up (dev's own setup, not the compose stack); mongo reachable at `mongodb://localhost:27017`
 - [x] Compass connected; `demo-auth-test` DB visible (only this DB on local mongo — old cluster untouched)
@@ -41,6 +50,16 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
   print("indexes created");
 '
 ```
+
+### Phase 0b — QA environment (Atlas + SendGrid)
+
+- [ ] `apps/demo/.env` points at Atlas `modules-mongodb-demo-tenant-test` + SendGrid (README §8a)
+- [ ] `AUTH_FROM_ADDRESS` is a sender SendGrid will send as — otherwise every auth email fails silently
+- [ ] **Live send confirmed:** one signup delivers a verification email to a real inbox, and the link works
+- [x] Both `user-contacts` partial-unique indexes present (README §8c) — confirmed on the Atlas DB; the 0a `createIndex` command is not used here
+- [ ] **Clean slate:** QA DB cleared before the pass (README §8f) — leftover orgs/invitations/sessions make the data-separation checks unreadable
+- [ ] Served from a production build (`pnpm ldf:b && pnpm ldf:s`), not `ldf:d` — removes the "building page" artifact a tester reads as an app bug
+- [ ] Roles granted from `/organizations/members` (`bootstrap-admin` is unused under `tenant`; `mail-link` is Mailpit-only)
 
 ---
 

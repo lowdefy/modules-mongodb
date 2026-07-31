@@ -1,22 +1,26 @@
-# Auth testing — local infrastructure
+# Auth testing — environments
 
-Local, throwaway infrastructure for testing the demo app's BetterAuth flows
-(login, signup, email verification, password reset, magic-link, 2FA, passkeys,
-invitations) end-to-end, without touching any real database or sending real
-email.
+Infrastructure for testing the demo app's BetterAuth flows (login, signup, email
+verification, password reset, magic-link, 2FA, passkeys, invitations) end-to-end.
 
-Two containers, defined in [`docker-compose.yml`](./docker-compose.yml):
+Two environments, picked by who's driving:
 
-| Service     | Purpose                                   | Reach it at                                             |
-| ----------- | ----------------------------------------- | ------------------------------------------------------- |
-| **MongoDB** | Isolated, ephemeral auth + contact data   | `mongodb://localhost:27017/demo-auth-test`              |
-| **Mailpit** | Catches every auth email (SMTP sink + UI) | `http://localhost:8025` (web UI + API), SMTP on `:1025` |
+| Environment           | Use it for                                                                                          | Database                                 | Email                         |
+| --------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------- |
+| **Local rig** (§1–§7) | Dev iteration — fast resets, scripted link extraction, throwaway data                               | local container `demo-auth-test`         | Mailpit sink (never forwards) |
+| **QA** (§8)           | Tester-facing passes ([`qa-test-plan.md`](../../designs/auth-tenancy-verification/qa-test-plan.md)) | Atlas `modules-mongodb-demo-tenant-test` | SendGrid → real inboxes       |
 
-> **Nothing here touches production.** The database is a fresh local container;
-> email goes to a sink that never forwards. This is the whole reason we run local
-> infra instead of pointing at a real cluster or SMTP provider.
+**The local rig touches nothing real** — a fresh local container plus a mail sink.
+That's the whole reason it exists. **The QA environment is different:** it sends
+real email and lives on a shared Atlas cluster. Read §8 before pointing anything
+at it.
+
+Both are driven entirely by `apps/demo/.env` — the app is env-driven end to end,
+so switching environments never means editing config.
 
 ---
+
+# Local rig
 
 ## 1. Install Docker (macOS)
 
@@ -200,6 +204,10 @@ root workspace and is a no-op for these scripts.)
 All three read `MONGODB_URI` (default `mongodb://localhost:27017/demo-auth-test`)
 and `MAILPIT_URL` (default `http://localhost:8025`) from the environment.
 
+**All three are local-rig tools.** `mail-link` speaks Mailpit's API, `reset-db`
+refuses a non-local host, and `bootstrap-admin` grants a role the QA environment's
+tenant policy doesn't use. §8 covers the QA equivalents.
+
 ### `bootstrap-admin` — make the first user an admin
 
 Solves the chicken-and-egg: under `pinned` + invite-only there's no admin to grant
@@ -245,7 +253,7 @@ pnpm mail-link --json                   # raw message metadata + all links found
 
 ---
 
-## Troubleshooting
+## Troubleshooting (local rig)
 
 - **Port already in use (27017 / 1025 / 8025):** another Mongo/mail service is
   running. Stop it, or remap the host port in `docker-compose.yml` (e.g.
@@ -262,3 +270,106 @@ pnpm mail-link --json                   # raw message metadata + all links found
 - **Blank contact data everywhere in the app:** the co-location precondition is
   broken — some connection is resolving a different `MONGODB_URI`/database. Check
   §3a.
+
+---
+
+# QA environment
+
+## 8. Atlas + SendGrid — tester-facing passes
+
+The environment [`qa-test-plan.md`](../../designs/auth-tenancy-verification/qa-test-plan.md)
+runs against. It differs from the local rig in the two ways that matter:
+
+- **Real email.** SendGrid delivers to real inboxes, so a tester can click links
+  from their own mail client. The plan's "4 email addresses you can actually read"
+  precondition depends on this.
+- **A shared Atlas cluster.** The database is `modules-mongodb-demo-tenant-test`.
+  It is not a container you can throw away, and the cluster hosts other databases.
+
+### 8a. Secrets (`apps/demo/.env`)
+
+Same `LOWDEFY_SECRET_` mechanism as §3a — only the values differ:
+
+```sh
+LOWDEFY_SECRET_MONGODB_URI="mongodb://…/modules-mongodb-demo-tenant-test?…"
+LOWDEFY_SECRET_SMTP_HOST="smtp.sendgrid.net"
+LOWDEFY_SECRET_SMTP_PORT="465"
+LOWDEFY_SECRET_SMTP_SECURE="true"      # implicit TLS on :465 — see §3b on why this is a string
+LOWDEFY_SECRET_SMTP_USER="apikey"      # literal "apikey" for SendGrid
+LOWDEFY_SECRET_SMTP_PASS="<sendgrid key>"
+```
+
+`AUTH_FROM_ADDRESS` must be an address SendGrid will send as (a verified sender or
+a domain you've authenticated), or every auth email silently fails to deliver.
+
+### 8b. Tenant policy
+
+The demo runs `auth.organizations.policy: tenant` — a fresh signup mints its own
+organization and invited users join the inviter's. That's the mode the QA plan's
+workspace sections exercise; nothing needs enabling.
+
+Two consequences for the helper scripts:
+
+- **`bootstrap-admin` is not needed.** `userAdminRole` is forbidden under `tenant`,
+  and there's no pinned org to join. Grant roles from `/organizations/members`
+  instead — that's what the plan's §6.1 tells the tester to ask for.
+- **The user-admin console's writes refuse at runtime** by design (no engine
+  step-floor under `tenant`). The plan's §6 treats every refusal as a pass.
+
+### 8c. Indexes
+
+Already created on `modules-mongodb-demo-tenant-test`:
+
+| Collection      | Index                                                                           |
+| --------------- | ------------------------------------------------------------------------------- |
+| `user-contacts` | `{organizationId, lowercase_email}` unique, partial on `lowercase_email` exists |
+| `user-contacts` | `{organizationId, userId}` unique, partial on `userId` exists                   |
+
+They enforce per-workspace contact uniqueness — the invariant behind the plan's
+§3.4 (no duplicate pending row) and §5.4 (the same email in two workspaces). The
+`createIndex` command in [`CHECKLIST.md`](./CHECKLIST.md) Phase 0a targets the
+local container and is not part of this environment's setup.
+
+### 8d. Reading the data
+
+Connect Compass with the Atlas URI from `.env` and open
+`modules-mongodb-demo-tenant-test`. The collection guide in §4 applies, with one
+correction: `user-organizations` holds **one row per workspace**, not a single
+pinned `demo` row.
+
+### 8e. Serving it
+
+Serve a production build, not the dev server:
+
+```sh
+pnpm ldf:b && pnpm ldf:s      # from apps/demo/
+```
+
+`ldf:d` intermittently leaves a page stuck on a "building page" screen — a
+dev-server artifact that reads as an app bug to a tester (logged as K3 in the QA
+plan). A production build removes it.
+
+### 8f. Resetting between passes
+
+There is no guarded script for this. `reset-db` structurally cannot reach a remote
+host, and that guard stays — it's the only thing standing between a stray
+`MONGODB_URI` and a wiped cluster.
+
+Clearing the QA database is therefore a deliberate, explicit act. It keeps
+collections and indexes:
+
+```sh
+mongosh "<the Atlas URI from .env>" --quiet --eval '
+  db.getCollectionNames().forEach((n) => {
+    print(`${n}: cleared ${db[n].deleteMany({}).deletedCount}`);
+  });
+'
+```
+
+Sign every tester out first — clearing `user-sessions` invalidates live sessions
+mid-flow, which surfaces as confusing errors rather than a clean sign-out.
+
+A tester-facing pass wants a clean slate: unconsumed invitations, verification
+tokens, enrolled 2FA and stale workspaces all persist, and leftovers make the
+plan's §5 data-separation checks unreadable — you can't tell a leak from a
+left-over row.
