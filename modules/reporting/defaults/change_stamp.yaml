@@ -6,14 +6,12 @@
 # copied into each of them. See docs/shared/change-stamps.md for the idiom and
 # docs/shared/soft-delete.md for the `deleted` variant of it.
 #
-# The user id is `sub ?? id` to match how the agent hooks derive it, which is
-# what every user_id-scoped filter in this module also matches on.
+# The id comes from defaults/user_id.yaml so the stamp, the owner reference and
+# every scope filter cannot drift apart.
 timestamp:
   _date: now
 user:
   name:
     _user: profile.name
   id:
-    _if_none:
-      - _user: sub
-      - _user: id
+    _ref: defaults/user_id.yaml

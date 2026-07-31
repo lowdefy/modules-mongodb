@@ -16,7 +16,7 @@ Filter placement is the page's one open problem and is **not decided here** — 
 
 ## Current state
 
-- `modules/reporting/api/resolve-report.yaml` — loads the report matched on `_id` **and** `user_id`, so today a report is readable only by its author; rejects on not-found (the `Dynamic` block renders its fallback), runs each query section through `AnalyticsPipeline` inside `:try`, compiles server-side. Opened to shared reports, and made to return an owner flag, by [ownership](../ownership/design.md#endpoints).
+- `modules/reporting/api/resolve-report.yaml` — loads the report matched on `_id` **and** `owner.user_id`, so today a report is readable only by its author; rejects on not-found (the `Dynamic` block renders its fallback), runs each query section through `AnalyticsPipeline` inside `:try`, compiles server-side. Opened to shared reports, and made to return an owner flag, by [ownership](../ownership/design.md#endpoints).
 - `compileReport` — collects every filter control into a single full-width row at the top of the report, and renders a per-section Alert for a section that failed validation or execution.
 - `modules/reporting/pages/report.yaml` — a `Dynamic` block over the compiled config, with `types.blocks` / `types.actions` / `types.operators` declared, and a fallback slot.
 - The report doc carries `conversation_id`, but `generate-report` always writes it `null` — a comment there explains why it cannot do better.

@@ -54,9 +54,13 @@ Additions to the report document (existing fields unchanged):
 | `visibility`   | `"private" \| "shared"` | Defaults `private`. Only a `share_roles` holder may set `shared`. |
 | `favourite_of` | `string[]`              | User ids; projected to a boolean for the caller. Defaults `[]`.   |
 
-Unchanged and load-bearing: `user_id` (the owner; every scope and mutation matches it), `created` / `updated` / `deleted` (change stamps; `deleted` is `null` while live), `conversation_id` (already on the document, always `null` on the agent-tool path — [save-as-report](save-as-report/design.md) is what finally populates it), and `spec`.
+Unchanged and load-bearing: `owner` (`{ user_id, name }` — every scope and mutation matches `owner.user_id`), `created` / `updated` / `deleted` (change stamps; `deleted` is `null` while live), `conversation_id` (already on the document, always `null` on the agent-tool path — [save-as-report](save-as-report/design.md) is what finally populates it), and `spec`.
 
-Conversation documents already carry `user_id`, `created`, `updated`, `messages`, `data_parts` and `title`. They gain `deleted` (same stamp shape, initialised `null`) for the rail's soft delete, specified in [chat](chat/design.md), not in ownership — the report ownership model has nothing to say about them.
+**Ownership is a named reference, not the `created` stamp**, even though the two hold the same person on insert. The shape follows `deals.salesperson` (`{ contact_id, name, email }`): the id is the authorization key, and the name rides along so a list row or a report header can say "Published by …" without a lookup — which plate 4's Visibility column and [report-page](report-page/design.md)'s provenance line both need.
+
+Keeping it out of the stamp is deliberate. `created` is written once with `$setOnInsert` — a historical fact. Authorizing off it would mean ownership could never move without rewriting the audit record, and would make `created.user` load-bearing for authorization while `updated.user` right beside it is not, a distinction nothing in the document signals. `owner` is current state; the stamps are history.
+
+Conversation documents already carry `owner`, `created`, `updated`, `messages`, `data_parts` and `title`. They gain `deleted` (same stamp shape, initialised `null`) for the rail's soft delete, specified in [chat](chat/design.md), not in ownership — the report ownership model has nothing to say about them.
 
 ## Cross-cutting invariants
 

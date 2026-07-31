@@ -85,7 +85,7 @@ function reportDoc({ id, title, deleted = null }) {
   };
   return {
     _id: id,
-    user_id: USER.sub,
+    owner: { user_id: USER.sub, name: USER.name },
     title,
     spec: { ...SPEC, title },
     deleted,
@@ -117,7 +117,7 @@ test("the reports list scopes by sub ?? id and hides soft-deleted reports", asyn
         id: "e2e-other-report",
         title: "Other user report (e2e)",
       }),
-      user_id: "someone-else",
+      owner: { user_id: "someone-else", name: "Someone Else" },
     },
   ]);
 

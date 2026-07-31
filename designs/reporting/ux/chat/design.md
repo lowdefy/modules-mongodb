@@ -85,7 +85,7 @@ A tool call renders as a `ThoughtChain` item whose title is hard-coded to the ra
 
 ## Data model
 
-Conversation documents already carry `user_id`, `created`, `updated`, `messages`, `data_parts` and `title`. The rail needs one addition:
+Conversation documents already carry `owner`, `created`, `updated`, `messages`, `data_parts` and `title`. The rail needs one addition:
 
 | Field     | Type                   | Notes                                                                           |
 | --------- | ---------------------- | ------------------------------------------------------------------------------- |

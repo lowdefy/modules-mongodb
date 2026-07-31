@@ -1,4 +1,4 @@
-# Saved reports: open or delete (delete is user_id-scoped server-side).
+# Saved reports: open or delete (delete is owner-scoped server-side).
 id: reports-list
 type: Box
 properties:

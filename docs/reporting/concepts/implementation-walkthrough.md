@@ -178,7 +178,7 @@ end), **downloads are live** (query stored, executed on click).
 ## 6. Conversation persistence
 
 Two onFinish hooks, in order. `save-conversation.yaml:20-107` upserts the whole
-transcript keyed by `conversationId` + `user_id`; on insert it derives a fallback
+transcript keyed by `conversationId` + `owner.user_id`; on insert it derives a fallback
 title with a `$let`/`$reduce` over the first user message (L42-104 — note L67-70,
 the `as: msg` alias, because the inner `$reduce` rebinds `$$this`). If the model
 produced a real title, `chat.yaml:200-210` persists it over the top via
@@ -232,7 +232,7 @@ client.
 
 `api/resolve-report.yaml`:
 
-- L11-20 — load the spec, user_id-scoped; L21-27 whole-report failure → the Dynamic
+- L11-20 — load the spec, owner-scoped; L21-27 whole-report failure → the Dynamic
   block's fallback slot (a 404 `Result`).
 - L31-38 — `_analytics.querySections` (`querySections.js:19-24`) returns just the
   kpi/chart/table sections in order. **No catalog is passed here** (L28-30) — it

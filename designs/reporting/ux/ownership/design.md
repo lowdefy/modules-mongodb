@@ -2,11 +2,11 @@
 
 A sub-design of [`reporting/ux`](../design.md) — read its [data model](../design.md#data-model) and [cross-cutting invariants](../design.md#cross-cutting-invariants) first.
 
-Today a saved report is readable only by its author, retirable only by its author, and that is the whole model: `list-reports` matches `user_id`, `resolve-report` matches `_id` **and** `user_id`, and there is no notion of a report anyone else can see. This sub-design gives reports an audience and a life cycle — private by default, publishable to the whole app by a role-holder, favouritable per user, retired by one soft delete, recoverable — and puts every one of those acts behind a server-side check.
+Today a saved report is readable only by its author, retirable only by its author, and that is the whole model: `list-reports` matches `owner.user_id`, `resolve-report` matches `_id` **and** `owner.user_id`, and there is no notion of a report anyone else can see. This sub-design gives reports an audience and a life cycle — private by default, publishable to the whole app by a role-holder, favouritable per user, retired by one soft delete, recoverable — and puts every one of those acts behind a server-side check.
 
 **This sub-design is server-side only, and it ships first.** No page changes. The reports data model, the scope semantics and the authorization checks land with tests, so the four UI sub-designs build against a fixed contract instead of co-evolving with one. The three surfaces that read this model are [reports-list](../reports-list/design.md), [report-page](../report-page/design.md) and [save-as-report](../save-as-report/design.md); none of them decides anything here.
 
-Conversation documents already carry `user_id`, `created` and `updated`; the `deleted` stamp they still need belongs to the rail that needs it — see [chat](../chat/design.md). The report ownership model has nothing to say about conversations.
+Conversation documents already carry `owner`, `created` and `updated`; the `deleted` stamp they still need belongs to the rail that needs it — see [chat](../chat/design.md). The report ownership model has nothing to say about conversations.
 
 ## Proposed change
 
@@ -20,11 +20,11 @@ Conversation documents already carry `user_id`, `created` and `updated`; the `de
 
 ## Current state
 
-- `modules/reporting/api/generate-report.yaml` — inserts `{ _id, user_id, title, description, spec, conversation_id: null, deleted: null, created, updated }`. The `conversation_id: null` carries a comment recording why: tool endpoints receive only the tool input, so the agent context (conversation id) does not reach them.
-- `modules/reporting/api/list-reports.yaml` — own-only (`user_id` match), `deleted.timestamp: { $exists: false }`, sort `updated.timestamp: -1`, `limit: 200`, projection `title/description/created/updated`. No scope, search, sort or cursor parameters.
+- `modules/reporting/api/generate-report.yaml` — inserts `{ _id, owner, title, description, spec, conversation_id: null, deleted: null, created, updated }`. The `conversation_id: null` carries a comment recording why: tool endpoints receive only the tool input, so the agent context (conversation id) does not reach them.
+- `modules/reporting/api/list-reports.yaml` — own-only (`owner.user_id` match), `deleted.timestamp: { $exists: false }`, sort `updated.timestamp: -1`, `limit: 200`, projection `title/description/created/updated`. No scope, search, sort or cursor parameters.
 - `modules/reporting/api/delete-report.yaml` — already a correct soft delete: owner-scoped, writes a `deleted` change stamp from `defaults/change_stamp.yaml`, and excludes already-deleted docs so a repeat delete reports 0 modified rather than overwriting the original who/when.
-- `modules/reporting/api/resolve-report.yaml` — loads the report matched on `_id` **and** `user_id`, so today a report is readable only by its author; rejects on not-found (the `Dynamic` block renders its fallback), runs each query section through `AnalyticsPipeline` inside `:try`, compiles server-side.
-- `modules/reporting/defaults/change_stamp.yaml` — the module's own `{ timestamp, user: { name, id } }` fragment, `_ref`'d by every writer. Reporting declares no dependencies so it cannot use the events module's component, but the shape is identical.
+- `modules/reporting/api/resolve-report.yaml` — loads the report matched on `_id` **and** `owner.user_id`, so today a report is readable only by its author; rejects on not-found (the `Dynamic` block renders its fallback), runs each query section through `AnalyticsPipeline` inside `:try`, compiles server-side.
+- `modules/reporting/defaults/` — three fragments every endpoint composes from: `user_id.yaml` (the `sub ?? id` derivation, `_ref`'d by all eleven read and write sites so they cannot drift), `owner.yaml` (`{ user_id, name }`), and `change_stamp.yaml` (`{ timestamp, user: { name, id } }`, whose id comes from the same `user_id.yaml`). Reporting declares no dependencies so it cannot use the events module's `change_stamp` component, but the shape is identical.
 - `docs/shared/soft-delete.md` — the repo idiom: field `deleted`, shape `{ timestamp, user: { name, id } }`, initialised `null`, read predicate `deleted.timestamp: { $exists: false }`. No module in this repo has an archive state.
 
 ## Key decisions and rationale
@@ -79,7 +79,7 @@ The table is in the [parent](../design.md#data-model). What this sub-design adds
 
 - **`visibility`** — absent is read as `private`, so existing documents need no migration. Only `set-report-visibility` writes it, and `restore-report` forces it to `private`.
 - **`favourite_of`** — absent is read as empty. `$addToSet` / `$pull` only; never overwritten wholesale. Projected out of every list and read response as a boolean `is_favourite` for the caller, so a caller never learns who else favourited a report.
-- **`user_id`** — the owner, immutable. `duplicate-report` writes the copier's id on the new document; nothing rewrites it on an existing one. Derived as `sub ?? id` from `_user`, matching how every writer and every scope filter resolves identity.
+- **`owner`** — `{ user_id, name }`. `owner.user_id` is the authorization key every scope filter and every mutation matches; `owner.name` is carried so a list row or report header can name the owner without a lookup. `duplicate-report` writes the copier as owner of the new document; nothing rewrites it on an existing one, though the shape does not preclude a transfer later — which is the point of it not being the `created` stamp (see the [parent](../design.md#data-model)). The id is `sub ?? id` from `_user`, resolved through `modules/reporting/defaults/user_id.yaml` so a writer cannot drift from a reader.
 - **`created` / `updated` / `deleted`** — change stamps, all three. `created` is written once on insert; `updated` on every spec change; `deleted` by the soft delete, which refuses to overwrite an existing one. Reads filter on `deleted.timestamp`, and the list sorts on `updated.timestamp`. Because `created` carries `user.name`, the [report page](../report-page/design.md)'s provenance line needs no extra lookup to say who made a report.
 
 ## Endpoints
@@ -93,7 +93,7 @@ The table is in the [parent](../design.md#data-model). What this sub-design adds
 | `duplicate-report`      | new     | `{ report_id }` → new doc, `visibility: private`, owner = caller, `favourite_of: []`. Readable-report check.                                                                                                            |
 | `restore-report`        | new     | `{ report_id }` — owner-only; clears `deleted` and sets `visibility: private` in one update.                                                                                                                            |
 | `delete-report`         | keep    | Already a correct owner-scoped soft delete.                                                                                                                                                                             |
-| `resolve-report`        | change  | Read match becomes `_id` + not-deleted + (`user_id` = caller **or** `visibility: "shared"`); returns whether the viewer is the owner so the page can render owner-only actions.                                         |
+| `resolve-report`        | change  | Read match becomes `_id` + not-deleted + (`owner.user_id` = caller **or** `visibility: "shared"`); returns whether the viewer is the owner so the page can render owner-only actions.                                   |
 
 **"Readable-report check"** means the same predicate `resolve-report` uses: not deleted, and owned by the caller or shared. Favourite and duplicate use it because both are read-side acts on something you are already entitled to see.
 

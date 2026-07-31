@@ -72,10 +72,8 @@ routine:
       doc:
         _id:
           _uuid: true
-        user_id:
-          _if_none:
-            - _user: sub
-            - _user: id
+        owner:
+          _ref: defaults/owner.yaml
         title:
           _payload: spec.title
         description:

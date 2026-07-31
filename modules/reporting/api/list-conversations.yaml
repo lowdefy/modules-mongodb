@@ -8,7 +8,7 @@ id: list-conversations
 type: Api
 routine:
   # Scope by sub ?? id to match the write key: save-conversation and
-  # emit-data-parts derive user_id the same way from _user.
+  # emit-data-parts derive owner.user_id the same way from _user.
   - :if:
       _eq:
         - _if_none:
@@ -23,10 +23,8 @@ routine:
       _module.connectionId: conversations-store
     properties:
       query:
-        user_id:
-          _if_none:
-            - _user: sub
-            - _user: id
+        owner.user_id:
+          _ref: defaults/user_id.yaml
       options:
         sort:
           updated.timestamp: -1
