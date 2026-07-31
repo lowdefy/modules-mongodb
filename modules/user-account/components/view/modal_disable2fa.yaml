@@ -15,12 +15,18 @@ events:
     - id: reset_disable2fa
       type: SetState
       params:
-        disable2fa: {}
+        disable2fa.password: null
+  onClose:
+    - id: clear_disable2fa
+      type: SetState
+      params:
+        disable2fa.password: null
   onOk:
     _build.array.concat:
       - - id: validate_disable2fa
           type: Validate
-          params: modal_disable2fa
+          params:
+            regex: '^disable2fa\.'
         - id: disable_totp
           type: TwoFactorDisable
           messages:

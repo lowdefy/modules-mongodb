@@ -13,11 +13,19 @@ properties:
   okText: Update password
   cancelText: Cancel
 events:
+  onClose:
+    - id: reset_changepw
+      type: SetState
+      params:
+        changepw.current_password: null
+        changepw.new_password: null
+        changepw.revoke_other_sessions: false
   onOk:
     _build.array.concat:
       - - id: validate_changepw
           type: Validate
-          params: modal_changepw
+          params:
+            regex: '^changepw\.'
         - id: change_password
           type: ChangePassword
           messages:
