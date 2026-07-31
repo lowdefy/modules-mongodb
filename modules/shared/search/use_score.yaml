@@ -1,0 +1,13 @@
+# `$sort` gate: relevance ordering exists only on the Atlas path with a term.
+# Build-collapses to a literal false when atlas_search is false, so the score
+# sort is unreachable in fallback mode.
+_build.if:
+  test:
+    _var: atlas_search
+  then:
+    _ne:
+      - _if_none:
+          - _var: term
+          - ""
+      - ""
+  else: false
