@@ -184,6 +184,7 @@ The paired `task-modal` component builds both API payloads from its vars — see
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
+- [Indexes](reference/indexes.md) — the `default` Atlas Search index (and why it needs no stored source) plus the regular `mongod` indexes the list needs
 
 ## Shared idioms
 
