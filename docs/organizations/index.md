@@ -2,7 +2,8 @@
 title: Organizations
 module: organizations
 type: index
-concepts: [tenant-policy, per-org-roles, invitations, org-switcher, active-organization]
+concepts:
+  [tenant-policy, per-org-roles, invitations, org-switcher, active-organization]
 ---
 
 # Organizations
@@ -88,6 +89,9 @@ Menu links come from the module's `default` menu:
       menu: default
 ```
 
+`apps/tenant-demo` in this repo carries all three pieces wired up — the module
+entry, the `header_extra` switcher, and the menu group.
+
 ## Roles
 
 The role picker offers the app's authored `auth.roles` catalog — the single
@@ -123,11 +127,11 @@ deployment shows blank contact data instead of failing loudly.
 
 ## Connections
 
-| Connection                | Walled | Access     | Why                                                                          |
-| ------------------------- | ------ | ---------- | ---------------------------------------------------------------------------- |
-| `user-members`            | no     | read-only  | Engine-owned; each read scopes itself on the active org or the caller's rows |
-| `user-organizations`      | no     | read-only  | Engine-owned; renames go through `UpdateOrganization`, never this connection |
-| `user-invitations`        | no     | read-only  | Engine-owned; invitations are written by the client actions                  |
-| `user-contacts-collection`| yes    | read/write | App data — the wall stamps and filters the organization mechanically         |
+| Connection                 | Walled | Access     | Why                                                                          |
+| -------------------------- | ------ | ---------- | ---------------------------------------------------------------------------- |
+| `user-members`             | no     | read-only  | Engine-owned; each read scopes itself on the active org or the caller's rows |
+| `user-organizations`       | no     | read-only  | Engine-owned; renames go through `UpdateOrganization`, never this connection |
+| `user-invitations`         | no     | read-only  | Engine-owned; invitations are written by the client actions                  |
+| `user-contacts-collection` | yes    | read/write | App data — the wall stamps and filters the organization mechanically         |
 
 See [organization scoping](../shared/org-scoping.md) for what walled means.

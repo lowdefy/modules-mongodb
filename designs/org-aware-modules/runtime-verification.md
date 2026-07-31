@@ -10,18 +10,19 @@ e2e mock caller bypasses auth), or SMTP (email verification).
 - Per-resolver two-org isolation, incl. authored `$geoNear`/`$graphLookup` and
   every refusal/audit error path — lowdefy `connection-mongodb` suite (real
   MongoDB).
-- Two-org isolation through real module pages — `apps/demo/e2e/org-scoping/`
+- Two-org isolation through real module pages — `apps/tenant-demo/e2e/org-scoping/`
   (`tenant-isolation.spec.js`: walled `$match` reads; `hierarchy-isolation.spec.js`:
   the authored `$graphLookup` traversal, both directions).
 - Config-level correctness of every authored clause — `ldf:b` build artifacts
   carry `tenant: "authored"` + the compiled clauses (verified in PR #113).
-- The `$search` audit *accepting* the authored clauses — visible in any e2e
+- The `$search` audit _accepting_ the authored clauses — visible in any e2e
   run: `contacts_contact_search` fails with MongoDB's "$search stage is only
   allowed on Atlas", meaning it passed the wall's audit and reached the driver.
 
 ## Setup
 
-A deployment of `apps/demo` with:
+Sections 1–2 are `pinned` checks and run against `apps/demo`; section 3 is the
+`tenant` shape and runs against `apps/tenant-demo`. Either way:
 
 - `MONGODB_URI` → a real **Atlas** cluster.
 - Atlas Search indexes per `docs/shared/org-scoping.md` on `user-contacts`,
@@ -56,10 +57,12 @@ A deployment of `apps/demo` with:
 - [ ] Invite flow still creates + links its contact unchanged (invite → accept
       → contact linked).
 
-## 3. `tenant` policy smoke (the shape nothing has ever run)
+## 3. `tenant` policy smoke
 
-Switch the deployment to `auth.organizations.policy: tenant`, create two
-organizations with one user each:
+Run `apps/tenant-demo` (it declares `auth.organizations.policy: tenant`) and
+create two organizations with one user each. The tester-facing version of this
+is [`qa-test-plan.md`](../auth-tenancy-verification/qa-test-plan.md); the checks
+below are the developer subset:
 
 - [ ] Each caller's list pages (`$search`) show only their org's rows.
 - [ ] Company hierarchy: org A cannot see org B's companies in the parent

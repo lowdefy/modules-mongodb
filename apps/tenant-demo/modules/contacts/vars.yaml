@@ -1,0 +1,34 @@
+fields:
+  show_honorific: true
+  profile:
+    _ref: modules/shared/profile/fields.yaml
+  global_attributes:
+    _ref: modules/contacts/global_attributes_fields.yaml
+request_stages:
+  write: []
+event_display:
+  tenant-demo:
+    create-contact: "{{ user.profile.name }} created contact {{ target.name }}"
+    update-contact: "{{ user.profile.name }} updated contact {{ target.name }}"
+components:
+  sidebar_slots:
+    - _ref:
+        module: activities
+        component: tile_activities
+        vars:
+          reference_field: contacts
+          reference_value:
+            _url_query: _id
+          prefill:
+            # ContactSelector's value is an array of contact objects
+            # ({contact_id, name, email, ...}), not bare IDs — see
+            # search_contacts.yaml's $project + getContactsData.js. Prefill
+            # must match that shape so the block's data-enrichment hook can
+            # extract `contact_id` and populate the display.
+            contacts:
+              - contact_id:
+                  _url_query: _id
+          on_created:
+            - id: refetch_events
+              type: Request
+              params: get-events

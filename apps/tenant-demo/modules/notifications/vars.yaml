@@ -1,0 +1,2 @@
+send_routine:
+  _ref: modules/notifications/send-routine.yaml

@@ -1,26 +1,33 @@
 # Auth testing — environments
 
-Infrastructure for testing the demo app's BetterAuth flows (login, signup, email
+Infrastructure for testing the BetterAuth flows (login, signup, email
 verification, password reset, magic-link, 2FA, passkeys, invitations) end-to-end.
 
-Two environments, picked by who's driving:
+Two environments, and they drive **different apps** — the deployment policy is
+the whole reason there are two:
 
-| Environment           | Use it for                                                                                          | Database                                 | Email                         |
-| --------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------- |
-| **Local rig** (§1–§7) | Dev iteration — fast resets, scripted link extraction, throwaway data                               | local container `demo-auth-test`         | Mailpit sink (never forwards) |
-| **QA** (§8)           | Tester-facing passes ([`qa-test-plan.md`](../../designs/auth-tenancy-verification/qa-test-plan.md)) | Atlas `modules-mongodb-demo-tenant-test` | SendGrid → real inboxes       |
+| Environment           | App                | Policy   | Use it for                                                                                          | Database                                 | Email                         |
+| --------------------- | ------------------ | -------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------- |
+| **Local rig** (§1–§7) | `apps/demo`        | `pinned` | Dev iteration — fast resets, scripted link extraction, throwaway data                               | local container `demo-auth-test`         | Mailpit sink (never forwards) |
+| **QA** (§8)           | `apps/tenant-demo` | `tenant` | Tester-facing passes ([`qa-test-plan.md`](../../designs/auth-tenancy-verification/qa-test-plan.md)) | Atlas `modules-mongodb-demo-tenant-test` | SendGrid → real inboxes       |
+
+The local rig's tools are pinned-shape by construction: `bootstrap-admin` grants
+a `userAdminRole` that `tenant` forbids, and `reset-db` refuses a non-local host.
+The workspace surface (organization switcher, members, settings) only exists in
+`apps/tenant-demo`. Neither app can serve both passes — see
+[`docs/shared/org-scoping.md`](../../docs/shared/org-scoping.md).
 
 **The local rig touches nothing real** — a fresh local container plus a mail sink.
 That's the whole reason it exists. **The QA environment is different:** it sends
 real email and lives on a shared Atlas cluster. Read §8 before pointing anything
 at it.
 
-Both are driven entirely by `apps/demo/.env` — the app is env-driven end to end,
-so switching environments never means editing config.
+Each is driven entirely by its app's `.env` — the apps are env-driven end to end,
+so switching database or mail provider never means editing config.
 
 ---
 
-# Local rig
+# Local rig — `apps/demo` (`pinned`)
 
 ## 1. Install Docker (macOS)
 
@@ -273,20 +280,23 @@ pnpm mail-link --json                   # raw message metadata + all links found
 
 ---
 
-# QA environment
+# QA environment — `apps/tenant-demo` (`tenant`)
 
 ## 8. Atlas + SendGrid — tester-facing passes
 
 The environment [`qa-test-plan.md`](../../designs/auth-tenancy-verification/qa-test-plan.md)
-runs against. It differs from the local rig in the two ways that matter:
+runs against. It differs from the local rig in the three ways that matter:
 
+- **A different app.** `apps/tenant-demo`, not `apps/demo` — the workspace surface
+  the plan's §2–§5 exercise exists only there, and its `slug` is `tenant-demo`, so
+  it writes its own `created.app_name` / workflow `access` axis.
 - **Real email.** SendGrid delivers to real inboxes, so a tester can click links
   from their own mail client. The plan's "4 email addresses you can actually read"
   precondition depends on this.
 - **A shared Atlas cluster.** The database is `modules-mongodb-demo-tenant-test`.
   It is not a container you can throw away, and the cluster hosts other databases.
 
-### 8a. Secrets (`apps/demo/.env`)
+### 8a. Secrets (`apps/tenant-demo/.env`)
 
 Same `LOWDEFY_SECRET_` mechanism as §3a — only the values differ:
 
@@ -304,9 +314,9 @@ a domain you've authenticated), or every auth email silently fails to deliver.
 
 ### 8b. Tenant policy
 
-The demo runs `auth.organizations.policy: tenant` — a fresh signup mints its own
-organization and invited users join the inviter's. That's the mode the QA plan's
-workspace sections exercise; nothing needs enabling.
+`apps/tenant-demo` runs `auth.organizations.policy: tenant` — a fresh signup mints
+its own organization and invited users join the inviter's. That's the mode the QA
+plan's workspace sections exercise; nothing needs enabling.
 
 Two consequences for the helper scripts:
 
@@ -342,7 +352,7 @@ pinned `demo` row.
 Serve a production build, not the dev server:
 
 ```sh
-pnpm ldf:b && pnpm ldf:s      # from apps/demo/
+pnpm ldf:b && pnpm ldf:s      # from apps/tenant-demo/ — serves on port 3003
 ```
 
 `ldf:d` intermittently leaves a page stuck on a "building page" screen — a

@@ -1,0 +1,204 @@
+lowdefy: 0.0.0-experimental-20260730112404
+name: Tenant Demo App
+slug: tenant-demo
+
+# The `tenant`-policy deployment of the same modules `apps/demo` runs under
+# `pinned`. Both shapes need their own app because the two are mutually
+# exclusive in config: `userAdminRole` is rejected under `tenant`, and the
+# organizations module's switcher (`SetActiveOrganization`) fails the build
+# under `pinned`. See docs/shared/org-scoping.md.
+
+cli:
+  watch:
+    - ../../modules/shared
+
+theme:
+  antd:
+    algorithm: compact
+    token:
+      colorPrimary: "#7c3aed"
+
+config:
+  homePageId: router
+
+global:
+  enums:
+    event_types:
+      _ref:
+        module: events
+        component: event_types
+
+plugins:
+  # @lowdefy/community-plugin-mongodb dropped (design task 1): the built-in
+  # @lowdefy/connection-mongodb (vendored, supportsJSON) now serves every MongoDB
+  # connection/request in the demo — including the companies module's
+  # MongoDBInsertConsecutiveId — plus the auth.database MongoDBAuthAdapter. The
+  # community plugin is fully superseded; the built-in is auto-included (no pin).
+  - name: "@lowdefy/community-plugin-xlsx"
+    version: 1.1.0
+  - name: "@lowdefy/community-plugin-nodemailer"
+    version: 1.1.4
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: workspace:*
+
+auth:
+  secret:
+    _secret: AUTH_SECRET
+  database:
+    id: mdb_adapter
+    type: MongoDBAuthAdapter
+    properties:
+      uri:
+        _secret: MONGODB_URI
+  # Full method matrix so every _build.authConfig-gated branch in the login
+  # page and account workspace resolves and builds into a demo artifact (task
+  # 01). No real OAuth secrets are needed — ldf:b reads only the config
+  # projection.
+  emailAndPassword:
+    enabled: true
+    requireEmailVerification: true
+    minPasswordLength: 8
+  magicLink:
+    enabled: true
+    expiresIn: 1800
+  twoFactor:
+    enabled: true
+  passkey:
+    enabled: true
+    rpId: localhost
+    rpName: Tenant Demo App
+  providers:
+    - id: google
+      type: Google
+      properties:
+        clientId:
+          _secret: GOOGLE_CLIENT_ID
+        clientSecret:
+          _secret: GOOGLE_CLIENT_SECRET
+  # Auth emails (verify, reset, magic-link, invite) send through the `auth-smtp`
+  # SMTP connection (see connections below): the runtime resolves it by
+  # connectionId at send time and the connection owns from/transport/filter. An
+  # optional `templates` map (verifyEmail/resetPassword/magicLink/invitation →
+  # notification ids) can override the default copy.
+  email:
+    connectionId: auth-smtp
+  # The user-account module contributes its own authPages (login, signup,
+  # verify-email, …) and public pages (two-factor, logout) via its manifest, so
+  # they are NOT repeated in `pages.public` below; app config would win on
+  # collision.
+  # Tenant policy: one shared deployment, many organizations. A fresh signup
+  # mints its own organization (owner); invited users join the inviter's org;
+  # the active org is the oldest membership. The tenant wall makes every
+  # walled read/write org-scoped. `org` and `signup` are pinned-only keys —
+  # under tenant, self-serve organization creation is the admission model.
+  #
+  # `userAdminRole` is forbidden here: suite-wide admin powers like
+  # Suspend/Impersonate cross org boundaries, and multi-tenant administration
+  # awaits its own design (org-aware-modules Decision 6). The user-admin module
+  # is still wired, so its reads are exercised org-scoped — but its admin
+  # endpoints have no engine floor under tenant and refuse at runtime, which is
+  # what the QA plan's §6.1 asserts.
+  organizations:
+    policy: tenant
+  # Authored role catalog (role-catalog design) — the single source of truth for
+  # assignable roles, their labels, and help text. Every gate reference must be
+  # declared here.
+  roles:
+    - id: user-admin
+      label: User Admin
+      description: Administers users across the pinned suite (ban, invite, roles, sessions).
+    - id: admin
+      label: Admin
+      description: Application administrator.
+    - id: manager
+      label: Manager
+      description: Team manager.
+    - id: user
+      label: User
+      description: Standard application user.
+  # App-level page gate: every page requires a session except this public list.
+  # Modules contribute their own public pages (user-account: login/signup/…,
+  # two-factor, logout; notifications: link, invalid, file-download), so this
+  # list is only the app's own public surface — the 404 and router entry pages.
+  # The user-admin pages are role-gated to user-admin. Protecting by default
+  # also matters under the tenant policy: a walled request from an org-less
+  # anonymous caller fails closed, so an unprotected page would render loud
+  # AuthenticationErrors instead of redirecting to login.
+  pages:
+    protected: true
+    public:
+      - "404"
+      - router
+    roles:
+      user-admin:
+        - user-admin/*
+  # Defense-in-depth endpoint gate (design Decision 3): the user-admin routine
+  # endpoints require the user-admin role. Other endpoints stay as-is (no global
+  # `protected` flip). Composes on top of the engine's userAdminRole step-floor.
+  api:
+    roles:
+      user-admin:
+        - user-admin/*
+
+modules:
+  _ref: modules.yaml
+
+menus:
+  _ref: menus.yaml
+
+connections:
+  # One transport + delivery filter for every auth email (verification,
+  # password reset, magic link, invitation) — referenced by
+  # auth.email.connectionId above. SMTP is a framework built-in (no plugin pin).
+  # Fully env-driven: the same config points at a local catcher in dev and a
+  # real provider in prod (docs/shared/secrets.md).
+  - id: auth-smtp
+    type: SMTP
+    properties:
+      from:
+        _secret: AUTH_FROM_ADDRESS
+      host:
+        _secret: SMTP_HOST
+      port:
+        _secret: SMTP_PORT
+      secure:
+        _eq:
+          - _secret: SMTP_SECURE
+          - "true"
+      auth:
+        user:
+          _secret: SMTP_USER
+        pass:
+          _secret: SMTP_PASS
+  - id: demo-contacts
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: user-contacts
+  # Sales-pipeline workflow entity connection — the `deals` id the deals module's
+  # GetEntityWorkflows queries match on (module r/w the collection via deals-collection).
+  - id: deals
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: deals
+      write: true
+      changeLog:
+        collection: log-changes
+        meta:
+          user:
+            _user: true
+
+api: []
+
+pages:
+  - _ref: pages/router.yaml
+  - _ref: pages/avatar.yaml
+  - _ref: pages/user-components-demo.yaml
+  - _ref: pages/404.yaml
+  - _ref: pages/home.yaml
+  - _ref: pages/files/files-demo.yaml
+  - _ref: pages/quote-builder.yaml
+  - _ref: pages/start-company-setup.yaml

@@ -1,0 +1,73 @@
+- id: activities
+  source: "file:../../modules/activities"
+  vars:
+    _ref: modules/activities/vars.yaml
+
+# workflows must be listed before companies: the companies entry vars
+# cross-module _ref workflows components, and the experimental build's
+# entry-vars resolve is order-sensitive (target module entry must be
+# registered first).
+- id: workflows
+  source: "file:../../modules/workflows"
+  vars:
+    _ref: modules/workflows/vars.yaml
+
+- id: companies
+  source: "file:../../modules/companies"
+  vars:
+    _ref: modules/companies/vars.yaml
+
+- id: contacts
+  source: "file:../../modules/contacts"
+  vars:
+    _ref: modules/contacts/vars.yaml
+
+- id: events
+  source: "file:../../modules/events"
+  vars:
+    _ref: modules/events/vars.yaml
+
+- id: files
+  source: "file:../../modules/files"
+  vars:
+    s3_region: us-east-1
+
+# organizations must be listed before layout: the layout entry vars wire the
+# org-switcher into header_extra by cross-module _ref, and the experimental
+# build's entry-vars resolve is order-sensitive (target module entry must be
+# registered first).
+- id: organizations
+  source: "file:../../modules/organizations"
+
+- id: layout
+  source: "file:../../modules/layout"
+  vars:
+    _ref: modules/layout/vars.yaml
+
+# deals depends on layout/events/activities/files/companies/contacts/workflows —
+# listed after all of them so the order-sensitive entry-var resolve works.
+- id: deals
+  source: "file:../../modules/deals"
+  vars:
+    _ref: modules/deals/vars.yaml
+
+- id: notifications
+  source: "file:../../modules/notifications"
+  vars:
+    _ref: modules/notifications/vars.yaml
+
+- id: release-notes
+  source: "file:../../modules/release-notes"
+  vars:
+    content:
+      _ref: ../../CHANGELOG.md
+
+- id: user-account
+  source: "file:../../modules/user-account"
+  vars:
+    _ref: modules/user-account/vars.yaml
+
+- id: user-admin
+  source: "file:../../modules/user-admin"
+  vars:
+    _ref: modules/user-admin/vars.yaml

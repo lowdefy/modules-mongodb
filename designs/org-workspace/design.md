@@ -10,7 +10,7 @@ declared a non-goal — the data layer it required is now shipped and verified
 **Not multi-tenant administration.** The user-admin module's suite-wide powers
 (Suspend = global ban, Impersonate, password reset) stay pinned-only per
 org-aware-modules Decision 6. Everything here is **per-org**: authorized by the
-caller's member role *in the active organization* and scoped to it. Nobody can
+caller's member role _in the active organization_ and scoped to it. Nobody can
 reach another organization's members, and no action here crosses an org
 boundary.
 
@@ -72,9 +72,9 @@ What the auth engine already provides, confirmed in source:
 
 ### 1. A new `organizations` module owns this surface
 
-Not user-account (that module is the *person's* surface: auth flows, profile,
+Not user-account (that module is the _person's_ surface: auth flows, profile,
 sessions) and not user-admin (suite administration, pinned-only). The org
-workspace is the *organization's* surface with its own audience (org
+workspace is the _organization's_ surface with its own audience (org
 owners/admins for members and settings; every member for the switcher).
 Dependencies: `layout` (page shell), `user-account` (accept page cross-link on
 invitations). Pages: `members`, `settings`. Components: `org-switcher`.
@@ -122,7 +122,7 @@ mechanism**:
 - **Shared contact mint at invite.** user-admin's invite pairs the auth
   invitation with the shared `create-or-link-contact` fragment so the invitee
   has an org-stamped contact immediately. The organizations invite does the
-  same — and *simpler*: the inviter is a logged-in caller with the target org
+  same — and _simpler_: the inviter is a logged-in caller with the target org
   active, so the mint runs on the **walled** contacts connection and the wall
   stamps the org mechanically (no system-context/`organization_id` variant
   needed). Sequence on the members page: `CallAPI` (module endpoint mints the
@@ -139,7 +139,7 @@ mechanism**:
   other's door is exactly what the engine refuses.
 - **The accept page stays in user-account.** It is an auth-flow page (chrome
   -less shell, `authPages.acceptInvitation` manifest contribution, used by
-  people who are *not yet* members) — the organizations module is for people
+  people who are _not yet_ members) — the organizations module is for people
   managing an org they already belong to. Cross-linked, not moved.
 
 ### 3. Members page (`members`) — per-org management
@@ -194,13 +194,17 @@ blocker.
 
 ### 7. Demo consumer
 
-Per repo rule, the demo app (already `policy: tenant`) consumes everything in
-the same change: module entry, menu links to `members`/`settings`,
-`org-switcher` in `header_extra`. Manual verification extends the existing
-runtime checklist: rename the founder org, invite the second tenant's email
-into it, accept, confirm the invitee's membership + contact mint in the
-inviter's org, switch orgs with the widget, and confirm walled lists follow
-the active org.
+`apps/tenant-demo` — the `policy: tenant` app — consumes everything in the same
+change: module entry, menu links to `members`/`settings`, `org-switcher` in
+`header_extra`. It is a separate app from `apps/demo` because this surface
+cannot build under `pinned` (Decision 6: a wired `SetActiveOrganization` is
+rejected there), which is the same boundary org-aware-modules' demo-consumer
+question settled on.
+
+Manual verification extends the existing runtime checklist: rename the founder
+org, invite the second tenant's email into it, accept, confirm the invitee's
+membership + contact mint in the inviter's org, switch orgs with the widget, and
+confirm walled lists follow the active org.
 
 ## Upstream asks
 

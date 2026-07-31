@@ -49,4 +49,10 @@ Verdict _delivery_ to plugin types is guaranteed by the framework, not assumed �
 
 ## Two-org runtime proof
 
-Per-resolver isolation is proven by integration tests in the lowdefy repo (connection-mongodb suite, real MongoDB). This repo adds `apps/demo/e2e/org-scoping/tenant-isolation.spec.js` — two orgs seeded, isolation asserted through the activities view page (a plain walled aggregation; the `$search`-led list pipelines can't run on the in-memory MongoDB). The demo build itself stays `pinned`-policy.
+Per-resolver isolation is proven by integration tests in the lowdefy repo (connection-mongodb suite, real MongoDB). This repo adds `apps/tenant-demo/e2e/org-scoping/tenant-isolation.spec.js` — two orgs seeded, isolation asserted through the activities view page (a plain walled aggregation; the `$search`-led list pipelines can't run on the in-memory MongoDB). The specs drive the e2e harness's mock caller, so they prove the wall under either policy; they live with the tenant app because that is the deployment shape they describe.
+
+## Two apps, one module set (the design's demo-consumer question)
+
+The design left open what a build-verified consumer for the `tenant` shape looks like. Answer: a second app. `apps/demo` stays `pinned` and remains the canonical demo; `apps/tenant-demo` declares `policy: tenant` and adds the `organizations` module entry, the org menu group and the `header_extra` switcher. The two cannot be one app — `userAdminRole` is rejected under `tenant`, and a wired `SetActiveOrganization` fails the build under `pinned` (org-workspace Decision 6) — so the policy axis is an app boundary, not a var.
+
+Both apps carry the same walled module set, which is Decision 1 working as intended: nothing in `modules/` branches on policy, and the only per-app differences are the auth block, the organizations wiring, and the app-slug-keyed maps (`event_display`, workflow `access` / `status_map`) that follow each app's own `slug`.

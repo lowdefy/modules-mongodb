@@ -1,0 +1,84 @@
+- id: default
+  links:
+    - id: crm-group
+      type: MenuGroup
+      properties:
+        title: CRM
+        icon: AiOutlineContacts
+      links:
+        _build.array.concat:
+          - _ref:
+              module: deals
+              menu: default
+          - _ref:
+              module: companies
+              menu: default
+          - _ref:
+              module: contacts
+              menu: default
+          - _ref:
+              module: activities
+              menu: default
+    # Per-org self-service: every member reaches it, and BetterAuth authorizes
+    # each action against their member role. Distinct from the suite-wide Admin
+    # group below, which is user-admin's pinned-only surface.
+    - id: organization-group
+      type: MenuGroup
+      properties:
+        title: Organization
+        icon: AiOutlineBank
+      links:
+        _ref:
+          module: organizations
+          menu: default
+    - id: admin-group
+      type: MenuGroup
+      properties:
+        title: Admin
+        icon: AiOutlineSetting
+      links:
+        _ref:
+          module: user-admin
+          menu: default
+
+- id: profile
+  links:
+    - id: profile
+      type: MenuLink
+      pageId:
+        _module.pageId:
+          module: user-account
+          id: view
+      properties:
+        title: Profile
+        icon: AiOutlineUser
+    - id: release-notes
+      type: MenuLink
+      pageId:
+        _module.pageId:
+          module: release-notes
+          id: view
+      properties:
+        title: Release Notes
+        icon: AiOutlineFileText
+    - id: users
+      type: MenuLink
+      pageId:
+        _module.pageId:
+          module: user-admin
+          id: all
+      properties:
+        title: User Admin
+        icon: AiOutlineTeam
+    - id: logout-divider
+      type: MenuDivider
+    - id: logout
+      type: MenuLink
+      pageId:
+        _module.pageId:
+          module: user-account
+          id: logout
+      properties:
+        title: Logout
+        icon: AiOutlineLogout
+        danger: true

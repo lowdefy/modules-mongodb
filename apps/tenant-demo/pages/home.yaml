@@ -1,0 +1,124 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: home
+    title:
+      _app: name
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+    blocks:
+      - id: description
+        type: Paragraph
+        properties:
+          content: |
+            Explore the modules in this monorepo. Each card opens a working demo of that module.
+
+      # CRM modules
+      - id: crm_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: CRM
+      - id: crm_cards
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: deals
+                icon: AiOutlineFundProjectionScreen
+                title: Deals
+                description: Deal pipeline — capture, progress, and win or lose.
+                note: Demonstrates the Deals module orchestrating Workflows, Companies, Contacts, Files & Activities.
+                pageId: deals/all
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: companies
+                icon: AiOutlineShop
+                title: Companies
+                description: Company records — list, detail, edit, and create.
+                pageId:
+                  _module.pageId:
+                    module: companies
+                    id: all
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: contacts
+                icon: AiOutlineContacts
+                title: Contacts
+                description: Contact management with a reusable picker.
+                pageId:
+                  _module.pageId:
+                    module: contacts
+                    id: all
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: activities
+                icon: AiOutlineFlag
+                title: Activities
+                description: Calls, meetings, and emails linked to records.
+                pageId:
+                  _module.pageId:
+                    module: activities
+                    id: all
+
+      # Platform modules
+      - id: platform_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: Platform
+      - id: platform_cards
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: files
+                icon: AiOutlinePaperClip
+                title: Files
+                description: Entity attachments — file-card, file-manager, file-list.
+                note: Showcases the files module components, form slot, and download logging.
+                pageId: files-demo
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: notifications
+                icon: AiOutlineBell
+                title: Notifications
+                description: Inbox, bell, and deep-link routing.
+                pageId:
+                  _module.pageId:
+                    module: notifications
+                    id: all
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: user_admin
+                icon: AiOutlineTeam
+                title: User Admin
+                description: Invite, list, and manage app users.
+                pageId:
+                  _module.pageId:
+                    module: user-admin
+                    id: all
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
+                id: release_notes
+                icon: AiOutlineFileText
+                title: Release Notes
+                description: Changelog rendered from CHANGELOG.md.
+                pageId:
+                  _module.pageId:
+                    module: release-notes
+                    id: view

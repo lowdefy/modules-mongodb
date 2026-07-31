@@ -22,7 +22,7 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [notifications](../modules/notifications/README.md) | Bell, inbox, deep-link routing, configurable send routine                                                          |
 | [user-account](../modules/user-account/README.md)   | Self-service auth pages (login, signup, password reset, verify email, 2FA, accept, logout) + account workspace     |
 | [user-admin](../modules/user-admin/README.md)       | Operator console for a person's access lifecycle in one pinned org — members/invitations list, user detail, invite |
-| [organizations](../modules/organizations/README.md) | Self-serve org workspace for tenant apps — members, invites, rename, org switcher (per-org, tenant policy only)     |
+| [organizations](../modules/organizations/README.md) | Self-serve org workspace for tenant apps — members, invites, rename, org switcher (per-org, tenant policy only)    |
 | [contacts](../modules/contacts/README.md)           | Contact management — list, detail, edit, create, selector                                                          |
 | [companies](../modules/companies/README.md)         | Company management — list, detail, edit, create, selector                                                          |
 | [activities](../modules/activities/README.md)       | CRM activities — calls, meetings, emails logged against contacts and companies                                     |
@@ -120,7 +120,9 @@ Each module's `docs/{module}/` folder covers the vars, exports, and worked examp
 
 ## See it in action
 
-`apps/demo/` wires every module together against MongoDB. It's the canonical worked example — match its `vars.yaml` files in `apps/demo/modules/{module}/vars.yaml` for each module's input.
+`apps/demo/` wires the modules together against MongoDB under `auth.organizations.policy: pinned`. It's the canonical worked example — match its `vars.yaml` files in `apps/demo/modules/{module}/vars.yaml` for each module's input.
+
+`apps/tenant-demo/` is the same module set under `policy: tenant`, and additionally wires the [`organizations`](organizations/) module (workspace switcher, members, settings) — the surface that only exists in a multi-organization deployment. See [organization scoping](shared/org-scoping.md) for what changes between the two.
 
 ## Plugins
 

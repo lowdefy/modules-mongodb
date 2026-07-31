@@ -1,17 +1,4 @@
 page_type: sidebar
-# The organization switcher rides the header seam: which tenant am I working in,
-# and switch between the ones I belong to. The block and its reads are exported
-# as a pair — a block cannot declare its own request — so both halves are wired
-# here.
-header_extra:
-  requests:
-    _ref:
-      module: organizations
-      component: org-switcher-requests
-  blocks:
-    - _ref:
-        module: organizations
-        component: org-switcher
 footer:
   - id: footer-text
     type: Html

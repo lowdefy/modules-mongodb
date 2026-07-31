@@ -147,7 +147,7 @@ No config-level breaking change beyond the module version itself — no vars are
 
 ## Open questions
 
-- **Demo consumer for the `tenant` shape.** The demo app builds under `pinned`. Every capability needs a build-verified consumer — for a policy whose behavior is runtime scoping, what does that consumer look like? Candidates: a second demo build target with `policy: tenant`, or e2e fixtures seeding two orgs and asserting isolation. Decide at task breakdown.
+- ~~**Demo consumer for the `tenant` shape.**~~ **Resolved: a second app.** `apps/demo` stays `pinned`; `apps/tenant-demo` declares `policy: tenant` and carries the `organizations` wiring and the two-org isolation e2e specs. The policy axis has to be an app boundary rather than a var, because `userAdminRole` is rejected under `tenant` and a wired `SetActiveOrganization` fails the build under `pinned`. See [implementation-notes](implementation-notes.md#two-apps-one-module-set-the-designs-demo-consumer-question).
 - **Wall milestone timing.** The wall design's own open question — whether `tenant:` ships with the platform major — decides whether this design's implementation can piggyback the sibling designs' migration (Decision 5) or trails it. If the wall slips, the migration should still backfill `organizationId` so the wall's later adoption is config-only.
 
 ## Related

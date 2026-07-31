@@ -13,6 +13,8 @@ Every module in this repo is **organization-aware, unconditionally**. Every modu
 - Under **`pinned`** (one organization per deployment) every document carries the deployment's auto-seeded organization id and the wall's filter matches everything — near-invisible, nothing to configure.
 - Under **`tenant`** (one shared deployment, many organizations) the same field and filter are load-bearing: a caller can never read or write another organization's records.
 
+Both shapes have a worked example in this repo: `apps/demo` deploys the modules under `pinned`, `apps/tenant-demo` deploys the same set under `tenant` plus the [`organizations`](../organizations/) module. They are separate apps because the two policies are mutually exclusive in config — `auth.userAdminRole` is rejected under `tenant`, and the organization switcher's `SetActiveOrganization` action is rejected under `pinned` — not because the modules differ.
+
 ## What the wall covers
 
 Declared once per connection, enforced by the platform on reads **and** writes: find/aggregation filters (including `$lookup`, `$unionWith`, and `$facet` sub-pipelines), insert/upsert/replace stamping, update/delete selector merging, and change streams. Authoring `organizationId` in a filter or write position of module or app config is **rejected loudly** — scoping happens in exactly one place. Reading the field (projections, group keys) is fine.
