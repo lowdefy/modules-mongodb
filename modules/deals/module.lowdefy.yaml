@@ -46,9 +46,9 @@ vars:
     type: string
     default: sales-pipeline
     description: >-
-      The module's primary workflow `type`: it wires this workflow's
-      start/submit endpoint ids ({workflow_type}-start / -submit, built at
-      build time). A deal may carry more than one workflow — the
+      The module's primary workflow `type`: it wires this workflow's endpoint
+      ids ({workflow_type}-start / -submit / -cancel, built at build time). A
+      deal may carry more than one workflow — the
       workflow-progress phase view renders every workflow on the entity, and the
       host's workflow config spawns the extras (e.g. an outcome hook or tracker).
   outcome_action_type:

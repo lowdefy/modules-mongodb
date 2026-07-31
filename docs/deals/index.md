@@ -58,7 +58,7 @@ Values captured in workflow action forms live on the workflow documents, not on 
 workflows.{workflow_type}.{action_type}.{field}
 ```
 
-Every workflow the deal carries appears under its own `workflow_type` key, so a deal running two chained workflows exposes both. Host `request_stages.get_selected_deal` stages and host-injected tiles (e.g. via `info_grid_slots`) read through this shape — for example `workflows.sales-pipeline.volumes.annual_volume_ton`.
+Each of the deal's workflow types appears under its own key, so a deal running two chained workflows exposes both. The key is the workflow *type*, not the instance — if a deal ever carries two workflows of the same type, only one of them is exposed here. Host `request_stages.get_selected_deal` stages and host-injected tiles (e.g. via `info_grid_slots`) read through this shape — for example `workflows.sales-pipeline.volumes.annual_volume_ton`.
 
 ## Required indexes
 

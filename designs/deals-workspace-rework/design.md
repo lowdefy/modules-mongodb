@@ -233,8 +233,11 @@ The first two are being rewritten anyway — `close_date` because `order-confirm
 - `components/deal_list_item_compact.yaml` — fixed 180px card width (module constant, not a var); name from two-line clamp to single-line ellipsis.
 - `requests/get_selected_deal.yaml` — related-deals `$limit` 20 → 10 (alongside the form-data re-key below).
 - `pages/view.yaml` — new-deal button in `deal_list_card` `extra`; collapse toggle + rail; `pipeline_col`/`detail_col` to 12/12; card template 2dp formatting.
+- `components/deal_list_card.yaml` — **the same 2dp formatting.** This is the deals *list* page's browse card (`_ref`'d from `components/results_list.yaml`), and it reads the same `card_fields` var with the same `round` flag as the workspace panel card. Missed in an earlier draft of this inventory; leaving it would render one host setting two ways (`13` on the list page, `12.60` in the workspace).
 - `requests/get_selected_deal.yaml` — form-data merge across workflows.
-- `module.lowdefy.yaml` — `info_grid_slots`' description updated to say it injects before the built-in tiles. No var added or renamed.
+- `module.lowdefy.yaml` — `info_grid_slots`' description updated to say it injects before the built-in tiles; `workflow_type`'s description corrected, since it no longer drives the form-data alias. Both feed the generated `docs/deals/reference/vars.md`, so `pnpm docs:gen` must run in the same change. No var added or renamed.
+
+**Formatting expression, both card templates:** `{{ (v | float(0)).toFixed(2) }}`. `float` is a stock Nunjucks filter that never throws and gives identical output for real numbers; a bare `.toFixed()` throws on a non-numeric field, and the blast radius of a thrown template error is not establishable from this repo (the `ListSelector` block's source lives elsewhere). The trade recorded knowingly: a host that flags a non-numeric path `round: true` now sees a plausible `0.00` rather than a visibly broken `NaN`.
 
 **`modules/activities`**
 - `components/capture_activity.yaml` — docblock fix only: `prefill` documents `attributes` and `references`, and notes both are modal-mode only. No behaviour change.
@@ -251,13 +254,11 @@ The first two are being rewritten anyway — `close_date` because `order-confirm
 
 ## Open questions
 
-### Blocking — answer before scoping the release
+### Settled
 
-**Does the issue author accept the new tile pairing?** Issue item 4 asked for the pre-module layout; proposed change 2 delivers the same four tiles with Company | Product over People | Files instead of Company | People over Product | Files.
+**The new tile pairing is accepted.** Issue item 4 asked for the pre-module layout; proposed change 2 delivers the same four tiles as **Company | Product over People | Files** rather than Company | People over Product | Files. This was previously blocking, because a rejection would have reverted item 4 to one of the three alternatives rejected above — each costing either a breaking config change or permanent module surface.
 
-This is not a detail to settle during implementation — it decides which design gets built. The whole of proposed change 2 (move one line, no new var, nothing breaking) exists *because* exact fidelity was judged not worth its cost. **A "no" reverts item 4 to one of the three alternatives rejected above**, every one of which costs either a breaking config change or permanent module surface, and materially enlarges the work.
-
-The answer is cheap to obtain — the two pairings side by side, as rendered — and should be had before the release is scoped rather than after.
+Confirmed by the project's developer, not by the issue's original author. If the filer later objects, this is the decision to revisit, and reverting it is materially more work than the change itself.
 
 ### Non-blocking
 
