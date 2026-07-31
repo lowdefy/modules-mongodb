@@ -172,3 +172,28 @@ When a 2FA-enrolled user signs in, the `Login` result signals two-factor-require
 and the page routes to the module's own `two-factor` page (TOTP code or backup
 code, with an optional trust-device option). `authPages` has no 2FA role — this
 routing never leaves the module.
+
+## Two-factor enrolment
+
+Enrolling an authenticator — first-time setup or replacing an existing one — is
+**password-gated**: BetterAuth requires the account password to issue a new
+authenticator secret, so the Security tile's enrolment flow collects the
+password before it will show a QR code.
+
+**Backup codes are shown once and cannot be fetched again.** BetterAuth returns
+them alongside the new TOTP secret at enable time, and the flow renders them
+only in its final step — nothing in the module fetches them again afterwards.
+Dismissing that step without saving them discards them for good; the only way
+to get a fresh set is to enrol again.
+
+**Replacing an authenticator turns two-factor off for the duration of the
+flow.** BetterAuth's enable call deletes the caller's existing authenticator
+row and writes a new one with a fresh secret, but never touches the
+account-level two-factor flag itself — so enrolment first switches two-factor
+off, then re-enables against the new secret, rotating the secret and
+invalidating the previous authenticator. Two-factor comes back on only once
+the user confirms a code from the new authenticator. **An abandoned
+replacement therefore leaves the account with two-factor off** until the user
+enrols again: the account stays reachable with the password alone, and the
+Security tile reads **Off** in the meantime — this is expected behaviour, not
+a lockout.
