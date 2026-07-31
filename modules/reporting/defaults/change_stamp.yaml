@@ -1,19 +1,23 @@
 # Audit metadata for a reporting write: who and when.
 #
-# Reporting declares no module dependencies, so it cannot _ref the events
-# module's change_stamp component — but it writes the identical shape, and it
-# writes it from five endpoints, so the shape lives here rather than being
-# copied into each of them. See docs/shared/change-stamps.md for the idiom and
-# docs/shared/soft-delete.md for the `deleted` variant of it.
+# Reporting declares no module dependencies, so it writes the shape here rather
+# than consuming the events module's exported change_stamp component the way
+# every other module does. That is a choice, not a limitation — see
+# designs/reporting/ux/ownership/design.md ("Reporting writes its own change
+# stamp, for now") for the trade-off. The consequence worth knowing: the events
+# component resolves to that module entry's `change_stamp` var, so an app that
+# adds a field to its audit stamps centrally will NOT see it here.
 #
-# The user id is `sub ?? id` to match how the agent hooks derive it, which is
-# what every user_id-scoped filter in this module also matches on.
+# The shape is identical, and five endpoints write one, so it lives in one file
+# rather than being copied into each of them. See docs/shared/change-stamps.md
+# for the idiom and docs/shared/soft-delete.md for the `deleted` variant of it.
+#
+# The id comes from defaults/user_id.yaml so the stamp, the owner reference and
+# every scope filter cannot drift apart.
 timestamp:
   _date: now
 user:
   name:
     _user: profile.name
   id:
-    _if_none:
-      - _user: sub
-      - _user: id
+    _ref: defaults/user_id.yaml

@@ -2,11 +2,11 @@
 
 A sub-design of [`reporting/ux`](../design.md) — read its [data model](../design.md#data-model) and [cross-cutting invariants](../design.md#cross-cutting-invariants) first.
 
-Today a saved report is readable only by its author, retirable only by its author, and that is the whole model: `list-reports` matches `user_id`, `resolve-report` matches `_id` **and** `user_id`, and there is no notion of a report anyone else can see. This sub-design gives reports an audience and a life cycle — private by default, publishable to the whole app by a role-holder, favouritable per user, retired by one soft delete, recoverable — and puts every one of those acts behind a server-side check.
+Today a saved report is readable only by its author, retirable only by its author, and that is the whole model: `list-reports` matches `owner.user_id`, `resolve-report` matches `_id` **and** `owner.user_id`, and there is no notion of a report anyone else can see. This sub-design gives reports an audience and a life cycle — private by default, publishable to the whole app by a role-holder, favouritable per user, retired by one soft delete, recoverable — and puts every one of those acts behind a server-side check.
 
 **This sub-design is server-side only, and it ships first.** No page changes. The reports data model, the scope semantics and the authorization checks land with tests, so the four UI sub-designs build against a fixed contract instead of co-evolving with one. The three surfaces that read this model are [reports-list](../reports-list/design.md), [report-page](../report-page/design.md) and [save-as-report](../save-as-report/design.md); none of them decides anything here.
 
-Conversation documents already carry `user_id`, `created` and `updated`; the `deleted` stamp they still need belongs to the rail that needs it — see [chat](../chat/design.md). The report ownership model has nothing to say about conversations.
+Conversation documents already carry `owner`, `created` and `updated`; the `deleted` stamp they still need belongs to the rail that needs it — see [chat](../chat/design.md). The report ownership model has nothing to say about conversations.
 
 ## Proposed change
 
@@ -20,11 +20,11 @@ Conversation documents already carry `user_id`, `created` and `updated`; the `de
 
 ## Current state
 
-- `modules/reporting/api/generate-report.yaml` — inserts `{ _id, user_id, title, description, spec, conversation_id: null, deleted: null, created, updated }`. The `conversation_id: null` carries a comment recording why: tool endpoints receive only the tool input, so the agent context (conversation id) does not reach them.
-- `modules/reporting/api/list-reports.yaml` — own-only (`user_id` match), `deleted.timestamp: { $exists: false }`, sort `updated.timestamp: -1`, `limit: 200`, projection `title/description/created/updated`. No scope, search, sort or cursor parameters.
+- `modules/reporting/api/generate-report.yaml` — inserts `{ _id, owner, title, description, spec, conversation_id: null, deleted: null, created, updated }`. The `conversation_id: null` carries a comment recording why: tool endpoints receive only the tool input, so the agent context (conversation id) does not reach them.
+- `modules/reporting/api/list-reports.yaml` — own-only (`owner.user_id` match), `deleted.timestamp: { $exists: false }`, sort `updated.timestamp: -1`, `limit: 200`, projection `title/description/created/updated`. No scope, search, sort or cursor parameters.
 - `modules/reporting/api/delete-report.yaml` — already a correct soft delete: owner-scoped, writes a `deleted` change stamp from `defaults/change_stamp.yaml`, and excludes already-deleted docs so a repeat delete reports 0 modified rather than overwriting the original who/when.
-- `modules/reporting/api/resolve-report.yaml` — loads the report matched on `_id` **and** `user_id`, so today a report is readable only by its author; rejects on not-found (the `Dynamic` block renders its fallback), runs each query section through `AnalyticsPipeline` inside `:try`, compiles server-side.
-- `modules/reporting/defaults/change_stamp.yaml` — the module's own `{ timestamp, user: { name, id } }` fragment, `_ref`'d by every writer. Reporting declares no dependencies so it cannot use the events module's component, but the shape is identical.
+- `modules/reporting/api/resolve-report.yaml` — loads the report matched on `_id` **and** `owner.user_id`, so today a report is readable only by its author; rejects on not-found (the `Dynamic` block renders its fallback), runs each query section through `AnalyticsPipeline` inside `:try`, compiles server-side.
+- `modules/reporting/defaults/` — three fragments every endpoint composes from: `user_id.yaml` (the `sub ?? id` derivation, `_ref`'d by all eleven read and write sites so they cannot drift), `owner.yaml` (`{ user_id, name }`), and `change_stamp.yaml` (`{ timestamp, user: { name, id } }`, whose id comes from the same `user_id.yaml`). Reporting declares no dependencies, so it does not consume the events module's exported `change_stamp` component — but the shape is identical, and that is a deferred choice rather than a limit.
 - `docs/shared/soft-delete.md` — the repo idiom: field `deleted`, shape `{ timestamp, user: { name, id } }`, initialised `null`, read predicate `deleted.timestamp: { $exists: false }`. No module in this repo has an archive state.
 
 ## Key decisions and rationale
@@ -69,9 +69,24 @@ The recovery surface itself — a quiet page rather than a fourth list scope —
 
 There is no permanent-delete action anywhere, and adding one would be the single irreversible act in an otherwise recoverable system.
 
-### Reporting writes the change stamp inline
+### Reporting writes its own change stamp, for now
 
-Reporting declares no module dependencies, so it cannot `_ref` the events module's `change_stamp` component. It writes the identical shape from its own `modules/reporting/defaults/change_stamp.yaml` instead — a within-module `_ref` needs no dependency, and five endpoints write a stamp, so the shape lives in one file rather than being copied into each of them. `restore-report` and every other new writer `_ref` the same fragment.
+Reporting declares no module dependencies, so it writes the stamp shape from its own `modules/reporting/defaults/change_stamp.yaml` — a within-module `_ref` needs no dependency, and five endpoints write a stamp, so the shape lives in one file rather than being copied into each of them. `restore-report` and every other new writer `_ref` the same fragment.
+
+**Note — the events module already exports a `change_stamp` component, and reporting could use it.** This is a choice, not a limitation, and earlier revisions of this design stated it as though reporting "cannot" reuse it. It can: `modules/events/module.lowdefy.yaml` exports `change_stamp` (:14) whose component resolves to `_module.var: change_stamp` (:88), and every other module in the repo consumes it as
+
+```yaml
+updated:
+  _ref:
+    module: events
+    component: change_stamp
+```
+
+The gain is more than deduplication. Because the component resolves to the **events entry's var**, an app that adds a field to its audit stamps — a tenant id, an app name, a request id — sets it once on the events module entry and every consuming module picks it up. Reporting's local fragment is invisible to that, so an app doing this today would end up with reporting stamps that differ from the rest of its collections.
+
+The cost is that reporting stops being dependency-free. Every app installing reporting would also have to install and wire `events`, and reporting is the module most likely to be dropped into an app standalone — it is an analytics surface, not part of the entity graph the other modules share. That is the whole of the trade-off, and it is why the local fragment stands for now.
+
+**Not implemented here.** Deliberately deferred rather than resolved: it is a manifest change plus five `_ref` swaps, it is independent of everything else in this sub-design, and it wants a view on whether reporting should be allowed to depend on events at all — which is a module-graph question, not an ownership one.
 
 ## Data model
 
@@ -79,7 +94,7 @@ The table is in the [parent](../design.md#data-model). What this sub-design adds
 
 - **`visibility`** — absent is read as `private`, so existing documents need no migration. Only `set-report-visibility` writes it, and `restore-report` forces it to `private`.
 - **`favourite_of`** — absent is read as empty. `$addToSet` / `$pull` only; never overwritten wholesale. Projected out of every list and read response as a boolean `is_favourite` for the caller, so a caller never learns who else favourited a report.
-- **`user_id`** — the owner, immutable. `duplicate-report` writes the copier's id on the new document; nothing rewrites it on an existing one. Derived as `sub ?? id` from `_user`, matching how every writer and every scope filter resolves identity.
+- **`owner`** — `{ user_id, name }`. `owner.user_id` is the authorization key every scope filter and every mutation matches; `owner.name` is carried so a list row or report header can name the owner without a lookup. `duplicate-report` writes the copier as owner of the new document; nothing rewrites it on an existing one, though the shape does not preclude a transfer later — which is the point of it not being the `created` stamp (see the [parent](../design.md#data-model)). The id is `sub ?? id` from `_user`, resolved through `modules/reporting/defaults/user_id.yaml` so a writer cannot drift from a reader.
 - **`created` / `updated` / `deleted`** — change stamps, all three. `created` is written once on insert; `updated` on every spec change; `deleted` by the soft delete, which refuses to overwrite an existing one. Reads filter on `deleted.timestamp`, and the list sorts on `updated.timestamp`. Because `created` carries `user.name`, the [report page](../report-page/design.md)'s provenance line needs no extra lookup to say who made a report.
 
 ## Endpoints
@@ -93,7 +108,7 @@ The table is in the [parent](../design.md#data-model). What this sub-design adds
 | `duplicate-report`      | new     | `{ report_id }` → new doc, `visibility: private`, owner = caller, `favourite_of: []`. Readable-report check.                                                                                                            |
 | `restore-report`        | new     | `{ report_id }` — owner-only; clears `deleted` and sets `visibility: private` in one update.                                                                                                                            |
 | `delete-report`         | keep    | Already a correct owner-scoped soft delete.                                                                                                                                                                             |
-| `resolve-report`        | change  | Read match becomes `_id` + not-deleted + (`user_id` = caller **or** `visibility: "shared"`); returns whether the viewer is the owner so the page can render owner-only actions.                                         |
+| `resolve-report`        | change  | Read match becomes `_id` + not-deleted + (`owner.user_id` = caller **or** `visibility: "shared"`); returns whether the viewer is the owner so the page can render owner-only actions.                                   |
 
 **"Readable-report check"** means the same predicate `resolve-report` uses: not deleted, and owned by the caller or shared. Favourite and duplicate use it because both are read-side acts on something you are already entitled to see.
 
@@ -128,7 +143,7 @@ Resolved 2026-07-29, carried over from the parent design.
 
 1. **Archive or delete?** Delete only. No module in this repo has an archive state, and the soft-delete stamp is the established idiom.
 2. **Does reporting already soft-delete correctly?** Reports yes (`delete-report` writes the stamp, owner-scoped, and won't overwrite an existing one). Conversations have no delete at all, so that endpoint is new — see [chat](../chat/design.md).
-3. **Can reporting reuse the events module's `change_stamp` component?** No — reporting declares no dependencies, so it writes the identical stamp shape inline. Already true of `delete-report`; keep it for the new writers.
+3. **Can reporting reuse the events module's `change_stamp` component?** Yes, technically — the earlier "no" was wrong. Events exports it and every other module consumes it; reporting doesn't only because it declares no dependencies and that is worth keeping for now. See [Reporting writes its own change stamp, for now](#reporting-writes-its-own-change-stamp-for-now) for the trade-off and why it is deferred rather than settled.
 4. **Where does the publish capability come from?** A `share_roles` string array var, checked server-side on `set-report-visibility`. Modelled on an existing app's saved-exports pattern: per-user documents matched on the creator's id, plus a set everyone can read.
 
 ## Deviations from the wireframes

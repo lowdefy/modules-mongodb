@@ -1,13 +1,13 @@
 # onFinish hook: upsert the full conversation keyed by conversationId, scoped
-# by user_id. No-ops when the payload carries no conversationId — there is
-# nothing to key the upsert on, and this endpoint is HTTP-callable. The title
+# by owner.user_id. No-ops when the payload carries no conversationId — there
+# is nothing to key the upsert on, and this endpoint is HTTP-callable. The title
 # is derived from the first user message on insert.
 #
 # `conversationId` and `messages` stay camelCase because they are the agent
 # framework's own onFinish payload keys, not fields this module names — the
 # document fields it does name are snake_case.
 #
-# user_id comes from _user, never from the hook payload. This endpoint is
+# The owner comes from _user, never from the hook payload. This endpoint is
 # type: Api — HTTP-callable by any authenticated user — and the write is an
 # upsert, so a payload-supplied user id would let a caller who knows another
 # user's id insert attacker-authored conversations into that user's sidebar
@@ -33,18 +33,16 @@ routine:
       filter:
         _id:
           _payload: conversationId
-        user_id:
-          _if_none:
-            - _user: sub
-            - _user: id
+        owner.user_id:
+          _ref: defaults/user_id.yaml
       update:
         $set:
           messages:
             _payload: messages
-          user_id:
-            _if_none:
-              - _user: sub
-              - _user: id
+          # The whole owner reference, not just the id — the name has to be
+          # refreshed alongside it so a display name change propagates.
+          owner:
+            _ref: defaults/owner.yaml
           updated:
             _ref: defaults/change_stamp.yaml
         $setOnInsert:

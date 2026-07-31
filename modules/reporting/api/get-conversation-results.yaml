@@ -1,5 +1,5 @@
 # Fetches a conversation's transcript and persisted result parts (charts +
-# downloads) for the chat page, scoped by user_id. The page calls this on
+# downloads) for the chat page, owner-scoped. The page calls this on
 # select and restores messages FROM THIS FRESH READ — never from the sidebar
 # list snapshot, which races the onFinish save hook and can be a turn behind;
 # restoring a stale transcript and continuing would overwrite the saved doc
@@ -10,7 +10,7 @@
 id: get-conversation-results
 type: Api
 routine:
-  # Scope by sub ?? id to match the write key: the agent hooks store user_id
+  # Scope by sub ?? id to match the write key: the agent hooks store owner.user_id
   # from _user, which the framework derives as user.sub ?? user.id.
   - :if:
       _eq:
@@ -31,10 +31,8 @@ routine:
       query:
         _id:
           _payload: conversationId
-        user_id:
-          _if_none:
-            - _user: sub
-            - _user: id
+        owner.user_id:
+          _ref: defaults/user_id.yaml
       options:
         projection:
           data_parts: 1

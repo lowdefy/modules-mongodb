@@ -61,7 +61,7 @@ routine:
             - _if_none:
                 - _user: sub
                 - _user: id
-        user_id:
+        owner.user_id:
           _if_none:
             - _user: sub
             - _user: id
@@ -76,10 +76,13 @@ routine:
             - _if_none:
                 - _user: sub
                 - _user: id
-        user_id:
-          _if_none:
-            - _user: sub
-            - _user: id
+        owner:
+          user_id:
+            _if_none:
+              - _user: sub
+              - _user: id
+          name:
+            _user: profile.name
         title: Orders overview (seeded example)
         description: >
           A worked example over the seeded demo_orders, demo_activities and

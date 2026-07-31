@@ -1,4 +1,4 @@
-# The Dynamic block's resolver: load the report spec (user_id-scoped), run each
+# The Dynamic block's resolver: load the report spec (owner-scoped), run each
 # query-backed section's pipeline inside :try (a failed section renders as an
 # Alert card while the rest of the report renders), compile spec + rows to
 # blocks server-side. AnalyticsPipeline is the security gate: it revalidates
@@ -16,10 +16,8 @@ routine:
       query:
         _id:
           _payload: urlQuery.report_id
-        user_id:
-          _if_none:
-            - _user: sub
-            - _user: id
+        owner.user_id:
+          _ref: defaults/user_id.yaml
         # A soft-deleted report resolves as not-found (the fallback slot), the
         # same as one that never existed.
         deleted.timestamp:

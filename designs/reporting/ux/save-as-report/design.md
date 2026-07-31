@@ -15,7 +15,7 @@ It is small in surface — one modal component, one endpoint — and load-bearin
 ## Current state
 
 - `modules/reporting/pages/chat.yaml` — the results panel has no selection affordance of any kind; result cards carry expand and download only.
-- `modules/reporting/api/generate-report.yaml` — the only creation path. Inserts `{ _id, user_id, title, description, spec, conversation_id: null, deleted: null, created, updated }`. The `conversation_id: null` carries a comment recording why: tool endpoints receive only the tool input, so the agent context (conversation id) does not reach them.
+- `modules/reporting/api/generate-report.yaml` — the only creation path. Inserts `{ _id, owner, title, description, spec, conversation_id: null, deleted: null, created, updated }`. The `conversation_id: null` carries a comment recording why: tool endpoints receive only the tool input, so the agent context (conversation id) does not reach them.
 - `validateReportSpec` — already validates a spec on the tool path, and is the shared validation both paths will use.
 
 ## Key decisions and rationale
@@ -60,7 +60,7 @@ The field itself is in the [parent's data model](../design.md#data-model); this 
 | --------------- | ------ | ------------------------------------------------------------------------------------------------- |
 | `create-report` | new    | `{ spec, conversation_id }` → validate, insert, return `{ report_id, url }`. Called by the sheet. |
 
-The insert writes the same document shape as `generate-report`, including the [ownership](../ownership/design.md) defaults — `visibility: "private"`, `favourite_of: []`, `deleted: null`, `user_id` = caller — plus the `conversation_id` the tool path cannot supply. Validation is `validateReportSpec`, shared with the tool path.
+The insert writes the same document shape as `generate-report`, including the [ownership](../ownership/design.md) defaults — `visibility: "private"`, `favourite_of: []`, `deleted: null`, `owner` = caller — plus the `conversation_id` the tool path cannot supply. Validation is `validateReportSpec`, shared with the tool path.
 
 ## Files changed (anticipated)
 

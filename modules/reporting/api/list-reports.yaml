@@ -17,10 +17,8 @@ routine:
       _module.connectionId: reports-store
     properties:
       query:
-        user_id:
-          _if_none:
-            - _user: sub
-            - _user: id
+        owner.user_id:
+          _ref: defaults/user_id.yaml
         # Soft-deleted reports are excluded — see docs/shared/soft-delete.md for
         # why the predicate tests the stamp's timestamp, not the field itself.
         deleted.timestamp:

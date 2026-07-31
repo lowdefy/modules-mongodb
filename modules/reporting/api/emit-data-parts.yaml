@@ -105,10 +105,8 @@ routine:
             # From _user, never the payload — see save-conversation. This
             # endpoint is HTTP-callable, so a payload-supplied user id would let
             # a caller $push parts into another user's conversation.
-            user_id:
-              _if_none:
-                - _user: sub
-                - _user: id
+            owner.user_id:
+              _ref: defaults/user_id.yaml
           update:
             $push:
               data_parts:
