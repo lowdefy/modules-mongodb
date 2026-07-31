@@ -1,7 +1,7 @@
-# Two composed "what's open" cards, side by side, replacing the old
+# Two composed "what's open" sections, stacked full width, replacing the old
 # merged section_actions.yaml + action_card.yaml.njk (rework Task 5).
-# Left: workflows' open-actions (the deal's open workflow actions).
-# Right: activities' open-tasks (the deal's open adhoc tasks). Each module
+# Above: workflows' open-actions (the deal's open workflow actions).
+# Below: activities' open-tasks (the deal's open adhoc tasks). Each module
 # renders only its own domain and fetches only its own data.
 id: detail_open_items_row
 type: Box
@@ -14,9 +14,7 @@ blocks:
   - id: detail_open_actions_col
     type: Box
     layout:
-      span: 12
-      sm:
-        span: 24
+      span: 24
     blocks:
       - id: detail_open_actions_header
         type: Html
@@ -34,9 +32,7 @@ blocks:
   - id: detail_open_tasks_col
     type: Box
     layout:
-      span: 12
-      sm:
-        span: 24
+      span: 24
     blocks:
       - id: detail_open_tasks_header
         type: Html
