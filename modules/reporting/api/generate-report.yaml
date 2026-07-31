@@ -47,9 +47,7 @@ routine:
   # Reports are per-user; an unauthenticated context cannot save one.
   - :if:
       _eq:
-        - _if_none:
-            - _user: sub
-            - _user: id
+        - _user: id
         - null
     :then:
       - :reject: You must be signed in to save a report.

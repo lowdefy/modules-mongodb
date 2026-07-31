@@ -1,8 +1,8 @@
 # Persists the AI-generated conversation title (from the AgentChat block's
-# onTitleGenerated event) onto the conversation doc, scoped by owner.user_id
-# (sub ?? id, matching the other conversation APIs). $set overrides the derived
-# fallback title save-conversation writes on insert; upsert covers the title
-# arriving (during streaming) before that onFinish hook has created the doc.
+# onTitleGenerated event) onto the conversation doc, scoped by owner.user_id.
+# $set overrides the derived fallback title save-conversation writes on insert;
+# upsert covers the title arriving (during streaming) before that onFinish hook
+# has created the doc.
 id: set-conversation-title
 type: Api
 routine:
@@ -28,7 +28,7 @@ routine:
         _id:
           _payload: conversationId
         owner.user_id:
-          _ref: defaults/user_id.yaml
+          _user: id
       update:
         $set:
           title:

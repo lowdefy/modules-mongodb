@@ -106,7 +106,7 @@ routine:
             # endpoint is HTTP-callable, so a payload-supplied user id would let
             # a caller $push parts into another user's conversation.
             owner.user_id:
-              _ref: defaults/user_id.yaml
+              _user: id
           update:
             $push:
               data_parts:

@@ -12,9 +12,7 @@ type: Api
 routine:
   - :if:
       _eq:
-        - _if_none:
-            - _user: sub
-            - _user: id
+        - _user: id
         - null
     :then:
       - :reject: You must be signed in to delete a report.
@@ -29,7 +27,7 @@ routine:
         _id:
           _payload: report_id
         owner.user_id:
-          _ref: defaults/user_id.yaml
+          _user: id
         deleted.timestamp:
           $exists: false
       update:

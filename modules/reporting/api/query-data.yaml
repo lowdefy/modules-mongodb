@@ -56,13 +56,9 @@ routine:
   # public unless the app protects them, and this is the only endpoint that
   # reads app data — without this guard an unprotected app exposes every
   # role-less cataloged collection to anonymous callers.
-  # sub ?? id, not id alone: on OIDC providers that supply only `sub`, an `id`
-  # check would reject a legitimately signed-in user.
   - :if:
       _eq:
-        - _if_none:
-            - _user: sub
-            - _user: id
+        - _user: id
         - null
     :then:
       - :reject: You must be signed in to query data.

@@ -7,13 +7,11 @@
 id: list-conversations
 type: Api
 routine:
-  # Scope by sub ?? id to match the write key: save-conversation and
-  # emit-data-parts derive owner.user_id the same way from _user.
+  # Scoped by `_user: id`, the same key save-conversation and emit-data-parts
+  # write to owner.user_id — see docs/shared/change-stamps.md for the idiom.
   - :if:
       _eq:
-        - _if_none:
-            - _user: sub
-            - _user: id
+        - _user: id
         - null
     :then:
       - :return: []
@@ -24,7 +22,7 @@ routine:
     properties:
       query:
         owner.user_id:
-          _ref: defaults/user_id.yaml
+          _user: id
       options:
         sort:
           updated.timestamp: -1
