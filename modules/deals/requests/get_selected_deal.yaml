@@ -98,11 +98,11 @@ properties:
                   outcome: 1
             as: related_deals
         # Form data now lives on the workflow doc (form_data.{type}), not
-        # deal.workflows.*. Look up the deal's workflow (module workflow_type var)
-        # and alias its form_data back onto `workflows` so host slot components
-        # (e.g. a product/volumes tile via info_grid_slots) keep reading it.
-        # Matches both entity fields so the workflows {entity.connection_id,
-        # entity.id} index is used.
+        # deal.workflows.*. Join all of the deal's workflows and alias their
+        # form_data back onto `workflows`, keyed by workflow type, so host slot
+        # components (e.g. a product/volumes tile via info_grid_slots) read
+        # workflows.{workflow_type}.{action_type}.{field}. Matches both entity
+        # fields so the workflows {entity.connection_id, entity.id} index is used.
         - $lookup:
             from: workflows
             let:
@@ -118,16 +118,21 @@ properties:
                       - $eq:
                           - $entity.id
                           - $$deal_id
-                      - $eq:
-                          - $workflow_type
-                          # Module workflow_type var.
-                          - _module.var: workflow_type
-              - $limit: 1
               - $project:
                   form_data: 1
+                  workflow_type: 1
         - $addFields:
             workflows:
-              $first: $workflow.form_data
+              $arrayToObject:
+                $map:
+                  input: $workflow
+                  as: w
+                  in:
+                    k: $$w.workflow_type
+                    v:
+                      $ifNull:
+                        - $$w.form_data
+                        - null
         - $unset: workflow
         - $addFields:
             company:
