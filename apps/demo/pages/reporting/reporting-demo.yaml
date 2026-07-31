@@ -173,8 +173,8 @@ _ref:
                         module: reporting
                         id: report
                     urlQuery:
-                      reportId:
-                        _api: reporting-seed-example-report.response.reportId
+                      report_id:
+                        _api: reporting-seed-example-report.response.report_id
 
       - id: surfaces_divider
         type: Divider

@@ -1,6 +1,7 @@
 # Conversational surface: conversations sidebar, AgentChat, and an adjacent
 # results panel that accumulates the charts and downloads the emit-data-parts
-# hook streams back as dataParts at each turn's end.
+# hook streams back as the framework's `dataParts` at each turn's end, and
+# persists on the conversation doc as `data_parts`.
 id: chat
 type: Box
 properties:

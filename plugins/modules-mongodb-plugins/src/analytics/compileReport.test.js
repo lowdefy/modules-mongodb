@@ -553,7 +553,7 @@ describe("filter controls", () => {
       {
         type: "filter",
         control: "daterange",
-        field: "createdAt",
+        field: "order_date",
         label: "Created",
       },
       {
@@ -561,7 +561,7 @@ describe("filter controls", () => {
         label: "Orders",
         query: ordersByRegion,
         columns: [{ key: "region" }, { key: "total" }],
-        filterBy: ["status", "region", "createdAt"],
+        filterBy: ["status", "region", "order_date"],
       },
     ],
   });
@@ -588,7 +588,7 @@ describe("filter controls", () => {
     const { filters } = filterRow(allControlsSpec(), [tableRows]);
     expect(filters.filter_status.type).toBe("Selector");
     expect(filters.filter_region.type).toBe("MultipleSelector");
-    expect(filters.filter_createdAt.type).toBe("DateRangeSelector");
+    expect(filters.filter_order_date.type).toBe("DateRangeSelector");
   });
 
   // `match` is the author's intent; the triple's op is the query it compiles to
@@ -601,14 +601,14 @@ describe("filter controls", () => {
       { field: "status", op: "eq", value: { __state: "filter_status" } },
       { field: "region", op: "in", value: { __state: "filter_region" } },
       {
-        field: "createdAt",
+        field: "order_date",
         op: "gte",
-        value: { __state: "filter_createdAt.0" },
+        value: { __state: "filter_order_date.0" },
       },
       {
-        field: "createdAt",
+        field: "order_date",
         op: "lte",
-        value: { __state: "filter_createdAt.1" },
+        value: { __state: "filter_order_date.1" },
       },
     ]);
 

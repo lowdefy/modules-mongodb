@@ -54,7 +54,7 @@ demo_orders:
     month:
       type: string
       description: Order month, "YYYY-MM" (use to group a time series)
-    createdAt:
+    order_date:
       type: date
       description: When the order was placed (use for date-range filters)
     total:

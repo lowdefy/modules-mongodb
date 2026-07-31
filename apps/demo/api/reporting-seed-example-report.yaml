@@ -3,7 +3,7 @@
 # without driving the chat agent. The report exercises every consumer-facing
 # capability the presentation contract adds:
 #   - every filter control: a Region multiselect (options from the catalog's
-#     enum `values`), a Created daterange on demo_orders.createdAt, an
+#     enum `values`), a Created daterange on demo_orders.order_date, an
 #     Activity type single select (also cataloged values), and two multiselects
 #     over scalar foreign-key arrays — all bound via filterBy, which drives the
 #     server-built $match prepend re-query path. Activity type and Activity
@@ -61,7 +61,7 @@ routine:
             - _if_none:
                 - _user: sub
                 - _user: id
-        userId:
+        user_id:
           _if_none:
             - _user: sub
             - _user: id
@@ -76,7 +76,7 @@ routine:
             - _if_none:
                 - _user: sub
                 - _user: id
-        userId:
+        user_id:
           _if_none:
             - _user: sub
             - _user: id
@@ -88,11 +88,27 @@ routine:
           company multiselects (match: any and match: all, both with looked-up
           labels) and a CSV download. Copy the section shapes for your own
           reports.
-        sourceConversationId: null
-        createdAt:
-          _date: now
-        updatedAt:
-          _date: now
+        conversation_id: null
+        created:
+          timestamp:
+            _date: now
+          user:
+            name:
+              _user: profile.name
+            id:
+              _if_none:
+                - _user: sub
+                - _user: id
+        updated:
+          timestamp:
+            _date: now
+          user:
+            name:
+              _user: profile.name
+            id:
+              _if_none:
+                - _user: sub
+                - _user: id
         spec:
           title: Orders overview (seeded example)
           description: >
@@ -116,7 +132,7 @@ routine:
             - type: filter
               label: Created
               control: daterange
-              field: createdAt
+              field: order_date
             # A single-value select — one value, compiled to an $eq triple.
             # Its options come from demo_activities.type's catalog enum
             # `values`, and it is bound to the SAME activities sections as the
@@ -223,7 +239,7 @@ routine:
                 decimals: 2
               filterBy:
                 - region
-                - createdAt
+                - order_date
             # Pipeline-backed bar chart with an x/y presentation contract.
             - type: chart
               label: Revenue by category
@@ -246,7 +262,7 @@ routine:
                 - revenue
               filterBy:
                 - region
-                - createdAt
+                - order_date
             # Table with a currency-formatted column (again from the catalog hint).
             - type: table
               label: Orders by status
@@ -280,7 +296,7 @@ routine:
                     decimals: 2
               filterBy:
                 - region
-                - createdAt
+                - order_date
             # Activities-grain sections: a KPI and a chart that count
             # demo_activities DOCUMENTS per type rather than unwinding
             # company_ids — the documented workaround for an array-match filter
@@ -386,7 +402,7 @@ routine:
                       quantity: 1
   - :return:
       ok: true
-      reportId:
+      report_id:
         _string.concat:
           - "example-orders-report-"
           - _if_none:
@@ -394,7 +410,7 @@ routine:
               - _user: id
       url:
         _string.concat:
-          - "/reporting/report?reportId=example-orders-report-"
+          - "/reporting/report?report_id=example-orders-report-"
           - _if_none:
               - _user: sub
               - _user: id

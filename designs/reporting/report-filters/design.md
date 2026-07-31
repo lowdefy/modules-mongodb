@@ -238,7 +238,7 @@ Triples emitted by `boundFilters`, unchanged except for the new row:
 The seeded example report (`reporting-seed-example-report.yaml`) today carries one `select` filter on `demo_orders.region` and three data sections, all over `demo_orders`. It gains all three controls, over collections that already exist — no new seed data:
 
 1. **Region** — the existing filter, changed to `multiselect`. Options still come from the catalog's enum `values`. The scalar multi-select case, no options query.
-2. **Created** — a `daterange` on `demo_orders.createdAt`, bound to the same three sections, so the report shows a range and a multi-select side by side.
+2. **Created** — a `daterange` on `demo_orders.order_date`, bound to the same three sections, so the report shows a range and a multi-select side by side.
 3. **Companies** — `multiselect` over `demo_activities.company_ids` (an array field) with `match: any`, options from an `optionsQuery` over `demo_companies` projecting `_id` → value and `name` → label. Covers array matching _and_ looked-up labels in one control.
 
 Because a filter must be bound by a section whose base collection carries the field, the Companies filter needs an activities-grain section: the report gains a KPI or table over `demo_activities` (or `demo_activities_report`) counting activities per type. Counting documents rather than unwinding `company_ids` is exactly the documented rule in practice — the demo therefore also demonstrates the workaround, not just the capability.
@@ -274,7 +274,7 @@ Resolved 2026-07-29 against the source rather than deferred to implementation.
 - **Additional ops** (`$nin`, `$regex`, numeric ranges on non-date fields) — no concrete need yet; `FILTER_OPS` stays default-deny and small.
 - **Cross-filter dependency** (a company list narrowed by the selected region) — a real want, but it makes options a function of live state rather than of resolve time, which is a different mechanism.
 - **Chat-surface filters** — filters exist only on saved reports; the chat surface re-asks instead.
-- **Where the filter controls sit on the page, and how a control conveys what it scopes.** This design keeps the existing single row at the top of the report. Manual testing showed that is a real problem once a report carries two independent filter groups — a control whose bound sections are all below the fold is indistinguishable from a broken filter — but it is a layout decision, so it belongs to [`reporting/ux`](../ux/design.md#the-filter-row-says-nothing-about-what-it-scopes), which owns the report page's shape. The demo compensates by hand, binding every filter to at least one KPI or chart.
+- **Where the filter controls sit on the page, and how a control conveys what it scopes.** This design keeps the existing single row at the top of the report. Manual testing showed that is a real problem once a report carries two independent filter groups — a control whose bound sections are all below the fold is indistinguishable from a broken filter — but it is a layout decision, so it belongs to [`reporting/ux/report-page`](../ux/report-page/design.md#the-filter-row-says-nothing-about-what-it-scopes), which owns the report page's shape. The demo compensates by hand, binding every filter to at least one KPI or chart.
 
 ## Risks
 
@@ -288,5 +288,6 @@ Resolved 2026-07-29 against the source rather than deferred to implementation.
 ## Related
 
 - [`designs/reporting/open-query-engine/design.md`](../open-query-engine/design.md) — the engine, the filter-binding decision this extends, and the two-layer security model. Its array-literal cap entry records the raise to 500 made here.
-- [`designs/reporting/ux/design.md`](../ux/design.md) — the save-report confirm sheet whose filter picker is the second author of an `optionsQuery`; its proposal 8 points back at the derivation rule above.
+- [`designs/reporting/ux/save-as-report/design.md`](../ux/save-as-report/design.md) — the save-report confirm sheet whose filter picker is the second author of an `optionsQuery`; it points back at the derivation rule above.
+- [`designs/reporting/ux/report-page/design.md`](../ux/report-page/design.md) — where the filter controls sit, which this design leaves open.
 - The reporting UX [wireframe deck](../ux/wireframes.html) — plates 3 and 6 show the save-sheet filter picker (including the any/all toggle) and the report filter bar with tag-style multi-select; its closing implications table maps each proposal to the files above.

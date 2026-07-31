@@ -1,0 +1,19 @@
+# Audit metadata for a reporting write: who and when.
+#
+# Reporting declares no module dependencies, so it cannot _ref the events
+# module's change_stamp component — but it writes the identical shape, and it
+# writes it from five endpoints, so the shape lives here rather than being
+# copied into each of them. See docs/shared/change-stamps.md for the idiom and
+# docs/shared/soft-delete.md for the `deleted` variant of it.
+#
+# The user id is `sub ?? id` to match how the agent hooks derive it, which is
+# what every user_id-scoped filter in this module also matches on.
+timestamp:
+  _date: now
+user:
+  name:
+    _user: profile.name
+  id:
+    _if_none:
+      - _user: sub
+      - _user: id

@@ -1,4 +1,4 @@
-# The Dynamic block's resolver: load the report spec (userId-scoped), run each
+# The Dynamic block's resolver: load the report spec (user_id-scoped), run each
 # query-backed section's pipeline inside :try (a failed section renders as an
 # Alert card while the rest of the report renders), compile spec + rows to
 # blocks server-side. AnalyticsPipeline is the security gate: it revalidates
@@ -15,8 +15,8 @@ routine:
     properties:
       query:
         _id:
-          _payload: urlQuery.reportId
-        userId:
+          _payload: urlQuery.report_id
+        user_id:
           _if_none:
             - _user: sub
             - _user: id
@@ -59,16 +59,16 @@ routine:
         # no _error operator), so the gate's message cannot reach the Alert and
         # the viewer gets an honest generic description. This log line is
         # therefore the ONLY place the failure is diagnosable, so it carries
-        # enough to identify which query failed for whom. `sectionType: filter`
+        # enough to identify which query failed for whom. `section_type: filter`
         # means an optionsQuery failed rather than a data section.
         :catch:
           - :log:
               msg: A report section pipeline failed validation or execution for this viewer.
-              reportId:
-                _payload: urlQuery.reportId
-              sectionId:
+              report_id:
+                _payload: urlQuery.report_id
+              section_id:
                 _item: section.id
-              sectionType:
+              section_type:
                 _item: section.type
               collection:
                 _item: section.query.collection

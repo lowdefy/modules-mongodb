@@ -1,7 +1,7 @@
 # Seeds the demo_orders collection the reporting data dictionary describes.
 # Clears the collection first so re-seeding is idempotent, then inserts a spread
 # of synthetic orders across regions, categories, statuses, channels and ~8
-# months. createdAt is a real Date (the helpers serializer round-trips it to a
+# months. order_date is a real Date (the helpers serializer round-trips it to a
 # BSON date); month is the pre-bucketed "YYYY-MM" string used for time-series
 # grouping, since the analytics engine groups on raw field values.
 id: reporting-seed-orders
@@ -32,7 +32,7 @@ routine:
               status: statuses[Math.floor(i / 3) % 4],
               channel: channels[i % 3],
               month: d.toISOString().slice(0, 7),
-              createdAt: d,
+              order_date: d,
               total: 50 + ((i * 37) % 950),
               quantity: 1 + (i % 10),
             });

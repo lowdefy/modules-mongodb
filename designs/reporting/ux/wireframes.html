@@ -2084,7 +2084,7 @@
               <span class="m-fon">✓</span>
               <b>Order date</b>
               <span class="m-fctl">Date range</span>
-              <span class="m-fval">createdAt</span>
+              <span class="m-fval">order_date</span>
 
               <span class="m-fon">✓</span>
               <b>Region</b>
@@ -2443,7 +2443,7 @@
   <!-- ── PLATE 6 ─────────────────────────────────────────────────────── -->
   <article class="plate" id="p6">
     <div class="plate-head">
-      <p class="kicker"><b>Plate 6</b> <span>/reporting/report?reportId=…</span> <span class="tag is-now">page exists</span></p>
+      <p class="kicker"><b>Plate 6</b> <span>/reporting/report?report_id=…</span> <span class="tag is-now">page exists</span></p>
       <h2>A report is a page you can question again</h2>
         <p>
         Filters at the top, headline numbers, then the sections in saved order. Two exits
@@ -2456,7 +2456,7 @@
       <div class="frame">
         <div class="frame-chrome">
           <span class="dots"><i></i><i></i><i></i></span>
-          <span class="url">acme.app/reporting/report?reportId=rp_8f21</span>
+          <span class="url">acme.app/reporting/report?report_id=rp_8f21</span>
         </div>
         <div class="m-app">
           <div class="m-top">
@@ -2580,7 +2580,7 @@
       <div class="frame narrow">
         <div class="frame-chrome">
           <span class="dots"><i></i><i></i><i></i></span>
-          <span class="url">acme.app/reporting/report?reportId=rp_44c0 — shared report, viewed by someone else</span>
+          <span class="url">acme.app/reporting/report?report_id=rp_44c0 — shared report, viewed by someone else</span>
         </div>
         <div class="m-app m-page">
           <div class="m-page-head">
@@ -2662,7 +2662,7 @@
           <tr>
             <td>Favourites</td>
             <td>report doc, <code>list-reports</code>, new <code>set-report-favourite</code></td>
-            <td>Per-user, so one user's ★ isn't everyone's: store <code>favourite_of: [userId]</code> and project a boolean for the caller. Works on shared reports you don't own — it's a read-side marker, not an edit. Drives the Favourites scope and the default sort.</td>
+            <td>Per-user, so one user's ★ isn't everyone's: store <code>favourite_of: [user_id]</code> and project a boolean for the caller. Works on shared reports you don't own — it's a read-side marker, not an edit. Drives the Favourites scope and the default sort.</td>
           </tr>
           <tr>
             <td>Visibility &amp; ownership</td>

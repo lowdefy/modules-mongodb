@@ -79,14 +79,18 @@ const SPEC = {
 };
 
 function reportDoc({ id, title, deleted = null }) {
+  const stamp = {
+    timestamp: new Date(),
+    user: { name: USER.name, id: USER.sub },
+  };
   return {
     _id: id,
-    userId: USER.sub,
+    user_id: USER.sub,
     title,
     spec: { ...SPEC, title },
     deleted,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    created: stamp,
+    updated: stamp,
   };
 }
 
@@ -113,7 +117,7 @@ test("the reports list scopes by sub ?? id and hides soft-deleted reports", asyn
         id: "e2e-other-report",
         title: "Other user report (e2e)",
       }),
-      userId: "someone-else",
+      user_id: "someone-else",
     },
   ]);
 
@@ -133,7 +137,7 @@ test("the reports list scopes by sub ?? id and hides soft-deleted reports", asyn
 //   @lowdefy/server      urlQuery: c.req.query()    urlQuery: c.req.query()
 //   @lowdefy/server-e2e  omitted                    omitted
 //
-// The report page's resolver reads `_payload: urlQuery.reportId`, so under the
+// The report page's resolver reads `_payload: urlQuery.report_id`, so under the
 // e2e server it always receives `urlQuery: {}`, never matches a document, and
 // renders the "Report not found" fallback. Under dev/prod it resolves normally
 // — confirmed by hand on a dev server. So this is a false negative in the
@@ -155,7 +159,7 @@ test.fixme("a saved report with a formatted table column renders", async ({
     reportDoc({ id: "e2e-formatted-report", title: "Formatted report (e2e)" }),
   ]);
 
-  await ldf.goto("/reporting/report?reportId=e2e-formatted-report");
+  await ldf.goto("/reporting/report?report_id=e2e-formatted-report");
 
   // The fallback slot is the whole-report failure mode — assert it first, so a
   // regression reads as "the report 404'd" rather than a missing-cell error.

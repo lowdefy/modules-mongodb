@@ -72,7 +72,7 @@ routine:
       doc:
         _id:
           _uuid: true
-        userId:
+        user_id:
           _if_none:
             - _user: sub
             - _user: id
@@ -84,22 +84,22 @@ routine:
           _payload: spec
         # Tool endpoints receive only the tool input as payload — the agent
         # context (conversationId) does not reach them in the current agent
-        # system, so the source conversation is not linked in v1.
-        sourceConversationId: null
+        # system, so the source conversation is not linked on this path.
+        conversation_id: null
         # Initialised so live documents have a consistent shape; delete-report
         # replaces it with a change stamp (docs/shared/soft-delete.md).
         deleted: null
-        createdAt:
-          _date: now
-        updatedAt:
-          _date: now
+        created:
+          _ref: defaults/change_stamp.yaml
+        updated:
+          _ref: defaults/change_stamp.yaml
   - :return:
       ok: true
-      reportId:
+      report_id:
         _step: insert_report.insertedId
       url:
         _string.concat:
           - "/"
           - _module.id: true
-          - "/report?reportId="
+          - "/report?report_id="
           - _step: insert_report.insertedId

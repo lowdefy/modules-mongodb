@@ -29,7 +29,7 @@ const testCatalog = {
         values: ["online", "retail", "partner"],
       },
       month: { type: "string", description: "Order month, YYYY-MM" },
-      createdAt: { type: "date", description: "When the order was placed" },
+      order_date: { type: "date", description: "When the order was placed" },
       total: {
         type: "number",
         description: "Order total, money",

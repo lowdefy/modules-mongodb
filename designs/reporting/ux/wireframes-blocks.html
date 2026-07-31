@@ -2234,7 +2234,7 @@
               <span class="m-fon">✓</span>
               <b>Order date</b>
               <span class="m-fctl">Date range</span>
-              <span class="m-fval">createdAt</span>
+              <span class="m-fval">order_date</span>
 
               <span class="m-fon">✓</span>
               <b>Region</b>
@@ -2449,7 +2449,7 @@
       <li><span class="c">1</span><span><b>Every toolbar control is an input writing to state</b>, with one shared <code>CallAPI</code> re-fetch on change. The scope match is the authorization boundary, so it has to be a request parameter — which conveniently makes the whole toolbar one code path.</span></li>
       <li><span class="c">2</span><span><b>Row click opens the report</b> — <code>onRowClick</code> into a <code>Link</code>, the same wiring every other module list here uses. The ★ and ⋯ cells stop propagation, so they act on the row without opening it.</span></li>
       <li><span class="c">3</span><span><b>The ★ is a one-button <code>buttons</code> cell.</b> <code>hideTitle</code> leaves the icon alone, and <code>iconField</code> is a <b>row-data path</b>, so filled or outline comes from the row rather than a shared condition. The event carries the row, which is all <code>set-report-favourite</code> needs — and it works on shared reports, because favouriting is a read-side marker.</span></li>
-      <li><span class="c n">4</span><span><b>The one column with no cell type.</b> Plate 4's menu holds five owner actions and two for a non-owner — too many to sit inline as buttons, and the grid has no dropdown renderer. The interim is a <code>⋯</code> button opening a <code>Modal</code>, with <code>hiddenField</code> on the row's <code>isOwner</code> choosing which actions it lists. The fix is a <code>menu</code> cell upstream; see the cards above.</span></li>
+      <li><span class="c n">4</span><span><b>The one column with no cell type.</b> Plate 4's menu holds five owner actions and two for a non-owner — too many to sit inline as buttons, and the grid has no dropdown renderer. The interim is a <code>⋯</code> button opening a <code>Modal</code>, with <code>hiddenField</code> on the row's <code>is_owner</code> choosing which actions it lists. The fix is a <code>menu</code> cell upstream; see the cards above.</span></li>
       <li><span class="c">5</span><span><b>Load more appends</b> — the cursor lives in state, the response concatenates onto the rows already rendered. <code>Pagination</code> exists if numbered pages are ever wanted, but a cursor is what the endpoint returns.</span></li>
       <li><span class="c">6</span><span><b>Visibility stays a read-only tag, on purpose.</b> A two-option <code>selector</code> cell would work now that the cell exists — and would turn publishing to the whole app into a single mis-click on a list, where the design makes it a named act in the menu. The capability existing is not an argument for using it.</span></li>
     </ol>
@@ -2573,7 +2573,7 @@
   <!-- ── B6 ──────────────────────────────────────────────────────────── -->
   <article class="plate" id="b6">
     <div class="plate-head">
-      <p class="kicker"><b>Build 6</b> <span>/reporting/report?reportId=…</span> <span class="tag is-now">page exists</span> <span class="tag is-new">declare the types</span></p>
+      <p class="kicker"><b>Build 6</b> <span>/reporting/report?report_id=…</span> <span class="tag is-now">page exists</span> <span class="tag is-new">declare the types</span></p>
       <h2>Compiled server-side, so the block list is a contract</h2>
       <p>
         The report page is one <code>Dynamic</code> block resolving a spec the server compiled.
@@ -2588,7 +2588,7 @@
       <div class="frame">
         <div class="frame-chrome">
           <span class="dots"><i></i><i></i><i></i></span>
-          <span class="url">acme.app/reporting/report?reportId=rp_8f21</span>
+          <span class="url">acme.app/reporting/report?report_id=rp_8f21</span>
         </div>
         <div class="m-app">
           <div class="m-page">
