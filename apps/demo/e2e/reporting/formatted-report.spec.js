@@ -3,10 +3,11 @@ import { test, expect } from "../fixtures.js";
 // Reporting surfaces that need a real browser: the reports list (soft-delete
 // filtering, identity scoping) and the report renderer.
 //
-// `sub` deliberately differs from `id`. Reports are scoped by `sub ?? id`, so
-// storing under `sub` and signing in with both proves the read endpoints
-// resolve the identity key the same way the writers do — a mismatch would make
-// reports silently invisible rather than visibly wrong.
+// Reporting keys ownership on `_user: id`, the same key every other module in
+// this repo uses. `sub` is set here to a deliberately DIFFERENT value and is
+// never seeded against, so this test doubles as a regression guard: if a read
+// or write goes back to preferring `sub`, the seeded reports stop matching and
+// the list assertions below fail.
 const USER = {
   id: "e2e-reporting-id",
   sub: "e2e-reporting-sub",
@@ -81,11 +82,11 @@ const SPEC = {
 function reportDoc({ id, title, deleted = null }) {
   const stamp = {
     timestamp: new Date(),
-    user: { name: USER.name, id: USER.sub },
+    user: { name: USER.name, id: USER.id },
   };
   return {
     _id: id,
-    owner: { user_id: USER.sub, name: USER.name },
+    owner: { user_id: USER.id, name: USER.name },
     title,
     spec: { ...SPEC, title },
     deleted,
@@ -94,7 +95,7 @@ function reportDoc({ id, title, deleted = null }) {
   };
 }
 
-test("the reports list scopes by sub ?? id and hides soft-deleted reports", async ({
+test("the reports list scopes by user id and hides soft-deleted reports", async ({
   ldf,
   page,
   mdb,
@@ -108,7 +109,7 @@ test("the reports list scopes by sub ?? id and hides soft-deleted reports", asyn
       title: "Deleted report (e2e)",
       deleted: {
         timestamp: new Date(),
-        user: { name: USER.name, id: USER.sub },
+        user: { name: USER.name, id: USER.id },
       },
     }),
     // Another user's live report must not leak into this user's list.

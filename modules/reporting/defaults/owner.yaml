@@ -12,6 +12,6 @@
 # `created.user` load-bearing for authorization while `updated.user` beside it is
 # not — a distinction nothing in the document would signal.
 user_id:
-  _ref: defaults/user_id.yaml
+  _user: id
 name:
   _user: profile.name

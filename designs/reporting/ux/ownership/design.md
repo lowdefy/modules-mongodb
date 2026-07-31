@@ -24,7 +24,7 @@ Conversation documents already carry `owner`, `created` and `updated`; the `dele
 - `modules/reporting/api/list-reports.yaml` — own-only (`owner.user_id` match), `deleted.timestamp: { $exists: false }`, sort `updated.timestamp: -1`, `limit: 200`, projection `title/description/created/updated`. No scope, search, sort or cursor parameters.
 - `modules/reporting/api/delete-report.yaml` — already a correct soft delete: owner-scoped, writes a `deleted` change stamp from `defaults/change_stamp.yaml`, and excludes already-deleted docs so a repeat delete reports 0 modified rather than overwriting the original who/when.
 - `modules/reporting/api/resolve-report.yaml` — loads the report matched on `_id` **and** `owner.user_id`, so today a report is readable only by its author; rejects on not-found (the `Dynamic` block renders its fallback), runs each query section through `AnalyticsPipeline` inside `:try`, compiles server-side.
-- `modules/reporting/defaults/` — three fragments every endpoint composes from: `user_id.yaml` (the `sub ?? id` derivation, `_ref`'d by all eleven read and write sites so they cannot drift), `owner.yaml` (`{ user_id, name }`), and `change_stamp.yaml` (`{ timestamp, user: { name, id } }`, whose id comes from the same `user_id.yaml`). Reporting declares no dependencies, so it does not consume the events module's exported `change_stamp` component — but the shape is identical, and that is a deferred choice rather than a limit.
+- `modules/reporting/defaults/` — two fragments every endpoint composes from: `owner.yaml` (`{ user_id, name }`) and `change_stamp.yaml` (`{ timestamp, user: { name, id } }`). Both take the id from `_user: id`, the repo-wide identity key — see [the identity key](#the-identity-key-is-_user-id-not-sub--id) below for why reporting no longer derives its own. Reporting declares no dependencies, so it does not consume the events module's exported `change_stamp` component — but the shape is identical, and that is a deferred choice rather than a limit.
 - `docs/shared/soft-delete.md` — the repo idiom: field `deleted`, shape `{ timestamp, user: { name, id } }`, initialised `null`, read predicate `deleted.timestamp: { $exists: false }`. No module in this repo has an archive state.
 
 ## Key decisions and rationale
@@ -69,6 +69,24 @@ The recovery surface itself — a quiet page rather than a fourth list scope —
 
 There is no permanent-delete action anywhere, and adding one would be the single irreversible act in an otherwise recoverable system.
 
+### The identity key is `_user: id`, not `sub ?? id`
+
+Reporting briefly derived its ownership key as `_if_none: [_user: sub, _user: id]`, in a `defaults/user_id.yaml` fragment `_ref`'d by eleven sites. That is now plain `_user: id`, matching every other module in the repo — events' exported `change_stamp` (`modules/events/module.lowdefy.yaml:49`), `deals/api/create-deal.yaml:33`, `files/requests/upload-policy.yaml:35`, all seven notifications requests.
+
+The `sub ?? id` form was never a decision. It arrived with the conversation writers and spread when a later commit noticed reporting held two identity keys and standardised reports onto the conversations one rather than the other way round. Three reasons to undo it:
+
+**Its recorded rationale was false.** The fragment claimed `sub ?? id` was "what the agent framework derives when it invokes an onFinish hook". It isn't: `handleAgentChat.js` runs hooks through `context.callEndpoint(endpointId, { payload })` with the request context, so `_user` inside a hook resolves exactly as in a browser-invoked endpoint. Where the framework does express a precedence — `createSessionCallback.js`, for `session.hashed_id` — it is `id ?? sub`, the reverse order, and it never touches `_user`.
+
+**It is dead weight in the normal case.** `createSessionCallback.js` builds `session.user` from the standard OIDC claim set on the JWT, which always carries both `id` and `sub`; `auth.userFields` then sets its mapped fields on top. Auth.js sets `token.sub = user.id` at sign-in, so in any adapter-backed app that maps `userFields: { id: user.id }` — as `apps/demo/lowdefy.yaml:79` does — `sub` and `id` hold the same value.
+
+**Where it is not dead, it is harmful.** The divergent case is an app that deliberately maps `userFields.id` to something other than the JWT subject — an employee number, a contact id. `_if_none` prefers `sub`, so in exactly that case reporting would key ownership on the provider subject while events, notifications, files and deals key on the app's chosen id: one person, two identities, and reporting rows that can never be joined to any other module's data.
+
+The case the `sub ?? id` form was defending against — an app that declares no `userFields.id` — is already broken repo-wide for that app: events would write `id: null` stamps and every notifications filter would match nothing. `userFields.id` is a de-facto host-app contract, and reporting hedging against its absence bought nothing while breaking joins for apps that had chosen a different id deliberately.
+
+`defaults/user_id.yaml` is deleted rather than reduced to `_user: id`. Its stated purpose was to stop a non-trivial derivation drifting between readers and writers; with a bare `_user: id` there is nothing to drift, and no other module wraps the operator. (The drift argument was already only half-true in practice — six sign-in guards spelled `sub ?? id` inline while the fragment sat beside them.)
+
+Migration is a non-issue anywhere `sub == id`, which is every adapter-backed app.
+
 ### Reporting writes its own change stamp, for now
 
 Reporting declares no module dependencies, so it writes the stamp shape from its own `modules/reporting/defaults/change_stamp.yaml` — a within-module `_ref` needs no dependency, and five endpoints write a stamp, so the shape lives in one file rather than being copied into each of them. `restore-report` and every other new writer `_ref` the same fragment.
@@ -94,7 +112,7 @@ The table is in the [parent](../design.md#data-model). What this sub-design adds
 
 - **`visibility`** — absent is read as `private`, so existing documents need no migration. Only `set-report-visibility` writes it, and `restore-report` forces it to `private`.
 - **`favourite_of`** — absent is read as empty. `$addToSet` / `$pull` only; never overwritten wholesale. Projected out of every list and read response as a boolean `is_favourite` for the caller, so a caller never learns who else favourited a report.
-- **`owner`** — `{ user_id, name }`. `owner.user_id` is the authorization key every scope filter and every mutation matches; `owner.name` is carried so a list row or report header can name the owner without a lookup. `duplicate-report` writes the copier as owner of the new document; nothing rewrites it on an existing one, though the shape does not preclude a transfer later — which is the point of it not being the `created` stamp (see the [parent](../design.md#data-model)). The id is `sub ?? id` from `_user`, resolved through `modules/reporting/defaults/user_id.yaml` so a writer cannot drift from a reader.
+- **`owner`** — `{ user_id, name }`. `owner.user_id` is the authorization key every scope filter and every mutation matches; `owner.name` is carried so a list row or report header can name the owner without a lookup. `duplicate-report` writes the copier as owner of the new document; nothing rewrites it on an existing one, though the shape does not preclude a transfer later — which is the point of it not being the `created` stamp (see the [parent](../design.md#data-model)). The id is `_user: id` — see [the identity key](#the-identity-key-is-_user-id-not-sub--id).
 - **`created` / `updated` / `deleted`** — change stamps, all three. `created` is written once on insert; `updated` on every spec change; `deleted` by the soft delete, which refuses to overwrite an existing one. Reads filter on `deleted.timestamp`, and the list sorts on `updated.timestamp`. Because `created` carries `user.name`, the [report page](../report-page/design.md)'s provenance line needs no extra lookup to say who made a report.
 
 ## Endpoints

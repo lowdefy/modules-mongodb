@@ -44,9 +44,7 @@ type: Api
 routine:
   - :if:
       _eq:
-        - _if_none:
-            - _user: sub
-            - _user: id
+        - _user: id
         - null
     :then:
       - :reject: You must be signed in to seed the example report.
@@ -58,13 +56,9 @@ routine:
         _id:
           _string.concat:
             - "example-orders-report-"
-            - _if_none:
-                - _user: sub
-                - _user: id
-        owner.user_id:
-          _if_none:
-            - _user: sub
             - _user: id
+        owner.user_id:
+          _user: id
   - id: insert_report
     type: MongoDBInsertOne
     connectionId: reporting-reports
@@ -73,14 +67,10 @@ routine:
         _id:
           _string.concat:
             - "example-orders-report-"
-            - _if_none:
-                - _user: sub
-                - _user: id
+            - _user: id
         owner:
           user_id:
-            _if_none:
-              - _user: sub
-              - _user: id
+            _user: id
           name:
             _user: profile.name
         title: Orders overview (seeded example)
@@ -99,9 +89,7 @@ routine:
             name:
               _user: profile.name
             id:
-              _if_none:
-                - _user: sub
-                - _user: id
+              _user: id
         updated:
           timestamp:
             _date: now
@@ -109,9 +97,7 @@ routine:
             name:
               _user: profile.name
             id:
-              _if_none:
-                - _user: sub
-                - _user: id
+              _user: id
         spec:
           title: Orders overview (seeded example)
           description: >
@@ -408,12 +394,8 @@ routine:
       report_id:
         _string.concat:
           - "example-orders-report-"
-          - _if_none:
-              - _user: sub
-              - _user: id
+          - _user: id
       url:
         _string.concat:
           - "/reporting/report?report_id=example-orders-report-"
-          - _if_none:
-              - _user: sub
-              - _user: id
+          - _user: id
