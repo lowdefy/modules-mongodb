@@ -395,7 +395,7 @@ name.
 
 ### D8 — One `_js` implementation, via the `args` form
 
-The completed [`avatar-svg-js`](../../_completed/avatar-svg-js/design.md) design removed server-side
+The completed [`avatar-svg-js`](../../../_completed/avatar-svg-js/design.md) design removed server-side
 generation (its Decisions 1 and 2) because at the time it meant five copies of a ~30-line nested
 `_nunjucks` template across five API files. That premise no longer holds, in both halves.
 
@@ -633,7 +633,7 @@ depend entirely on the returned `contactId`: `new.yaml`'s post-create redirect, 
 
 - **Photo upload.** D1 explains why the seam is the right home for it. Nothing is built here.
 - **The picker's aesthetics.** Already done — F9 in
-  [`../_completed/05-ui-rework/findings.md`](../_completed/05-ui-rework/findings.md), which shipped the
+  [`../_completed/05-ui-rework/findings.md`](../05-ui-rework/findings.md), which shipped the
   labelled 64px row this design's D7a rewires. F9 deliberately left the write-path half to this design.
 - **Where the avatar renders in the shared page header.** It pairs with this one (a header avatar needs
   a stored picture to show) but it is a separate call about the shared page-title contract: whether the
@@ -650,11 +650,11 @@ depend entirely on the returned `contactId`: `new.yaml`'s post-create redirect, 
 - **F14** — the originating finding, retired from `../04-planning/findings.md` when this design was
   written, because this design is its resolution. Its "no generator anywhere" claim was already stale;
   Current state carries the correction.
-- [`designs/_completed/avatar-svg-js/design.md`](../../_completed/avatar-svg-js/design.md) — D8
+- [`designs/_completed/avatar-svg-js/design.md`](../../../_completed/avatar-svg-js/design.md) — D8
   reverses its Decision 1 and explains why the premise changed.
-- [`../_completed/table-row-contract/design.md`](../_completed/table-row-contract/design.md) — D2 there strips
+- [`../_completed/table-row-contract/design.md`](../table-row-contract/design.md) — D2 there strips
   `profile.picture` from the wire row in favour of the top-level `picture` alias. This design
   strengthens that: once the write recomputes `picture`, a payload's copy is ignored entirely, so the
   `$mergeObjects` round-trip argument stops being load-bearing.
-- [`designs/user-account-better-auth/design.md`](../../user-account-better-auth/design.md) —
+- [`designs/user-account-better-auth/design.md`](../user-account-better-auth/design.md) —
   Decisions 6 and 8 define the write-profile fragment and the denorm this design restructures.

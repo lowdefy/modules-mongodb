@@ -182,7 +182,7 @@ Two things that are already settled rather than assumptions:
   infrastructure lives in `packages/api/src/routes/auth/hooks/`.
 
 **On `authPages.twoFactor`**: this amends
-[user-account](../user-account-better-auth/design.md)'s "`authPages` has no 2FA key — this routing
+[user-account](../_completed/user-account-better-auth/design.md)'s "`authPages` has no 2FA key — this routing
 never leaves the module." That holds for the password path and stays as-is; what changed is that
 some sign-in paths are terminated by the engine, and for those the engine needs the address.
 

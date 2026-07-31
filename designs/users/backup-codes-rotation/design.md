@@ -7,7 +7,7 @@ operation alongside it — **"Get new backup codes"**, which leaves the
 authenticator alone — and turns the security tile's **Manage** button into a
 choice between the two rather than a shortcut to the destructive one.
 
-Split out of [`../2fa-enrolment-modal/design.md`](../2fa-enrolment-modal/design.md),
+Split out of [`../2fa-enrolment-modal/design.md`](../../users/_completed/2fa-enrolment-modal/design.md),
 which shipped everything that carries no upstream dependency. That design's D4
 established _why_ the routing is a hazard and removed the lockout half of it (by
 turning 2FA off before re-enrolling); what it could not ship is the second option,

@@ -14,7 +14,7 @@ paths baked `null`/`''` into the routine; now runtime `_get`) and verified live 
 2026-07-27 against the auth-testing rig: both hook bindings complete clean,
 contacts carry the real email, `profile.contactId` links on both paths, and a
 pre-existing contact is matched rather than duplicated. Evidence in
-[`merge-on-signup-wiring/design.md`](../../user-account-better-auth/_completed/merge-on-signup-wiring/design.md#verification).
+[`merge-on-signup-wiring/design.md`](../../users/_completed/user-account-better-auth/_completed/merge-on-signup-wiring/design.md#verification).
 No data cleanup is needed: the corrupted rows are gone from the test DB and a
 scan for the F3 signature returns zero.
 
@@ -169,7 +169,7 @@ named `$email` stamps `updated.user.name` with the target contact's email addres
 own name. The audit trail records the wrong value, silently.
 
 This is the same defect class as the
-[avatar-generation design's D6](../avatar-generation/design.md), which wraps every payload-derived
+[avatar-generation design's D6](../_completed/avatar-generation/design.md), which wraps every payload-derived
 value in these exact stages in `$literal`. It was **deliberately left out of that change**: D6
 scopes its rule to values originating in the payload, and `profile.name` reaches the stamp
 indirectly — derived from a payload on some earlier write, stored, then read back through `_user`.

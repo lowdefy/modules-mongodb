@@ -72,7 +72,7 @@ half is a human step.
 `@lowdefy/client` does not wrap yet, and phase `choose` and the Back button ship with it
 (neither has anywhere to go without the second option). Rather than leave a permanently
 blocked task hanging off a finished set, it moved to
-[`../../backup-codes-rotation`](../../backup-codes-rotation/design.md) along with its
+[`../../backup-codes-rotation`](../../../backup-codes-rotation/design.md) along with its
 upstream ask. Until it lands the trigger sends an already-enrolled user straight to
 `phase: password` with `intent: replace` — the warned single-option flow — and the part
 that actually removes the **lockout** (the disable-first replace chain) shipped in

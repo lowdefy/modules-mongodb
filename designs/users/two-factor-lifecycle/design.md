@@ -7,7 +7,7 @@ holds a second factor. Each is useful alone; together they compose into the shap
 identity product ships, where "reset" means _re-register_, not _exempt_.
 
 Spans three surfaces, which is why this is a top-level design rather than a sub-design of
-[user-admin-better-auth](../user-admin-better-auth/design.md):
+[user-admin-better-auth](../_completed/user-admin-better-auth/design.md):
 
 | Surface                | Change                                                                                        |
 | ---------------------- | --------------------------------------------------------------------------------------------- |
@@ -298,7 +298,7 @@ as a core `hooks.before` (`getBetterAuthConfig.js:320`), and there is hook infra
 - **`twoFactorEnrol`** — the forced-enrolment page, needed because Decision 5's enforcement must
   send an unsatisfied caller somewhere.
 
-This directly amends [user-account](../user-account-better-auth/design.md)'s statement that
+This directly amends [user-account](../_completed/user-account-better-auth/design.md)'s statement that
 "`authPages` has no 2FA key — this routing never leaves the module." That was correct for the
 password path and remains so: the login page still routes on the JSON result. What changed is that
 sign-in paths exist which the _engine_ terminates, and for those the engine has to know the address.

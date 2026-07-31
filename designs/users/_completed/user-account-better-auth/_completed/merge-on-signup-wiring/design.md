@@ -12,7 +12,7 @@ The merge-on-signup hook (parent [Decision 7](../../design.md)) links or creates
 
 ### Symptoms (F3 / F4)
 
-From the auth-testing run ([`scripts/auth-testing/FINDINGS.md`](../../../../scripts/auth-testing/FINDINGS.md), F3/F4):
+From the auth-testing run ([`scripts/auth-testing/FINDINGS.md`](../../../../../../scripts/auth-testing/FINDINGS.md), F3/F4):
 
 - **F3** — after signup, the `user-contacts` row is created with `lowercase_email: ''` and `email: null` instead of the verified address, on **both** binding paths (`email.verified` for password, `user.create.before` for magic-link/OAuth). Because every upsert keys on the same empty `lowercase_email: ''`, a second signup **matches the first user's bare contact** — two users end up sharing one contact, and a later onboarding save writes one identity's profile onto the other's record. Real cross-identity data corruption, not a cosmetic bug.
 - **F4** — on the `email.verified` (password) path, `UpdateUserProfile` throws `requires a "userId" property`, so the `profile.contactId` link-back never runs and (halt-on-first-error) the routine aborts. `_user.profile.profile_created` then never resolves, so onboarding routing misbehaves. The `user.create.before` path does not hit this — it sets `contactId` inline via `:return` (though to the wrong bare contact, per F3).
@@ -148,4 +148,4 @@ is the behaviour F3's empty key had disabled. A scan for the F3 signature
 
 - Parent: [user-account on BetterAuth](../../design.md) — Decision 7 (merge-on-signup), Decision 8 (shared fragments).
 - [user-admin-better-auth](../../../user-admin-better-auth/design.md) — the invite flow that `_ref`s the same fragment (and whose var shape was unaffected).
-- [`scripts/auth-testing/FINDINGS.md`](../../../../scripts/auth-testing/FINDINGS.md) — F3, F4.
+- [`scripts/auth-testing/FINDINGS.md`](../../../../../../scripts/auth-testing/FINDINGS.md) — F3, F4.
