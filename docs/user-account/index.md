@@ -114,21 +114,40 @@ split by what they touch:
 | Roles, attributes                    | `member` / `user`           | **Not self-service** — admin steps via [`user-admin`](../user-admin/index.md)                                              |
 
 Reads stay native — the workspace aggregates over `users`, `user-sessions`,
-`user-accounts`, `user-passkeys`, joined to `user-contacts` by
-`profile.contactId`, all filtered to the caller. See
+`user-accounts`, `user-passkeys`, joined to `user-contacts` on `userId` within the
+caller's organization, all filtered to the caller. See
 [Write pathways](concepts/write-pathways.md) for the profile → `_user`
 denormalization and the shared fragments.
 
-## Every user has a contact by first session
+## The contact carries the link to its auth user
 
-The module ships a **merge-on-signup hook** (`link-contact-on-signup`) bound at
-`user.create.before` and `email.verified`: it links a new signup to an existing
-`user-contacts` record by verified email, or mints a bare one when none matches.
-So the workspace and onboarding pages never handle a missing contact. Match and
-write run through the shared `create-or-link-contact` fragment (an upsert on
-`lowercase_email`) — the same fragment `user-admin`'s invite flow uses, so the
-two can't mint duplicate contacts for one email. This relies on the
+A contact holds `userId`; the auth user holds no contact id. A contact row is
+per-organization while the auth `user` is global, so a person holds one contact per
+organization and the link belongs on the side that is already per-organization —
+and on the row these modules own and can write at any moment. Every flow needing
+the caller's own contact matches `{ organizationId, userId }` through the shared
+`resolve-own-contact` fragment.
+
+The address is the **claim key**, used once. A contact minted by an invite exists
+before its person has an auth user, so it is born unlinked; the first time that
+person's own contact is resolved, the claim links it by matching the address they
+have proved they own. Reads tolerate the address while a contact is still
+unclaimed — that window is the invitee's first visit, so their invite-captured
+profile still prefills. Both halves rely on the
 [required indexes](reference/indexes.md).
+
+## Every user has a contact by first verified session
+
+The module ships a **merge-on-signup hook** (`ensure-contact-on-signup`) bound at
+`session.create.after`: it matches an existing `user-contacts` record for the
+verified email in the session's organization, or mints a bare one when none
+matches. So the workspace and onboarding pages never handle a missing contact.
+Match and write run through the shared `ensure-contact` fragment (an upsert on
+`{ organizationId, lowercase_email }`) — the same fragment the invite flows use,
+so the two can't mint duplicate contacts for one email in one organization. The
+hook knows the session's user, so a contact minted here is born linked. It fires on
+every login and is idempotent: a login whose contact already exists writes nothing
+and leaves the change stamp alone.
 
 ## Prerequisites
 

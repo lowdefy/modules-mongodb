@@ -27,7 +27,7 @@ documented in [`README.md`](./README.md).
 - [x] Compass connected; `demo-auth-test` DB visible (only this DB on local mongo — old cluster untouched)
 - [x] `apps/demo/.env` present with `LOWDEFY_SECRET_*` values (README §3a)
 - [x] Email → Mailpit via `.env` `SMTP_*` — config is env-driven (host `localhost`, port `1025`, secure `false`); live send verified in Phase 1
-- [x] Partial-unique indexes present on `user-contacts.lowercase_email` and `users.profile.contactId` (both `unique` + `$exists` partial)
+- [x] Partial-unique index present on `user-contacts.{organizationId, lowercase_email}` (`unique` + `$exists` partial)
 - [x] Build green — the `lowdefy-docs` dev server reports `build.status: ok`
 - [x] `pnpm ldf:d` dev server up (it backs the MCP); pinned `demo` org row exists in `user-organizations` (UUID `_id`, engine-ensured at startup)
 - [x] Script deps OK — `mongodb` resolves via the root dep (the local `pnpm install` is a no-op; see FINDINGS)
@@ -37,8 +37,7 @@ Index creation (run once per fresh DB — survives `reset-db`, lost on `down -v`
 
 ```sh
 docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --quiet --eval '
-  db["user-contacts"].createIndex({ lowercase_email: 1 }, { unique: true, partialFilterExpression: { lowercase_email: { $exists: true } } });
-  db.users.createIndex({ "profile.contactId": 1 }, { unique: true, partialFilterExpression: { "profile.contactId": { $exists: true } } });
+  db["user-contacts"].createIndex({ organizationId: 1, lowercase_email: 1 }, { unique: true, partialFilterExpression: { lowercase_email: { $exists: true } } });
   print("indexes created");
 '
 ```

@@ -24,6 +24,28 @@ routine:
         :then:
           :reject: Missing required profile fields.
 
+    # Resolve which contact row is the caller's, from the walled connection:
+    # {active organization, caller's email}. The organization half comes from the
+    # wall, so the row always belongs to the organization the caller is acting in.
+    - _ref:
+        path: ../shared/contact/resolve-own-contact.yaml
+        vars:
+          connection_id:
+            _module.connectionId: user-contacts-collection
+
+    # No contact in the active organization is a real, reportable state — reject
+    # it here rather than letting a null id reach the write as a no-match update.
+    # Coalesce first: a no-match FindOne leaves the step's `_id` undefined, which
+    # `_eq: [..., null]` does not catch on its own.
+    - - :if:
+          _eq:
+            - _if_none:
+                - _step: resolve_own_contact._id
+                - null
+            - null
+        :then:
+          :reject: No contact record for this account in the active organization.
+
     # Shared write-profile fragment: contact write (change-stamped) + the
     # UpdateUserProfile re-denorm onto the caller's user row. `_ref`'d by
     # relative path — not a manifest export (Decision 8).
@@ -33,7 +55,7 @@ routine:
           connection_id:
             _module.connectionId: user-contacts-collection
           contact_id:
-            _user: profile.contactId
+            _step: resolve_own_contact._id
           user_id:
             _user: id
           profile:
@@ -85,6 +107,6 @@ routine:
                     description: null
             references:
               contact_ids:
-                - _user: profile.contactId
+                - _step: resolve_own_contact._id
       - :return:
           success: true

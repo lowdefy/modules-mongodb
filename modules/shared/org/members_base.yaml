@@ -5,8 +5,11 @@
 #
 # Root is `user-members`, scoped to the caller's active organization with the
 # policy-portable `_user: organizationId` read (the same expression resolves
-# the pinned org and the tenant's active org). Joins the auth `user` and the
-# app `user-contacts` record, then flattens the display shape:
+# the pinned org and the tenant's active org). Joins the auth `user`, then the
+# app `user-contacts` record through the shared contact-match expression, with the
+# organization taken from the member row itself so the join stays inside the row's
+# own organization (a `$lookup` is never scoped by the tenant wall). Flattens the
+# display shape:
 #   name / picture — from the contact profile (fallback to the user display name)
 #   email          — from the auth user row
 #   roles_arr      — member.role is a CSV string (user-model Decision 5); $split
@@ -43,8 +46,25 @@
 - $unwind: "$user"
 - $lookup:
     from: user-contacts
-    localField: user.profile.contactId
-    foreignField: _id
+    let:
+      member_user_id: "$user._id"
+      member_email:
+        $toLower: "$user.email"
+      member_org: "$organizationId"
+    pipeline:
+      - $match:
+          $expr:
+            $and:
+              - $eq:
+                  - "$organizationId"
+                  - "$$member_org"
+              - _ref:
+                  path: ../shared/contact/contact-match-expr.yaml
+                  vars:
+                    contact_user_id_expr: "$userId"
+                    contact_email_expr: "$lowercase_email"
+                    person_id_expr: "$$member_user_id"
+                    person_email_expr: "$$member_email"
     as: contact
 - $unwind:
     path: "$contact"

@@ -145,16 +145,16 @@ mongodb://localhost:27017
 Then open the **`demo-auth-test`** database. The collections you'll watch during
 testing:
 
-| Collection           | What's in it                                              |
-| -------------------- | --------------------------------------------------------- |
-| `user-contacts`      | The person record (profile, `lowercase_email`, contactId) |
-| `users`              | Auth identity (email, `emailVerified`, `banned`, profile) |
-| `user-members`       | This app's access (org membership, roles)                 |
-| `user-invitations`   | Pending / accepted / cancelled invites                    |
-| `user-sessions`      | Active sessions (has the bearer `token` — never surfaced) |
-| `user-accounts`      | Credential + linked-provider rows                         |
-| `user-passkeys`      | Registered passkeys                                       |
-| `user-organizations` | The pinned `demo` org row                                 |
+| Collection           | What's in it                                                     |
+| -------------------- | ---------------------------------------------------------------- |
+| `user-contacts`      | The person record (profile, `organizationId`, `lowercase_email`) |
+| `users`              | Auth identity (email, `emailVerified`, `banned`, profile)        |
+| `user-members`       | This app's access (org membership, roles)                        |
+| `user-invitations`   | Pending / accepted / cancelled invites                           |
+| `user-sessions`      | Active sessions (has the bearer `token` — never surfaced)        |
+| `user-accounts`      | Credential + linked-provider rows                                |
+| `user-passkeys`      | Registered passkeys                                              |
+| `user-organizations` | The pinned `demo` org row                                        |
 
 Compass has a live-refresh toggle per collection — handy for watching a document
 change as you click through a flow in the app.

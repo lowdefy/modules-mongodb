@@ -3,9 +3,9 @@
 # + side (Active sessions, Linked accounts), each tile editing through its own
 # modal and its own pathway.
 #
-# Wiring (task 18): four native reads, all filtered to the caller (`_user.id` /
-# `_user.profile.contactId`, plain-string ids), fetched onMount and re-fetched
-# after each section edit (actions/refetch_account.yaml):
+# Wiring (task 18): four native reads, all filtered to the caller (`_user.id`, a
+# plain-string id), fetched onMount and re-fetched after each section edit
+# (actions/refetch_account.yaml):
 #   get_account  — users ⋈ user-contacts: profile (display + seed), email,
 #                  email_verified, two_factor_enabled
 #   get_sessions — user-sessions (token projected out)

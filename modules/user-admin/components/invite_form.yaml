@@ -1,7 +1,7 @@
 # LAYER: invitation-details form (state_form) — serves the unknown (blank) AND
 # existing-contact (prefilled) outcomes (design Decision 7). Blank vs prefilled is
 # seeded state (task 17); the form structure is identical, so it is one layer.
-# Submit = create-or-link contact → InviteMember (roles + member attributes),
+# Submit = ensure the contact → InviteMember (roles + member attributes),
 # via the invite routine (see invite_send_btn).
 #
 # Wrapper Box carries the frame id + the visibility condition; the shared card
@@ -145,9 +145,9 @@ blocks:
                         - id: validate_invite
                           type: Validate
                           params: state_form
-                        # invite routine: reconcile stale-expired → create-or-link
+                        # invite routine: reconcile stale-expired → ensure the
                         # contact → persist profile (write-profile) → InviteMember
-                        # (profile.contactId + roles + attributes) → audit. The
+                        # (roles + attributes) → audit. The
                         # email is sent by BetterAuth via auth.email (no module
                         # dispatch). Roles submit as catalog ids. `profile` is the
                         # whole state.profile bag; profile.name is derived from

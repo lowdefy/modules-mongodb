@@ -4,7 +4,7 @@ Platform-side gaps this design depends on or flags, addressed to the auth-upgrad
 
 ## 1. Tenant wall × Atlas `$search` (blocking)
 
-> **Resolved, then superseded (2026-07-22).** The in-stage rewrite this ask proposed shipped with the wall — and was then replaced by the wall design's [amendment-1](../../../lowdefy-design/designs/auth-upgrade/features/mongodb-data-scoping/amendment-1-authored-scoping.md): the wall never rewrites the inside of a stage. `$search`-led pipelines (and `$graphLookup`) now declare `tenant: authored` and author the organization `equals` clause themselves — value `_user: organizationId` — which the wall **audits** against the caller's resolved org on every run, refusing to run on any miss. This repo's six `$search` requests and two `$graphLookup` sites carry the authored clauses. The `token`-mapping and `storedSource` consumer requirements below stand unchanged; the "rejected by the wall itself" rule (line below) is inverted at exactly the audited positions, where the clause is now *required*.
+> **Resolved, then superseded (2026-07-22).** The in-stage rewrite this ask proposed shipped with the wall — and was then replaced by the wall design's [amendment-1](../../../lowdefy-design/designs/auth-upgrade/features/mongodb-data-scoping/amendment-1-authored-scoping.md): the wall never rewrites the inside of a stage. `$search`-led pipelines (and `$graphLookup`) now declare `tenant: authored` and author the organization `equals` clause themselves — value `_user: organizationId` — which the wall **audits** against the caller's resolved org on every run, refusing to run on any miss. This repo's six `$search` requests and two `$graphLookup` sites carry the authored clauses. The `token`-mapping and `storedSource` consumer requirements below stand unchanged; the "rejected by the wall itself" rule (line below) is inverted at exactly the audited positions, where the clause is now _required_.
 
 **To**: [mongodb-data-scoping](../../../lowdefy-design/designs/auth-upgrade/features/mongodb-data-scoping/design.md).
 
@@ -28,6 +28,21 @@ _(`$searchMeta` has the same first-stage constraint and should get the same trea
 
 ## 2. Per-membership contact linkage
 
+> **Withdrawn (2026-07-31) — resolved module-side by moving the link, not by adding platform surface.** No platform change is needed. The premise was right that a per-org contact needs a per-org link; what was wrong was which side holds it. `user.profile.contactId` is gone. The **contact** now carries `userId`: a contact row is already per-organization, so the link belongs there, and — decisively — the contact is the row these modules own and can write at any moment, whereas the `user` and `member` rows can only be written at points the engine controls.
+>
+> **Why not the `member` row, which this ask proposed** — verified against the engine source, not inferred:
+>
+> - **Nothing runs when someone joins an organization.** `packages/build/src/build/buildAuth/authHookPoints.js` is the exhaustive bindable set (user / session / account / verification / phone); there is no member or invitation point, and the engine's own `afterAcceptInvitation` binding (`packages/api/src/routes/auth/organizations/buildOrganizationPlugin.js`) is engine-tier, not offered to modules. So a membership-side pointer could never be written at accept — the earliest a module hears is the person's next login.
+> - **Only system context could write it.** `UpdateUserProfile` is the only step carrying `meta.selfTargetExempt`, so `UpdateMemberAttributes` from a caller-ful routine demands `auth.userAdminRole` — forbidden under `tenant`. That leaves `system: true`, i.e. the login hook, i.e. never at accept.
+> - **It would share a bag with authorization inputs.** `UpdateMemberAttributes` replaces `attributes` wholesale, so stamping a contact id there is a read-modify-write over admin-set authorization state.
+> - The client `InviteMember` also cannot carry `profile`/`attributes` (`packages/client/src/auth/createAuthMethods.js:435` forwards only `{ email, role }`), so the invitation could not carry the link either.
+>
+> The contact-side link has none of those constraints: the module writes its own walled collection at the moment it is asked, so there is no lifecycle point to depend on. The address remains the **claim key** for the one case a contact predates its person's auth user (an invite) — matched once, then never again for identity, so an email change cannot break the link. The runtime failure that forced all this (a walled profile write missing because the pointer named another org's row) is recorded in [test-flows](../auth-tenancy-verification/test-flows.md).
+>
+> One consequence is load-bearing and documented in [org-scoping](../../docs/shared/org-scoping.md): a contact is claimable by address, so the mint and the claim both require a **verified** email, and what carries the account-takeover guarantee is the deployment's `requireEmailVerification` (an unverified signup holds no session, so it can reach no walled read or claim).
+>
+> **Adjacent platform gap, worth its own ask if wanted:** a bindable hook point for a membership write would let any module act at the moment a person joins an organization (per-org defaults, a welcome record, a "joined" audit event) rather than at their next login. `authHookPoints.js` states that adding a point is additive and non-breaking. Not needed for contacts — the claim-on-first-resolution shape is pull, not push.
+
 **To**: [user-model](../../../lowdefy-design/designs/auth-upgrade/concepts/user-model/design.md) / [user-profile](../../../lowdefy-design/designs/auth-upgrade/_completed/user-profile/design.md).
 
 `user.profile.contactId` links a user to exactly **one** contact. With org-scoped contacts (this design's Decision 4), a user who is a member of several orgs — the multi-org consultant the `tenant` policy exists for — has a distinct CRM identity _per org_: each org's contact record for them is a fact about that org's relationship. A single `contactId` cannot express this, and whichever org's contact wins the link, the others' modules (profile display, merge-on-signup, invite check) read the wrong org's contact or none.
@@ -48,7 +63,7 @@ Both designs scope native reads with the server-side `_organization: id` operato
 
 ## 4. Merge-on-signup's contact mint needs an org-knowing binding point
 
-> **Resolved (2026-07-20).** Both halves landed: the platform ships `session.create.after` with `session.activeOrganizationId` stamped pre-write under both policies (verified in the pinned experimental release), and the mint is rebound there — org read from the hook payload, stamped explicitly through the unwalled connection per Decision 7. The invariant relaxed to "contact by first *verified* session with an active org". See [implementation-notes](implementation-notes.md).
+> **Resolved (2026-07-20).** Both halves landed: the platform ships `session.create.after` with `session.activeOrganizationId` stamped pre-write under both policies (verified in the pinned experimental release), and the mint is rebound there — org read from the hook payload, stamped explicitly through the unwalled connection per Decision 7. The invariant relaxed to "contact by first _verified_ session with an active org". See [implementation-notes](implementation-notes.md).
 
 **To**: [user-account-better-auth](../user-account-better-auth/design.md), touching [hooks](../../../lowdefy-design/designs/auth-upgrade/concepts/hooks/design.md) / [user-model](../../../lowdefy-design/designs/auth-upgrade/concepts/user-model/design.md) as needed.
 

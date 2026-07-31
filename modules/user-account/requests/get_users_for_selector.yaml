@@ -1,36 +1,94 @@
 # Options request for the user-selector / user-multi-selector components.
 #
 # Split-model (BetterAuth) shape: the person record lives on `user-contacts`
-# and the auth user lives on the `users` collection, linked back by
-# `users.profile.contactId`. A contact is an "app user" when a `users` row
-# points at it. We source from `user-contacts` (given_name / family_name /
-# email live there) and $lookup `users` to keep only contacts that have become
-# users. The old fused `apps.{slug}.is_user` guard is retired along with
-# per-app scoping (app_name is gone — one deployment, one org; see the
-# migration guide).
+# (given_name / family_name / email) and the auth identity on `users`, with
+# membership of an organization on `user-members`. A contact is an "app user" of
+# THIS organization when both hold: an auth user exists for its address, and that
+# user holds a member row here. Membership is the operative half — an auth user
+# who belongs only to another organization cannot see this one, so offering them
+# as an assignee would be wrong.
+#
+# Root is `user-contacts` through the walled connection, so the candidate set is
+# already the active organization's contacts. Both `$lookup`s author their own
+# scoping: a `$lookup` is never scoped by the tenant wall, and `users` /
+# `user-members` are unwalled engine-owned collections besides.
 id: get_users_for_selector
 type: MongoDBAggregation
 connectionId:
   _module.connectionId: user-contacts-collection
 properties:
   pipeline:
+    # Contacts that are a person with an auth user — the shared match expression,
+    # applied in the users direction. A CRM contact with no auth user (and no
+    # address) matches nothing and drops out at the $unwind.
     - $lookup:
         from: users
-        localField: _id
-        foreignField: profile.contactId
+        let:
+          contact_user_id: "$userId"
+          contact_email: "$lowercase_email"
+        pipeline:
+          - $match:
+              $expr:
+                _ref:
+                  path: ../shared/contact/contact-match-expr.yaml
+                  vars:
+                    contact_user_id_expr: "$$contact_user_id"
+                    contact_email_expr: "$$contact_email"
+                    person_id_expr: "$_id"
+                    person_email_expr:
+                      $toLower: "$email"
+          - $project:
+              _id: 1
         as: linked_user
+    - $unwind: "$linked_user"
+    # ...and who hold a member row in the active organization.
+    - $lookup:
+        from: user-members
+        let:
+          linked_user_id: "$linked_user._id"
+        pipeline:
+          - $match:
+              organizationId:
+                _user: organizationId
+              $expr:
+                $eq:
+                  - "$userId"
+                  - "$$linked_user_id"
+          - $project:
+              _id: 1
+        as: member
     - $match:
-        linked_user.0:
+        member.0:
           $exists: true
+    # An app user who has not completed a profile yet has no name parts, and
+    # $concat over a missing field yields null — label on the address alone in
+    # that case rather than offering an unlabelled option.
     - $project:
         label:
-          $concat:
-            - "$profile.given_name"
-            - " "
-            - "$profile.family_name"
-            - " ("
-            - "$email"
-            - ")"
+          $let:
+            vars:
+              full_name:
+                $trim:
+                  input:
+                    $concat:
+                      - $ifNull:
+                          - "$profile.given_name"
+                          - ""
+                      - " "
+                      - $ifNull:
+                          - "$profile.family_name"
+                          - ""
+            in:
+              $cond:
+                - $eq:
+                    - "$$full_name"
+                    - ""
+                - "$email"
+                - $concat:
+                    - "$$full_name"
+                    - " ("
+                    - "$email"
+                    - ")"
         value: "$_id"
     - $sort:
         label: 1

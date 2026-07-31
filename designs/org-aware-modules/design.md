@@ -9,7 +9,7 @@ Every module in this repo assumes one organization per MongoDB database: no coll
 3. Uniqueness rules become **per-org**: the unique index on the contact's `lowercase_email` becomes compound `{ organizationId, lowercase_email }`. The `create-or-link-contact` upsert needs no hand change on caller-ful paths — the wall merges the org equality into the upsert selector, and MongoDB carries filter equalities into upserted documents (its system-context caller names the org per Decision 7).
 4. Where module config needs the org id explicitly (rare), it reads **`_user: organizationId`** — which resolves under both policies — never the `pinned`-only `_organization` operator.
 5. The **org backfill folds into the user-contacts split migration** already planned by [user-admin-better-auth](../user-admin-better-auth/design.md) / [user-account-better-auth](../user-account-better-auth/design.md), so consuming apps migrate once, not twice.
-6. Four platform gaps are recorded as **[upstream asks](upstream-asks.md)**: the tenant wall's missing Atlas `$search` interaction, per-membership contact linkage, the sibling designs' `_organization` usage, and merge-on-signup's org-less binding point.
+6. Four platform gaps are recorded as **[upstream asks](upstream-asks.md)**: the tenant wall's missing Atlas `$search` interaction, per-membership contact linkage (since withdrawn — the contact carries `userId`, so the link needs no platform surface), the sibling designs' `_organization` usage, and merge-on-signup's org-less binding point.
 
 **Scope**: the domain modules and shared fragments in this repo. The tenant-_shape_ user surface — org switcher, tenant self-serve, multi-tenant administration — is not here (Non-goals); this design makes the data layer safe for it.
 
@@ -38,12 +38,12 @@ Every change this design prescribes lands in this repo, but none of it can start
 
 1. **The tenant wall itself** — the [mongodb-data-scoping](../../../lowdefy-design/designs/auth-upgrade/features/mongodb-data-scoping/design.md) implementation: connection-level `tenant:`, write stamping, recursive pipeline injection, change-stream matching, and the request-level `tenant: none` sentinel (`connection-mongodb` + the request layer).
 2. **`context.user.organizationId` exposure** — resolved on every caller and readable as `_user: organizationId` (part of the wall design's runtime section; Decisions 3 and 7 here depend on it).
-3. **The `$search` clause** — [upstream ask 1](upstream-asks.md); without it the wall breaks every `$search`-led list pipeline in this repo, so it must ship *with* the wall, not after it.
+3. **The `$search` clause** — [upstream ask 1](upstream-asks.md); without it the wall breaks every `$search`-led list pipeline in this repo, so it must ship _with_ the wall, not after it.
 4. **`session.create.after` hook payload carrying the resolved org** — the binding point [upstream ask 4](upstream-asks.md) relocates the merge-on-signup mint to; the hook point exists, the payload contents need confirming when that ask is actioned.
 
 **Delivery path**: these ship as an **experimental lowdefy release**, the same channel this repo already consumes (the demo app pins `experimental-*` versions). The expected loop: the wall (with the `$search` clause) lands in an experimental release → this repo bumps its pinned version → the module tasks proceed against it, build-verified through the demo app. Module implementation tasks should not be scheduled before that experimental release exists.
 
-Upstream asks 2 and 3 are *not* prerequisites — ask 2 has a documented v1 fallback, and ask 3 targets the sibling designs' own config.
+Upstream asks 2 and 3 are _not_ prerequisites — ask 2 is withdrawn (resolved module-side by removing the contact pointer), and ask 3 targets the sibling designs' own config.
 
 ---
 
@@ -116,7 +116,7 @@ Known surfaces today: notification sends from scheduled or hook-driven routines 
 Specified in **[upstream-asks.md](upstream-asks.md)**; summarized:
 
 1. **Tenant wall × Atlas `$search`** (blocking) — `$search` must be a pipeline's first stage, so the wall's stage-0 `$match` injection breaks every `$search`-led list pipeline in this repo (`get_all_contacts`, `get_all_companies`, `get_activities`), and authoring the org equality inside the `$search` compound is rejected by the wall's authored-field rule. The wall needs a `$search` clause: rewrite stage-0 `$search` to inject a `compound.filter` equals on the tenant field (requiring the field in the Atlas index), or document `$search` as unsupported on tenant connections with a sanctioned alternative.
-2. **Per-membership contact linkage** — `user.profile.contactId` links a user to exactly one contact, but with org-scoped contacts a multi-org user needs one linked contact _per org_. Proposal: the link moves to (or is overlaid by) the `member` row. `pinned` deployments never hit this; recorded with the v1 limitation stated.
+2. **Per-membership contact linkage** — **withdrawn; no platform change wanted.** The link was right, its side was wrong: `user.profile.contactId` is removed and the **contact** carries `userId`. A contact row is already per-organization, and it is the row these modules own and can write at any moment — unlike the `user` or `member` rows, which can only be written at engine-controlled points (there is no bindable hook when a membership is created). The address stays the claim key for a contact that predates its person's auth user.
 3. **`_organization` → `_user: organizationId` in the sibling designs** — a flag to user-admin/user-account (and any future module): scope on the both-policy operator so their native-read scoping survives the `tenant` policy unchanged (their cross-org _features_ remain `pinned`-scoped per Decision 6).
 4. **Merge-on-signup's contact mint needs an org-knowing binding point** — its current bindings (`email.verified` / `user.create.before`) run in system context _and_ fire before a `tenant`-policy signup's org exists; the create half should relocate (most plausibly to `session.create.after`) and write per Decision 7.
 

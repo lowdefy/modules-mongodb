@@ -1,0 +1,57 @@
+id: ensure-contact-on-signup
+# Merge-on-signup hook endpoint (Decision 7; upstream ask 4 — RESOLVED by
+# relocating here). InternalApi so it is never HTTP-callable; the engine invokes
+# it in system context, bound at `session.create.after` — the one
+# provider-agnostic choke point (email/password, magic link, and OAuth alike)
+# where the caller's organization is resolved: the engine's active-org policy
+# hook stamps `session.activeOrganizationId` before the session row is written,
+# under both the pinned and tenant policies. See the module manifest's
+# `auth.hooks`.
+#
+# The hook fires on EVERY session create (every login) and dispatch is blocking,
+# which the routine is built for rather than guarded against: ensure-contact is
+# idempotent, so a login whose contact already exists performs one matched upsert
+# that writes nothing and leaves the change stamp alone. Two conditions gate it:
+#   - the email is VERIFIED. An unverified address must not mint a contact, since
+#     the contact is then resolvable by that address. A deployment that allows
+#     sessions before verification therefore gets its contact on the first
+#     VERIFIED session — the invariant is "contact by first verified session".
+#     Note what carries the account-takeover guarantee: with
+#     `requireEmailVerification` set, an unverified signup has no session at all
+#     and so cannot reach a walled read of anyone's contact.
+#   - the session carries an active organization. The pending-invitation carve-out
+#     creates a session with NO active org — there the invite flow already minted
+#     the org-stamped contact.
+#
+# The write goes through the deliberately-unwalled `user-contacts-system`
+# connection (the wall fails closed for caller-less context, and the per-step
+# `tenant: none` sentinel cannot vary per `_ref` caller), but is explicitly
+# org-stamped: `organization_id` joins the upsert key, so the insert carries
+# the session's organization (provenance: the session's resolved active org —
+# Decision 7's explicit-org rule).
+type: InternalApi
+routine:
+  - :if:
+      _and:
+        - _eq:
+            - _payload: user.emailVerified
+            - true
+        - _ne:
+            - _payload: session.activeOrganizationId
+            - null
+    :then:
+      _ref:
+        path: ../shared/contact/ensure-contact.yaml
+        vars:
+          connection_id:
+            _module.connectionId: user-contacts-system
+          email:
+            _payload: user.email
+          # The session's user, so a contact minted here is born linked and needs
+          # no claim later. A contact the invite flow already minted keeps its own
+          # state — this is $setOnInsert only.
+          user_id:
+            _payload: user.id
+          # Explicit org (Decision 7): the session's resolved active org.
+          organization_id:
+            _payload: session.activeOrganizationId

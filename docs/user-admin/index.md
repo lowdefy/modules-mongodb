@@ -85,10 +85,10 @@ var and floored by the engine's `auth.userAdminRole`.
 | This app's access             | `member`     | `UpdateMemberRoles`, `UpdateMemberAttributes`, `RemoveMember`                                                                  |
 | Pending access                | `invitation` | `InviteMember`, `CancelInvitation`                                                                                             |
 
-The two shared write-path fragments — `write-profile` and `create-or-link-contact`
-— live in `modules/shared/contact/` and are `_ref`'d by relative path (also by
-`user-account`). They are **shared files, not module exports**, and add no module
-dependency.
+The shared contact fragments — `write-profile`, `ensure-contact`, and
+`resolve-own-contact` — live in `modules/shared/contact/` and are `_ref`'d by
+relative path (also by `user-account`). They are **shared files, not module
+exports**, and add no module dependency.
 
 ## Prerequisite: same-database co-location
 

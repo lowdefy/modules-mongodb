@@ -14,7 +14,8 @@
 # Vars (all required unless noted):
 #   connection_id  — the caller's scoped user-contacts connection id
 #   contact_id     — target contact `_id`
-#   user_id        — target auth user id (users.profile.contactId === contact_id).
+#   user_id        — target auth user id (the user whose address resolves to
+#                    contact_id in that contact's organization).
 #                    MAY be absent (undefined/null) — the invite flow reuses this
 #                    fragment before the invitee has a `user` row, so the
 #                    `UpdateUserProfile` re-denorm is guarded on presence and

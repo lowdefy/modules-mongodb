@@ -37,10 +37,10 @@ routine:
           profile: 1
           email: 1
 
-  # 2) Is this email already a member of the pinned org? Join member rows to their
-  #    user, then match on the contactId resolved above. The "__none__" sentinel
-  #    ensures a missing contact (no _id) never matches members that also lack a
-  #    contactId — no contact means no possible member match.
+  # 2) Is this email already a member of this org? Join member rows to their user
+  #    and match the address itself, case-insensitively (the same $expr/$toLower
+  #    idiom step 3 uses) — membership is a property of the auth user, so the
+  #    contact resolved above is not on the path.
   - id: find_member
     type: MongoDBAggregation
     connectionId:
@@ -57,10 +57,14 @@ routine:
             as: user
         - $unwind: "$user"
         - $match:
-            "user.profile.contactId":
-              _if_none:
-                - _step: find_contact._id
-                - "__none__"
+            $expr:
+              $eq:
+                - $toLower: "$user.email"
+                - _string.toLowerCase:
+                    _string.trim:
+                      _if_none:
+                        - _payload: email
+                        - ""
         - $limit: 1
         - $project:
             _id: 1

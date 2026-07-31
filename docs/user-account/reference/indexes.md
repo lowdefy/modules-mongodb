@@ -7,7 +7,7 @@ concepts: [indexes, mongodb, contacts, users, uniqueness]
 
 # User Account — Indexes
 
-The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collections backing the module's connections before running the create-or-link and profile flows.
+The module does not create indexes — index creation is a host-app concern. Host apps must add both of the following indexes to the collection backing the module's contact connections before running the contact and profile flows.
 
 ## `user-contacts` collection
 
@@ -22,32 +22,37 @@ db["user-contacts"].createIndex(
 
 The contact identity invariant is **one contact per email per organization** (see [Organization scoping](../../shared/org-scoping.md)): two organizations holding a contact for the same email are two facts about two relationships, not a collision, so the unique key is compound with the tenant field. Under a single-organization (pinned) deployment every row carries the same `organizationId`, and the compound index enforces exactly what a global email index would.
 
-Serves the `create-or-link-contact` shared fragment's reconcile-on-duplicate-key path — the guard that closes the race between this module's merge-on-signup hook and the user-admin invite flow, both of which create-or-link the same contact by the same key. Without a unique index here, two concurrent first-touches for one email would mint two contacts.
+Beyond uniqueness, this tuple is the **claim key**: it is how a contact minted before its person had an auth user (an invite) is matched to that person the first time their own contact is resolved. After that the link is `userId` (see below), and the address is never matched for identity again.
 
-Both paths key on the same compound tuple: the invite path's org is injected by the tenant wall, and the signup-hook mint (bound at `session.create.after`) passes the session's resolved organization explicitly — so a concurrent mint and invite for one email in one organization collide on this index and reconcile to a single contact, exactly as intended.
+It also serves the `ensure-contact` fragment's reconcile-on-duplicate-key path — the guard that closes the race between this module's merge-on-signup hook and the invite flows, which all ensure the same contact by the same key. Without a unique index here, two concurrent first-touches for one email would mint two contacts.
 
-| Query site                                   | Operation                                                                                     |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `create-or-link-contact` (signup hook)       | Match by `{ organizationId, lowercase_email }`; insert when absent; **reconcile to the existing row on dup-key** |
-| `create-or-link-contact` (user-admin invite) | Same match-and-write against the same key — the unique index is what makes the reconcile safe |
+Every write path keys on the same compound tuple: an invite's org is injected by the tenant wall, and the signup-hook mint (bound at `session.create.after`) passes the session's resolved organization explicitly — so a concurrent mint and invite for one email in one organization collide on this index and reconcile to a single contact, exactly as intended.
 
 **Must be partial, not plain unique.** `user-contacts` is the unified person record shared with the `contacts` module, whose CRM contacts legitimately have **no email**. A plain unique index would treat every email-less contact's missing key as `null` and reject the second one, so the model could not hold two email-less contacts. The partial filter (`{ lowercase_email: { $exists: true } }`) indexes only email-bearing contacts, so email-less contacts coexist.
 
-**Constraint — omit `lowercase_email` when absent.** Email-less contacts must **omit** the `lowercase_email` field entirely, not store `null`: two explicit `null`s both satisfy `$exists: true` and would still collide under this filter. The write fragments (`write-profile`, `create-or-link-contact`) therefore set `lowercase_email` only when an email is present.
+**Constraint — omit `lowercase_email` when absent.** Email-less contacts must **omit** the `lowercase_email` field entirely, not store `null`: two explicit `null`s both satisfy `$exists: true` and would still collide under this filter. The write fragments (`write-profile`, `ensure-contact`) therefore set `lowercase_email` only when an email is present.
 
-This index enforces **one contact per email** — it does **not** enforce one user per contact (see below).
-
-## `users` collection
-
-### Index: `{ "profile.contactId": 1 }` — **partial-unique**
+### Index: `{ organizationId: 1, userId: 1 }` — **partial-unique**
 
 ```
-db.users.createIndex(
-  { "profile.contactId": 1 },
-  { unique: true, partialFilterExpression: { "profile.contactId": { $exists: true } } }
+db["user-contacts"].createIndex(
+  { organizationId: 1, userId: 1 },
+  { unique: true, partialFilterExpression: { userId: { $exists: true } } }
 )
 ```
 
-Enforces **one `user` per `contact`** — the invariant that a single contact record is not linked to two auth users. It is partial-unique on `$exists` for the same reason as above: a `user` row may exist before its `profile.contactId` is written (the `user.create.before` / `email.verified` link-back sets it), and multiple such unlinked rows must coexist without colliding on a missing key.
+`userId` is the contact's link to its auth user, and it lives on the **contact** because a contact is per-organization while the auth `user` is global: a person holds one contact per organization, so the link belongs on the side that is already per-organization. A single contact id on the `user` row could only ever be correct for one organization.
 
-This is a **different invariant** from the `lowercase_email` index and does **not** prevent duplicate contacts for one email — that guard lives on `user-contacts.lowercase_email`. The two indexes are complementary: `lowercase_email` bounds contacts by email, `profile.contactId` bounds users by contact.
+This index carries the read path. Every flow answering "which contact is this person, here" matches `userId` within the caller's organization — the organization from the tenant wall, the user id from the session — so the index is a **correctness requirement, not an optimization**. The unique half enforces **one contact per person per organization** and makes the claim idempotent: a second claim for a person who already holds a contact here cannot create a second link.
+
+Partial on `$exists` because a CRM contact is a real person record with no auth user at all, and many such contacts must coexist.
+
+| Query site                                | Operation                                                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `resolve-own-contact`                     | Match the caller's own contact by `{ organizationId, userId }`; on a miss, claim the unlinked row for their address |
+| `ensure-contact`                          | Stamp `userId` on insert when the caller already knows the auth user (the login hook always does)                   |
+| `get_account`, members and selector reads | Join `users` → `user-contacts` on `userId`, tolerating the address while a contact is still unclaimed               |
+
+## `users` collection
+
+No index is required. Nothing queries `users` by a contact id — the auth user carries no contact pointer.

@@ -102,7 +102,7 @@ connections:
 
 api:
   - _ref: api/update-profile.yaml
-  - _ref: api/link-contact-on-signup.yaml
+  - _ref: api/ensure-contact-on-signup.yaml
 
 pages:
   _build.array.concat:
@@ -182,10 +182,11 @@ auth:
     - logout
   # One binding at session.create.after — the provider-agnostic choke point
   # where the active organization is resolved (org-aware-modules upstream
-  # ask 4). The endpoint self-guards to a silent skip on every later login.
+  # ask 4). The endpoint is idempotent, so every later login re-asserts the
+  # contact without writing.
   hooks:
     - point: session.create.after
-      endpoint: link-contact-on-signup
+      endpoint: ensure-contact-on-signup
 
 exports:
   pages:
@@ -227,8 +228,8 @@ exports:
   api:
     - id: update-profile
       description: Update the caller's contact profile and re-denormalize onto their session user.
-    - id: link-contact-on-signup
-      description: Merge-on-signup hook endpoint — link or create the contact for a new signup.
+    - id: ensure-contact-on-signup
+      description: Merge-on-signup hook endpoint — ensures the caller has a contact in the session's organization.
   components:
     - id: profile-avatar
       description: Avatar config for the PageHeaderMenu profile — user image with first-letter fallback.
