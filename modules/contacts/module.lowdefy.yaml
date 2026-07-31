@@ -86,10 +86,15 @@ vars:
         default: []
         description: Pipeline stages appended to the contact-selector aggregation.
       filter_match:
+        type: array
         default: []
         description: >-
-          Atlas Search compound clauses appended to the list-page `$search`
-          query. Used to add custom filter conditions to the contacts list.
+          Plain MongoDB `$match` clauses ANDed into the list-page and
+          Excel-export filter. Each element is one query clause (e.g.
+          `{ region: "x" }`, `{ score: { $gte: 10 } }`); they are composed
+          via `$and`, so a clause using `$or` is safe. Applies in both Atlas
+          and regex-fallback modes. Used to add custom filter conditions to
+          the contacts list.
       write:
         default: []
         description: >-
@@ -104,6 +109,16 @@ vars:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
     description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
+  atlas_search:
+    type: boolean
+    default: true
+    description: >-
+      Whether the deployment's MongoDB has Atlas Search available. When true,
+      text search uses Atlas `$search` (indexed, relevance-ranked). When
+      false, text search falls back to a case-insensitive regex `$match` that
+      runs on any MongoDB (community/local) — substring matching, no
+      relevance ranking, and an unindexed collection scan, so suitable for
+      development or small collections. See docs/shared/search.md.
   use_verified:
     type: boolean
     default: false
