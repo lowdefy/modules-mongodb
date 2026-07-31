@@ -1,7 +1,9 @@
 id: deal_list_item_compact
 type: Card
 layout:
-  flex: 0 1 auto
+  flex: 0 0 180px
+style:
+  width: 180
 properties:
   size: small
   hoverable: true
@@ -112,4 +114,4 @@ blocks:
                 {% endif %}
               </span>
             </div>
-            <div style="font-size: 12px; font-weight: 600; color: {{ 'var(--ant-color-primary)' if selected else 'var(--ant-color-text)' }}; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ deal.name | safe }}</div>
+            <div style="font-size: 12px; font-weight: 600; color: {{ 'var(--ant-color-primary)' if selected else 'var(--ant-color-text)' }}; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ deal.name | safe }}</div>

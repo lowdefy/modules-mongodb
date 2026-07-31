@@ -29,6 +29,13 @@ blocks:
     type: List
     properties:
       direction: row
+      wrap: nowrap
+    style:
+      .element:
+        overflowX: auto
+        overflowY: hidden
+        paddingTop: 6
+        paddingBottom: 6
     blocks:
       - _ref:
           path: components/deal_list_item_compact.yaml
