@@ -33,10 +33,10 @@ An Atlas Search index named **`default`** — no `$search` stage in the module n
 
 `name` and `lowercase_email` are the only mapped fields, and both as `string` — they are the text paths both `$search` requests search, with a `text` clause for whole-token relevance and a `wildcard: *term*` clause for substring matching. Nothing else needs mapping: the structural filters (`deleted.timestamp`, and any consumer `request_stages.filter_match` clauses) are plain `$match` clauses, so `mongot` never evaluates them and needs no `token` mappings for them.
 
-| Query site               | Searches                                               | Stored source |
-| ------------------------ | ------------------------------------------------------ | ------------- |
-| `get_all_companies`      | `name_field`, `lowercase_email` (list page search box) | Yes           |
-| `get_company_excel_data` | `name_field`, `lowercase_email` (Excel export)         | Yes           |
+| Query site               | Searches                                                           | Stored source |
+| ------------------------ | ------------------------------------------------------------------ | ------------- |
+| `get_all_companies`      | `name` (the `name_field` var), `lowercase_email` (list search box) | Yes           |
+| `get_company_excel_data` | `name` (the `name_field` var), `lowercase_email` (Excel export)    | Yes           |
 
 ### Coupling to the `name_field` var
 
@@ -53,13 +53,15 @@ Both requests pass `returnStoredSource: true`, so `mongot` returns the matched d
 - `deleted.timestamp: { $exists: false }` becomes true for every returned document, so **soft-deleted companies reappear** in search results and in the Excel export.
 - Any positive consumer clause (a `request_stages.filter_match` equality) matches nothing, so the list comes back empty.
 
-The contract is therefore **whole-document** stored source, expressed as `"storedSource": true`. `storedSource` also accepts an `{ "include": [...] }` / `{ "exclude": [...] }` form, but anything narrower has to cover every field a post-`$search` `$match` can reference — which includes consumer-supplied `request_stages.filter_match` clauses, fields the module cannot enumerate. Storing the whole document is the only form that is correct for every consumer.
+Filtering is not the only casualty: every stage after `$search` reads those same returned documents. The list's `$sort` inside `$facet` orders on whichever column the user picked — `updated.timestamp`, `created.timestamp`, or the `name_field` path — and the `$addFields` after it derives the `updated_at` / `created_at` display columns with `$dateToString` over `$updated.timestamp` and `$created.timestamp`. A stored source missing any of those sorts the page by an absent field and blanks the date columns.
+
+The contract is therefore **whole-document** stored source, expressed as `"storedSource": true`. `storedSource` also accepts an `{ "include": [...] }` / `{ "exclude": [...] }` form, but anything narrower has to cover every field the stages after `$search` can reference — the sort and date-derivation fields above, plus consumer-supplied `request_stages.filter_match` clauses, which the module cannot enumerate. Storing the whole document is the only form that is correct for every consumer.
 
 ## Regular `mongod` indexes
 
 These matter in two situations, both of which bypass `$search` entirely:
 
-- **The browse path on Atlas.** With no search term the requests skip `$search` and run as a plain `$match` + `$sort`, which is the majority of list loads.
+- **The browse path on Atlas.** With no search term the requests skip `$search` entirely and run as a plain `$match` + `$sort`; only an actual text query goes to `mongot`.
 - **Fallback mode.** With `atlas_search: false` there is no `$search` at all; text matching becomes a `$regex` `$or` inside the same `$match`.
 
 | Index                                 | Sort it mirrors                                                   |
@@ -76,7 +78,7 @@ db.companies.createIndex({ name: 1, _id: 1 })
 
 **Each index is a sort field plus `_id`, mirroring the sort the requests build** — `$sort: { <sort.by>: <order>, _id: 1 }`, the `_id` key being the stable tiebreaker that keeps pagination from repeating or skipping rows.
 
-**They serve the `$match`, not the `$sort`.** `get_all_companies` sorts inside `$facet` and `get_company_excel_data` sorts behind an `$addFields`; probed on mongod 7.0.24, both shapes keep the sort out of the query plan, so it runs in the aggregation layer as a blocking sort over the whole filtered set. The `$limit` pushdown a top-level sort gets goes with it — the same filter and sort plan as `LIMIT <- FETCH <- IXSCAN` at top level, but inside `$facet` the cursor streams every matching document into the sort. That cost is fixed by the pipeline's shape; no index removes it. What an index earns is the filter: where the `$match` bounds an index's leading field the plan is `FETCH <- IXSCAN` rather than a collection scan, and the documents then reach the aggregation layer already in index order, so the sort's input is pre-ordered. The `deleted.timestamp` exclusion alone bounds nothing worth seeking on, so these indexes pay off for the reads that do bound a sort field — a consumer `request_stages.filter_match` clause, or a host app's own date- or name-ordered query.
+**They serve the `$match`, not the `$sort`.** `get_all_companies` sorts inside `$facet` and `get_company_excel_data` sorts behind an `$addFields`; probed on mongod 7.0.24, both shapes keep the sort out of the query plan, so it runs in the aggregation layer as a blocking sort over the whole filtered set. Neither shape gets the `$limit` pushdown a top-level sort does. The two plans are distinct: a top-level `$match` + `$sort` + `$limit` plans as `LIMIT <- FETCH <- IXSCAN`, with the limit inside the cursor; move that same `$sort` inside `$facet` (or put an `$addFields` in front of it) and the plan is `FETCH <- IXSCAN` with the sort left as an aggregation stage and no limit in the cursor, so it streams every matching document into the sort. That cost is fixed by the pipeline's shape; no index removes it. What an index earns is the filter: where the `$match` bounds an index's leading field the plan is `FETCH <- IXSCAN` rather than a collection scan. Index order buys nothing for the sort itself — an aggregation-layer `$sort` buffers its whole input whatever order that input arrives in. A no-term browse with no consumer clause added leaves only the `deleted.timestamp` exclusion in the `$match`, which bounds no documented index's leading field, so that read is a collection scan feeding a blocking in-memory sort. These indexes pay off for the reads that do bound a sort field — a consumer `request_stages.filter_match` clause, or a host app's own date- or name-ordered query.
 
 **The unconditional exclusion is a residual filter, not an index prefix.** Both queries filter `deleted.timestamp: { $exists: false }`. Its bound covers nearly the whole collection — soft-deleted companies are a small minority — so a compound index leading with it narrows almost nothing while its scan reads nearly every key and fetches nearly every document. Selectivity is the objection, not ordering: probed on mongod 7.0.24, `$exists: false` compiles to a single `[null, null]` interval plus a residual filter, and a `{ "deleted.timestamp": 1, "updated.timestamp": -1 }` index does supply the trailing key's order. The predicate is also ineligible for a `partialFilterExpression`, which rejects `$exists: false` as a `$not` expression while accepting `$exists: true`. Index the sort fields and let MongoDB apply the exclusion as a residual filter.
 

@@ -247,7 +247,7 @@ Each page carries an illustrative mappings block — the equivalent of `user-acc
 
 **The contract is versioned with the module.** The documentation ships with the module, so the requirement described at a given version is what that version's pipelines need — these narrowed mappings are correct only from the version where filters move into `$match`. The module CHANGELOG records that this version changes the requirement, so a consumer upgrading knows to update their cluster's index, and someone on an older version reads that version's docs.
 
-Regular `mongod` indexes matter too — for the no-term browse path on Atlas _and_ for the fallback regex mode's filter and sort. They go on the same four pages, in the same style (fields such as `hidden`, `disabled`, `deleted.timestamp`, `removed`, `updated.timestamp`, and each list's configured sort fields). `user-admin` has **no search-index requirement at all** — its members search is always a regex `$match` — so it gets no index reference page here; its indexes are outside this design's scope.
+Regular `mongod` indexes matter too — for the no-term browse path on Atlas _and_ for the fallback regex mode's filter. They serve the filter only: as decision 3 records, every list sorts inside `$facet`, which keeps the sort out of the query plan in either mode. They go on the same four pages, in the same style (fields such as `hidden`, `disabled`, `deleted.timestamp`, `removed`, `updated.timestamp`, and each list's configured sort fields). `user-admin` has **no search-index requirement at all** — its members search is always a regex `$match` — so it gets no index reference page here; its indexes are outside this design's scope.
 
 ### 6. Documentation
 
