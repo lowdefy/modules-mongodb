@@ -26,13 +26,13 @@ challenge are handled.
 **Which** methods exist is the app's `auth:` config's decision, read at build time
 through `_build.authConfig`:
 
-| `_build.authConfig` field      | Enables                                                          |
-| ------------------------------ | ---------------------------------------------------------------- |
-| `emailAndPassword.enabled`     | Password form (login + signup) and change-password / reset flows |
+| `_build.authConfig` field      | Enables                                                                       |
+| ------------------------------ | ----------------------------------------------------------------------------- |
+| `emailAndPassword.enabled`     | Password form (login + signup) and change-password / reset flows              |
 | `magicLink.enabled`            | Magic-link send (email → "send me a link"); passwordless when password is off |
-| `passkey.enabled`              | Passkey button (login) and passkey management (workspace)        |
-| `twoFactor.enabled`            | 2FA enrolment in the Security tile                               |
-| `providers` (`[{ id, type }]`) | One OAuth button per configured provider                         |
+| `passkey.enabled`              | Passkey button (login) and passkey management (workspace)                     |
+| `twoFactor.enabled`            | 2FA enrolment in the Security tile                                            |
+| `providers` (`[{ id, type }]`) | One OAuth button per configured provider                                      |
 
 There are **no `methods` / `two_factor` / `passkeys` module vars**. Restating an
 `auth:` fact as a module var is exactly the drift `_build.authConfig` exists to
@@ -145,12 +145,12 @@ error-code → message table**:
 
 Mapped codes:
 
-| Code                        | Meaning                                                          | Disposition                                                              |
-| --------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `MEMBERSHIP_REQUIRED`       | The hard wall — the account exists but has no access to this app | **Terminal** — form-hiding "no access" wall                              |
-| `EMAIL_NOT_VERIFIED`        | Sign-in blocked pending email verification                       | **Terminal** — form-hiding wall                                          |
-| `INVALID_EMAIL_OR_PASSWORD` | Bad email or password                                            | Inline toast (password path only)                                        |
-| `INVALID_TOKEN`             | Magic link expired or already used                               | **Retryable** — stays on the login form, warning notice, send reachable  |
+| Code                        | Meaning                                                          | Disposition                                                             |
+| --------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `MEMBERSHIP_REQUIRED`       | The hard wall — the account exists but has no access to this app | **Terminal** — form-hiding "no access" wall                             |
+| `EMAIL_NOT_VERIFIED`        | Sign-in blocked pending email verification                       | **Terminal** — form-hiding wall                                         |
+| `INVALID_EMAIL_OR_PASSWORD` | Bad email or password                                            | Inline toast (password path only)                                       |
+| `INVALID_TOKEN`             | Magic link expired or already used                               | **Retryable** — stays on the login form, warning notice, send reachable |
 
 `INVALID_TOKEN` is the one **retryable** redirect code: unlike the terminal codes
 (which replace the form with a "no access" wall), it leaves the login form — and
@@ -172,3 +172,28 @@ When a 2FA-enrolled user signs in, the `Login` result signals two-factor-require
 and the page routes to the module's own `two-factor` page (TOTP code or backup
 code, with an optional trust-device option). `authPages` has no 2FA role — this
 routing never leaves the module.
+
+## Two-factor enrolment
+
+Enrolling an authenticator — first-time setup or replacing an existing one — is
+**password-gated**: BetterAuth requires the account password to issue a new
+authenticator secret, so the Security tile's enrolment flow collects the
+password before it will show a QR code.
+
+**Backup codes are shown once and cannot be fetched again.** BetterAuth returns
+them alongside the new TOTP secret at enable time, and the flow renders them
+only in its final step — nothing in the module fetches them again afterwards.
+Dismissing that step without saving them discards them for good; the only way
+to get a fresh set is to enrol again.
+
+**Replacing an authenticator turns two-factor off for the duration of the
+flow.** BetterAuth's enable call deletes the caller's existing authenticator
+row and writes a new one with a fresh secret, but never touches the
+account-level two-factor flag itself — so the replacement flow first switches
+two-factor off, then re-enables against the new secret, rotating the secret and
+invalidating the previous authenticator. Two-factor comes back on only once
+the user confirms a code from the new authenticator. **An abandoned
+replacement therefore leaves the account with two-factor off** until the user
+enrols again: the account stays reachable with the password alone, and the
+Security tile reads **Off** in the meantime — this is expected behaviour, not
+a lockout.

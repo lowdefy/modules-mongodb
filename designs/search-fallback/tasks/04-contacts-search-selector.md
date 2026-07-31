@@ -37,7 +37,7 @@ properties:
 
 The `filter: [ exists: { path: _id } ]` baseline clause disappears with the hand-authored stage: `text_lead` only emits `$search` when there **is** a term, so `should` is never empty and the baseline clause is no longer needed.
 
-**2. Add the regex clause to the existing `$match`.** The stage currently merges three sources with `_object.assign`. Keep that merge for the existing three (they own distinct keys), and wrap the whole body in `$and` so the regex clause's `$or` cannot collide with a consumer `filter` that also uses `$or`:
+**2. Add the regex clause to the existing `$match`.** The stage currently merges three sources with `_object.assign`. Replace that merge with the design's `$and` array (decision 2) so the regex clause's `$or` cannot collide with a consumer `filter` that also uses `$or`, and so this request composes its filters the same way as the other six:
 
 ```yaml
 - $match:
@@ -94,14 +94,14 @@ Note the split between the two groups. The `company_only_contacts` scoping is a 
 
 That `{}` default is fine where it sits — **verified**, not assumed (mongod 8.3.4): `$and: [{a:1}, {}]`, `$and: [{}]`, and `$match: { $and: [{hidden:{$ne:true}}, {}, {}] }` all parse; only `$and: []` is rejected (`BadValue: $and argument must be a non-empty array`), and the unconditional `hidden`/`disabled` clause means the array is never empty here.
 
-**3. Update the file's header comment.** It currently says apps without Atlas Search "can drop stage 1" and describes the required index as covering `profile.name`, `profile.picture`, `lowercase_email`, `global_attributes.*`, `hidden`, `disabled`. Both statements are now wrong: the stage is dropped by the `atlas_search` flag, and the index requirement is `storedSource: true` (whole document) with only the text fields mapped — see the committed `modules/contacts/search-indexes/default.search.json` (task 8). Rewrite the comment to describe the current pipeline and point at the search index file; do not narrate the change.
+**3. Update the file's header comment.** It currently says apps without Atlas Search "can drop stage 1" and describes the required index as covering `profile.name`, `profile.picture`, `lowercase_email`, `global_attributes.*`, `hidden`, `disabled`. Both statements are now wrong: the stage is dropped by the `atlas_search` flag, and the index requirement is whole-document stored source with only the text fields mapped — documented in the contacts index reference (task 8). Rewrite the comment to describe the current pipeline and point at that docs page; do not narrate the change.
 
 ## Acceptance Criteria
 
 - No `$search` block is authored in this file; the Atlas stage comes only from `text_lead.yaml`.
 - The `$match` body is a `$and` array; `hidden`/`disabled`, the company-scoping `_build.if`, and the consumer `filter` var all behave exactly as before.
 - The term is `_payload: input` everywhere (not `filter.search`), including inside the regex fan-out.
-- `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b` succeeds.
+- `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
 - The header comment describes the pipeline as it now stands, with no "used to"/"apps can drop stage 1" framing.
 - Built artifact for a page hosting the contact selector (e.g. the activities or deals form pages) shows the gated `$search` under the default flag, and the `$or` regex clause with no `$search` when the flag is temporarily flipped to `false`.
 

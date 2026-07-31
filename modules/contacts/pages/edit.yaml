@@ -125,15 +125,6 @@ _ref:
                   onClick:
                     - id: validate
                       type: Validate
-                    - id: generate_avatar
-                      type: SetState
-                      params:
-                        profile.picture:
-                          _js:
-                            _ref:
-                              path: ../shared/profile/generate-avatar-svg.js.njk
-                              vars:
-                                prefix: profile
                     - id: update_contact
                       type: CallAPI
                       params:

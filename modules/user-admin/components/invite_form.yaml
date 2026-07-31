@@ -144,7 +144,11 @@ blocks:
                       onClick:
                         - id: validate_invite
                           type: Validate
-                          params: state_form
+                          params:
+                            regex:
+                              - '^profile\.'
+                              - "^roles$"
+                              - '^member_attributes\.'
                         # invite routine: reconcile stale-expired → ensure the
                         # contact → persist profile (write-profile) → InviteMember
                         # (roles + attributes) → audit. The

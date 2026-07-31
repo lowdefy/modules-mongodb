@@ -22,6 +22,8 @@ routine:
           _payload: contact_id
         profile:
           _payload: profile
+        avatar_colors:
+          _module.var: avatar_colors
         write_stages:
           _module.var: request_stages.write
   - id: audit

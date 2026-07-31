@@ -2,13 +2,15 @@
 # page and the profile edit modal. Left: the 64px preview. Right: the "Avatar"
 # field label above a quiet Change colour button.
 #
-# The preview is the shared avatar SVG, so the initials, the `?` empty-name
-# fallback and the gradient all come from the one implementation that also
-# produces the saved `profile.picture`. It reads `state.profile.avatar_color`,
-# which the host seeds with avatar-picker-seed.yaml.
+# The preview calls the same derivation the write seams use, so the initials, the
+# `?` empty-name fallback and the gradient all come from the one implementation that
+# also produces the saved `profile.picture`. It reads `state.profile.avatar_color`,
+# which the host seeds with avatar-picker-seed.yaml — an unseeded preview would draw
+# a fresh random gradient on every keystroke in the name fields.
 #
-# `avatar_color_index` is only a cursor for the Change colour button; the gradient
-# itself lives in `profile.avatar_color` so it travels with the profile subtree.
+# `profile.avatar_color` is the only state the Change colour button reads or writes,
+# so there is nothing that can disagree with the gradient on screen. It lives under
+# `profile` so it travels with that subtree into the payload.
 #
 # Both children need `flex: 0 0 auto` — a child block with no flex value spans the
 # full row, which would stack the preview above the label instead of beside it.
@@ -30,11 +32,19 @@ blocks:
       theme:
         containerSizeLG: 64
       src:
-        _js:
-          _ref:
-            path: ../shared/profile/generate-avatar-svg.js.njk
-            vars:
-              prefix: profile
+        _get:
+          from:
+            _js:
+              fn:
+                _ref:
+                  path: ../shared/profile/derive-profile.js.njk
+              args:
+                stored: {}
+                incoming:
+                  _state: profile
+                palette:
+                  _module.var: avatar_colors
+          key: picture
   - id: avatar_picker_field
     type: Box
     layout:
@@ -62,31 +72,25 @@ blocks:
           variant: outlined
         events:
           onClick:
-            # Advance the cursor, then resolve it to a gradient. Two actions
-            # rather than one so the index expression isn't written twice.
-            - id: cycle_avatar_color_index
-              type: SetState
-              params:
-                avatar_color_index:
-                  _if:
-                    test:
-                      _gte:
-                        - _sum:
-                            - _state: avatar_color_index
-                            - 1
-                        - _array.length:
-                            _module.var: avatar_colors
-                    then: 0
-                    else:
-                      _sum:
-                        - _state: avatar_color_index
-                        - 1
-            - id: set_avatar_color
+            # `_js` rather than operator chaining because the palette's `from`
+            # values repeat — #c62828 at 0 and 15, #6a1b9a at 2 and 17, plus five
+            # more pairs — so the current position can only be recovered by matching
+            # both fields. findIndex returning -1 for an absent or off-palette
+            # colour lands the first click on entry 0.
+            - id: advance_avatar_color
               type: SetState
               params:
                 profile.avatar_color:
-                  _get:
-                    from:
-                      _module.var: avatar_colors
-                    key:
-                      _state: avatar_color_index
+                  _js:
+                    fn: |
+                      const palette = args.palette;
+                      const current = args.current || {};
+                      const index = palette.findIndex(
+                        (color) => color.from === current.from && color.to === current.to
+                      );
+                      return palette[(index + 1) % palette.length];
+                    args:
+                      palette:
+                        _module.var: avatar_colors
+                      current:
+                        _state: profile.avatar_color

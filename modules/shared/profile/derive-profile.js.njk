@@ -1,0 +1,51 @@
+// Derives the profile fields the write owns: `name`, `avatar_color` and `picture`.
+// Returns ONLY those three keys, never the merged bag — each seam merges the result
+// onto its own atomic $mergeObjects output, so a concurrent writer's untouched
+// fields survive.
+//
+// Reads `args` only, never state() or step(), so the same body runs client-side
+// (the colour picker's live preview) and server-side (the three write seams). Only
+// the `args:` bindings differ.
+//
+// The `.njk` suffix is load-bearing despite this template having no vars: `_ref` on
+// a path ending `.js` imports the file and hands back its default export, which
+// `_js` rejects. A non-`js` final extension is what makes `_ref` yield source text.
+//
+// Args: stored (the profile bag on the contact), incoming (the payload's bag),
+// palette (the `avatar_colors` gradient pairs).
+//
+// The spread mirrors the seams' `$mergeObjects` exactly — a key present in
+// `incoming` wins whatever its value, an absent one falls through to `stored` — so
+// the derived fields always describe the bag the same write is storing.
+const profile = { ...args.stored, ...args.incoming };
+const palette = args.palette || [];
+
+const gn = (profile.given_name || '').trim();
+const fn = (profile.family_name || '').trim();
+
+// Resolved once per write and persisted, so it stops being re-rolled. An explicit
+// pick from the picker wins; a stored pair is kept; otherwise draw from the palette.
+const avatar_color =
+  profile.avatar_color || palette[Math.floor(Math.random() * palette.length)];
+
+let initials;
+if (gn && fn) initials = (gn[0] + fn[0]).toUpperCase();
+else if (gn.length > 1) initials = gn.substring(0, 2).toUpperCase();
+else if (gn) initials = gn.toUpperCase();
+else initials = '?';
+
+const from = (avatar_color && avatar_color.from) || '#37474f';
+const to = (avatar_color && avatar_color.to) || '#546e7a';
+const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='${from}'/><stop offset='100%' stop-color='${to}'/></linearGradient></defs><rect width='128' height='128' fill='url(#g)'/><text x='64' y='64' dominant-baseline='central' text-anchor='middle' fill='white' font-family='sans-serif' font-size='48' font-weight='bold'>${initials}</text></svg>`;
+
+return {
+  // null, not a lone space: a truthy `" "` renders as blank text everywhere a name
+  // is displayed instead of letting the consumer's fallback show. Matches the MQL
+  // $concat this replaces, which yields null when either part is missing.
+  name: gn && fn ? `${gn} ${fn}` : null,
+  avatar_color,
+  // Always set, including the `?` fallback the picker's preview needs before a name
+  // is typed. The seams remove it for an unnamed profile so the Avatar block's
+  // person icon renders instead.
+  picture: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+};

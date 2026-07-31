@@ -23,7 +23,8 @@ events:
     _build.array.concat:
       - - id: validate_profile
           type: Validate
-          params: modal_profile
+          params:
+            regex: '^profile\.'
         # write-profile fragment: change-stamped contact write + UpdateUserProfile
         # re-denorm of the TARGET's user.profile bag (Decision 3).
         - id: save_profile

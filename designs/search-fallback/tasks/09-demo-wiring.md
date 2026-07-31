@@ -44,11 +44,11 @@ atlas_search:
 
 **3. Do the same on `workflows-test`, and give it the two missing modules.** Add the same `_ref` to its `contacts` and `companies` entries in `apps/workflows-test/modules.yaml`.
 
-Then add a `deals` entry so `activities` and `deals` also compile their fallback branches (`deals` depends on `activities`, so wiring `deals` pulls it in). Follow the file's existing conventions: entries are order-sensitive — a module must be listed after every module it depends on — and the existing comment block explains why the dependency-only entries are there. Give both the same `_ref`, plus only whatever other vars the build requires; leave everything else on defaults, matching how `contacts`/`companies` are already wired there.
+Then add `activities` and `deals` entries so those two modules also compile their fallback branches (`deals` depends on `activities`, so both must be listed). Follow the file's existing conventions: entries are order-sensitive — a module must be listed after every module it depends on — and the existing comment block explains why the dependency-only entries are there. Give both the same `_ref`, plus only whatever other vars the build requires; leave everything else on defaults, matching how `contacts`/`companies` are already wired there.
 
 **4. Build-verify each branch in the app that owns it.**
 
-Demo (Atlas branch) — `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b`, then inspect the built request artifacts under `apps/demo/.lowdefy/server/build/pages/**/requests/`:
+Demo (Atlas branch) — `pnpm --filter @lowdefy/modules-demo ldf:b`, then inspect the built request artifacts under `apps/demo/.lowdefy/server/build/pages/**/requests/`:
 
 | Request                      | Artifact path                                       |
 | ---------------------------- | --------------------------------------------------- |

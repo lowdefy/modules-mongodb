@@ -186,6 +186,33 @@ _ref:
                               variant: outlined
                             events:
                               onClick:
+                                # Seed the modal's phase and intent BEFORE it
+                                # mounts — its onOpen fires after the dialog has
+                                # painted, and no phase group gates on a null
+                                # phase, so a seed there would flash an empty
+                                # body. `intent` is written once here and is the
+                                # only place the modal's wording reads the
+                                # enabled flag: the enrol flow flips it to true
+                                # while the modal is still open, and the replace
+                                # flow flips it to false halfway through, so a
+                                # live read would relabel the flow mid-flight.
+                                - id: seed_enroltotp
+                                  type: SetState
+                                  params:
+                                    enroltotp.phase: password
+                                    enroltotp.intent:
+                                      _if:
+                                        test:
+                                          _boolean:
+                                            _request: get_account.0.two_factor_enabled
+                                        then: replace
+                                        else: enrol
+                                    enroltotp.password: null
+                                    enroltotp.uri: null
+                                    enroltotp.confirmation_code: null
+                                    enroltotp.backup_codes: null
+                                    enroltotp.codes_saved: false
+                                    enroltotp.twofa_off: false
                                 - id: open_enroltotp_modal
                                   type: CallMethod
                                   params:

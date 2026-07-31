@@ -58,7 +58,7 @@ then:
 - The search clause contains no inline `$regex` — both fields get their value from `../shared/search/regex_value.yaml`.
 - Typing `(` in the members search box returns results (matching contacts whose name or email contains a literal `(`) instead of erroring; typing `.*` matches only members with a literal `.*`, not everyone.
 - The header comment describes the current shape, with no reference to `_object.assign`, the distinct-key rule, or `$and: []`.
-- `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b` succeeds.
+- `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
 - `user-admin/module.lowdefy.yaml` is unchanged — no `atlas_search` var.
 
 ## Files

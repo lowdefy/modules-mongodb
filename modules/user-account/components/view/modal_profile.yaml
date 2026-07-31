@@ -24,13 +24,13 @@ events:
       params:
         profile:
           _request: get_account.0.profile
-        avatar_color_index: 0
     - _ref: ../shared/profile/avatar-picker-seed.yaml
   onOk:
     _build.array.concat:
       - - id: validate_profile
           type: Validate
-          params: modal_profile
+          params:
+            regex: '^profile\.'
         # write-profile fragment (via update-profile): change-stamped contact
         # write + UpdateUserProfile re-denorm of the caller's own user.profile bag.
         - id: save_profile

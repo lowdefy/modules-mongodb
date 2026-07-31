@@ -120,3 +120,12 @@ flat `{ event-type: template }` map (no `app_name` key) and its templates receiv
   of truth; the module re-denormalizes `user.profile` (and `name` / `image`) in
   the same routine as the contact write, so `_user.*` resolves without a
   client-side sync. **Email never syncs** — email change is out of scope in v1.
+- **`profile.picture` and `profile.avatar_color` are derived by the write.** They
+  were previously generated client-side by whichever form remembered to, which left
+  the onboarding, profile-modal and invite paths with no avatar at all. The write
+  seam now computes both, so **a payload's `profile.picture` is ignored** — a
+  consumer posting one is silently overridden. Users who have no stored
+  `avatar_color` move from the old fixed default to a random palette entry, which is
+  then stored and stays put; this happens **on their next profile write, not at
+  upgrade time**, because the rendered avatar is stored too. Users with a stored
+  colour keep it. See [Avatar colors](../../shared/avatar-colors.md).

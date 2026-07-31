@@ -89,7 +89,7 @@ Rewrite `modules/contacts/requests/get_contact_excel_data.yaml`'s `properties.pi
 - No `$search` block is authored in this file; the Atlas stage comes only from `text_lead.yaml`.
 - The `$match` `$and` clause set is identical to `get_all_contacts`'s.
 - `request_stages.get_all_contacts` still splices in its original position, and `$skip`/`$limit` remain last.
-- `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b` succeeds.
+- `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
 - Built artifact for the contacts list page's excel request shows the gated `$search` (flag default `true`) and, with the flag temporarily flipped to `false`, the `$or` regex clause with no `$search` and no `$meta: searchScore`.
 
 ## Files

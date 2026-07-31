@@ -16,7 +16,7 @@ Like `search_contacts`, this request is **already split**: its filters live in a
 - `text` on `name`.
 - `wildcard *term*` on `name` with `allowAnalyzedField: true`.
 
-The `name` pair is exactly what `text_lead.yaml` generates from `paths: [name]`. The `_id` clause is caller-specific, so it is passed verbatim through the builder's `should_extra` var — the gating stays shared, the quirk stays with its caller. In fallback mode both `_id` and `name` are searched by regex, so searching by deal code keeps working (`$options: i` handles case).
+The `name` pair is what `text_lead.yaml` generates from `paths: [name]` — with one deliberate behaviour change: the builder lowercases the term (`_string.toLowerCase`), which this request does not do today. That is intended (design decision 2's `should_extra` note): five of the seven requests already lowercase, and it is what makes the `wildcard` clause match analyzed lowercase text. The `_id` clause is caller-specific and must **not** be lowercased, so it is passed verbatim through the builder's `should_extra` var — the gating stays shared, the quirk stays with its caller. In fallback mode both `_id` and `name` are searched by regex, so searching by deal code keeps working (`$options: i` handles case).
 
 ## Task
 
@@ -112,7 +112,7 @@ The `else` branch is this request's existing effective ordering when no term is 
 - The `_id` keyword-analyzer wildcard clause is preserved verbatim (boost 3, `multi: keywordAnalyzer`, no lowercasing) via `should_extra`.
 - The `$match` `$and` gains the regex clause and keeps `removed: null` plus all six filter `_if`s unchanged.
 - The `$facet` `$sort` uses `score` only when `atlas_search && term`; with no term, or in fallback mode, it sorts by `updated.timestamp: -1`.
-- `pnpm --filter @lowdefy/modules-mongodb-demo ldf:b` succeeds.
+- `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
 - Built artifact for the deals list page shows the gated `$search` with both the generic `name` clauses and the `_id` clause under the default flag; with the flag temporarily flipped to `false` it shows no `$search`, no `$meta: searchScore`, a `$or` over `_id` and `name`, and the `$sort` test collapsed to the literal `false`.
 - Searching a deal code and searching a deal name both still return the expected row in Atlas mode, and in fallback mode against a local MongoDB.
 

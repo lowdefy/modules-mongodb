@@ -9,9 +9,10 @@ blocks:
     properties:
       src:
         _var: user.profile.picture
-      # Empty-picture fallback: the Avatar block's built-in icon. In practice this
-      # rarely fires — any user created through profile/contact creation already has
-      # a generated gradient+initial SVG stored in profile.picture.
+      # Empty-picture fallback: the Avatar block's built-in icon. This is what an
+      # invitee who has not onboarded renders as — the write seams store no
+      # `profile.picture` for a profile with no name, because initials in a gradient
+      # circle would claim an identity that hasn't been supplied yet.
       icon: AiOutlineUser
   - id: name
     type: Title
