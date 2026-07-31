@@ -24,7 +24,10 @@ events:
     _build.array.concat:
       - - id: validate_access
           type: Validate
-          params: modal_access
+          params:
+            regex:
+              - '^roles$'
+              - '^member_attributes\.'
         # UpdateMemberRoles + UpdateMemberAttributes (Decision 3). Submits only
         # the selected ids; catalog validation is enforced by the AC.
         - id: save_access

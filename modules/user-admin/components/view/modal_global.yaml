@@ -19,7 +19,8 @@ events:
     _build.array.concat:
       - - id: validate_global
           type: Validate
-          params: modal_global
+          params:
+            regex: '^user_attributes\.'
         # UpdateUserAttributes — cross-app attributes on the user row (Decision 3).
         - id: save_global
           type: CallAPI
