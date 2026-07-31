@@ -10,54 +10,54 @@ It solves the same problem as this design's `$match` bodies and reaches the oppo
 
 Design decision 2 chose `$and` for the seven searchable requests, because it composes any clauses without top-level key collisions rather than relying on every author remembering the distinct-key rule. Leaving both in place would put two documented, contradicting idioms for one job in neighbouring modules.
 
-**The stated obstacle does not hold.** `$and: []` is indeed rejected, but this file already seeds its `_array.concat` with `{}` (line 17), so the `$and` form yields `$and: [{}]` when nothing is set — which MongoDB accepts. Verified on mongod 8.3.4: `$and: [{}]`, `$and: [{}, {}]`, and `$match: { $and: [{hidden:{$ne:true}}, {}, {}] }` all parse; only `$and: []` errors (`BadValue: $and argument must be a non-empty array`).
+**The stated obstacle does not hold.** `$and: []` is indeed rejected, but this file already seeds its `_array.concat` with `{}` (line 17), so the `$and` form yields `$and: [{}]` when nothing is set — which MongoDB accepts. Verified on mongod 8.3.4 and re-confirmed on 7.0.39: `$and: [{}]`, `$and: [{}, {}]`, and `$match: { $and: [{hidden:{$ne:true}}, {}, {}] }` all parse; only `$and: []` errors (`BadValue`, wording varies by version).
 
-**There is also a live defect to fix while the file is open.** Lines 28-34 interpolate `filter.search` straight into `$regex` with no escaping, so a `(` typed in the members search box makes MongoDB reject the regex, and `.*` matches every member. The shared `regex_value.yaml` from task 2 owns exactly this escaping.
+**There is also a live defect to fix while the file is open.** Lines 28-34 interpolate `filter.search` straight into `$regex` with no escaping, so a `(` typed in the members search box makes MongoDB reject the regex, and `.*` matches every member. Verified in node: the raw term `jo.h*n (a)+b[c]\d/e^$|{2}?` **throws** on compile, and `.*` matches everything. The shared `regex_clause.yaml` from task 2 owns exactly this escaping.
 
 This is the module's **only** change. `user-admin` still gets no `atlas_search` var and no `$search` stage — its search remains the always-unindexed regex path, on Atlas as well.
 
 ## Task
 
-**1. Convert the merge to `$and`.** Replace the `_object.assign` wrapper with a `$and` array over the same `_array.concat`, keeping all four clause `_if`s and their tests byte-for-byte. The `{}` seed entry stays — it is what keeps the array non-empty when no filter is set:
+**1. Convert the merge to `$and`.** Replace the `_object.assign` wrapper with a `$and` array over the same `_array.concat`, keeping the `roles_arr` and two status clause `_if`s and their tests byte-for-byte. The `{}` seed entry stays — it is what keeps the array non-empty when no filter is set:
 
 ```yaml
 $match:
   $and:
     _array.concat:
       - - {}
-      -  # ...the four existing clause _ifs, unchanged...
+      -  # ...the search clause, replaced per step 2...
+      -  # ...the roles_arr and two status _ifs, unchanged...
 ```
 
-**2. Route the search regex through the shared escaping.** In the `search` clause, replace each inline `$regex` / `$options` pair with a `_ref` to `regex_value.yaml`:
+**2. Replace the whole search clause with the shared `regex_clause` ref.** The builder gates on the term _and_ fans out the `$or` over a path list, so the existing `_if` wrapper goes too — the ref replaces the entire entry, not just the `$regex` values:
 
 ```yaml
-then:
-  - $or:
-      - name:
-          _ref:
-            path: ../shared/search/regex_value.yaml
-            vars:
-              term:
-                _payload: filter.search
-      - email:
-          _ref:
-            path: ../shared/search/regex_value.yaml
-            vars:
-              term:
-                _payload: filter.search
+- _ref:
+    path: ../shared/search/regex_clause.yaml
+    vars:
+      term:
+        _payload: filter.search
+      paths:
+        - name
+        - email
 ```
+
+No `atlas_search` var is passed: `regex_clause.yaml` defaults it to `false`, which is the truth for this module — it has no Atlas path at all — so the clause is emitted whenever a term is present.
 
 `../shared/...` resolves module-root-relative regardless of the referencing file's depth — `modules/user-admin/components/view/tile_security.yaml:168` and `modules/user-account/components/view/modal_profile.yaml:28` are both depth-2 files doing this, so `requests/stages/` reaches it fine.
 
-**3. Rewrite the header comment.** The distinct-top-level-key rule and the `$and: []` reasoning no longer apply and must go — a stale rationale reads to the next agent as an unsettled decision. State the current design: clauses are composed as a `$and` array so they cannot collide on a top-level key; the `{}` seed keeps the array non-empty when no filter is set; the search term is escaped by the shared `regex_value.yaml`. Keep the existing notes that carry real constraints (why search runs post-`$lookup`, and the exact-match `roles_arr` rule from that module's decision 1). Do not narrate the change.
+**One deliberate behaviour change comes with this.** The current search `_if` tests `filter.search` against `null`; the shared gate tests the **empty string** (`_ne: [{ _if_none: [{ _var: term }, ""] }, ""]`). So clearing the members search box now drops the clause instead of emitting `{ $regex: "", $options: i }` on both fields — which matched every member and was therefore a harmless no-op only by accident. This is the same tightening the five list requests get (review-2 #2).
+
+**3. Rewrite the header comment.** The distinct-top-level-key rule and the `$and: []` reasoning no longer apply and must go — a stale rationale reads to the next agent as an unsettled decision. State the current design: clauses are composed as a `$and` array so they cannot collide on a top-level key; the `{}` seed keeps the array non-empty when no filter is set; the search clause comes from the shared `regex_clause.yaml`, which owns the escaping. Keep the existing notes that carry real constraints (why search runs post-`$lookup`, and the exact-match `roles_arr` rule from that module's decision 1). Do not narrate the change.
 
 ## Acceptance Criteria
 
-- `members_filter.yaml` emits `$match: { $and: [ … ] }`, with the four clauses and their `_if` tests unchanged.
+- `members_filter.yaml` emits `$match: { $and: [ … ] }`, with the `roles_arr` and two status clauses and their `_if` tests unchanged.
 - With no filter set the built stage is `$match: { $and: [{}] }`.
-- The search clause contains no inline `$regex` — both fields get their value from `../shared/search/regex_value.yaml`.
+- The file contains no inline `$regex` and no hand-authored `$or` — the entire search clause is one `_ref` to `../shared/search/regex_clause.yaml` with `paths: [name, email]`.
 - Typing `(` in the members search box returns results (matching contacts whose name or email contains a literal `(`) instead of erroring; typing `.*` matches only members with a literal `.*`, not everyone.
 - The header comment describes the current shape, with no reference to `_object.assign`, the distinct-key rule, or `$and: []`.
+- Clearing the members search box drops the clause entirely rather than emitting an empty `$regex`.
 - `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
 - `user-admin/module.lowdefy.yaml` is unchanged — no `atlas_search` var.
 
@@ -67,6 +67,6 @@ then:
 
 ## Notes
 
-- Depends on task 2 only for `regex_value.yaml`'s existence; it is otherwise independent of tasks 3-9.
+- Depends on task 2 only for `regex_clause.yaml`'s existence; it is otherwise independent of tasks 3-9.
 - `user-admin`'s `request_stages.filter_match` is **already** plain `$match` clauses, so it needs no migration and no CHANGELOG breaking-change note. The only consumer-visible effect of this task is that the members search now handles regex metacharacters as literals — a fix, not a break.
 - Do not add `user-admin` to `docs/shared/search.md`'s `atlas_search` sections. Task 10 already gives it the one note it needs: its search is always the unindexed regex path, and it has no search-index requirement.

@@ -8,18 +8,18 @@
 2. `$match` — structural filters as a plain Mongo query: `hidden`/`disabled` `$ne: true`, a `_build.if`-gated company-scoping clause, and the consumer `filter` var (a single `$match` object, default `{}`).
 3. `$limit: 10` + `$project` shaping to the block's `{ label, value }` contract.
 
-So it needs no filters→`$match` restructure. It needs the stage-1 toggle and the regex clause, and nothing else: there is no `$facet`, no pagination, and no score sort, so `score_addfields` and `use_score` do not apply. Note this request's term is `_payload: input`, not `_payload: filter.search`, and its consumer hook is the component-level `filter` var — **not** `request_stages.filter_match`. The two hooks stay deliberately distinct.
+So it needs no filters→`$match` restructure. It needs the stage-1 toggle and the regex clause, and nothing else: there is no `$facet`, no pagination, and no score sort, so `score_stage` and `use_score` do not apply. Note this request's term is `_payload: input`, not `_payload: filter.search`, and its consumer hook is the component-level `filter` var — **not** `request_stages.filter_match`. The two hooks stay deliberately distinct.
 
 ## Task
 
 In `modules/contacts/requests/search_contacts.yaml`:
 
-**1. Replace the hand-authored `$search` stage with the shared builder.** The pipeline root becomes a runtime `_array.concat`:
+**1. Replace the hand-authored `$search` stage with the shared builder.** The pipeline root becomes a `_build.array.concat`:
 
 ```yaml
 properties:
   pipeline:
-    _array.concat:
+    _build.array.concat:
       - _ref:
           path: ../shared/search/text_lead.yaml
           vars:
@@ -35,7 +35,7 @@ properties:
         - $project: # unchanged
 ```
 
-The `filter: [ exists: { path: _id } ]` baseline clause disappears with the hand-authored stage: `text_lead` only emits `$search` when there **is** a term, so `should` is never empty and the baseline clause is no longer needed.
+The `filter: [ exists: { path: _id } ]` baseline clause disappears with the hand-authored stage: `text_lead` only emits `$search` when there **is** a term (resolving to `$match: {}` otherwise), so `should` is never empty and the baseline clause is no longer needed.
 
 **2. Add the regex clause to the existing `$match`.** The stage currently merges three sources with `_object.assign`. Replace that merge with the design's `$and` array (decision 2) so the regex clause's `$or` cannot collide with a consumer `filter` that also uses `$or`, and so this request composes its filters the same way as the other six:
 
@@ -75,24 +75,14 @@ The `filter: [ exists: { path: _id } ]` baseline clause disappears with the hand
                 _module.var: atlas_search
               term:
                 _payload: input
-              or:
-                - profile.name:
-                    _ref:
-                      path: ../shared/search/regex_value.yaml
-                      vars:
-                        term:
-                          _payload: input
-                - lowercase_email:
-                    _ref:
-                      path: ../shared/search/regex_value.yaml
-                      vars:
-                        term:
-                          _payload: input
+              paths:
+                - profile.name
+                - lowercase_email
 ```
 
 Note the split between the two groups. The `company_only_contacts` scoping is a **gate** — it appears or disappears — so it moves out of the first literal group and becomes its own `_array.concat` entry returning `[clause]` or `[]`, matching every other gated piece in the design. The consumer `filter` var stays a direct entry in the first group: it always contributes exactly one clause slot, and wrapping it in a one-element array would only relocate its `{}` default, not remove it.
 
-That `{}` default is fine where it sits — **verified**, not assumed (mongod 8.3.4): `$and: [{a:1}, {}]`, `$and: [{}]`, and `$match: { $and: [{hidden:{$ne:true}}, {}, {}] }` all parse; only `$and: []` is rejected (`BadValue: $and argument must be a non-empty array`), and the unconditional `hidden`/`disabled` clause means the array is never empty here.
+That `{}` default is fine where it sits — **verified**, not assumed (mongod 8.3.4, re-confirmed on 7.0.39): `$and: [{a:1}, {}]`, `$and: [{}]`, and `$match: { $and: [{hidden:{$ne:true}}, {}, {}] }` all parse; only `$and: []` is rejected (`BadValue`), and the unconditional `hidden`/`disabled` clause means the array is never empty here.
 
 **3. Update the file's header comment.** It currently says apps without Atlas Search "can drop stage 1" and describes the required index as covering `profile.name`, `profile.picture`, `lowercase_email`, `global_attributes.*`, `hidden`, `disabled`. Both statements are now wrong: the stage is dropped by the `atlas_search` flag, and the index requirement is whole-document stored source with only the text fields mapped — documented in the contacts index reference (task 8). Rewrite the comment to describe the current pipeline and point at that docs page; do not narrate the change.
 
@@ -100,14 +90,14 @@ That `{}` default is fine where it sits — **verified**, not assumed (mongod 8.
 
 - No `$search` block is authored in this file; the Atlas stage comes only from `text_lead.yaml`.
 - The `$match` body is a `$and` array; `hidden`/`disabled`, the company-scoping `_build.if`, and the consumer `filter` var all behave exactly as before.
-- The term is `_payload: input` everywhere (not `filter.search`), including inside the regex fan-out.
+- The term is `_payload: input` everywhere (not `filter.search`), including the `term` var passed to `regex_clause`.
 - `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
 - The header comment describes the pipeline as it now stands, with no "used to"/"apps can drop stage 1" framing.
 - Built artifact for a page hosting the contact selector (e.g. the activities or deals form pages) shows the gated `$search` under the default flag, and the `$or` regex clause with no `$search` when the flag is temporarily flipped to `false`.
 
 ## Files
 
-- `modules/contacts/requests/search_contacts.yaml` — modify — runtime concat root, `$search` via the shared builder, regex clause in a `$and` `$match`, header comment rewritten.
+- `modules/contacts/requests/search_contacts.yaml` — modify — `_build.array.concat` root, `$search` via the shared builder, regex clause in a `$and` `$match`, header comment rewritten.
 
 ## Notes
 
