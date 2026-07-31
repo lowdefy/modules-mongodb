@@ -41,7 +41,8 @@ Then inspect the generated artifacts under
 ### 2. Live verification checklist
 
 Hand these to the developer to run on the auth-testing rig as a credentialed user. Steps
-1–7 and 9 have no upstream dependency; step 8 belongs to Task 6 and is listed there.
+No step here has an upstream dependency; the new-backup-codes check belongs to the [backup-codes-rotation design](../../backup-codes-rotation/design.md)
+and is listed there.
 
 1. **First-time enrolment, on a freshly loaded page** — the very first `Set up` of the
    session, so nothing has written `enroltotp.*` before the trigger does (the case an
@@ -73,7 +74,7 @@ Hand these to the developer to run on the auth-testing rig as a credentialed use
    must ask for a **password only, with no second-factor challenge**. Then Set up again
    from the tile and confirm a fresh enrolment completes normally. (Under a bare `enable`
    this is the lockout: 2FA enforced against a secret never scanned.)
-8. _(Task 6 — waits on the upstream action.)_
+8. _(The new-backup-codes check moved to the [backup-codes-rotation design](../../backup-codes-rotation/design.md), which waits on the upstream action.)_
 9. **`Validate` now bites** — submit each of the six broken forms with a required field
    empty and confirm a **red field-level error**, not a server-error toast:
    `modal_enroltotp` phase `scan`, `modal_changepw`, `modal_disable2fa`, `modal_profile`
