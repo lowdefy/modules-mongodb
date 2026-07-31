@@ -51,6 +51,13 @@ Upstream asks 2 and 3 are _not_ prerequisites — ask 2 is withdrawn (resolved m
 
 ### 1. Org-aware unconditionally — no policy branches in module config
 
+> **Superseded by [policy-conditional-wall](../policy-conditional-wall/design.md).** The
+> wall now engages only under `policy: tenant`; under `pinned` a connection's `tenant:`
+> declaration is inert and no `organizationId` is written or filtered. Modules still
+> declare `tenant:` unconditionally — the branch moved to the platform's single decision
+> point rather than into module config. Decisions 2, 4 and 5 below, and the Migration
+> section, are amended by that design. Not yet implemented.
+
 Modules stamp and scope by organization _always_, under both policies. Under `pinned` every document in the database carries the same `organizationId` (the deployment's auto-seeded org) and the wall's injected filter matches everything — harmless, near-invisible. Under `tenant` the same field and filter are load-bearing. There is no `multi_tenant` var, no `when:` branch, no second module variant.
 
 **Rationale**: the engine made organizations always-on precisely so there is no "non-org" code path; the module layer should spend that guarantee rather than re-litigate it. One correct way: a module that branches on tenancy is two modules that share a folder — twice the surface to test and document, and the untaken branch rots. The cost under `pinned` is one indexed field whose value never varies; the payoff is that `pinned` vs `tenant` becomes a deployment decision made in `lowdefy.yaml`, after the modules are written.
