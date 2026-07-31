@@ -1,69 +1,104 @@
-# Set up 2FA modal (design Decision 5). Two phases, gated on whether an enrolment
-# secret has been generated yet (state.enroltotp.uri):
-#   Phase 1 (no uri) — TwoFactorEnable is PASSWORD-GATED (BetterAuth requires the
-#     account password), which the mock omits; so we collect the password and a
-#     "Generate" button calls TwoFactorEnable, reading the totpURI + backup codes
-#     off _actions into state (the codes feed the backup-codes modal).
-#   Phase 2 (uri set) — the built-in QRCode block renders the URI (with a copyable
-#     manual-entry fallback beside it) and a confirmation code. "Confirm & enable"
-#     calls TwoFactorVerify; on success it shows the backup-codes modal and
-#     re-fetches (the 2FA state flips to On).
-# The trigger is shown only when _build.authConfig.twoFactor.enabled AND the
-# caller holds a credential row (gates on the tile). onOpen resets the phase.
+# Two-factor enrolment modal (design Decision 5). One modal, three phases and two
+# intents, both held as explicit values in state:
+#   state.enroltotp.phase  — password | scan | codes; the only gate on every block
+#   state.enroltotp.intent — enrol | replace; drives the wording and which chain
+#
+# Both are seeded by the trigger (tile_security.yaml) BEFORE the dialog mounts:
+# `onOpen` fires after the modal has painted, so a seed there would show an empty
+# body — no group gates on a null phase — on the first open of a session.
+#
+# There is no native footer. The footer Ok auto-closes on success, which is wrong
+# for a multi-step dialog: the password phase must not close and the scan phase
+# must advance rather than exit. Each phase owns its own body button instead, so
+# exactly one primary action is offered at a time; a Button already disables
+# itself and spins while its onClick chain runs.
+#
+# `intent: replace` turns 2FA off before re-enrolling. BetterAuth's
+# `POST /two-factor/enable` deletes the caller's twoFactor row and writes a new
+# one with a fresh secret, carrying `verified: true` over from a verified row and
+# never touching `user.twoFactorEnabled` — which is what the sign-in hook gates
+# the second-factor challenge on. Enabling straight over a working authenticator
+# would therefore enforce a second factor against a secret the user has not
+# scanned, and abandoning there locks them out with no admin 2FA reset anywhere
+# in the suite. Disabling first makes replacement a first-time enrolment: abandon
+# it and 2FA is simply off, and the user can set up again from here.
 id: modal_enroltotp
 type: Modal
+layout:
+  gap: 16
 properties:
-  title: Set up two-factor authentication
+  # The default branch is load-bearing, not defensive: Modal passes `title`
+  # straight through to antd, so a null title renders an unlabelled header.
+  title:
+    _switch:
+      branches:
+        - if:
+            _eq:
+              - _state: enroltotp.intent
+              - enrol
+          then: Set up two-factor authentication
+        - if:
+            _eq:
+              - _state: enroltotp.intent
+              - replace
+          then: Replace your authenticator
+      default: Two-factor authentication
   width: 560
-  okText: Confirm & enable
-  cancelText: Cancel
+  footer: false
+  # A stray click on the mask must not discard the one-time backup codes.
+  maskClosable: false
 events:
-  onOpen:
-    - id: reset_totp
+  # Every close path (the X, Esc, a mask click) routes here. Each leaf is nulled
+  # by name — an `enroltotp: {}` write leaves the leaves undefined, and an input
+  # that was invisible in the previous eval cycle then restores its remembered
+  # value instead of clearing. Booleans reset to false, their boolean zero.
+  onClose:
+    - id: reset_enroltotp
       type: SetState
       params:
-        enroltotp: {}
-  onOk:
-    _build.array.concat:
-      - - id: validate_totp
-          type: Validate
-          params: modal_enroltotp
-        # Confirm the TOTP code — completes enrolment. A wrong code throws,
-        # keeping the modal open and toasting the friendly error.
-        - id: verify_totp
-          type: TwoFactorVerify
-          messages:
-            loading: Confirming…
-            success: Two-factor authentication is on.
-            error: That code is incorrect or has expired. Try again.
-          params:
-            code:
-              _state: enroltotp.confirmation_code
-        # Show the one-time backup codes captured at enable time (mock flow).
-        - id: open_backupcodes_modal
-          type: CallMethod
-          params:
-            blockId: modal_backupcodes
-            method: toggleOpen
-      - _ref: actions/refetch_account.yaml
+        enroltotp.phase: null
+        enroltotp.intent: null
+        enroltotp.password: null
+        enroltotp.uri: null
+        enroltotp.confirmation_code: null
+        enroltotp.backup_codes: null
+        enroltotp.codes_saved: false
+        enroltotp.twofa_off: false
 blocks:
-  # ── Phase 1: password → generate ──
+  # ── Phase `password` ──
   - id: enroltotp_intro_setup
     type: Html
     visible:
       _eq:
-        - _state: enroltotp.uri
-        - null
+        - _state: enroltotp.phase
+        - password
     layout:
       span: 24
     properties:
       html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Enter your account password to generate a new authenticator secret.</div>'
+  - id: enroltotp_replace_warning
+    type: Alert
+    visible:
+      _and:
+        - _eq:
+            - _state: enroltotp.phase
+            - password
+        - _eq:
+            - _state: enroltotp.intent
+            - replace
+    layout:
+      span: 24
+    properties:
+      type: warning
+      showIcon: true
+      message: Your current authenticator stops working now.
+      description: Two-factor is switched off while you set up the new one, and comes back on when you enter a code from it. If you stop partway, two-factor stays off and you can set it up again from here.
   - id: enroltotp.password
     type: PasswordInput
     visible:
       _eq:
-        - _state: enroltotp.uri
-        - null
+        - _state: enroltotp.phase
+        - password
     required: true
     layout:
       span: 24
@@ -75,9 +110,13 @@ blocks:
   - id: enroltotp_generate
     type: Button
     visible:
-      _eq:
-        - _state: enroltotp.uri
-        - null
+      _and:
+        - _eq:
+            - _state: enroltotp.phase
+            - password
+        - _eq:
+            - _state: enroltotp.intent
+            - enrol
     layout:
       span: 24
     properties:
@@ -88,8 +127,18 @@ blocks:
     events:
       onClick:
         try:
+          # Validate names the input, not the modal: Validate's params is an
+          # exact-id matcher with no cascade to descendants. Without it an empty
+          # password round-trips to BetterAuth and comes back as the catch-all
+          # toast, telling the user their password is wrong when they left it
+          # blank and marking no field.
+          - id: validate_enrol_password
+            type: Validate
+            params:
+              blockIds:
+                - enroltotp.password
           # Password-gated enable — returns the totpURI + backup codes on
-          # _actions, which we stash in state for the QR and the codes modal.
+          # _actions, stashed in state for the QR and phase `codes`.
           - id: enroltotp_enable
             type: TwoFactorEnable
             messages:
@@ -100,23 +149,114 @@ blocks:
           - id: stash_totp
             type: SetState
             params:
+              enroltotp.phase: scan
               enroltotp.uri:
                 _actions: enroltotp_enable.response.totpURI
               enroltotp.backup_codes:
                 _actions: enroltotp_enable.response.backupCodes
+              enroltotp.password: null
         catch:
           - id: enroltotp_enable_error
             type: DisplayMessage
             params:
               status: error
               content: Couldn't start two-factor setup. Check your password and try again.
-  # ── Phase 2: QR + confirm ──
+  - id: enroltotp_replace_btn
+    type: Button
+    visible:
+      _and:
+        - _eq:
+            - _state: enroltotp.phase
+            - password
+        - _eq:
+            - _state: enroltotp.intent
+            - replace
+    layout:
+      span: 24
+    properties:
+      title: Replace authenticator
+      block: true
+      color: primary
+      variant: solid
+    events:
+      onClick:
+        try:
+          _build.array.concat:
+            - - id: validate_replace_password
+                type: Validate
+                params:
+                  blockIds:
+                    - enroltotp.password
+              # Disable needs an authoritative session and rotates the session
+              # cookie; enable takes plain sessionMiddleware, so it runs on the
+              # cookie this call sets.
+              - id: enroltotp_replace_disable
+                type: TwoFactorDisable
+                messages:
+                  error: false
+                params:
+                  password:
+                    _state: enroltotp.password
+              - id: mark_twofa_off
+                type: SetState
+                params:
+                  enroltotp.twofa_off: true
+            # The refetch sits between the two calls, not after them: the event
+            # runner has no `finally`, so an enable that throws would skip a
+            # trailing refetch and leave the tile reading On while 2FA is
+            # genuinely off. Enable does not touch `twoFactorEnabled`, so the
+            # tile reads Off from here either way.
+            - _ref: actions/refetch_account.yaml
+            - - id: enroltotp_replace_enable
+                type: TwoFactorEnable
+                messages:
+                  error: false
+                params:
+                  password:
+                    _state: enroltotp.password
+              - id: stash_replace_totp
+                type: SetState
+                params:
+                  enroltotp.phase: scan
+                  enroltotp.uri:
+                    _actions: enroltotp_replace_enable.response.totpURI
+                  enroltotp.backup_codes:
+                    _actions: enroltotp_replace_enable.response.backupCodes
+                  enroltotp.password: null
+        catch:
+          # `twofa_off` is an explicit flag, not an inference from the _actions
+          # response shape: a failed action records {error, action, index} and a
+          # successful one {type, response, index}, so `_not: <disable>.error` is
+          # also true when the Validate failed and the disable never ran — the
+          # most common way into this catch.
+          - :if:
+              _state: enroltotp.twofa_off
+            :then:
+              # The credential was spent, so clear it. A wrong password lands on
+              # the else branch, where the field the user is about to correct
+              # must survive.
+              - id: clear_spent_password
+                type: SetState
+                params:
+                  enroltotp.password: null
+              - id: enroltotp_replace_off_error
+                type: DisplayMessage
+                params:
+                  status: error
+                  content: Two-factor is now off. Try again to finish setting up your new authenticator.
+            :else:
+              - id: enroltotp_replace_error
+                type: DisplayMessage
+                params:
+                  status: error
+                  content: Couldn't start two-factor setup. Check your password and try again.
+  # ── Phase `scan` ──
   - id: enroltotp_intro_scan
     type: Html
     visible:
-      _ne:
-        - _state: enroltotp.uri
-        - null
+      _eq:
+        - _state: enroltotp.phase
+        - scan
     layout:
       span: 24
     properties:
@@ -124,9 +264,9 @@ blocks:
   - id: enroltotp_row
     type: Box
     visible:
-      _ne:
-        - _state: enroltotp.uri
-        - null
+      _eq:
+        - _state: enroltotp.phase
+        - scan
     layout:
       direction: row
       gap: 16
@@ -152,16 +292,33 @@ blocks:
             span: 24
           gap: 16
         blocks:
-          - id: enroltotp.uri
-            type: TextInput
+          - id: enroltotp_manual_key_label
+            type: Label
             layout:
               span: 24
             properties:
-              disabled: true
-              label:
-                title: Can't scan? Enter this key
-                span: 24
-                colon: false
+              title: Can't scan? Enter this key
+              span: 24
+              colon: false
+            blocks:
+              # A copyable Paragraph, not a disabled TextInput: browsers do not
+              # allow text selection inside a disabled input, and TextInput has
+              # no read-only-but-selectable option. `code: true` keeps 1/l and
+              # 0/O distinguishable when hand-transcribed.
+              - id: enroltotp_manual_key
+                type: Paragraph
+                properties:
+                  code: true
+                  copyable: true
+                  # An authenticator's manual-entry field wants the base32
+                  # secret; the full otpauth:// URI generally fails there. The
+                  # operator form of this needs nested _string.split plus array
+                  # indexing to reach one query param.
+                  content:
+                    _js: |
+                      const uri = state('enroltotp.uri');
+                      if (!uri) return null;
+                      return new URLSearchParams(uri.split('?')[1] || '').get('secret');
           - id: enroltotp.confirmation_code
             type: TextInput
             required: true
@@ -172,3 +329,171 @@ blocks:
               label:
                 title: Confirmation code
                 span: 24
+  - id: enroltotp_confirm
+    type: Button
+    visible:
+      _eq:
+        - _state: enroltotp.phase
+        - scan
+    layout:
+      span: 24
+    properties:
+      title: Confirm & enable
+      block: true
+      color: primary
+      variant: solid
+    events:
+      onClick:
+        _build.array.concat:
+          - - id: validate_confirmation_code
+              type: Validate
+              params:
+                blockIds:
+                  - enroltotp.confirmation_code
+            # A wrong code throws, stopping the chain and keeping the modal on
+            # this phase with the friendly toast.
+            - id: verify_totp
+              type: TwoFactorVerify
+              messages:
+                loading: Confirming…
+                success: Two-factor authentication is on.
+                error: That code is incorrect or has expired. Try again.
+              params:
+                code:
+                  _state: enroltotp.confirmation_code
+            - id: advance_to_codes
+              type: SetState
+              params:
+                enroltotp.phase: codes
+          # The tile flips to On behind the modal. It rides this chain rather
+          # than the Done button so the tile is never stale while the user reads
+          # their codes, and so a failed refetch is not silent on a close.
+          - _ref: actions/refetch_account.yaml
+  # ── Phase `codes` ── Shown once; the codes are never fetched again.
+  - id: backupcodes_message
+    type: Html
+    visible:
+      _eq:
+        - _state: enroltotp.phase
+        - codes
+    layout:
+      span: 24
+    properties:
+      html:
+        _nunjucks:
+          template: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">{{ lead }} Store these one-time codes somewhere safe — each works once if you lose your authenticator.</div>'
+          on:
+            # A replacing user needs its own lead line: enable recreates the
+            # twoFactor row with a fresh backupCodes array, so their previous
+            # codes are dead too, and "Two-factor is on" reads as first-time
+            # confirmation to someone for whom it already was.
+            lead:
+              _switch:
+                branches:
+                  - if:
+                      _eq:
+                        - _state: enroltotp.intent
+                        - enrol
+                    then: Two-factor is on.
+                  - if:
+                      _eq:
+                        - _state: enroltotp.intent
+                        - replace
+                    then: Your new authenticator is active. These codes replace your previous set.
+                default: Two-factor is on.
+  - id: backupcodes_grid
+    type: Html
+    visible:
+      _eq:
+        - _state: enroltotp.phase
+        - codes
+    layout:
+      span: 24
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0 4px;">
+            {% for code in codes %}
+              <span style="font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border-secondary); border-radius:6px; padding:7px 10px; text-align:center; letter-spacing:0.04em;">{{ code }}</span>
+            {% endfor %}
+            </div>
+          on:
+            codes:
+              _state: enroltotp.backup_codes
+  - id: backupcodes_alert
+    type: Alert
+    visible:
+      _eq:
+        - _state: enroltotp.phase
+        - codes
+    layout:
+      span: 24
+    properties:
+      type: warning
+      showIcon: true
+      message: You won't see these again. Copy them before closing.
+  - id: backupcodes_copy_btn
+    type: Button
+    visible:
+      _eq:
+        - _state: enroltotp.phase
+        - codes
+    layout:
+      span: 24
+    properties:
+      title: Copy codes
+      block: true
+      icon: AiOutlineCopy
+      variant: outlined
+    events:
+      onClick:
+        - id: copy_backup_codes
+          type: CopyToClipboard
+          messages:
+            success: Copied
+          params:
+            copy:
+              _array.join:
+                - _state: enroltotp.backup_codes
+                - "\n"
+  # An attention device, not a lock — Esc cannot be blocked, so its only job is
+  # to make someone in dismiss-the-dialog mode read one sentence first. Gating
+  # Done on the Copy click instead would mandate a clipboard write for a
+  # one-time secret and still not evidence saving; people legitimately save
+  # these by screenshot, password manager, or on paper.
+  - id: enroltotp.codes_saved
+    type: CheckboxSwitch
+    visible:
+      _eq:
+        - _state: enroltotp.phase
+        - codes
+    layout:
+      span: 24
+    properties:
+      description: I've saved my backup codes
+      label:
+        disabled: true
+  - id: backupcodes_done_btn
+    type: Button
+    visible:
+      _eq:
+        - _state: enroltotp.phase
+        - codes
+    layout:
+      span: 24
+    properties:
+      title: Done
+      block: true
+      color: primary
+      variant: solid
+      disabled:
+        _not:
+          _state: enroltotp.codes_saved
+    events:
+      onClick:
+        - id: close_enroltotp
+          type: CallMethod
+          params:
+            blockId: modal_enroltotp
+            method: toggleOpen

@@ -80,10 +80,9 @@ _ref:
             blocks:
               - _ref: components/view/tile_sessions.yaml
               - _ref: components/view/tile_linked_accounts.yaml
-      # ── Interaction-state layers: 5 modals (top-level siblings of the grid,
+      # ── Interaction-state layers: 4 modals (top-level siblings of the grid,
       #    opened via CallMethod toggleOpen from their triggers) ──
       - _ref: components/view/modal_profile.yaml
       - _ref: components/view/modal_changepw.yaml
       - _ref: components/view/modal_enroltotp.yaml
-      - _ref: components/view/modal_backupcodes.yaml
       - _ref: components/view/modal_disable2fa.yaml
