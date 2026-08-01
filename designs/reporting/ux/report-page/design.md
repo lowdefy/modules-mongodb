@@ -10,7 +10,8 @@ This sub-design adds the provenance and the ways out, and holds the filter-place
 
 1. Add a **provenance line** (who made it, when, when it ran), **per-section CSV** (`⤓` on each query-backed section; none on a KPI), and **"Continue in chat"** reopening the source conversation with the report as context — owner-only.
 2. Give a broken section **two owner-only recoveries** — ask the assistant to fix it, or drop it — on top of the per-section Alert the module already renders. A non-owner's broken section names who can fix it and stops there.
-3. Consume **`conversation_id`** so the report ↔ chat links work in both directions, treating its absence as no affordance rather than a broken one.
+3. Distinguish a section the viewer's **roles deny** from one that is broken. They render identically today, only one of them has anything to fix, and opening reports to a shared audience is what makes the confusion routine — see [below](#a-section-the-viewers-roles-deny-is-not-a-broken-section).
+4. Consume **`conversation_id`** so the report ↔ chat links work in both directions, treating its absence as no affordance rather than a broken one.
 
 Filter placement is the page's one open problem and is **not decided here** — see [the filter row says nothing about what it scopes](#the-filter-row-says-nothing-about-what-it-scopes).
 
@@ -47,9 +48,26 @@ Export is a **read**, so it is available to a non-owner of a shared report.
 
 ### A broken section gets two ways out, and only for the owner
 
-The module already renders a per-section Alert, which is the right failure mode — one bad section, one Alert, the rest of the report intact. What it lacks is anything to do about it. The owner gets two actions: ask the assistant to fix it (which opens the conversation with the failing section as context), or drop it (a spec edit, owner-checked like any other write).
+The module already renders a per-section Alert, which is the right failure mode — one bad section, one Alert, the rest of the report intact. What it lacks is anything to do about it. The owner gets two actions, and they are different kinds of thing:
+
+- **Ask the assistant to fix it** writes nothing. It opens the source conversation with the failing section named, gated exactly like Continue in chat and subject to the same `conversation_id` condition — so a report created through the agent tool path has no fix-in-chat affordance either. What the assistant then produces is a **new** report, per the non-goal below; nothing updates this one's spec.
+- **Drop it** is the module's only spec write, through [ownership](../ownership/design.md#dropping-a-section-is-the-one-spec-write-and-it-has-to-cascade)'s `remove-report-section`. The page sends a report id, a section id and the section's type and label as a guard — it never holds the spec, since this page is compiled blocks, and the id is a position rather than a durable identity ([why the guard](../ownership/design.md#dropping-a-section-is-the-one-spec-write-and-it-has-to-cascade)) — and the server removes the section, cascades the filter bindings the validator would otherwise reject, revalidates and writes. The cascade is worth knowing about here because it is user-visible: dropping the only section a filter drove takes that filter's control off the page too. And it is the reason Remove can be **refused** — on a report whose only content is one section plus its filter, the cascade would leave nothing, so the endpoint rejects and the page says what the user actually meant: this is the report's only section, delete the report instead. That is the one place Remove leads to Delete.
 
 A non-owner's broken section names who can fix it and stops there. It does **not** offer to notify them — notifications are a non-goal for the whole design, and a "request a fix" button that sends nothing is worse than no button.
+
+### A section the viewer's roles deny is not a broken section
+
+A section can fail for two unrelated reasons, and the page currently tells the same story about both. It can be **broken** — the spec drifted out of the catalog, a field went away, the pipeline no longer validates. Or it can be **withheld**: the catalog lets an app restrict a collection to a set of roles, and `AnalyticsPipeline` enforces that against the **viewing** user on every resolve, so a section over a restricted collection fails for anyone who does not hold the role. Both land in the resolver's `:catch` and both render the same Alert.
+
+They cannot currently be told apart _after the fact_: the `:catch` receives no error object, so the gate's message never reaches the compiler, which says as much in `optionsQueryFailure` and deliberately describes the failure vaguely rather than fabricating a cause. But they can be told apart **before** it. `compileReport` already receives the catalog and the viewer's roles — for each query section, take the union of catalog `roles` across the base collection and every `$lookup.from`, compare it against the viewer's roles, and render a third Alert variant where the viewer falls short.
+
+Three consequences:
+
+- **The withheld Alert carries no recoveries**, for the owner either. There is nothing to fix — the spec is valid and the data is simply not this viewer's to see — so "ask the assistant to fix it" would send the owner into a repair loop over a working section. An owner can be denied too: `share_roles` and the catalog's roles are independent, so authoring a report is no guarantee of being able to read it later.
+- **It corrects the non-owner copy above.** Naming who can fix a section is wrong when nothing is broken and nobody can; the withheld variant says the data is restricted and stops.
+- **It names no collection and no role.** The section's own label already says as much as the viewer should learn; adding "requires the `finance` role on `payroll`" would turn a display fix into a description of the app's access model.
+
+Why this matters more now than before: until reports had an audience, a viewer was always the author, and an author who could not read their own data was a rare, self-inflicted case. [ownership](../ownership/design.md#what-shared-does-and-does-not-promise) makes it ordinary — that is where the two-layer model is stated, and it explicitly hands the display half here.
 
 ### The filter row says nothing about what it scopes
 
@@ -76,7 +94,7 @@ The report page compiles server-side into a `Dynamic` block, and **an undeclared
 ## Files changed (anticipated)
 
 - `modules/reporting/pages/report.yaml` — provenance line, per-section `⤓`, Continue-in-chat (owner-only, conditional on `conversation_id`), owner-only section recoveries, and the `types.*` declarations for any new emitted type.
-- `plugins/modules-mongodb-plugins/src/analytics/compileReport.js` — the section-level recovery affordances, and whatever the filter-placement decision turns out to require.
+- `plugins/modules-mongodb-plugins/src/analytics/compileReport.js` — the section-level recovery affordances, the withheld-section Alert variant and the role pre-check behind it (no new inputs — it already takes the catalog and the viewer's roles), and whatever the filter-placement decision turns out to require.
 - `docs/reporting/` — the index's surfaces table; `concepts/implementation-walkthrough.md` if the compiled shape changes.
 
 `resolve-report`'s change — opening the read to shared reports and returning the owner flag — is [ownership](../ownership/design.md#endpoints)'s.
@@ -88,6 +106,7 @@ The seeded fixtures are [ownership](../ownership/design.md#demo-consumers)'s and
 What this sub-design adds:
 
 - A seeded report with a **deliberately broken section** so the Alert plus the two owner recoveries render, and so the non-owner variant of the same report shows the names-who-can-fix-it form.
+- A seeded **shared report over a role-gated catalog collection**, opened by a demo user who does not hold the role, so the withheld variant renders — with no recoveries — beside the broken variant it must not be confused with. The demo catalog needs one entry carrying a `roles` list for this, which is also the first demo coverage catalog role-gating has had.
 - A seeded report carrying **two independent filter groups**, so whatever the filter-placement decision becomes has a demo that exercises it. Today this is the case the demo works around by hand.
 
 Verify with `pnpm ldf:b` from `apps/demo` and inspect the generated `.lowdefy/server/build/pages/**` artefacts.

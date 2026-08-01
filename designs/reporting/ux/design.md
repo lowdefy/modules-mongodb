@@ -82,6 +82,7 @@ The full inventory, with the sub-design that specifies each. Shapes are in the o
 | `set-report-visibility` | new     | [ownership](ownership/design.md)           |
 | `set-report-favourite`  | new     | [ownership](ownership/design.md)           |
 | `set-report-title`      | new     | [ownership](ownership/design.md)           |
+| `remove-report-section` | new     | [ownership](ownership/design.md)           |
 | `duplicate-report`      | new     | [ownership](ownership/design.md)           |
 | `restore-report`        | new     | [ownership](ownership/design.md)           |
 | `delete-report`         | keep    | [ownership](ownership/design.md)           |
