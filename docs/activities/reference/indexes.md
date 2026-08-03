@@ -7,7 +7,9 @@ concepts: [indexes, mongodb, atlas-search, stored-source, search, activities]
 
 # Activities — Indexes
 
-The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collection backing the module's `activities-collection` connection before running the list and Excel export flows. That connection names `activities`; an app that keeps its activities somewhere else remaps the connection in its module entry to one of its own and applies the indexes there.
+The module does not create indexes — index creation is a host-app concern. Everything below goes on the collection backing the module's `activities-collection` connection; that connection names `activities`, and an app that keeps its activities somewhere else remaps the connection in its module entry to one of its own and applies the indexes there.
+
+The two kinds carry different weight. The **Atlas Search index is required** wherever `atlas_search` is `true`: without it the list and Excel export searches match nothing. The **regular `mongod` indexes** earn their place only on the reads that actually bound them — the list's date-range filter is the one built-in predicate that does, as that section explains. An unfiltered browse bounds none of them and scans the collection in either search mode.
 
 **This contract is versioned with the module.** The search mappings below are narrow because every structural filter runs in a plain `$match` _after_ `$search`; they are correct from the module version that moved the filters onward. The module CHANGELOG records the version that changed the requirement, so an app upgrading knows to update its cluster's index, and an app still on an earlier version should read that version's copy of this page.
 

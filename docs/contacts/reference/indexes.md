@@ -7,7 +7,9 @@ concepts: [indexes, mongodb, atlas-search, stored-source, search, contacts]
 
 # Contacts — Indexes
 
-The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collection backing the module's `contacts-collection` connection before running the list, Excel export, and contact-selector flows. That connection names `user-contacts`; an app that keeps its people somewhere else remaps the connection in its module entry to one of its own and applies the indexes there.
+The module does not create indexes — index creation is a host-app concern. Everything below goes on the collection backing the module's `contacts-collection` connection; that connection names `user-contacts`, and an app that keeps its people somewhere else remaps the connection in its module entry to one of its own and applies the indexes there.
+
+The two kinds carry different weight. The **Atlas Search index is required** wherever `atlas_search` is `true`: without it the list, Excel export, and contact-selector searches match nothing, and without whole-document stored source the filters that run after `$search` are silently wrong. The **regular `mongod` indexes are not prerequisites** for those flows — none of the module's own browse queries bounds one of them, for the reasons that section gives. They serve the filtered reads a consumer or host app adds, in either search mode.
 
 **This contract is versioned with the module.** The search mappings below are narrow because every structural filter runs in a plain `$match` _after_ `$search`; they are correct from the module version that moved the filters onward. The module CHANGELOG records the version that changed the requirement, so an app upgrading knows to update its cluster's index, and an app still on an earlier version should read that version's copy of this page.
 
