@@ -1,5 +1,22 @@
-# Saved reports for the reports-list page, most recent first. The spec stays
-# server-side — the list only needs display fields.
+# Saved reports for the reports-list page — scoped, searched, sorted and paged
+# server-side.
+#
+# The scope match IS the authorization, so a bug in it is a confidentiality bug
+# rather than a display bug. That is why scope is a server parameter and not a
+# client-side filter over an "everything" response: an endpoint that returned
+# every readable report and let the page pick would make Shared and Mine
+# cosmetic.
+#
+# An aggregation rather than the find this used to be, because three response
+# fields need expressions: is_favourite is $in over favourite_of, and the
+# section counts are reductions over spec.sections. A find projection takes
+# $slice / $elemMatch / $meta and no expressions, so none of them is expressible
+# there.
+#
+# Paging is by offset. A cursor has to encode the key it pages over, and sort is
+# caller-selectable here, so a correct cursor would need an _id tiebreaker
+# compounded into it for every sort the toolbar offers. An offset needs none of
+# that, and resets on a sort change exactly as a restarted cursor would.
 id: list-reports
 type: Api
 routine:
@@ -8,27 +25,293 @@ routine:
         - _user: id
         - null
     :then:
-      - :return: []
-  - id: find_reports
-    type: MongoDBFind
+      - :reject: You must be signed in to list reports.
+  # An unrecognised or absent scope is rejected rather than defaulted: choosing
+  # a scope for the caller means choosing which reports they may see, and doing
+  # that silently is the wrong failure on the endpoint that carries the
+  # boundary. `_payload` of an absent key resolves to null, so an omitted scope
+  # lands here too.
+  - :if:
+      _not:
+        _array.includes:
+          - - mine
+            - shared
+            - favourites
+            - all
+            - deleted
+          - _payload: scope
+    :then:
+      - :reject: A recognised scope is required to list reports.
+  - id: list_reports
+    type: MongoDBAggregation
     connectionId:
       _module.connectionId: reports-store
     properties:
-      query:
-        owner.user_id:
-          _user: id
-        # Soft-deleted reports are excluded — see docs/shared/soft-delete.md for
-        # why the predicate tests the stamp's timestamp, not the field itself.
-        deleted.timestamp:
-          $exists: false
-      options:
-        sort:
-          updated.timestamp: -1
-        limit: 200
-        projection:
-          title: 1
-          description: 1
-          created: 1
-          updated: 1
+      pipeline:
+        # Static per-scope predicates rather than a filter object assembled from
+        # the payload — these five ARE the authorization boundary and are meant
+        # to be read straight off the page. No `default` branch: the guard above
+        # has already rejected every other value, so an unmatched scope cannot
+        # reach here.
+        - $match:
+            _switch:
+              branches:
+                # Any visibility — publishing a report does not remove it from
+                # Mine.
+                - if:
+                    _eq:
+                      - _payload: scope
+                      - mine
+                  then:
+                    owner.user_id:
+                      _user: id
+                    deleted.timestamp:
+                      $exists: false
+                # A property of the report rather than of the viewer, which is
+                # what makes it predictable — and it includes the caller's own
+                # shared reports, so a publisher has somewhere to see theirs as
+                # the app sees it and somewhere to go to unpublish it.
+                - if:
+                    _eq:
+                      - _payload: scope
+                      - shared
+                  then:
+                    visibility: shared
+                    deleted.timestamp:
+                      $exists: false
+                # The one scope where the readable predicate is load-bearing: a
+                # favourite marker outlives the sharing that created it, so a
+                # bare favourite_of match would keep serving a report after it
+                # was unpublished.
+                - if:
+                    _eq:
+                      - _payload: scope
+                      - favourites
+                  then:
+                    favourite_of:
+                      _user: id
+                    deleted.timestamp:
+                      $exists: false
+                    $or:
+                      - owner.user_id:
+                          _user: id
+                      - visibility: shared
+                # The readable predicate with nothing added, so it widens
+                # nothing mine and shared do not already allow. Reached only
+                # from the no-matches state's "search all scopes".
+                - if:
+                    _eq:
+                      - _payload: scope
+                      - all
+                  then:
+                    deleted.timestamp:
+                      $exists: false
+                    $or:
+                      - owner.user_id:
+                          _user: id
+                      - visibility: shared
+                # The only scope that inverts the stamp test, and owner-matched:
+                # you never see anyone else's deleted reports, including ones
+                # that had been published to you.
+                - if:
+                    _eq:
+                      - _payload: scope
+                      - deleted
+                  then:
+                    owner.user_id:
+                      _user: id
+                    deleted.timestamp:
+                      $exists: true
+        # Search matches title and description and deliberately not the spec: a
+        # report's pipelines and field names are not text the user wrote, so
+        # matching them would return reports whose visible text has nothing to
+        # do with the term.
+        #
+        # An absent term escapes to an empty pattern, which matches every
+        # document, so this stage needs no conditional branch. The two _js
+        # bodies are identical and dedupe to a single built function by hash.
+        - $match:
+            $expr:
+              $or:
+                - $regexMatch:
+                    input:
+                      $ifNull:
+                        - $title
+                        - ""
+                    # Escaped so a term containing "(", "[" or "\" matches
+                    # literally rather than forming a pattern Mongo throws on.
+                    regex:
+                      _js: |
+                        const s = payload('search');
+                        if (s === null || s === undefined || s === '') return '';
+                        return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    options: i
+                - $regexMatch:
+                    input:
+                      $ifNull:
+                        - $description
+                        - ""
+                    regex:
+                      _js: |
+                        const s = payload('search');
+                        if (s === null || s === undefined || s === '') return '';
+                        return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    options: i
+        - $facet:
+            count:
+              - $count: count
+            results:
+              # is_favourite is per-viewer and the default sort orders by it, so
+              # it has to exist before the $sort below. The count branch needs
+              # none of this, which is why it is inside the results branch.
+              - $addFields:
+                  is_favourite:
+                    $in:
+                      - _user: id
+                      - $ifNull:
+                          - $favourite_of
+                          - []
+                  is_owner:
+                    $eq:
+                      - $owner.user_id
+                      - _user: id
+                  # Bound once here so the six counts below do not each repeat
+                  # the null guard. Dropped again by the inclusion $project.
+                  sections:
+                    $ifNull:
+                      - $spec.sections
+                      - []
+              # A caller-supplied sort REPLACES the default rather than nesting
+              # under is_favourite — a starred report floating above a title
+              # sort would make the sort control look broken. _id breaks ties in
+              # every branch, because offset paging over a non-unique key can
+              # show one report twice and skip another between pages.
+              - $sort:
+                  _switch:
+                    branches:
+                      - if:
+                          _ne:
+                            - _payload: sort.by
+                            - null
+                        then:
+                          _object.assign:
+                            - _object.defineProperty:
+                                on: {}
+                                key:
+                                  _payload: sort.by
+                                descriptor:
+                                  value:
+                                    _if_none:
+                                      - _payload: sort.order
+                                      - 1
+                            - _id: 1
+                      # Recovery is entirely about when a report was deleted and
+                      # by whom. `updated` on a deleted report is when its spec
+                      # last changed, which is unrelated — one edited heavily in
+                      # March and deleted in July would sort above one created
+                      # and deleted yesterday. Favourite-first means nothing
+                      # here either.
+                      - if:
+                          _eq:
+                            - _payload: scope
+                            - deleted
+                        then:
+                          deleted.timestamp: -1
+                          _id: 1
+                    default:
+                      is_favourite: -1
+                      updated.timestamp: -1
+                      _id: 1
+              # favourite_of is projected OUT — a caller must never learn who
+              # else favourited a report. An inclusion projection drops it by
+              # omission, so no later editor of this stage has to remember to
+              # exclude it.
+              - $project:
+                  title: 1
+                  description: 1
+                  visibility: 1
+                  created: 1
+                  updated: 1
+                  deleted: 1
+                  # A snapshot: reporting knows no users collection and cannot
+                  # resolve a user_id to a current name. owner.user_id stays out
+                  # — is_owner is all the page needs from it.
+                  owner.name: 1
+                  is_favourite: 1
+                  is_owner: 1
+                  # Contents pills. One $filter per type rather than a $reduce
+                  # into dynamically built keys: the six types are a closed set,
+                  # so static branches are both shorter to read and impossible
+                  # to get subtly wrong.
+                  section_counts:
+                    kpi:
+                      $size:
+                        $filter:
+                          input: $sections
+                          cond:
+                            $eq:
+                              - $$this.type
+                              - kpi
+                    chart:
+                      $size:
+                        $filter:
+                          input: $sections
+                          cond:
+                            $eq:
+                              - $$this.type
+                              - chart
+                    table:
+                      $size:
+                        $filter:
+                          input: $sections
+                          cond:
+                            $eq:
+                              - $$this.type
+                              - table
+                    markdown:
+                      $size:
+                        $filter:
+                          input: $sections
+                          cond:
+                            $eq:
+                              - $$this.type
+                              - markdown
+                    download:
+                      $size:
+                        $filter:
+                          input: $sections
+                          cond:
+                            $eq:
+                              - $$this.type
+                              - download
+                  # Counted apart from the five above because a filter is a
+                  # control over the report, not content in it — the list draws
+                  # it as its own pill.
+                  filter_count:
+                    $size:
+                      $filter:
+                        input: $sections
+                        cond:
+                          $eq:
+                            - $$this.type
+                            - filter
+              - $skip:
+                  _if_none:
+                    - _payload: skip
+                    - 0
+              - $limit:
+                  _if_none:
+                    - _payload: page_size
+                    - 24
   - :return:
-      _step: find_reports
+      reports:
+        _if_none:
+          - _step: list_reports.0.results
+          - []
+      # The unpaged match count, from the $facet branch the paging cannot reach
+      # — this is the "of 8" in the list's "Showing 6 of 8". $facet always
+      # returns one document, with an empty count branch when nothing matched.
+      total:
+        _if_none:
+          - _step: list_reports.0.count.0.count
+          - 0
