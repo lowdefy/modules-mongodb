@@ -80,12 +80,13 @@ vars:
     description: >
       Actions collection the events timeline joins to enrich events with action
       cards. Defaults to `actions`; override only when your actions collection is
-      named differently. Tenant wall: the timeline connection is tenant-scoped
-      and its joins are filtered mechanically, so a substituted collection must
-      itself carry the `organizationId` field — without it the join fails
-      closed (empty). Enrichment is data-driven: the join is inert when events
-      carry no `action_ids`, so entities with no workflow actions render as an
-      events-only timeline.
+      named differently. Tenant wall: under `auth.organizations.policy:
+      tenant` the timeline connection is walled and its joins are filtered
+      mechanically, so a substituted collection must itself carry the
+      `organizationId` field — without it the join fails closed (empty).
+      Under `pinned` (the default) no field is required. Enrichment is
+      data-driven: the join is inert when events carry no `action_ids`, so
+      entities with no workflow actions render as an events-only timeline.
   contacts_collection:
     type: string
     default: user-contacts
@@ -93,9 +94,11 @@ vars:
       Contacts collection joined to resolve each event author's avatar
       (`created.user.id` → `_id`, projecting `profile.picture`). Defaults to
       `user-contacts`; avatars fall back to initials when an author has no
-      matching contact. Tenant wall: the timeline connection is tenant-scoped,
-      so a substituted collection must itself carry the `organizationId`
-      field — without it the join fails closed (initials fallback).
+      matching contact. Tenant wall: under `auth.organizations.policy: tenant`
+      the timeline connection is walled, so a substituted collection must
+      itself carry the `organizationId` field — without it the join fails
+      closed (initials fallback). Under `pinned` (the default) no field is
+      required.
 
 components:
   - id: change_stamp

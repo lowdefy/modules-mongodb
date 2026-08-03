@@ -21,8 +21,10 @@ e2e mock caller bypasses auth), or SMTP (email verification).
 
 ## Setup
 
-Sections 1–2 are `pinned` checks and run against `apps/demo`; section 3 is the
-`tenant` shape and runs against `apps/tenant-demo`. Either way:
+Every section runs against `apps/tenant-demo` — since the wall became
+policy-conditional ([policy-conditional-wall](../policy-conditional-wall/design.md)),
+the authored clauses only compile under `policy: tenant`, so `pinned` has no
+wall behaviour to verify (see the pinned smoke note at the end). Setup:
 
 - `MONGODB_URI` → a real **Atlas** cluster.
 - Atlas Search indexes per `docs/shared/org-scoping.md` on `user-contacts`,
@@ -31,7 +33,7 @@ Sections 1–2 are `pinned` checks and run against `apps/demo`; section 3 is the
   (their pipelines use `returnStoredSource`).
 - Real auth secrets (`NEXTAUTH_SECRET`, SMTP for magic links / verification).
 
-## 1. `$search` under the authored wall (pinned is enough)
+## 1. `$search` under the authored wall
 
 - [ ] Contacts, companies, and activities **list pages** return rows (not
       blank). Blank lists with data present = missing `token` mapping or
@@ -42,16 +44,21 @@ Sections 1–2 are `pinned` checks and run against `apps/demo`; section 3 is the
       operator-composed pipelines only meet the wall at runtime).
 - [ ] **ContactSelector** (e.g. company edit → contacts field) returns options
       when typing.
-- [ ] **Audit negative check** (once, then revert): remove the `equals` clause
-      from `get_all_contacts.yaml`'s compound filter, redeploy, load the page —
-      expect the loud audit error ("has no compound.filter equals clause…"),
-      NOT a blank list. Restore the clause.
+- [ ] **Audit negative check** (once, then revert): remove the shared-fragment
+      `_ref` from `get_all_contacts.yaml`'s compound filter concat, redeploy,
+      load the page — expect the loud audit error ("has no compound.filter
+      equals clause…"), NOT a blank list. Restore the ref.
+- [ ] **Preflight check** (once): insert one unstamped document into a walled
+      collection, restart — expect the server to refuse every request with the
+      aggregated "Tenant preflight refused to serve" error naming the
+      collection. Remove the document, restart.
 
-## 2. Signup mint (needs real sessions + SMTP; pinned is enough)
+## 2. Signup mint (needs real sessions + SMTP)
 
 - [ ] Fresh open signup → verify email → first login. Then in the DB: the new
-      `user-contacts` row carries `organizationId` = the deployment's org, and
-      the `users` row has `profile.contactId` pointing at it.
+      `user-contacts` row carries `organizationId` = the caller's org and
+      `userId` = the auth user id (no `profile.contactId` on the user — the
+      link lives on the contact).
 - [ ] Second login: no new contact row, no changed `updated` stamp (the
       every-login hook skips once linked).
 - [ ] Invite flow still creates + links its contact unchanged (invite → accept
@@ -72,6 +79,17 @@ below are the developer subset:
 - [ ] user-admin: reads work (policy-portable since `_user: organizationId`),
       but treat the module as pinned-shape per Decision 6 — Suspend is a
       suite-wide ban; do not expose it to tenant-facing admins.
+
+## Pinned smoke (apps/demo)
+
+Under `pinned` the wall is inert and there are no organization checks to make —
+ordinary page smoke covers it. The two policy-specific facts worth one look each:
+
+- [ ] List pages, exports, and the ContactSelector work against an Atlas Search
+      index **without** the `organizationId` `token` mapping or `storedSource`
+      entry (the pinned index shape).
+- [ ] A fresh signup's minted `user-contacts` row carries `userId` but **no**
+      `organizationId`.
 
 Record outcomes (and any surprises) back into this file or
 `implementation-notes.md`.

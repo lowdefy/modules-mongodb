@@ -38,8 +38,8 @@ importers:
   apps/demo:
     dependencies:
       lowdefy:
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
     devDependencies:
       '@lowdefy/community-plugin-e2e-mdb':
         specifier: latest
@@ -289,47 +289,47 @@ importers:
         specifier: 2.0.4
         version: 2.0.4(hono@4.12.25)
       '@lowdefy/actions-core':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/api':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@7.2.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@7.2.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@lowdefy/block-utils':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-aggrid':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@ant-design/icons@6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(dayjs@1.11.20)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@ant-design/icons@6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(dayjs@1.11.20)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd-x':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@lowdefy/blocks-basic':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-captcha':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-echarts':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-files':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-loaders':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-markdown':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(supports-color@8.1.1)
       '@lowdefy/blocks-tiptap':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/client':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(moment@2.29.4)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(moment@2.29.4)
       '@lowdefy/community-plugin-nodemailer':
         specifier: 1.1.4
         version: 1.1.4(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -337,53 +337,53 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@lowdefy/connection-mongodb':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@opentelemetry/api@1.9.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@opentelemetry/api@1.9.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/connection-smtp':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/errors':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/helpers':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/layout':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/logger':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/modules-mongodb-plugins':
         specifier: workspace:*
         version: link:../../../../plugins/modules-mongodb-plugins
       '@lowdefy/node-utils':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-dayjs':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-js':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-mql':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-nunjucks':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-uuid':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/plugin-aws':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-better-auth':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/websockets-core':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@sentry/browser':
         specifier: 10.57.0
         version: 10.57.0
@@ -440,8 +440,8 @@ importers:
         version: 8.18.0
     devDependencies:
       '@lowdefy/build':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@next/eslint-plugin-next':
         specifier: 16.1.6
         version: 16.1.6
@@ -458,8 +458,8 @@ importers:
   apps/passwordless-demo:
     dependencies:
       lowdefy:
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
 
   apps/passwordless-demo/.lowdefy/server:
     dependencies:
@@ -476,98 +476,98 @@ importers:
         specifier: 2.0.4
         version: 2.0.4(hono@4.12.25)
       '@lowdefy/actions-core':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/api':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@7.2.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@7.2.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@lowdefy/block-utils':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-aggrid':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@ant-design/icons@6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(dayjs@1.11.20)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@ant-design/icons@6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(dayjs@1.11.20)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd-x':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@lowdefy/blocks-basic':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-captcha':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-echarts':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-files':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-loaders':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-markdown':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(supports-color@8.1.1)
       '@lowdefy/blocks-tiptap':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/client':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(moment@2.29.4)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(moment@2.29.4)
       '@lowdefy/community-plugin-nodemailer':
         specifier: 1.1.4
         version: 1.1.4(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/connection-mongodb':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@opentelemetry/api@1.9.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@opentelemetry/api@1.9.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/connection-smtp':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/errors':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/helpers':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/layout':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/logger':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/modules-mongodb-plugins':
         specifier: workspace:*
         version: link:../../../../plugins/modules-mongodb-plugins
       '@lowdefy/node-utils':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-dayjs':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-js':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-mql':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-nunjucks':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-uuid':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/plugin-aws':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-better-auth':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/websockets-core':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@sentry/browser':
         specifier: 10.57.0
         version: 10.57.0
@@ -624,8 +624,8 @@ importers:
         version: 8.18.0
     devDependencies:
       '@lowdefy/build':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@next/eslint-plugin-next':
         specifier: 16.1.6
         version: 16.1.6
@@ -642,8 +642,8 @@ importers:
   apps/tenant-demo:
     dependencies:
       lowdefy:
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
     devDependencies:
       '@lowdefy/community-plugin-e2e-mdb':
         specifier: latest
@@ -655,7 +655,7 @@ importers:
         specifier: ^1.50.0
         version: 1.60.0
 
-  apps/tenant-demo/.lowdefy/server:
+  apps/tenant-demo/.lowdefy/dev:
     dependencies:
       '@ant-design/cssinjs':
         specifier: 2.1.2
@@ -665,16 +665,22 @@ importers:
         version: 2.7.0(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@better-auth/passkey':
         specifier: 1.6.23
-        version: 1.6.23(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.23(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(better-call@1.3.7(zod@4.4.3))(nanostores@1.4.1)
+        version: 1.6.23(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@3.25.76))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.23(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(better-call@1.3.7(zod@3.25.76))(nanostores@1.4.1)
+      '@hono/mcp':
+        specifier: 0.3.0
+        version: 0.3.0(@modelcontextprotocol/sdk@1.29.0(supports-color@8.1.1)(zod@3.25.76))(hono-rate-limiter@0.5.3(hono@4.12.25))(hono@4.12.25)(zod@3.25.76)
       '@hono/node-server':
         specifier: 2.0.4
         version: 2.0.4(hono@4.12.25)
+      '@hono/vite-dev-server':
+        specifier: 0.26.0
+        version: 0.26.0(hono@4.12.25)
       '@lowdefy/actions-core':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404
       '@lowdefy/api':
         specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@7.2.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        version: 0.0.0-experimental-20260730112404(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@3.25.76))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@3.25.76))(mongodb@7.2.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.76)
       '@lowdefy/block-utils':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -686,7 +692,7 @@ importers:
         version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd-x':
         specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        version: 0.0.0-experimental-20260730112404(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.76)
       '@lowdefy/blocks-basic':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -696,9 +702,6 @@ importers:
       '@lowdefy/blocks-echarts':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/blocks-files':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-loaders':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -708,6 +711,9 @@ importers:
       '@lowdefy/blocks-tiptap':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/build':
+        specifier: 0.0.0-experimental-20260730112404
+        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.76)
       '@lowdefy/client':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404(moment@2.29.4)
@@ -717,10 +723,19 @@ importers:
       '@lowdefy/community-plugin-xlsx':
         specifier: 1.1.0
         version: 1.1.0
+      '@lowdefy/connection-axios-http':
+        specifier: 0.0.0-experimental-20260730112404
+        version: 0.0.0-experimental-20260730112404(debug@4.4.3(supports-color@8.1.1))
       '@lowdefy/connection-mongodb':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404(@opentelemetry/api@1.9.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/connection-smtp':
+        specifier: 0.0.0-experimental-20260730112404
+        version: 0.0.0-experimental-20260730112404
+      '@lowdefy/docs-content':
+        specifier: 0.0.0-experimental-20260730112404
+        version: 0.0.0-experimental-20260730112404
+      '@lowdefy/engine':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404
       '@lowdefy/errors':
@@ -741,7 +756,13 @@ importers:
       '@lowdefy/node-utils':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404
+      '@lowdefy/operators-change-case':
+        specifier: 0.0.0-experimental-20260730112404
+        version: 0.0.0-experimental-20260730112404
       '@lowdefy/operators-dayjs':
+        specifier: 0.0.0-experimental-20260730112404
+        version: 0.0.0-experimental-20260730112404
+      '@lowdefy/operators-diff':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404
       '@lowdefy/operators-js':
@@ -756,6 +777,9 @@ importers:
       '@lowdefy/operators-uuid':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404
+      '@lowdefy/operators-yaml':
+        specifier: 0.0.0-experimental-20260730112404
+        version: 0.0.0-experimental-20260730112404
       '@lowdefy/plugin-aws':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -765,6 +789,205 @@ importers:
       '@lowdefy/websockets-core':
         specifier: 0.0.0-experimental-20260730112404
         version: 0.0.0-experimental-20260730112404
+      '@modelcontextprotocol/sdk':
+        specifier: 1.29.0
+        version: 1.29.0(supports-color@8.1.1)(zod@3.25.76)
+      '@tailwindcss/postcss':
+        specifier: 4.3.1
+        version: 4.3.1
+      '@vitejs/plugin-react':
+        specifier: 6.0.2
+        version: 6.0.2(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
+      antd:
+        specifier: 6.3.1
+        version: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      better-auth:
+        specifier: 1.6.23
+        version: 1.6.23(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      chokidar:
+        specifier: 3.5.3
+        version: 3.5.3
+      dayjs:
+        specifier: 1.11.20
+        version: 1.11.20
+      dotenv:
+        specifier: 16.3.1
+        version: 16.3.1
+      hono:
+        specifier: 4.12.25
+        version: 4.12.25
+      html-to-image:
+        specifier: 1.11.13
+        version: 1.11.13
+      opener:
+        specifier: 1.5.2
+        version: 1.5.2
+      pino:
+        specifier: 10.3.1
+        version: 10.3.1
+      playwright-core:
+        specifier: 1.59.1
+        version: 1.59.1
+      postcss:
+        specifier: 8.5.6
+        version: 8.5.6
+      process:
+        specifier: 0.11.10
+        version: 0.11.10
+      react:
+        specifier: 18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: 18.2.0
+        version: 18.2.0(react@18.2.0)
+      react-icons:
+        specifier: 5.6.0
+        version: 5.6.0(react@18.2.0)
+      swr:
+        specifier: 2.2.4
+        version: 2.2.4(react@18.2.0)
+      tailwindcss:
+        specifier: 4.3.1
+        version: 4.3.1
+      tinykeys:
+        specifier: 3.0.0
+        version: 3.0.0
+      uuid:
+        specifier: 14.0.0
+        version: 14.0.0
+      vite:
+        specifier: 8.0.16
+        version: 8.0.16(@types/node@25.9.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0)
+      ws:
+        specifier: 8.18.0
+        version: 8.18.0
+      yaml:
+        specifier: 2.9.0
+        version: 2.9.0
+      yargs:
+        specifier: 18.0.0
+        version: 18.0.0
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+    devDependencies:
+      jest:
+        specifier: 28.1.3
+        version: 28.1.3(@types/node@25.9.1)(supports-color@8.1.1)
+      webpack:
+        specifier: 5.94.0
+        version: 5.94.0(@swc/core@1.11.24)(lightningcss@1.33.0)(postcss@8.5.6)
+
+  apps/tenant-demo/.lowdefy/server:
+    dependencies:
+      '@ant-design/cssinjs':
+        specifier: 2.1.2
+        version: 2.1.2(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@ant-design/x':
+        specifier: 2.7.0
+        version: 2.7.0(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@better-auth/passkey':
+        specifier: 1.6.23
+        version: 1.6.23(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.23(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(better-call@1.3.7(zod@4.4.3))(nanostores@1.4.1)
+      '@hono/node-server':
+        specifier: 2.0.4
+        version: 2.0.4(hono@4.12.25)
+      '@lowdefy/actions-core':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/api':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@7.2.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+      '@lowdefy/block-utils':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-aggrid':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@ant-design/icons@6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(dayjs@1.11.20)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-antd':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-antd-x':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+      '@lowdefy/blocks-basic':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-captcha':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-echarts':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-files':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-loaders':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-markdown':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(supports-color@8.1.1)
+      '@lowdefy/blocks-tiptap':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/client':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(moment@2.29.4)
+      '@lowdefy/community-plugin-nodemailer':
+        specifier: 1.1.4
+        version: 1.1.4(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/community-plugin-xlsx':
+        specifier: 1.1.0
+        version: 1.1.0
+      '@lowdefy/connection-mongodb':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@opentelemetry/api@1.9.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/connection-smtp':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/errors':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/layout':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/logger':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/modules-mongodb-plugins':
+        specifier: workspace:*
+        version: link:../../../../plugins/modules-mongodb-plugins
+      '@lowdefy/node-utils':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/operators-dayjs':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/operators-js':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/operators-mql':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/operators-nunjucks':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/operators-uuid':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/plugin-aws':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/plugin-better-auth':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
+      '@lowdefy/websockets-core':
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@sentry/browser':
         specifier: 10.57.0
         version: 10.57.0
@@ -821,8 +1044,8 @@ importers:
         version: 8.18.0
     devDependencies:
       '@lowdefy/build':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@next/eslint-plugin-next':
         specifier: 16.1.6
         version: 16.1.6
@@ -839,15 +1062,15 @@ importers:
   apps/workflows-test:
     dependencies:
       lowdefy:
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
     devDependencies:
       '@lowdefy/community-plugin-e2e-mdb':
         specifier: latest
         version: 1.1.0(@playwright/test@1.60.0)(supports-color@8.1.1)
       '@lowdefy/e2e-utils':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@playwright/test@1.60.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@playwright/test@1.60.0)
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.60.0
@@ -867,47 +1090,47 @@ importers:
         specifier: 2.0.4
         version: 2.0.4(hono@4.12.25)
       '@lowdefy/actions-core':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/api':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@6.3.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@6.3.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@lowdefy/block-utils':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-aggrid':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@ant-design/icons@6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(dayjs@1.11.20)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@ant-design/icons@6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(dayjs@1.11.20)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd-x':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@lowdefy/blocks-basic':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-captcha':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-echarts':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-files':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-loaders':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-markdown':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(supports-color@8.1.1)
       '@lowdefy/blocks-tiptap':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/client':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(moment@2.29.4)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(moment@2.29.4)
       '@lowdefy/community-plugin-mongodb':
         specifier: 3.0.0
         version: 3.0.0(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -915,47 +1138,47 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@lowdefy/errors':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/helpers':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/layout':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/logger':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/modules-mongodb-plugins':
         specifier: workspace:*
         version: link:../../../../plugins/modules-mongodb-plugins
       '@lowdefy/node-utils':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-dayjs':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-js':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-mql':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-nunjucks':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/operators-uuid':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/plugin-aws':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-better-auth':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@lowdefy/websockets-core':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426
       '@sentry/browser':
         specifier: 10.57.0
         version: 10.57.0
@@ -1012,8 +1235,8 @@ importers:
         version: 8.18.0
     devDependencies:
       '@lowdefy/build':
-        specifier: 0.0.0-experimental-20260730112404
-        version: 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        specifier: 0.0.0-experimental-20260803084426
+        version: 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@next/eslint-plugin-next':
         specifier: 16.1.6
         version: 16.1.6
@@ -2119,17 +2342,35 @@ packages:
   '@lowdefy/actions-core@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-e8GbOPTKmpjry4R1SxudkHKJo8GiCMxxF6EJmQGxYZubi8x+DO4maxzsBEhOAlrwZVmRsCQcB2vFItFsHj8ydA==}
 
+  '@lowdefy/actions-core@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-/FMuIRgpjHlIiSpTUMrFzRgvS1/CKRry9zyP29PtDcHwB3ZopbDAw7RNxfg9mYic2D2kUhwYddU50Gxse+9UmQ==}
+
   '@lowdefy/ai-utils@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-vmUULk9Iv7plBmmEOWbIvE8MU+qZfbJgqVFbYZPxikdTgxPrQffW1PJkFE9gC5SR5NXsoeH7nAKr96zavGkqjg==}
+
+  '@lowdefy/ai-utils@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-8S0DBTgwxi0SBtsC1Pq3fKpOrpAzGuQrn4VrvjPpimdHGG2eulYLeTRl/52q9pz3oD7P0f13+X4ZjplY34sTOA==}
 
   '@lowdefy/ajv@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-CMYKYtMhlICNznYhktVoHqDXFTEoIdNd7JLwB379zED4NYYmSTozdjNFS9tJKHyZNWAd4Jl2neMPYjjmrTSRJg==}
 
+  '@lowdefy/ajv@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-JJ2gHrvU3LCFyKthkgdfYBSwaHv9xgkUV8DsfTpTMLDfp8kUnXu+NY8mjRmLXQd7emabvXNKWSPg7KJxtip8lw==}
+
   '@lowdefy/api@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-GCQhWBirR4yR3QfxTn7YsQrMqxgGuXAuJ6XIWbeoiWTTfeYSLzWLL0euWLpitT1a6aVM2HNfWjuvZFSgtvuVsQ==}
 
+  '@lowdefy/api@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-lLkDIRBVnXVNAzclwvYLfcCHPDQ4yyBClskJ2KwA8bcLB6LKcwGQCVUud293cPH9vABYKXAQtRHywu+YUsdMqw==}
+
   '@lowdefy/block-utils@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-03xyy9sSsfxXzZz5HG3NgNKMepFqpk/XeWzHqa65+0LUjE0uamBllgNYbcAgWplQDFFuyXbO7C1texTM6uKe0w==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+
+  '@lowdefy/block-utils@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-zPea7SuFUDiA47OiYmiwmZvV5bipevU5eL0S94tUtAeUZb72ie7J/d4n+UAsM2mLg4L5Yz5CTfA0Vka2O/qPSg==}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
@@ -2149,14 +2390,36 @@ packages:
       react: '>=18'
       react-dom: '>=18'
 
+  '@lowdefy/blocks-aggrid@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-ocGsvTgjQWfxwEmPGYpcixVR63RiXKEmKF2KDTkPfLrVmppPozWm9qx0ybtr0Ja6HwRC9nMXUCk0vlVvWe6AJg==}
+    peerDependencies:
+      '@ant-design/icons': 6.1.0
+      antd: '>=6'
+      dayjs: 1.11.20
+      react: '>=18'
+      react-dom: '>=18'
+
   '@lowdefy/blocks-antd-x@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-zmOvN54DmKDWhiRwkCM7uTObgm9GCE806y2ccDwh8W+x+IIg9vEm4/j8mf/f00qaE+UMvcTMX6g9ba2CRvqZYg==}
     peerDependencies:
       antd: 6.3.1
       react: 18.2.0
 
+  '@lowdefy/blocks-antd-x@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-XGh4TRs3CPWclqHCjz+iNqxnO+shdkWuDN+iaKBXZCm/LsqeaCOq5ueRMOIvRoMXxgSFVv9YibmICdr0B1X3vA==}
+    peerDependencies:
+      antd: 6.3.1
+      react: 18.2.0
+
   '@lowdefy/blocks-antd@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-s97SmdJutE9+3Usrk/7sz8yv3tQ0IiA/XK4kWIM4xQUdcLOoM0bf7kk+Xuv93aGons+ZHFLZZdHO3/kvy0wm4Q==}
+    peerDependencies:
+      antd: '>=6'
+      react: '>=18'
+      react-dom: '>=18'
+
+  '@lowdefy/blocks-antd@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-KptZlW7NKUNlS84ZTf0ChiNJPvaL0DEqd/mHnH8pC/6g9/4qMRbaBaedhTgKqeUxPPkkh+Nlj3v/SLX1qAVVNw==}
     peerDependencies:
       antd: '>=6'
       react: '>=18'
@@ -2175,14 +2438,32 @@ packages:
       react: '>=18'
       react-dom: '>=18'
 
+  '@lowdefy/blocks-basic@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-bfgeeS87lNZsfG6pE+XcLB2RSe5NaHhnhi2CyMeIHICq3ifEDJ3x7NmeWiF4S+OKkum0KggHVzF/qRlXkyBxLA==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+
   '@lowdefy/blocks-captcha@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-5r7FhwGAz/Ai6F3Dp+9116IkDXjF9U8HoFYgoHFPot/uW67GNkW3DDwTCaOv99216F6088mjaXtP9nyM9xVRJQ==}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
 
+  '@lowdefy/blocks-captcha@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-aqDCT75nFeNIDwSqhu/qpKcyIIMlKeXlhXyuTzo3J/RUflMhLltYkHBJkSO1n6bTHNCKir+OEcMdCg4LtLt6eQ==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+
   '@lowdefy/blocks-echarts@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-2lvEXmJMF02R7i7kZPYN0c4BrcIYwTxpUvszF0EGRLAJNbPDL0FEa0qReAqPNH8lBeJte1DBFrLJd3OXPDmPkA==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+
+  '@lowdefy/blocks-echarts@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-wYfqAu/rPmD0qiVF65FjtvRKQ2DxNiDIHfg7Jo4icoBo6Yq2oc/49t/pd27wwu04ABMjp7oziT6E5d11+0yKVw==}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
@@ -2194,8 +2475,21 @@ packages:
       react: '>=18'
       react-dom: '>=18'
 
+  '@lowdefy/blocks-files@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-DCJwbSHEl0grfESLzCqFOABJuSHmIMznUyiX/orQ+tKZFTP9owevVr4pX4FLgqGENneAIxuWnxOPIVfq3xYcSg==}
+    peerDependencies:
+      antd: '>=6'
+      react: '>=18'
+      react-dom: '>=18'
+
   '@lowdefy/blocks-loaders@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-lLKmlTPFPlcWdFets32WJXrx/fQQk9SJxLHknn/6GuBxrNMcdw4zAxMi5DGRciAh30d0zVo6b/LEe+ojCowrog==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+
+  '@lowdefy/blocks-loaders@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-MoQHv/XFhT31WPvuIxhBrBrpP/X1JlZbKy9lzaUyDCGu1xV83c8E6hOPS4s/v/o3VVCOMiuDkkYP3H15VkAevg==}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
@@ -2207,8 +2501,21 @@ packages:
       react: '>=18'
       react-dom: '>=18'
 
+  '@lowdefy/blocks-markdown@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-r634Bw07KwIg4yhK2u5wosdIlpIS3Nj6Xjh4I9tafVoxQHZUFs4ZnpyZSlhxLoHMw1QQsEjcE6QLni21NPg2PQ==}
+    peerDependencies:
+      antd: '>=6'
+      react: '>=18'
+      react-dom: '>=18'
+
   '@lowdefy/blocks-tiptap@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-Uv1GNXDOSUKM5a0eaq4C1IiYKWQ9dYokAnnN6vRtiEpKHpPwt4k3IHroZn4Na3BPbzevqtqin4BVgm1GFgR/sg==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+
+  '@lowdefy/blocks-tiptap@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-8PINFZZgiTV3HKvHWVJvSZNVOa8GLgnY+ESC+tGuxwf0jpT6b+U3gKhXrwry1oAOA6R32rMRLrAuW+Knw29Fdg==}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
@@ -2217,8 +2524,15 @@ packages:
     resolution: {integrity: sha512-CA1sZ6yjQWt1+TH7EiY34eL9LzpYKFMRwAhh8TswbaRHPibZs1UAVXi4JtlyjHQpmykWuBId8nsY+CUZN002Xw==}
     hasBin: true
 
+  '@lowdefy/build@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-nT6oqOd3lqbS/PUAC5VW3JG+FnBiUn1ChqHG5x5q3VnUjYTXjhucga/2Ji0pcVCKXwmhFbGpXyihB8nqRDdnYg==}
+    hasBin: true
+
   '@lowdefy/client@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-wicHA2wCzMYRG3ny7DdJ3pnLISeGYKgH7axwmBqul7Yq/SR8sB1A2wEUtkhr3SPefReeMu5v5ksS+R8HFeJUAw==}
+
+  '@lowdefy/client@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-FjNtqfZ/8qLp6lSCdzRvdyjJl2+kChvLxUd+1nKGhS4b7sqqWC08YQ/CZMIItY6nbuOPDdTHZB2agoWekxxTJw==}
 
   '@lowdefy/community-plugin-e2e-mdb@1.1.0':
     resolution: {integrity: sha512-PhYApS2VGC0pRNKUALXDlKetvbNPCeHI1JVgCJjcWYV/9/1FxQu6DLk/K9Z+VJ1r1k3DbbpYjOruaWUBcQC63w==}
@@ -2240,17 +2554,23 @@ packages:
   '@lowdefy/connection-mongodb@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-a8TRmBX+KW+4Szia1TdsoXCYBCG+S9pYsBYwy6+fAx7IDZYoLJt35bOh44msHqwze74hIa8H4dBAaj1BMOcMNQ==}
 
+  '@lowdefy/connection-mongodb@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-b6UeKQdXoRX/UuVi3PYYQgSbNI/Acn14RAA+USpuHzZwg1586eAPlXkDwSN0tKVbJCTyjdUdeGbc9Kf2Y080Vg==}
+
   '@lowdefy/connection-mongodb@4.7.3':
     resolution: {integrity: sha512-rLFMWgxU+MEonL4rCwJQtkd3CwaoaO1kk/lMCu3DpsJBD4gfqgYL9v0EzY1MVq+83Me7ytDDstDMhX4ry+v+ng==}
 
   '@lowdefy/connection-smtp@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-IR/mPpMK0B1FhJ1swhjcgpaMFgFHC6xdVpr+3xBtkNwTOctP5vZ4tiVA8WPwEP+EuVcrEy4lQmQup1srkIhUEw==}
 
+  '@lowdefy/connection-smtp@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-e9iZ6lmjHNQkFr4Iam2j+q5WvDrJnxkzOesc2j2d6BIqhwE5xcr2IG++Fj8Epc5GfAbv2uRniYSXJiExPfDVIQ==}
+
   '@lowdefy/docs-content@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-G9Ua/3vk5dvkWJYuhkjT4/Wssfw+nZRFWFgjdqwAs2HkmXzqB57SZPIIO6hZTiPfwlymFndGWHZPhTk+0Nhr3w==}
 
-  '@lowdefy/e2e-utils@0.0.0-experimental-20260730112404':
-    resolution: {integrity: sha512-pYdrDOG44SIhzyaOWd8O6wRwNafPEvcmcCgjX0ocNTHDBVfq52idNkCtRTPSJHZa7BEpNXkW8T2BdWEI4MXq2w==}
+  '@lowdefy/e2e-utils@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-Q+VkuV2r4owu1fKcnTBo8+JOpYrRuLxcYfO4ccKtBMWN5ptZBCAMQmdPMGua/IR/eDcjFrV8VZeo64gH3wEvOg==}
     hasBin: true
     peerDependencies:
       '@playwright/test': 1.59.1
@@ -2267,11 +2587,23 @@ packages:
       react: '>=18'
       react-dom: '>=18'
 
+  '@lowdefy/email-templates@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-rFnHk7c+d9IB/gEOXjClqZ3Dl3fgMSg51mSE+ILQOPF/D9mAM0i8SvBqFkHgB4mbC6W8xkYZnf9bRFouqlLYyA==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+
   '@lowdefy/engine@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-3Z+DilFhnXDzAlCXLZ947Is/eV4LOSj1Qdm5ml1gfyQttiSdx32WmmRvcnOgZWJmnfnqb2hBZCvKy4/BYQxUdA==}
 
+  '@lowdefy/engine@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-Psxmkmku+1V3wDlhchQK4Re9aoRW3ri5lMg5r5ahoKOYcMlRRZko53iQjaZvCkomG0I9q1IOo2aa6SB7AebZOw==}
+
   '@lowdefy/errors@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-ZOgoIM3e0p3FXOfvnDHYFQEcQQ7j9xnJSQrPerdisMtKr94PHjrGSagUKJJezCPVIpGb9Vkoz8dqsovhMVrS1w==}
+
+  '@lowdefy/errors@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-te1jlJbedz29JoB5T1/Skq0OgtfUdfCyfL4UAOWDnJeDMBEckdxYTqwcG4MiNXLKWK025w1lG+03lhS0i+z0nQ==}
 
   '@lowdefy/errors@4.7.3':
     resolution: {integrity: sha512-WZcCCKDhx6zl/GlZRtOJN6ghkM+S80B7w0tHN5OQeXhcdwFJrCh17aF4V7nCkZw2Ej/HHyuCpcwIk2zI+ZZkBg==}
@@ -2285,6 +2617,9 @@ packages:
   '@lowdefy/helpers@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-8yldIRVryjJx17TKI98psggPX+h4u4uKL8nfR1PDcShXTdQvnECPrWRFuS15fozyVyAIObgT00Ul6FvbE0sW9Q==}
 
+  '@lowdefy/helpers@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-gQtj1oelTqUCiVNGplNz6zNTwiLi6WXxWHBZgG6ixQ1aTDamcdSTUlQbVvmcOJjawbFYzt5i8+TMQJqNjRoxuQ==}
+
   '@lowdefy/helpers@4.7.3':
     resolution: {integrity: sha512-iRw5DagM5S7BRf6zIq2RkhZsybgui5AMeTCAlE0YMG6/fXxhiEKuXfdoGLaItq1/4KpJIKlMbXAemMLjP3Yy7A==}
 
@@ -2297,14 +2632,26 @@ packages:
   '@lowdefy/layout@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-r44ZfVAWWgyljoWJuL92AsQf66MAo03sAJJZHoi9KNc+MQCySFex7Y5qSNwSEomEQSK/Ak3+padONgcZ2wDoqw==}
 
+  '@lowdefy/layout@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-9juZsvtTuxDKLG12Fy0p2du2pcMXn3uAVHWo3/0l0lLyrxv0YuAVmpit4FC81TsPpVIbpF7DLXztAYCO380EYQ==}
+
   '@lowdefy/logger@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-3mjf6SMXx4btnmqvGCR9EdR6m3yW9F5J5M26eXNdKdxILoaGFQiTjqzpmz5bjlwSm9wvin2nntZ9jmjKVtrlAg==}
+
+  '@lowdefy/logger@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-KvMeRQ6LJwVsQoTXihrdtBLvlnHkZ6WhJ8I5GJ0F4vCCaVzJRKQ3y1jYtzIsQzpdgAxj7zS1KgI7EAsc23Znvw==}
 
   '@lowdefy/node-utils@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-/0a+umHezR0cY5v2BRIbtLB40wf01O+gptMlzwQ8Va2G+7jNtL3guA+FdLFcYZxhKyD7+xhtojYB+Gw785NuVg==}
 
+  '@lowdefy/node-utils@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-GOpQJLHffcZ7+qxvTRj3w8thYAzlfkI+YKiLULz46xXWNDB+do5m+W2BVD1yKnQyqGJRQVFObt1ESf1jlnYZxA==}
+
   '@lowdefy/nunjucks@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-vArskzlNk5CeW6GHzLTaivwBP21rwjIeY0PorizvjQo8pfs8zRHuUKBe0AHRfcmN68qf7L6swLESozU1q9B1Dg==}
+
+  '@lowdefy/nunjucks@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-SiEgh54OKPiFWFbvmyxJkqdK1HsiShJwfUB9JxHkupUOc6Zt2LMiF5dCeLm30sRjIBVK9bVm/bC8JGUnefm3bA==}
 
   '@lowdefy/nunjucks@4.7.3':
     resolution: {integrity: sha512-f3rVFtZVh8Et8pGx/E38USiTVm5NUZxnzTPh0gMY4okN8qF8ne4sccQVTQ843jVh4AVltPJAX6SHHcD+dhXu+w==}
@@ -2315,20 +2662,35 @@ packages:
   '@lowdefy/operators-dayjs@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-+3D7PvLFAWM8I6TiBA1U/tGwqNot29S7x9n05rr/zNzFcg241rB8VArl7lKGLo5NejZJuruQs5Gk79a27zD+gA==}
 
+  '@lowdefy/operators-dayjs@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-t1L9Itr2JkuPqkRz1ESohjtdyRYvu/zUiISR6c6RRsAVymFYNDUbZ4hNV1EujnyvJAO5GtGVpiqtVNVg93LioA==}
+
   '@lowdefy/operators-diff@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-L2MN3TCrJP59zKPcUFj4fIXGA1f0gwQouxqkqeNHqD1YG2YCorE2IyxQeTy4J7AWqhEm4DrCaB2P45cpjF5CXw==}
 
   '@lowdefy/operators-js@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-R4DMsByi0/PoAQN6wlRL6pLTttizVNnzfKSig4k0icd7sE/SrbSprRy9s+GnHddxOrcV15yKNIdFdntFJDtJew==}
 
+  '@lowdefy/operators-js@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-Qdj869gKDfmNL6CqLykl0CHrZijqXt3wxydUamxCc+yvstzeUMV70mHvcsMoFoKGe9rrp/FeQP/OB6Hr27I6Iw==}
+
   '@lowdefy/operators-mql@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-4j9DziN30rzjpMxUGuhXLKndDRyHRM+Fype8KD/N/gBgPTgCyq42qMHUlIVOWwvMuhMT84LMfnzky4e0G9Z9ng==}
+
+  '@lowdefy/operators-mql@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-5579LI4lpucjGkhoaDmXFU6u5L6z2Oq00SOVDDA0B22QGURx3BvV9ocERxNPkpYFs8ZujQf0B/oROFJ2OPCLWQ==}
 
   '@lowdefy/operators-nunjucks@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-w6prGehMeiOGd43oaxw2R0nqteO9OqqfEvMtlZp2XRQq3QOAmi+lWAjQdleii5xmBgpbWPmhgBvDl4oStuC4RQ==}
 
+  '@lowdefy/operators-nunjucks@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-x85yVsD3ihgW56AhcuBkv2RDWRHQKtzHCT5R4ZWdKDcAdNMmhpAMMaAW6DNnVcOsvBWHt3aE9KJkA0d9eSlW9w==}
+
   '@lowdefy/operators-uuid@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-F+B5Xh5qRKjOo7EBv9c4RSbj/+XTo7EJs0H+iD+XnpLg4y+m5fvGgxeAXmQ+jxHn7II0atT18Qfj20OO9ErQtA==}
+
+  '@lowdefy/operators-uuid@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-0pAxsJcger42nieEMW6DSS2ZcxFmMS1ViPG+Seug3utVRp6LYYqqPI5UWSAdwFCFB3jss3mMZ4i43YuHrZIQ1Q==}
 
   '@lowdefy/operators-yaml@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-bDYNIevbgxYTOjt/BnJ3iwytX3YxxZv8+wPTC66jNA1mWHKKcI+KKxl2zUsQRdyeuPllRwtgbqu//fZ4FbfOHA==}
@@ -2336,8 +2698,18 @@ packages:
   '@lowdefy/operators@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-KN+wK91z0RekbqrhF2b1UVV+m8tnt+rDTMbdU8dMXnqmyc9XnYmN3KMhqbWouq5GrbiaC9+r/3hbkDwSxD5mpA==}
 
+  '@lowdefy/operators@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-p/nn4J5+R9fyH9xqtRAQzYApEJabqCiEX266lBFmNqUx8CYO1pMGMjam4v0ii2kfD0G5z+CIHS1BikYNrA3PGQ==}
+
   '@lowdefy/plugin-aws@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-s8R0LatpTfjPKAh5rg2Bod2xhYTfbKRO7Uw0oHhLNn2N+3Z2yLhnWwY1slU+ZQB9KtVP9JAN8z/pxAhRFsBiiw==}
+    peerDependencies:
+      antd: '>=6'
+      react: '>=18'
+      react-dom: '>=18'
+
+  '@lowdefy/plugin-aws@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-3LZEXqUQhsHzK3AEYb1I1lbzD8AonB3Py1KbSNgemyeUmNWPfDxXj81+HE1ru9pnBddP1dVMdWPnwjCUfugIjw==}
     peerDependencies:
       antd: '>=6'
       react: '>=18'
@@ -2353,8 +2725,14 @@ packages:
   '@lowdefy/plugin-better-auth@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-/lrs/L0Kn5uKiWuTXnHpRrBN0MwUJ9ws6tvynvmkDDCcCgbCQ3ixBL6qSDKdzaOvaMqMOnIAnrAIJmkhro7Jzg==}
 
+  '@lowdefy/plugin-better-auth@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-DRtf1peRnE240dseDOUoInQf8ksXuKhrCzBtOp+hQqwzysfotmWHfIkyKQgvgZS0rK15YSegayckg+LcHEz1Ww==}
+
   '@lowdefy/websockets-core@0.0.0-experimental-20260730112404':
     resolution: {integrity: sha512-GLVAAjC6otLOjURzTWePQhDNYOOYFCaLu7KQvk0/6R6TEfI202JeKy466B0BnLXg8E+jSYMfJiqSqGZAWS7SNQ==}
+
+  '@lowdefy/websockets-core@0.0.0-experimental-20260803084426':
+    resolution: {integrity: sha512-dSHe74VjTCWHgswB+ndbcnDP6xq+wAyE8NO0IEX6FTuJvHUSojMsLsPMKWyvqovZNDmNXo9LBNbHsgwKmCabcg==}
 
   '@manypkg/find-root@1.1.0':
     resolution: {integrity: sha512-mki5uBvhHzO8kYYix/WRy2WX8S3B5wdVSc9D6KcU5lQNglP2yt58/VfLuAK49glRXChosY8ap2oJ1qgma3GUVA==}
@@ -7074,8 +7452,8 @@ packages:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
 
-  lowdefy@0.0.0-experimental-20260730112404:
-    resolution: {integrity: sha512-fsga9RdZ2SHrRnY/dtREx13EAESXxv4FEselJK4rrM8IT5Hvr7zkkSF29qLKHNBDHHtHfIP/WhKiLj/yad14xw==}
+  lowdefy@0.0.0-experimental-20260803084426:
+    resolution: {integrity: sha512-LY+HUP1i0NPis7VuNoksfnN4cy3hwCYRQea2V5gHcjAj+Lv72FzZn7hSOkjrs871Ozs/nkrYyHq3bOX6G0kfqQ==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -10781,6 +11159,11 @@ snapshots:
       '@lowdefy/errors': 0.0.0-experimental-20260730112404
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
 
+  '@lowdefy/actions-core@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+
   '@lowdefy/ai-utils@0.0.0-experimental-20260730112404(zod@3.25.76)':
     dependencies:
       '@ai-sdk/mcp': 1.0.41(zod@3.25.76)
@@ -10791,11 +11174,11 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@lowdefy/ai-utils@0.0.0-experimental-20260730112404(zod@4.4.3)':
+  '@lowdefy/ai-utils@0.0.0-experimental-20260803084426(zod@4.4.3)':
     dependencies:
       '@ai-sdk/mcp': 1.0.41(zod@4.4.3)
-      '@lowdefy/errors': 0.0.0-experimental-20260730112404
-      '@lowdefy/helpers': 0.0.0-experimental-20260730112404
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
       ai: 6.0.176(zod@4.4.3)
       glob: 13.0.6
     transitivePeerDependencies:
@@ -10804,6 +11187,14 @@ snapshots:
   '@lowdefy/ajv@0.0.0-experimental-20260730112404':
     dependencies:
       '@lowdefy/nunjucks': 0.0.0-experimental-20260730112404
+      ajv: 8.20.0
+      ajv-errors: 3.0.0(ajv@8.20.0)
+      ajv-formats: 2.1.1(ajv@8.20.0)
+      ajv-keywords: 5.1.0(ajv@8.20.0)
+
+  '@lowdefy/ajv@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/nunjucks': 0.0.0-experimental-20260803084426
       ajv: 8.20.0
       ajv-errors: 3.0.0(ajv@8.20.0)
       ajv-formats: 2.1.1(ajv@8.20.0)
@@ -10853,19 +11244,19 @@ snapshots:
       - vue
       - zod
 
-  '@lowdefy/api@0.0.0-experimental-20260730112404(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@6.3.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)':
+  '@lowdefy/api@0.0.0-experimental-20260803084426(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@6.3.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)':
     dependencies:
       '@better-auth/passkey': 1.6.23(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.23(@opentelemetry/api@1.9.1)(mongodb@6.3.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(better-call@1.3.7(zod@4.4.3))(nanostores@1.4.1)
-      '@lowdefy/ajv': 0.0.0-experimental-20260730112404
-      '@lowdefy/build': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
-      '@lowdefy/connection-smtp': 0.0.0-experimental-20260730112404
-      '@lowdefy/email-templates': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/errors': 0.0.0-experimental-20260730112404
-      '@lowdefy/helpers': 0.0.0-experimental-20260730112404
-      '@lowdefy/node-utils': 0.0.0-experimental-20260730112404
-      '@lowdefy/nunjucks': 0.0.0-experimental-20260730112404
-      '@lowdefy/operators': 0.0.0-experimental-20260730112404
-      '@lowdefy/operators-js': 0.0.0-experimental-20260730112404
+      '@lowdefy/ajv': 0.0.0-experimental-20260803084426
+      '@lowdefy/build': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+      '@lowdefy/connection-smtp': 0.0.0-experimental-20260803084426
+      '@lowdefy/email-templates': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/node-utils': 0.0.0-experimental-20260803084426
+      '@lowdefy/nunjucks': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators-js': 0.0.0-experimental-20260803084426
       better-auth: 1.6.23(@opentelemetry/api@1.9.1)(mongodb@6.3.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       nodemailer: 9.0.3
     transitivePeerDependencies:
@@ -10897,19 +11288,19 @@ snapshots:
       - vue
       - zod
 
-  '@lowdefy/api@0.0.0-experimental-20260730112404(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@7.2.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)':
+  '@lowdefy/api@0.0.0-experimental-20260803084426(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(mongodb@7.2.0)(nanostores@1.4.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)':
     dependencies:
       '@better-auth/passkey': 1.6.23(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.23(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(better-call@1.3.7(zod@4.4.3))(nanostores@1.4.1)
-      '@lowdefy/ajv': 0.0.0-experimental-20260730112404
-      '@lowdefy/build': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
-      '@lowdefy/connection-smtp': 0.0.0-experimental-20260730112404
-      '@lowdefy/email-templates': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/errors': 0.0.0-experimental-20260730112404
-      '@lowdefy/helpers': 0.0.0-experimental-20260730112404
-      '@lowdefy/node-utils': 0.0.0-experimental-20260730112404
-      '@lowdefy/nunjucks': 0.0.0-experimental-20260730112404
-      '@lowdefy/operators': 0.0.0-experimental-20260730112404
-      '@lowdefy/operators-js': 0.0.0-experimental-20260730112404
+      '@lowdefy/ajv': 0.0.0-experimental-20260803084426
+      '@lowdefy/build': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+      '@lowdefy/connection-smtp': 0.0.0-experimental-20260803084426
+      '@lowdefy/email-templates': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/node-utils': 0.0.0-experimental-20260803084426
+      '@lowdefy/nunjucks': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators-js': 0.0.0-experimental-20260803084426
       better-auth: 1.6.23(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       nodemailer: 9.0.3
     transitivePeerDependencies:
@@ -10951,6 +11342,16 @@ snapshots:
       react-dom: 18.2.0(react@18.2.0)
       tailwind-merge: 3.5.0
 
+  '@lowdefy/block-utils@0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      clsx: 2.1.1
+      dompurify: 3.4.2
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      tailwind-merge: 3.5.0
+
   '@lowdefy/block-utils@5.3.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@lowdefy/errors': 5.3.0
@@ -10977,6 +11378,22 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
+  '@lowdefy/blocks-aggrid@0.0.0-experimental-20260803084426(@ant-design/icons@6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(dayjs@1.11.20)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@ag-grid-community/client-side-row-model': 32.3.9
+      '@ag-grid-community/core': 32.3.9
+      '@ag-grid-community/csv-export': 32.3.9
+      '@ag-grid-community/react': 32.3.9(@ag-grid-community/core@32.3.9)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@ag-grid-community/styles': 32.3.9
+      '@ant-design/icons': 6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-antd': 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      dayjs: 1.11.20
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+
   '@lowdefy/blocks-antd-x@0.0.0-experimental-20260730112404(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.76)':
     dependencies:
       '@ai-sdk/react': 3.0.178(react@18.2.0)(zod@3.25.76)
@@ -10994,15 +11411,15 @@ snapshots:
       - react-dom
       - zod
 
-  '@lowdefy/blocks-antd-x@0.0.0-experimental-20260730112404(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)':
+  '@lowdefy/blocks-antd-x@0.0.0-experimental-20260803084426(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)':
     dependencies:
       '@ai-sdk/react': 3.0.178(react@18.2.0)(zod@4.4.3)
       '@ant-design/icons': 6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@ant-design/x': 2.7.0(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@ant-design/x-markdown': 2.7.0(@types/react@19.2.17)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/block-utils': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/blocks-files': 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/helpers': 0.0.0-experimental-20260730112404
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-files': 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
       ai: 6.0.176(zod@4.4.3)
       antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react: 18.2.0
@@ -11017,6 +11434,21 @@ snapshots:
       '@lowdefy/block-utils': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
       '@lowdefy/nunjucks': 0.0.0-experimental-20260730112404
+      '@rc-component/motion': 1.3.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      classnames: 2.5.1
+      dayjs: 1.11.20
+      minisearch: 7.2.0
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      react-virtuoso: 4.18.7(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+
+  '@lowdefy/blocks-antd@0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@ant-design/icons': 6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/nunjucks': 0.0.0-experimental-20260803084426
       '@rc-component/motion': 1.3.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       classnames: 2.5.1
@@ -11047,15 +11479,37 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
+  '@lowdefy/blocks-basic@0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      dompurify: 3.4.2
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+
   '@lowdefy/blocks-captcha@0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@lowdefy/block-utils': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
+  '@lowdefy/blocks-captcha@0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+
   '@lowdefy/blocks-echarts@0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@lowdefy/block-utils': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      echarts: 6.0.0
+      echarts-for-react: 3.0.6(echarts@6.0.0)(react@18.2.0)
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+
+  '@lowdefy/blocks-echarts@0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       echarts: 6.0.0
       echarts-for-react: 3.0.6(echarts@6.0.0)(react@18.2.0)
       react: 18.2.0
@@ -11071,10 +11525,27 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
+  '@lowdefy/blocks-files@0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-antd': 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+
   '@lowdefy/blocks-loaders@0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@lowdefy/block-utils': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+
+  '@lowdefy/blocks-loaders@0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
@@ -11093,12 +11564,58 @@ snapshots:
       - '@types/react'
       - supports-color
 
+  '@lowdefy/blocks-markdown@0.0.0-experimental-20260803084426(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(supports-color@8.1.1)':
+    dependencies:
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      dompurify: 3.4.2
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      react-markdown: 8.0.7(@types/react@19.2.17)(react@18.2.0)(supports-color@8.1.1)
+      react-syntax-highlighter: 15.5.0(react@18.2.0)
+      rehype-raw: 6.1.1
+      remark-gfm: 3.0.0(supports-color@8.1.1)
+    transitivePeerDependencies:
+      - '@types/react'
+      - supports-color
+
   '@lowdefy/blocks-tiptap@0.0.0-experimental-20260730112404(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@lowdefy/block-utils': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd': 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-files': 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
+      '@tiptap/core': 2.27.2(@tiptap/pm@2.27.2)
+      '@tiptap/extension-bubble-menu': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)
+      '@tiptap/extension-file-handler': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))
+      '@tiptap/extension-highlight': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))
+      '@tiptap/extension-image': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))
+      '@tiptap/extension-link': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)
+      '@tiptap/extension-mention': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))
+      '@tiptap/extension-placeholder': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)
+      '@tiptap/extension-table': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)
+      '@tiptap/extension-table-cell': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))
+      '@tiptap/extension-table-header': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))
+      '@tiptap/extension-table-row': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))
+      '@tiptap/pm': 2.27.2
+      '@tiptap/react': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@tiptap/starter-kit': 2.27.2
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      react-icons: 5.6.0(react@18.2.0)
+      tippy.js: 6.3.7
+      turndown: 7.2.0
+    transitivePeerDependencies:
+      - '@tiptap/extension-text-style'
+      - '@tiptap/suggestion'
+      - antd
+
+  '@lowdefy/blocks-tiptap@0.0.0-experimental-20260803084426(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-antd': 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-files': 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
       '@tiptap/core': 2.27.2(@tiptap/pm@2.27.2)
       '@tiptap/extension-bubble-menu': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)
       '@tiptap/extension-file-handler': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))
@@ -11149,19 +11666,19 @@ snapshots:
       - react-dom
       - zod
 
-  '@lowdefy/build@0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)':
+  '@lowdefy/build@0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)':
     dependencies:
-      '@lowdefy/ai-utils': 0.0.0-experimental-20260730112404(zod@4.4.3)
-      '@lowdefy/ajv': 0.0.0-experimental-20260730112404
-      '@lowdefy/block-utils': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/blocks-basic': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/blocks-loaders': 0.0.0-experimental-20260730112404(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/errors': 0.0.0-experimental-20260730112404
-      '@lowdefy/helpers': 0.0.0-experimental-20260730112404
-      '@lowdefy/node-utils': 0.0.0-experimental-20260730112404
-      '@lowdefy/nunjucks': 0.0.0-experimental-20260730112404
-      '@lowdefy/operators': 0.0.0-experimental-20260730112404
-      '@lowdefy/operators-js': 0.0.0-experimental-20260730112404
+      '@lowdefy/ai-utils': 0.0.0-experimental-20260803084426(zod@4.4.3)
+      '@lowdefy/ajv': 0.0.0-experimental-20260803084426
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-basic': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-loaders': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/node-utils': 0.0.0-experimental-20260803084426
+      '@lowdefy/nunjucks': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators-js': 0.0.0-experimental-20260803084426
       ajv: 8.20.0
       json5: 2.2.3
       picomatch: 4.0.1
@@ -11183,6 +11700,25 @@ snapshots:
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
       '@lowdefy/layout': 0.0.0-experimental-20260730112404
       '@lowdefy/logger': 0.0.0-experimental-20260730112404
+      antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      dayjs: 1.11.20
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      tinykeys: 3.0.0
+    transitivePeerDependencies:
+      - date-fns
+      - luxon
+      - moment
+
+  '@lowdefy/client@0.0.0-experimental-20260803084426(moment@2.29.4)':
+    dependencies:
+      '@ant-design/icons': 6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/engine': 0.0.0-experimental-20260803084426
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/layout': 0.0.0-experimental-20260803084426
+      '@lowdefy/logger': 0.0.0-experimental-20260803084426
       antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       dayjs: 1.11.20
       react: 18.2.0
@@ -11296,6 +11832,41 @@ snapshots:
       - vitest
       - vue
 
+  '@lowdefy/connection-mongodb@0.0.0-experimental-20260803084426(@opentelemetry/api@1.9.1)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      better-auth: 1.6.23(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      mongodb: 7.2.0
+      saslprep: 1.0.3
+    transitivePeerDependencies:
+      - '@aws-sdk/credential-providers'
+      - '@cloudflare/workers-types'
+      - '@lynx-js/react'
+      - '@mongodb-js/zstd'
+      - '@opentelemetry/api'
+      - '@prisma/client'
+      - '@sveltejs/kit'
+      - '@tanstack/react-start'
+      - '@tanstack/solid-start'
+      - better-sqlite3
+      - drizzle-kit
+      - drizzle-orm
+      - gcp-metadata
+      - kerberos
+      - mongodb-client-encryption
+      - mysql2
+      - next
+      - pg
+      - prisma
+      - react
+      - react-dom
+      - snappy
+      - socks
+      - solid-js
+      - svelte
+      - vitest
+      - vue
+
   '@lowdefy/connection-mongodb@4.7.3(next-auth@4.24.10(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))':
     dependencies:
       '@lowdefy/helpers': 4.7.3
@@ -11317,11 +11888,16 @@ snapshots:
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
       nodemailer: 9.0.3
 
+  '@lowdefy/connection-smtp@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      nodemailer: 9.0.3
+
   '@lowdefy/docs-content@0.0.0-experimental-20260730112404': {}
 
-  '@lowdefy/e2e-utils@0.0.0-experimental-20260730112404(@playwright/test@1.60.0)':
+  '@lowdefy/e2e-utils@0.0.0-experimental-20260803084426(@playwright/test@1.60.0)':
     dependencies:
-      '@lowdefy/helpers': 0.0.0-experimental-20260730112404
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
       '@playwright/test': 1.60.0
       js-yaml: 4.1.0
       prompts: 2.4.2
@@ -11343,13 +11919,31 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
+  '@lowdefy/email-templates@0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/nunjucks': 0.0.0-experimental-20260803084426
+      '@react-email/components': 1.0.12(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@react-email/render': 2.0.10(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      markdown-it: 14.3.0
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+
   '@lowdefy/engine@0.0.0-experimental-20260730112404':
     dependencies:
       '@lowdefy/errors': 0.0.0-experimental-20260730112404
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
       '@lowdefy/operators': 0.0.0-experimental-20260730112404
 
+  '@lowdefy/engine@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators': 0.0.0-experimental-20260803084426
+
   '@lowdefy/errors@0.0.0-experimental-20260730112404': {}
+
+  '@lowdefy/errors@0.0.0-experimental-20260803084426': {}
 
   '@lowdefy/errors@4.7.3': {}
 
@@ -11360,6 +11954,11 @@ snapshots:
   '@lowdefy/helpers@0.0.0-experimental-20260730112404':
     dependencies:
       '@lowdefy/errors': 0.0.0-experimental-20260730112404
+      intl-messageformat: 11.2.7
+
+  '@lowdefy/helpers@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
       intl-messageformat: 11.2.7
 
   '@lowdefy/helpers@4.7.3':
@@ -11385,10 +11984,24 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
+  '@lowdefy/layout@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+
   '@lowdefy/logger@0.0.0-experimental-20260730112404':
     dependencies:
       '@lowdefy/errors': 0.0.0-experimental-20260730112404
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
+      ora: 7.0.1
+      pino: 10.3.1
+
+  '@lowdefy/logger@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
       ora: 7.0.1
       pino: 10.3.1
 
@@ -11398,9 +12011,20 @@ snapshots:
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
       fs-extra: 11.3.4
 
+  '@lowdefy/node-utils@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      fs-extra: 11.3.4
+
   '@lowdefy/nunjucks@0.0.0-experimental-20260730112404':
     dependencies:
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
+      dayjs: 1.11.20
+
+  '@lowdefy/nunjucks@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
       dayjs: 1.11.20
 
   '@lowdefy/nunjucks@4.7.3':
@@ -11420,6 +12044,12 @@ snapshots:
       '@lowdefy/operators': 0.0.0-experimental-20260730112404
       dayjs: 1.11.20
 
+  '@lowdefy/operators-dayjs@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators': 0.0.0-experimental-20260803084426
+      dayjs: 1.11.20
+
   '@lowdefy/operators-diff@0.0.0-experimental-20260730112404':
     dependencies:
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
@@ -11433,10 +12063,23 @@ snapshots:
       '@lowdefy/operators': 0.0.0-experimental-20260730112404
       intl-messageformat: 11.2.7
 
+  '@lowdefy/operators-js@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators': 0.0.0-experimental-20260803084426
+      intl-messageformat: 11.2.7
+
   '@lowdefy/operators-mql@0.0.0-experimental-20260730112404':
     dependencies:
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
       '@lowdefy/operators': 0.0.0-experimental-20260730112404
+      mingo: 7.2.1
+
+  '@lowdefy/operators-mql@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators': 0.0.0-experimental-20260803084426
       mingo: 7.2.1
 
   '@lowdefy/operators-nunjucks@0.0.0-experimental-20260730112404':
@@ -11445,10 +12088,22 @@ snapshots:
       '@lowdefy/nunjucks': 0.0.0-experimental-20260730112404
       '@lowdefy/operators': 0.0.0-experimental-20260730112404
 
+  '@lowdefy/operators-nunjucks@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/nunjucks': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators': 0.0.0-experimental-20260803084426
+
   '@lowdefy/operators-uuid@0.0.0-experimental-20260730112404':
     dependencies:
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
       '@lowdefy/operators': 0.0.0-experimental-20260730112404
+      uuid: 14.0.0
+
+  '@lowdefy/operators-uuid@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/operators': 0.0.0-experimental-20260803084426
       uuid: 14.0.0
 
   '@lowdefy/operators-yaml@0.0.0-experimental-20260730112404':
@@ -11462,6 +12117,11 @@ snapshots:
       '@lowdefy/errors': 0.0.0-experimental-20260730112404
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
 
+  '@lowdefy/operators@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+
   '@lowdefy/plugin-aws@0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@aws-sdk/client-s3': 3.797.0
@@ -11472,6 +12132,22 @@ snapshots:
       '@lowdefy/blocks-files': 0.0.0-experimental-20260730112404(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/errors': 0.0.0-experimental-20260730112404
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
+      antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+    transitivePeerDependencies:
+      - aws-crt
+
+  '@lowdefy/plugin-aws@0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@aws-sdk/client-s3': 3.797.0
+      '@aws-sdk/s3-presigned-post': 3.797.0
+      '@aws-sdk/s3-request-presigner': 3.797.0
+      '@lowdefy/block-utils': 0.0.0-experimental-20260803084426(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-antd': 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-files': 0.0.0-experimental-20260803084426(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
       antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
@@ -11498,9 +12174,18 @@ snapshots:
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
       jose: 6.2.4
 
+  '@lowdefy/plugin-better-auth@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      jose: 6.2.4
+
   '@lowdefy/websockets-core@0.0.0-experimental-20260730112404':
     dependencies:
       '@lowdefy/helpers': 0.0.0-experimental-20260730112404
+
+  '@lowdefy/websockets-core@0.0.0-experimental-20260803084426':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
 
   '@manypkg/find-root@1.1.0':
     dependencies:
@@ -16930,12 +17615,12 @@ snapshots:
     dependencies:
       js-tokens: 4.0.0
 
-  lowdefy@0.0.0-experimental-20260730112404(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1):
+  lowdefy@0.0.0-experimental-20260803084426(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1):
     dependencies:
-      '@lowdefy/errors': 0.0.0-experimental-20260730112404
-      '@lowdefy/helpers': 0.0.0-experimental-20260730112404
-      '@lowdefy/logger': 0.0.0-experimental-20260730112404
-      '@lowdefy/node-utils': 0.0.0-experimental-20260730112404
+      '@lowdefy/errors': 0.0.0-experimental-20260803084426
+      '@lowdefy/helpers': 0.0.0-experimental-20260803084426
+      '@lowdefy/logger': 0.0.0-experimental-20260803084426
+      '@lowdefy/node-utils': 0.0.0-experimental-20260803084426
       '@vercel/nft': 1.10.2(rollup@3.29.5)(supports-color@8.1.1)
       axios: 1.15.2(debug@4.4.3(supports-color@8.1.1))
       commander: 14.0.3

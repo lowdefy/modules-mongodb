@@ -13,7 +13,8 @@ id:
 type: MongoDBAggregation
 # Authored org clause (tenant wall amendment-1): $search is first-stage-only,
 # so the wall can not inject its filter — this request authors the equals
-# clause below and the wall audits it against the caller's org on every run.
+# clause below via the shared policy fragment (compiled out under `pinned`);
+# under `tenant` the wall audits it against the caller's org on every run.
 tenant: authored
 connectionId:
   _module.connectionId: contacts-collection
@@ -28,14 +29,18 @@ properties:
           # Baseline clause — compound requires ≥1 clause across filter/must/mustNot/should,
           # and `should` collapses to [] when input is empty.
           filter:
-            - exists:
-                path: _id
-            # The authored tenant clause (tenant: authored) — audited by the
-            # wall; requires organizationId token-mapped + in storedSource.
-            - equals:
-                path: organizationId
-                value:
-                  _user: organizationId
+            _build.array.concat:
+              - - exists:
+                    path: _id
+              # The authored tenant clause — resolved by the shared policy
+              # fragment: present under `tenant` (audited by the wall;
+              # organizationId token-mapped in the search index, and in
+              # storedSource where returnStoredSource is used), compiled out
+              # under `pinned`.
+              - _ref:
+                  path: ../shared/org/tenant-clause.yaml
+                  vars:
+                    shape: search_filter
           should:
             _if:
               test:

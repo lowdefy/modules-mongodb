@@ -2,7 +2,8 @@ id: get_activities
 type: MongoDBAggregation
 # Authored org clause (tenant wall amendment-1): $search is first-stage-only,
 # so the wall can not inject its filter — this request authors the equals
-# clause below and the wall audits it against the caller's org on every run.
+# clause below via the shared policy fragment (compiled out under `pinned`);
+# under `tenant` the wall audits it against the caller's org on every run.
 tenant: authored
 connectionId:
   _module.connectionId: activities-collection
@@ -18,129 +19,132 @@ properties:
     - $search:
         compound:
           filter:
-            # The authored tenant clause (tenant: authored) — audited by the
-            # wall; requires organizationId token-mapped in the search index.
-            - equals:
-                path: organizationId
-                value:
-                  _user: organizationId
-            - compound:
-                mustNot:
-                  - exists:
-                      path: deleted.timestamp
-                must:
-                  _array.concat:
-                    - _if:
-                        test:
-                          _ne:
-                            - _payload: filter.search
-                            - null
-                        then:
-                          - compound:
-                              should:
-                                - text:
-                                    query:
-                                      _string.toLowerCase:
-                                        _payload: filter.search
-                                    path:
-                                      - title
-                                      # `description` is Tiptap rich text
-                                      # stored as `{ html, text }`; search the
-                                      # plain-text subpath, not the html markup.
-                                      - description.text
-                                - wildcard:
-                                    query:
-                                      _string.concat:
-                                        - "*"
-                                        - _string.toLowerCase:
+            _build.array.concat:
+              # The authored tenant clause — resolved by the shared policy fragment:
+              # present under `tenant` (audited by the wall; organizationId
+              # token-mapped in the search index, and in storedSource where
+              # returnStoredSource is used), compiled out under `pinned`.
+              - _ref:
+                  path: ../shared/org/tenant-clause.yaml
+                  vars:
+                    shape: search_filter
+              - - compound:
+                    mustNot:
+                      - exists:
+                          path: deleted.timestamp
+                    must:
+                      _array.concat:
+                        - _if:
+                            test:
+                              _ne:
+                                - _payload: filter.search
+                                - null
+                            then:
+                              - compound:
+                                  should:
+                                    - text:
+                                        query:
+                                          _string.toLowerCase:
                                             _payload: filter.search
-                                        - "*"
-                                    path:
-                                      - title
-                                      - description.text
-                                    allowAnalyzedField: true
-                        else: []
-                    - _if:
-                        test:
-                          _ne:
-                            - _payload: filter.type
-                            - null
-                        then:
-                          - equals:
-                              path: type
-                              value:
-                                _payload: filter.type
-                        else: []
-                    - _if:
-                        test:
-                          _ne:
-                            - _payload: filter.stage
-                            - null
-                        then:
-                          # Atlas Search can't address array elements by
-                          # position, so filter on `status.stage` (all history
-                          # entries) rather than `status.0.stage`.
-                          - equals:
-                              path: status.stage
-                              value:
-                                _payload: filter.stage
-                        else: []
-                    - _if:
-                        test:
-                          _ne:
-                            - _payload: filter.contact_id
-                            - null
-                        then:
-                          - equals:
-                              path: contacts.contact_id
-                              value:
-                                _payload: filter.contact_id
-                        else: []
-                    - _if:
-                        test:
-                          _ne:
-                            - _payload: filter.company_id
-                            - null
-                        then:
-                          - equals:
-                              path: company_ids
-                              value:
-                                _payload: filter.company_id
-                        else: []
-                    - _if:
-                        test:
-                          _ne:
-                            - _payload: filter.date_from
-                            - null
-                        then:
-                          - range:
-                              path: updated.timestamp
-                              gte:
-                                _date:
-                                  _if_none:
-                                    - _payload: filter.date_from
-                                    - 0
-                        else: []
-                    - _if:
-                        test:
-                          _ne:
-                            - _payload: filter.date_to
-                            - null
-                        then:
-                          - range:
-                              path: updated.timestamp
-                              lte:
-                                _date:
-                                  _if_none:
-                                    - _payload: filter.date_to
-                                    - 0
-                        else: []
-                    - _array.filter:
-                        - _module.var: request_stages.filter_match
-                        - _function:
-                            __ne:
-                              - __args: 0
-                              - null
+                                        path:
+                                          - title
+                                          # `description` is Tiptap rich text
+                                          # stored as `{ html, text }`; search the
+                                          # plain-text subpath, not the html markup.
+                                          - description.text
+                                    - wildcard:
+                                        query:
+                                          _string.concat:
+                                            - "*"
+                                            - _string.toLowerCase:
+                                                _payload: filter.search
+                                            - "*"
+                                        path:
+                                          - title
+                                          - description.text
+                                        allowAnalyzedField: true
+                            else: []
+                        - _if:
+                            test:
+                              _ne:
+                                - _payload: filter.type
+                                - null
+                            then:
+                              - equals:
+                                  path: type
+                                  value:
+                                    _payload: filter.type
+                            else: []
+                        - _if:
+                            test:
+                              _ne:
+                                - _payload: filter.stage
+                                - null
+                            then:
+                              # Atlas Search can't address array elements by
+                              # position, so filter on `status.stage` (all history
+                              # entries) rather than `status.0.stage`.
+                              - equals:
+                                  path: status.stage
+                                  value:
+                                    _payload: filter.stage
+                            else: []
+                        - _if:
+                            test:
+                              _ne:
+                                - _payload: filter.contact_id
+                                - null
+                            then:
+                              - equals:
+                                  path: contacts.contact_id
+                                  value:
+                                    _payload: filter.contact_id
+                            else: []
+                        - _if:
+                            test:
+                              _ne:
+                                - _payload: filter.company_id
+                                - null
+                            then:
+                              - equals:
+                                  path: company_ids
+                                  value:
+                                    _payload: filter.company_id
+                            else: []
+                        - _if:
+                            test:
+                              _ne:
+                                - _payload: filter.date_from
+                                - null
+                            then:
+                              - range:
+                                  path: updated.timestamp
+                                  gte:
+                                    _date:
+                                      _if_none:
+                                        - _payload: filter.date_from
+                                        - 0
+                            else: []
+                        - _if:
+                            test:
+                              _ne:
+                                - _payload: filter.date_to
+                                - null
+                            then:
+                              - range:
+                                  path: updated.timestamp
+                                  lte:
+                                    _date:
+                                      _if_none:
+                                        - _payload: filter.date_to
+                                        - 0
+                            else: []
+                        - _array.filter:
+                            - _module.var: request_stages.filter_match
+                            - _function:
+                                __ne:
+                                  - __args: 0
+                                  - null
 
     - $addFields:
         score:

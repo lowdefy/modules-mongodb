@@ -8,7 +8,9 @@
 # the pinned org and the tenant's active org). Joins the auth `user`, then the
 # app `user-contacts` record through the shared contact-match expression, with the
 # organization taken from the member row itself so the join stays inside the row's
-# own organization (a `$lookup` is never scoped by the tenant wall). Flattens the
+# own organization (a `$lookup` is never scoped by the tenant wall). That org
+# comparison is policy-conditional (shared fragment): present under `tenant`,
+# absent under `pinned`, where contacts carry no organizationId. Flattens the
 # display shape:
 #   name / picture — from the contact profile (fallback to the user display name)
 #   email          — from the auth user row
@@ -55,16 +57,19 @@
       - $match:
           $expr:
             $and:
-              - $eq:
-                  - "$organizationId"
-                  - "$$member_org"
-              - _ref:
-                  path: ../shared/contact/contact-match-expr.yaml
-                  vars:
-                    contact_user_id_expr: "$userId"
-                    contact_email_expr: "$lowercase_email"
-                    person_id_expr: "$$member_user_id"
-                    person_email_expr: "$$member_email"
+              _build.array.concat:
+                - _ref:
+                    path: ../shared/org/tenant-clause.yaml
+                    vars:
+                      shape: member_eq
+                      org_expr: "$$member_org"
+                - - _ref:
+                      path: ../shared/contact/contact-match-expr.yaml
+                      vars:
+                        contact_user_id_expr: "$userId"
+                        contact_email_expr: "$lowercase_email"
+                        person_id_expr: "$$member_user_id"
+                        person_email_expr: "$$member_email"
     as: contact
 - $unwind:
     path: "$contact"

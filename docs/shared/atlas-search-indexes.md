@@ -23,9 +23,19 @@ via the Atlas CLI. **Index name: `default`** (the pipelines do not pass an
 The recipe is `dynamic: true` plus static overrides for the fields that need
 them: dynamic mapping covers every `text`/`wildcard` string, boolean `equals`,
 date `range`, and `exists` path automatically — but **never creates `token`
-fields**, which string `equals` requires. Every walled collection filters
-`organizationId` by string `equals` (the authored tenant clause), so every
-index carries at least that one static mapping.
+fields**, which string `equals` requires. Under `auth.organizations.policy:
+tenant` every walled collection filters `organizationId` by string `equals`
+(the authored tenant clause), so every index carries at least that one static
+mapping.
+
+**Policy note.** The `organizationId` parts of the definitions below —
+the `token` mapping and the `organizationId` entry in each `storedSource`
+list — are **`policy: tenant` requirements only**. Under `pinned` (the
+default) the modules compile no organization clause into the `$search`
+pipelines and documents carry no `organizationId`, so drop those two pieces
+from each definition; everything else stands as written (the indexes
+themselves are required under both policies — the list pages, exports, and
+selector search on them regardless of tenancy).
 
 ## `user-contacts`
 

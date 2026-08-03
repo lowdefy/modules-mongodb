@@ -9,7 +9,7 @@ Every module in this repo assumes one organization per MongoDB database: no coll
 3. Uniqueness rules become **per-org**: the unique index on the contact's `lowercase_email` becomes compound `{ organizationId, lowercase_email }`. The `create-or-link-contact` upsert needs no hand change on caller-ful paths — the wall merges the org equality into the upsert selector, and MongoDB carries filter equalities into upserted documents (its system-context caller names the org per Decision 7).
 4. Where module config needs the org id explicitly (rare), it reads **`_user: organizationId`** — which resolves under both policies — never the `pinned`-only `_organization` operator.
 5. The **org backfill folds into the user-contacts split migration** already planned by [user-admin-better-auth](../user-admin-better-auth/design.md) / [user-account-better-auth](../user-account-better-auth/design.md), so consuming apps migrate once, not twice.
-6. Four platform gaps are recorded as **[upstream asks](upstream-asks.md)**: the tenant wall's missing Atlas `$search` interaction, per-membership contact linkage (since withdrawn — the contact carries `userId`, so the link needs no platform surface), the sibling designs' `_organization` usage, and merge-on-signup's org-less binding point.
+6. Six platform items are recorded as **[upstream asks](upstream-asks.md)**: the tenant wall's missing Atlas `$search` interaction, per-membership contact linkage (since withdrawn — the contact carries `userId`, so the link needs no platform surface), the sibling designs' `_organization` usage, merge-on-signup's org-less binding point, the wall's policy gate (resolved — [policy-conditional-wall](../policy-conditional-wall/design.md)), and the `tenant:` rename (tracked, not raised).
 
 **Scope**: the domain modules and shared fragments in this repo. The tenant-_shape_ user surface — org switcher, tenant self-serve, multi-tenant administration — is not here (Non-goals); this design makes the data layer safe for it.
 
@@ -56,7 +56,7 @@ Upstream asks 2 and 3 are _not_ prerequisites — ask 2 is withdrawn (resolved m
 > declaration is inert and no `organizationId` is written or filtered. Modules still
 > declare `tenant:` unconditionally — the branch moved to the platform's single decision
 > point rather than into module config. Decisions 2, 4 and 5 below, and the Migration
-> section, are amended by that design. Not yet implemented.
+> section, are amended by that design. Implemented 2026-08-03 (see that design's Status).
 
 Modules stamp and scope by organization _always_, under both policies. Under `pinned` every document in the database carries the same `organizationId` (the deployment's auto-seeded org) and the wall's injected filter matches everything — harmless, near-invisible. Under `tenant` the same field and filter are load-bearing. There is no `multi_tenant` var, no `when:` branch, no second module variant.
 

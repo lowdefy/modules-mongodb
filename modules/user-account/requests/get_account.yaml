@@ -4,7 +4,9 @@
 # no ObjectId coercion), joined to `user-contacts` on {organizationId,
 # lowercase_email} — the contact key. The organization clause is authored here
 # because `users` is an unwalled connection and a `$lookup` is never scoped by the
-# tenant wall, so an unqualified join would read another organization's row.
+# tenant wall, so an unqualified join would read another organization's row. It is
+# policy-conditional (shared fragment): present under `tenant`, absent under
+# `pinned`, where contacts carry no organizationId.
 # Feeds:
 #   profile        — the contact profile subdoc (profile tile display + edit-modal
 #                    seed; display reads the contact directly, Decision 5)
@@ -34,16 +36,19 @@ properties:
             $toLower: "$email"
         pipeline:
           - $match:
-              organizationId:
-                _user: organizationId
-              $expr:
-                _ref:
-                  path: ../shared/contact/contact-match-expr.yaml
-                  vars:
-                    contact_user_id_expr: "$userId"
-                    contact_email_expr: "$lowercase_email"
-                    person_id_expr: "$$caller_id"
-                    person_email_expr: "$$caller_email"
+              _build.object.assign:
+                - _ref:
+                    path: ../shared/org/tenant-clause.yaml
+                    vars:
+                      shape: match
+                - $expr:
+                    _ref:
+                      path: ../shared/contact/contact-match-expr.yaml
+                      vars:
+                        contact_user_id_expr: "$userId"
+                        contact_email_expr: "$lowercase_email"
+                        person_id_expr: "$$caller_id"
+                        person_email_expr: "$$caller_email"
         as: contact
     - $unwind:
         path: "$contact"

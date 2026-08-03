@@ -70,3 +70,45 @@ Both designs scope native reads with the server-side `_organization: id` operato
 That design's Decision 7 binds the create-or-link contact endpoint at `email.verified` and `user.create.before`. Both bindings run in **system context** (no caller, so the tenant wall fails closed on a walled `user-contacts` connection), and both fire **before a `tenant`-policy signup's organization exists** — the org is minted lazily at `session.create` (user-model). So the create half fails twice over: the wall rejects the caller-less write, and even with `tenant: none` there is no org id to stamp yet.
 
 **Ask**: relocate the create half to a binding point where the org is resolved — most plausibly `session.create.after`, after the engine's active-org policy hook has resolved or minted the org — reading the org id from the hook payload and writing under `tenant: none` per this design's Decision 7 (explicit org, documented provenance). The link-only half (setting `profile.contactId` against an existing contact) and the invited path are unaffected — the inviting admin's session already created and stamped the contact. Whether that design's invariant "every user has a contact by first session" relaxes to "by first request" is its call; the constraint from this side is only that the mint must not precede the org.
+
+## 5. The wall gates on the organizations policy
+
+> **Resolved (2026-08-03).** Landed on `feat/mongodb-tenant-wall`, consumed from
+> experimental release `20260803084426`. See
+> [policy-conditional-wall](../policy-conditional-wall/design.md).
+
+**To**: the tenant wall (lowdefy PR #2280).
+
+The wall as first shipped engaged under both organization policies, which billed
+every single-org consumer for a backfill, index rebuilds, and Atlas Search mapping
+work that bought nothing (the injected filter is provably a no-op under `pinned`).
+
+**Ask (as landed)**: `resolveTenant` returns no verdict unless the deployment
+resolves `auth.organizations.policy: tenant` — placed after the connection-type
+contract check, which stays on under both policies so an unenforceable `tenant:`
+declaration fails on the current deployment rather than at flip time. With the
+verdict fall away, deliberately: the authored-clause audit, the fail-closed error
+for org-less callers, and the authored-tenant-field rejection. Three passengers
+rode the same release: `organizations.policy` joined the `_build.authConfig`
+allowlist; the build's best-effort entry-stage check now arms only under `tenant`;
+and `_build.authConfig` folds **defer** on build walks that run before the auth
+projection exists (module entry vars and components consumed through them),
+resolving where the value is consumed — previously a hard boundary error whose
+trigger depended on which consumer pulled a component in. The flip preflight
+(design open question 2) also landed upstream: under `tenant` the server refuses
+to serve while walled collections hold unstamped rows, naming them in one error.
+
+## 6. Rename `tenant:` to a scoping-key declaration
+
+> **Tracked, not raised.** Noted here per
+> [policy-conditional-wall](../policy-conditional-wall/design.md)'s non-goals; raise
+> it when the wall's config surface is next revised.
+
+**To**: the tenant wall (lowdefy PR #2280).
+
+Under the policy-conditional wall, `tenant: true` on a connection declares a
+property of the data — *these rows are organization-scoped when the deployment is
+multi-org* — and does nothing under `pinned`. A name like `scopeField:` (or
+similar) would read as the declaration it now is, rather than as an imperative
+that suggests the wall is always on. Config-breaking for every declaration, so it
+should ride a release that touches the wall's config surface anyway.

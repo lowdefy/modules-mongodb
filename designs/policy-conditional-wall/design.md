@@ -13,7 +13,16 @@ branch lives: from "nowhere" to the platform's single decision point.
 **Supersedes**: org-aware-modules Decision 1. **Amends**: its Decisions 2, 4 and 5,
 and its Migration section.
 
-**Status**: not implemented. The wall as it stands today engages under both policies.
+**Status**: implemented (2026-08-03). Upstream: lowdefy `feat/mongodb-tenant-wall`,
+consumed from experimental release `20260803084426` — the `resolveTenant` policy
+gate, `organizations.policy` on the `_build.authConfig` allowlist, the policy-gated
+build entry-stage check, the flip preflight (open question 2, resolved: included),
+and deferral of `_build.authConfig` folds on pre-projection build walks (a
+phase-ordering collision found at implementation: module entry vars and the
+components they pull in resolve before the auth projection exists, so the fold now
+waits for the walk that consumes the value). This repo: the shared fragment
+`modules/shared/org/tenant-clause.yaml` and 11 edited files — see the site-count
+corrections in Decision 3.
 
 ## Proposed change
 
@@ -121,10 +130,23 @@ by the wall, so joins name their own; the contact mint runs in system context):
 | `shared`       | `contact/ensure-contact.yaml` | mint / claim, org stamped        |
 | `shared`       | `org/members_base.yaml`       | member-to-contact org comparison |
 
+> **Implementation corrections (2026-08-03).** Three rows of this table resolved
+> differently on inspection. `check-invite-email.yaml` needs **no edit**: its walled
+> contact lookup authors no clause (the wall injects under `tenant`; an email-only
+> query is correct under `pinned`), and its two authored clauses sit on engine
+> collections, which this design already excludes. `get_users_for_selector.yaml`
+> needs **no edit** for the same reason — its only org clause is the `user-members`
+> join, an engine collection. And `ensure-contact.yaml` itself was already
+> build-conditional on its `organization_id` var, so the branch lands in its one
+> org-passing caller, `user-account/api/ensure-contact-on-signup.yaml`. Net: **11
+> edited files** — the 8 authored requests, `get_account.yaml`,
+> `members_base.yaml`, and `ensure-contact-on-signup.yaml`.
+
 The branch reads the policy from `_build.authConfig`, which projects
 `organizations: { policy, signup }` (`computeAuthConfigProjection.js`), so it resolves
-at build time. It belongs in **one shared fragment** the 13 sites reference, not 13
-separate branches.
+at build time. It belongs in **one shared fragment** the sites reference
+(`modules/shared/org/tenant-clause.yaml`, shape-dispatched on a `_ref` var), not one
+branch per site.
 
 Everything reading `organizationId` on the **engine's** collections — `user-members`,
 `user-invitations`, `user-organizations` — needs no change. Those rows carry the field
@@ -208,6 +230,16 @@ requirement, and the `docs/shared/org-scoping.md` rewrite.
    that refuses to boot under `tenant` while any walled collection holds unstamped rows
    would convert that into a loud, immediate failure. Worth costing — it removes the one
    sharp edge the design introduces.
+
+   **Resolved (2026-08-03): included, upstream.** Under `policy: tenant` the server
+   probes every walled collection for documents missing the tenant field (or carrying
+   `null`) and refuses to serve with one aggregated error naming the collections to
+   backfill. Lazily-run-once per process, awaited in the api-context middleware (no
+   awaited boot hook exists, and a Vercel cold start would turn a boot refusal into an
+   opaque crash); a refusal memoizes until restart, probe connectivity failures retry.
+   The probe is a connection-type capability (`tenantPreflight` on `MongoDBCollection`,
+   the same seam as `meta.tenant`), enumerated from a `tenantConnections.json` build
+   artifact. No escape hatch: a tenant deployment over unstamped rows is always broken.
 
 ## Related
 
