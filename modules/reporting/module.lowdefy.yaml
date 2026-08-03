@@ -21,6 +21,10 @@ exports:
       description: Validate and persist a report spec (agent tool)
     - id: set-report-visibility
       description: Publish a saved report to the app, or retract it
+    - id: set-report-title
+      description: Rename a saved report (owner only)
+    - id: restore-report
+      description: Bring a soft-deleted report back, as private (owner only)
   connections:
     - id: reports-store
       description: MongoDB collection for saved report specs
@@ -152,6 +156,8 @@ api:
   - _ref: api/list-reports.yaml
   - _ref: api/delete-report.yaml
   - _ref: api/set-report-visibility.yaml
+  - _ref: api/set-report-title.yaml
+  - _ref: api/restore-report.yaml
 
 agents:
   - _ref: agents/reporting-assistant.yaml

@@ -1,0 +1,58 @@
+# Rename a saved report. Owner-only, matched in the update filter.
+#
+# `title` is a document field, not a spec field, so this writes one field and
+# never touches the spec — which is the whole reason title lives outside `spec`.
+#
+# The length cap is MAX_LABEL_LENGTH from the analytics constants, spelled here
+# as a literal because YAML cannot import it. The two must agree: a title this
+# accepts but validateReportSpec would reject is a report whose next spec write
+# fails, on an edit unrelated to the rename.
+id: set-report-title
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to rename a report.
+  # _js rather than operators because no operator reads a string's length, and
+  # _regex throws on a non-string instead of rejecting it. The three conditions
+  # are exactly the ones validateReportSpec applies to a spec title — no
+  # stricter, so nothing this endpoint accepts can fail the validator later, and
+  # no looser either.
+  - :if:
+      _js: |
+        const title = payload('title');
+        return typeof title !== 'string' || title === '' || title.length > 200;
+    :then:
+      - :reject: A report title is required and may be at most 200 characters.
+  - id: set_title
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      # The owner match lives in the filter rather than an :if before it, the
+      # same as delete-report: one round trip, and the authorization is
+      # structurally inseparable from the write. A non-owner's call is therefore
+      # a successful update that matched nothing.
+      filter:
+        _id:
+          _payload: report_id
+        owner.user_id:
+          _user: id
+        deleted.timestamp:
+          $exists: false
+      update:
+        $set:
+          title:
+            _payload: title
+          # Stamped, unlike visibility / favourite / restore: a rename changes
+          # what the report is, so it belongs at the top of the list and on the
+          # report page's provenance line.
+          updated:
+            _ref: defaults/change_stamp.yaml
+  - :return:
+      ok: true
+      modifiedCount:
+        _step: set_title.modifiedCount
