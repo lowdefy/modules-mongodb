@@ -55,7 +55,7 @@ _(`$searchMeta` has the same first-stage constraint and should get the same trea
 
 > **Resolved (2026-07-20).** All four `_organization: id` sites (user-admin's `check-invite-email`, `invite`, `delete-user`) swapped to `_user: organizationId` — value-identical for a caller-ful endpoint under `pinned`, and resolving under both policies. user-account had no operator usage. The modules' cross-org features remain `pinned`-shape per Decision 6; only the scoping value changed.
 
-**To**: [user-admin-better-auth](../user-admin-better-auth/design.md), [user-account-better-auth](../user-account-better-auth/design.md).
+**To**: [user-admin-better-auth](../users/_completed/user-admin-better-auth/design.md), [user-account-better-auth](../users/_completed/user-account-better-auth/design.md).
 
 Both designs scope native reads with the server-side `_organization: id` operator, which **throws under the `tenant` policy** by design (there is no pinned org to resolve). `_user: organizationId` — the caller's active org — resolves under both policies and, under `pinned`, always equals the pinned org (`set-active-organization` is disabled there, [role-catalog](../../../lowdefy-design/designs/auth-upgrade/features/role-catalog/design.md) Decision 4), so the substitution is behavior-preserving for the designs' current scope.
 
@@ -65,7 +65,7 @@ Both designs scope native reads with the server-side `_organization: id` operato
 
 > **Resolved (2026-07-20).** Both halves landed: the platform ships `session.create.after` with `session.activeOrganizationId` stamped pre-write under both policies (verified in the pinned experimental release), and the mint is rebound there — org read from the hook payload, stamped explicitly through the unwalled connection per Decision 7. The invariant relaxed to "contact by first _verified_ session with an active org". See [implementation-notes](implementation-notes.md).
 
-**To**: [user-account-better-auth](../user-account-better-auth/design.md), touching [hooks](../../../lowdefy-design/designs/auth-upgrade/concepts/hooks/design.md) / [user-model](../../../lowdefy-design/designs/auth-upgrade/concepts/user-model/design.md) as needed.
+**To**: [user-account-better-auth](../users/_completed/user-account-better-auth/design.md), touching [hooks](../../../lowdefy-design/designs/auth-upgrade/concepts/hooks/design.md) / [user-model](../../../lowdefy-design/designs/auth-upgrade/concepts/user-model/design.md) as needed.
 
 That design's Decision 7 binds the create-or-link contact endpoint at `email.verified` and `user.create.before`. Both bindings run in **system context** (no caller, so the tenant wall fails closed on a walled `user-contacts` connection), and both fire **before a `tenant`-policy signup's organization exists** — the org is minted lazily at `session.create` (user-model). So the create half fails twice over: the wall rejects the caller-less write, and even with `tenant: none` there is no org id to stamp yet.
 

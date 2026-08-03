@@ -20,6 +20,18 @@ documented in [`README.md`](./README.md).
 > **Google OAuth** items need real `GOOGLE_*` secrets and a redirect URI; tagged
 > `(oauth)` and left `[-]` unless you're testing the provider this run.
 
+> **2FA enrolment rework has landed** (2026-07-31). The two-modal chain is gone —
+> `modal_backupcodes.yaml` is deleted and enrolment is one modal with three phases
+> (`password` → `scan` → `codes`), no native footer, and `phase`/`intent` held as
+> explicit state. This closes **F21** and **F22 (a/b/c)**, so the pre-rework `[x]` 2FA
+> items in Phase 2 are superseded — re-test them against the nested list there.
+> **Replacing an authenticator now turns two-factor _off_ first**, so an abandoned
+> replacement leaves the account with 2FA off (recoverable) rather than enforced against
+> a secret the user never scanned (a DB fix). **Not in this build:** the "Get new backup
+> codes" option, phase `choose`, and the Back button — deferred to
+> `designs/users-fixes/backup-codes-rotation` pending an upstream action. Until it lands,
+> Manage on an enrolled user opens straight on the password phase with `intent: replace`.
+
 ---
 
 ## Phase 0 — Environment & bootstrap
@@ -145,8 +157,22 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 - [ ] Email shown with verified badge; resend verification appears when unverified
 - [x] **Change password** shown (has credential + `emailAndPassword.enabled`) → `ChangePassword` — password change succeeds (confirmed working). ⚠️ the revoke-other-sessions toggle renders with no visible label → **F20**, and was left unticked, so "revoke-other-sessions works" is **not yet verified** (re-test once F20's caption is fixed); the Security tile also throws a non-blocking `_if` render error → **F15**
 - [ ] Negative: for a **credential-less** user (OAuth/magic-link only) the password + 2FA controls are **hidden** (per-user credential read)
-- [x] **2FA enrol**: QR renders (plugin QR block), confirm code (`TwoFactorEnable`/`TwoFactorVerify`), backup codes displayed — enrolment confirmed (`users.twoFactorEnabled: true`, one `user-two-factors` row, codes shown). ⚠️ backup-codes **Copy is broken + can lose the one-time codes** → **F21**
-- [x] **2FA disable** (`TwoFactorDisable`) — confirmed (`users.twoFactorEnabled: false`, `user-two-factors` row removed). Enrol-modal UX/visual issues → **F22**
+- [x] ~~**2FA enrol**: QR renders, confirm code, backup codes displayed~~ — pre-rework run: enrolment confirmed (`users.twoFactorEnabled: true`, one `user-two-factors` row, codes shown), but backup-codes **Copy was broken and could lose the one-time codes** → **F21**. **Superseded by the nested list below.**
+- [x] **2FA disable** (`TwoFactorDisable`) — confirmed (`users.twoFactorEnabled: false`, `user-two-factors` row removed). Enrol-modal UX/visual issues → **F22**, now addressed below
+- [ ] **2FA enrolment — reworked phased modal** (F21 + F22 a/b/c). Nothing here is provable by build alone: the reset that repopulates an invisible input and the `Validate` that reports success while checking nothing both compile perfectly. Needs a real authenticator app.
+  - [ ] **First-time enrolment, on a freshly loaded page** — the **very first** `Set up` of the session, so nothing has written `enroltotp.*` before the trigger does (this is the case an `onOpen` seed would have rendered as an empty body). It opens straight on the password phase with a **complete screen and no empty first frame**, and no `choose` step
+  - [ ] QR renders beside a **monospace manual key that copies**, and that key is a bare **base32 secret — not an `otpauth://` URI** (F22: it used to render the whole URI in a non-selectable disabled input)
+  - [ ] A real TOTP code from an app set up by **that manual key** (not the QR) is accepted — proves the key is the right value
+  - [ ] The codes grid renders **actual codes** (F21's outstanding re-confirmation — the state path was never live-verified)
+  - [ ] **Done is disabled** on arrival; **Copy reports success and the modal STAYS OPEN** (F21: Copy used to be `cancelText` wired to `onClose`, so copying dismissed the dialog and discarded the codes)
+  - [ ] Ticking "I've saved my backup codes" **enables Done**; Done closes the modal; the tile shows **On**
+  - [ ] **State hygiene** (F22c) — after Done, `enroltotp.*` is empty in state; reopen and the **password field is blank**. This is the case that failed before: an `{}` reset cannot clear an input that was invisible in the previous eval cycle
+  - [ ] **Abandon the password phase** — close, reopen: blank field, and the phase the caller's enrolment state calls for
+  - [ ] **Abandon the scan phase** — close after Generate; the tile still reads **Off** and a fresh Generate issues a **new** secret
+  - [ ] **"Confirm & enable" does NOT appear on the password phase** (F22b — it used to be the Modal's static `okText`, so it rendered in both phases and fired `TwoFactorVerify` with an empty code)
+- [ ] **Replace authenticator** — with 2FA on, Manage opens on the password phase with the **warning `Alert`** before the password is spent; completing it makes the **new** secret work and the **old one fail**
+- [ ] **Abandon a replacement mid-flow** — the single most dangerous transition in the change, and the reason the disable-first chain exists. With 2FA on: Manage → Replace → Generate → **close the modal**. The tile must read **Off**; signing out and back in must ask for a **password only, with no second-factor challenge**; then Set up again from the tile and confirm a fresh enrolment completes normally. _(Under the old bare `enable` this was the lockout: 2FA left enforced against a secret never scanned, with no admin 2FA reset anywhere in the suite — a DB fix.)_
+- [ ] **Replace with a WRONG password** — takes the catch's `:else` branch: the password toast, the field **still holding what was typed**, and the tile unchanged on **On**. (The `:then` branch — `enable` failing _after_ `disable` committed — is hard to provoke on the rig; if it can be forced, the tile must drop to **Off** and the toast must say two-factor is now off rather than blaming the password.)
 - [ ] **Passkeys**: register (`PasskeyRegister`, virtual authenticator), list (native read), delete (`PasskeyDelete`)
 - [ ] **Linked accounts**: provider list from `user-accounts` (read-only, visibility not management)
 
@@ -206,5 +232,39 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 - [ ] **Co-location (negative)**: temporarily point one module connection at a different DB → contact data goes **blank everywhere** (the silent `$lookup` failure); then revert
 - [ ] **Endpoint gate**: a non-admin caller hitting a `user-admin/*` routine is rejected (`auth.api.roles` + the `userAdminRole` step-floor)
 - [ ] **Change stamps**: every contact write carries `created`/`updated` stamps (Verify in Compass)
+
+### Required-field validation — `Validate` scoping _(landed 2026-07-31)_
+
+One defect class across eight forms, so test them as a single pass. Every one of these
+passed a container id (`params: modal_changepw`) to `Validate`, which is an **exact-id**
+matcher with no cascade to descendants — it matched only the Modal container, which has no
+validation of its own, so the action **reported success while validating nothing**. All
+eight now match the namespace their inputs actually write to.
+
+Submit each form with a required field **empty** and confirm a **red field-level error**
+on the field, and that the request never reaches the server.
+
+**Read this before running these, or a pass will look like a fail:** these `Validate`
+actions carry no `messages` config, so a validation failure **also** raises a summary
+toast — "2 fields are invalid" or similar. That is the engine's validation summary, **not**
+the server-error toast these items are checking against. Red field + summary toast = pass.
+Server error message = fail.
+
+Six are live defects today — a blank first or last name currently saves:
+
+- [ ] `modal_enroltotp` **phase `scan`** — empty confirmation code (F22b: this used to reach `TwoFactorVerify` with an empty code)
+- [ ] `modal_enroltotp` **phase `password`** — empty password (new guard; previously an empty password round-tripped to BetterAuth and came back as "check your password", blaming the user for a blank field)
+- [ ] `modal_changepw` — empty current/new password
+- [ ] `modal_disable2fa` — empty password
+- [ ] `user-account` → **Profile** modal — clear **one of the two name fields** (`form_core.yaml` marks both `profile.given_name` and `profile.family_name` required)
+- [ ] `user-admin` → `view` → **Profile** modal — same two fields, admin-side. A live defect: an admin can currently save a member with a blank name
+- [ ] `user-admin` → **invite form** — clear a name field. This is also the **multi-pattern-regex proof**: its params span `^profile\.`, `^roles$` and `^member_attributes\.`, and the error must come from the `profile.` half
+
+Two are **dead guards** — they have no input that can fail a required check, so **a passing
+form proves nothing**. For each, temporarily mark one field `required: true` and confirm the
+regex catches it, then revert:
+
+- [ ] `user-admin` → **Global attributes** modal (`modal_global`) — inputs are `user_attributes.*` only. Note `^global\.` (what the container id suggests) matches **zero** blocks
+- [ ] `user-admin` → **Access/Attributes** modal (`modal_access`) — inputs are bare `roles` + `member_attributes.*`. Note `^access\.` matches **zero** blocks. Its `roles` `required: true` is **inert** and cannot be the test: `required` on an array input synthesises `pass: { _not: { _type: 'none' } }`, and an array input is seeded to `[]`, which is not `none`
 
 ---

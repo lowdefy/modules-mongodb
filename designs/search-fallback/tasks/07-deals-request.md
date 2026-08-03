@@ -6,7 +6,7 @@
 
 Like `search_contacts`, this request is **already split**: its filters live in a separate `$match` whose body is already a `$and` built with `_array.concat`, followed by a company `$lookup` and a `$facet`. Three things still need doing:
 
-1. **Stage 1 toggles.** Today it is a runtime `_if` that swaps in `$match: {}` when there is no term and a hand-authored `$search` otherwise. Both branches must go through the shared builder: no `$search` under `atlas_search: false`, and no no-op `$match` stage either (the builder returns `[]`).
+1. **Stage 1 toggles.** Today it is a runtime `_if` that swaps in `$match: {}` when there is no term and a hand-authored `$search` otherwise. **That shape is the one the shared builder generalises** — design decision 2 adopted it after this file demonstrated it works (`get_deals_list.yaml:16-25` is cited as the precedent). So the `_if` and its `$match: {}` branch are not removed; they move into `text_lead.yaml` and this file gets them via `_ref`. What changes here is that the `$search` becomes builder-generated, and the whole slot now also disappears at compile when `atlas_search` is `false`.
 2. **The regex clause** joins the existing `$and`.
 3. **The score sort.** The `$facet.results` `$sort` reads `score: -1, updated.timestamp: -1` unconditionally, relying on the missing `score` field sorting as null when there is no term. That accident does not survive the fallback (there is no `score` at all), so it must be gated properly.
 
@@ -22,7 +22,7 @@ The `name` pair is what `text_lead.yaml` generates from `paths: [name]` — with
 
 In `modules/deals/requests/get_deals_list.yaml`:
 
-**1. Replace stage 1.** Make `properties.pipeline` a runtime `_array.concat` whose first element is:
+**1. Replace stage 1.** Make `properties.pipeline` a `_build.array.concat` whose first element is:
 
 ```yaml
 - _ref:
@@ -66,22 +66,14 @@ The `index: default` option on the current `$search` is dropped — `default` is
         _module.var: atlas_search
       term:
         _payload: filter.search
-      or:
-        - _id:
-            _ref:
-              path: ../shared/search/regex_value.yaml
-              vars:
-                term:
-                  _payload: filter.search
-        - name:
-            _ref:
-              path: ../shared/search/regex_value.yaml
-              vars:
-                term:
-                  _payload: filter.search
+      paths:
+        - _id
+        - name
 ```
 
-**3. Gate the score projection and sort.** Inside `$facet.results`, the current `_array.concat` starts with an `_if` that adds `$addFields: { score: { $meta: searchScore } }` when a term is present. Replace it with `_ref` `../shared/search/score_addfields.yaml` (vars: `atlas_search`, `term`), and split the unconditional `$sort` into a gated pair:
+Note `paths` here is **not** the same list passed to `text_lead` (`[name]`): in fallback mode the deal code has to be searched by regex too, since there is no `keywordAnalyzer` clause to carry it. This is the one caller where the two lists legitimately differ, and it is why searching by deal code keeps working on a plain `mongod`.
+
+**3. Gate the score projection and sort.** Inside `$facet.results`, the current `_array.concat` starts with an `_if` that adds `$addFields: { score: { $meta: searchScore } }` when a term is present. Replace it with `_ref` `../shared/search/score_stage.yaml` (vars: `atlas_search`, `term`), and split the unconditional `$sort` into a gated pair:
 
 ```yaml
 - _if:
@@ -104,16 +96,16 @@ The `index: default` option on the current `$search` is dropped — `default` is
 
 The `else` branch is this request's existing effective ordering when no term is set (most-recently-updated first) — this request has no `sort.by`/`sort.order` payload, so there is no field-sort selector to honour.
 
-**4. Update the stage comments.** The comment above stage 1 ("Full-text search (must be the first stage). When no search term is entered, swap in a no-op `$match`…") describes a mechanism that is gone. Rewrite it to describe what the stage now is; keep the useful part — that company name is not stored on the deal document, so it stays a `$match` filter rather than a search field.
+**4. Update the stage comments.** The comment above stage 1 ("Full-text search (must be the first stage). When no search term is entered, swap in a no-op `$match`…") still describes the runtime behaviour correctly, but that behaviour now lives in the builder rather than here. Trim it to what a reader of _this_ file needs — that stage 1 is the shared text lead, and that company name is not stored on the deal document so it stays a `$match` filter rather than a search field. Do not narrate the move.
 
 ## Acceptance Criteria
 
-- No `$search` block and no no-op `$match: {}` stage are authored in this file; stage 1 comes only from `text_lead.yaml`.
+- Neither the `$search` block nor the no-op `$match: {}` is authored **in this file** any more; stage 1 comes only from `text_lead.yaml`, which supplies both branches.
 - The `_id` keyword-analyzer wildcard clause is preserved verbatim (boost 3, `multi: keywordAnalyzer`, no lowercasing) via `should_extra`.
 - The `$match` `$and` gains the regex clause and keeps `removed: null` plus all six filter `_if`s unchanged.
 - The `$facet` `$sort` uses `score` only when `atlas_search && term`; with no term, or in fallback mode, it sorts by `updated.timestamp: -1`.
 - `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
-- Built artifact for the deals list page shows the gated `$search` with both the generic `name` clauses and the `_id` clause under the default flag; with the flag temporarily flipped to `false` it shows no `$search`, no `$meta: searchScore`, a `$or` over `_id` and `name`, and the `$sort` test collapsed to the literal `false`.
+- Built artifact for the deals list page shows the gated `$search` with both the generic `name` clauses and the `_id` clause under the default flag; with the flag temporarily flipped to `false` it shows no `$search`, no `$meta: searchScore`, no no-op stage slots, a `$or` over `_id` and `name`, and the `$sort` test collapsed to the literal `false`.
 - Searching a deal code and searching a deal name both still return the expected row in Atlas mode, and in fallback mode against a local MongoDB.
 
 ## Files

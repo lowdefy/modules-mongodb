@@ -10,7 +10,7 @@ These tasks implement `designs/search-fallback/design.md`: an `atlas_search` mod
 | --- | -------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------- |
 | 1   | `01-add-atlas-search-var.md`     | Add the `atlas_search` var to 4 manifests; restate `filter_match` as `$match` syntax                   | —             |
 | 2   | `02-shared-search-builder.md`    | Create `modules/shared/search/*` and convert `contacts/get_all_contacts` as its first caller           | 1             |
-| 3   | `03-contacts-excel-request.md`   | Convert `contacts/get_contact_excel_data` (build-concat pipeline root, sort outside a facet)           | 2             |
+| 3   | `03-contacts-excel-request.md`   | Convert `contacts/get_contact_excel_data` (no facet, sort in the pipeline, combined `$addFields`)      | 2             |
 | 4   | `04-contacts-search-selector.md` | Add the toggle + regex clause to `contacts/search_contacts` (already split)                            | 2             |
 | 5   | `05-companies-requests.md`       | Convert both companies requests, incl. the `name_field` path                                           | 2             |
 | 6   | `06-activities-request.md`       | Convert `activities/get_activities`; passes `returnStoredSource: false` and fixes the date-range merge | 2             |
@@ -24,11 +24,11 @@ These tasks implement `designs/search-fallback/design.md`: an `atlas_search` mod
 
 **Manifests first (1).** Every request reads `_module.var: atlas_search`; a request referencing an undeclared var fails the build. Task 1 is manifest-only, so it lands as a no-op change that still builds.
 
-**Builder ships with its first caller (2).** The shared files under `modules/shared/search/` are inert on their own — nothing would build-verify them. Task 2 therefore creates the five builder files _and_ converts `get_all_contacts`, the canonical filters-in-`$search` request, so the whole pattern (build gate → runtime gate → `$match` `$and` → score sort) is proven end-to-end before it is copied five more times. It is the largest and riskiest task by design; everything after it is a mechanical application.
+**Builder ships with its first caller (2).** The shared files under `modules/shared/search/` are inert on their own — nothing would build-verify them. Task 2 therefore creates the four builder files _and_ converts `get_all_contacts`, the canonical filters-in-`$search` request, so the whole pattern (build gate → runtime gate → `$match` `$and` → score sort) is proven end-to-end before it is copied five more times. It is the largest and riskiest task by design; everything after it is a mechanical application.
 
 **Tasks 3–7 are independent of each other** and can run in parallel once task 2 lands. They are split per module rather than lumped because each has a distinct wrinkle:
 
-- 3 — pipeline root is a `_build.array.concat` and the `$sort` sits outside any `$facet`.
+- 3 — no `$facet` at all: the `$sort` sits directly in the pipeline, and the `score` projection is merged into a combined `$addFields` that has to be split.
 - 4 — already split; no facet, no score, and its consumer hook is the component-level `filter` var, not `filter_match`.
 - 5 — one searched path is `{ _module.var: name_field }`, an operator rather than a literal.
 - 6 — passes `returnStoredSource: false` to preserve PR #68's deliberate opt-out, and is the request whose two `updated.timestamp` bounds motivated `$and` over shallow merge.
@@ -40,7 +40,7 @@ These tasks implement `designs/search-fallback/design.md`: an `atlas_search` mod
 
 **Docs last (10).** `docs/{module}/reference/vars.md` is generated from the manifests, so it must run after task 1, and `pnpm docs:check` runs in CI — an out-of-date generated file fails the build. It also depends on **11**, because its changeset bumps `user-admin` and describes that task's escaping fix.
 
-**`user-admin` (11) needs only task 2**, for `regex_value.yaml`. It is independent of 3-9 and can run any time after 2 (but before 10) — listed last because it is the one task outside the four searchable modules. It exists so the repo ends with a single `$match`-composition idiom rather than two contradicting ones (design decision 2), and it fixes that module's unescaped `$regex` on the way.
+**`user-admin` (11) needs only task 2**, for `regex_clause.yaml`. It is independent of 3-9 and can run any time after 2 (but before 10) — listed last because it is the one task outside the four searchable modules. It exists so the repo ends with a single `$match`-composition idiom rather than two contradicting ones (design decision 2), and it fixes that module's unescaped `$regex` on the way.
 
 ## Scope
 

@@ -25,7 +25,7 @@ The tail is a `$facet` with the usual term-dependent `$sort`, `$skip`/`$limit`, 
 
 ## Task
 
-Rewrite `properties.pipeline` in `modules/activities/requests/get_activities.yaml` as a runtime `_array.concat`:
+Rewrite `properties.pipeline` in `modules/activities/requests/get_activities.yaml` as a `_build.array.concat`:
 
 1. `_ref` `../shared/search/text_lead.yaml` with `term: { _payload: filter.search }`, `returnStoredSource: false`, and:
    ```yaml
@@ -36,7 +36,7 @@ Rewrite `properties.pipeline` in `modules/activities/requests/get_activities.yam
      - description.text
    ```
    Comment the `returnStoredSource: false` at the call site with the reason (list refetches after write must not read `mongot`'s lagging copy), not the history.
-2. The `$match`, whose `$and` is a runtime `_array.concat` of: the unconditional `deleted.timestamp: { $exists: false }`; each of the six conditional clauses, keeping its existing `_if` test verbatim and returning `[clause]` / `[]`; the shared `regex_clause` ref (fan-out over `title` and `description.text`); and the `filter_match` `_array.filter` null-drop. For example:
+2. The `$match`, whose `$and` is a runtime `_array.concat` of: the unconditional `deleted.timestamp: { $exists: false }`; each of the six conditional clauses, keeping its existing `_if` test verbatim and returning `[clause]` / `[]`; the shared `regex_clause` ref (`paths: [title, description.text]`); and the `filter_match` `_array.filter` null-drop. For example:
    ```yaml
    - _if:
        test:
@@ -64,7 +64,7 @@ Rewrite `properties.pipeline` in `modules/activities/requests/get_activities.yam
                    - 0
        else: []
    ```
-3. `_ref` `../shared/search/score_addfields.yaml` — replacing the standalone `$addFields: { score: { $meta: searchScore } }` stage.
+3. `_ref` `../shared/search/score_stage.yaml` — replacing the standalone `$addFields: { score: { $meta: searchScore } }` stage.
 4. The literal group holding the unchanged `$facet` (with its `_build.array.concat`, the three `_ref`'d stages, `$skip`/`$limit`, and the `request_stages.get_all_activities` splice) and the `$unwind`/`$addFields`/`$replaceRoot` tail — with the `$sort` `_if` test replaced by `_ref` `../shared/search/use_score.yaml`, `then` the score sort, `else` the existing field sort.
 
 ## Acceptance Criteria
@@ -84,6 +84,6 @@ Rewrite `properties.pipeline` in `modules/activities/requests/get_activities.yam
 ## Notes
 
 - `modules/activities/requests/get_activities_excel_data.yaml` uses `_build.array.concat` at its pipeline root but has no `$search` — it is not part of this design. Leave it alone.
-- The `$facet` keeps `_build.array.concat`: `request_stages.get_all_activities` and the three `_ref`'d stages are build-time literals. Only the outer pipeline assembly must be the runtime concat.
+- Both concats in this file are build-time: the pipeline root and the `$facet`'s (`request_stages.get_all_activities` and the three `_ref`'d stages are build-time literals). The only runtime `_array.concat` is the one inside the `$match`'s `$and`, where the clauses genuinely appear and disappear per request.
 - `_date` wrappers on the range bounds stay exactly as authored — the `$gte`/`$lte` values must remain real dates, not strings.
 - **This is the design's sharp perf case, knowingly accepted — do not "optimise" it back.** Once the six filters move out of `$search`, `mongot`'s result set is scoped by the text term alone and `mongod` discards the rest; combined with `returnStoredSource: false` that means hydrating the whole text-matched set before the filters narrow it. The regular `mongod` indexes do not help, because `$match` runs on the `$search` output stream. Design decision 3 states the trade and why it stands (no-term loads — the majority — now skip `$search` entirely and become plain indexed `$match` + `$sort`). Moving any filter back inside `$search` would break fallback mode, which is the point of the design.

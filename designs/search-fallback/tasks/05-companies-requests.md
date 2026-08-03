@@ -9,7 +9,7 @@
 
 Both carry the same structural filter — `mustNot: [ exists: { path: deleted.timestamp } ]` — and the consumer `request_stages.filter_match` array.
 
-The wrinkle specific to this module: one searched path is **`{ _module.var: name_field }`**, not a literal string. `name_field` (default `name`) lets a consumer store the company display name under another field. The path is an operator in an operator position, which the Atlas `path` array and the regex fan-out both accept — but it is the reason the shared builder's regex fan-out is authored per request rather than generated from a `paths` list by a template. Both requests also project `display_name` with `$getField` off the same var.
+The wrinkle specific to this module: one searched path is **`{ _module.var: name_field }`**, not a literal string. `name_field` (default `name`) lets a consumer store the company display name under another field. This is harmless for the builder — `_module.var` resolves at build time, so by the time `regex_clause`'s runtime `_array.map` iterates, `paths` is a list of plain strings. It is, however, why a `.yaml.njk` loop could not have built the fan-out: Nunjucks would have to interpolate an operator as text. Both requests also project `display_name` with `$getField` off the same var.
 
 ## Task
 
@@ -43,24 +43,9 @@ vars:
                   _module.var: atlas_search
                 term:
                   _payload: filter.search
-                or:
-                  - _object.defineProperty:
-                      on: {}
-                      key:
-                        _module.var: name_field
-                      descriptor:
-                        value:
-                          _ref:
-                            path: ../shared/search/regex_value.yaml
-                            vars:
-                              term:
-                                _payload: filter.search
-                  - lowercase_email:
-                      _ref:
-                        path: ../shared/search/regex_value.yaml
-                        vars:
-                          term:
-                            _payload: filter.search
+                paths:
+                  - _module.var: name_field
+                  - lowercase_email
           - _array.filter:
               - _module.var: request_stages.filter_match
               - _function:
@@ -69,13 +54,13 @@ vars:
                     - null
 ```
 
-The first `or` entry needs a **dynamic key**, since `name_field` is a var, not a literal. `_object.defineProperty` is the idiom this repo already uses for exactly that (see the `$sort` construction in these same files), and it is the _only_ option here: Lowdefy resolves operators in value positions, and a YAML mapping key is a scalar string, so `{ _module.var: name_field }` cannot stand as a key. (Nunjucks interpolation is the one way to build a key from a var, and the design rules it out for this module for the same reason — the path is an operator, not a literal string. See the shared-builder section's "Why the regex fan-out is split across two files.") Do not look for a plainer form.
+`paths` is the **same list** passed to `text_lead`, which is what guarantees the two modes cannot disagree about which field is the company name. The dynamic key the `$or` needs is built inside `regex_clause.yaml` with `_object.defineProperty` — do not build it at the call site, and do not hand-author the `$or` here.
 
-**Score projection** — remove `score: { $meta: searchScore }` from the `$addFields` stage and splice `_ref` `../shared/search/score_addfields.yaml` before it. Keep `display_name` (and, in the Excel request, `updated_at`/`created_at`) in the remaining `$addFields`.
+**Score projection** — remove `score: { $meta: searchScore }` from the `$addFields` stage and splice `_ref` `../shared/search/score_stage.yaml` before it. Keep `display_name` (and, in the Excel request, `updated_at`/`created_at`) in the remaining `$addFields`.
 
 **`$sort` gate** — replace the `_if` test with `_ref` `../shared/search/use_score.yaml` (same vars), `then` the score sort, `else` the existing field sort. Same inversion as task 2.
 
-**Pipeline root** — runtime `_array.concat` in both files. `get_company_excel_data`'s root `_build.array.concat` must go; the `$facet` inside `get_all_companies` keeps its `_build.array.concat` for the `request_stages.get_all_companies` splice.
+**Pipeline root** — `_build.array.concat` in both files. `get_company_excel_data` already has one and keeps it; `get_all_companies` gains one in place of its literal list. The `$facet` inside `get_all_companies` also keeps its own `_build.array.concat` for the `request_stages.get_all_companies` splice. The only runtime `_array.concat` either file gains is the one inside the `$match`'s `$and`.
 
 ## Acceptance Criteria
 
@@ -84,12 +69,12 @@ The first `or` entry needs a **dynamic key**, since `name_field` is a var, not a
 - Both files search `{ _module.var: name_field }` + `lowercase_email` in Atlas mode **and** in fallback mode — the two modes must not disagree about which field is the company name.
 - `display_name` still projects via `$getField` off `name_field`, and the list page's sort/columns are unaffected.
 - `pnpm --filter @lowdefy/modules-demo ldf:b` succeeds.
-- Built artifacts for the companies list page confirm: gated `$search` under the default flag; `$or` with the `name` key resolved from the var (the demo leaves `name_field` at its default) and no `$search`/`$meta` when the flag is temporarily flipped to `false`.
+- Built artifacts for the companies list page confirm: gated `$search` under the default flag; `$or` with the `name` key resolved from the var (the demo leaves `name_field` at its default) and no `$search`/`$meta` when the flag is temporarily flipped to `false`. The resolved key is the check that `regex_clause`'s `_array.map` handled the build-resolved operator path correctly.
 
 ## Files
 
 - `modules/companies/requests/get_all_companies.yaml` — modify — filters → `$match` `$and`, text/score/sort via the shared builder.
-- `modules/companies/requests/get_company_excel_data.yaml` — modify — same, plus runtime concat at the pipeline root.
+- `modules/companies/requests/get_company_excel_data.yaml` — modify — same; its existing root `_build.array.concat` is kept.
 
 ## Notes
 

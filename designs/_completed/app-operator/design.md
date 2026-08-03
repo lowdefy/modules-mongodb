@@ -259,7 +259,7 @@ The change is a mostly-mechanical find-replace (only the dozen-ish `_build.app` 
 
 ## Upstream status — resolved
 
-Both Lowdefy capabilities this design originally depended on have shipped in the pinned experimental `lowdefy` version. The requirements drafted in [lowdefy-requirements.md](./lowdefy-requirements.md) are kept as a record of what was asked; below is how each was answered:
+Both Lowdefy capabilities this design originally depended on have shipped in the pinned experimental `lowdefy` version. The requirements drafted in [lowdefy-requirements.md](lowdefy-requirements.md) are kept as a record of what was asked; below is how each was answered:
 
 1. **`_app` evaluates at build time** as well as on client and server (`env: Client, Server and Build`), resolving against the root `slug`/`name`/`description`/`version`/`license`/`lowdefyVersion`. The Lowdefy team chose the **`_app` + `_build.app`** naming: `_build.app: slug` everywhere, `_build.app: slug` inside `_build.*` operator arguments. This design adopts that split (see [§Build-time and runtime usage](#build-time-and-runtime-usage)).
 2. **The build fails fast when `slug:` is missing.** `slug` is "required when referenced in string form" — `_build.app: slug` (or `_build.app: slug`) fails the build if `slug` is not declared. This restores the fail-fast guarantee the per-module `required: true` gave us, from a single declaration. The object form `_app: { key: slug, default: … }` is the deliberate escape hatch for sites that tolerate an unset slug; this repo doesn't need it.
@@ -269,6 +269,6 @@ There are no remaining upstream blockers. One site to confirm at implementation 
 ## Related
 
 - Operator reference: [`lowdefy/packages/docs/operators/_app.yaml`](../../../lowdefy/packages/docs/operators/_app.yaml).
-- Shared idioms: [`docs/shared/app-name.md`](../../docs/shared/app-name.md), [`docs/shared/change-stamps.md`](../../docs/shared/change-stamps.md), [`docs/shared/event-display.md`](../../docs/shared/event-display.md).
+- Shared idioms: [`docs/shared/app-name.md`](../../../docs/shared/app-name.md), [`docs/shared/change-stamps.md`](../../../docs/shared/change-stamps.md), [`docs/shared/event-display.md`](../../../docs/shared/event-display.md).
   </content>
   </invoke>

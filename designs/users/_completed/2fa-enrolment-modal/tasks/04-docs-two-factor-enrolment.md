@@ -34,8 +34,9 @@ Cover three facts:
    password alone, and the security tile shows **Off**.
 
 Write to what **actually ships**. Do **not** document a way to get fresh backup codes
-without touching the authenticator — that is Task 6's `codes_only` branch, blocked on an
-upstream action, and Task 6 amends this section when it lands. Until then the only route
+without touching the authenticator — that is the `codes_only` branch in
+the [backup-codes-rotation design](../../../backup-codes-rotation/design.md), blocked on an upstream
+action, and that design amends this section when it lands. Until then the only route
 to fresh codes is re-enrolment, and the docs should say so plainly.
 
 Front-matter: the file already has a valid block. If you add a genuinely new key concept,

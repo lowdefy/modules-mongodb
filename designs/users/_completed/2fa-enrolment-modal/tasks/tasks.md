@@ -34,14 +34,13 @@ verifying them).
 
 ## Tasks
 
-| #   | File                                | Summary                                                                                                          | Depends On     |
-| --- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------- |
-| 1   | `01-user-account-sibling-fixes.md`  | `onClose` clears + leaf-null rewrite + `Validate` regex on `modal_changepw`, `modal_disable2fa`, `modal_profile` | —              |
-| 2   | `02-user-admin-validate-scoping.md` | `Validate` regex fix on the four `user-admin` sites, per the tabulated namespaces                                | —              |
-| 3   | `03-enrolment-modal-rework.md`      | One phased modal (`password`/`scan`/`codes`), no footer, trigger seed, delete `modal_backupcodes`                | —              |
-| 4   | `04-docs-two-factor-enrolment.md`   | **Two-factor enrolment** subsection in `auth-methods.md`; `pnpm docs:gen`                                        | 3              |
-| 5   | `05-build-and-verify.md`            | Build gate, built-artifact checks, and the live verification checklist for the rig                               | 1, 2, 3, 4     |
-| 6   | `06-codes-only-branch.md`           | **Blocked on the upstream ask** — phase `choose`, Back, `codes_only`, docs amendment                             | 3 (+ upstream) |
+| #   | File                                | Summary                                                                                                          | Depends On |
+| --- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-user-account-sibling-fixes.md`  | `onClose` clears + leaf-null rewrite + `Validate` regex on `modal_changepw`, `modal_disable2fa`, `modal_profile` | —          |
+| 2   | `02-user-admin-validate-scoping.md` | `Validate` regex fix on the four `user-admin` sites, per the tabulated namespaces                                | —          |
+| 3   | `03-enrolment-modal-rework.md`      | One phased modal (`password`/`scan`/`codes`), no footer, trigger seed, delete `modal_backupcodes`                | —          |
+| 4   | `04-docs-two-factor-enrolment.md`   | **Two-factor enrolment** subsection in `auth-methods.md`; `pnpm docs:gen`                                        | 3          |
+| 5   | `05-build-and-verify.md`            | Build gate, built-artifact checks, and the live verification checklist for the rig                               | 1, 2, 3, 4 |
 
 ## Ordering Rationale
 
@@ -68,15 +67,16 @@ The reset that repopulates an invisible input and the `Validate` that reports su
 while checking nothing both compile perfectly; only the rig distinguishes them. Its live
 half is a human step.
 
-**Task 6 is deferred, not optional.** `intent: codes_only` needs a
-`TwoFactorGenerateBackupCodes` action that `@lowdefy/client` does not wrap yet
-([`../upstream-asks.md`](../upstream-asks.md)). Phase `choose` and the Back button ship
-with it, since neither has anywhere to go without the second option. Until it lands the
-trigger sends an already-enrolled user straight to `phase: password` with
-`intent: replace` — the warned single-option flow — and the part that actually removes
-the lockout (the disable-first replace chain) ships in Task 3 regardless. Nothing needs
-redesigning when the action arrives: one phase, one button, one action call, two copy
-branches.
+**The `codes_only` branch is no longer a task here — it is a separate design.**
+`intent: codes_only` needs a `TwoFactorGenerateBackupCodes` action that
+`@lowdefy/client` does not wrap yet, and phase `choose` and the Back button ship with it
+(neither has anywhere to go without the second option). Rather than leave a permanently
+blocked task hanging off a finished set, it moved to
+[`../../backup-codes-rotation`](../../../backup-codes-rotation/design.md) along with its
+upstream ask. Until it lands the trigger sends an already-enrolled user straight to
+`phase: password` with `intent: replace` — the warned single-option flow — and the part
+that actually removes the **lockout** (the disable-first replace chain) shipped in
+Task 3 regardless.
 
 **One cross-design ordering constraint.** `designs/users-fixes/role-editing` also edits
 `modal_access.yaml` and `invite_form.yaml` (dropping the inert `required: true` on the
@@ -88,14 +88,13 @@ design; that non-goal is amended to point here, and all eight are fixed across T
 2 and 3.
 
 **Already in the working tree:** `CLAUDE.md`'s two new **Lowdefy Project Rules** entries
-(D3's explicit-leaf-null reset rule, D6's `Validate`-scoping rule) and
-`upstream-asks.md`. No task creates them; Task 4 confirms the `CLAUDE.md` pair is still
-present.
+(D3's explicit-leaf-null reset rule, D6's `Validate`-scoping rule). No task creates them;
+Task 4 confirms the pair is still present.
 
 ## Scope
 
 **Source:** `designs/users-fixes/2fa-enrolment-modal/design.md`
-**Context read:** `upstream-asks.md`; the eight files under `Files changed`
+**Context read:** the eight files under `Files changed`
 (`modal_enroltotp.yaml`, `modal_backupcodes.yaml`, `view.yaml`, `tile_security.yaml`,
 `modal_changepw.yaml`, `modal_disable2fa.yaml`, `user-account/modal_profile.yaml`,
 `user-admin/{modal_profile,modal_global,modal_access}.yaml`, `invite_form.yaml`);

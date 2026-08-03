@@ -10,11 +10,14 @@ stops the routine maintenance operation — "I need new backup codes" — from b
 reachable only through the one that destroys the user's authenticator.
 
 Resolves **F21 (remainder)** and **F22 (a/b/c)** from
-[`../04-planning/findings.md`](../04-planning/findings.md), plus a rotation hazard
+[`../04-planning/findings.md`](../../04-planning/findings.md), plus a rotation hazard
 found while verifying them.
 
-One branch of D4 depends on a new platform action — see
-[`upstream-asks.md`](upstream-asks.md). Everything else ships without it.
+**Everything specified here has shipped.** The one branch of D4 that depended on a
+new platform action — "get new backup codes" without re-enrolling — is **split out
+into [`../backup-codes-rotation`](../../backup-codes-rotation/design.md)**, which owns
+that work and its [upstream ask](../../backup-codes-rotation/upstream-asks.md). Sections
+below that describe it are kept as rationale and marked; they are not scope here.
 
 ## Proposed change
 
@@ -271,7 +274,7 @@ row — secret, `verified` and `user.twoFactorEnabled` untouched
 (`dist/plugins/two-factor/backup-codes/index.mjs:212-265`). The client plugin
 registers the path, but `@lowdefy/client` wraps only `enable` / `verify` / `disable`
 (`dist/auth/createAuthMethods.js:516-538`). That is
-**[upstream ask 1](upstream-asks.md)**, and separating recovery-code rotation from
+**[upstream ask 1](../../backup-codes-rotation/upstream-asks.md)**, and separating recovery-code rotation from
 second-factor re-enrolment is the standard pattern among identity providers for
 exactly this reason.
 
@@ -282,6 +285,14 @@ So **Manage opens on a choice, not on a password field**:
 | `enrol`      | `Set up` (2FA off) — set on open   | `TwoFactorEnable`                      | → `scan`  |
 | `codes_only` | `Manage` → "Get new backup codes"  | `TwoFactorGenerateBackupCodes`         | → `codes` |
 | `replace`    | `Manage` → "Replace authenticator" | `TwoFactorDisable` + `TwoFactorEnable` | → `scan`  |
+
+> **Split out — not scope here.** Only `enrol` and `replace` ship in this design. The
+> `codes_only` row, the `choose` phase it is reached from, and phase `password`'s Back
+> button are owned by
+> [`../backup-codes-rotation`](../../backup-codes-rotation/design.md), which waits on the
+> [upstream ask](../../backup-codes-rotation/upstream-asks.md). Until that lands `Manage`
+> means `replace`, warned. The reasoning that follows is why that is a stopgap rather
+> than the destination — it is what motivated the split, so it stays here.
 
 The warning `Alert` and the title change now belong to `intent: replace` alone,
 where they are the truth rather than a blanket caveat on maintenance. And the
@@ -322,15 +333,21 @@ to stop the flag changing mid-flow, and was rejected: the tile would sit on a st
 **Off** for as long as the user reads their codes, and the refetch would ride on a
 button whose job is closing, where a failure is silent.
 
-**Sequencing.** `intent: codes_only` is the one part of this design gated on the
-upstream ask — phase `choose` and phase `password`'s Back button ship with it, since
-neither has anywhere to go without the second option. The F21/F22 fixes — one modal,
-explicit phases, no footer, state hygiene, the `Validate` fixes — carry no upstream
-dependency and ship first, and so does the disable-first replace chain, which is the
-part that removes the lockout. Until the action lands, the trigger's seed sends an
-already-enrolled user straight to `phase: password` with `intent: replace`, which is
-exactly the warned flow above. Nothing needs redesigning when it arrives: one phase,
-one button, one action call.
+**Sequencing — and why this design ends where it does.** The F21/F22 fixes (one
+modal, explicit phases, no footer, state hygiene, the `Validate` fixes) carry no
+upstream dependency, and neither does the disable-first replace chain — which is the
+part that removes the **lockout**. All of that shipped here.
+
+`intent: codes_only` was the one part gated on the upstream ask, and phase `choose`
+and the Back button ship with it, since neither has anywhere to go without the second
+option. Rather than leave a blocked task hanging off a completed design, that branch
+is **split into its own design**:
+[`../backup-codes-rotation`](../../backup-codes-rotation/design.md). The trigger's seed
+therefore sends an already-enrolled user straight to `phase: password` with
+`intent: replace` — the warned flow above — and the split design switches that one arm
+when the action arrives. Nothing needs redesigning: one phase, one button, one action
+call, two copy branches. What remains unfixed until then is the **cost** (new codes
+still price in your authenticator), not the lockout.
 
 ### D5. Copy only, and one attention gate on the codes phase
 
@@ -378,10 +395,11 @@ earlier draft did exactly that. Three reasons it goes:
   has a close button and sometimes does not, for reasons invisible to the user. That
   is a real comprehension cost paid on every enrolment, against a misclick risk on
   the one button the user actually means to press.
-- **The loss it guards is shrinking.** With D4's `codes_only` branch, a user who
+- **The loss it guards is shrinking.** Once
+  [`../backup-codes-rotation`](../../backup-codes-rotation/design.md) lands, a user who
   dismisses the codes can get a fresh set from Manage without touching their
   authenticator. The guard was priced against "gone forever", which was never quite
-  true and will soon not be true at all.
+  true (re-enrolment always reissued them, at a price) and will not be true at all.
 
 The checkbox survives that reasoning and the X suppression does not, which is the
 distinction worth keeping: one of them changes what the user _understands_, the
@@ -524,10 +542,11 @@ One file: `modules/user-account/components/view/modal_enroltotp.yaml`.
 `layout: { gap: 16 }` (matching `modal_profile.yaml:13`), `footer: false`,
 `maskClosable: false`. `closable` is left at its default `true` in every phase (D5).
 Title gated on `enroltotp.intent` (D4): "Set up two-factor authentication" for
-`enrol`, "Replace your authenticator" for `replace`, "New backup codes" for
-`codes_only`, and **"Two-factor authentication" as the fallback** — the neutral label
-for phase `choose`, which is the one phase entered with `intent: null` and so matches
-none of the three branches. It needs a default rather than a three-way `_if`:
+`enrol`, "Replace your authenticator" for `replace`, and **"Two-factor authentication"
+as the fallback**. (The `codes_only` title is added by
+[`../backup-codes-rotation`](../../backup-codes-rotation/design.md).) The fallback ships
+here and is **load-bearing, not defensive** — it is the neutral label for phase
+`choose`, the one phase entered with `intent: null`, which that design adds. It needs a default rather than a three-way `_if`:
 `Modal.js` passes `title` straight through to antd
 (`blocks-antd/dist/blocks/Modal/Modal.js:73-76`), so a null title renders an
 unlabelled header on the screen that offers two consequential choices. D3's
@@ -547,23 +566,15 @@ on `onClose`:
 | `enroltotp.codes_saved`       | CheckboxSwitch                | Gates phase `codes`' Done button (D5); `false` on reset         |
 | `enroltotp.twofa_off`         | the replace chain             | `true` once its `TwoFactorDisable` commits; read by its `catch` |
 
-**Phase `choose`** — reached only when the caller already has 2FA on (D4). No inputs:
-a line of intro copy and two buttons, each setting `phase: password` plus its
-`intent` in one `SetState`, so no request runs here and nothing is spent:
-
-```
-"Get new backup codes"   → SetState { phase: password, intent: codes_only }
-"Replace authenticator"  → SetState { phase: password, intent: replace }
-```
-
-The safe option is listed first and is the primary; replacement is secondary
-(`variant: outlined`), with its consequence stated in its own supporting line rather
-than an `Alert` — the red alert belongs on the phase where the destructive action is
-actually about to fire.
+**Phase `choose`** — **not in this design.** Specified in
+[`../backup-codes-rotation`](../../backup-codes-rotation/design.md), which adds it as a
+fourth `phase` value. Nothing here gates on it, and the title's fallback above is the
+part this design ships in advance of it.
 
 **Phase `password`** — intro copy; the replacement warning `Alert` with D4's copy
 (`visible: { _eq: [_state: enroltotp.intent, replace] }`); `enroltotp.password`; and
-one of three primary block buttons, each `visible`-gated on `intent`. All wrap their
+one of two primary block buttons, each `visible`-gated on `intent` (a third, for
+`codes_only`, is added by the split design). All wrap their
 `onClick` in `try`/`catch` as today, so a wrong password toasts a friendly message
 and stays put.
 
@@ -629,18 +640,9 @@ would be a request that can only fail — the same argument the `codes_only` bra
 credential was actually spent; the retry needs it retyped either way, and a wrong
 password should not clear the field the user is about to correct.
 
-For `intent: codes_only` — labelled "Get new codes", and gated on the
-[upstream ask](upstream-asks.md). It skips phase `scan` entirely, because nothing
-about the authenticator changes:
-
-```
-Validate  enroltotp.password
-TwoFactorGenerateBackupCodes (password)
-SetState  phase: codes, backup_codes: <_actions …backupCodes>, password: null
-```
-
-No `refetch_account` on this branch: the tile already reads **On** and nothing it
-displays has changed, so the refetch would be a request that can only fail.
+For `intent: codes_only` — **not in this design.** The button, its chain and its
+"no `refetch_account` here" reasoning are specified in
+[`../backup-codes-rotation`](../../backup-codes-rotation/design.md).
 
 Phase `password` needs its own `Validate` for the same reason phase `scan` does.
 Without it an empty `enroltotp.password` round-trips to BetterAuth and returns as the
@@ -650,21 +652,13 @@ user their password is wrong when they left it blank, and marking no field. Toda
 body button has the same gap; it is not a regression, but a design that promises one
 correct primary action per phase should not leave a phase submitting blanks.
 
-**A secondary Back button**, `visible` when `intent` is `replace` or `codes_only`
-— i.e. when the caller arrived via phase `choose`:
-
-```
-SetState  phase: choose, intent: null, password: null
-```
-
-The replacement warning is the one screen where the design is actively trying to get
-the user to reconsider, and without a Back it sits one step _past_ the last point they
-can change their mind: `footer: false` means no Cancel, so reading the alert and
-thinking better of it costs them the whole dialog. Nothing is spent yet, so this is
-comprehension rather than data loss, but it is one button. It is the second reason the
-title's `intent: null` fallback is load-bearing — the trigger's seed is the first —
-since Back returns the modal to that state deliberately. Ships with phase `choose`, so
-it is gated on the upstream ask along with it.
+**A secondary Back button** — **not in this design.** It returns phase `password` to
+phase `choose`, so it has nowhere to go until that phase exists; it is specified in
+[`../backup-codes-rotation`](../../backup-codes-rotation/design.md) and ships with it.
+Consequence worth naming here, because it is a real gap in what ships: with
+`footer: false` there is no Cancel, so a user who reads the replacement warning and
+thinks better of it must dismiss the whole dialog. Nothing is spent at that point, so
+this is comprehension rather than data loss.
 
 **Phase `scan`** — reached from `intent` `enrol` or `replace` only. Intro copy; the
 QR + manual-key + confirmation-code row; one primary button, "Confirm & enable":
@@ -719,14 +713,14 @@ A side effect worth naming: `enroltotp.uri` stops being a block id. It becomes p
 reasoning does not apply to it (it is still nulled on reset — it carries the
 secret).
 
-**Phase `codes`** — shared by all three intents, unchanged between them but for one
-line of copy, gated on `intent` — three branches, not two:
+**Phase `codes`** — shared by every intent, unchanged between them but for one
+line of copy, gated on `intent`:
 
 | `intent`     | Lead line                                                                  |
 | ------------ | -------------------------------------------------------------------------- |
 | `enrol`      | "Two-factor is on."                                                        |
 | `replace`    | "Your new authenticator is active. These codes replace your previous set." |
-| `codes_only` | "These replace your previous backup codes."                                |
+| `codes_only` | "These replace your previous backup codes." — _split design, not here_     |
 
 `replace` needs both facts and can share neither branch. `enable` recreates the
 `twoFactor` row with a fresh `backupCodes` array
@@ -765,8 +759,9 @@ fresh set of codes already exists and needed no change beyond one gated line.
   the user enrols again (D4).
   Consumer-observable behaviour a support flow needs to know — and the distinction
   between the two Manage options is exactly what a support agent gets wrong.
-- `designs/users-fixes/2fa-enrolment-modal/upstream-asks.md` — **new**. Ask 1,
-  `TwoFactorGenerateBackupCodes`, which D4's `codes_only` branch depends on.
+- `designs/users-fixes/backup-codes-rotation/` — **new design**, carrying the
+  `codes_only` branch and its upstream ask 1 (`TwoFactorGenerateBackupCodes`). Split
+  out so this design can close; no code here depends on it.
 - `modules/user-account/components/view/` — `modal_changepw.yaml`,
   `modal_disable2fa.yaml`, `modal_profile.yaml`: `Validate` regex fix (D6), plus the
   `onClose` clear on the first two and the `onOpen` `{}` → leaf-null rewrite on
@@ -905,12 +900,7 @@ build alone. On the auth-testing rig, as a credentialed user:
    second-factor challenge. Then Set up again from the tile and confirm a fresh
    enrolment completes normally. (Under a bare `enable` this is the lockout: 2FA
    enforced against a secret never scanned.)
-8. **New backup codes** (once the upstream action lands) — with 2FA on, Manage →
-   "Get new backup codes" → password → codes render directly with no QR step; the
-   **existing authenticator still verifies** afterwards, the tile still reads **On**,
-   and a previously-issued backup code is now rejected. This is the case that proves
-   the two Manage options are genuinely different operations.
-9. **`Validate` now bites (D6)** — submit each of the six broken forms with a
+8. **`Validate` now bites (D6)** — submit each of the six broken forms with a
    required field empty and confirm a red field-level error, not a server-error toast:
    `modal_enroltotp` phase `scan`, `modal_changepw`, `modal_disable2fa`,
    `modal_profile` ×2 (clear a name field — `form_core` marks both required), and
@@ -921,17 +911,21 @@ build alone. On the auth-testing rig, as a credentialed user:
    `MultipleSelector` flag (D6) — so for each of those two, mark one field required
    temporarily and confirm the regex catches it. A passing form proves nothing there.
 
-Steps 1–7 and 9 have no upstream dependency. Step 8 waits on the ask.
+No step here has an upstream dependency. The **new-backup-codes** check — which is
+what proves the two Manage options are genuinely different operations — belongs to
+[`../backup-codes-rotation`](../../backup-codes-rotation/design.md) and is listed there.
+These steps are also transcribed into `scripts/auth-testing/CHECKLIST.md` (Phase 2's
+2FA items, and Phase 4's `Validate` pass), which is where a run is actually recorded.
 
 ## Non-goals
 
-- **Not a non-goal any more**: regenerating backup codes without re-enrolling. An
-  earlier draft listed it here on the grounds that BetterAuth rotates codes only
-  through `enable`, which is **wrong** — `POST /two-factor/generate-backup-codes`
-  does exactly this and leaves the secret alone. It is now D4's `codes_only` branch,
-  gated on [upstream ask 1](upstream-asks.md). Recorded here rather than deleted
-  because the false premise is what kept the destructive path as the only path, and
-  a reader who remembers the old non-goal should see why it moved.
+- **Regenerating backup codes without re-enrolling** — now owned by
+  [`../backup-codes-rotation`](../../backup-codes-rotation/design.md). An earlier draft
+  listed this as a non-goal on the grounds that BetterAuth rotates codes only through
+  `enable`, which is **wrong**: `POST /two-factor/generate-backup-codes` does exactly
+  this and leaves the secret alone. That false premise is what kept the destructive
+  path as the only path, which is worth recording — a reader who remembers the old
+  non-goal should see why it moved rather than find it silently gone.
 - A **remaining-codes count** in the security tile. Backup codes are consumed one per
   use and nothing surfaces how many are left, which is the other half of why users
   reach zero unaware. BetterAuth's `viewBackupCodes` is `serverOnly` and returns the

@@ -59,7 +59,7 @@ Demo (Atlas branch) — `pnpm --filter @lowdefy/modules-demo ldf:b`, then inspec
 | `get_activities`             | activities list page requests                       |
 | `get_deals_list`             | deals list page requests                            |
 
-For each, assert a `_if`-gated `$search` carrying text/wildcard `should` clauses only — no `filter`/`mustNot` inside the `$search` — `returnStoredSource: true` except on `get_activities`/`get_deals_list`, which must show `false`, and **no** `$or` regex clause anywhere.
+For each, assert a runtime `_if` whose `then` is a `$search` carrying text/wildcard `should` clauses only — no `filter`/`mustNot` inside the `$search` — and whose `else` is the no-op `$match: {}`; `returnStoredSource: true` except on `get_activities`/`get_deals_list`, which must show `false`; and **no** `$or` regex clause anywhere.
 
 `workflows-test` (fallback branch) — `pnpm --filter @lowdefy/modules-workflows-test ldf:b`, then assert the inverse:
 
@@ -68,7 +68,7 @@ grep -rl '"\$search"' apps/workflows-test/.lowdefy/server/build/pages   # expect
 grep -rl 'searchScore' apps/workflows-test/.lowdefy/server/build/pages  # expect no matches
 ```
 
-plus a `$or` of `$regex` clauses inside the `$match` `$and`, and the `$sort` `_if` test collapsed to the literal `false` where applicable.
+plus a `$or` of `$regex` clauses inside the `$match` `$and` with resolved field names as keys, and the `$sort` `_if` test collapsed to the literal `false` where applicable. The build gate removes the no-op stage slots too, so no stray `$match: {}` / `$addFields: {}` should appear.
 
 **5. Add both builds to CI.** In `.github/workflows/ci.yaml`, run `ldf:b` for `apps/demo` and `apps/workflows-test` after `pnpm install`. Neither needs secrets or network beyond npm — the build scripts supply a build-only `NEXTAUTH_SECRET` placeholder. This is what makes the two-app coverage a gate rather than a convention: without it, a wrong operator name in either half of the shared builder ships unnoticed.
 

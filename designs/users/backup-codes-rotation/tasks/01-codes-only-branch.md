@@ -1,4 +1,4 @@
-# Task 6: The `codes_only` branch — phase `choose`, Back, and new backup codes
+# Task 1: The `codes_only` branch — phase `choose`, Back, and new backup codes
 
 > **BLOCKED on [upstream ask 1](../upstream-asks.md) — do not start until
 > `TwoFactorGenerateBackupCodes` ships in `@lowdefy/client` / `@lowdefy/actions-core`.**
@@ -8,7 +8,8 @@
 
 ## Context
 
-Task 3 shipped `modules/user-account/components/view/modal_enroltotp.yaml` as a
+The [parent design](../../../users/_completed/2fa-enrolment-modal/design.md) shipped
+`modules/user-account/components/view/modal_enroltotp.yaml` as a
 three-phase modal (`password` → `scan` → `codes`) with two intents, `enrol` and
 `replace`, seeded by `tile_security.yaml`'s `twofa_manage_btn`.
 
@@ -32,7 +33,7 @@ among identity providers, for exactly this reason.
 
 ## Interfaces
 
-- **Consumes** (from Task 3): the `enroltotp.*` state contract —
+- **Consumes** (from the parent design): the `enroltotp.*` state contract —
   `phase` (`password` | `scan` | `codes`), `intent` (`enrol` | `replace`), `password`,
   `uri`, `confirmation_code`, `backup_codes`, `codes_saved`, `twofa_off`; the
   `onClose` `SetState` enumerating all eight leaves; the `intent`-gated title with its
@@ -126,7 +127,8 @@ case, and it already has its default branch.
 
 ### 6. Amend the docs
 
-`docs/user-account/concepts/auth-methods.md`'s **Two-factor enrolment** subsection (Task 4) currently says the only route to fresh codes is re-enrolment. Correct it: **a fresh
+`docs/user-account/concepts/auth-methods.md`'s **Two-factor enrolment** subsection
+currently says the only route to fresh codes is re-enrolment. Correct it: **a fresh
 set can be issued from Manage without touching the authenticator.** The distinction
 between the two Manage options is exactly what a support agent gets wrong, so state both
 plainly. Then `pnpm docs:gen` and `pnpm docs:check`.
@@ -143,13 +145,14 @@ plainly. Then `pnpm docs:gen` and `pnpm docs:check`.
   otherwise.
 - The `onClose` clear is unchanged — it already covers `phase` and `intent`.
 - `pnpm docs:check` passes.
-- **Live (design Verification step 8):** with 2FA on, Manage → "Get new backup codes" →
+- **Live (design Verification step 2):** with 2FA on, Manage → "Get new backup codes" →
   password → codes render **directly with no QR step**; the **existing authenticator
   still verifies** afterwards, the tile still reads **On**, and a previously-issued
   backup code is now rejected. This is the case that proves the two Manage options are
   genuinely different operations.
-- **Live (Verification step 5, second half):** Manage now opens on `choose`, and Back
-  returns to `choose` with a **titled** modal and a blank password.
+- **Live (design Verification steps 3-4):** Manage now opens on `choose` — two buttons, no
+  inputs, safe option first and primary, titled modal — and Back returns to `choose` with a
+  **titled** modal and a blank password.
 
 ## Files
 
@@ -159,7 +162,7 @@ plainly. Then `pnpm docs:gen` and `pnpm docs:check`.
   enrolled arm.
 - `docs/user-account/concepts/auth-methods.md` — modify — correct the fresh-codes claim.
 - `docs/llms.txt` — modify (generated) — `pnpm docs:gen`.
-- `designs/users-fixes/2fa-enrolment-modal/upstream-asks.md` — modify — mark ask 1
+- `designs/users-fixes/backup-codes-rotation/upstream-asks.md` — modify — mark ask 1
   delivered.
 
 ## Notes
