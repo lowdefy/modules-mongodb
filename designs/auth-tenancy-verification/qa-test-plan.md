@@ -1,8 +1,9 @@
 # QA Test Plan — Sign-in, Accounts & Workspaces
 
 A test pass for the rebuilt sign-in system and the new **workspaces** feature.
-No coding needed. Work top to bottom — later sections depend on accounts you
-create earlier.
+Sections 1–6 need no coding — just browsers and inboxes. Section 7 is the
+developer half of the same pass: repo and database in hand. Work top to
+bottom — later sections depend on accounts you create earlier.
 
 Tick each box. If something doesn't match the **Expect** line, note it and move
 on (see [Reporting a problem](#reporting-a-problem) at the end).
@@ -468,6 +469,74 @@ purpose.
       invite form and the workspace settings page.
 - [ ] **Expect:** either the controls aren't offered, or the action is refused if
       forced. Report anything that goes through.
+
+---
+
+## Section 7 — Developer checks (repo + database access)
+
+The half of the pass a browser can't do: config edits, direct database reads,
+and deliberate breakage with a "then revert" step. Run against the same
+environment as sections 1–6 (`apps/tenant-demo`, a real Atlas cluster), except
+7.5, which runs against the pinned `apps/demo`.
+
+**Don't hand-test what the machines already prove:** per-resolver two-org
+isolation and every wall refusal/audit error path (lowdefy `connection-mongodb`
+suite), two-org isolation through real pages
+(`apps/tenant-demo/e2e/org-scoping/`), and the compiled shape of every authored
+clause (`ldf:b` build artifacts). This section is only what needs a live Atlas,
+real sessions, or a hand on the database.
+
+**Prerequisite:** Atlas Search indexes per `docs/shared/org-scoping.md` on
+`user-contacts`, `companies`, `activities` — `organizationId` statically mapped
+as `token`, and in `storedSource` for `user-contacts` and `companies`. Blank
+list pages with data present = an index gap, fail-closed by design (also
+re-check 5.2's lists after fixing).
+
+### 7.1 The audit refuses a missing clause (once, then revert)
+
+- [ ] Remove the shared-fragment `_ref` from `get_all_contacts.yaml`'s
+      `compound.filter` concat. Redeploy. Load the contacts list.
+- [ ] **Expect:** a loud request error ("has no compound.filter equals
+      clause…"), **not** a blank list — the wall audits authored clauses on
+      every run. Restore the ref.
+
+### 7.2 The preflight refuses unstamped rows (once, then revert)
+
+- [ ] Insert one document without `organizationId` into a walled collection
+      (e.g. `companies`). Restart the server.
+- [ ] **Expect:** every request refused with "Tenant preflight refused to
+      serve the app: collection …" naming the collection. Remove the document,
+      restart, confirm it serves again.
+
+### 7.3 The signup mint, on disk
+
+After a fresh open signup → verify → first login (section 1.1 gives you one):
+
+- [ ] The new `user-contacts` row carries `organizationId` = the caller's
+      workspace id **and** `userId` = the auth user id.
+- [ ] The `users` row has **no** `profile.contactId` — the link lives on the
+      contact, not the user.
+- [ ] Sign in a second time. **Expect:** no new contact row, and the existing
+      row's `updated` stamp unchanged (the every-login hook writes nothing once
+      linked).
+
+### 7.4 Search behaves under the authored wall
+
+- [ ] Contacts, companies, and activities search boxes filter, and result
+      ordering looks relevance-ranked — the authored organization clause is a
+      `filter`, so it must not affect scoring.
+- [ ] Excel exports on contacts and companies download rows (their pipelines
+      are operator-composed, so the runtime audit is their only gate).
+
+### 7.5 Pinned smoke (`apps/demo`)
+
+The wall is inert under `pinned` — two facts worth one look each:
+
+- [ ] List pages, exports, and the ContactSelector work against an Atlas Search
+      index **without** the `organizationId` token mapping or `storedSource`
+      entry (the pinned index shape).
+- [ ] A fresh signup's minted `user-contacts` row carries `userId` but **no**
+      `organizationId`.
 
 ---
 
