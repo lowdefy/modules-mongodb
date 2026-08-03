@@ -13,52 +13,51 @@ payload:
 properties:
   pipeline:
     _build.array.concat:
-      - - $search:
-            returnStoredSource: true
-            compound:
-              filter:
-                - compound:
-                    mustNot:
-                      - exists:
-                          path: deleted.timestamp
-                    must:
-                      _array.concat:
-                        - _if:
-                            test:
-                              _ne:
-                                - _payload: filter.search
-                                - null
-                            then:
-                              - compound:
-                                  should:
-                                    - text:
-                                        query:
-                                          _string.toLowerCase:
-                                            _payload: filter.search
-                                        path:
-                                          - _module.var: name_field
-                                          - lowercase_email
-                                    - wildcard:
-                                        query:
-                                          _string.concat:
-                                            - "*"
-                                            - _string.toLowerCase:
-                                                _payload: filter.search
-                                            - "*"
-                                        path:
-                                          - _module.var: name_field
-                                          - lowercase_email
-                                        allowAnalyzedField: true
-                            else: []
-                        - _array.filter:
-                            - _module.var: request_stages.filter_match
-                            - _function:
-                                __ne:
-                                  - __args: 0
-                                  - null
-        - $addFields:
-            score:
-              $meta: searchScore
+      - _ref:
+          path: ../shared/search/text_lead.yaml
+          vars:
+            atlas_search:
+              _module.var: atlas_search
+            term:
+              _payload: filter.search
+            paths:
+              - _module.var: name_field
+              - lowercase_email
+      # $and rather than a shallow merge: the structural filter, the regex
+      # clause's $or and the consumer filter_match clauses can collide on a key.
+      # The clause set mirrors get_all_companies — the export returns exactly the
+      # rows the list shows.
+      - - $match:
+            $and:
+              _array.concat:
+                - - deleted.timestamp:
+                      $exists: false
+                # Same paths as the Atlas stage above, so the two search modes
+                # cannot disagree about which field holds the company name.
+                - _ref:
+                    path: ../shared/search/regex_clause.yaml
+                    vars:
+                      atlas_search:
+                        _module.var: atlas_search
+                      term:
+                        _payload: filter.search
+                      paths:
+                        - _module.var: name_field
+                        - lowercase_email
+                - _array.filter:
+                    - _module.var: request_stages.filter_match
+                    - _function:
+                        __ne:
+                          - __args: 0
+                          - null
+      - _ref:
+          path: ../shared/search/score_stage.yaml
+          vars:
+            atlas_search:
+              _module.var: atlas_search
+            term:
+              _payload: filter.search
+      - - $addFields:
             display_name:
               $getField:
                 field:
@@ -74,12 +73,18 @@ properties:
                 format: "%Y-%m-%d"
         - _if:
             test:
-              _eq:
-                - _if_none:
-                    - _payload: filter.search
-                    - null
-                - null
+              _ref:
+                path: ../shared/search/use_score.yaml
+                vars:
+                  atlas_search:
+                    _module.var: atlas_search
+                  term:
+                    _payload: filter.search
             then:
+              $sort:
+                score: -1
+                updated.timestamp: -1
+            else:
               $sort:
                 _object.assign:
                   - _object.defineProperty:
@@ -90,10 +95,6 @@ properties:
                         value:
                           _payload: sort.order
                   - _id: 1
-            else:
-              $sort:
-                score: -1
-                updated.timestamp: -1
       - _module.var: request_stages.get_all_companies
       - - $skip:
             _payload: pagination.skip
