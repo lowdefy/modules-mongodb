@@ -19,6 +19,8 @@ exports:
       description: Constrained analytics query (agent tool + report re-queries)
     - id: generate-report
       description: Validate and persist a report spec (agent tool)
+    - id: set-report-visibility
+      description: Publish a saved report to the app, or retract it
   connections:
     - id: reports-store
       description: MongoDB collection for saved report specs
@@ -149,6 +151,7 @@ api:
   - _ref: api/set-conversation-title.yaml
   - _ref: api/list-reports.yaml
   - _ref: api/delete-report.yaml
+  - _ref: api/set-report-visibility.yaml
 
 agents:
   - _ref: agents/reporting-assistant.yaml

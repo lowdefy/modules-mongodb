@@ -1,0 +1,139 @@
+# Publish and unpublish are ONE reversible act through one endpoint with exactly
+# two states: private (only me) or shared (everyone in the app). Anything finer —
+# per-user grants, groups, share links — needs an access model this module does
+# not have.
+#
+# The two directions are gated differently, and that asymmetry is the point.
+# Publishing needs owner AND a share_roles role; unpublishing needs owner OR a
+# share_roles role. Requiring both in both directions would make a publish
+# reversible only while both halves still hold, and three ordinary situations
+# dissolve one of them: a publisher whose role is revoked, an app that switches
+# publishing off, an author who leaves. In each case the report stays in front of
+# the whole app and deleting it is the only remaining exit. Widening the
+# unpublish check — in the restrictive direction only — closes all three without
+# a new field, endpoint or state. It does hand share_roles holders a moderation
+# power over reports they do not own, deliberately: anyone trusted to decide what
+# the whole app sees is trusted to decide it should stop seeing something. There
+# is no equivalent power to publish, rename, delete or edit someone else's
+# report.
+#
+# No change stamp, unlike every other write here. The reports list sorts on
+# updated.timestamp, so the stamp is the list's order and not just an audit
+# record — and publishing changes who may see a report, not what it is.
+id: set-report-visibility
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to change a report's visibility.
+  # Anything else would be written verbatim and leave a report matching neither
+  # the owner-only nor the shared half of every readable predicate in the module.
+  - :if:
+      _and:
+        - _ne:
+            - _payload: visibility
+            - private
+        - _ne:
+            - _payload: visibility
+            - shared
+    :then:
+      - :reject: Visibility must be "private" or "shared".
+  # share_roles has no default, and _user.hasSomeRoles validates its argument
+  # eagerly and throws on a non-array — so an app that never set the var would
+  # fail to build rather than simply not publish. _build.if resolves during the
+  # build, so such an app ships a routine whose has_share_role is the literal
+  # false and never emits the operator at all. Same construction, same reason, as
+  # modules/deals/pages/all.yaml.
+  - :set_state:
+      has_share_role:
+        _build.if:
+          test:
+            _build.ne:
+              - _module.var: share_roles
+              - null
+          then:
+            _user.hasSomeRoles:
+              _module.var: share_roles
+          else: false
+  - :if:
+      _eq:
+        - _payload: visibility
+        - shared
+    :then:
+      - :if:
+          _eq:
+            - _state: has_share_role
+            - false
+        :then:
+          # An app with no share_roles rejects every publish, so telling that
+          # caller they lack a role would send them asking for one nobody can be
+          # granted.
+          - :reject:
+              _build.if:
+                test:
+                  _build.ne:
+                    - _module.var: share_roles
+                    - null
+                then: You do not hold a role that may publish a report to the whole app.
+                else: Publishing reports to the whole app is not enabled for this app.
+      - id: publish
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: reports-store
+        properties:
+          # Owner-only, and never a deleted report: a deleted report is not
+          # readable at all, so it cannot be made readable by the whole app.
+          filter:
+            _id:
+              _payload: report_id
+            owner.user_id:
+              _user: id
+            deleted.timestamp:
+              $exists: false
+          update:
+            $set:
+              visibility: shared
+      - :return:
+          ok: true
+          modifiedCount:
+            _step: publish.modifiedCount
+    :else:
+      - id: unpublish
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: reports-store
+        properties:
+          # "Owner OR role" is half a document match and half a fact about the
+          # caller, so it cannot be one filter: holding the role drops the owner
+          # clause, otherwise it stays. Two static filters rather than one
+          # assembled from parts, so what each case matches is readable here.
+          filter:
+            _if:
+              test:
+                _state: has_share_role
+              then:
+                _id:
+                  _payload: report_id
+                deleted.timestamp:
+                  $exists: false
+              else:
+                _id:
+                  _payload: report_id
+                owner.user_id:
+                  _user: id
+                deleted.timestamp:
+                  $exists: false
+          update:
+            $set:
+              visibility: private
+      - :return:
+          ok: true
+          # Zero means not found, not readable, already deleted, or already in
+          # that state, and the caller is not told which. The endpoint's job is
+          # the authorization; why a call matched nothing is information a
+          # non-owner is not owed.
+          modifiedCount:
+            _step: unpublish.modifiedCount

@@ -10,6 +10,13 @@
 catalog:
   _ref: modules/reporting/catalog.yaml
 
+# Holders of this role may publish a saved report to the whole app (and retract
+# anyone's published report). Set here so the demo exercises the enabled path —
+# leaving it unset builds a routine that rejects every publish, which is the
+# other half of the behaviour and is what an app without publishing gets.
+share_roles:
+  - report-publisher
+
 # Project context for the agent's instructions — the things the catalog can't
 # say: what this app is, the words users will actually type, and the business
 # conventions to assume. Per-field mechanics (types, enum values, which array
