@@ -112,3 +112,27 @@ multi-org* — and does nothing under `pinned`. A name like `scopeField:` (or
 similar) would read as the declaration it now is, rather than as an imperative
 that suggests the wall is always on. Config-breaking for every declaration, so it
 should ride a release that touches the wall's config surface anyway.
+
+## 7. Reject unwalling remaps of tenant module connections
+
+> **Resolved (2026-08-03).** Landed on `feat/mongodb-tenant-wall` (rides the next
+> experimental release after `20260803084426`).
+
+**To**: the tenant wall (lowdefy PR #2280).
+
+A module entry's `connections:` remap swaps the module's whole connection
+definition for the app's — including the module's `tenant:` declaration. The
+author doing the remap is making a plumbing decision (a different database or
+collection name) and nothing tells them the wall rode along: under
+`policy: tenant` the module's plain reads run unfiltered and its writes
+unstamped, while the module's `tenant: authored` requests keep their compiled
+clause — so the list pages look correctly scoped while the reads and writes
+underneath leak across organizations. That is a per-connection opt-out by
+accident, the exact thing the policy-conditional design refuses to make
+expressible (its open question 1).
+
+**Ask (as landed)**: under `policy: tenant`, remapping a module connection that
+declares `tenant:` to a target connection that does not is a build error naming
+both connections and the fix (declare `tenant:` on the target, or drop the
+remap). Under `pinned` remaps stay unrestricted — the flip to `tenant` is a
+rebuild, so the guard fires there, before any traffic.

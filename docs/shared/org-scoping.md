@@ -23,10 +23,11 @@ Declared once per connection, enforced by the platform on reads **and** writes: 
 
 This module repo's `$search` list pipelines, Excel exports, the contact selector, and the company hierarchy traversals all carry these authored clauses; a consuming app never adds its own. The clauses are **compiled in at build time only under `policy: tenant`** — every authored site references one shared policy fragment (`modules/shared/org/tenant-clause.yaml`), so a `pinned` build contains no organization clause anywhere. Mis-compilation is fail-closed in the direction that matters: under `tenant` the runtime audit refuses a request whose clause is missing, so a wrongly dropped clause fails loudly rather than leaking; under `pinned` a dropped clause is harmless by construction — one organization exists.
 
-Two rules follow for app authors:
+Three rules follow for app authors:
 
 1. **Never write your own organization filter** on a walled connection — under `tenant` the wall injects it (or, in the authored requests above, the module already carries the audited clause), and under `pinned` there is nothing to filter. Where config genuinely needs the organization id as a value (rare), read `_user: organizationId`, which resolves under both policies. Never use the `_organization` operator in module-consuming config — it throws under the `tenant` policy.
 2. **Substituted collections inherit the contract under `tenant`.** Vars that let an app substitute a joined collection by name (`activities.lookup_collections`, `events.actions_collection` / `contacts_collection`, `workflows.contacts_collection`) are joined inside walled pipelines, so under `policy: tenant` the substituted collection must itself carry `organizationId` — otherwise the join fails closed (empty). Under `pinned` no field is required.
+3. **A connection remap must keep the wall.** A module entry's `connections:` remap swaps in the app's whole connection definition — including its `tenant:` declaration. Under `policy: tenant`, remapping a walled module connection to a target that does not declare `tenant:` is a **build error**; declare `tenant: true` (or the `{ field: ... }` form) on the target connection. Under `pinned` remaps are unrestricted, and the guard fires at the flip's rebuild.
 
 ## System-context writes (`tenant: none`)
 
