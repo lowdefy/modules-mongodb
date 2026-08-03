@@ -1,0 +1,3 @@
+# The e2e stack runs a plain mongod with no Atlas Search, so text search uses
+# the regex fallback — see docs/shared/search.md.
+atlas_search: false

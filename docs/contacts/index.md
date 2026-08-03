@@ -58,6 +58,7 @@ Both write APIs derive part of the contact themselves, so a payload does not get
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
+- [Indexes](reference/indexes.md) — the `default` Atlas Search index (and its whole-document stored-source requirement) plus the regular `mongod` indexes the list needs
 
 ## Shared idioms
 
@@ -66,4 +67,5 @@ Both write APIs derive part of the contact themselves, so a payload does not get
 - [Slots](../shared/slots.md) — `fields`, `components`, `request_stages` extension points
 - [Change stamps](../shared/change-stamps.md) — audit metadata stamped on writes
 - [Avatar colors](../shared/avatar-colors.md) — gradient pairs for avatar backgrounds
+- [Text search and the Atlas fallback](../shared/search.md) — the `atlas_search` flag, index requirements, and what the fallback trades away
 - [Secrets](../shared/secrets.md) — `MONGODB_URI` and other connection secrets

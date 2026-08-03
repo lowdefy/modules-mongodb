@@ -1,38 +1,30 @@
-# Members filter $match (design Decision 2) — a post-$lookup regex/text filter
-# (Atlas $search is gone from this module; the searchable fields — contact name,
-# user email — only coexist after the joins, so search must run here).
-#   search — case-insensitive regex over the flattened name / email
+# Members filter $match, applied AFTER members_base's $lookups — the searchable
+# fields (contact name, user email) only coexist on the row once the joins have
+# flattened them.
+#   search — case-insensitive regex over the flattened name / email, built by the
+#            shared regex_clause.yaml, which owns escaping the term (an
+#            unescaped `(` makes MongoDB reject the regex, and a raw `.*` would
+#            match every member)
 #   roles  — EXACT split-array element match: $in on the post-$split roles_arr,
 #            never a substring/regex over the raw CSV (so "admin" does not match
-#            "super-admin", Decision 1)
+#            "super-admin")
 #   status — the derived Active / Suspended value
-# Each clause is omitted when its filter is unset, and the set clauses are merged
-# into a single object (implicit AND) rather than wrapped in $and — with no filter
-# set that leaves the canonical match-all `$match: {}`, where `$and: []` would be
-# rejected by MongoDB. So every clause must own a distinct top-level key (the two
-# status branches are mutually exclusive, so only one can emit `status`).
+# Each clause drops out when its filter is unset, and the set clauses are ANDed
+# as a $and array rather than merged into one object, so no two of them can
+# collide on a top-level key. The leading `{}` keeps the array non-empty with
+# nothing set — MongoDB rejects `$and: []` but accepts the match-all `$and: [{}]`.
 $match:
-  _object.assign:
+  $and:
     _array.concat:
       - - {}
-      - _if:
-          test:
-            _ne:
-              - _if_none:
-                  - _payload: filter.search
-                  - null
-              - null
-          then:
-            - $or:
-                - name:
-                    $regex:
-                      _payload: filter.search
-                    $options: i
-                - email:
-                    $regex:
-                      _payload: filter.search
-                    $options: i
-          else: []
+      - _ref:
+          path: ../shared/search/regex_clause.yaml
+          vars:
+            term:
+              _payload: filter.search
+            paths:
+              - name
+              - email
       - _if:
           test:
             _gt:

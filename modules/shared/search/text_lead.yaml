@@ -1,0 +1,57 @@
+# Atlas $search text stage — the only Atlas-only stage in the searchable
+# requests. Text ranking only: structural filters live in the $match that
+# follows, so they run in both search modes.
+#
+# Two gates compose here. `atlas_search` is a module var, so a false flag drops
+# the whole mechanism at compile. `term` is runtime, so the stage resolves at
+# request time to either $search or a no-op $match — never to nothing, because
+# a build-time concat cannot flatten a runtime value.
+#
+# returnStoredSource defaults to true: mongot returns the matched documents
+# itself, so the $match below costs mongod no collection access. Callers whose
+# list is refetched straight after a write pass false — mongot's copy lags index
+# replication, so a stored-source row can show pre-edit values.
+_build.if:
+  test:
+    _var: atlas_search
+  then:
+    - _if:
+        test:
+          _ne:
+            - _if_none:
+                - _var: term
+                - ""
+            - ""
+        then:
+          $search:
+            returnStoredSource:
+              _var:
+                key: returnStoredSource
+                default: true
+            compound:
+              should:
+                _array.concat:
+                  - - text:
+                        query:
+                          _string.toLowerCase:
+                            _var: term
+                        path:
+                          _var: paths
+                    - wildcard:
+                        query:
+                          _string.concat:
+                            - "*"
+                            - _string.toLowerCase:
+                                _var: term
+                            - "*"
+                        path:
+                          _var: paths
+                        allowAnalyzedField: true
+                  - _var:
+                      key: should_extra
+                      default: []
+        # No term: resolve to a match-all rather than to nothing. The stage slot
+        # is fixed at build time, so the runtime branch must yield a valid stage.
+        else:
+          $match: {}
+  else: []

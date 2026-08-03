@@ -43,6 +43,16 @@ vars:
   id_length:
     default: 4
     description: Numeric length for consecutive IDs (e.g., 4 → C-0001)
+  atlas_search:
+    type: boolean
+    default: true
+    description: >-
+      Whether the deployment's MongoDB has Atlas Search available. When true,
+      text search uses Atlas `$search` (indexed, relevance-ranked). When
+      false, text search falls back to a case-insensitive regex `$match` that
+      runs on any MongoDB (community/local) — substring matching, no
+      relevance ranking, and an unindexed collection scan, so suitable for
+      development or small collections. See docs/shared/search.md.
   event_display:
     description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under the app slug. When set, the override fully replaces the defaults — no merge."
   hierarchy:
@@ -149,10 +159,15 @@ vars:
     description: "Pipeline overrides: get_all_companies, selector, filter_match, write. write stages are appended to both create-company and update-company flows."
     properties:
       filter_match:
+        type: array
         default: []
         description: >-
-          Atlas Search compound clauses appended to the list-page `$search`
-          query. Used to add custom filter conditions to the companies list.
+          Plain MongoDB `$match` clauses ANDed into the list-page and
+          Excel-export filter. Each element is one query clause (e.g.
+          `{ region: "x" }`, `{ score: { $gte: 10 } }`); they are composed
+          via `$and`, so a clause using `$or` is safe. Applies in both Atlas
+          and regex-fallback modes. Used to add custom filter conditions to
+          the companies list.
       get_all_companies:
         default:
           - $addFields: {}
