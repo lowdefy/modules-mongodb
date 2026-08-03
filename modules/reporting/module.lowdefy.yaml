@@ -29,6 +29,8 @@ exports:
       description: Star or unstar a readable report, per user
     - id: duplicate-report
       description: Copy a readable report into a private one the caller owns
+    - id: remove-report-section
+      description: Drop one section from a report, cascading filter bindings (owner only)
   connections:
     - id: reports-store
       description: MongoDB collection for saved report specs
@@ -164,6 +166,7 @@ api:
   - _ref: api/restore-report.yaml
   - _ref: api/set-report-favourite.yaml
   - _ref: api/duplicate-report.yaml
+  - _ref: api/remove-report-section.yaml
 
 agents:
   - _ref: agents/reporting-assistant.yaml
