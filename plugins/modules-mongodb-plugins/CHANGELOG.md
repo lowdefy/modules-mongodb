@@ -1,5 +1,13 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.23.0
+
+### Patch Changes
+
+- [#147](https://github.com/lowdefy/modules-mongodb/pull/147) [`125c0b0`](https://github.com/lowdefy/modules-mongodb/commit/125c0b04c7003d28ddc84aa039e3d3b80fde7a84) Thanks [@Yianni99](https://github.com/Yianni99)! - `WorkflowProgress`'s action buttons are smaller — 12px text with 4px/10px padding, about 26px tall where they were 31px. They sit under each action group's label, so a workflow with several groups spends most of its height on them, and the extra bulk bought nothing.
+
+  This applies everywhere the block renders, not just the deals workspace. Consumers wanting a different size can style the `button` cssKey rather than carry a fork.
+
 ## 0.22.0
 
 ### Minor Changes
