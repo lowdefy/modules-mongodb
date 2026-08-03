@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-activities
 
+## 0.23.1
+
 ## 0.23.0
 
 ### Minor Changes
