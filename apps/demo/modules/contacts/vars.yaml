@@ -1,3 +1,7 @@
+atlas_search:
+  _ref:
+    path: app_config.yaml
+    key: atlas_search
 fields:
   show_honorific: true
   profile:

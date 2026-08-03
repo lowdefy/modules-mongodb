@@ -26,17 +26,51 @@
 
 # The workflows module declares a `contacts` dependency (the contact-selector
 # field components). Wiring contacts pulls in companies + files too (contacts ↔
-# companies are mutually dependent; both depend on files). Only s3_region
-# (files) is set; all other vars use their defaults. These modules are not
-# exercised by the workflows-test specs; they exist solely to satisfy the
-# build-time dependency graph.
+# companies are mutually dependent; both depend on files). Beyond the
+# contact-selector these pages are not exercised by the workflows-test specs;
+# the entries satisfy the build-time dependency graph. Every entry below sets
+# only the vars the build requires; all others use their defaults.
 - id: companies
   source: "file:../../modules/companies"
+  vars:
+    atlas_search:
+      _ref:
+        path: app_config.yaml
+        key: atlas_search
 
 - id: contacts
   source: "file:../../modules/contacts"
+  vars:
+    atlas_search:
+      _ref:
+        path: app_config.yaml
+        key: atlas_search
 
 - id: files
   source: "file:../../modules/files"
   vars:
     s3_region: us-east-1
+
+# activities and deals are listed so their searchable requests compile against
+# this app's plain mongod. deals depends on activities, so both are needed.
+- id: activities
+  source: "file:../../modules/activities"
+  vars:
+    atlas_search:
+      _ref:
+        path: app_config.yaml
+        key: atlas_search
+
+- id: deals
+  source: "file:../../modules/deals"
+  vars:
+    atlas_search:
+      _ref:
+        path: app_config.yaml
+        key: atlas_search
+    stages:
+      prospecting:
+        title: Prospecting
+    # Must name a workflow this app's workflows_config declares — the deal pages
+    # resolve its `{type}-start` / `{type}-submit` endpoints at build time.
+    workflow_type: form-lifecycle
