@@ -1,10 +1,25 @@
 # Report tool: validate the report spec against the catalog and the
 # allow-listed section types (each query section's pipeline is run through
-# validatePipeline before persist), persist it raw (the durable contract —
-# blocks are compiled from it at every resolve), return the report's URL.
-# Persisting raw stores nested $-prefixed keys inside the report doc, which
-# MongoDB allows from 5.0 (see task 9); the resolve-time revalidation is the
-# guarantee, so the pipeline is stored verbatim, never sanitized.
+# validatePipeline before persist), persist the VALIDATOR'S OUTPUT, return the
+# report's URL.
+#
+# The document holds validateReportSpec's return value, not the payload it was
+# handed. That fixes the spec's meaning at create time: section ids are assigned
+# once and become durable identities, and the display defaults (REPORT_LOCALE /
+# REPORT_CURRENCY / REPORT_DECIMALS, a multiselect's `match`) freeze here rather
+# than being re-applied from whatever the constants say on every read — so an app
+# changing its currency default does not retroactively re-denominate reports
+# saved last year. Unrecognised keys are dropped rather than persisted forever.
+#
+# Pipelines are unaffected and still stored verbatim: validateQuery returns the
+# pipeline array unchanged, so the output carries every pipeline byte-for-byte,
+# nothing is sanitized, and AnalyticsPipeline still revalidates each one per
+# section per viewer on every resolve — that revalidation is the guarantee. This
+# stores nested $-prefixed keys inside the report doc, which MongoDB allows from
+# 5.0.
+#
+# `spec` holds { sections } only. `title` and `description` are document fields:
+# the single source for the list, search, sort and set-report-title.
 id: generate-report
 type: Api
 description: >
@@ -52,7 +67,7 @@ routine:
     :then:
       - :reject: You must be signed in to save a report.
   # Validation throws on an invalid spec — the tool call fails with the
-  # validator's actionable message. The raw spec is what gets stored.
+  # validator's actionable message. Its OUTPUT is what gets stored.
   - :set_state:
       validated:
         _analytics.validateReportSpec:
@@ -72,12 +87,27 @@ routine:
           _uuid: true
         owner:
           _ref: defaults/owner.yaml
+        # Off the VALIDATED object, not the payload: the validator caps the title
+        # length and rejects a non-string description, so reading the payload
+        # would store a value it had already normalized past.
         title:
-          _payload: spec.title
+          _state: validated.title
         description:
-          _payload: spec.description
+          _state: validated.description
         spec:
-          _payload: spec
+          sections:
+            _state: validated.sections
+        # What a future compatibility branch or a migration keys on. It cannot be
+        # backfilled meaningfully later — an existing document gives no way to
+        # tell which grammar it was written against — so it is written on insert
+        # by every creator. Nothing branches on it yet.
+        spec_version: 1
+        # Private until deliberately published by set-report-visibility. Absent
+        # reads as private everywhere, so this is a shape convenience.
+        visibility: private
+        # Per-user favourite markers, projected to a boolean for the caller so
+        # nobody learns who else favourited a report. $addToSet / $pull only.
+        favourite_of: []
         # Tool endpoints receive only the tool input as payload — the agent
         # context (conversationId) does not reach them in the current agent
         # system, so the source conversation is not linked on this path.

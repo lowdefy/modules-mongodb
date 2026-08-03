@@ -1,4 +1,4 @@
-# The Dynamic block's resolver: load the report spec (owner-scoped), run each
+# The Dynamic block's resolver: load the report spec (readable-scoped), run each
 # query-backed section's pipeline inside :try (a failed section renders as an
 # Alert card while the rest of the report renders), compile spec + rows to
 # blocks server-side. AnalyticsPipeline is the security gate: it revalidates
@@ -8,6 +8,18 @@
 id: resolve-report
 type: InternalApi
 routine:
+  # Needed once the read opens to shared reports. Until then the owner.user_id
+  # match made an unauthenticated read match nothing; a $or on
+  # visibility: shared would hand every published report to an anonymous
+  # caller. "Shared" means everyone in the app, and the module's baseline
+  # everywhere — including the catalog's role gate, where an absent roles list
+  # means any AUTHENTICATED user — is an authenticated user.
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to open a report.
   - id: load_report
     type: MongoDBFindOne
     connectionId:
@@ -16,12 +28,18 @@ routine:
       query:
         _id:
           _payload: urlQuery.report_id
-        owner.user_id:
-          _user: id
         # A soft-deleted report resolves as not-found (the fallback slot), the
         # same as one that never existed.
         deleted.timestamp:
           $exists: false
+        # Readable: yours, or published to the app. The per-section role gate
+        # below is untouched and still runs against the VIEWING user, so opening
+        # the read does not open the data — a shared report over a role-gated
+        # collection resolves with its gated sections failing.
+        $or:
+          - owner.user_id:
+              _user: id
+          - visibility: shared
   - :if:
       _eq:
         - _step: load_report
@@ -32,11 +50,18 @@ routine:
   # No catalog passed here: querySections only extracts the query sections
   # (inert), and the per-section AnalyticsPipeline below is the real gate — so
   # one inaccessible section never throws here and takes down the whole report.
+  # `spec` holds { sections } only, so the spec the validator wants is composed
+  # from the document's fields — it requires a non-empty title.
   - :for: section
     :in:
       _analytics.querySections:
         spec:
-          _step: load_report.spec
+          title:
+            _step: load_report.title
+          description:
+            _step: load_report.description
+          sections:
+            _step: load_report.spec.sections
         roles:
           _user: roles
     :do:
@@ -71,10 +96,21 @@ routine:
               collection:
                 _item: section.query.collection
   - :return:
+      # The page renders owner-only actions from this; the resolver is the only
+      # party that knows it.
+      is_owner:
+        _eq:
+          - _step: load_report.owner.user_id
+          - _user: id
       blocks:
         _analytics.compileReport:
           spec:
-            _step: load_report.spec
+            title:
+              _step: load_report.title
+            description:
+              _step: load_report.description
+            sections:
+              _step: load_report.spec.sections
           results:
             _step: run_query
           # Catalog is used ONLY to resolve select-filter options from a field's
