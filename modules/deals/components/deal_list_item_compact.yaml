@@ -5,6 +5,8 @@ properties:
   hoverable: true
   style:
     margin: 2
+    # Fills the grid cell that `gridAutoRows: 1fr` has equalised.
+    height: 100%
 events:
   onClick:
     - id: select_deal
@@ -105,4 +107,4 @@ blocks:
                 {% endif %}
               </span>
             </div>
-            <div style="font-size: 12px; font-weight: 600; color: {{ 'var(--ant-color-primary)' if selected else 'var(--ant-color-text)' }}; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ deal.name | safe }}</div>
+            <div style="font-size: 12px; font-weight: 600; color: {{ 'var(--ant-color-primary)' if selected else 'var(--ant-color-text)' }}; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ deal.name | safe }}</div>

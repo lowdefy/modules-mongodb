@@ -62,6 +62,12 @@ Each of the deal's workflow types appears under its own key, so a deal running t
 
 An instanced action keys its own form data by instance, so those reads carry a fourth segment: `workflows.{workflow_type}.{action_type}.{key}.{field}`.
 
+## Workflow state on the deal view
+
+The deal view seeds the selected deal's `get-entity-workflows` response into `entity_workflows` page state, and reseeds it on mount, on deal switch, on a related-deal click, and after a check action completes. Blocks injected through `topbar_slots`, `main_slots`, `sidebar_slots` or `info_grid_slots` render inside that page, so they can read it with `_state: entity_workflows` and stay in step with the rest of the workspace.
+
+Each entry is a workflow carrying `workflow_type`, `title` and `groups[].actions[]`, where each action has `status`, `message` and a server-resolved `link`. Two rules are worth mirroring rather than reinventing: the terminal statuses are **`done` and `not-required`** — the set the engine's own `deriveGroupStatus` treats as closed — and "this deal's workflow work is finished" means every action of **every** workflow is terminal, not just the first. That distinction matters as soon as a lifecycle chains two workflows, where a rule written against one would fire early.
+
 ## Required indexes
 
 The list/workspace pipelines assume the consuming app applies these indexes on the mapped `deals` collection. The module documents the contract; the app owns creating them (e.g. under its own `actions/indexes/indexes/{app}/deals/` via `splice-actions`).

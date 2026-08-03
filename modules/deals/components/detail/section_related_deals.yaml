@@ -79,15 +79,15 @@ blocks:
               - []
         - 0
     type: List
-    # Two per row, two rows per page, bounded by pagination rather than by
-    # scrolling. Grid, not a flex row — see `open_items_row.yaml` for why a span
-    # on the card cannot halve a List item.
+    # Two per row, two rows per page, bounded by pagination rather than scrolling.
+    # Same grid as `open_items_row.yaml` — see there for why each part is needed.
     layout:
       span: 24
     style:
       .element:
         display: grid
-        gridTemplateColumns: 1fr 1fr
+        gridTemplateColumns: minmax(0, 1fr) minmax(0, 1fr)
+        gridAutoRows: 1fr
         gap: 8
     blocks:
       - _ref:
