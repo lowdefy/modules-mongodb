@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-notifications
 
+## 0.23.1
+
 ## 0.23.0
 
 ## 0.22.0
