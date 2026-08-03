@@ -97,9 +97,9 @@ Today the strip is a `List direction: row` of `deal_list_item_compact` cards at 
 
 Capping by pixel height would clip a row mid-card, and capping by count alone doesn't bound anything while widths vary. **Making the cards uniform removes both problems at once:** fixed width, and the name dropped to single-line ellipsis. Height and width become constant, so a count limit genuinely bounds the strip. The lookup drops to 10.
 
-**Width: a 180px module constant.** The floor is the card's top row, which carries the deal code beside a stage chip — `Fulfillment` is the longest stage title today — so below about 150px the chips begin to clip. 180px shows roughly **three** cards before scrolling, with ten reachable behind it: enough to see the neighbourhood without turning a glance-and-click affordance into a browsing surface. *(An earlier draft of this section claimed four. Measured, the detail column is about 575px usable at a 1600px viewport — `detail_col` is span 12 inside span 24 inside span 19, less 8px body padding — so it is ~3.2 cards; four would need ~740px.)*
+**Width: a 200px module constant.** The floor is the card's top row, which carries the deal code beside a stage chip — `Fulfillment` is the longest stage title today — so below about 150px the chips begin to clip. Measured, the detail column is about 575px usable at a 1600px viewport (`detail_col` is span 12 inside span 24 inside span 19, less 8px body padding), so 200px shows roughly **three** cards before scrolling with ten reachable behind them: enough to see the neighbourhood without turning a glance-and-click affordance into a browsing surface. *(An earlier draft specified 180px and claimed four cards; 180px is ~3.2 and 200px ~2.9 — practically the same three, with 20px more of the deal name before the ellipsis.)*
 
-**Two mechanisms are needed to pin the card, not one.** `layout: { flex: 0 0 180px }` alone does **not** fix the width: `deriveLayout` puts that on the `BlockLayout` wrapper, which as a flex item with `min-width: auto` takes its automatic minimum from its min-content width — and `white-space: nowrap` on the name makes that the full untruncated name. Flex-basis becomes a floor, so widths stay ragged and nothing ellipsises. Worse, `List` renders one `Area` per item, so the row's real flex items are per-item wrappers at `flex: 0 1 auto`; under `nowrap` those shrink below the card inside them and **adjacent cards overlap** — reproducible with three cards. Both measured in a browser. The fix is a block-level `style: { width: 180 }` alongside the `layout.flex`; the non-dot `style` key pins the wrapper. Keep both — without a `flex` value, `deriveLayout` takes the `.lf-col` path (`flex: 0 0 100%`) and the strip breaks a different way.
+**Two mechanisms are needed to pin the card, not one.** `layout: { flex: 0 0 200px }` alone does **not** fix the width: `deriveLayout` puts that on the `BlockLayout` wrapper, which as a flex item with `min-width: auto` takes its automatic minimum from its min-content width — and `white-space: nowrap` on the name makes that the full untruncated name. Flex-basis becomes a floor, so widths stay ragged and nothing ellipsises. Worse, `List` renders one `Area` per item, so the row's real flex items are per-item wrappers at `flex: 0 1 auto`; under `nowrap` those shrink below the card inside them and **adjacent cards overlap** — reproducible with three cards. Both measured in a browser. The fix is a block-level `style: { width: 200 }` alongside the `layout.flex`; the non-dot `style` key pins the wrapper. Keep both — without a `flex` value, `deriveLayout` takes the `.lf-col` path (`flex: 0 0 100%`) and the strip breaks a different way.
 
 **Accepted: the hover shadow is clipped at the bottom.** `overflow-y: hidden` is required on the strip — with `overflow-x: auto`, a `visible` y-axis computes to `auto` and yields an unwanted vertical scrollbar — and it clips the hoverable card's shadow. In antd 6.3.1 that shadow is `boxShadowCard`, three layers extending 0px, 6px and 15px below the card and up to 5px above. The strip carries 6px of vertical padding, so both dominant layers (0.16 and 0.12 alpha) render intact and only the faintest 0.09-alpha outer layer is cut. Full fidelity would cost 9 more pixels of vertical space in the one component whose purpose is bounding vertical space.
 
@@ -157,24 +157,37 @@ A `number` filter in Lowdefy core is the real cleanup and would replace all thre
 
 A fully hidden panel leaves nowhere to click to bring it back except a control somewhere else on the page. Collapsing `deal_list_col` to a narrow rail carrying just the expand chevron keeps the affordance where the panel was.
 
-**Mechanism, confirmed:** `layout` is operator-evaluated on every render, exactly like `properties` and `visible` — `packages/engine/src/Block.js:350` parses it inside `evaluate()` alongside `propertiesEval`/`visibleEval`/`styleEval`. So a state-driven `layout.span` (5 → rail, with `workspace_col` 19 → 23) is a supported pattern, not a gamble, and needs no spike.
+**Mechanism, confirmed:** `layout` is operator-evaluated on every render, exactly like `properties` and `visible` — `packages/engine/src/Block.js:350` parses it inside `evaluate()` alongside `propertiesEval`/`visibleEval`/`styleEval`. So driving layout from state is a supported pattern, not a gamble. No other module does this today — every `span:` in `modules-mongodb/modules` is a literal — so this is the first reactive-layout use here.
 
-No other module does this today — every `span:` in `modules-mongodb/modules` is a literal — so this is the first reactive-layout use here. That makes it worth calling out in review, but absence of precedent is not evidence of infeasibility, and the engine settles it.
+**The rail is a fixed 36px set through `flex`, not a `span`.** An earlier draft narrowed the top-level `span` from 5 to 1 (with `workspace_col` 19 → 23). Measured, that does not work at either value: `grid.css` computes a column as `span/24 * (100% + gap) - gap`, so the row's whole 16px gap comes off a 1/24 share and a span-1 rail is ~13px at 768px and ~35px at 1280px — narrower than the 24px chevron it exists to hold, which then overhangs the card border. Span 2 fixes the low end but grows past 110px on a wide screen, which is a lot of dead space for one icon.
 
-**The collapsed state is one state that reads correctly at both widths.** Collapsing does two things: hides the card's body (search box, `ListSelector`, pagination) and drops the top-level span from 5 to a rail.
+A grid share tracks the viewport; a rail should track its contents. So the collapsed state sets `layout.flex: 0 0 36px` — the icon plus trimmed header padding and borders — and `workspace_col` takes `flex: 1 1 0` to absorb the rest. Two details that matter:
 
-That works at both widths *because of how Lowdefy's breakpoints are keyed*, which is counterintuitive enough to record. The grid is mobile-first, but the config keys don't read that way: the **top-level `span` applies from md (≥768px) upward** — `deriveLayout.js:131` maps it to `--lf-span-md` — while `sm: { span: 24 }` sets the *base* value used below that (`:148`). So `deal_list_col`'s `span: 5, sm: { span: 24 }` means side-by-side on desktop and full-width stacked under 768px.
+- **`deriveFlex` returns `false` for a null flex**, so the expanded state falls through to the existing `span: 5` / `sm.span: 24` path untouched. One conditional, no duplicated layout.
+- **The basis must be `0`, not `auto`.** Grid rows default to `flex-wrap: wrap`, and an `auto` basis makes `workspace_col`'s hypothetical size its full content width, which overflows what the rail leaves and wraps it onto its own line instead of shrinking it to fit.
 
-Consequently:
+**Consequence at the breakpoint, and it is a change of behaviour.** `deriveLayout` returns early when `flex` is set, skipping all span and breakpoint handling — so 36px applies at *every* width. The earlier span-based draft was inert below 768px (`sm: { span: 24 }` kept the panel full width there, so collapsing only hid the body and left a full-width header strip above the workspace). Now the collapsed rail is a 36px strip beside the workspace on a phone too.
 
 | Width | Collapsed renders as |
 |---|---|
-| ≥768px | The narrow rail — span drops, body hidden, chevron remains |
-| <768px | A full-width header-only strip — the span change is a no-op (base stays 24), the hidden body is what takes effect |
+| ≥768px | A 36px rail beside the workspace — body hidden, chevron remains |
+| <768px | The same 36px rail, now beside a much narrower workspace |
 
-The sub-768px case is a genuine improvement rather than a degenerate one: the list card is `calc(100vh - 110px)` tall and stacks *above* the workspace there, so today you scroll a full screen past it to reach the deal. Collapsing it to its header is more useful on mobile than on desktop.
+This is arguably better — the workspace is immediately reachable rather than sitting below a full-width bar you scroll past — but it is a side effect of the mechanism rather than a designed choice, and on a very narrow phone a 36px strip stealing width from an already-cramped workspace may read worse than stacking. **Open: confirm or restore the stacked behaviour** (which would need the collapse expressed without `flex`, or a breakpoint-aware override).
 
-This also avoids needing breakpoint-aware visibility, which Lowdefy makes awkward — `visible` evaluates from state, not media queries, so hiding the toggle below a breakpoint would mean either a media-query style override or tracking viewport width in state. Neither is needed.
+Either way it avoids breakpoint-aware *visibility*, which Lowdefy makes awkward — `visible` evaluates from state, not media queries, so hiding the toggle below a breakpoint would mean a media-query style override or tracking viewport width in state.
+
+**Height: two constants that must stay in step.** The rail card is `calc(100vh - 98px)` and the `ListSelector` inside it `calc(100vh - 220px)`, the 122px difference being the card header, search box and pagination. The 98 exists because this column has no topbar: to end level with the workspace column it must cover that column's whole stack — the topbar (62px), the 12px gutter below it, and the pipeline/detail cards at `100vh - 172px`. An earlier value of 110 covered the topbar but not the gutter, leaving the rail 12px short. `height: 100%` is not a substitute: the Box renders a plain auto-height div, so a percentage has nothing definite to resolve against and the card drops to content height. The arithmetic is fragile — change any chrome height and the numbers drift — and the structural fix is to lift the topbar out of `workspace_col` so both columns start level and share one constant. Not done here.
+
+### The workflow card's header collapsed when the workflows expanded
+
+Not an issue item — it surfaced from looking at the rendered page.
+
+The card is a fixed-height flex column. `.ant-card-head` is a flex item with the default `flex-shrink: 1`, and the body below is `flex: 1 1 auto`, so its basis is its *content* height. Expanding the workflows pushes header-basis + body-basis past the card's height, and flex then shrinks both: the body absorbs it happily (`min-height: 0`, it scrolls), but the header is squeezed toward its `min-height`, losing the room its two-line title and description need. Measured at 50.2px collapsed and 39.0px expanded. `flex-shrink: 0` on the header holds it at its natural height; the body was always able to absorb the difference alone.
+
+`detail_card` cannot have the same fault — it declares no header. `deal_list_card`'s header is single-line, so it has almost nothing to lose and is left alone rather than guarded speculatively.
+
+**Worth recording, because it cost three attempts:** "the header shrinks" was read as a *width* problem, and two horizontal fixes were built and then removed — a `minWidth` pinning the expand/collapse toggle (whose label is genuinely 7px wider when expanded, 73.8px vs 80.9px, and antd does take that off the `flex: 1` title), and `scrollbar-gutter: stable` on the card bodies (which genuinely prevents a ~15px reflow where scrollbars take layout space, verified in Chromium at 504px → 489px). Both describe real mechanisms. Neither was the reported fault, neither had anyone asking for it, and the scrollbar one is a no-op under macOS overlay scrollbars — so both were dropped as unrequested scope rather than kept as incidental polish. The diagnostic lesson is cheaper than the code: establish the axis before fixing anything.
 
 ### Attribute prefill already works — only the docs were wrong
 
@@ -234,9 +247,10 @@ The first two are being rewritten anyway — `close_date` because `order-confirm
 - `components/detail/open_items_row.yaml` — the two span-12 column Boxes become full-width stacked sections. Stays a `Box`; no Card, no border, existing headers kept.
 - `components/detail/section_info_grid.yaml` — move the `info_grid_slots` concat entry above the People/Files group. One line.
 - `components/detail/section_related_deals.yaml` — `nowrap` single row with horizontal overflow.
-- `components/deal_list_item_compact.yaml` — fixed 180px card width (module constant, not a var); name from two-line clamp to single-line ellipsis.
+- `components/deal_list_item_compact.yaml` — fixed 200px card width via **both** `layout.flex` and a block-level `style.width` (module constants, not vars); name from two-line clamp to single-line ellipsis.
 - `requests/get_selected_deal.yaml` — related-deals `$limit` 20 → 10 (alongside the form-data re-key below).
-- `pages/view.yaml` — new-deal button in `deal_list_card` `extra`; collapse toggle + rail; `pipeline_col`/`detail_col` to 12/12; card template 2dp formatting.
+- `pages/view.yaml` — new-deal button in `deal_list_card` `extra`; collapse toggle + 36px flex rail with its paired height constants; `pipeline_col`/`detail_col` to 12/12; card template 2dp formatting; `flex-shrink: 0` on the pipeline card's header.
+- `components/button_new_deal.yaml` — gains `size` and `visible` vars, both defaulted to preserve the list page's rendering (`size` defaults to `null` rather than `default`, so it inherits an ancestor size context instead of overriding it).
 - `components/deal_list_card.yaml` — **the same 2dp formatting.** This is the deals *list* page's browse card (`_ref`'d from `components/results_list.yaml`), and it reads the same `card_fields` var with the same `round` flag as the workspace panel card. Missed in an earlier draft of this inventory; leaving it would render one host setting two ways (`13` on the list page, `12.60` in the workspace).
 - `requests/get_selected_deal.yaml` — form-data merge across workflows.
 - `module.lowdefy.yaml` — `info_grid_slots`' description updated to say it injects before the built-in tiles; `workflow_type`'s description corrected, since it no longer drives the form-data alias. Both feed the generated `docs/deals/reference/vars.md`, so `pnpm docs:gen` must run in the same change. No var added or renamed.
@@ -245,8 +259,14 @@ The first two are being rewritten anyway — `close_date` because `order-confirm
 
 **`modules/activities`**
 - `components/capture_activity.yaml` — docblock fix only: `prefill` documents `attributes` and `references`, and notes both are modal-mode only. No behaviour change.
+- `components/open-tasks.yaml` — comment only: it described itself as composing with `open-actions` into one row, which stopped being true once the deals panel stacked them.
 
-**`apps/demo`** — no change needed. The demo sets no `info_grid_slots`, so moving the injection point has no effect on it.
+**`apps/demo`** — a reference consumer, added after this design was first written. An earlier draft said "no change needed", which was true of *correctness* — nothing in the demo breaks — but wrong about demonstrability: with no `info_grid_slots` set and no read of the workflow form-data alias, neither the tile reordering nor the re-keyed read shape was exercised anywhere in this repo, and this repo expects a build-verified consumer for consumer-facing capability.
+
+- `modules/deals/tiles/qualification.yaml` — a span-12 host tile reading `workflows.sales-pipeline.{qualify,upload-po}.*` through the new shape. Its *position* is what demonstrates the reorder; the built page artifact confirms `Details → Qualification → People → Files`.
+- `modules/deals/vars.yaml` — wires that tile into `info_grid_slots`, plus a `request_stages.get_selected_deal` stage deriving a field from the same alias (exercising it server-side, which is how a host actually consumes it) surfaced through `meta_fields`.
+
+The demo cannot demonstrate reading across two workflow *types*: its second workflow (`onboarding`) has only `kind: check` actions, which carry no form data. Giving it a form action purely to exercise this would be inventing demo content, so the limitation is recorded in the tile instead.
 
 ## Non-goals
 
@@ -266,8 +286,8 @@ Confirmed by the project's developer, not by the issue's original author. If the
 
 ### Non-blocking
 
-1. **One release or two?** Items 2–8 are independent of each other, and only the form-data merge gates the host's lifecycle work. Shipping that one change first would unblock the host sooner at the cost of two releases.
+1. ~~**One release or two?**~~ Resolved: one. A single changeset covers the whole rework, on the reasoning that a changelog assembled from intermediate states would document decisions that were reversed mid-flight and never shipped.
 2. ~~**Thousands separator character.**~~ Resolved: `en-GB`, giving `R1,234,567.89`. `en-ZA` was checked and rejected — it yields a comma decimal (`R1 234 567,89`), clashing with the period decimal the `.toFixed(2)` sites produce.
-3. **Rail width and whether the collapsed state persists** across page loads, or resets each visit. Page state is the cheap answer; `localStorage` is the nicer one.
+3. ~~**Rail width.**~~ Resolved: a fixed 36px through `flex`, sized to the chevron rather than to a grid share — see the collapse decision above for why neither span 1 nor span 2 works. **Still open: whether the collapsed state persists** across page loads or resets each visit. Page state is the cheap answer and is what shipped; `localStorage` is the nicer one.
 4. **Does `card_fields.round` stay a boolean?** With 2dp as the default it may want to become a precision number, which is a host-facing var change rather than a formatting fix.
 5. **Fix the unresolvable `deal-status-chip` export here, or separately?** The deals manifest needs a top-level `components:` list for its one declared export to work at all (see the adjacent-defect note). Nothing in this design depends on it, so it is a free-standing bug — but it is a small fix and this release already touches the manifest.

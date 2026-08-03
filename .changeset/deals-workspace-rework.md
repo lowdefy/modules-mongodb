@@ -41,24 +41,31 @@ Layout and presentation:
   width instead of splitting them across two half-width columns. No container
   chrome was added; the existing section headers remain the only labelling.
 - The related-deals strip is bounded to a single non-wrapping row that scrolls
-  horizontally. Its cards are a fixed 180px with the deal name ellipsised to one
+  horizontally. Its cards are a fixed 200px with the deal name ellipsised to one
   line, and the lookup returns 10 rather than 20. Previously up to twenty
   content-width cards wrapped into several ragged rows and pushed the timeline
   tabs below the fold.
 - The workspace columns are evened to 12/12; the pipeline column was previously
   narrower than the detail column beside it.
 - The deals list panel gains a "New deal" button in its header and a chevron
-  that collapses the panel to a narrow rail, widening the workspace. Below
-  768px, where the panel is full width and stacks above the workspace,
-  collapsing leaves a header-only strip.
+  that collapses the panel to a fixed 36px rail, widening the workspace. The rail
+  is a fixed width rather than a grid share, so it stays sized to its chevron
+  instead of tracking the viewport — which also means it applies at every width,
+  including below 768px where the expanded panel is full width.
+- The workflow card's header keeps its natural height when the workflows are
+  expanded. It was a flex item being squeezed by the growing body, losing ~11px —
+  enough to clip a two-line title.
 - Card numbers flagged `round: true` in `card_fields` render at two decimal
-  places on both the list-page card and the workspace panel card, which
-  previously disagreed — the workspace card truncated to whole numbers.
+  places on both the list-page card and the workspace panel card. Both
+  previously rendered through Nunjucks `round`, which rounds to whole numbers
+  (12.6 → 13) and cannot pad trailing zeros.
 
 `button_new_deal` gained `size` and `visible` vars, both defaulted to preserve
 its current rendering on the deals list page.
 
-activities: `capture_activity`'s docblock corrected — it documented five
-`prefill` keys where the component has always supported seven, omitting
-`attributes` and `references`, and did not record that those two apply in
-`mode: modal` only. Comment-only; no behaviour change.
+activities: comment-only corrections, no behaviour change. `capture_activity`'s
+docblock documented five `prefill` keys where the component has always supported
+seven, omitting `attributes` and `references`, and did not record that those two
+apply in `mode: modal` only. `open-tasks` described itself as composing with
+`open-actions` into one row, which stopped being true once the deals panel
+stacked them.

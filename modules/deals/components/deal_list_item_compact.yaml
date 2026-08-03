@@ -1,9 +1,10 @@
 id: deal_list_item_compact
 type: Card
 layout:
-  flex: 0 0 180px
+  flex: 0 0 200px
+# Both are needed — flex-basis alone is only a floor, so the width pins it.
 style:
-  width: 180
+  width: 200
 properties:
   size: small
   hoverable: true

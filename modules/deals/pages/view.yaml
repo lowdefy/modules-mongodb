@@ -109,22 +109,19 @@ _ref:
         blocks:
           - id: deal_list_col
             type: Box
-            # First state-driven `layout` in this repo — every other `span:` is a
-            # literal. It works because `layout` is operator-parsed on every
-            # render alongside `properties`/`visible` (engine Block.evaluate).
-            # Note the top-level `span` is the >=768px value (it becomes
-            # --lf-span-md) while `sm.span` sets the base below 768px, so the
-            # collapse is inert on mobile — the column is full width and stacks
-            # above the workspace there, and hiding the body is the whole effect.
+            # Collapsed uses a fixed `flex` width, not a span: a 24-column share
+            # scales with the viewport instead of the chevron. A null flex falls
+            # through to `span`/`sm.span`. See design.md for the measurements.
             layout:
-              span:
+              flex:
                 _if:
                   test:
                     _eq:
                       - _state: deals_list_collapsed
                       - true
-                  then: 1
-                  else: 5
+                  then: 0 0 36px
+                  else: null
+              span: 5
               sm:
                 span: 24
             blocks:
@@ -132,26 +129,26 @@ _ref:
                 type: Card
                 style:
                   .element:
-                    # Collapsed the body is hidden, so shrink to the header
-                    # instead of leaving a viewport-tall empty rail. The
-                    # expanded value stays paired with the ListSelector's own
-                    # `height: calc(100vh - 232px)` below.
-                    height:
+                    # 98 = the workspace column's stack this one has to match:
+                    # 172 less its topbar (62) and the 12px gutter under it. Not
+                    # `100%` — the Box is auto-height, so a percentage collapses.
+                    height: calc(100vh - 98px)
+                    display: flex
+                    flex-direction: column
+                  # antd's 12px-a-side header padding leaves no room for the
+                  # chevron in a 36px rail.
+                  .header:
+                    padding:
                       _if:
                         test:
                           _eq:
                             - _state: deals_list_collapsed
                             - true
-                        then: auto
-                        else: calc(100vh - 110px)
-                    display: flex
-                    flex-direction: column
+                        then: 0 4px
+                        else: null
                   .body:
-                    # The body is hidden with CSS, not `visible: false` on its
-                    # blocks: the engine deletes a hidden block's state key
-                    # (Slots.updateState), which would clear `selected_deal_id`
-                    # and blank the workspace. `null` leaves antd's own display
-                    # untouched when expanded.
+                    # CSS, not `visible: false` — the engine deletes a hidden
+                    # block's state key, clearing `selected_deal_id`.
                     display:
                       _if:
                         test:
@@ -166,8 +163,7 @@ _ref:
                     overflow-y: auto
                 properties:
                   size: small
-                  # Dropped in the rail — antd ellipsises it to a sliver there,
-                  # and the chevron needs the whole 1/24 width.
+                  # Dropped in the rail so the chevron gets its full width.
                   title:
                     _if:
                       test:
@@ -293,7 +289,9 @@ _ref:
                       hoverable: true
                       size: small
                       gap: 6
-                      height: calc(100vh - 232px)
+                      # The card's height less the 122px its header, search box and
+                      # pagination take — keep the two in step.
+                      height: calc(100vh - 220px)
                       data:
                         _js:
                           fn: |
@@ -452,17 +450,18 @@ _ref:
 
           - id: workspace_col
             type: Box
-            # Takes the width `deal_list_col` gives up when collapsed. See the
-            # note on that block for why this is safe to drive from state.
+            # Takes whatever the rail leaves. Basis must be 0, not auto — the row
+            # wraps, and an auto basis pushes this column onto its own line.
             layout:
-              span:
+              flex:
                 _if:
                   test:
                     _eq:
                       - _state: deals_list_collapsed
                       - true
-                  then: 23
-                  else: 19
+                  then: 1 1 0
+                  else: null
+              span: 19
               sm:
                 span: 24
               gap: 12
@@ -573,6 +572,10 @@ _ref:
                                 height: calc(100vh - 172px)
                                 display: flex
                                 flex-direction: column
+                              # Without this, expanding the workflows overflows the
+                              # card and flex squeezes the header ~11px shorter.
+                              .header:
+                                flex-shrink: 0
                               .body:
                                 flex: 1 1 auto
                                 min-height: 0
