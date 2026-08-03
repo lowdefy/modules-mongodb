@@ -109,8 +109,22 @@ _ref:
         blocks:
           - id: deal_list_col
             type: Box
+            # First state-driven `layout` in this repo — every other `span:` is a
+            # literal. It works because `layout` is operator-parsed on every
+            # render alongside `properties`/`visible` (engine Block.evaluate).
+            # Note the top-level `span` is the >=768px value (it becomes
+            # --lf-span-md) while `sm.span` sets the base below 768px, so the
+            # collapse is inert on mobile — the column is full width and stacks
+            # above the workspace there, and hiding the body is the whole effect.
             layout:
-              span: 5
+              span:
+                _if:
+                  test:
+                    _eq:
+                      - _state: deals_list_collapsed
+                      - true
+                  then: 1
+                  else: 5
               sm:
                 span: 24
             blocks:
@@ -118,17 +132,92 @@ _ref:
                 type: Card
                 style:
                   .element:
-                    height: calc(100vh - 110px)
+                    # Collapsed the body is hidden, so shrink to the header
+                    # instead of leaving a viewport-tall empty rail. The
+                    # expanded value stays paired with the ListSelector's own
+                    # `height: calc(100vh - 232px)` below.
+                    height:
+                      _if:
+                        test:
+                          _eq:
+                            - _state: deals_list_collapsed
+                            - true
+                        then: auto
+                        else: calc(100vh - 110px)
                     display: flex
                     flex-direction: column
                   .body:
+                    # The body is hidden with CSS, not `visible: false` on its
+                    # blocks: the engine deletes a hidden block's state key
+                    # (Slots.updateState), which would clear `selected_deal_id`
+                    # and blank the workspace. `null` leaves antd's own display
+                    # untouched when expanded.
+                    display:
+                      _if:
+                        test:
+                          _eq:
+                            - _state: deals_list_collapsed
+                            - true
+                        then: none
+                        else: null
                     padding: 0
                     flex: 1 1 auto
                     min-height: 0
                     overflow-y: auto
                 properties:
                   size: small
-                  title: '<div style="font-size: 12px; font-weight: 600; color: #8c8c8c; text-transform: uppercase; letter-spacing: 0.05em;">Active Deals</div>'
+                  # Dropped in the rail — antd ellipsises it to a sliver there,
+                  # and the chevron needs the whole 1/24 width.
+                  title:
+                    _if:
+                      test:
+                        _eq:
+                          - _state: deals_list_collapsed
+                          - true
+                      then: null
+                      else: '<div style="font-size: 12px; font-weight: 600; color: #8c8c8c; text-transform: uppercase; letter-spacing: 0.05em;">Active Deals</div>'
+                # Header-right controls. They live here rather than in the body
+                # so the chevron survives the collapse — it is the only way back.
+                slots:
+                  extra:
+                    gap: 8
+                    align: middle
+                    wrap: nowrap
+                    blocks:
+                      # Hidden in the rail: a titled button does not fit 1/24,
+                      # and creating a deal is a deliberate action that belongs
+                      # on the open panel (and on the list page).
+                      - _ref:
+                          path: components/button_new_deal.yaml
+                          vars:
+                            size: small
+                            visible:
+                              _not:
+                                _state: deals_list_collapsed
+                      - id: deals_list_collapse_toggle
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          type: text
+                          size: small
+                          hideTitle: true
+                          icon:
+                            _if:
+                              test:
+                                _eq:
+                                  - _state: deals_list_collapsed
+                                  - true
+                              then: AiOutlineDoubleRight
+                              else: AiOutlineDoubleLeft
+                        events:
+                          onClick:
+                            - id: toggle_deals_list_collapsed
+                              type: SetState
+                              params:
+                                deals_list_collapsed:
+                                  _not:
+                                    _state: deals_list_collapsed
                 blocks:
                   - id: deal_search
                     type: TextInput
@@ -363,8 +452,17 @@ _ref:
 
           - id: workspace_col
             type: Box
+            # Takes the width `deal_list_col` gives up when collapsed. See the
+            # note on that block for why this is safe to drive from state.
             layout:
-              span: 19
+              span:
+                _if:
+                  test:
+                    _eq:
+                      - _state: deals_list_collapsed
+                      - true
+                  then: 23
+                  else: 19
               sm:
                 span: 24
               gap: 12

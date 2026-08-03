@@ -1,8 +1,15 @@
 id: button_new_deal
 # "New {label}" list-page action, extracted like companies' button_new_company.
+# `size` and `visible` take call-site vars so the workspace can render it compact
+# in a card header and drop it from the collapsed rail; the defaults reproduce
+# the list page's rendering, so `pages/all.yaml` needs no vars.
 type: Button
 layout:
   flex: 0 0 auto
+visible:
+  _var:
+    key: visible
+    default: true
 properties:
   title:
     _string.concat:
@@ -10,6 +17,10 @@ properties:
       - _module.var: label
   icon: AiOutlinePlusCircle
   type: primary
+  size:
+    _var:
+      key: size
+      default: default
 events:
   onClick:
     - id: go_new
