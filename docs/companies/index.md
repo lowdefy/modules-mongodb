@@ -60,6 +60,7 @@ fields:
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
+- [Indexes](reference/indexes.md) — the `default` Atlas Search index (including its coupling to `name_field`) plus the regular `mongod` indexes the list needs
 
 ## Shared idioms
 

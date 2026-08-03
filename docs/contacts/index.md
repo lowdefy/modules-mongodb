@@ -58,6 +58,7 @@ Both write APIs derive part of the contact themselves, so a payload does not get
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
+- [Indexes](reference/indexes.md) — the `default` Atlas Search index (and its whole-document stored-source requirement) plus the regular `mongod` indexes the list needs
 
 ## Shared idioms
 
