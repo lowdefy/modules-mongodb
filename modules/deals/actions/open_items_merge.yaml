@@ -20,14 +20,9 @@ _js:
           if (TERMINAL.includes(act.status)) continue;
           const sc = statuses[act.status] || {};
           const border = sc.borderColor || 'var(--ant-color-primary-border)';
-          let href = null;
-          if (act.link && act.link.pageId) {
-            const uq = act.link.urlQuery || {};
-            const qs = Object.keys(uq)
-              .map(function (k) { return k + '=' + uq[k]; })
-              .join('&');
-            href = '/' + act.link.pageId + (qs ? '?' + qs : '');
-          }
+          // Kept structured for the Link action's `pageId`, not flattened to a
+          // path: `url` prepends https:// to anything without a colon.
+          const link = act.link && act.link.pageId ? act.link : null;
           items.push({
             row: 'action',
             sort: 1,
@@ -38,7 +33,8 @@ _js:
             border_style: 'solid',
             border_left: '1px solid ' + border,
             background: 'color-mix(in srgb, ' + border + ' 18%, transparent)',
-            href: href,
+            link_page_id: link ? link.pageId : null,
+            link_url_query: link ? link.urlQuery || {} : null,
             due_date: null,
             task: null,
           });
@@ -61,7 +57,8 @@ _js:
         border_style: 'dashed',
         border_left: '4px solid ' + border,
         background: 'var(--ant-color-bg-container)',
-        href: null,
+        link_page_id: null,
+        link_url_query: null,
         due_date: t.due_date || null,
         task: t,
       });

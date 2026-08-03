@@ -158,11 +158,15 @@ blocks:
                       - _state: open_items.$.row
                       - action
                   - _eq:
-                      - _state: open_items.$.href
+                      - _state: open_items.$.link_page_id
                       - null
+              # `pageId`, not `url`: url routes through window.location with an
+              # https:// prefix, so a root-relative path never resolves.
               params:
-                url:
-                  _state: open_items.$.href
+                pageId:
+                  _state: open_items.$.link_page_id
+                urlQuery:
+                  _state: open_items.$.link_url_query
         blocks:
           - id: open_items.$.text
             type: Html
