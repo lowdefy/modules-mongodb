@@ -192,4 +192,5 @@ The paired `task-modal` component builds both API payloads from its vars — see
 - [Event display](../shared/event-display.md) — per-app Nunjucks title templates
 - [Slots](../shared/slots.md) — `fields`, `components`, `request_stages` extension points
 - [Change stamps](../shared/change-stamps.md) — audit metadata stamped on writes
+- [Text search and the Atlas fallback](../shared/search.md) — the `atlas_search` flag, index requirements, and what the fallback trades away
 - [Secrets](../shared/secrets.md) — `MONGODB_URI` and other connection secrets

@@ -115,3 +115,7 @@ db.deals.createIndex({ "updated.timestamp": -1 }, { name: "updated" })
 `get_deals_list` filters `removed: null` unconditionally, and its other filters (`status.0.stage`, `company_id`, `salesperson.name`, `outcome.type`, `outcome.reason`) are `$in` or equality predicates that drop out of the `$match` when unset. Do not lead a compound index with `removed`: the clause excludes only a small minority of deals, so as a prefix it narrows almost nothing. Let MongoDB apply it as a residual filter and index the fields users actually filter on. With no term and no filter set the `$match` is `removed: null` alone, which bounds no documented index's leading field, so that browse is a collection scan feeding a blocking in-memory sort.
 
 These indexes matter in two situations, both of which bypass `$search` entirely: the browse path on Atlas (no term, so no `$search` stage), and fallback mode (`atlas_search: false`, no `$search` at all). **Switching a deployment to `atlas_search: false` without them gives performance acceptable only at small scale** — the fallback's `$regex` is unanchored, so it cannot use an index to narrow, and the predicate is evaluated against every deal the query's other `$and` clauses let through. A stage or company filter narrows that set first; a search box with nothing else set does not.
+
+## Shared idioms
+
+- [Text search and the Atlas fallback](../shared/search.md) — the `atlas_search` flag, index requirements, and what the fallback trades away

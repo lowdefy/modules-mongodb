@@ -19,6 +19,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under the app slug. When set, the override fully replaces the defaults — no merge. |
 | `filter_requests` |  | `[]` |  | Additional requests for the custom filters section |
 | `form_requests` |  | `[]` |  | Request configs spliced into the new and edit page request lists and fired on page init, so request-backed consumer `fields.*` blocks (e.g. a Selector whose options come from an app collection) have their option sources available. Each entry is a full request definition with an `id`. NOT added to the capture_activity modal — a modal can't own page requests. Blocks that depend on these should gate on `state.activity_form_context` (`page` on the new/edit pages, `view` on the detail page, `modal` in the capture modal) so they don't render broken in the modal; the host page must supply the requests itself if such a field is wanted there. |
+| `atlas_search` | boolean | `true` |  | Whether the deployment's MongoDB has Atlas Search available. When true, text search uses Atlas `$search` (indexed, relevance-ranked). When false, text search falls back to a case-insensitive regex `$match` that runs on any MongoDB (community/local) — substring matching, no relevance ranking, and an unindexed collection scan, so suitable for development or small collections. See docs/shared/search.md. |
 | `disable_company_edit` | boolean | `false` |  | Render the linked-companies selector read-only (disabled) on the edit page, so linked companies stay visible but can't be changed after creation. The new page and quick-capture prefill still set companies, and display-only company chips on the detail page are unaffected. |
 | `company_name_field` |  | `name` |  | Field on company docs used as the display name in linked-company chips (company_list_items) and the list-table company tags (table_activities). Mirrors the companies module's `name_field` var — set both to the same value when an app stores its company display name under a non-default field (e.g. `trading_name`). The `lookup_companies` stage projects this field under the stable alias `name`, so templates always read `company.name` regardless of the source field. |
 | `fields` | object |  |  | Field block arrays rendered in the edit form and SmartDescriptions view |
@@ -70,7 +71,7 @@ Pipeline overrides
 |---|---|---|---|---|
 | `get_all_activities` |  | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the activities list and Excel export aggregations. |
 | `selector` |  | `[]` |  | Pipeline stages appended to the activity-selector aggregation. |
-| `filter_match` |  | `[]` |  | Atlas Search compound clauses appended to the list-page `$search` query. |
+| `filter_match` | array | `[]` |  | Plain MongoDB `$match` clauses ANDed into the list-page and Excel-export filter. Each element is one query clause (e.g. `{ region: "x" }`, `{ score: { $gte: 10 } }`); they are composed via `$and`, so a clause using `$or` is safe. Applies in both Atlas and regex-fallback modes. |
 | `write` |  | `[]` |  | Pipeline update stages appended to both create-activity and update-activity flows. |
 
 ### `lookup_collections`

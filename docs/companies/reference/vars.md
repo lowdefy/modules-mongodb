@@ -18,6 +18,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `name_field` |  | `name` |  | Field used as the display name in selectors and titles |
 | `id_prefix` |  | `C-` |  | Prefix for auto-generated consecutive IDs |
 | `id_length` |  | `4` |  | Numeric length for consecutive IDs (e.g., 4 → C-0001) |
+| `atlas_search` | boolean | `true` |  | Whether the deployment's MongoDB has Atlas Search available. When true, text search uses Atlas `$search` (indexed, relevance-ranked). When false, text search falls back to a case-insensitive regex `$match` that runs on any MongoDB (community/local) — substring matching, no relevance ranking, and an unindexed collection scan, so suitable for development or small collections. See docs/shared/search.md. |
 | `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under the app slug. When set, the override fully replaces the defaults — no merge. |
 | `on_create_routine` | array | `[]` |  | API routine steps appended to the create-company routine after the insert, contact-link, and event steps, before the :return:. Steps run server-side with the routine's context: `_step: insert.insertedId` is the new company's id, and the request payload is readable via `_payload`, including the reserved `url_query` key — the new page forwards its full URL query under `url_query`, which is how start-link params reach the server.  |
 | `filter_requests` |  | `[]` |  | Additional requests for the custom filters section |
@@ -78,7 +79,7 @@ Pipeline overrides: get_all_companies, selector, filter_match, write. write stag
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `filter_match` |  | `[]` |  | Atlas Search compound clauses appended to the list-page `$search` query. Used to add custom filter conditions to the companies list. |
+| `filter_match` | array | `[]` |  | Plain MongoDB `$match` clauses ANDed into the list-page and Excel-export filter. Each element is one query clause (e.g. `{ region: "x" }`, `{ score: { $gte: 10 } }`); they are composed via `$and`, so a clause using `$or` is safe. Applies in both Atlas and regex-fallback modes. Used to add custom filter conditions to the companies list. |
 | `get_all_companies` |  | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the companies list and Excel export aggregations. |
 | `selector` |  | `[]` |  | Pipeline stages injected into the company-selector aggregation after the base active-company $match and BEFORE the label projection, so stages can filter or derive on raw document fields (e.g. exclude app-specific soft-delete markers from pickers). |
 | `write` |  | `[]` |  | Pipeline update stages appended to both create-company and update-company flows. On create, runs as a follow-up update on the newly inserted document; skipped at build time when empty. |

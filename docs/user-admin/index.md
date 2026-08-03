@@ -149,4 +149,5 @@ modules:
 - [Slots](../shared/slots.md) — `fields`, `components`, `request_stages` extension points
 - [Change stamps](../shared/change-stamps.md) — audit metadata stamped on writes
 - [Avatar colors](../shared/avatar-colors.md) — gradient pairs for avatar backgrounds
+- [Text search and the Atlas fallback](../shared/search.md) — this module takes **no** `atlas_search` flag: its members search is always a plain-`$match` regex over the post-`$lookup` name and email fields, so it needs no Atlas Search index and behaves the same on Atlas and on a local `mongod`
 - [Secrets](../shared/secrets.md) — `MONGODB_URI` and other connection secrets
