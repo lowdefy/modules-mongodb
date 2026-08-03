@@ -28,10 +28,11 @@ The body must include:
 - The info-grid slot position change — host tiles now render **before** the built-in People and Files
   tiles instead of after. Not breaking (no var renamed, no host config change needed), but visible, so
   consumers should know their tile order shifts.
-- The layout and presentation changes, briefly: open items stacked rather than columned, related deals
-  bounded to one horizontally-scrolling row of fixed-width cards, workspace columns evened to 12/12, a
+- The layout and presentation changes, briefly: open actions and tasks merged into one interleaved
+  paginated list, related deals bounded by pagination, workspace columns evened to 12/12, a
   new-deal button and collapse toggle on the deals list panel, card volumes at 2 decimal places.
-- For `activities`: a docblock correction only, no behaviour change.
+- For `activities`: the `render` and `on_loaded` vars on `open-tasks` (both defaulted, so existing
+  consumers are unaffected), plus a docblock correction with no behaviour change.
 
 **2. Run the build check.** `pnpm ldf:b` from `apps/demo` (or
 `pnpm --filter @lowdefy/modules-demo ldf:b` from the root). Use the plain variant — never `ldf:b:i`,
@@ -56,11 +57,13 @@ MongoDB, so none of the following can be verified autonomously:
 
 - The info grid renders host tiles before People and Files — the demo now injects a `qualification`
   tile for exactly this, so it is checkable there.
-- Open items read as one stacked block, Actions above Tasks, with no double border.
-- The related-deals strip is one row, scrolls horizontally past ~3 cards, and its names ellipsise on
-  one line.
+- Open items read as one interleaved list with overdue tasks first, 2×2 with pagination beside the
+  heading and no double border; clicking an action navigates and clicking a task opens the modal.
+- The merged list refreshes and resets its pagination on all four paths that reseed either source:
+  switching deals, saving a task, completing a check action, and clicking a related deal.
+- The related-deals grid pages correctly and its names ellipsise on one line.
 - The left panel's new-deal button navigates to the create page; the chevron collapses to a full-height
-  36px rail and expands back with search, selection and pagination intact.
+  36px rail with the workspace beside it, and expands back with search, selection and pagination intact.
 - The pipeline card's header holds its height when the workflows are expanded.
 - Below 768px, collapsing now leaves the same 36px rail beside a narrow workspace, not the full-width
   header strip an earlier draft described — confirm that reads acceptably and that the workspace is

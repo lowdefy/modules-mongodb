@@ -1,12 +1,18 @@
 # Task 2: Bound the related-deals strip to one non-wrapping row
 
-> **As built — this spec diverged.** `flex: 0 0 180px` alone does not pin the card:
-> the wrapper is a flex item with `min-width: auto`, so flex-basis acts as a floor
-> and, under `nowrap`, the per-item `Area` wrappers shrink below their cards and
-> adjacent cards overlap. Shipped with **both** `layout.flex` and a block-level
-> `style.width`, and at **200px** rather than 180px. The "roughly four cards"
-> estimate below is also wrong — measured, it is ~3 at either width. See the
-> related-deals decision in `design.md`.
+> **As built — this spec diverged, twice.** First: `flex: 0 0 180px` alone does not
+> pin the card — the wrapper is a flex item with `min-width: auto`, so flex-basis acts
+> as a floor and, under `nowrap`, the per-item `Area` wrappers shrink below their cards
+> and adjacent cards overlap. That shipped with **both** `layout.flex` and a block-level
+> `style.width`, at **200px** rather than 180px. The "roughly four cards" estimate below
+> is also wrong — measured, ~3 at either width.
+>
+> Then the whole approach was **replaced by pagination**: two per row, four per page, in
+> a CSS grid. The fixed width, `nowrap` and the horizontal overflow are all gone —
+> `deal_list_item_compact.yaml` now carries no `layout` at all — since pagination bounds
+> the strip directly. Dropping the overflow also un-clips the hover shadow this design
+> had accepted as a trade. Only the `$limit: 20 → 10` and the single-line ellipsis
+> survive from the spec below. See the related-deals decision in `design.md`.
 
 ## Context
 

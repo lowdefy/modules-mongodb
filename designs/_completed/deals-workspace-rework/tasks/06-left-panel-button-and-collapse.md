@@ -6,8 +6,15 @@
 > Shipped as a fixed `layout.flex: 0 0 36px` with `workspace_col` at `flex: 1 1 0`,
 > which also means the collapse is no longer inert below 768px. The card keeps a
 > full-height rail (`100vh - 98px`, corrected from 110 to include the topbar
-> gutter), and the pipeline card gained `flex-shrink: 0` on its header. See the
-> collapse decision and the layout-shift section in `design.md`.
+> gutter), and the pipeline card gained `flex-shrink: 0` on its header.
+>
+> Two further fixes followed from eyeballing it: `workspace_col` needs `min-width: 0`
+> as well as the `0` basis, because flex line-breaking measures against the
+> `min-width: auto` min-content floor rather than the basis, so a wide descendant
+> pushed the entire workspace onto its own line below the rail; and
+> `components/detail/action_bar.yaml` went `flex: 0 0 auto` → `0 1 auto` so the topbar
+> buttons wrap instead of spilling once the rail takes its 52px. See the collapse
+> decision and the layout-shift section in `design.md`.
 
 ## Context
 

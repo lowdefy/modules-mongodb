@@ -117,7 +117,7 @@ Worth noting but explicitly *not* in scope: this strip and the left-hand Active 
 
 ### Items 2, 3, 4 and 8 are one layout change, not four
 
-Item 8 narrows the detail column from 14/24 to 12/24 of the workspace, and the 2×2 tile grid item 4 reorders sits inside it. Those look opposed but are complementary: full-width stacked open items (2) and a height-capped related-deals strip (3) give back exactly the horizontal and vertical room the narrower column costs. Reviewed separately, item 8 looks like it makes items 4 and 3 worse. They should be judged, and shipped, together.
+Item 8 narrows the detail column from 14/24 to 12/24 of the workspace, and the 2×2 tile grid item 4 reorders sits inside it. Those look opposed but are complementary: one merged full-width open-items list (2) and a paginated related-deals grid (3) give back exactly the horizontal and vertical room the narrower column costs — paging both is what makes a narrower column viable, since neither section grows with its content any more. Reviewed separately, item 8 looks like it makes items 4 and 3 worse. They should be judged, and shipped, together.
 
 ### Number formatting is display-only
 

@@ -1,5 +1,19 @@
 # Task 4: Stack the open Actions and Tasks sections instead of splitting them into columns
 
+> **As built — superseded entirely.** Stacking shipped first, then was replaced by a
+> real merge: one ordered list interleaving actions and tasks (overdue tasks → open
+> actions → upcoming tasks) under a single `ACTIONS` heading, 2×2 and paginated at
+> four per page, with one empty state instead of two. Item 2 asked to "combine", and
+> the pre-cutover `section_actions.yaml` was a single interleaved list, so adjacency
+> was only a partial answer.
+>
+> **The rejected alternative in Notes below rests on a false premise.** It says a
+> merged list "would need a component owning both modules' data". It does not:
+> `entity_workflows` and `open_tasks` are both already in page state, seeded by deals
+> itself. The real cost is per-row events — an action navigates, a task opens a modal,
+> and a Nunjucks string cannot fire the latter — which is why deals renders it as a
+> `List` of blocks. Ownership did not move. See the merge decision in `design.md`.
+
 ## Context
 
 `modules/deals/components/detail/open_items_row.yaml` is the "what's open" summary in the deal
