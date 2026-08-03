@@ -263,34 +263,34 @@ Rules and patterns for working with Lowdefy projects. These are practical conven
 
 ## Guides
 
-Read the relevant guide **before** writing code for that topic.
+Read the relevant guide **before** writing code for that topic. They live under
+`apps/demo/.claude/guides/`, not at the repo root.
 
-| When you are...                                              | Read                               |
-| ------------------------------------------------------------ | ---------------------------------- |
-| Building a list page with table and pagination               | `.claude/guides/list-pages.md`     |
-| Configuring an AgGrid table                                  | `.claude/guides/aggrid-tables.md`  |
-| Writing MongoDB aggregation pipelines                        | `.claude/guides/aggregations.md`   |
-| Adding search/filter controls to a page                      | `.claude/guides/filters.md`        |
-| Adding pagination to a list                                  | `.claude/guides/pagination.md`     |
-| Building a detail/view page                                  | `.claude/guides/detail-pages.md`   |
-| Building an edit/create form page                            | `.claude/guides/edit-pages.md`     |
-| Defining enums (colors, titles, options helpers)             | `.claude/guides/enums.md`          |
-| Working with status arrays, transitions, and history         | `.claude/guides/status-fields.md`  |
-| Adding created/updated audit stamps                          | `.claude/guides/change-stamps.md`  |
-| Wrapping content in page layout or cards                     | `.claude/guides/page-layouts.md`   |
-| Adding sidebar tiles (events, files, related)                | `.claude/guides/sidebar-tiles.md`  |
-| Logging audit events and displaying timelines                | `.claude/guides/events.md`         |
-| Building charts, reports, and KPI dashboards                 | `.claude/guides/charts.md`         |
-| Writing API routines (create/update endpoints)               | `.claude/guides/api-routines.md`   |
-| Working with contact fields or the user_contacts schema      | `.claude/guides/contact-fields.md` |
-| Designing data schemas, naming fields, or adding collections | `.claude/guides/data-schema.md`    |
-| Adding notifications (inbox, bell, emails, Lambda pipeline)  | `.claude/guides/notifications.md`  |
-| Using Lowdefy operators (build-time, runtime, functions)     | `.claude/guides/operators.md`      |
-| Writing inline JavaScript with the `_js` operator            | `.claude/guides/js-operator.md`    |
-| Rendering dynamic arrays with List or ControlledList         | `.claude/guides/lists.md`          |
-| Styling blocks with Tailwind, inline CSS, and theme tokens   | `.claude/guides/styling.md`        |
-| Deciding where new files go and naming them                  | `.claude/guides/file-structure.md` |
-| Authoring, wiring, or extending a Lowdefy module             | `.claude/guides/modules.md`        |
+| When you are...                                              | Read                                         |
+| ------------------------------------------------------------ | -------------------------------------------- |
+| Building a list page with table and pagination               | `apps/demo/.claude/guides/list-pages.md`     |
+| Configuring an AgGrid table                                  | `apps/demo/.claude/guides/aggrid-tables.md`  |
+| Writing MongoDB aggregation pipelines                        | `apps/demo/.claude/guides/aggregations.md`   |
+| Adding search/filter controls to a page                      | `apps/demo/.claude/guides/filters.md`        |
+| Adding pagination to a list                                  | `apps/demo/.claude/guides/pagination.md`     |
+| Building a detail/view page                                  | `apps/demo/.claude/guides/detail-pages.md`   |
+| Building an edit/create form page                            | `apps/demo/.claude/guides/edit-pages.md`     |
+| Defining enums (colors, titles, options helpers)             | `apps/demo/.claude/guides/enums.md`          |
+| Working with status arrays, transitions, and history         | `apps/demo/.claude/guides/status-fields.md`  |
+| Adding created/updated audit stamps                          | `apps/demo/.claude/guides/change-stamps.md`  |
+| Wrapping content in page layout or cards                     | `apps/demo/.claude/guides/page-layouts.md`   |
+| Logging audit events and displaying timelines                | `apps/demo/.claude/guides/events.md`         |
+| Building charts, reports, and KPI dashboards                 | `apps/demo/.claude/guides/charts.md`         |
+| Writing API routines (create/update endpoints)               | `apps/demo/.claude/guides/api-routines.md`   |
+| Working with contact fields or the user_contacts schema      | `apps/demo/.claude/guides/contact-fields.md` |
+| Designing data schemas, naming fields, or adding collections | `apps/demo/.claude/guides/data-schema.md`    |
+| Adding notifications (inbox, bell, emails, Lambda pipeline)  | `apps/demo/.claude/guides/notifications.md`  |
+| Using Lowdefy operators (build-time, runtime, functions)     | `apps/demo/.claude/guides/operators.md`      |
+| Writing inline JavaScript with the `_js` operator            | `apps/demo/.claude/guides/js-operator.md`    |
+| Rendering dynamic arrays with List or ControlledList         | `apps/demo/.claude/guides/lists.md`          |
+| Styling blocks with Tailwind, inline CSS, and theme tokens   | `apps/demo/.claude/guides/styling.md`        |
+| Deciding where new files go and naming them                  | `apps/demo/.claude/guides/file-structure.md` |
+| Authoring, wiring, or extending a Lowdefy module             | `apps/demo/.claude/guides/modules.md`        |
 
 ## Skills
 
