@@ -282,6 +282,12 @@ are in play and they are deliberately distinct:
       - **§5.5, cross-boundary URL.** Pasting A's deal URL (`/deals/view?_id=D-00001`) while
         in B renders the **full record**: title, company, created-by, status, Details, People
         and Files sections. This is the case the plan flags "report it immediately".
+      - **The leak is symmetric.** With a deal in each workspace, *both* lists show *both*
+        deals. From Workspace A: `D-00002 BBB Test Deal`, company "BBB Test", salesperson
+        "Alice in B". From Workspace B: `D-00001 AAA Test Deal`, company "AAA Test",
+        salesperson "Alice Anderson". Each workspace sees the other's deal, its company short
+        name, and its record of the person — in the list, in the deal card, and in the
+        "ACTIVE DEALS" sidebar on the detail page.
       - **The contrast proves it is specifically the deals wall**, not a general failure. In
         the same workspace on the same session: Contacts showed only B's two rows (AAA Test
         Contact absent), Companies showed "No rows", Activities showed "No rows", and A's
@@ -440,6 +446,50 @@ are in play and they are deliberately distinct:
       [T12](#findings) from being a live cross-tenant read. Wall the deals module's
       `log-events` connection first.
 
+- [ ] **T18 — A profile edit in one workspace overwrites the global identity, so the other
+      workspace's avatar and its change stamps show the wrong workspace's name.** Observed
+      2026-08-03. The plan's §4 checks that a name edited in one workspace does not appear *in
+      the other workspace's profile page and members list* — that part passes. What it does not
+      check, and what breaks, is everything else that reads the caller's identity.
+
+      **The per-workspace records are correct.** After editing the same person's name to "Alice
+      in B" in Workspace B, the two contact rows hold exactly what they should:
+
+      | Row | `profile.name` | `avatar_color` |
+      | --- | --- | --- |
+      | `user-contacts` in Workspace A | `Alice Anderson` | purple |
+      | `user-contacts` in Workspace B | `Alice in B` | slate |
+
+      **The global row is single, and the last edit wins.** `users.name` and `users.profile`
+      became `Alice in B` / slate. Two consequences follow, both visible while *viewing
+      Workspace A*:
+
+      1. **The layout's profile avatar shows the other workspace's identity.** The sidebar
+         avatar renders `AI` on slate on every page, while the account page beside it renders
+         `AA` on purple from the workspace-scoped contact. Two different avatars for the same
+         person on one screen.
+      2. **Change stamps are attributed to the wrong workspace's name.** `change_stamp` resolves
+         its user name as `_if_none: [_user: name, _user: profile.name, default]`, and `_user`
+         reads the global row — so a write made *in Workspace A* is stamped `Alice in B`. Editing
+         the Workspace A contact produced "Last modified by **Alice in B**" on the record and
+         "**Alice in B** updated contact AAA Test Contact" on its History timeline, directly
+         above the earlier "Alice Anderson created contact" entries. Workspace A's audit trail
+         now names an identity belonging to another tenant, and the timeline reads as two
+         different people.
+
+      3. **"Invited by" on the pending-invitations list shows it too.** An invitation sent
+         *from Workspace A* renders "Invited by: Alice in B". The mechanism is explicit in
+         `modules/shared/org/invitations_base.yaml`, which derives the column as
+         `inviter_name: "$inviter.name"` from a `$lookup` on `users` — the global row again,
+         not the inviter's contact in the organization the invitation belongs to.
+
+      Not a data leak — the name is the caller's own in both cases — but it is a correctness
+      problem in the audit trail, and it grows with every workspace a person belongs to. The
+      stamp should resolve the name from the active workspace's contact rather than the global
+      `users` row; the layout avatar and the "Invited by" lookup have the same choice to make.
+      Related to [T1](#findings)/[T2](#findings), which are also change-stamp attribution
+      faults.
+
 ---
 
 ## Not findings
@@ -452,6 +502,27 @@ Recorded because each looks like a fault and will be re-reported otherwise.
   authoritative), `members_table.yaml` renders raw role ids so it displays as `owner`, and
   `get_my_member.yaml` reads it for the `is_org_admin` gate. It looks exactly like F29's
   orphaned-role case — it isn't one.
+
+- **Driving this plan through browser automation produces false "silent failure" readings.**
+  Not a product fault, recorded because it wasted real time and would mislead the next pass.
+  Three distinct artifacts, all of which look exactly like app bugs:
+
+  - **A click frequently focuses a control without activating it.** The first click lands, the
+    second fires. A save or a confirm button therefore appears to do nothing, the modal closes
+    on a stray click, and the value is unchanged — indistinguishable from a broken write. The
+    fix is to confirm the action reached the server (the request log) before recording anything.
+  - **Programmatic value-setting does not reach the app's state.** Setting an input's value
+    directly leaves the framework's state holding the old value, so the save submits nothing.
+    Real keystrokes are required, and a click-then-type in a search input appends rather than
+    replaces unless the field is explicitly cleared.
+  - **Toasts auto-fade.** The refusal banners in §6.1 disappear within a couple of seconds, so a
+    screenshot taken slightly late shows an open modal with no message. Twice this looked like a
+    "blank popup" finding and twice the server log showed a perfectly explicit refusal.
+
+  Every write in this pass was therefore confirmed against the request log or the database rather
+  than the screenshot alone. Two candidate findings were withdrawn on that basis — an "empty
+  ContactSelector" that was a typo in the query, and a "silent Suspend failure" that was a faded
+  toast.
 
 - **`log-changes` is stamped inconsistently, and it does not matter.** An org-stamping sweep
   shows 7 of 35 `log-changes` rows carrying `organizationId` and 28 without, which reads like
@@ -489,6 +560,45 @@ Recorded because each looks like a fault and will be re-reported otherwise.
 ## Confirmed correct
 
 From the same 2026-07-31 signup inspection — recorded so these aren't re-verified blind.
+
+- **Search, pickers and exports are org-scoped (plan §5.3, §7.4).** Verified 2026-08-03 with
+  recognisable data in both workspaces. Searching the other workspace's term returns **No rows**
+  in both directions — "BBB" from Workspace A on both contacts and companies, while "AAA" from
+  A still finds its own row. The ContactSelector offered only the active workspace's three
+  contacts, and the company picker on the deal form offered only the active workspace's company
+  (`AAA Test Company (C-0001)` in one, `BBB Test Company (C-0002)` in the other).
+
+  **Atlas Search latency is a trap here.** A freshly created record can take a few seconds to
+  become findable, and a picker that looks broken is usually just waiting — one probe returned
+  nothing, then the same query returned the row seconds later. Confirm against the database
+  before recording a search finding.
+
+  **The Excel exports are scoped by construction and audited at runtime.** Both
+  `get_contact_excel_data` and `get_company_excel_data` declare `tenant: authored`, and the
+  compiled artifacts carry the authored clause as the **first** entry of `compound.filter`:
+  `{equals: {path: organizationId, value: {_user: organizationId}}}`. Being a `filter` rather
+  than a `should`, it cannot affect relevance scoring — which is what §7.4 asks. The files
+  themselves were not downloaded; the construction plus the runtime audit is the substantive
+  check, so opening a spreadsheet is optional belt-and-braces.
+
+- **Invitation cancel / re-invite behaves (plan §3.4), and the sole-owner guard holds (§3.5).**
+  Verified 2026-08-03. Cancelling a pending invitation gives "Invitation cancelled.", the row
+  leaves the pending list, and the stored row becomes `status: "canceled"` rather than being
+  deleted. Re-inviting the same address therefore **cannot** produce two visible rows:
+  `modules/shared/org/invitations_base.yaml` matches `status: pending`, so canceled, accepted
+  and rejected rows are excluded from the list by construction. The cancel dialog's wording is
+  accurate about the emailed link ceasing to work, though that link was not clicked to confirm.
+
+  The pending row also satisfies §3.1's expiry expectation — status derives as `Invited` while
+  `expiresAt` is in the future and `Expired` once past, since BetterAuth has no expired status
+  (Decision 2). That is also how to manufacture §3.3's expired invitation: back-date
+  `expiresAt` on a pending row.
+
+  §3.5's last-owner guard refuses explicitly: attempting "Leave this organization" as the only
+  owner returns **"You cannot leave the organization as the only owner"** and the membership is
+  untouched. Role changes persist correctly (`user-members.role` stores a comma-joined string,
+  e.g. `"user-admin,manager"`), and no surface anywhere on the members page offers `owner` as an
+  assignable role.
 
 - **Every walled surface isolates correctly across two organizations (plan §5.2, §5.5).**
   Verified 2026-08-03 with one caller holding memberships in both workspaces, switching between
