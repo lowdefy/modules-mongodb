@@ -1,6 +1,12 @@
 # Read-only usage — the events module owns writes to this collection.
+#
+# Tenant wall: the reads through this connection are scoped to the caller's
+# organization. `get_last_contact` matches events by `deal_ids` alone, which is
+# not an organization boundary — without the wall it reads every organization's
+# events.
 id: events-collection
 type: MongoDBCollection
+tenant: true
 properties:
   databaseUri:
     _secret: MONGODB_URI

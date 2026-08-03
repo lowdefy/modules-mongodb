@@ -250,9 +250,10 @@ are in play and they are deliberately distinct:
       email local part at mint, or re-derive the organization name from the profile at
       onboarding when the owner has not renamed it.
 
-- [ ] **T11 — The `deals` collection is not tenant-walled, so deals are neither org-stamped
+- [x] **T11 — The `deals` collection is not tenant-walled, so deals are neither org-stamped
       on write nor org-filtered on read. Every workspace sees every deal.** Found
       2026-08-03. This is the failure §5's preamble says to report immediately.
+      **Fixed 2026-08-03** — see the *Fix* subsection at the end of this entry.
 
       **Evidence, three independent strands:**
 
@@ -300,8 +301,42 @@ are in play and they are deliberately distinct:
       without backfilling `organizationId` onto existing deal rows would then trip the
       preflight at the next restart — the fix needs a migration alongside it.
 
-- [ ] **T12 — The deals module declares its own unwalled connection to the walled
+      **Fix (2026-08-03).** `tenant: true` added to `deals-collection` (and to the module's
+      `events-collection` for [T12](#findings)), taking the repo's declaration count 14 → 16.
+      The root cause was a three-layer omission, not a code slip: the
+      [design's collection inventory](../org-aware-modules/design.md#collection-inventory), the
+      backfill list in `docs/shared/org-scoping.md`, and the connection files all omitted the
+      deals module. All three are now corrected, and the remaining work is scoped in
+      [tasks/deals-org-awareness.md](../org-aware-modules/tasks/deals-org-awareness.md).
+
+      Verified after the fix: Workspace A's deal list shows only its own deal, the other
+      workspace's is gone, and `apps/demo` (pinned) builds unchanged — the declaration is inert
+      under `pinned`, so no pinned deployment needs a backfill or index change.
+
+      **§7.2 was verified for free in the process.** With `deals` walled and still holding the
+      two unstamped rows, the restart refused to serve, naming the collection and connection in
+      one aggregated error: *"Tenant preflight refused to serve the app: collection "deals"
+      (connections "deals/deals-collection") holds documents without the tenant field
+      "organizationId" … Backfill the field on the listed collections, then restart."* So the
+      flip guard works, and it was exercised without deliberately inserting a bad row. The two
+      rows were then backfilled from each deal's already-stamped `company_id` company —
+      provenance derived from data, per `org-scoping.md`'s rule for explicit organization values.
+
+      **One part is deliberately unfinished:** deal *search* now refuses under `tenant`, because
+      `get_deals_list` conditionally swaps its first stage between `$match` and `$search` and so
+      cannot take a single static `tenant:` declaration. The refusal is fail-closed and states
+      the remedy, and the search box was already broken for want of an index
+      ([T19](#findings)) — so this is a safe intermediate state, not a regression. Options are
+      laid out in the task rather than guessed at here.
+
+- [x] **T12 — The deals module declares its own unwalled connection to the walled
       `log-events` collection, and reads through it unfiltered.**
+      **Fixed 2026-08-03** alongside [T11](#findings): `tenant: true` added to
+      `modules/deals/connections/events-collection.yaml`, so `get_last_contact` is now scoped to
+      the caller's organization rather than matching on `deal_ids` alone. That also removes the
+      accidental dependency on [T17](#findings)'s global id counter described below — the
+      counter is no longer load-bearing for isolation here, so T17 can be fixed on its own
+      merits.
       `modules/deals/connections/events-collection.yaml` targets `log-events` with no
       `tenant: true`, while the events module's own connection to the same collection has it.
       The unwalled one is used by exactly one request — `get_last_contact.yaml`, a read —
@@ -442,9 +477,30 @@ are in play and they are deliberately distinct:
       is a standard multi-tenant side channel, and it is visible in the UI: id columns, deal
       cards, breadcrumbs and URLs all show it.
 
-      **Do not fix this in isolation** — the global counter is currently what stops
+      ~~**Do not fix this in isolation** — the global counter is currently what stops
       [T12](#findings) from being a live cross-tenant read. Wall the deals module's
-      `log-events` connection first.
+      `log-events` connection first.~~ **Constraint lifted 2026-08-03**: T12's connection is now
+      walled, so the counter no longer carries any isolation weight. T17 can be fixed on its own
+      merits — the only consideration left is that per-organization numbering changes the id
+      format consumers already see in URLs and exports.
+
+- [ ] **T19 — The `deals` collection has no Atlas Search index, so the deal search box has
+      never worked.** Found 2026-08-03 and **independent of tenancy** — it fails identically
+      under `pinned`. `get_deals_list` issues `$search` against `index: default` on `deals`, and
+      `listSearchIndexes()` on the QA cluster returns nothing for the collection. A `$search`
+      against a missing index errors rather than returning empty, so typing in "Search by deal
+      name or code" fails outright.
+
+      The same check found no search index on `workflows`, `actions`, `files`, `notifications` or
+      `log-events` either; those matter only if a `$search` pipeline is ever pointed at them.
+      `docs/shared/atlas-search-indexes.md` documents `user-contacts`, `companies` and
+      `activities` only, which is consistent — `deals` was missed in the same sweep that missed
+      its wall declaration ([T11](#findings)).
+
+      It becomes a blocker for the preferred shape of T11's remaining work: restructuring
+      `get_deals_list` to the repo's standard unconditional-`$search` pattern would make *every*
+      deal list load issue a `$search`, so the index has to exist first. See
+      [tasks/deals-org-awareness.md](../org-aware-modules/tasks/deals-org-awareness.md).
 
 - [ ] **T18 — A profile edit in one workspace overwrites the global identity, so the other
       workspace's avatar and its change stamps show the wrong workspace's name.** Observed
@@ -523,6 +579,20 @@ Recorded because each looks like a fault and will be re-reported otherwise.
   than the screenshot alone. Two candidate findings were withdrawn on that basis — an "empty
   ContactSelector" that was a typo in the query, and a "silent Suspend failure" that was a faded
   toast.
+
+- **The preflight cannot probe two of the walled connections, and that is by design.** Starting
+  the server under `tenant` logs two warnings — *"Tenant preflight can not probe connection
+  `workflows/workflow-api` … connection type `WorkflowAPI` implements the tenant contract but no
+  `tenantPreflight` capability"*, and the same for `events/events-timeline` (`EventsTimeline`).
+  This reads like a hole in the flip guard. It is the intended behaviour: the probe is a
+  connection-type capability implemented on `MongoDBCollection`, so non-Mongo connection types
+  that carry the tenant contract cannot be probed, and the warning is the designed signal rather
+  than a defect (lowdefy `c58f99e85`, "Gate the tenant wall on the organizations policy").
+
+  These two also explain an apparent count mismatch: the design's "all 14 `tenant: true`
+  declarations" looked wrong against a repo audit finding 12, because an audit filtered to
+  `type: MongoDBCollection` misses `EventsTimeline` and `WorkflowAPI`. 12 + 2 = 14, and the
+  deals fix takes it to 16.
 
 - **`log-changes` is stamped inconsistently, and it does not matter.** An org-stamping sweep
   shows 7 of 35 `log-changes` rows carrying `organizationId` and 28 without, which reads like

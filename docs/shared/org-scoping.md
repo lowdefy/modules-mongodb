@@ -67,7 +67,7 @@ Adopting these module versions on a `pinned` deployment is **not** a migration �
 
 The platform makes a premature flip loud rather than blank: under `policy: tenant` the server runs a **tenant preflight** and refuses to serve while any walled collection holds documents missing `organizationId` (or carrying it as `null`), naming the collections to backfill in one aggregated error. The order for the flip:
 
-1. **Backfill `organizationId`** onto every module collection (`user-contacts`, `companies`, `activities`, `actions`, `workflows`, `log-events`, `log-changes`, `files`, `notifications`) using the organization id's **string form** — the id's serialized string, matching what the wall stamps (`context.user.organizationId` resolves as a string even though the auth collections store the typed id).
+1. **Backfill `organizationId`** onto every module collection (`user-contacts`, `companies`, `activities`, `actions`, `workflows`, `log-events`, `log-changes`, `files`, `notifications`, `deals`) using the organization id's **string form** — the id's serialized string, matching what the wall stamps (`context.user.organizationId` resolves as a string even though the auth collections store the typed id).
 2. **Rebuild the contact identity indexes** compound (tenant requirement 2 above), add the organization prefix to the collections' compound indexes (requirement 1), and add the Atlas Search mappings (requirement 3).
 3. **Declare `auth.organizations.policy: tenant`** and restart. The preflight verifies step 1; blank walled reads after a verified flip are an index or search-mapping gap (requirements 2–3), not a data gap.
 

@@ -113,6 +113,7 @@ Known surfaces today: notification sends from scheduled or hook-driven routines 
 | events                               | `events-collection`, `events-timeline`       | `log-events`           | `organizationId` + `tenant: true` (timeline gains org defense in depth)                                   |
 | files                                | `files-collection`                           | `files`                | `organizationId` + `tenant: true`; S3 object keys unchanged — access is gated by the walled metadata read |
 | notifications                        | `notifications-collection`                   | `notifications`        | `organizationId` + `tenant: true`, composing with the existing `contact_id` + `created.app_name` filters  |
+| deals                                | `deals-collection`, `events-collection`      | `deals`, `log-events`  | `organizationId` + `tenant: true`; `get_deals_list`'s `$search` still needs its authored clause — see [deals-org-awareness](tasks/deals-org-awareness.md) |
 
 `layout` and `release-notes` touch no collections; user-admin/user-account's read-only auth-collection connections (`users`, `user-members`, …) stay unwalled per Decision 2. Index guidance follows the wall design's Decision 8: each collection's primary compound indexes gain the `organizationId` prefix; index definitions are consumer/app-owned, documented in the migration guide.
 
