@@ -114,6 +114,7 @@ Role-gate individual collections with `roles` in the [catalog](reference/catalog
 
 - [The open query engine](concepts/open-query-engine.md) — the pipeline model, the three default-deny grammars, resource caps, the always-appended row limit, the two-layer security model, and the grain/fan-out risk
 - [Implementation walkthrough](concepts/implementation-walkthrough.md) — contributor-facing end-to-end trace: chat message in, rendered output out, with file and line references for each hop
+- [Report ownership, visibility and retirement](concepts/ownership.md) — who can see a report and who can change it: `share_roles` and the asymmetric publish gate, what `shared` does and does not promise, per-user favourites, the five list scopes, soft delete and restore
 
 ## How-to
 
@@ -124,6 +125,7 @@ Role-gate individual collections with `roles` in the [catalog](reference/catalog
 
 - [The collections catalog](reference/catalog.md) — catalog shape, roles semantics, display hints, the bootstrap workflow, and the view-leak caveat
 - [The presentation contract](reference/presentation-contract.md) — chart / KPI / table contracts, number formatting, and the filter-binding limitation
+- [Expected indexes](reference/indexes.md) — what the reports and conversations collections need indexing on, and why the default list sort cannot be indexed
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
 
 ## Shared idioms
