@@ -108,8 +108,9 @@ blocks:
     style:
       .element:
         display: grid
-        gridTemplateColumns: 1fr 1fr
-        # Equal-height cards; pairs with the card's `height: 100%`.
+        # A bare `1fr` is `minmax(auto, 1fr)`, whose auto minimum lets a wide row
+        # widen its column; `gridAutoRows` pairs with the card's `height: 100%`.
+        gridTemplateColumns: minmax(0, 1fr) minmax(0, 1fr)
         gridAutoRows: 1fr
         gap: 8
     blocks:
