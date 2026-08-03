@@ -23,7 +23,7 @@ import {
  *
  *   {
  *     _id, type, workflow_type, workflow_id, kind, key, status, action_group, description, due_date,
- *     assignees, assignee_docs, universal_fields, created, updated,
+ *     assignees, assignee_docs, universal_fields, show_comment, created, updated,
  *     entity,               // { ...entity.data routine result, id } — host fields + the always-present instance id
  *     entity_link,          // { pageId, urlQuery, title, name } from the workflow config's `entity` block (name from the routine), or null
  *     required_after_close, message,
@@ -319,6 +319,16 @@ async function GetWorkflowAction(lowdefyContext) {
     actionConfig.universal_fields,
   );
 
+  // ── Optional-comment presence flag (author config, resolved per read) ───────
+  // Whether this action's surface shows the free-form comment box. Same category
+  // as `description` / `universal_fields`: author config on `actionConfig`, never
+  // on the action doc, so an author's change applies to in-flight actions with
+  // nothing to migrate. The default here is KEPT IN LOCK-STEP with the build-time
+  // normalizer in makeActionPages, which bakes the same flag onto the per-action
+  // form pages. Presence only, and only for the OPTIONAL comment — the mandatory
+  // comments (the request-changes brief, the error recovery note) never gate on it.
+  const show_comment = actionConfig.show_comment ?? true;
+
   return {
     // Engine fields
     _id: action._id,
@@ -337,6 +347,9 @@ async function GetWorkflowAction(lowdefyContext) {
     // UI presence list for the two universal fields above (author config, not
     // doc state). The check surfaces gate their chips + edit modal on this.
     universal_fields,
+    // Whether the optional comment box renders (author config, not doc state).
+    // The check surfaces gate their comment input on this.
+    show_comment,
     // Part 26: the entity object the action page's slot + DataDescriptions read.
     // The host routine result merged with the always-present entity id — id is
     // injected LAST so the instance id always wins over any host-returned `id`.

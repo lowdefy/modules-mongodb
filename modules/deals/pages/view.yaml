@@ -86,13 +86,8 @@ _ref:
           params:
             entity_workflows:
               _actions: refetch_entity_workflows_initial.response.response.workflows
-        - id: set_related_deals
-          type: SetState
-          params:
-            related_deals:
-              _if_none:
-                - _request: get_selected_deal.0.related_deals
-                - []
+        - _ref: actions/compute_open_items.yaml
+        - _ref: actions/compute_related_deals.yaml
         - _ref: actions/set_deal_people.yaml
     requests:
       - _ref: requests/get_active_deals.yaml
@@ -109,7 +104,18 @@ _ref:
         blocks:
           - id: deal_list_col
             type: Box
+            # Collapsed uses a fixed `flex` width, not a span: a 24-column share
+            # scales with the viewport instead of the chevron. A null flex falls
+            # through to `span`/`sm.span`. See design.md for the measurements.
             layout:
+              flex:
+                _if:
+                  test:
+                    _eq:
+                      - _state: deals_list_collapsed
+                      - true
+                  then: 0 0 36px
+                  else: null
               span: 5
               sm:
                 span: 24
@@ -118,17 +124,91 @@ _ref:
                 type: Card
                 style:
                   .element:
-                    height: calc(100vh - 110px)
+                    # 98 = the workspace column's stack this one has to match:
+                    # 172 less its topbar (62) and the 12px gutter under it. Not
+                    # `100%` — the Box is auto-height, so a percentage collapses.
+                    height: calc(100vh - 98px)
                     display: flex
                     flex-direction: column
+                  # antd's 12px-a-side header padding leaves no room for the
+                  # chevron in a 36px rail.
+                  .header:
+                    padding:
+                      _if:
+                        test:
+                          _eq:
+                            - _state: deals_list_collapsed
+                            - true
+                        then: 0 4px
+                        else: null
                   .body:
+                    # CSS, not `visible: false` — the engine deletes a hidden
+                    # block's state key, clearing `selected_deal_id`.
+                    display:
+                      _if:
+                        test:
+                          _eq:
+                            - _state: deals_list_collapsed
+                            - true
+                        then: none
+                        else: null
                     padding: 0
                     flex: 1 1 auto
                     min-height: 0
                     overflow-y: auto
                 properties:
                   size: small
-                  title: '<div style="font-size: 12px; font-weight: 600; color: #8c8c8c; text-transform: uppercase; letter-spacing: 0.05em;">Active Deals</div>'
+                  # Dropped in the rail so the chevron gets its full width.
+                  title:
+                    _if:
+                      test:
+                        _eq:
+                          - _state: deals_list_collapsed
+                          - true
+                      then: null
+                      else: '<div style="font-size: 12px; font-weight: 600; color: #8c8c8c; text-transform: uppercase; letter-spacing: 0.05em;">Active Deals</div>'
+                # Header-right controls. They live here rather than in the body
+                # so the chevron survives the collapse — it is the only way back.
+                slots:
+                  extra:
+                    gap: 8
+                    align: middle
+                    wrap: nowrap
+                    blocks:
+                      # Hidden in the rail: a titled button does not fit 1/24,
+                      # and creating a deal is a deliberate action that belongs
+                      # on the open panel (and on the list page).
+                      - _ref:
+                          path: components/button_new_deal.yaml
+                          vars:
+                            size: small
+                            visible:
+                              _not:
+                                _state: deals_list_collapsed
+                      - id: deals_list_collapse_toggle
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          type: text
+                          size: small
+                          hideTitle: true
+                          icon:
+                            _if:
+                              test:
+                                _eq:
+                                  - _state: deals_list_collapsed
+                                  - true
+                              then: AiOutlineDoubleRight
+                              else: AiOutlineDoubleLeft
+                        events:
+                          onClick:
+                            - id: toggle_deals_list_collapsed
+                              type: SetState
+                              params:
+                                deals_list_collapsed:
+                                  _not:
+                                    _state: deals_list_collapsed
                 blocks:
                   - id: deal_search
                     type: TextInput
@@ -204,7 +284,9 @@ _ref:
                       hoverable: true
                       size: small
                       gap: 6
-                      height: calc(100vh - 232px)
+                      # The card's height less the 122px its header, search box and
+                      # pagination take — keep the two in step.
+                      height: calc(100vh - 220px)
                       data:
                         _js:
                           fn: |
@@ -259,7 +341,7 @@ _ref:
                             {% set v = item[f.path] %}
                             {% if v %}
                               {% if not loop.first %}<span>·</span>{% endif %}
-                              <span{% if f.highlight %} style="color: var(--ant-color-success); font-weight: 500;"{% endif %}>{{ f.prefix | default('') }}{% if f.date_format %}{{ v | date(f.date_format) }}{% elif f.round %}{{ v | round }}{% else %}{{ v }}{% endif %}{{ f.suffix | default('') }}</span>
+                              <span{% if f.highlight %} style="color: var(--ant-color-success); font-weight: 500;"{% endif %}>{{ f.prefix | default('') }}{% if f.date_format %}{{ v | date(f.date_format) }}{% elif f.round %}{{ (v | float(0)).toFixed(2) }}{% else %}{{ v }}{% endif %}{{ f.suffix | default('') }}</span>
                             {% endif %}
                           {% endfor %}
                         </div>
@@ -325,13 +407,8 @@ _ref:
                               _if_none:
                                 - _request: get_open_tasks_for_entity
                                 - []
-                        - id: refresh_related_deals
-                          type: SetState
-                          params:
-                            related_deals:
-                              _if_none:
-                                - _request: get_selected_deal.0.related_deals
-                                - []
+                        - _ref: actions/compute_open_items.yaml
+                        - _ref: actions/compute_related_deals.yaml
                         - _ref: actions/set_deal_people.yaml
                   - id: deals_pagination
                     type: Pagination
@@ -363,11 +440,30 @@ _ref:
 
           - id: workspace_col
             type: Box
+            # Takes what the rail leaves without wrapping below it: needs both a 0
+            # basis and `min-width: 0`, as the row wraps on the min-content floor.
             layout:
+              flex:
+                _if:
+                  test:
+                    _eq:
+                      - _state: deals_list_collapsed
+                      - true
+                  then: 1 1 0
+                  else: null
               span: 19
               sm:
                 span: 24
               gap: 12
+            style:
+              min-width:
+                _if:
+                  test:
+                    _eq:
+                      - _state: deals_list_collapsed
+                      - true
+                  then: 0
+                  else: null
             blocks:
               - id: deal_topbar
                 type: Box
@@ -427,7 +523,7 @@ _ref:
                   - id: pipeline_col
                     type: Box
                     layout:
-                      span: 10
+                      span: 12
                       sm:
                         span: 24
                     blocks:
@@ -475,6 +571,10 @@ _ref:
                                 height: calc(100vh - 172px)
                                 display: flex
                                 flex-direction: column
+                              # Without this, expanding the workflows overflows the
+                              # card and flex squeezes the header ~11px shorter.
+                              .header:
+                                flex-shrink: 0
                               .body:
                                 flex: 1 1 auto
                                 min-height: 0
@@ -599,12 +699,13 @@ _ref:
                                                 _if_none:
                                                   - _request: get_open_tasks_for_entity
                                                   - []
+                                          - _ref: actions/compute_open_items.yaml
                         - _module.var: components.sidebar_slots
 
                   - id: detail_col
                     type: Box
                     layout:
-                      span: 14
+                      span: 12
                       sm:
                         span: 24
                     blocks:

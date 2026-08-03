@@ -56,7 +56,7 @@ form:
 
 A check action is a lightweight task — no domain form, just the universal fields (`assignees`, `due_date`) and a comment. It is served by the per-workflow `{workflow_type}-action` page, routed by `?action_id=<id>`. That single page covers every check action in the workflow and switches between edit / view / review at load based on the action's stage and the caller's resolved access. See [Action pages](action-pages.md).
 
-Because the universal fields are all a check action shows, narrowing them matters more here than on a form action. Use [`universal_fields`](../reference/authoring-grammar.md#universal-fields-universal_fields) to show only one, or neither — each check action's declaration is honoured independently even though they share the one page.
+Because the universal fields and the comment are all a check action shows, narrowing them matters more here than on a form action. Use [`universal_fields`](../reference/authoring-grammar.md#universal-fields-universal_fields) to show only one field, or neither, and [`show_comment: false`](../reference/authoring-grammar.md#show-comment-show_comment) to drop the comment box. Each check action's declarations are honoured independently even though they share the one page.
 
 ```yaml
 type: schedule-followup

@@ -1,5 +1,41 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.23.1
+
+## 0.23.0
+
+### Patch Changes
+
+- [#147](https://github.com/lowdefy/modules-mongodb/pull/147) [`125c0b0`](https://github.com/lowdefy/modules-mongodb/commit/125c0b04c7003d28ddc84aa039e3d3b80fde7a84) Thanks [@Yianni99](https://github.com/Yianni99)! - `WorkflowProgress`'s action buttons are smaller — 12px text with 4px/10px padding, about 26px tall where they were 31px. They sit under each action group's label, so a workflow with several groups spends most of its height on them, and the extra bulk bought nothing.
+
+  This applies everywhere the block renders, not just the deals workspace. Consumers wanting a different size can style the `button` cssKey rather than carry a fork.
+
+## 0.22.0
+
+### Minor Changes
+
+- [#138](https://github.com/lowdefy/modules-mongodb/pull/138) [`254289d`](https://github.com/lowdefy/modules-mongodb/commit/254289dcc89444eb4efa294f6feda47db7db06b8) Thanks [@Saiby100](https://github.com/Saiby100)! - Five selectors in the form-components library — `selector`, `multiple_selector`, `button_selector`, `radio_selector`, `checkbox_selector` — now take an `enum` var as an alternative to `options`. An enum map (`slug → { title, color, icon }`) is converted to options for you: the title becomes the label, the slug is the stored value, the colour tints the selected value and the icon shows on a `multiple_selector` tag. `options` wins when both are set, and an operator-valued `enum` (`_global: enums.x`, `_module.var: y`) still resolves. `tree_multiple_selector` stays `options`-only: a flat enum map cannot express the `primaryKey`/`parentKey` hierarchy it exists for, and for flat choices `multiple_selector` renders enum colours and icons that the tree drops.
+
+  On read-only surfaces, an enum-driven selector now shows the entry's title. The `DataDescriptions` block reads the field's `enum` map off the form config and renders the matching entry's `title`, colour and icon instead of formatting the stored slug — so a `status` of `in-progress` with title "In progress" no longer displays as "In Progress". Overview action cards carry the `enum` map through, so they resolve too. Nothing else changes: an `options`-driven selector, an unknown value, and a field with no `enum` all keep their existing display.
+
+  **Breaking:** the `enum_selector` component is removed — it was a `Selector`-only special case of what `selector` + `enum` now does. Replace `component: enum_selector` with `component: selector` and keep the same `enum:` map. Two behaviour differences to expect: the label is no longer hardcoded to `align: right / span: 12` (declare `label_inline` / `label_span` if you relied on it), and the enum's colour now actually tints the selected value, which the old component's option shape never did.
+
+### Patch Changes
+
+- [#138](https://github.com/lowdefy/modules-mongodb/pull/138) [`b8f7213`](https://github.com/lowdefy/modules-mongodb/commit/b8f7213de6a58e9d43375e1a38e3ec908d986616) Thanks [@Saiby100](https://github.com/Saiby100)! - A `checkbox_selector` field now uses the `selector` renderer on read-only surfaces, like every other selector. It was the one options-taking selector missing from the `DataDescriptions` component hints, so its stored slugs fell through to the generic string renderer. That path already rendered them as tags, so the visible fix is enum resolution: an enum-backed checkbox list showed "Weekly" (the slug, title-cased) instead of the entry's title "Weekly review", and dropped the entry's colour and icon.
+
+## 0.21.0
+
+### Minor Changes
+
+- [#133](https://github.com/lowdefy/modules-mongodb/pull/133) [`66d0e4a`](https://github.com/lowdefy/modules-mongodb/commit/66d0e4a1bbe58c1bf3b21e51496812f17d56ea19) Thanks [@Saiby100](https://github.com/Saiby100)! - Honour `show_comment` on `kind: check` actions. The flag chooses whether an action's working surface offers the optional free-text comment box — it has worked on form actions since it shipped, but check actions silently ignored it and always rendered the box. Declaring `show_comment: false` on a check action now removes it, on both the standalone check page and the in-context check modal.
+
+  Each check action's declaration is honoured independently even though one `{workflow_type}-action` page serves them all. The flag is resolved from workflow config on every read (like `description` and `universal_fields`), so it is never stored on the action document — change it and redeploy, and in-flight actions pick it up with nothing to migrate.
+
+  Only the **optional** comment is gated. The two mandatory comment inputs always render, because the engine needs their text: the reviewer's brief in the review-mode Request Changes modal, and the recovery note on an action sitting in the `error` stage. This matches what form actions already did.
+
+  `show_comment` is now validated: a non-boolean value fails the build instead of being silently accepted. If an app authored a quoted `show_comment: "false"`, that build will now error — the quoted string was never honoured as `false`, so update it to a real boolean. The field is also now documented in the authoring grammar reference, where it was previously missing entirely.
+
 ## 0.20.0
 
 ## 0.19.0

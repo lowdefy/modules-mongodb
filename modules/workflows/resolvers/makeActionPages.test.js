@@ -371,6 +371,28 @@ test("makeActionPages: universal_fields_required never appears in output", () =>
   );
 });
 
+// ── Part 73: show_comment normalization on action_config ─────────────────────
+// Normalized to a concrete boolean here so the templates gate with a bare
+// `_var` and the default lives in one build-time site (kept in lock-step with
+// GetWorkflowAction's read-time default for the shared check surfaces).
+
+test("makeActionPages: show_comment omitted → true on action_config", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction])],
+    app_name: APP,
+  });
+  expect(pages[0]._ref.vars.action_config.show_comment).toBe(true);
+});
+
+test("makeActionPages: show_comment false → false on action_config", () => {
+  const action = { ...qualifyAction, show_comment: false };
+  const pages = makeActionPages(null, {
+    workflows: [workflow([action])],
+    app_name: APP,
+  });
+  expect(pages[0]._ref.vars.action_config.show_comment).toBe(false);
+});
+
 // ── Part 56 Task 10: workspace vars on form pages ────────────────────────────
 
 test("makeActionPages: form pages carry connection_id from workflow.entity.connection_id", () => {
