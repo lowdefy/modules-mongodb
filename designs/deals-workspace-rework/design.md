@@ -6,9 +6,9 @@ Source: the host app tracker, issue #1781 ("Deals Rework"), items 2–8. Item 1 
 
 ## Proposed change
 
-1. **Open items stack instead of splitting** — `open_items_row`'s two span-12 columns become full-width sections, Actions above Tasks, keeping their existing headers. No container chrome is added.
+1. **Open actions and tasks merge into one list** — `open_items_row`'s two span-12 columns become a single ordered list, interleaved overdue tasks → open actions → upcoming tasks, under one `ACTIONS` heading, 2×2 and paginated at four per page. Deals renders it from state both modules already seed; ownership of neither moves.
 2. **Host tiles move to the front of the info grid** — `components.info_grid_slots` injects *before* the People and Files tiles instead of after them. One moved line, no new var, nothing breaking; the resulting 2×2 pairing differs from the pre-module layout and that deviation is flagged, not hidden.
-3. **Bounded related deals** — make the compact cards a fixed 180px with a single-line ellipsised name, drop the lookup from 20 to 10, and keep the strip to one non-wrapping row that scrolls horizontally, instead of letting wrapping cards push the timeline off screen.
+3. **Bounded related deals** — drop the lookup from 20 to 10 and page the strip 2×2 at four per page with a single-line ellipsised name, instead of letting wrapping cards push the timeline off screen.
 4. **Left panel gains a new-deal button and collapses** — a compact `button_new_deal` in the deal-list card's `extra` slot, plus a state-driven collapse that hides the card body and narrows the column: a rail above 768px, a header-only strip below it.
 5. **50/50 workspace and 2-decimal numbers** — `pipeline_col`/`detail_col` go from span 10/14 to 12/12, and numbers render at 2dp via `toFixed(2)` method calls (Lowdefy ships no number filter), with thousands separators needed at the single currency site (display only; stored values untouched).
 6. **`deals`: form data across all of an entity's workflows** — `get_selected_deal`'s workflow alias stops being scoped to a single `workflow_type` and is keyed by it instead (`workflows.{workflow_type}.{action}.{field}`), so a deal carrying several workflows exposes all of their form data with no possibility of collision. Breaking for host reads.
@@ -31,19 +31,29 @@ All paths under `modules/`, all line references at the v0.17.0 shape.
 
 ## Key decisions and rationale
 
-### Combining actions and tasks is a container change, not a data merge
+### Combining actions and tasks is a real data merge, rendered by deals
 
-The two cards come from different modules on purpose: `workflows/open-actions` is reactive off `entity_workflows` page state and links each row to its action page; `activities/open-tasks` runs its own aggregation over the `actions` collection and opens the host's task modal. The truest reading of "combine" would be a single list sorted across both, but that needs a component that owns data from both modules — undoing the extraction the previous rework just did — and the rows would stay heterogeneous anyway, since clicking an action navigates and clicking a task opens a modal.
+Item 2 means what it says. Before the previous rework, `section_actions.yaml` rendered a *single paginated list* whose request comment reads "the final ordered card list (overdue tasks → open workflow actions → upcoming tasks)" — genuinely merged and interleaved by urgency. Commit `8923ca15` split it into `workflows/open-actions` plus `activities/open-tasks`, two lists with a heading each. Since issue item 4 likewise asks for a pre-cutover layout back, item 2's "combine" means that merged list, and **this design restores it**.
 
-Stacking the two module components as full-width sections gets the visual result with no boundary cost, and reclaims the horizontal space two half-width columns waste in a detail column that item 8 is about to narrow. Both components stay untouched.
+An earlier draft argued a merge "needs a component that owns data from both modules". **That objection was wrong.** Both halves are already in page state on this view — `entity_workflows` is seeded by the page itself (`pages/view.yaml`, at mount, on deal switch, on related-deal click and after a check action), independent of `open-actions`; `open_tasks` is likewise requested and seeded by deals in four places. A merge needed no new data ownership at all.
 
-**No container chrome.** `open_items_row.yaml` stays a plain `Box`; the two span-12 column Boxes become full-width, and the existing small-caps `ACTIONS` / `TASKS` `Html` headers are kept as the only labelling. This matches the sections around it — the tile grid, related deals and the timeline tabs are all unchrome'd, separated by thin dividers inside the one `detail_card`.
+**Ownership does not move; only rendering does.** Workflows still resolves actions and activities still owns the task query. What ships:
 
-Two alternatives were weighed and dropped. A **subtle bordered block** reusing the meta strip's treatment (faint fill, 1px border, 6px radius — the one section in the panel that does have chrome) would give the combination a visible boundary and an `OPEN ITEMS` title; rejected as unnecessary weight for two short lists. A **real `Card` block** would nest bordered card inside bordered card and need its padding fought. Adjacency plus the two existing headers is enough to read as one surface.
+- `actions/open_items_merge.yaml` flattens `entity_workflows` (skipping the engine's two terminal statuses) and maps `open_tasks` into one array, sorting overdue tasks → open actions → upcoming tasks. Row presentation is computed here so the card template is one shape for both kinds.
+- `actions/compute_open_items.yaml` sets that array and its first page, referenced from all five sites that seed either source.
+- `open_items_row.yaml` renders it as a `List` of `Card`s under the single `ACTIONS` heading.
 
-*Note for anyone comparing against the design mockup:* the mockup drawn during discovery showed a titled, bordered `OPEN ITEMS` container. The chrome was deliberately dropped here; the stacking it illustrated is what is being built.
+**Why deals renders it rather than either module.** An action is a plain anchor built from the engine's resolved `link`, which is why `open-actions` can be one `_nunjucks` Html block. A task must fire Lowdefy events — set `selected_task`, open the host's modal — which a Nunjucks string cannot do. A merged row therefore needs a `List` of real blocks with per-row branching, and only the host sees both the resolved actions and the task modal. This is also why the old `action_card.yaml.njk` ran to 252 lines.
 
-Rejected alternative: tabs. Compact, but a "what's open" summary you have to click to finish reading is not a summary.
+**The one new module var: `render` on `activities/open-tasks`.** Deals needs the task rows without activities' cards. The component couples fetch to render, so it gains `render` (default true) alongside `on_loaded`. It is gated at build time with `_build.if`, not `visible`, because that card `List` *is* `open_tasks` — hiding it would delete the state it seeds. `on_loaded` exists because the component's own mount is the one seeding deals cannot hook.
+
+A **server-side merge** like the old request was rejected: it would re-query raw action docs and bypass the engine's resolution of links, messages and statuses, which did not exist pre-cutover.
+
+**Presentation.** No container chrome — `open_items_row.yaml` stays a plain `Box`, matching the unchrome'd sections around it. One heading, which is accurate rather than a compromise: tasks and workflow actions are both docs in the same `actions` collection, tasks being `kind: task`. One empty state, judged on the full list so paging never shows it, replacing the two per-type placeholders. Rows stay visually distinct — actions solid-bordered with a status-keyed colour-mix tint, tasks dashed with a 4px overdue-coloured left bar and a tick — which now signals row kind where two headings used to.
+
+**Layout: 2×2, four per page.** A CSS grid (`gridTemplateColumns: 1fr 1fr`), not a flex row, because `List` wraps every item in its own `Area` and those Areas are content-sized — so a span on the card cannot halve one. `gridAutoRows: 1fr` plus `height: 100%` on the card equalises heights; measured, cells alone give `[33,48,33,48]` and the pair gives `[48,48,48,48]`. Accepted trade: the tallest card sets the height for all four.
+
+Rejected alternatives: **tabs** (a "what's open" summary you must click to finish reading is not a summary), and a **bordered `OPEN ITEMS` container** as the discovery mockup drew it (unnecessary weight, and it would nest a bordered card inside a bordered card).
 
 ### Move the existing slot injection point; add no new var
 
@@ -91,25 +101,17 @@ Found while evaluating the rejected export-based option, and worth recording eve
 
 Whether to fix it here or separately is an open question below.
 
-### Related deals: make the cards uniform, then one row is guaranteed
+### Related deals: bound the strip by paging it
 
 Today the strip is a `List direction: row` of `deal_list_item_compact` cards at `flex: 0 1 auto`, fed by a `$limit: 20` lookup on the selected deal's company. Two things make it grow unpredictably: the cards are content-width, and their name clamps to two lines (`-webkit-line-clamp: 2`), so a card is one or two lines tall depending on the deal name. Up to twenty of those wrap into five-plus ragged rows and push the timeline tabs off screen.
 
-Capping by pixel height would clip a row mid-card, and capping by count alone doesn't bound anything while widths vary. **Making the cards uniform removes both problems at once:** fixed width, and the name dropped to single-line ellipsis. Height and width become constant, so a count limit genuinely bounds the strip. The lookup drops to 10.
+Capping by pixel height would clip a row mid-card, and capping by count alone doesn't bound anything while widths vary. **Pagination bounds it directly:** a 2×2 grid of four per page, with the lookup dropped from 20 to 10 so at most three pages exist. Same mechanism as the merged open-items list above, for the same reason — the two sections sit one above the other, so they should page alike.
 
-**Width: a 200px module constant.** The floor is the card's top row, which carries the deal code beside a stage chip — `Fulfillment` is the longest stage title today — so below about 150px the chips begin to clip. Measured, the detail column is about 575px usable at a 1600px viewport (`detail_col` is span 12 inside span 24 inside span 19, less 8px body padding), so 200px shows roughly **three** cards before scrolling with ten reachable behind them: enough to see the neighbourhood without turning a glance-and-click affordance into a browsing surface. *(An earlier draft specified 180px and claimed four cards; 180px is ~3.2 and 200px ~2.9 — practically the same three, with 20px more of the deal name before the ellipsis.)*
+**This replaced an earlier fixed-width scrolling strip, and it is worth recording what that cost.** That approach pinned each card to 200px and kept the row to `nowrap` with `overflow-x: auto`. It needed *two* mechanisms to hold the width, because `deriveLayout` puts `layout.flex` on the `BlockLayout` wrapper, whose `min-width: auto` floors it at min-content — and `List` renders one `Area` per item, so under `nowrap` those per-item wrappers shrank below the cards inside them and adjacent cards overlapped. It also forced `overflow-y: hidden` (a `visible` y-axis computes to `auto` beside `overflow-x: auto`, adding an unwanted scrollbar), which clipped the hoverable card's shadow. Pagination removes all of it: the cards need no width at all, `deal_list_item_compact` carries no `layout`, and with no overflow the shadow renders intact.
 
-**Two mechanisms are needed to pin the card, not one.** `layout: { flex: 0 0 200px }` alone does **not** fix the width: `deriveLayout` puts that on the `BlockLayout` wrapper, which as a flex item with `min-width: auto` takes its automatic minimum from its min-content width — and `white-space: nowrap` on the name makes that the full untruncated name. Flex-basis becomes a floor, so widths stay ragged and nothing ellipsises. Worse, `List` renders one `Area` per item, so the row's real flex items are per-item wrappers at `flex: 0 1 auto`; under `nowrap` those shrink below the card inside them and **adjacent cards overlap** — reproducible with three cards. Both measured in a browser. The fix is a block-level `style: { width: 200 }` alongside the `layout.flex`; the non-dot `style` key pins the wrapper. Keep both — without a `flex` value, `deriveLayout` takes the `.lf-col` path (`flex: 0 0 100%`) and the strip breaks a different way.
+**A grid, not a flex row.** Because `List` gives every item its own content-sized `Area`, a span on the card sizes the card *within* its Area rather than halving the Area — the same mechanism that made the fixed pixel width necessary before. `gridTemplateColumns: 1fr 1fr` makes each Area a cell, and `gap` is the gutter in both axes.
 
-**Accepted: the hover shadow is clipped at the bottom.** `overflow-y: hidden` is required on the strip — with `overflow-x: auto`, a `visible` y-axis computes to `auto` and yields an unwanted vertical scrollbar — and it clips the hoverable card's shadow. In antd 6.3.1 that shadow is `boxShadowCard`, three layers extending 0px, 6px and 15px below the card and up to 5px above. The strip carries 6px of vertical padding, so both dominant layers (0.16 and 0.12 alpha) render intact and only the faintest 0.09-alpha outer layer is cut. Full fidelity would cost 9 more pixels of vertical space in the one component whose purpose is bounding vertical space.
-
-**Constant, not a var.** A var would earn its place if a host had markedly longer deal codes or stage titles; none does. This design has twice declined to add module surface ahead of a consumer needing it — the same reasoning that settled the info-grid seam — and a width var nobody sets is precisely that. Promote it if a consumer turns up needing it.
-
-`nowrap` with horizontal overflow goes on top of that, because the detail column is a share of the workspace rather than a fixed width — without it, a count that fits one row on a wide screen wraps to two on a narrow one. With it the strip is exactly one row's height everywhere and scrolls only when it truly cannot fit.
-
-Horizontal scroll is also the right axis here for a reason beyond geometry: the detail card *containing* this strip is itself a vertical scroll region (`.body` has `overflow-y: auto`). A vertically-scrolling strip inside it would nest two vertical scrollers and capture wheel gestures from the wrong element. A horizontal scroller cannot fight its parent.
-
-**Accepted trade-off:** single-line ellipsis shows less of the deal name than today's two-line clamp. For a glance-and-click strip sitting beside the deal code and stage chip that reads fine, and `deal_list_item_compact` is used nowhere else, so nothing else changes shape.
+**Retained:** the single-line ellipsis on the deal name. It shows less than the old two-line clamp, but keeps rows uniform, and `deal_list_item_compact` is used nowhere else so nothing else changes shape.
 
 Worth noting but explicitly *not* in scope: this strip and the left-hand Active Deals panel render the same concept through two different card templates — the panel builds its card inline in `pages/view.yaml`'s Nunjucks, this one uses `deal_list_item_compact.yaml`. Real duplication, no issue item asks for it.
 
@@ -257,10 +259,14 @@ The first two are being rewritten anyway — `close_date` because `order-confirm
 ## Files changed
 
 **`modules/deals`**
-- `components/detail/open_items_row.yaml` — the two span-12 column Boxes become full-width stacked sections. Stays a `Box`; no Card, no border, existing headers kept.
+- `components/detail/open_items_row.yaml` — rewritten: one paginated 2×2 `List` of merged rows under a single `ACTIONS` heading, replacing the two span-12 column Boxes. Stays a `Box`; no Card, no border. Mounts `activities/open-tasks` with `render: false` inside a `display: none` wrapper, for its request and state seeding only.
+- `actions/open_items_merge.yaml` — new. The merge and row presentation as an operator fragment, so `compute_open_items` can take the full list and the first page from one definition.
+- `actions/compute_open_items.yaml` — new. Sets the merged list, its first page, and resets the pagination block's own state. Referenced from all five sites that seed `entity_workflows` or `open_tasks`.
+- `actions/compute_related_deals.yaml` — new. The same shape for related deals, replacing the two inline `set_related_deals` / `refresh_related_deals` SetStates.
 - `components/detail/section_info_grid.yaml` — move the `info_grid_slots` concat entry above the People/Files group. One line.
-- `components/detail/section_related_deals.yaml` — `nowrap` single row with horizontal overflow.
-- `components/deal_list_item_compact.yaml` — fixed 200px card width via **both** `layout.flex` and a block-level `style.width` (module constants, not vars); name from two-line clamp to single-line ellipsis.
+- `components/detail/section_related_deals.yaml` — paginated 2×2 grid; `nowrap`, the horizontal overflow and the vertical-padding compensation all removed.
+- `components/deal_list_item_compact.yaml` — `layout` removed entirely (it fills its grid cell); name from two-line clamp to single-line ellipsis.
+- `components/detail_panel.yaml`, `components/deal_list_item_compact.yaml` — recompute refs added wherever they reseed `open_tasks` or `related_deals`. The related-deal click site was missed on the first pass: it reseeds both sources, so without it clicking a related deal left the previous deal's merged list on screen and the pagination stale.
 - `requests/get_selected_deal.yaml` — related-deals `$limit` 20 → 10 (alongside the form-data re-key below).
 - `pages/view.yaml` — new-deal button in `deal_list_card` `extra`; collapse toggle + 36px flex rail with its paired height constants; `pipeline_col`/`detail_col` to 12/12; card template 2dp formatting; `flex-shrink: 0` on the pipeline card's header.
 - `components/button_new_deal.yaml` — gains `size` and `visible` vars, both defaulted to preserve the list page's rendering (`size` defaults to `null` rather than `default`, so it inherits an ancestor size context instead of overriding it).
@@ -273,7 +279,7 @@ The first two are being rewritten anyway — `close_date` because `order-confirm
 
 **`modules/activities`**
 - `components/capture_activity.yaml` — docblock fix only: `prefill` documents `attributes` and `references`, and notes both are modal-mode only. No behaviour change.
-- `components/open-tasks.yaml` — comment only: it described itself as composing with `open-actions` into one row, which stopped being true once the deals panel stacked them.
+- `components/open-tasks.yaml` — gains two vars. `render` (default true) fetches and seeds `open_tasks` without drawing cards, gated with `_build.if` rather than `visible` because the card `List` *is* `open_tasks` and hiding it would delete the state it seeds. `on_loaded` (default `[]`) runs after that seeding, which is the one moment a host cannot hook itself. Also a comment fix: it described itself as composing with `open-actions` into one row, which stopped being true.
 
 **`apps/demo`** — a reference consumer, added after this design was first written. An earlier draft said "no change needed", which was true of *correctness* — nothing in the demo breaks — but wrong about demonstrability: with no `info_grid_slots` set and no read of the workflow form-data alias, neither the tile reordering nor the re-keyed read shape was exercised anywhere in this repo, and this repo expects a build-verified consumer for consumer-facing capability.
 

@@ -86,13 +86,8 @@ _ref:
           params:
             entity_workflows:
               _actions: refetch_entity_workflows_initial.response.response.workflows
-        - id: set_related_deals
-          type: SetState
-          params:
-            related_deals:
-              _if_none:
-                - _request: get_selected_deal.0.related_deals
-                - []
+        - _ref: actions/compute_open_items.yaml
+        - _ref: actions/compute_related_deals.yaml
         - _ref: actions/set_deal_people.yaml
     requests:
       - _ref: requests/get_active_deals.yaml
@@ -412,13 +407,8 @@ _ref:
                               _if_none:
                                 - _request: get_open_tasks_for_entity
                                 - []
-                        - id: refresh_related_deals
-                          type: SetState
-                          params:
-                            related_deals:
-                              _if_none:
-                                - _request: get_selected_deal.0.related_deals
-                                - []
+                        - _ref: actions/compute_open_items.yaml
+                        - _ref: actions/compute_related_deals.yaml
                         - _ref: actions/set_deal_people.yaml
                   - id: deals_pagination
                     type: Pagination
@@ -709,6 +699,7 @@ _ref:
                                                 _if_none:
                                                   - _request: get_open_tasks_for_entity
                                                   - []
+                                          - _ref: actions/compute_open_items.yaml
                         - _module.var: components.sidebar_slots
 
                   - id: detail_col

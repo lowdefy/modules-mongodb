@@ -37,14 +37,24 @@ the first row and People/Files the second.
 
 Layout and presentation:
 
-- The deal detail panel's open-items row now stacks Actions above Tasks at full
-  width instead of splitting them across two half-width columns. No container
-  chrome was added; the existing section headers remain the only labelling.
-- The related-deals strip is bounded to a single non-wrapping row that scrolls
-  horizontally. Its cards are a fixed 200px with the deal name ellipsised to one
-  line, and the lookup returns 10 rather than 20. Previously up to twenty
-  content-width cards wrapped into several ragged rows and pushed the timeline
-  tabs below the fold.
+- The deal detail panel's open actions and open tasks are now **one merged
+  list**, ordered overdue tasks → open actions → upcoming tasks, under a single
+  "Actions" heading, two per row and paginated at four per page. They were two
+  half-width columns with a heading and an empty state each. Tasks and workflow
+  actions are both docs in the same `actions` collection, so one heading covers
+  both, and there is now one empty state judged on the whole list. Ownership is
+  unchanged — `workflows` still resolves actions and `activities` still owns the
+  task query; only the rendering moved to the consumer, because a merged row
+  needs per-row events (an action navigates, a task opens a modal).
+- `activities/open-tasks` gains two vars, both defaulted so existing consumers
+  are unaffected. `render: false` fetches and seeds `open_tasks` without drawing
+  any cards, for a host that renders the rows itself; `on_loaded` runs an action
+  list once that seeding completes. `render` is applied at build time, because
+  the card list *is* `open_tasks` — hiding it would delete the state it seeds.
+- The related-deals strip is bounded by pagination: two per row, four per page,
+  with the deal name ellipsised to one line and the lookup returning 10 rather
+  than 20. Previously up to twenty content-width cards wrapped into several
+  ragged rows and pushed the timeline tabs below the fold.
 - The workspace columns are evened to 12/12; the pipeline column was previously
   narrower than the detail column beside it.
 - The deals list panel gains a "New deal" button in its header and a chevron

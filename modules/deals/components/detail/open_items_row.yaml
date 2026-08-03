@@ -1,8 +1,8 @@
-# Two composed "what's open" sections, stacked full width, replacing the old
-# merged section_actions.yaml + action_card.yaml.njk (rework Task 5).
-# Above: workflows' open-actions (the deal's open workflow actions).
-# Below: activities' open-tasks (the deal's open adhoc tasks). Each module
-# renders only its own domain and fetches only its own data.
+# The deal's open work items as one list: workflow actions and adhoc tasks
+# interleaved, overdue tasks first. Both are docs in the same `actions`
+# collection, so the one "Actions" heading covers both. Rendering lives here
+# rather than in either module because a merged row needs per-row Lowdefy events
+# — an action navigates, a task opens the host's modal.
 id: detail_open_items_row
 type: Box
 style:
@@ -11,34 +11,67 @@ layout:
   gap: 8
   justify: stretch
 blocks:
-  - id: detail_open_actions_col
+  - id: detail_open_items_head
     type: Box
     layout:
       span: 24
+      align: middle
+      gap: 8
     blocks:
-      - id: detail_open_actions_header
+      - id: detail_open_items_header
         type: Html
+        layout:
+          flex: 1 0 auto
         properties:
           html: |
-            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary); margin-bottom: 6px;">Actions</div>
-      - _ref:
-          module: workflows
-          component: open-actions
-          vars:
-            entity_id:
-              _state: selected_deal_id
-            entity_connection_id:
-              _module.var: entity_connection_id
-  - id: detail_open_tasks_col
+            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary);">Actions</div>
+      - id: open_items_pagination
+        type: Pagination
+        layout:
+          flex: 0 1 auto
+        properties:
+          style:
+            fontSize: 12px
+          size: small
+          simple: true
+          hideOnSinglePage: true
+          showSizeChanger: false
+          pageSizeOptions:
+            - 4
+          current:
+            _if_none:
+              - _state: open_items_page
+              - 1
+          total:
+            _array.length:
+              _if_none:
+                - _state: open_items_all
+                - []
+        events:
+          onChange:
+            - id: set_open_items_page
+              type: SetState
+              params:
+                open_items_page:
+                  _event: current
+            - id: slice_open_items
+              type: SetState
+              params:
+                open_items:
+                  _js:
+                    fn: |
+                      const all = state('open_items_all') || [];
+                      const page = state('open_items_page') || 1;
+                      const start = (page - 1) * 4;
+                      return all.slice(start, start + 4);
+
+  # Fetch-only: seeds `open_tasks`, draws nothing, then recomputes the merge once
+  # the rows land. `display: none`, not `visible: false` — that deletes state.
+  - id: detail_open_tasks_fetch
     type: Box
-    layout:
-      span: 24
+    style:
+      display: none
     blocks:
-      - id: detail_open_tasks_header
-        type: Html
-        properties:
-          html: |
-            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary); margin-bottom: 6px;">Tasks</div>
       - _ref:
           module: activities
           component: open-tasks
@@ -46,9 +79,124 @@ blocks:
             entity_type: deal
             entity_id:
               _state: selected_deal_id
-            on_click:
-              - id: open_deal_task_modal_from_open_tasks
-                type: CallMethod
-                params:
-                  blockId: deal_task_modal
-                  method: toggleOpen
+            render: false
+            on_loaded:
+              - _ref: actions/compute_open_items.yaml
+
+  # Judged on the full list, not the page, or paging shows the empty message.
+  - id: detail_open_items_empty
+    type: Html
+    layout:
+      span: 24
+    visible:
+      _eq:
+        - _array.length:
+            _if_none:
+              - _state: open_items_all
+              - []
+        - 0
+    properties:
+      html: |
+        <div style="font-size: 11px; color: var(--ant-color-text-tertiary); padding: 8px 0;">Nothing open.</div>
+
+  # Two per row, two rows per page. Grid, not a flex row: List wraps each item in
+  # its own content-sized Area, so a span on the card cannot halve it.
+  - id: open_items
+    type: List
+    layout:
+      span: 24
+    style:
+      .element:
+        display: grid
+        gridTemplateColumns: 1fr 1fr
+        # Equal-height cards; pairs with the card's `height: 100%`.
+        gridAutoRows: 1fr
+        gap: 8
+    blocks:
+      - id: open_items.$.card
+        type: Card
+        properties:
+          size: small
+          hoverable: true
+          style:
+            height: 100%
+            border:
+              _string.concat:
+                - '1px '
+                - _state: open_items.$.border_style
+                - ' '
+                - _state: open_items.$.border
+            borderLeft:
+              _state: open_items.$.border_left
+            background:
+              _state: open_items.$.background
+        events:
+          onClick:
+            - id: select_open_item_task
+              type: SetState
+              skip:
+                _ne:
+                  - _state: open_items.$.row
+                  - task
+              params:
+                selected_task:
+                  _state: open_items.$.task
+            - id: open_task_modal_from_open_items
+              type: CallMethod
+              skip:
+                _ne:
+                  - _state: open_items.$.row
+                  - task
+              params:
+                blockId: deal_task_modal
+                method: toggleOpen
+            - id: open_action_from_open_items
+              type: Link
+              skip:
+                _or:
+                  - _ne:
+                      - _state: open_items.$.row
+                      - action
+                  - _eq:
+                      - _state: open_items.$.href
+                      - null
+              params:
+                url:
+                  _state: open_items.$.href
+        blocks:
+          - id: open_items.$.text
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  # The tick entity stays inline: Nunjucks autoescapes `on:`
+                  # variables, so passing it in renders it as literal text.
+                  template: |
+                    <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: {{ label_color }}; margin-bottom: 4px;">{% if row == 'task' %}&#10003;&nbsp;{% endif %}{{ label }}</div>
+                    <div style="font-size: 11px; color: var(--ant-color-text); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ body }}</div>
+                  on:
+                    row:
+                      _state: open_items.$.row
+                    label:
+                      _state: open_items.$.label
+                    label_color:
+                      _state: open_items.$.label_color
+                    body:
+                      _if_none:
+                        - _state: open_items.$.body
+                        - ''
+          - id: open_items.$.due
+            type: Html
+            visible:
+              _ne:
+                - _state: open_items.$.due_date
+                - null
+            properties:
+              html:
+                _string.concat:
+                  - '<div style="font-size: 10px; color: var(--ant-color-text-tertiary); margin-top: 4px;">Due '
+                  - _dayjs.format:
+                      on:
+                        _state: open_items.$.due_date
+                      format: 'D MMM YYYY'
+                  - '</div>'

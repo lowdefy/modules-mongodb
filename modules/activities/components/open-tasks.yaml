@@ -21,6 +21,15 @@
 #                 Wire this to open a host-owned `task-modal` instance,
 #                 e.g. `CallMethod { blockId: <id>, method: toggleOpen }`.
 #                 Default [].
+#   on_loaded   — optional action list run right after `open_tasks` state is
+#                 seeded, on mount. Wire this when a host derives its own
+#                 state from `open_tasks` and needs to recompute once the
+#                 rows land. Default [].
+#   render      — optional. Set false to fetch and seed `open_tasks` without
+#                 drawing any cards, for a host that renders the rows itself.
+#                 Build-time, because the card List *is* `open_tasks` — hiding
+#                 it with `visible` would delete the state it seeds. Default
+#                 true.
 id: open_tasks_card
 type: Box
 layout:
@@ -84,115 +93,126 @@ requests:
             overdue: 1
 events:
   onMount:
-    - id: fetch_open_tasks
-      type: Request
-      params: get_open_tasks_for_entity
-    - id: set_open_tasks
-      type: SetState
-      params:
-        open_tasks:
-          _if_none:
-            - _request: get_open_tasks_for_entity
-            - []
+    _build.array.concat:
+      - - id: fetch_open_tasks
+          type: Request
+          params: get_open_tasks_for_entity
+        - id: set_open_tasks
+          type: SetState
+          params:
+            open_tasks:
+              _if_none:
+                - _request: get_open_tasks_for_entity
+                - []
+      - _var:
+          key: on_loaded
+          default: []
 blocks:
-  - id: open_tasks_empty
-    type: Html
-    visible:
-      _eq:
-        - _array.length:
-            _if_none:
-              - _state: open_tasks
-              - []
-        - 0
-    properties:
-      html: |
-        <div style="font-size: 11px; color: var(--ant-color-text-tertiary); padding: 8px 0;">No open tasks.</div>
-  - id: open_tasks
-    type: List
-    layout:
-      direction: column
-      gap: 4
-    blocks:
-      - id: open_tasks.$.card
-        type: Card
+  _build.if:
+    test:
+      _var:
+        key: render
+        default: true
+    then:
+      - id: open_tasks_empty
+        type: Html
+        visible:
+          _eq:
+            - _array.length:
+                _if_none:
+                  - _state: open_tasks
+                  - []
+            - 0
         properties:
-          size: small
-          hoverable: true
-          style:
-            border:
-              _string.concat:
-                - '1px dashed '
-                - _if:
-                    test:
-                      _eq:
-                        - _state: open_tasks.$.overdue
-                        - true
-                    then: 'var(--ant-color-error-border)'
-                    else: 'var(--ant-color-warning-border)'
-            borderLeft:
-              _string.concat:
-                - '4px solid '
-                - _if:
-                    test:
-                      _eq:
-                        - _state: open_tasks.$.overdue
-                        - true
-                    then: 'var(--ant-color-error-border)'
-                    else: 'var(--ant-color-warning-border)'
-            background: var(--ant-color-bg-container)
-        events:
-          onClick:
-            _build.array.concat:
-              - - id: select_open_task
-                  type: SetState
-                  params:
-                    selected_task:
-                      _state: open_tasks.$
-              - _var:
-                  key: on_click
-                  default: []
+          html: |
+            <div style="font-size: 11px; color: var(--ant-color-text-tertiary); padding: 8px 0;">No open tasks.</div>
+      - id: open_tasks
+        type: List
+        layout:
+          direction: column
+          gap: 4
         blocks:
-          - id: open_tasks.$.text
-            type: Html
+          - id: open_tasks.$.card
+            type: Card
             properties:
-              html:
-                _nunjucks:
-                  template: |
-                    <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: {{ label_color }}; margin-bottom: 4px;">&#10003;&nbsp;{{ label }}</div>
-                    <div style="font-size: 11px; color: var(--ant-color-text); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ title }}</div>
-                  on:
-                    label_color:
-                      _if:
+              size: small
+              hoverable: true
+              style:
+                border:
+                  _string.concat:
+                    - '1px dashed '
+                    - _if:
                         test:
                           _eq:
                             - _state: open_tasks.$.overdue
                             - true
-                        then: 'var(--ant-color-error)'
-                        else: 'var(--ant-color-warning)'
-                    label:
-                      _if:
+                        then: 'var(--ant-color-error-border)'
+                        else: 'var(--ant-color-warning-border)'
+                borderLeft:
+                  _string.concat:
+                    - '4px solid '
+                    - _if:
                         test:
                           _eq:
                             - _state: open_tasks.$.overdue
                             - true
-                        then: Overdue Task
-                        else: Task
-                    title:
-                      _if_none:
-                        - _state: open_tasks.$.title
-                        - ''
-          - id: open_tasks.$.due
-            type: Html
-            visible:
-              _ne:
-                - _state: open_tasks.$.due_date
-                - null
-            properties:
-              html:
-                _string.concat:
-                  - '<div style="font-size: 10px; color: var(--ant-color-text-tertiary); margin-top: 4px;">Due '
-                  - _dayjs.format:
+                        then: 'var(--ant-color-error-border)'
+                        else: 'var(--ant-color-warning-border)'
+                background: var(--ant-color-bg-container)
+            events:
+              onClick:
+                _build.array.concat:
+                  - - id: select_open_task
+                      type: SetState
+                      params:
+                        selected_task:
+                          _state: open_tasks.$
+                  - _var:
+                      key: on_click
+                      default: []
+            blocks:
+              - id: open_tasks.$.text
+                type: Html
+                properties:
+                  html:
+                    _nunjucks:
+                      template: |
+                        <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: {{ label_color }}; margin-bottom: 4px;">&#10003;&nbsp;{{ label }}</div>
+                        <div style="font-size: 11px; color: var(--ant-color-text); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ title }}</div>
                       on:
-                        _state: open_tasks.$.due_date
-                      format: 'D MMM YYYY'
-                  - '</div>'
+                        label_color:
+                          _if:
+                            test:
+                              _eq:
+                                - _state: open_tasks.$.overdue
+                                - true
+                            then: 'var(--ant-color-error)'
+                            else: 'var(--ant-color-warning)'
+                        label:
+                          _if:
+                            test:
+                              _eq:
+                                - _state: open_tasks.$.overdue
+                                - true
+                            then: Overdue Task
+                            else: Task
+                        title:
+                          _if_none:
+                            - _state: open_tasks.$.title
+                            - ''
+              - id: open_tasks.$.due
+                type: Html
+                visible:
+                  _ne:
+                    - _state: open_tasks.$.due_date
+                    - null
+                properties:
+                  html:
+                    _string.concat:
+                      - '<div style="font-size: 10px; color: var(--ant-color-text-tertiary); margin-top: 4px;">Due '
+                      - _dayjs.format:
+                          on:
+                            _state: open_tasks.$.due_date
+                          format: 'D MMM YYYY'
+                      - '</div>'
+    else: []

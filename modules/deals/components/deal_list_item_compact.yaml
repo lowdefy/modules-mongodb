@@ -1,10 +1,5 @@
 id: deal_list_item_compact
 type: Card
-layout:
-  flex: 0 0 200px
-# Both are needed — flex-basis alone is only a floor, so the width pins it.
-style:
-  width: 200
 properties:
   size: small
   hoverable: true
@@ -73,13 +68,8 @@ events:
           _if_none:
             - _request: get_open_tasks_for_entity
             - []
-    - id: refresh_related_deals
-      type: SetState
-      params:
-        related_deals:
-          _if_none:
-            - _request: get_selected_deal.0.related_deals
-            - []
+    - _ref: actions/compute_open_items.yaml
+    - _ref: actions/compute_related_deals.yaml
     - _ref: actions/set_deal_people.yaml
 blocks:
   - id: deal_list_item_compact_html
