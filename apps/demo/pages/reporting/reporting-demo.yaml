@@ -175,6 +175,34 @@ _ref:
                     urlQuery:
                       report_id:
                         _api: reporting-seed-example-report.response.report_id
+          - id: seed_ownership_help
+            type: Markdown
+            properties:
+              content: >
+                **Ownership fixtures** — six reports covering every list scope
+                and both sides of the owner / non-owner split: your own private
+                and published reports, a second user's published and private
+                ones, one of theirs you have favourited, and one of yours that
+                is soft-deleted. Two are owned by a synthetic second user, which
+                is what makes the non-owner view visible at all — read and
+                duplicate with no edit actions, and a "Published by" line naming
+                someone else. Seed the demo orders first so the reports resolve.
+          - id: seed_ownership_btn
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Seed ownership fixtures
+              icon: AiOutlineTeam
+            events:
+              onClick:
+                - id: seed_ownership
+                  type: CallAPI
+                  params:
+                    endpointId: reporting-seed-ownership
+                  messages:
+                    success: Ownership fixtures seeded — open the reports list.
+                    error: Seed failed — sign in and check the MONGODB secret.
 
       - id: surfaces_divider
         type: Divider
