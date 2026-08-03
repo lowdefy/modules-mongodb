@@ -145,6 +145,33 @@ events:
                   - null
               params: notifications_unread_count
           else: []
+      # Header widgets read their data with `_request:`, which returns a cached
+      # response and never triggers a call. Without a fetch here the seam's
+      # requests compile into every page and none of them run, so the widgets
+      # render blank rather than erroring. Deriving the fetches from the
+      # declared requests keeps the seam one wiring step — an app supplies
+      # `header_extra.requests` and `header_extra.blocks`, never a third
+      # hand-maintained list of fetch actions that has to stay in step with them.
+      - _build.array.map:
+          on:
+            _module.var: header_extra.requests
+          callback:
+            _build.function:
+              id:
+                __build.string.concat:
+                  - __fetch_
+                  - __build.args: 0.id
+              type: Request
+              # Skipped for anonymous callers for the same reason as the
+              # notification count above: a header request scoped to the caller
+              # has nothing to return without one, and a tenant-walled
+              # connection fails closed loudly on every public page.
+              skip:
+                _eq:
+                  - _user: id
+                  - null
+              params:
+                __build.args: 0.id
       - _var:
           key: events.onMountAsync
           default: []

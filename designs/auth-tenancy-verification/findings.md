@@ -139,6 +139,57 @@ are in play and they are deliberately distinct:
       Related: the plan's §3.2 covers signing up *from* the invitation. Signing up
       independently of it is untested — worth adding to §3.3's awkward cases.
 
+- [x] **T8 — The org-switcher's reads are declared on every page but never fetched, so the
+      workspace name never renders and the switcher dropdown can never appear.** Observed
+      2026-08-03 on `apps/tenant-demo` (production build, `ldf:s`), signed in as the
+      Workspace A owner. The header shows the `AiOutlineBank` icon with **no name beside
+      it** on every page.
+
+      **Mechanism.** `modules/layout/components/page.yaml:109` concatenates
+      `header_extra.requests` — the pair from `org-switcher-requests.yaml` — into the
+      page's `requests`, so both compile into every page (confirmed in the build
+      artifacts: `pages/organizations/members/requests/get_switcher_{organization,memberships}.json`
+      both exist). But the layout's `onMountAsync` (`:126–150`) issues a `Request` action
+      for `notifications_unread_count` only. Nothing anywhere fires the switcher's two —
+      a repo-wide grep finds them read by `_request:` operators in
+      `components/org-switcher.yaml` and declared in
+      `components/org-switcher-requests.yaml`, and called by nothing. The server log for a
+      members-page load confirms it: `notifications_unread_count`, `get_my_member`,
+      `get_members` and `get_invitations` all fire; neither switcher request does.
+
+      **Why it presents as a blank rather than an error.** With no call,
+      `_request: get_switcher_organization.name` is null, so the `_nunjucks` span renders
+      empty — the icon beside it is the only thing left. And
+      `_array.length: { _if_none: [ _request: get_switcher_memberships, [] ] }` is `0`, so
+      `org_switcher_single`'s `visible` (`not (0 > 1)`) is **true** while
+      `org_switcher_menu`'s (`0 > 1`) is **false**. The single-membership branch therefore
+      renders for *every* caller regardless of how many organizations they belong to, and
+      the dropdown branch is unreachable.
+
+      **Proof the data is fine:** `/organizations/settings` renders "Machiel's Org" in its
+      Name field on the same page load, from its own `get_active_organization` request —
+      same row, same connection, fetched by an explicit action.
+
+      **Blast radius — this blocks most of the plan.** §2.1 and §2.3 (workspace name in the
+      top bar) fail outright. §4 is entirely unreachable: the dropdown is the only route to
+      `SetActiveOrganization`, so a caller in two workspaces cannot switch, which in turn
+      blocks §5's "switch to Workspace B" premise and §5.5's cross-boundary checks. Fix is
+      in the layout, not the organizations module: `page.yaml`'s `onMountAsync` needs
+      fetches for the header's requests the same way it has one for the notification count.
+
+      **Fixed 2026-08-03** in `modules/layout/components/page.yaml`. `onMountAsync` now
+      derives a `Request` action from each entry in `header_extra.requests` via
+      `_build.array.map`, rather than naming the organizations module's request ids — the
+      seam stays one wiring step (requests + blocks), with no third hand-maintained list of
+      fetch actions to keep in step. Each derived action carries the same
+      `skip: _eq: [_user: id, null]` as the notification count, for the same reason.
+      Verified: the compiled `organizations/members.json` gains
+      `__fetch_get_switcher_organization` and `__fetch_get_switcher_memberships` with the
+      runtime `skip` intact (not evaluated away at build time); the server log shows both
+      requests firing on a members-page load; and the header renders "Machiel's Org".
+      `apps/demo` (pinned, wires no `header_extra`) builds clean and compiles no extra
+      actions — `_array.map`'s `prep` maps an absent var to `[]`.
+
 ---
 
 ## Not findings
@@ -151,6 +202,21 @@ Recorded because each looks like a fault and will be re-reported otherwise.
   authoritative), `members_table.yaml` renders raw role ids so it displays as `owner`, and
   `get_my_member.yaml` reads it for the `is_org_admin` gate. It looks exactly like F29's
   orphaned-role case — it isn't one.
+
+- **The pre-existing QA rows are keyed to app slug `demo`, so their event titles render
+  blank under `tenant-demo`.** The two `log-events` rows in the QA database store their
+  display object under a top-level `demo` key (`{demo: {title: "… updated their profile"}}`)
+  and carry `created.app_name: "demo"`; `user-contacts` and `log-changes` rows from the same
+  run carry `app_name: "demo"` too. The events module reads titles back under the serving
+  app's slug, so on `apps/tenant-demo` (slug `tenant-demo`) those two rows show **no title**
+  on a record timeline — exactly the shape §5.2.9 is looking for.
+
+  It is leftover data, not a fault. Those rows were written 2026-07-31 09:34–09:50, and
+  `6e1bd693` ("Split the demo app by organization policy") — which created
+  `apps/tenant-demo` — is dated 2026-07-31 12:34. The 31 Jul pass therefore ran against
+  `apps/demo` with the policy flipped, and `_build.app: slug` correctly stamped `demo`.
+  The current build compiles `app_name: "tenant-demo"` in all 162 places. Any row written
+  from here on is keyed correctly; only these pre-split rows are affected.
 
   **It does constrain F29(a):** injecting a member's non-catalog roles into the selector
   options, as F29 proposes, would surface `owner` as a selectable and removable tag on
