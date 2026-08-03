@@ -4,7 +4,7 @@
 # open `kind: task` docs from activities' own `actions` collection —
 # filtered by `entity_type` + `entity_id`, the shape `create-task` /
 # `update-task` write (task 3). Reads no workflow-engine data. Styled to
-# match `open-actions` so the two compose into one "what's open" row.
+# match `open-actions`, which a host may render alongside it.
 #
 # "Open" = the current stage (`status.0.stage`, flattened here to `stage`)
 # is not `done` — the only terminal stage create-task/update-task accept
