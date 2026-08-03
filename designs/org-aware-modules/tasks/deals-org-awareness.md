@@ -23,7 +23,40 @@ user identity, in both directions.
   all org-scoped; `apps/demo` (pinned) is unaffected — the declaration is inert
   under `pinned`, so this needs no pinned-side backfill or index work.
 
-## Remaining
+## Resolved 2026-08-03 by the `auth-upgrade` merge
+
+**Sections 1 and 2 below are superseded — read this first.** Merging
+`origin/auth-upgrade` brought a shared search builder
+(`modules/shared/search/text_lead.yaml`) with an `atlas_search` flag, and moved
+`get_deals_list` onto it. That settled the option-(a)-vs-(b) decision this task
+existed to make, in three ways:
+
+- **(b) is impossible, not merely undocumented.** Probed against
+  `injectTenantIntoPipeline`: authoring the clause into the `$match` branch trips
+  `assertTenantFieldNotAuthored` ("Tenant field can not be set in a `$match`
+  stage"), and leaving that branch clean trips the `authoredSites === 0` refusal
+  ("declares `tenant: authored` but its pipeline contains no stage that requires
+  an authored tenant clause"). Both fail on the **no-term** path — every ordinary
+  list load — so there was never a viable conditional shape.
+- **(a) is what shipped**, via the shared builder rather than a deals-only
+  rewrite: the `$search` is emitted unconditionally whenever `atlas_search` is
+  set, the authored clause comes from `tenant-clause.yaml` inside
+  `compound.filter`, and the request declares
+  `tenant: _build.if(atlas_search) → authored`. Uniform across all four
+  searchable modules, so the deals request is no longer a special case.
+- **The term clauses had to move to `compound.must`.** `auth-upgrade` had them in
+  `should`, which stops filtering once a `filter` clause is present — it would
+  have returned every deal in the workspace for any search term, silently. See
+  [T20](../../auth-tenancy-verification/findings.md).
+
+**What is still outstanding is only section 2's index**, and it is now a
+hard prerequisite rather than a nice-to-have: with the `$search` unconditional,
+the deal list needs the `deals` `default` index to load at all. The definition is
+in `docs/deals/index.md`; creating it on the cluster is a developer step. If
+Atlas Search is unavailable, `atlas_search: false` on the deals entry drops
+`$search` entirely and the wall scopes the leading `$match` mechanically.
+
+## Remaining (historical — see above)
 
 ### 1. `get_deals_list`'s `$search` needs its authored clause
 
@@ -41,9 +74,9 @@ swaps its whole first stage**:
 
 ```yaml
 - _if:
-    test: { _eq: [ { _if_none: [ { _payload: filter.search }, null ] }, null ] }
-    then: { $match: {} }        # no term  -> injectable, wall can prepend
-    else: { $search: … }        # term     -> not injectable, needs authored
+    test: { _eq: [{ _if_none: [{ _payload: filter.search }, null] }, null] }
+    then: { $match: {} } # no term  -> injectable, wall can prepend
+    else: { $search: … } # term     -> not injectable, needs authored
 ```
 
 `tenant:` is a static per-request declaration, but which branch resolves is a
@@ -55,7 +88,7 @@ Two options, and this is the decision the task exists to make:
 
 - **(a) Restructure to match the repo pattern.** `get_all_contacts` and
   `get_activities` use an **unconditional** `$search` with the text clauses
-  conditional *inside* `compound.should`. Declare `tenant: authored`, add the
+  conditional _inside_ `compound.should`. Declare `tenant: authored`, add the
   shared fragment (`shape: search_filter`) as the first `compound.filter` entry,
   exactly as the Excel exports do. Uniform with the rest of the repo, and the
   wall's audit then covers both paths. **Requires a `deals` Atlas Search index to
@@ -66,7 +99,7 @@ Two options, and this is the decision the task exists to make:
   already dispatches both shapes). No new index needed for the no-term path.
   Needs confirmation that the runtime audit accepts a `$match`-shaped clause on a
   request declaring `authored`; the docs describe `authored` as the escape hatch
-  for stages the wall *cannot* scope, so a `$match`-first pipeline declaring it is
+  for stages the wall _cannot_ scope, so a `$match`-first pipeline declaring it is
   outside the documented case.
 
 (a) is the better end state; (b) is the smaller change. (a) cannot ship before 2.

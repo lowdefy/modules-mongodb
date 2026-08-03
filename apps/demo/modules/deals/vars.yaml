@@ -1,5 +1,9 @@
 label: Deal
 label_plural: Deals
+atlas_search:
+  _ref:
+    path: app_config.yaml
+    key: atlas_search
 
 # The deal's initial workflow. The workflows module resolves
 # {workflow_type}-start/-submit endpoints and the get_selected_deal workflow

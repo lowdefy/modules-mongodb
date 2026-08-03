@@ -18,6 +18,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `event_display` |  |  |  | Per-app event display templates. When unset, the module's defaults render under the app slug. When set, the override fully replaces the defaults — no merge. |
 | `filter_requests` |  | `[]` |  | Additional requests for the custom filters section |
 | `avatar_colors` |  | `{"_ref":"../shared/profile/avatar_colors.yaml"}` |  | Gradient pairs for avatar backgrounds. Each entry: { from, to }. |
+| `atlas_search` | boolean | `true` |  | Whether the deployment's MongoDB has Atlas Search available. When true, text search uses Atlas `$search` (indexed, relevance-ranked). When false, text search falls back to a case-insensitive regex `$match` that runs on any MongoDB (community/local) — substring matching, no relevance ranking, and an unindexed collection scan, so suitable for development or small collections. See docs/shared/search.md. |
 | `use_verified` | boolean | `false` |  | Whether this module instance tracks contact verification. - false: no verification UI or payload writes on any picker. - true: pickers render a Verify button for unverified rows and   write `global_attributes.verified` on add/edit. Each picker   instance sets the written value via its per-call `verified`   var (see contact-selector wrapper).  |
 | `fields` | object |  |  | Field block arrays: profile, global_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr). |
 | `components` | object |  |  | Component slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, company_card_extra_fields |
@@ -57,5 +58,5 @@ Pipeline overrides: get_all_contacts, get_contact, write, selector, filter_match
 | `get_all_contacts` |  | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the contacts list and Excel export aggregations. |
 | `get_contact` |  | `[]` |  | Additional pipeline stages appended to get_contact (e.g. $lookup, $addFields). |
 | `selector` |  | `[]` |  | Pipeline stages appended to the contact-selector aggregation. |
-| `filter_match` |  | `[]` |  | Atlas Search compound clauses appended to the list-page `$search` query. Used to add custom filter conditions to the contacts list. |
+| `filter_match` | array | `[]` |  | Plain MongoDB `$match` clauses ANDed into the list-page and Excel-export filter. Each element is one query clause (e.g. `{ region: "x" }`, `{ score: { $gte: 10 } }`); they are composed via `$and`, so a clause using `$or` is safe. Applies in both Atlas and regex-fallback modes. Used to add custom filter conditions to the contacts list. |
 | `write` |  | `[]` |  | Pipeline update stages appended to both create-contact and update-contact flows. Runs after the built-in `$mergeObjects` merge of profile and global_attributes; used for derived fields or extra transforms. |

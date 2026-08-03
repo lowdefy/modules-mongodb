@@ -7,147 +7,83 @@ concepts: [atlas-search, indexes, organizationId, tenant-wall, storedSource]
 
 # Atlas Search Indexes
 
-The `$search`-led list pipelines (contacts, companies, activities), the Excel
-exports, and the ContactSelector all require **Atlas Search indexes the host
-app must create** — the modules create no indexes ([org-scoping](org-scoping.md)).
-Every requirement here is **fail-closed**: a missing index, a missing `token`
-mapping, or a missing `storedSource` entry never leaks data — it silently
-blanks the page. If a list page shows nothing while the collection has data,
-start here.
+The `$search`-led list pipelines, the Excel exports, and the ContactSelector all
+require **Atlas Search indexes the host app must create** — the modules create
+no indexes ([org-scoping](org-scoping.md)). Every requirement is
+**fail-closed**: a missing index, a missing `token` mapping, or a missing
+`storedSource` entry never leaks data — it silently blanks the page. If a list
+page shows nothing while the collection has data, start here.
 
-Each index below is the complete definition derived from the module pipelines.
-Create them in the Atlas UI (Search → Create Search Index → JSON editor) or
-via the Atlas CLI. **Index name: `default`** (the pipelines do not pass an
-`index` option, so Atlas uses the index named `default`).
+**Index name: `default`** everywhere — no `$search` stage names an index, so
+Atlas resolves them all to `default`. Create them in the Atlas UI (Search →
+Create Search Index → JSON editor) or via the Atlas CLI.
 
-The recipe is `dynamic: true` plus static overrides for the fields that need
-them: dynamic mapping covers every `text`/`wildcard` string, boolean `equals`,
-date `range`, and `exists` path automatically — but **never creates `token`
-fields**, which string `equals` requires. Under `auth.organizations.policy:
-tenant` every walled collection filters `organizationId` by string `equals`
-(the authored tenant clause), so every index carries at least that one static
-mapping.
+## The definitions live with each module
 
-**Policy note.** The `organizationId` parts of the definitions below —
-the `token` mapping and the `organizationId` entry in each `storedSource`
-list — are **`policy: tenant` requirements only**. Under `pinned` (the
-default) the modules compile no organization clause into the `$search`
-pipelines and documents carry no `organizationId`, so drop those two pieces
-from each definition; everything else stands as written (the indexes
-themselves are required under both policies — the list pages, exports, and
-selector search on them regardless of tenancy).
+Each module owns the complete definition for its own collection, derived from
+its own pipelines and versioned with it:
 
-## `user-contacts`
+| Collection      | Definition                                                     |
+| --------------- | -------------------------------------------------------------- |
+| `user-contacts` | [contacts → Indexes](../contacts/reference/indexes.md)         |
+| `companies`     | [companies → Indexes](../companies/reference/indexes.md)       |
+| `activities`    | [activities → Indexes](../activities/reference/indexes.md)     |
+| `deals`         | [deals → Required indexes](../deals/index.md#required-indexes) |
 
-Serves `get_all_contacts`, `search_contacts` (ContactSelector), and the
-contacts Excel export. These use `returnStoredSource: true`, so post-`$search`
-stages only see stored fields — the `storedSource` list is load-bearing:
+Those pages are the source of truth for the mappings, the `storedSource`
+contract, and the regular `mongod` indexes. This page covers only what is
+common to all of them: why the organization mapping is there and what happens
+without it.
 
-```json
-{
-  "mappings": {
-    "dynamic": true,
-    "fields": {
-      "organizationId": { "type": "token" }
-    }
-  },
-  "storedSource": {
-    "include": [
-      "organizationId",
-      "hidden",
-      "disabled",
-      "email",
-      "lowercase_email",
-      "profile.name",
-      "profile.picture",
-      "profile.department",
-      "profile.job_title",
-      "profile.work_phone",
-      "profile.mobile_phone",
-      "global_attributes.company_ids",
-      "updated.timestamp",
-      "created.timestamp"
-    ]
-  }
-}
-```
+## Why every index carries an organization mapping
 
-## `companies`
+The `$search` stage is **unconditional** wherever `atlas_search` is `true` — it
+runs on every list load, term or no term. [Search](search.md) explains why: the
+`tenant: authored` declaration is static per request while the search term is
+runtime, so a conditionally-emitted `$search` would be refused on the browse
+path.
 
-Serves `get_all_companies` and the companies Excel export
-(`returnStoredSource: true` — `storedSource` is load-bearing):
+Because the stage always runs, its `compound.filter` always carries exactly one
+organization clause, and that clause needs an index mapping:
 
-```json
-{
-  "mappings": {
-    "dynamic": true,
-    "fields": {
-      "organizationId": { "type": "token" }
-    }
-  },
-  "storedSource": {
-    "include": [
-      "organizationId",
-      "deleted.timestamp",
-      "name",
-      "short_name",
-      "description",
-      "lowercase_email",
-      "updated.timestamp",
-      "created.timestamp"
-    ]
-  }
-}
-```
+- Under `auth.organizations.policy: tenant` it is a string `equals` on
+  `organizationId` — the authored tenant clause the wall audits against the
+  caller's organization on every run. String `equals` requires a **`token`**
+  mapping specifically; neither `dynamic: true` nor `dynamic: false` creates
+  one, so every definition lists `organizationId` explicitly.
+- Under `pinned` it is `exists` on `_id` — a match-all that narrows nothing,
+  present only because **Atlas refuses a compound whose clause lists are all
+  empty**. Being a `filter` rather than a `should`, it cannot affect relevance
+  scoring. It needs `_id` to be indexed, which the per-module definitions
+  cover.
 
-## `activities`
+**Map `organizationId` regardless of the policy the app runs today.** It is
+inert under `pinned`, and an index missing it blanks every list page the moment
+a deployment flips to `tenant` — silently, with nothing in the logs.
 
-Serves `get_activities`. No `returnStoredSource`, so no `storedSource` block —
-but the filter dropdowns use string `equals` on several fields, which all need
-`token` mappings (`status` and `contacts` are arrays of documents, mapped as
-`document` with `token` children):
-
-```json
-{
-  "mappings": {
-    "dynamic": true,
-    "fields": {
-      "organizationId": { "type": "token" },
-      "type": { "type": "token" },
-      "company_ids": { "type": "token" },
-      "status": {
-        "type": "document",
-        "fields": { "stage": { "type": "token" } }
-      },
-      "contacts": {
-        "type": "document",
-        "fields": { "contact_id": { "type": "token" } }
-      }
-    }
-  }
-}
-```
+On the `returnStoredSource` collections (`user-contacts`, `companies`)
+`organizationId` must also be _stored_, which whole-document
+`"storedSource": true` covers. `activities` and `deals` pass
+`returnStoredSource: false`, so they store nothing.
 
 ## When an app's configuration changes the requirements
 
-These definitions match the modules as shipped. Three vars extend the
+The per-module definitions match the modules as shipped. Three vars extend the
 pipelines, and extending them extends the index:
 
 - **`request_stages.filter_match`** (contacts, companies, activities) splices
-  app-authored clauses into the `$search` compound. Any path such a clause
-  searches must be indexed — dynamic mapping covers most operators, but a
-  string `equals` needs its own `token` mapping, and on
-  `returnStoredSource` collections any path a spliced clause *reads
-  post-search* must join `storedSource`.
-- **`companies.name_field`** (default `name`): overriding it moves the
-  searched string and the `storedSource` entry — replace `name` above with
-  the configured field.
+  app-authored clauses into the post-`$search` `$match`. Because those clauses
+  are plain MongoDB query syntax evaluated by `mongod`, they need no search
+  mapping — but on a `returnStoredSource` collection any path such a clause
+  _reads_ must be stored, which whole-document stored source covers.
+- **`companies.name_field`** (default `name`): overriding it moves the searched
+  string, so the mapping and the `Name` sort index follow it.
 - **`components.table_columns` / `download_columns`** (contacts, companies):
   extra columns read extra document paths. On the `returnStoredSource`
-  collections those paths must be added to `storedSource`, or the new column
-  renders empty.
+  collections those paths must be stored, or the new column renders empty.
 
-_Fail-closed symptom table_: blank list page with data present → missing
-`token` mapping on `organizationId` or missing index; a single column empty →
-missing `storedSource` entry; filter dropdown never matches → missing `token`
-mapping for that filter's field.
+_Fail-closed symptom table_: blank list page with data present → missing index,
+or a missing `token` mapping on `organizationId` under `tenant`; a single column
+empty → missing `storedSource` entry; text search finds nothing while filters
+work → the searched path is unmapped; `"compound" must have at least one
+clause` → the organization clause is missing from `compound.filter`.

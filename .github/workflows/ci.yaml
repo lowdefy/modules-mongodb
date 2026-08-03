@@ -17,3 +17,21 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm docs:check
+
+  # The two apps sit on opposite sides of the searchable modules' atlas_search
+  # flag, so building both compiles each branch of the shared search builder.
+  # Building only one leaves the other branch's operators unchecked.
+  build-apps:
+    name: Build apps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @lowdefy/modules-demo ldf:b
+      - run: pnpm --filter @lowdefy/modules-workflows-test ldf:b

@@ -19,7 +19,9 @@
 # not a module):
 #   shape — which clause shape the site splices (required):
 #     search_filter        → element list for a $search `compound.filter`;
-#                            splice with `_build.array.concat`. [] under pinned.
+#                            splice with `_build.array.concat`. Under pinned a
+#                            match-all clause rather than [] — see the note on
+#                            that branch below.
 #     match                → key(s) for a $match / query object; merge with
 #                            `_build.object.assign`. {} under pinned.
 #     graphlookup_restrict → `restrictSearchWithMatch` key for a $graphLookup
@@ -86,7 +88,18 @@ _build.if:
             _build.eq:
               - _var: shape
               - search_filter
-          then: []
+          # A match-all, not []. The $search stages that splice this clause are
+          # emitted unconditionally so their `tenant: authored` declaration is
+          # true on every path, which means a no-term browse reaches Atlas with
+          # no other clause to offer — and Atlas refuses a compound whose clause
+          # lists are all empty ("compound" must have at least one clause). This
+          # keeps the compound legal without narrowing anything: `_id` exists on
+          # every document, and a `filter` clause does not contribute to
+          # relevance scoring, so ordering is untouched. Requires `_id` to be
+          # indexed, which the per-module index contracts state.
+          then:
+            - exists:
+                path: _id
         - if:
             _build.eq:
               - _var: shape

@@ -1,11 +1,18 @@
 id: get_contact_excel_data
 type: MongoDBAggregation
-# Authored org clause (tenant wall amendment-1): $search is first-stage-only,
-# so the wall can not inject its filter — this request authors the equals
-# clause below via the shared policy fragment (compiled out under `pinned`);
-# under `tenant` the wall audits it against the caller's org on every run.
-# (The pipeline is operator-composed, so the audit is the runtime gate here.)
-tenant: authored
+# Authored organization clause (tenant wall amendment-1). The shared text lead
+# emits a first-stage $search whenever `atlas_search` is set, and the wall can
+# not prepend its filter before a first-stage-only stage — so the clause is
+# authored inside that $search's `compound.filter` by the shared policy
+# fragment, and the wall audits it against the caller's organization on every
+# run. With `atlas_search` false there is no $search at all, the pipeline leads
+# with a plain $match and the wall scopes it mechanically; declaring `authored`
+# there is refused, so the declaration resolves away with the stage.
+tenant:
+  _build.if:
+    test:
+      _module.var: atlas_search
+    then: authored
 connectionId:
   _module.connectionId: contacts-collection
 payload:
@@ -19,65 +26,51 @@ payload:
 properties:
   pipeline:
     _build.array.concat:
-      - - $search:
-            returnStoredSource: true
-            compound:
-              filter:
-                _build.array.concat:
-                  # The authored tenant clause — resolved by the shared policy fragment:
-                  # present under `tenant` (audited by the wall; organizationId
-                  # token-mapped in the search index, and in storedSource where
-                  # returnStoredSource is used), compiled out under `pinned`.
-                  - _ref:
-                      path: ../shared/org/tenant-clause.yaml
-                      vars:
-                        shape: search_filter
-                  - - compound:
-                        mustNot:
-                          - equals:
-                              path: hidden
-                              value: true
-                          - equals:
-                              path: disabled
-                              value: true
-                        must:
-                          _array.concat:
-                            - _if:
-                                test:
-                                  _ne:
-                                    - _payload: filter.search
-                                    - null
-                                then:
-                                  - compound:
-                                      should:
-                                        - text:
-                                            query:
-                                              _string.toLowerCase:
-                                                _payload: filter.search
-                                            path:
-                                              - profile.name
-                                              - lowercase_email
-                                        - wildcard:
-                                            query:
-                                              _string.concat:
-                                                - "*"
-                                                - _string.toLowerCase:
-                                                    _payload: filter.search
-                                                - "*"
-                                            path:
-                                              - profile.name
-                                              - lowercase_email
-                                            allowAnalyzedField: true
-                                else: []
-                            - _array.filter:
-                                - _module.var: request_stages.filter_match
-                                - _function:
-                                    __ne:
-                                      - __args: 0
-                                      - null
-        - $addFields:
-            score:
-              $meta: searchScore
+      - _ref:
+          path: ../shared/search/text_lead.yaml
+          vars:
+            atlas_search:
+              _module.var: atlas_search
+            term:
+              _payload: filter.search
+            paths:
+              - profile.name
+              - lowercase_email
+      # $and rather than a shallow merge: the structural filters, the regex
+      # clause's $or and the consumer filter_match clauses can collide on a key.
+      # The clause set must stay identical to get_all_contacts's — the export has
+      # to return exactly the rows the list page shows.
+      - - $match:
+            $and:
+              _array.concat:
+                - - hidden:
+                      $ne: true
+                    disabled:
+                      $ne: true
+                - _ref:
+                    path: ../shared/search/regex_clause.yaml
+                    vars:
+                      atlas_search:
+                        _module.var: atlas_search
+                      term:
+                        _payload: filter.search
+                      paths:
+                        - profile.name
+                        - lowercase_email
+                - _array.filter:
+                    - _module.var: request_stages.filter_match
+                    - _function:
+                        __ne:
+                          - __args: 0
+                          - null
+      - _ref:
+          path: ../shared/search/score_stage.yaml
+          vars:
+            atlas_search:
+              _module.var: atlas_search
+            term:
+              _payload: filter.search
+      - - $addFields:
             updated_at:
               $dateToString:
                 date: $updated.timestamp
@@ -88,12 +81,18 @@ properties:
                 format: "%Y-%m-%d"
         - _if:
             test:
-              _eq:
-                - _if_none:
-                    - _payload: filter.search
-                    - null
-                - null
+              _ref:
+                path: ../shared/search/use_score.yaml
+                vars:
+                  atlas_search:
+                    _module.var: atlas_search
+                  term:
+                    _payload: filter.search
             then:
+              $sort:
+                score: -1
+                updated.timestamp: -1
+            else:
               $sort:
                 _object.assign:
                   - _object.defineProperty:
@@ -104,10 +103,6 @@ properties:
                         value:
                           _payload: sort.order
                   - _id: 1
-            else:
-              $sort:
-                score: -1
-                updated.timestamp: -1
       - _module.var: request_stages.get_all_contacts
       - - $skip:
             _payload: pagination.skip

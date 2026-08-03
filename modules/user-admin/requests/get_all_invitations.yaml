@@ -24,27 +24,24 @@ properties:
     _build.array.concat:
       # Match pending + org, join inviter, derive Invited/Expired + roles.
       - _ref: ../shared/org/invitations_base.yaml
-      # Filter: email regex + derived-status segment. Set clauses are merged into a
-      # single object (implicit AND) so an unset filter leaves the match-all
-      # `$match: {}` — MongoDB rejects `$and: []`. Every clause therefore owns a
-      # distinct top-level key (the two status branches are mutually exclusive).
+      # Filter: email search + derived-status segment. The clauses are ANDed as a
+      # $and array rather than merged into one object, so no two of them can
+      # collide on a top-level key. The leading `{}` keeps the array non-empty
+      # with nothing set — MongoDB rejects `$and: []` but accepts the match-all
+      # `$and: [{}]`. The search clause comes from the shared regex_clause.yaml,
+      # which owns escaping the term (an unescaped `(` makes MongoDB reject the
+      # regex, and a raw `.*` would match every invitation).
       - - $match:
-            _object.assign:
+            $and:
               _array.concat:
                 - - {}
-                - _if:
-                    test:
-                      _ne:
-                        - _if_none:
-                            - _payload: filter.search
-                            - null
-                        - null
-                    then:
-                      - email:
-                          $regex:
-                            _payload: filter.search
-                          $options: i
-                    else: []
+                - _ref:
+                    path: ../shared/search/regex_clause.yaml
+                    vars:
+                      term:
+                        _payload: filter.search
+                      paths:
+                        - email
                 - _if:
                     test:
                       _eq:

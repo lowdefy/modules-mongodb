@@ -235,25 +235,25 @@ are in play and they are deliberately distinct:
 "machiel+bob@resonancy.io"`, which is what the header, the switcher and every
       workspace-name surface then display.
 
-      **Mechanism.** The engine mints the organization with
-      `name: user?.name || user?.email || session.userId`
-      (`@lowdefy/api/dist/routes/auth/organizations/createActiveOrgPolicyHook.js:160`) at
-      **first sign-in** — which is *before* onboarding collects a name, so `users.name` is
-      still the empty string signup wrote. The `user?.name` branch is therefore unreachable
-      on the email/password path and the name always falls through to the email. It is
-      reachable via OAuth, where the provider supplies a name at account creation, so the
-      same app yields tidy names for Google signups and raw addresses for password signups.
+        **Mechanism.** The engine mints the organization with
+        `name: user?.name || user?.email || session.userId`
+        (`@lowdefy/api/dist/routes/auth/organizations/createActiveOrgPolicyHook.js:160`) at
+        **first sign-in** — which is *before* onboarding collects a name, so `users.name` is
+        still the empty string signup wrote. The `user?.name` branch is therefore unreachable
+        on the email/password path and the name always falls through to the email. It is
+        reachable via OAuth, where the provider supplies a name at account creation, so the
+        same app yields tidy names for Google signups and raw addresses for password signups.
 
-      The plan's §2.1 ("named after Alice") and §4 ("named after him") are satisfied only in
-      the loosest sense. Renaming works (§2.3) so this is cosmetic and self-correcting, but
-      it is the first thing every new workspace owner sees. Options: derive a name from the
-      email local part at mint, or re-derive the organization name from the profile at
-      onboarding when the owner has not renamed it.
+        The plan's §2.1 ("named after Alice") and §4 ("named after him") are satisfied only in
+        the loosest sense. Renaming works (§2.3) so this is cosmetic and self-correcting, but
+        it is the first thing every new workspace owner sees. Options: derive a name from the
+        email local part at mint, or re-derive the organization name from the profile at
+        onboarding when the owner has not renamed it.
 
 - [x] **T11 — The `deals` collection is not tenant-walled, so deals are neither org-stamped
       on write nor org-filtered on read. Every workspace sees every deal.** Found
       2026-08-03. This is the failure §5's preamble says to report immediately.
-      **Fixed 2026-08-03** — see the *Fix* subsection at the end of this entry.
+      **Fixed 2026-08-03** — see the _Fix_ subsection at the end of this entry.
 
       **Evidence, three independent strands:**
 
@@ -484,6 +484,62 @@ are in play and they are deliberately distinct:
       merits — the only consideration left is that per-organization numbering changes the id
       format consumers already see in URLs and exports.
 
+- [ ] **T20 — Merging `auth-upgrade`'s `atlas_search` work collides with the tenant wall, and
+      the naive resolution returns every row for any search term.** Found 2026-08-03 while
+      merging `origin/auth-upgrade` into this branch. Recorded because the collision is not
+      obvious from either side's code and the wrong resolution fails _silently_.
+
+      `auth-upgrade` moved all four searchable modules onto a shared builder
+      (`modules/shared/search/text_lead.yaml`) with an `atlas_search` flag, and made the
+      `$search` stage **conditional** — emitted only when a term is present, with a no-op
+      `$match: {}` otherwise. That is incompatible with `tenant: authored` in a way the build
+      cannot see, because `authored` is static per request while the term is runtime. Probed
+      directly against `injectTenantIntoPipeline`:
+
+      | policy | `atlas_search` | term | first stage    | result                                                                                |
+      | ------ | -------------- | ---- | -------------- | ------------------------------------------------------------------------------------- |
+      | tenant | true           | yes  | `$search`      | clause audited, runs                                                                  |
+      | tenant | true           | no   | `$match: {}`   | **refused** — "declares `tenant: authored` but its pipeline contains no stage that requires an authored tenant clause" |
+      | tenant | false          | any  | real `$match`  | **refused** — same                                                                    |
+      | tenant | false          | any  | `$match` + clause | **refused** — "Tenant field can not be set in a `$match` stage"                    |
+
+      So `authored` is correct in exactly one of four combinations, and the no-term row is the
+      *default list view* — contacts, companies and activities would have refused on every
+      browse under `tenant`. Fail-closed, but a three-module outage.
+
+      **The second half is worse, because it is silent.** `auth-upgrade` put the term clauses
+      in `compound.should`, which is correct only while the compound has no `filter` clause.
+      Adding the tenant clause to `compound.filter` — mandatory under `tenant` — leaves
+      `should` at its default `minimumShouldMatch: 0`, so it ranks without narrowing. Probed
+      on the QA cluster's `user-contacts` (7 docs, 4 in the probe org, term matching 1):
+
+      | compound                                          | rows |
+      | ------------------------------------------------- | ---- |
+      | `should: [text]` alone                            | 2 (filters) |
+      | `filter: [org] + should: [text]`                  | **4 — every row in the org** |
+      | `filter: [org] + should: [text] + minimumShouldMatch: 1` | 1 |
+      | `filter: [org] + must: [{compound: {should: [text]}}]`    | 1 |
+
+      A search box returning the whole workspace, with no error anywhere.
+
+      **Resolved** by making the `$search` stage unconditional whenever `atlas_search` is set,
+      moving the term clauses into `compound.must` (the inner `should` keeps the OR and the
+      scoring), and gating each request's declaration on the same build-time flag
+      (`tenant: _build.if(atlas_search) → authored`; verified that `_build.if` with no `else`
+      **removes** the key rather than emitting `null`, so `atlas_search: false` leaves the wall
+      to inject mechanically — `tenant: none` would have been actively wrong there, opting out
+      of the wall entirely). The pinned branch of `tenant-clause.yaml` now yields
+      `exists: {path: _id}` rather than `[]`, because Atlas refuses a compound whose clause
+      lists are all empty and the tenant clause is what kept it non-empty under `tenant` only.
+      Verified: both apps build; the compiled artifacts carry `tenant: "authored"` with an
+      unconditional `$search` and the org equality under `tenant`, the `_id` match-all under
+      `pinned`; all 1040 unit tests pass.
+
+      Side effect worth knowing: because the `$search` is no longer hidden behind a runtime
+      `_if`, the build's best-effort entry-stage check now **sees** it — it caught the one
+      request that had been missed (`get_deals_list`). That check was blind to the old shape,
+      which is part of why [T11](#findings) went unnoticed.
+
 - [ ] **T19 — The `deals` collection has no Atlas Search index, so the deal search box has
       never worked.** Found 2026-08-03 and **independent of tenancy** — it fails identically
       under `pinned`. `get_deals_list` issues `$search` against `index: default` on `deals`, and
@@ -502,10 +558,21 @@ are in play and they are deliberately distinct:
       deal list load issue a `$search`, so the index has to exist first. See
       [tasks/deals-org-awareness.md](../org-aware-modules/tasks/deals-org-awareness.md).
 
+      **Now the only outstanding step for the deals remainder (2026-08-03).** The `auth-upgrade`
+      merge ([T20](#findings)) took `get_deals_list` onto the shared builder, so it is now an
+      unconditional `$search` with the authored clause in `compound.filter` — T11's remaining
+      work is done in config, and `docs/deals/index.md` carries the index definition
+      (`name` + `_id` keyword multi + `organizationId` as `token`). **The index itself still does
+      not exist on the QA cluster**, and because the `$search` is unconditional the deal list
+      now needs it to load at all, not merely to search. Creating it is a cluster change and was
+      left for the developer. The escape hatch if Atlas Search is unavailable is
+      `atlas_search: false` on the deals entry, which drops `$search` entirely and lets the wall
+      scope the leading `$match` mechanically.
+
 - [ ] **T18 — A profile edit in one workspace overwrites the global identity, so the other
       workspace's avatar and its change stamps show the wrong workspace's name.** Observed
-      2026-08-03. The plan's §4 checks that a name edited in one workspace does not appear *in
-      the other workspace's profile page and members list* — that part passes. What it does not
+      2026-08-03. The plan's §4 checks that a name edited in one workspace does not appear _in
+      the other workspace's profile page and members list_ — that part passes. What it does not
       check, and what breaks, is everything else that reads the caller's identity.
 
       **The per-workspace records are correct.** After editing the same person's name to "Alice
@@ -581,9 +648,9 @@ Recorded because each looks like a fault and will be re-reported otherwise.
   toast.
 
 - **The preflight cannot probe two of the walled connections, and that is by design.** Starting
-  the server under `tenant` logs two warnings — *"Tenant preflight can not probe connection
+  the server under `tenant` logs two warnings — _"Tenant preflight can not probe connection
   `workflows/workflow-api` … connection type `WorkflowAPI` implements the tenant contract but no
-  `tenantPreflight` capability"*, and the same for `events/events-timeline` (`EventsTimeline`).
+  `tenantPreflight` capability"_, and the same for `events/events-timeline` (`EventsTimeline`).
   This reads like a hole in the flip guard. It is the intended behaviour: the probe is a
   connection-type capability implemented on `MongoDBCollection`, so non-Mongo connection types
   that carry the tenant contract cannot be probed, and the warning is the designed signal rather
