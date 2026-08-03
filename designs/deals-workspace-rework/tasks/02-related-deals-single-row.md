@@ -1,5 +1,13 @@
 # Task 2: Bound the related-deals strip to one non-wrapping row
 
+> **As built — this spec diverged.** `flex: 0 0 180px` alone does not pin the card:
+> the wrapper is a flex item with `min-width: auto`, so flex-basis acts as a floor
+> and, under `nowrap`, the per-item `Area` wrappers shrink below their cards and
+> adjacent cards overlap. Shipped with **both** `layout.flex` and a block-level
+> `style.width`, and at **200px** rather than 180px. The "roughly four cards"
+> estimate below is also wrong — measured, it is ~3 at either width. See the
+> related-deals decision in `design.md`.
+
 ## Context
 
 The deal workspace's detail panel shows a "Related Deals" strip — other deals belonging to the same

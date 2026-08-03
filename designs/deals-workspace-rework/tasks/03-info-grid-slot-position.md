@@ -1,5 +1,12 @@
 # Task 3: Inject host info-grid tiles before People and Files
 
+> **As built — item 4 below no longer holds.** This task correctly left `apps/demo`
+> alone, but the demo was changed in a later, separate commit: with no tiles
+> injected, nothing in this repo exercised either the reordering or the re-keyed
+> form-data read. It now ships a `qualification` tile and a `request_stages` stage
+> as a reference consumer. See the `apps/demo` entry under Files changed in
+> `design.md`.
+
 ## Context
 
 The deal workspace's detail panel contains an "info grid" of half-width tiles, assembled by

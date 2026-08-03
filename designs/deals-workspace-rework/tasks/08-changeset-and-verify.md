@@ -54,15 +54,17 @@ Built output is under `apps/demo/.lowdefy/server/build/pages/**`.
 check is **not** a smoke test in this repo — running `apps/demo` needs real secrets and a reachable
 MongoDB, so none of the following can be verified autonomously:
 
-- The info grid renders host tiles before People and Files (needs a host app or a demo tile, since the
-  demo injects none).
+- The info grid renders host tiles before People and Files — the demo now injects a `qualification`
+  tile for exactly this, so it is checkable there.
 - Open items read as one stacked block, Actions above Tasks, with no double border.
-- The related-deals strip is one row, scrolls horizontally past ~4 cards, and its names ellipsise on
+- The related-deals strip is one row, scrolls horizontally past ~3 cards, and its names ellipsise on
   one line.
-- The left panel's new-deal button navigates to the create page; the chevron collapses to a rail and
-  expands back with search, selection and pagination intact.
-- Below 768px, collapsing gives a full-width header-only strip and the workspace is reachable without
-  scrolling a full screen.
+- The left panel's new-deal button navigates to the create page; the chevron collapses to a full-height
+  36px rail and expands back with search, selection and pagination intact.
+- The pipeline card's header holds its height when the workflows are expanded.
+- Below 768px, collapsing now leaves the same 36px rail beside a narrow workspace, not the full-width
+  header strip an earlier draft described — confirm that reads acceptably and that the workspace is
+  reachable without scrolling a full screen.
 - Deal-card volumes show two decimals.
 - On a deal carrying two workflows, values sourced from **both** workflows render — this is the one
   that catches a bad re-key, and it needs a host app with a split pipeline.

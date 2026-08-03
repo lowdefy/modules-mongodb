@@ -19,7 +19,7 @@ From `design.md`:
 
 From the repo (`CLAUDE.md`):
 
-- **Never use client or app names** in commits, task output, or anything tracked in git. Refer to "the host app". (The design currently violates this — see Scope.)
+- **Never use client or app names** in commits, task output, or anything tracked in git. Refer to "the host app".
 - **Build check is `pnpm ldf:b` from `apps/demo`** (or `pnpm --filter @lowdefy/modules-demo ldf:b` from the root). Never the `:i` (Infisical) variants — the sandbox blocks them.
 - **Never run a dev server or e2e in the foreground.** They never exit.
 - **A build check is not a smoke test.** Running `apps/demo` needs real secrets and a reachable MongoDB, so visual verification is a human step, not an autonomous one.

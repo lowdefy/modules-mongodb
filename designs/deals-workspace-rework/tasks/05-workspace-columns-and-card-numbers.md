@@ -1,5 +1,13 @@
 # Task 5: Even up the workspace columns and format card volumes to 2 decimals
 
+> **As built — two divergences.** The formatting expression shipped as
+> `(v | float(0)).toFixed(2)`, not `(v or 0).toFixed(2)`: `or` guards falsiness
+> rather than type and is dead code behind the enclosing `{% if v %}`, while a bare
+> `.toFixed()` throws on a non-numeric field. And the Files list below is
+> incomplete — `components/deal_list_card.yaml` needed the identical change, since
+> the deals *list* page's browse card reads the same `card_fields` var with the same
+> `round` flag. See the formatting decision in `design.md`.
+
 ## Context
 
 Two small, independent edits to `modules/deals/pages/view.yaml`, grouped because they touch the same

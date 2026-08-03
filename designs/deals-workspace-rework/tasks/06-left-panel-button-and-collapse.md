@@ -1,5 +1,14 @@
 # Task 6: Add a new-deal button to the left panel and make the panel collapsible
 
+> **As built — the rail mechanism changed.** The `span: 5 → 1` / `19 → 23` approach
+> specified below does not work: the row's 16px gap comes off whatever share is
+> taken, so a span-1 rail is ~13px at 768px and the chevron overhangs the card.
+> Shipped as a fixed `layout.flex: 0 0 36px` with `workspace_col` at `flex: 1 1 0`,
+> which also means the collapse is no longer inert below 768px. The card keeps a
+> full-height rail (`100vh - 98px`, corrected from 110 to include the topbar
+> gutter), and the pipeline card gained `flex-shrink: 0` on its header. See the
+> collapse decision and the layout-shift section in `design.md`.
+
 ## Context
 
 `modules/deals/pages/view.yaml` lays out the deals workspace as two columns inside `deals_layout`:
