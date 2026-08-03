@@ -43,6 +43,26 @@ Only charts and downloads stream back today, so a tabular answer — the single 
 
 This is also the change that makes [save-as-report](../save-as-report/design.md) worth having on the most common answer shape. A report of charts only would have been a report of the minority case.
 
+### The panel is an artefact store, so its parts need identity, a date and a bound
+
+The panel's parts are persisted documents that another surface reads — [save-as-report](../save-as-report/design.md) builds report sections out of the ones the user ticks — and today a part is `{ type, data }` with nothing else. Three consequences, one shape change.
+
+**A part carries the spec that produced it.** A chart part persists `{ title, option }`: the baked ECharts option and nothing else, while a download part keeps its `query`. So a chart's pipeline is discarded at the moment it is rendered, and a ticked chart cannot become a report section — a section needs `{ chart, query, x, y }`, and a rendered option cannot be reversed into a pipeline. This is not only a reopened-conversation problem: the live panel state is populated from the same part. So the part becomes
+
+```
+data: { id, created, title, option, spec: { chart, query, x, y } }
+```
+
+and the new `data-report-table` part carries `{ query, columns }` on the same rule. Exports already do this, and it is the reason they work.
+
+**Reopening a conversation shows the numbers from that turn, not today's.** The persisted `option` stays baked, and the spec beside it is what makes a _saved report section_ live. The alternative — store the spec only and re-run the query on reopen — is tempting because it makes the size problem below disappear rather than merely bounding it, and it is rejected: a chart sits directly under prose quoting its numbers, so a chart that silently re-runs makes the paragraph above it wrong. A transcript that edits itself is not a transcript. (The Flint chart-compiler exploration sharpens this: its option is data-dependent by design — grid padding from actual label extents, categorical bars re-sorted by value — so a rebuild would change the chart's shape and ordering, not just its values.)
+
+That makes the `created` stamp load-bearing rather than decorative: it is the only thing that can date a frozen chart, so a card can say _as of 14 July_. It is also what the [report page](../report-page/design.md#provenance-is-three-facts-and-one-of-them-is-free) treats as a first-class provenance fact for the same data, and the panel currently cannot answer the same question.
+
+**The array is bounded on write.** `emit-data-parts` `$push`es with `$each` and no cap; the per-turn cap is 8 charts and 8 downloads and there is no per-conversation cap at all. A part's payload is the largest object this module persists, and `save-conversation` rewrites the whole document every turn regardless — so a long analytical conversation walks toward the 16 MB ceiling, where the write throws inside a hook whose errors `handleAgentChat` only `console.warn`s, and the turn vanishes with nothing shown to the user. So: `$push: { data_parts: { $each: […], $slice: -50 } }`. The panel's promise becomes "everything you produced in this conversation, up to the last 50 results". The 50 is a starting number, not a derived one.
+
+The `id` is what selection binds to, replacing the array index — otherwise the `$slice` retention, or a concurrent turn's push, shifts the array under an open selection. All three fields are additive, so parts written before them are read through `_if_none`, the same way the Flint branch binds a newly-added `charts.$.height`.
+
 ### Three columns, both sides collapsible
 
 Left is history, middle is now, right is what you produced. Both side panels collapse to strips (the rail to icons, the panel to counts) so the transcript can run full-width when the user is reading rather than producing, and the two collapses are mirror images so they read as one pattern. Collapse state is kept for the session and follows the user between pages ([why not persisted](#collapse-state-is-session-scoped-not-persisted)); on a narrow viewport both start collapsed. The expanded layout is 232px / fluid / 348px with a ~62ch measure on the middle column, which is the chat block's own `maxWidth` — so prose stays readable at any width.
@@ -93,17 +113,25 @@ Conversation documents already carry `owner`, `created`, `updated`, `messages`, 
 
 Recency grouping and the rail's sort read the existing `updated.timestamp` — no new field. The stamp comes from `modules/reporting/defaults/change_stamp.yaml`, `_ref`'d like every other writer's — same reasoning as [ownership](../ownership/design.md#reporting-writes-its-own-change-stamp-for-now).
 
+**Both writers must `$setOnInsert` the same live shape**, and today they do not — which is a live defect the rail already shows. `save-conversation` inserts `created` and a derived `title` while `$set`ting `messages`, `owner` and `updated`; `set-conversation-title` inserts `owner` and `created` only. That endpoint frequently creates the document — its own comment records that the AI title arrives during streaming, before the onFinish save — and a document with no `updated` sorts **last** on `list-conversations`' descending sort. So the conversation the user is actively talking to sits at the bottom of their own rail until the first save lands, groups under "Older" once recency grouping ships, and stays there permanently if that hook ever fails. Both writers therefore `$setOnInsert` `owner`, `created`, `updated`, `messages: []`, `data_parts: []` and `deleted: null` — the discipline `generate-report` already applies on the reports side ("initialised so live documents have a consistent shape").
+
+A part in `data_parts` is `{ type, data: { id, created, … } }`, with the array bounded on write — see [the panel is an artefact store](#the-panel-is-an-artefact-store-so-its-parts-need-identity-a-date-and-a-bound).
+
+**The conversation `_id` is browser-generated** (`_uuid` in the page's `onInit`), and both writers upsert on `{ _id, owner.user_id }` — so the owner scope makes the upsert an insert path: an id colliding with another user's document would miss the filter and attempt an insert on a duplicate key, surfacing as an error inside a hook that only warns. Unreachable with uuid4 and no guard is added; recorded because the same pattern with a guessable id would be an integrity problem rather than a curiosity.
+
 `conversationId`, `messages`, `steps` and `toolResults` stay camelCase wherever they appear here: they are the `AgentChat` block's property and the agent framework's `onFinish` payload keys, not names this module chooses. Same for `dataParts` as the key the framework reads stream parts back from — the field it persists to is `data_parts`.
 
 Conversations stay **own-only**. Nothing here gives a conversation an audience; the only cross-user link is the report's `conversation_id`, and following it is owner-gated on the [report page](../report-page/design.md).
 
 ## Endpoints
 
-| Endpoint              | Status | Shape                                                             |
-| --------------------- | ------ | ----------------------------------------------------------------- |
-| `list-conversations`  | change | Own-only, returns `updated` and a snippet; excludes soft-deleted. |
-| `delete-conversation` | new    | Soft, owner-scoped, same stamp shape.                             |
-| `emit-data-parts`     | change | Emits `data-report-table` alongside chart and download.           |
+| Endpoint                 | Status | Shape                                                                                                                                                            |
+| ------------------------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list-conversations`     | change | Own-only, returns `updated` and a snippet; excludes soft-deleted.                                                                                                |
+| `delete-conversation`    | new    | Soft, owner-scoped, same stamp shape.                                                                                                                            |
+| `emit-data-parts`        | change | Emits `data-report-table` alongside chart and download; parts carry `id`, `created` and their validated `spec`; the `$push` bounds the array with `$slice: -50`. |
+| `save-conversation`      | change | `$setOnInsert` the full live shape (`updated`, `messages: []`, `data_parts: []`, `deleted: null`).                                                               |
+| `set-conversation-title` | change | Same `$setOnInsert` shape, so the writer that usually creates the document creates the same document.                                                            |
 
 ## Vars
 
@@ -114,7 +142,10 @@ All optional, all app-specific copy: `welcome_title`, `starters_explore`, `start
 - `modules/reporting/pages/chat.yaml` — fixed rail/panel widths with a fluid measure-capped middle; both panels collapsible with session-scoped state; panel visible-when-empty; the two-track empty state as ordinary blocks with `welcome` unset; starter chips filling the composer; rail search / grouping / per-item menu; the table part routed into a new state array; the panel scope control.
 - `modules/reporting/api/list-conversations.yaml` — `updated` and the snippet, soft-delete filter.
 - New `modules/reporting/api/delete-conversation.yaml`.
-- `modules/reporting/api/emit-data-parts.yaml` — the table part.
+- `modules/reporting/api/emit-data-parts.yaml` — the table part; `id` / `created` / `spec` on every part; `$slice: -50` on the `$push`.
+- `modules/reporting/api/save-conversation.yaml` and `set-conversation-title.yaml` — the shared `$setOnInsert` live shape.
+- `plugins/modules-mongodb-plugins/src/analytics/buildDataParts.js` — carries the validated spec and the new fields onto each part.
+- `modules/reporting/api/get-conversation-results.yaml` — projects the new fields through; its "baked option is a snapshot" comment stays true and gains the `created` date that dates it.
 - `modules/reporting/agents/reporting-assistant.yaml` — the mermaid-sketch prompt and the table-part contract, plus a `display` string on the query tool's output so the trace line reads as a summary rather than a key list.
 - `patches/@lowdefy__blocks-antd-x.patch` — the `setInput` method on `AgentChat` (controlled `Sender` plus `registerMethod`), to be upstreamed.
 - `modules/reporting/module.lowdefy.yaml` — the copy vars.

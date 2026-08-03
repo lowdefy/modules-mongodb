@@ -49,18 +49,25 @@ The model is stated here once because four sub-designs read it. [ownership](owne
 
 Additions to the report document (existing fields unchanged):
 
-| Field          | Type                    | Notes                                                             |
-| -------------- | ----------------------- | ----------------------------------------------------------------- |
-| `visibility`   | `"private" \| "shared"` | Defaults `private`. Only a `share_roles` holder may set `shared`. |
-| `favourite_of` | `string[]`              | User ids; projected to a boolean for the caller. Defaults `[]`.   |
+| Field          | Type                    | Notes                                                                                |
+| -------------- | ----------------------- | ------------------------------------------------------------------------------------ |
+| `visibility`   | `"private" \| "shared"` | Defaults `private`. Only a `share_roles` holder may set `shared`.                    |
+| `favourite_of` | `string[]`              | User ids; projected to a boolean for the caller. Defaults `[]`.                      |
+| `spec_version` | `number`                | `1`. Written on insert by every creator; the validator may loosen but never tighten. |
 
-Unchanged and load-bearing: `owner` (`{ user_id, name }` — every scope and mutation matches `owner.user_id`), `created` / `updated` / `deleted` (change stamps; `deleted` is `null` while live), `conversation_id` (already on the document, always `null` on the agent-tool path — [save-as-report](save-as-report/design.md) is what finally populates it), and `spec`.
+Unchanged and load-bearing: `owner` (`{ user_id, name }` — every scope and mutation matches `owner.user_id`), `created` / `updated` / `deleted` (change stamps; `deleted` is `null` while live), and `conversation_id` (already on the document, always `null` on the agent-tool path — [save-as-report](save-as-report/design.md) is what finally populates it). `spec` stays, with a changed shape:
+
+**The stored `spec` is the validator's output, not the writer's input**, and it holds `{ sections }` only — `title` and `description` are document fields, the single source for the list, search, sort and rename. Every section carries a **durable id** assigned by the validator, so a section can be named for the life of the report rather than by the position it occupied when a caller last read it. Display defaults (`REPORT_LOCALE` / `REPORT_CURRENCY` / `REPORT_DECIMALS`, a multiselect's `match`) therefore freeze at create time instead of being re-applied from current constants on every read. Pipelines are still stored verbatim and still revalidated per section per viewer at every resolve — nothing about the safety model changes. [ownership](ownership/design.md#the-stored-spec-is-the-validators-output) owns this, and it is what lets `remove-report-section` address a section by id with no positional guard.
+
+**`owner.name` is a snapshot.** Reporting depends on no module and knows no users collection, so it cannot resolve a `user_id` to a current name — the carried name is the only thing available, refreshed opportunistically by owner-side writes. A "Published by …" line reads the name as at the last write.
 
 **Ownership is a named reference, not the `created` stamp**, even though the two hold the same person on insert. The shape follows `deals.salesperson` (`{ contact_id, name, email }`): the id is the authorization key, and the name rides along so a list row or a report header can say "Published by …" without a lookup — which plate 4's Visibility column and [report-page](report-page/design.md)'s provenance line both need.
 
 Keeping it out of the stamp is deliberate. `created` is written once with `$setOnInsert` — a historical fact. Authorizing off it would mean ownership could never move without rewriting the audit record, and would make `created.user` load-bearing for authorization while `updated.user` right beside it is not, a distinction nothing in the document signals. `owner` is current state; the stamps are history.
 
 Conversation documents already carry `owner`, `created`, `updated`, `messages`, `data_parts` and `title`. They gain `deleted` (same stamp shape, initialised `null`) for the rail's soft delete, specified in [chat](chat/design.md), not in ownership — the report ownership model has nothing to say about them.
+
+Two things about `data_parts` are model-level rather than chat's alone, because save-as-report reads them. Each part carries **its own id, a `created` stamp, and the validated spec that produced it** — the spec is what lets a selected result become a live report section, while the part's baked `option` stays a snapshot of that turn. And the array is **bounded on write**, keeping the most recent 50 parts, because a part's payload is the largest object this module persists and the document is rewritten every turn. Both are [chat](chat/design.md#the-panel-is-an-artefact-store-so-its-parts-need-identity-a-date-and-a-bound)'s to specify.
 
 ## Cross-cutting invariants
 
