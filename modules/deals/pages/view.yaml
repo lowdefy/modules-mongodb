@@ -450,8 +450,8 @@ _ref:
 
           - id: workspace_col
             type: Box
-            # Takes whatever the rail leaves. Basis must be 0, not auto — the row
-            # wraps, and an auto basis pushes this column onto its own line.
+            # Takes what the rail leaves without wrapping below it: needs both a 0
+            # basis and `min-width: 0`, as the row wraps on the min-content floor.
             layout:
               flex:
                 _if:
@@ -465,6 +465,15 @@ _ref:
               sm:
                 span: 24
               gap: 12
+            style:
+              min-width:
+                _if:
+                  test:
+                    _eq:
+                      - _state: deals_list_collapsed
+                      - true
+                  then: 0
+                  else: null
             blocks:
               - id: deal_topbar
                 type: Box

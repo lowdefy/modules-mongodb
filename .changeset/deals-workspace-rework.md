@@ -52,6 +52,10 @@ Layout and presentation:
   is a fixed width rather than a grid share, so it stays sized to its chevron
   instead of tracking the viewport — which also means it applies at every width,
   including below 768px where the expanded panel is full width.
+- The deal topbar's action bar now shrinks, so its buttons wrap to a second line
+  on a narrow screen instead of spilling the topbar and giving the page a
+  horizontal scrollbar. The bar could not shrink before; collapsing the panel on
+  a ~375px phone is what made it overflow.
 - The workflow card's header keeps its natural height when the workflows are
   expanded. It was a flex item being squeezed by the growing body, losing ~11px —
   enough to clip a two-line title.

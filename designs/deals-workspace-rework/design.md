@@ -173,7 +173,20 @@ A grid share tracks the viewport; a rail should track its contents. So the colla
 | ≥768px | A 36px rail beside the workspace — body hidden, chevron remains |
 | <768px | The same 36px rail, now beside a much narrower workspace |
 
-This is arguably better — the workspace is immediately reachable rather than sitting below a full-width bar you scroll past — but it is a side effect of the mechanism rather than a designed choice, and on a very narrow phone a 36px strip stealing width from an already-cramped workspace may read worse than stacking. **Open: confirm or restore the stacked behaviour** (which would need the collapse expressed without `flex`, or a breakpoint-aware override).
+**Settled: keep the rail at every width.** What the two states give on a phone is coherent rather than accidental, and measuring it settled the question:
+
+- **Expanded is unchanged.** `flex` is null, so the `span: 5` / `sm.span: 24` path runs exactly as before — the panel is full width below 768px and the workspace sits under it. Stacking, which is what a phone wants.
+- **Collapsed puts one piece of content beside the rail** — but only with `min-width: 0` on `workspace_col`. A `0` flex basis is **not** enough. `min-width: auto` floors a flex item at its min-content width, and flex line-breaking uses that floor rather than the basis, so any descendant wider than the space the rail leaves both blows the column out to its own min-content *and* pushes it onto a new line below the rail. Measured at a 948px available width: a 1129px descendant wraps, 1580px wraps, 2934px wraps; with `min-width: 0` the column holds 948px and stays beside the rail in every case.
+
+  The override goes on the block's non-dot `style` key, which the build maps to `style.block` — the object `BlockLayout` puts on the wrapper div, which is the actual flex item (`Container.js:48`). The inner Box div is not the flex item, so `.element` would not work. Same mechanism as `deal_list_item_compact`'s `style.width`.
+
+  It is conditional on the collapsed state so the expanded path stays byte-identical. Scroll containers are already immune — `overflow` other than `visible` zeroes the automatic minimum — which is why the related-deals strip and both card bodies never caused this, and why the culprit is whatever sits *outside* a scroll container.
+
+So collapsing on a phone trades 36px for reaching the workspace without scrolling past a full-width bar. That is worth it, and the expanded state still stacks for anyone who wants the panel.
+
+**One narrow-screen defect this surfaces, and it is fixed here.** `components/detail/action_bar.yaml` was `flex: 0 0 auto` — shrink 0 — so the three-button bar could not give up width. Collapsed at 375px the workspace leaves it about 299px of content box against roughly 316–334px of buttons, so the topbar spilled and the page gained a horizontal scrollbar. Expanded there is ~349px and it fits, which is why the collapse is what exposed it.
+
+`flex: 0 1 auto` lets the bar shrink, and because it is itself a wrapping row its buttons drop to a second line rather than squashing. Measured at 375px: spill 0px at every button width from 90px to 140px, where shrink 0 spilled 0/6/24/66/126px. Nothing changes above about 430px, where the bar has never needed to shrink — shrink only engages once the line would overflow. The bar's *children* keep `flex: 0 0 auto`, so individual buttons never compress; only the container yields.
 
 Either way it avoids breakpoint-aware *visibility*, which Lowdefy makes awkward — `visible` evaluates from state, not media queries, so hiding the toggle below a breakpoint would mean a media-query style override or tracking viewport width in state.
 
@@ -251,6 +264,7 @@ The first two are being rewritten anyway — `close_date` because `order-confirm
 - `requests/get_selected_deal.yaml` — related-deals `$limit` 20 → 10 (alongside the form-data re-key below).
 - `pages/view.yaml` — new-deal button in `deal_list_card` `extra`; collapse toggle + 36px flex rail with its paired height constants; `pipeline_col`/`detail_col` to 12/12; card template 2dp formatting; `flex-shrink: 0` on the pipeline card's header.
 - `components/button_new_deal.yaml` — gains `size` and `visible` vars, both defaulted to preserve the list page's rendering (`size` defaults to `null` rather than `default`, so it inherits an ancestor size context instead of overriding it).
+- `components/detail/action_bar.yaml` — `flex: 0 0 auto` → `0 1 auto`, so the button bar wraps instead of spilling the topbar when the panel is collapsed on a phone.
 - `components/deal_list_card.yaml` — **the same 2dp formatting.** This is the deals *list* page's browse card (`_ref`'d from `components/results_list.yaml`), and it reads the same `card_fields` var with the same `round` flag as the workspace panel card. Missed in an earlier draft of this inventory; leaving it would render one host setting two ways (`13` on the list page, `12.60` in the workspace).
 - `requests/get_selected_deal.yaml` — form-data merge across workflows.
 - `module.lowdefy.yaml` — `info_grid_slots`' description updated to say it injects before the built-in tiles; `workflow_type`'s description corrected, since it no longer drives the form-data alias. Both feed the generated `docs/deals/reference/vars.md`, so `pnpm docs:gen` must run in the same change. No var added or renamed.
@@ -288,6 +302,7 @@ Confirmed by the project's developer, not by the issue's original author. If the
 
 1. ~~**One release or two?**~~ Resolved: one. A single changeset covers the whole rework, on the reasoning that a changelog assembled from intermediate states would document decisions that were reversed mid-flight and never shipped.
 2. ~~**Thousands separator character.**~~ Resolved: `en-GB`, giving `R1,234,567.89`. `en-ZA` was checked and rejected — it yields a comma decimal (`R1 234 567,89`), clashing with the period decimal the `.toFixed(2)` sites produce.
-3. ~~**Rail width.**~~ Resolved: a fixed 36px through `flex`, sized to the chevron rather than to a grid share — see the collapse decision above for why neither span 1 nor span 2 works. **Still open: whether the collapsed state persists** across page loads or resets each visit. Page state is the cheap answer and is what shipped; `localStorage` is the nicer one.
+3. ~~**Rail width.**~~ Resolved: a fixed 36px through `flex`, sized to the chevron rather than to a grid share — see the collapse decision above for why neither span 1 nor span 2 works. ~~**Whether the collapsed state persists**~~ Resolved: page state, as shipped — the panel returns expanded on a fresh load. `localStorage` was declined; it is a persistence mechanism this module has nowhere else, for one boolean, and a panel reappearing is the safer default when a collapsed one is easy to forget.
 4. **Does `card_fields.round` stay a boolean?** With 2dp as the default it may want to become a precision number, which is a host-facing var change rather than a formatting fix.
 5. **Fix the unresolvable `deal-status-chip` export here, or separately?** The deals manifest needs a top-level `components:` list for its one declared export to work at all (see the adjacent-defect note). Nothing in this design depends on it, so it is a free-standing bug — but it is a small fix and this release already touches the manifest.
+6. ~~**Let the topbar action bar shrink?**~~ Resolved: yes, `flex: 0 1 auto`. The collapse is what makes the bar overflow on a phone, so the fix belongs with it rather than in a follow-up — see the collapse decision above for the measurements.
