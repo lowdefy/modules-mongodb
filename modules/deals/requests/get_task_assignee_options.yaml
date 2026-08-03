@@ -50,17 +50,26 @@ properties:
         then:
           $match:
             $or:
-              - _id:
-                  $in:
-                    _payload: selected_ids
-              - profile.name:
-                  $regex:
-                    _payload: search
-                  $options: i
-              - email:
-                  $regex:
-                    _payload: search
-                  $options: i
+              _array.concat:
+                # The current assignee survives the search so the Selector can
+                # still render its value while a term narrows the list.
+                - - _id:
+                      $in:
+                        _payload: selected_ids
+                # Escaping lives in the shared clause: an unescaped `(` makes
+                # MongoDB reject the regex and a raw `.*` matches every contact.
+                # No atlas_search var is passed — this selector has no Atlas path,
+                # so it always takes the regex, which is that var's `false`
+                # default. Passing the deals module's flag would drop the clause
+                # on an Atlas deployment and the search box would stop filtering.
+                - _ref:
+                    path: ../shared/search/regex_clause.yaml
+                    vars:
+                      term:
+                        _payload: search
+                      paths:
+                        - profile.name
+                        - email
         else:
           $match: {}
     - $addFields:
