@@ -1,0 +1,76 @@
+# Star or unstar a report, per user.
+#
+# A ★ on a shared report must not be everyone's ★, so the marker is the caller's
+# id in favourite_of on the report document, projected to a boolean is_favourite
+# for whoever is reading. A caller therefore never learns who else favourited a
+# report, which is why favourite_of is projected out of every response.
+#
+# Readable-report check, not owner: this is a read-side act on something the
+# caller is already entitled to see, so the same predicate resolve-report uses —
+# not deleted, and yours or shared. Spelled identically in all three places; a
+# reader that disagreed with another would not error, it would silently return
+# nothing.
+#
+# A favourite is not a grant. Because a non-owner may star a shared report, the
+# marker outlives the sharing that allowed it — nothing $pulls on unpublish or
+# delete. The read filters instead, so the marker sits dormant and works again if
+# the report is republished. That is why the favourites list scope carries the
+# readable predicate AND the marker, never the marker alone.
+#
+# No change stamp. Stamping would jump the report to the top of EVERY user's list
+# each time anyone starred it, because the list sorts on updated.timestamp.
+id: set-report-favourite
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to favourite a report.
+  # Rejected rather than coerced: a truthy string would silently star a report
+  # the caller meant to unstar.
+  - :if:
+      _and:
+        - _ne:
+            - _payload: favourite
+            - true
+        - _ne:
+            - _payload: favourite
+            - false
+    :then:
+      - :reject: favourite must be true or false.
+  - id: set_favourite
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      filter:
+        _id:
+          _payload: report_id
+        deleted.timestamp:
+          $exists: false
+        $or:
+          - owner.user_id:
+              _user: id
+          - visibility: shared
+      # $addToSet / $pull between two static updates rather than $set on the
+      # whole array: two users starring the same report concurrently would
+      # clobber each other under a rewrite. $addToSet also makes a repeat star
+      # idempotent for free.
+      update:
+        _if:
+          test:
+            _payload: favourite
+          then:
+            $addToSet:
+              favourite_of:
+                _user: id
+          else:
+            $pull:
+              favourite_of:
+                _user: id
+  - :return:
+      ok: true
+      modifiedCount:
+        _step: set_favourite.modifiedCount

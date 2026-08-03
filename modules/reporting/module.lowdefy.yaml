@@ -25,6 +25,10 @@ exports:
       description: Rename a saved report (owner only)
     - id: restore-report
       description: Bring a soft-deleted report back, as private (owner only)
+    - id: set-report-favourite
+      description: Star or unstar a readable report, per user
+    - id: duplicate-report
+      description: Copy a readable report into a private one the caller owns
   connections:
     - id: reports-store
       description: MongoDB collection for saved report specs
@@ -158,6 +162,8 @@ api:
   - _ref: api/set-report-visibility.yaml
   - _ref: api/set-report-title.yaml
   - _ref: api/restore-report.yaml
+  - _ref: api/set-report-favourite.yaml
+  - _ref: api/duplicate-report.yaml
 
 agents:
   - _ref: agents/reporting-assistant.yaml
