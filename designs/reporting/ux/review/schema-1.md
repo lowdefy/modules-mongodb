@@ -21,6 +21,14 @@ lands; the rest are cheap now and expensive once documents exist.
 
 ### 1. The chart data part drops the query, so a selected chart cannot become a report section
 
+> **Resolved.** The part carries its spec beside the presentation payload:
+> `data: { id, created, title, option, spec: { chart, query, x, y } }`. The planned
+> `data-report-table` part carries `{ query, columns }` on the same rule. Decided together
+> with the snapshot question (finding 8): the baked `option` stays, so the persisted `spec`
+> is what makes a _saved report section_ live while the panel card itself stays frozen.
+> Chat owns the part shape; save-as-report's sheet reads `spec` to build a section, and the
+> `id` is what selection binds to instead of an array index (finding 9).
+
 **Owner: [chat](../chat/design.md) (the part shape) — blocks
 [save-as-report](../save-as-report/design.md).**
 
@@ -53,6 +61,18 @@ so it is a clarification, not a new concept.
 
 ### 2. Report `title` and `description` exist twice, and the planned rename writes one of them
 
+> **Resolved.** The duplication is removed rather than synchronised, which the normalization
+> decision (finding 4) makes possible: the persisted `spec` becomes `{ sections }` only, and
+> `title` / `description` are **document** fields — the single source for the list, search,
+> sort and rename. `resolve-report` composes `{ title, description, sections }` from the
+> document before re-validating, so neither the validator nor the compiler changes
+> (`compileReport.js:454-457` keeps reading `validated.title`). `set-report-title` then
+> writes one field and never touches the spec, which is the right split independently of the
+> duplication: `spec` is the AI-authored contract, `title` is user-editable metadata. This
+> also settles review 2's finding 5 by construction — `search` matches `title` and
+> `description` "and explicitly not the spec", which is automatic once the spec holds no
+> prose.
+
 **Owner: [ownership](../ownership/design.md).**
 
 `generate-report.yaml:75-80` writes top-level `title` and `description` **and** the same
@@ -81,6 +101,21 @@ Per "one correct way", the second is the better shape and the first is the hones
 expedient. Either way this is a decision the rename endpoint cannot be built without.
 
 ### 3. There is no `spec_version`, and a stored spec is re-validated by current code on every read
+
+> **Resolved.** Three parts. (1) `spec_version: 1` on insert — which normalization makes
+> meaningful, since the stored shape is now the module's own output rather than a model
+> payload. (2) The compatibility rule is **the validator may loosen for persisted shapes,
+> never tighten** — forced rather than chosen: there is no migrations directory anywhere in
+> this repo, so no mechanism exists to migrate a module-owned collection, and a tightening
+> that needs one needs the mechanism built first. The same rule was reached independently on
+> the Flint chart-compiler branch, which binds a newly-added part field as
+> `{ _if_none: [{ _state: "charts.$.height" }, 300] }` rather than assuming persisted parts
+> carry it (`designs/reporting/_ideas/flint-charts/design.md:222-223`). (3) The failure stops
+> being a 404: a spec-level validation failure at resolve renders a whole-report Alert naming
+> the cause, not `pages/report.yaml`'s "Report not found" fallback. Report-page owns that
+> rendering, as the whole-report sibling of its withheld-section Alert. Mechanism confirmed —
+> `controlFor.js:24-31` evaluates `:in` before iteration and outside any try, so the
+> per-section `:try` cannot catch it.
 
 **Owner: [ownership](../ownership/design.md) (the insert shape) with
 [report-page](../report-page/design.md) (the failure rendering).**
@@ -121,6 +156,23 @@ Three things to settle:
 
 ### 4. Persisting the spec raw means a stored report's meaning tracks the current defaults
 
+> **Resolved.** `generate-report` persists the validator's output, not `_payload: spec`, so
+> every default freezes at create time and no stored report's meaning tracks a constant.
+> This was the review's lead question, and it closed the corner four findings shared (2, 4,
+> 5, and the shape of 3) — plus one workaround two sections away (finding 5).
+>
+> The safety argument for raw persistence survives intact, which is what made the change
+> available: `validateQuery` returns the pipeline array **unchanged**
+> (`validateChartSpec.js:43`, and its docstring says exactly that), so the normalized spec
+> stores every pipeline verbatim just as the raw one did. Nothing is sanitized; resolve-time
+> revalidation remains the guarantee. The original reasoning — recorded in
+> `generate-report.yaml:4-7` — was about pipelines and correct about pipelines. It had been
+> extended to the whole spec, and the presentation contract is where the cost landed.
+>
+> `REPORT_LOCALE` / `REPORT_CURRENCY` / `REPORT_DECIMALS` become **create-time inputs**
+> rather than read-time fallbacks. That is a change in what those constants mean, and it is
+> stated in the data model.
+
 **Owner: [ownership](../ownership/design.md), as a note on the data model.**
 
 `generate-report.yaml:79-80` stores `_payload: spec`, not the validator's normalized
@@ -140,6 +192,32 @@ constants are part of the versioned contract of finding 3, so a future change to
 recognised as a spec-compatibility change rather than a display tweak.
 
 ### 5. Section ids are positional, and report-page plans to drop sections
+
+> **Resolved — and it retired surface rather than adding it.** Sections get durable ids,
+> persisted in the spec, assigned once at create time.
+>
+> The ownership design had already considered and rejected this (`:104`, "Not stored section
+> ids, for now") for a stated reason: durable ids "change the spec contract for all three
+> writers (the agent, the save sheet, this endpoint)". That pricing was correct **under raw
+> persistence** — if the document stores what the writer sent, every writer must author or
+> inject an id. Once the writers persist the validator's output (finding 4), the validator
+> assigns the ids and no writer's contract changes at all. The cost that justified the
+> workaround is zero.
+>
+> So the workaround goes with it. `remove-report-section`'s payload drops `expected_type`
+> and `expected_label` back to `{ report_id, section_id }`, the guard-mismatch rejection path
+> goes, and the "stale position" e2e case goes — all three existed only to survive
+> renumbering. The double-click case that motivated them now resolves itself: the second call
+> names a section that is already gone, finds nothing, and rejects. Nothing can slide into a
+> slot because there are no slots.
+>
+> Unchanged: the cascade, and review 2's refusal to empty a report — both independent of how
+> a section is addressed. The one thing genuinely lost is a marginally friendlier error
+> message on a stale click, which is not worth four pieces of contract.
+>
+> Report-page's "the id is a position rather than a durable identity" caveat (`:54`) goes
+> too, and the resolver's failure log, per-section CSV and fix-in-chat context all become
+> stable references for free.
 
 **Owner: [report-page](../report-page/design.md) (which edits the spec) with
 [ownership](../ownership/design.md) (which owns the stored shape).**
@@ -170,6 +248,17 @@ means either a migration or permanently positional ids.
 
 ### 6. `owner.name` is refreshed on conversations and never on reports
 
+> **Resolved (auto).** `owner.name` is a snapshot, and the data model now says so — because
+> it cannot be anything else. Reporting declares no module dependencies and knows no users
+> collection (its vars are `catalog`, `app_context`, the two collection names and `model`),
+> so it has no way to resolve a user id to a current name. The denormalized name is not an
+> optimization avoiding a lookup; it is the only thing available. Owner-side writes refresh
+> the whole `owner` reference while they are there — free, and it matches
+> `save-conversation.yaml:42-45` — but it is best-effort, so a surface reading "Published
+> by …" is reading a name as at the last write. Stated rather than fixed, because the fix
+> would mean reporting depending on a module that owns users, which is the trade-off
+> ownership already deferred deliberately.
+
 **Owner: [ownership](../ownership/design.md).**
 
 `save-conversation.yaml:42-45` re-`$set`s the **whole** `owner` reference on every turn,
@@ -197,6 +286,15 @@ design and correctly frozen.
 ## The conversations collection has two writers and one unbounded field
 
 ### 7. `set-conversation-title` inserts a different document shape than `save-conversation`
+
+> **Resolved (auto).** Both writers `$setOnInsert` the same live shape: `owner`, `created`,
+> `updated`, `messages: []`, `data_parts: []`, `deleted: null`. No choice to make — this is a
+> live defect rather than a tidiness point. `set-conversation-title` frequently creates the
+> document (its own comment records that the title arrives during streaming, before the
+> onFinish save), and a document with no `updated` sorts last on `list-conversations`'
+> descending sort — so the conversation the user is actively talking to sits at the bottom of
+> their own rail, and stays there permanently if the save hook ever fails. It is the same
+> discipline `generate-report.yaml:86-87` already applies on the reports side.
 
 **Owner: [chat](../chat/design.md).**
 
@@ -230,6 +328,25 @@ soft-delete field whose read predicate depends on exactly that consistency.
 
 ### 8. `data_parts` grows without bound, and each entry is the largest object the module writes
 
+> **Resolved.** The snapshot stays: reopening a conversation shows the numbers from that
+> turn, not today's. The reason is that a chart sits directly under prose quoting its
+> numbers — the assistant said "sales came in at 4.2M" in that turn, and a chart that
+> silently re-runs makes the paragraph above it wrong. A transcript that edits itself is not
+> a transcript.
+>
+> Rebuilding from the persisted spec on reopen was the alternative, and it would have made
+> the size problem disappear rather than merely bounding it. Rejected on the ground above —
+> and the Flint chart-compiler exploration strengthens it: Flint's option is data-dependent
+> by design (grid padding computed from actual label extents, categorical bars re-sorted by
+> value, no `dataset.source` to reassign), so a rebuild would change the chart's shape and
+> ordering, not only its numbers.
+>
+> So the bound is explicit: `$push: { data_parts: { $each: […], $slice: -50 } }`, keeping the
+> most recent 50 parts. The 50 is a starting number, not a derived one. The panel's promise
+> becomes "everything you produced in this conversation, up to the last 50 results", and the
+> 16 MB ceiling — plus the silent-turn-loss failure mode when a write throws inside a hook
+> that only `console.warn`s — is stated in the data model rather than left to be discovered.
+
 **Owner: [chat](../chat/design.md), which already owns an `emit-data-parts` change.**
 
 `emit-data-parts.yaml:111-114` `$push`es the turn's parts with `$each` and no `$slice`.
@@ -251,6 +368,15 @@ in the data model so the panel's "everything you produced is here" promise is ho
 its horizon.
 
 ### 9. Persisted parts carry no id and no timestamp
+
+> **Resolved (auto).** Each part is built with `{ id, created }`, riding along with finding
+> 1's shape change. The `id` is what selection binds to, replacing the array index — which
+> finding 8's `$slice` retention would otherwise shift under an open selection. The `created`
+> stamp is load-bearing given the snapshot decision: it is the only thing that can date a
+> frozen chart, so the panel can say _as of 14 July_ where today it can say nothing. Both are
+> additive, so existing parts lack them and are read through `_if_none` — the same
+> loosen-never-tighten rule as finding 3, and the same pattern the Flint branch uses for
+> `charts.$.height`.
 
 **Owner: [chat](../chat/design.md) (the part shape) with
 [save-as-report](../save-as-report/design.md) (the selection binding).**
@@ -276,6 +402,21 @@ retention rule becomes expressible as an age rather than only a count.
 ## Storage-level concerns the model should state
 
 ### 10. No indexes are declared for either collection, and the list endpoint is about to become the authorization boundary
+
+> **Resolved (auto), on the repo's own precedent.** Index creation is the host app's job,
+> documented by the module — which is exactly what this repo already does for the one
+> comparable case: `modules/contacts/requests/search_contacts.yaml` documents the Atlas Search
+> index its `$search` stage needs, field by field, and notes that an app without Atlas can
+> drop the stage and keep a working pipeline. So the ownership design states the indexes
+> `list-reports` and the conversation rail expect — `owner.user_id` with `deleted.timestamp`
+> and `updated.timestamp`, plus `favourite_of` and `conversation_id` — and `docs/reporting/`
+> carries them; nothing in the module creates them.
+>
+> `search` is `$regex` over the document-level `title` / `description`, not Atlas Search: the
+> set being searched is one user's reports, already owner-scoped and paged, so ranking buys
+> little while an Atlas requirement costs every consumer. This agrees with review 2's finding
+> 5, which independently fixed the searched fields as `title` and `description`. Atlas
+> remains the escape hatch on the contacts pattern if a real case appears.
 
 **Owner: [ownership](../ownership/design.md), which rewrites `list-reports`.**
 
@@ -310,6 +451,12 @@ neither should wait for code time:
 
 ### 11. Minor: the reports collection's default name is from an earlier concept
 
+> **Resolved (auto).** Not renamed. Changing the default would silently point an existing app
+> at an empty collection — the worst available failure mode for a change whose only benefit is
+> tidiness. The var description gains a line saying the name is historical, so the mismatch
+> between `report_layouts` and everything that talks about reports stops being an open
+> question for every consumer who notices it.
+
 **Owner: [ownership](../ownership/design.md).**
 
 `reports_collection` defaults to `report_layouts`
@@ -322,6 +469,13 @@ unexplained mismatch between a collection name and everything that talks about i
 standing "is this the right collection?" question for every consumer.
 
 ### 12. Minor: conversation `_id` is client-supplied, which makes the owner-scoped upsert an insert path
+
+> **Resolved (auto).** One line in chat's data model: the conversation `_id` is
+> browser-generated, so the owner-scoped upsert is an insert path, and a colliding id would
+> surface as a duplicate-key error inside a hook that only warns. Unreachable with uuid4 and
+> no guard is added — recorded because the same pattern with a guessable id would be an
+> integrity problem, and the next person to touch these writers should know which property is
+> doing the work.
 
 **Owner: [chat](../chat/design.md), as a note.**
 
