@@ -46,12 +46,11 @@ vars:
     type: string
     default: sales-pipeline
     description: >-
-      The module's primary workflow `type`: it wires this workflow's
-      start/submit endpoints and aliases its `form_data` onto the deal in
-      get_selected_deal. A deal may carry more than one workflow — the
+      The module's primary workflow `type`: it wires this workflow's endpoint
+      ids ({workflow_type}-start / -submit / -cancel, built at build time). A
+      deal may carry more than one workflow — the
       workflow-progress phase view renders every workflow on the entity, and the
       host's workflow config spawns the extras (e.g. an outcome hook or tracker).
-      Only the primary workflow's form_data is aliased.
   outcome_action_type:
     type: string
     default: deal-outcome
@@ -132,7 +131,7 @@ vars:
         description: Extra blocks appended to the main column on the deal detail page.
       info_grid_slots:
         default: []
-        description: Extra blocks appended to the deal's info grid.
+        description: Extra blocks inserted into the deal's info grid, before the built-in People and Files tiles.
       sidebar_slots:
         default: []
         description: Extra blocks appended to the sidebar column on the deal detail page.

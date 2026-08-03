@@ -50,6 +50,18 @@ modules:
 
 See the [vars reference](reference/vars.md) for the full list (required + optional).
 
+## Workflow form data on the deal
+
+Values captured in workflow action forms live on the workflow documents, not on the deal. `get_selected_deal` joins **all** of the deal's workflows and exposes their form data on the deal as:
+
+```
+workflows.{workflow_type}.{action_type}.{field}
+```
+
+Each of the deal's workflow types appears under its own key, so a deal running two chained workflows exposes both. The key is the workflow *type*, not the instance — if a deal ever carries two workflows of the same type, only one of them is exposed here. Host `request_stages.get_selected_deal` stages and host-injected tiles (e.g. via `info_grid_slots`) read through this shape — for example `workflows.sales-pipeline.volumes.annual_volume_ton`.
+
+An instanced action keys its own form data by instance, so those reads carry a fourth segment: `workflows.{workflow_type}.{action_type}.{key}.{field}`.
+
 ## Required indexes
 
 The list/workspace pipelines assume the consuming app applies these indexes on the mapped `deals` collection. The module documents the contract; the app owns creating them (e.g. under its own `actions/indexes/indexes/{app}/deals/` via `splice-actions`).

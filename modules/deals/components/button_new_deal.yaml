@@ -1,8 +1,13 @@
 id: button_new_deal
 # "New {label}" list-page action, extracted like companies' button_new_company.
+# `size`/`visible` vars default to the list page's rendering, so it needs none.
 type: Button
 layout:
   flex: 0 0 auto
+visible:
+  _var:
+    key: visible
+    default: true
 properties:
   title:
     _string.concat:
@@ -10,6 +15,11 @@ properties:
       - _module.var: label
   icon: AiOutlinePlusCircle
   type: primary
+  # null, not `default` — a literal size would override an ancestor SizeContext.
+  size:
+    _var:
+      key: size
+      default: null
 events:
   onClick:
     - id: go_new

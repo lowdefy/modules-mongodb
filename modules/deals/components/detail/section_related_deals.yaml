@@ -1,18 +1,70 @@
 id: detail_section_related_deals
 type: Box
+layout:
+  gap: 8
 blocks:
-  - id: detail_related_header
-    type: Html
-    properties:
-      html: |
-        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary); margin-bottom: 8px;">Related Deals</div>
+  - id: detail_related_head
+    type: Box
+    layout:
+      span: 24
+      align: middle
+      gap: 8
+    blocks:
+      - id: detail_related_header
+        type: Html
+        layout:
+          flex: 1 0 auto
+        properties:
+          html: |
+            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ant-color-text-tertiary);">Related Deals</div>
+      - id: related_deals_pagination
+        type: Pagination
+        layout:
+          flex: 0 1 auto
+        properties:
+          style:
+            fontSize: 12px
+          size: small
+          simple: true
+          hideOnSinglePage: true
+          showSizeChanger: false
+          pageSizeOptions:
+            - 4
+          current:
+            _if_none:
+              - _state: related_deals_page
+              - 1
+          total:
+            _array.length:
+              _if_none:
+                - _state: related_deals_all
+                - []
+        events:
+          onChange:
+            - id: set_related_deals_page
+              type: SetState
+              params:
+                related_deals_page:
+                  _event: current
+            - id: slice_related_deals
+              type: SetState
+              params:
+                related_deals:
+                  _js:
+                    fn: |
+                      const all = state('related_deals_all') || [];
+                      const page = state('related_deals_page') || 1;
+                      const start = (page - 1) * 4;
+                      return all.slice(start, start + 4);
+  # Emptiness is judged on the full list, not the current page, so paging never
+  # shows the empty message.
   - id: detail_related_empty
     type: Html
     visible:
       _eq:
         - _array.length:
             _if_none:
-              - _state: related_deals
+              - _state: related_deals_all
               - []
         - 0
     properties:
@@ -23,12 +75,20 @@ blocks:
       _gt:
         - _array.length:
             _if_none:
-              - _state: related_deals
+              - _state: related_deals_all
               - []
         - 0
     type: List
-    properties:
-      direction: row
+    # Two per row, two rows per page, bounded by pagination rather than by
+    # scrolling. Grid, not a flex row — see `open_items_row.yaml` for why a span
+    # on the card cannot halve a List item.
+    layout:
+      span: 24
+    style:
+      .element:
+        display: grid
+        gridTemplateColumns: 1fr 1fr
+        gap: 8
     blocks:
       - _ref:
           path: components/deal_list_item_compact.yaml
