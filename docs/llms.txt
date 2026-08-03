@@ -15,6 +15,7 @@
 - docs/shared/avatar-colors.md: Avatar colors — Modules that render user/contact avatars (`contacts`, `user-account`, `user-admin`) pick an avatar gradient from a shared palette and store it, so the same person always shows the same colors across the app.
 - docs/shared/change-stamps.md: Change stamps — Audit metadata stamped onto every database write so we know **when** something changed and **who** changed it. The same shape is used across `events`, `files`, `companies`, `contacts`, `user-account`, and `user-admin`.
 - docs/shared/event-display.md: Event display — Modules that write to the `log-events` collection store **per-app display titles** alongside each event document. The `event_display` var on each module is a map from `app slug → { event_type → Nunjucks template }`. The events module renders the template that matches the current `display_key`.
+- docs/shared/search.md: Text search and the Atlas fallback — Four modules put a free-text search box over a MongoDB collection. Atlas `$search` is the indexed, relevance-ranked way to serve it, and it only exists on Atlas — the `mongot` process is not part of a community or local `mongod`. So each of those modules takes an **`atlas_search`** var: leave it ...
 - docs/shared/secrets.md: Secrets — Master list of every secret read by modules in this repo. Bucket names, keys, and connection strings live in secrets so they stay out of version control.
 - docs/shared/slots.md: Slots — Modules that ship list / detail / edit pages expose **slots** so consumers can extend each page without forking the YAML. Three slot vars are conventional:
 - docs/shared/soft-delete.md: Soft delete — Modules that soft-delete documents never remove them from the collection — they mark them with a `deleted` field and filter them out of reads. The marker doubles as an audit record: it is a [change stamp](./change-stamps.md), so it captures **when** the document was deleted and **who** deleted it.
@@ -33,16 +34,19 @@
 ## activities
 
 - docs/activities/index.md: Activities — CRM activities — calls, meetings, emails. Past-tense external-interaction logs linked to contacts and companies. Activities have a lifecycle (`open → done | cancelled`, with `reopen`); built-in types (`call`, `meeting`, `email`) are created `done` since they are logged after the fact. Consumer-de...
+- docs/activities/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Everything below goes on the collection backing the module's `activities-collection` connection; that connection names `activities`, and an app that keeps its activities somewhere else remaps the connection in its module e...
 - docs/activities/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## companies
 
 - docs/companies/index.md: Companies — Company management — list, detail, edit, and create pages plus a company selector. Companies are stored in their own collection with auto-generated consecutive IDs (`C-0001`, `C-0002`, …) and a configurable display name field.
+- docs/companies/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Everything below goes on the collection backing the module's `companies-collection` connection; that connection names `companies`, and an app that keeps its companies somewhere else remaps the connection in its module entr...
 - docs/companies/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## contacts
 
 - docs/contacts/index.md: Contacts — Contact management — list, detail, edit, and create pages over the shared `user-contacts` collection, plus a rich contact selector with inline add/edit/verify, a basic dropdown selector, and a role-scoped selector (`role-contact-selector`, single or multiple) that stores a view-renderable denorma...
+- docs/contacts/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Everything below goes on the collection backing the module's `contacts-collection` connection; that connection names `user-contacts`, and an app that keeps its people somewhere else remaps the connection in its module entr...
 - docs/contacts/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## deals
