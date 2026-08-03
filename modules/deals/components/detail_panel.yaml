@@ -154,3 +154,4 @@ blocks:
                     _if_none:
                       - _request: get_open_tasks_for_entity
                       - []
+              - _ref: actions/compute_open_items.yaml

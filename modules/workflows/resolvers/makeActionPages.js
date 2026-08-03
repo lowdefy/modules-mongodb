@@ -117,6 +117,12 @@ function emitForAction(
     action.universal_fields,
   );
 
+  // Part 73: normalize show_comment to a concrete boolean here so the templates
+  // gate on a plain value with no `default:` fallback. KEPT IN LOCK-STEP with the
+  // read-time default in GetWorkflowAction, which resolves the same flag for the
+  // shared check surfaces (they have no build-time action identity).
+  actionConfig.show_comment = action.show_comment ?? true;
+
   // Resolve the action title identically to makeWorkflowsConfig (this resolver
   // reads raw YAML, not the materialized config, so it must re-derive rather
   // than read a pre-resolved field — kept in lock-step so a page title and the

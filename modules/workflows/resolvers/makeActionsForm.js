@@ -45,14 +45,46 @@ function validateMode(mode, form) {
   }
 }
 
+// A raw entry (no `component:`) is a Lowdefy block authored inline, or emitted
+// by a consumer-supplied field component file. It shares the library's
+// authoring vocabulary rather than writing block keys directly:
+//
+//   - `key` names the block id. It is ALSO the only thing `form_meta` records
+//     (makeWorkflowsConfig's METADATA_FIELDS), and GetWorkflowAction allowlists
+//     the stored form_data slice by those keys — so an entry with a bare `id`
+//     and no `key` saves its value but never prefills or renders. Mapping here
+//     keeps one authored `key` feeding both the block tree and form_meta.
+//   - `title` is metadata for the overview/review renderer only. The block's
+//     own visible label stays the block's business (`properties.title` on the
+//     antd input blocks) — not every block type accepts a title, so it can't
+//     be injected generically.
+//
+// Neither is a valid block property (the framework's block schema is
+// `additionalProperties: false`, requiring `id` + `type`), so both are mapped
+// or dropped before the node reaches the page tree.
+function substituteRawBlock(entry) {
+  const { key, title: _title, ...block } = entry;
+  if (key === undefined) return block;
+  if (typeof key !== "string") {
+    fail(`raw form block 'key' must be a string, received ${typeof key}.`);
+  }
+  if (block.id !== undefined) {
+    fail(
+      `raw form block cannot define both 'key' ('${key}') and 'id' ('${block.id}') — 'key' becomes the block id.`,
+    );
+  }
+  return { id: key, ...block };
+}
+
 function substituteEntry(entry, mode) {
   // Strip the viewOnly key on every entry — it's resolver metadata, never
   // a library-component var.
   const { viewOnly: _viewOnly, ...stripped } = entry ?? {};
   const component = stripped.component;
 
-  // (1) no component: emit verbatim (raw Lowdefy block authored inline).
-  if (!component) return stripped;
+  // (1) no component: a raw Lowdefy block, emitted with its authoring
+  // vocabulary translated to block keys.
+  if (!component) return substituteRawBlock(stripped);
 
   // (2) bare component: substitute via _ref to the library file. Unknown
   // names and missing required vars fail at the framework's _ref / _var

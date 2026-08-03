@@ -10,10 +10,18 @@
 #                   multiple instances on a page don't collide. Default
 #                   `capture_activity`. Pass a unique value per
 #                   instance (e.g. `header_capture`, `tile_capture`).
-#   prefill       — { type, title, description, contacts, company_ids }
-#                   seeded into form state when the modal opens (modal
-#                   mode) or carried in urlQuery (page mode, except
-#                   `description` — see design.md / decisions.md §8).
+#   prefill       — { type, title, description, contacts, company_ids,
+#                   attributes, references } seeded into form state when
+#                   the modal opens (modal mode). `attributes` is merged
+#                   over the module's own seeded defaults (today's date, a
+#                   45 min duration, Sent direction) with consumer values
+#                   winning, so a consumer can override a default or add
+#                   new keys. Page mode carries only `type`, `title`,
+#                   `contacts`, `company_ids` in urlQuery — it drops
+#                   `description` (see design.md / decisions.md §8) and
+#                   also drops `attributes`/`references`, since those are
+#                   seeded in the modal's onOpen and so apply in modal
+#                   mode only.
 #   label         — button text. Default "Log activity".
 #   icon          — button icon. Default `AiOutlinePlus`.
 #   button_type   — `primary | default | link | text`. Default `primary`.

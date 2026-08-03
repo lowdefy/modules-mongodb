@@ -53,16 +53,17 @@ actions: # required — action definitions
 | Field              | Required | Description                                                                                               |
 | ------------------ | -------- | --------------------------------------------------------------------------------------------------------- |
 | `type`             | yes      | Action type slug — unique within the workflow                                                             |
-| `kind`             | yes      | `form`, `check`, or `tracker`                                                                             |
+| `kind`             | yes      | `form`, `check`, `custom`, or `tracker`                                                                   |
 | `title`            | no       | Human-readable title; derived from slug when omitted                                                      |
 | `action_group`     | no       | Group ID this action belongs to                                                                           |
 | `description`      | no       | Authored markdown body shown to whoever works the action (see [Description](#description-description))    |
 | `access`           | yes      | Per-app, per-verb role gate (see below)                                                                   |
 | `universal_fields` | no       | Which universal fields the action's UI shows (see [Universal fields](#universal-fields-universal_fields)) |
+| `show_comment`     | no       | Whether the optional comment box renders (see [Show comment](#show-comment-show_comment))                 |
 
 ### Runtime-read fields (engine reads at runtime)
 
-`type`, `title`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `required_after_close`, `allow_not_required`, `access`, `status_map`, `universal_fields`
+`type`, `title`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `required_after_close`, `allow_not_required`, `access`, `status_map`, `universal_fields`, `show_comment`
 
 ### Build-time-only fields (consumed by resolvers)
 
@@ -99,7 +100,7 @@ Emits per-verb pages (`-edit`, `-view`, `-review`, `-error`) and a submit endpoi
 
 ### `kind: check`
 
-Served by the per-workflow `{workflow_type}-action` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`) — narrow those with [`universal_fields`](#universal-fields-universal_fields), which is honoured per action even though one page serves every check action in the workflow.
+Served by the per-workflow `{workflow_type}-action` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`) — narrow those with [`universal_fields`](#universal-fields-universal_fields) and drop the comment box with [`show_comment`](#show-comment-show_comment). Both are honoured per action even though one page serves every check action in the workflow.
 
 ```yaml
 - type: send-quote
@@ -195,6 +196,29 @@ Any other value is rejected at build time: a bare `true`, a string, an unknown f
 - **A hidden field is never written or cleared.** The Update operation treats an absent key as "leave unchanged", so narrowing the list on an action that already has assignees does not wipe them — it just stops showing them.
 - **Resolved per read, never stored.** Like [`description`](#description-description), the list lives in the workflow YAML, not on the action document. Change it and redeploy, and in-flight actions pick it up immediately — there is nothing to migrate.
 - **The ✎ button is always present**, so a shown-but-empty field can still be filled in. When the list is empty the whole chip strip is omitted.
+
+## Show comment (`show_comment:`)
+
+Every working surface carries an **optional** free-text comment box below the form / review subject. `show_comment: false` removes it for actions where a free-form note is noise.
+
+```yaml
+- type: kickoff-call
+  kind: check
+  show_comment: false # no comment box on this action's surface
+```
+
+| Value   | Effect                          |
+| ------- | ------------------------------- |
+| omitted | comment box shown (the default) |
+| `true`  | comment box shown               |
+| `false` | comment box hidden              |
+
+Any non-boolean value is rejected at build time.
+
+- **All four kinds accept it**, and it applies to every kind with a working surface — `form` and `check` alike. On `custom` (owns its page) and `tracker` (no working surface) it is accepted but not rendered.
+- **Only the optional comment is gated.** The two **mandatory** comment inputs always render, because the engine needs their text: the reviewer's brief in the review-mode **Request Changes** modal, and the **recovery note** on an action sitting in the `error` stage. `show_comment` never hides either.
+- **Presence only, not permission.** The submit operations still accept a `comment` for a caller with the right verb; this only controls whether the surface offers the box.
+- **Resolved per read on check, at build time on form.** Like [`universal_fields`](#universal-fields-universal_fields), the flag lives in the workflow YAML, not on the action document. Form pages are per-action so the flag is baked into the page; the check surfaces are shared across actions and read it off the action response instead. Either way, change it and redeploy and in-flight actions pick it up — there is nothing to migrate.
 
 ## Starting actions (`starting_actions:`)
 

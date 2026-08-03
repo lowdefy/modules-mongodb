@@ -1,5 +1,49 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.23.1
+
+## 0.23.0
+
+## 0.22.0
+
+### Minor Changes
+
+- [#138](https://github.com/lowdefy/modules-mongodb/pull/138) [`254289d`](https://github.com/lowdefy/modules-mongodb/commit/254289dcc89444eb4efa294f6feda47db7db06b8) Thanks [@Saiby100](https://github.com/Saiby100)! - Five selectors in the form-components library — `selector`, `multiple_selector`, `button_selector`, `radio_selector`, `checkbox_selector` — now take an `enum` var as an alternative to `options`. An enum map (`slug → { title, color, icon }`) is converted to options for you: the title becomes the label, the slug is the stored value, the colour tints the selected value and the icon shows on a `multiple_selector` tag. `options` wins when both are set, and an operator-valued `enum` (`_global: enums.x`, `_module.var: y`) still resolves. `tree_multiple_selector` stays `options`-only: a flat enum map cannot express the `primaryKey`/`parentKey` hierarchy it exists for, and for flat choices `multiple_selector` renders enum colours and icons that the tree drops.
+
+  On read-only surfaces, an enum-driven selector now shows the entry's title. The `DataDescriptions` block reads the field's `enum` map off the form config and renders the matching entry's `title`, colour and icon instead of formatting the stored slug — so a `status` of `in-progress` with title "In progress" no longer displays as "In Progress". Overview action cards carry the `enum` map through, so they resolve too. Nothing else changes: an `options`-driven selector, an unknown value, and a field with no `enum` all keep their existing display.
+
+  **Breaking:** the `enum_selector` component is removed — it was a `Selector`-only special case of what `selector` + `enum` now does. Replace `component: enum_selector` with `component: selector` and keep the same `enum:` map. Two behaviour differences to expect: the label is no longer hardcoded to `align: right / span: 12` (declare `label_inline` / `label_span` if you relied on it), and the enum's colour now actually tints the selected value, which the old component's option shape never did.
+
+## 0.21.0
+
+### Minor Changes
+
+- [#133](https://github.com/lowdefy/modules-mongodb/pull/133) [`66d0e4a`](https://github.com/lowdefy/modules-mongodb/commit/66d0e4a1bbe58c1bf3b21e51496812f17d56ea19) Thanks [@Saiby100](https://github.com/Saiby100)! - Honour `show_comment` on `kind: check` actions. The flag chooses whether an action's working surface offers the optional free-text comment box — it has worked on form actions since it shipped, but check actions silently ignored it and always rendered the box. Declaring `show_comment: false` on a check action now removes it, on both the standalone check page and the in-context check modal.
+
+  Each check action's declaration is honoured independently even though one `{workflow_type}-action` page serves them all. The flag is resolved from workflow config on every read (like `description` and `universal_fields`), so it is never stored on the action document — change it and redeploy, and in-flight actions pick it up with nothing to migrate.
+
+  Only the **optional** comment is gated. The two mandatory comment inputs always render, because the engine needs their text: the reviewer's brief in the review-mode Request Changes modal, and the recovery note on an action sitting in the `error` stage. This matches what form actions already did.
+
+  `show_comment` is now validated: a non-boolean value fails the build instead of being silently accepted. If an app authored a quoted `show_comment: "false"`, that build will now error — the quoted string was never honoured as `false`, so update it to a real boolean. The field is also now documented in the authoring grammar reference, where it was previously missing entirely.
+
+- [#133](https://github.com/lowdefy/modules-mongodb/pull/133) [`98059af`](https://github.com/lowdefy/modules-mongodb/commit/98059af175190f5fea6975a69a033fd6e4c3e22e) Thanks [@Saiby100](https://github.com/Saiby100)! - The `checkbox_selector` form component takes `label_inline` and `label_span` vars, like the other field components. Previously its label was hardcoded to `span: 12 / align: right`, so a checkbox group could not sit inline with its siblings or use a different label width.
+
+  This changes the default rendering: with neither var set, the label no longer gets `span: 12 / align: right`, matching `yes_no_selector` and the rest of the library. An action that relied on the old look should declare `label_inline: true` and `label_span: 12` explicitly. `colon: false` is still hardcoded.
+
+- [#133](https://github.com/lowdefy/modules-mongodb/pull/133) [`7cc8b51`](https://github.com/lowdefy/modules-mongodb/commit/7cc8b5176e37f005751b9a63e3298b03fc519bd9) Thanks [@Saiby100](https://github.com/Saiby100)! - `checkbox_selector` now validates `required: true` the way `multiple_selector` does. Its value is an array, and Lowdefy's built-in `required` treats an empty array as present — so a required checkbox group would let submit through with nothing ticked. It now appends the same required-non-empty rule the other array-valued fields use (`_array.length > 0`, message "This field is required.").
+
+  The component also gains a `validate` var, which it was missing entirely. Caller-supplied rules are concatenated ahead of the generated required rule, matching `multiple_selector`, `tree_multiple_selector`, `controlled_list`, `date_range_selector`, and `file_upload`.
+
+- [#133](https://github.com/lowdefy/modules-mongodb/pull/133) [`1da82a6`](https://github.com/lowdefy/modules-mongodb/commit/1da82a6f27ef90bc536b847f2854104a8f1349ba) Thanks [@Saiby100](https://github.com/Saiby100)! - Raw blocks in an action `form:` now use `key`, not `id` — which is what makes their submitted values round-trip.
+
+  A raw inline Lowdefy block (a `form:` entry with no `component:`) was documented as carrying its real `id`, on the reasoning that the id doubles as the state path just like a library component's `key`. That is true of the block tree, but it misses the second consumer of the authored `form:` array: the `form_meta` projection records only `component`/`key`/`required`/`title`/`validate`, and `GetWorkflowAction` allowlists the stored `form_data` slice by those keys. An entry with a bare `id` and no `key` has no `form_meta` entry, so its value **saved but was never read back** — blank on re-edit, and absent from the overview and review views.
+
+  Raw entries now share the library's authoring vocabulary: `key` becomes the block id (and the `form_meta` key), and `title` is the overview/review display label. Both are stripped before the node reaches the page tree, since neither is a valid Lowdefy block property. Writing `key` and `id` on the same entry is now an error, as is a non-string `key`.
+
+  This also makes **consumer-supplied field components** work. An app that needs a field the library doesn't cover, reused across several of its own actions, can now own a component file that emits a form entry and `_ref` it from the app-side workflow config — the ref resolves in app context, so it is not subject to the constraint that a module ref cannot escape its package root. Those components get full parity with the built-in library: state binding, value round-trip, overview rendering, id-collision checking, and `viewOnly`.
+
+  Existing raw blocks authored with `id` keep building and rendering exactly as before — they were already not round-tripping, so nothing regresses. Switch them to `key` to fix prefill and display. The `key` → `id` mapping applies at `form:` entry positions only (top-level entries, and the `form:` of a structural component); inside a raw block's own `blocks:` array, keep using `id`.
+
 ## 0.20.0
 
 ### Minor Changes

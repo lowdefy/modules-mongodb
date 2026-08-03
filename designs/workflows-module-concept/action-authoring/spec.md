@@ -197,6 +197,8 @@ Every action doc carries two optional content fields, settable per-instance via 
 
 **`universal_fields`** — an optional UI presence declaration drawn from `[assignees, due_date]`. Omitted = both shown (and optional); `false` / `[]` = the surface is hidden (data-only). It controls only what the templates render — the action doc always physically carries both fields. (There is no `universal_fields_required` flag.)
 
+**`show_comment`** (Part 73) — the second UI presence declaration, and the comment-side counterpart to `universal_fields`. Optional boolean, default `true`; `false` hides the **optional** comment box on every working surface the action has (a form action's edit and review pages; both check surfaces). It gates presentation only — the submit operations still accept a `comment`, and the two **mandatory** comment inputs are exempt because the engine needs their text: the reviewer's brief in the review-mode Request Changes modal, and the recovery note on an `error`-stage action. Resolved at build time for the per-action form pages and per read (on the `GetWorkflowAction` envelope) for the shared check surfaces, which have no build-time action identity — the same split `universal_fields` uses.
+
 Reserved on `references` payloads — apps can't claim these field names.
 
 ## Action `description` (authored body)

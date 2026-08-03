@@ -20,7 +20,7 @@
 # enum components below are UI-only consumers.
 
 name: Workflows
-version: 0.20.0
+version: 0.23.1
 description: Workflow engine — action lifecycle, status transitions, hooks, trackers
 
 dependencies:
@@ -109,9 +109,12 @@ vars:
       (base set: PO ID URL API CRM SLA KPI VAT PDF CSV FAQ KYC RFQ; extended by
       `title_acronyms`). Set `title:` only when the default is wrong.
       Per-action UI knobs (optional): `show_comment` (boolean, default true) — set
-      false to hide the free-form comment box on the action's edit and review
-      pages; `pages.edit.validate_on_draft` (boolean, default false) — set true to
-      validate the form (like Submit) before the edit page's Save Draft persists.
+      false to hide the optional free-form comment box on the action's working
+      surfaces (a form action's edit and review pages, and both check surfaces);
+      the mandatory comments — the Request Changes brief and the error recovery
+      note — always render; `pages.edit.validate_on_draft` (boolean, default false)
+      — set true to validate the form (like Submit) before the edit page's Save
+      Draft persists.
   app_name:
     type: string
     required: true
@@ -269,7 +272,7 @@ pages:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.20.0"
+    version: "^0.23.1"
 
 secrets:
   - name: MONGODB_URI

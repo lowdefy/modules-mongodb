@@ -80,7 +80,7 @@ blocks:
                           {% set v = deal[f.path] %}
                           {% if v %}
                             {% if not loop.first %}<span>·</span>{% endif %}
-                            <span{% if f.highlight %} style="color: var(--ant-color-success); font-weight: 500;"{% endif %}>{{ f.prefix | default('') }}{% if f.date_format %}{{ v | date(f.date_format) }}{% elif f.round %}{{ v | round }}{% else %}{{ v }}{% endif %}{{ f.suffix | default('') }}</span>
+                            <span{% if f.highlight %} style="color: var(--ant-color-success); font-weight: 500;"{% endif %}>{{ f.prefix | default('') }}{% if f.date_format %}{{ v | date(f.date_format) }}{% elif f.round %}{{ (v | float(0)).toFixed(2) }}{% else %}{{ v }}{% endif %}{{ f.suffix | default('') }}</span>
                           {% endif %}
                         {% endfor %}
                       </div>

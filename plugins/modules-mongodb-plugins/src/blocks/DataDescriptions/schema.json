@@ -93,6 +93,10 @@
               "component": {
                 "type": "string",
                 "description": "Component hint for type detection (e.g., 'selector', 'date_selector', 'contact_selector_number_required'). Helps DataView determine the correct rendering type."
+              },
+              "enum": {
+                "type": "object",
+                "description": "Selector enum map as authored (slug -> { title, color, icon }). Used to display the stored value's title, colour and icon instead of the raw value."
               }
             }
           }

@@ -214,6 +214,8 @@ test("the review page renders the submitted values read-only and the error page 
   await ldf.goto(editUrl);
   await ldf.block("form.text_input").do.fill("Read-only value");
   await ldf.block("form.selector").do.select("Option A");
+  await ldf.block("form.enum_backed").do.select("Open");
+  await ldf.block("form.enum_backed_checkboxes").do.check("Weekly review");
   await addDeviceRow(ldf);
   await ldf.block("button_submit").do.click();
   await workflow.assertStatus(actionId, "in-review");
@@ -224,6 +226,13 @@ test("the review page renders the submitted values read-only and the error page 
   await ldf.goto(reviewUrl);
   await expect(getBlock(page, "form_body")).toBeVisible();
   await expect(page.getByText("Read-only value")).toBeVisible();
+  // An enum-driven selector shows the entry's title, not the stored slug
+  // (`open` → "Open"). Options-driven selectors are unchanged: `form.selector`
+  // still shows its formatted raw value.
+  await expect(page.getByText("Open", { exact: true })).toBeVisible();
+  // Same for a multi-select: the array of slugs renders one title per tag
+  // (`weekly` → "Weekly review"), not "Weekly".
+  await expect(page.getByText("Weekly review", { exact: true })).toBeVisible();
   // The writable form_review surface renders below the read-only main form.
   await expect(getBlock(page, "form_review.verdict")).toBeVisible();
 

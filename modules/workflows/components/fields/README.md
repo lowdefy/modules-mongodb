@@ -8,7 +8,7 @@ Apps never `_ref` these files directly.
 
 ### Internal-only
 
-Components are referenced by name in action `form:` blocks; they are **not** exposed via `_module.componentId`. Apps wanting custom fields ship a regular Lowdefy custom block plugin and reference it as `component: <plugin-name>:foo` in `form:` blocks. The form-builder resolver passes through any `component:` name it doesn't recognise as a library component.
+Components are referenced by name in action `form:` blocks; they are **not** exposed via `_module.componentId`. There is no `component:` namespace for plugin blocks — `component:` resolves only against this library, and an unrecognised name is a build error, not a pass-through. Apps add custom fields with a raw inline block or a consumer-supplied field component; see [docs/workflows/reference/form-components.md §Custom components](../../../../docs/workflows/reference/form-components.md#custom-components).
 
 See [workflows-module-concept/action-authoring/spec.md §"Form components library"](../../../../designs/workflows-module-concept/action-authoring/spec.md).
 
@@ -141,6 +141,10 @@ Same var set as `date_selector`.
 
 ### Choice
 
+#### Options and enums
+
+Every selector in this section except `tree_multiple_selector` takes its choices either as `options` (an array of `{ label, value }` pairs plus per-option extras the block reads — `color`, `disabled`, `style`, `filterString`, `tag`) or as `enum` (a map, slug → `{ title, color, icon }`). The enum map is converted to options by `helpers/enum_options.yaml`, which is wired as the default of those selectors' `options` var — so `options` wins whenever it is supplied, and an operator-valued `enum` still resolves. On read-only surfaces (`DataDescriptions`) an enum-driven value renders as its title; an options-driven one renders the formatted raw value. `tree_multiple_selector` is `options`-only: a flat enum map cannot express the `primaryKey`/`parentKey` hierarchy the component exists for, and `getTreeData` drops per-option colour and icon anyway, so `multiple_selector` is the better home for flat enum choices.
+
 #### `selector`
 
 Single-select dropdown. Renders a `Selector`.
@@ -152,6 +156,7 @@ Single-select dropdown. Renders a `Selector`.
 | `visible`      | boolean | `true`             |
 | `required`     | boolean | `false`            |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | `null`             |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -178,6 +183,7 @@ Multi-select dropdown. Renders a `MultipleSelector`. Caller-supplied `validate` 
 | `required`     | boolean | `false`            |
 | `validate`     | array   | `[]`               |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | —                  |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -243,6 +249,7 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 | `visible`        | boolean | `true`             |
 | `required`       | boolean | `false`            |
 | `options`        | array   | `[]`               |
+| `enum`           | object  | `{}`               |
 | `extra`          | string  | —                  |
 | `label_disabled` | boolean | `false`            |
 
@@ -257,17 +264,21 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 #### `checkbox_selector`
 
-Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row.
+Multi-select checkbox group. Renders a `CheckboxSelector`. Label `colon` is hardcoded `false`. `direction: vertical` stacks the boxes one per line instead of flowing them across the row. When `required: true`, required-validation fires on empty array; caller-supplied `validate` is concatenated with that rule.
 
-| Var         | Type    | Required / Default |
-| ----------- | ------- | ------------------ |
-| `key`       | string  | required           |
-| `title`     | string  | —                  |
-| `visible`   | boolean | `true`             |
-| `required`  | boolean | `false`            |
-| `options`   | array   | `[]`               |
-| `extra`     | string  | —                  |
-| `direction` | string  | `horizontal`       |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `validate`     | array   | `[]`               |
+| `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
+| `extra`        | string  | —                  |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
+| `direction`    | string  | `horizontal`       |
 
 ```yaml
 - component: checkbox_selector
@@ -290,6 +301,7 @@ Button-group selector. Renders a `ButtonSelector`.
 | `visible`      | boolean | `true`             |
 | `required`     | boolean | `false`            |
 | `options`      | array   | `[]`               |
+| `enum`         | object  | `{}`               |
 | `extra`        | string  | —                  |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
@@ -349,26 +361,6 @@ Yes/no toggle. Renders a `ButtonSelector` with hardcoded `[Yes / No]` boolean op
   key: form.device_online
   title: Is the device online?
   required: true
-```
-
-#### `enum_selector`
-
-Selector sourced from an enum map. Renders a `Selector`. The enum object (slug → `{ title, color, icon, ... }`) is converted to `{ label, value, style, tag }` options at build time via `_mql.aggregate`. Label is hardcoded `align: right / span: 12`.
-
-| Var        | Type    | Required / Default |
-| ---------- | ------- | ------------------ |
-| `key`      | string  | required           |
-| `title`    | string  | —                  |
-| `visible`  | boolean | `true`             |
-| `required` | boolean | `false`            |
-| `enum`     | object  | `{}`               |
-
-```yaml
-- component: enum_selector
-  key: status
-  title: Status
-  enum:
-    _global: enums.ticket_statuses
 ```
 
 ### Contact
@@ -697,17 +689,12 @@ Inline button. Renders a `Button`.
 
 ## Custom components
 
-Apps that need a domain-specific component ship it as a regular Lowdefy custom component in their plugin and reference it in `form:` blocks via `component: <plugin-name>:device_selector`. The form-builder resolver passes through any `component:` name it doesn't recognise as a library component.
+There is no `component:` namespace for plugin blocks. Apps add a domain-specific field either as a raw inline Lowdefy block in the `form:` array, or as a consumer-supplied field component `_ref`'d in from the app side. Both use this library's authoring vocabulary — `key` becomes the block id and the `form_meta` key, `title` is the overview label — and the form-builder maps them in `substituteRawBlock`.
 
-```yaml
-form:
-  - component: my-plugin:device_selector
-    key: form.device
-    title: Device
-```
+See [docs/workflows/reference/form-components.md §Custom components](../../../../docs/workflows/reference/form-components.md#custom-components) for the contract, worked examples, and the two limits (visible labels, nesting).
 
 ## See also
 
 - [Action authoring spec](../../../../designs/workflows-module-concept/action-authoring/spec.md) — full grammar for `form:` blocks.
-- [Form-builder resolver design (part 15)](../../../../designs/workflows-module/parts/15-resolver-form-builder/design.md) — how component references are substituted at build time.
-- [Page templates (part 16)](../../../../designs/workflows-module/parts/16-page-templates/design.md) — where universal fields (`assignees`, `due_date`, `description`) live.
+- [Form-builder resolver design (part 15)](../../../../designs/workflows-module/parts/_completed/15-resolver-form-builder/design.md) — how component references are substituted at build time.
+- [Page templates (part 16)](../../../../designs/workflows-module/parts/_completed/16-page-templates/design.md) — where universal fields (`assignees`, `due_date`, `description`) live.
