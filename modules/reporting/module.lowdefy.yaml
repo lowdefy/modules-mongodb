@@ -73,7 +73,36 @@ vars:
   reports_collection:
     type: string
     default: report_layouts
-    description: Collection name for saved report specs.
+    description: >
+      Collection name for saved report specs.
+
+      The default is `report_layouts` although this module and every endpoint
+      call them reports — the name is left over from an earlier concept and is
+      deliberately NOT renamed: changing the default would silently point an
+      existing app at an empty collection.
+  share_roles:
+    type: array
+    description: >
+      User roles whose holders may publish a saved report to the whole app. A
+      string array — more than one role can legitimately carry the privilege.
+      Checked server-side by set-report-visibility, never in the UI: a hidden
+      menu item is an affordance, the match in the endpoint is the
+      authorization.
+
+      Publishing and unpublishing are gated differently, deliberately.
+      Publishing requires the caller to be the report's owner AND to hold one of
+      these roles. Unpublishing requires the caller to be the owner OR to hold
+      one of them — so a share_roles holder can retract a report they do not own
+      (anyone trusted to decide what the whole app sees is trusted to decide it
+      should stop seeing something), and a report stays retractable after its
+      author's role is revoked, after the author leaves, or after this var is
+      removed. There is no equivalent power to publish, rename, delete or edit
+      someone else's report.
+
+      Unset means nothing can be published: every publish call is rejected and
+      no publish control renders anywhere. It is NOT a retroactive switch —
+      reports already shared stay listed and readable, and their owners can
+      still unpublish them.
   conversations_collection:
     type: string
     default: conversations
