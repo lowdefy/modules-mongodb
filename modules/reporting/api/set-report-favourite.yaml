@@ -54,6 +54,12 @@ routine:
           - owner.user_id:
               _user: id
           - visibility: shared
+      # Authorization lives in this filter, so a caller who may not do this
+      # matches nothing — the expected outcome, not a fault. Without this flag
+      # the request THROWS on a zero match, and the error body hands that caller
+      # the filter, this file path and a stack trace. A zero modifiedCount
+      # discloses nothing.
+      disableNoMatchError: true
       # $addToSet / $pull between two static updates rather than $set on the
       # whole array: two users starring the same report concurrently would
       # clobber each other under a rewrite. $addToSet also makes a repeat star
