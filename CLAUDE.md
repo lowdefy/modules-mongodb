@@ -44,9 +44,10 @@ docs/               — Repo-level docs (shared idioms, per-module references)
 Agents almost always want to **verify config compiles**, not run a live server. Reach for the right command:
 
 - **Build check (default):** `pnpm ldf:b` from `apps/demo` (or `pnpm --filter @lowdefy/modules-demo ldf:b` from the root). This is the only command needed to confirm YAML/config compiles. It needs **no secrets, no Infisical, and no network beyond npm** — the script supplies a build-only `NEXTAUTH_SECRET` placeholder (and respects a real `NEXTAUTH_SECRET` if one is exported). Build failures here are real config errors; act on them.
-- **Never run servers in the foreground.** `lowdefy dev` (`pnpm ldf` / `pnpm ldf:d`), `lowdefy start`, and `pnpm e2e` are long-running processes that **never exit** — a plain foreground call blocks until timeout and looks like a hang. If you genuinely need one, start it in the background and poll its health URL (`/api/auth/session`); otherwise don't run it for a build check.
+- **Never run servers in the foreground.** `lowdefy dev` (`pnpm ldf` / `pnpm ldf:d`), `lowdefy start` and `pnpm e2e:server` are long-running processes that **never exit** — a plain foreground call blocks until timeout and looks like a hang. If you genuinely need one, start it in the background and poll its health URL (`/api/auth/session`); otherwise don't run it for a build check.
+- **`pnpm e2e` is not one of those — it exits.** Playwright builds the app, starts its own server on port 3101, runs the suite and terminates with a real exit code. It takes a few minutes, so background it and read the log rather than blocking a foreground call on it, but it does finish and its exit code means something.
 - **The `:i` (Infisical) variants don't work in the sandbox.** `ldf:b:i` / `ldf:d:i` / `ldf:i` fetch secrets from `app.infisical.com`, which the sandbox network blocks (TLS rejected). Use plain `ldf:b` for build checks.
-- **A build check is not a smoke test.** Running the app (dev server, e2e) needs real secrets (`MONGODB_URI`, etc.) and a reachable MongoDB — that's a human or `/r:dev-test` step, not part of an autonomous build gate.
+- **A build check is not a smoke test.** A dev server needs real secrets (`MONGODB_URI`, etc.) and a reachable MongoDB — that's a human or `/r:dev-test` step, not part of an autonomous build gate. **The e2e suite is the exception and needs neither:** `globalSetup` starts a `MongoMemoryServer` and sets `LOWDEFY_SECRET_MONGODB_URI` itself, so `pnpm e2e` runs unattended. It is the only gate that catches what a build cannot — anything that depends on a routine actually executing (an authorization filter, a rejection path, an operator resolving against a real `_user`).
 - **`pnpm build` at the repo root does _not_ build the demo.** It's `pnpm -r --filter '!@lowdefy/modules-demo' run build` — module/plugin bundles only. To build the app, use `ldf:b`.
 
 **Always add a demo consumer when adding module functionality.** Any new consumer-facing capability — a component or export, a new var/slot, a new block behaviour — must ship with at least one real example consumer in `apps/demo/` that exercises it, in the same change. This gives every capability a build-verified reference and a worked example authors can copy, and it's how you validate the feature actually resolves end-to-end (`ldf:b`, then inspect the generated `.lowdefy/server/build/pages/**` artifacts). This does not contradict "absence of a caller is not absence of need" above: that rule forbids _deleting_ capability because the demo lacks a caller; this rule requires _adding_ a caller when you add capability. Prefer wiring the example into an existing demo page/flow over a throwaway page.
@@ -263,36 +264,35 @@ Rules and patterns for working with Lowdefy projects. These are practical conven
 
 ## Guides
 
-Read the relevant guide **before** writing code for that topic.
+Read the relevant guide **before** writing code for that topic. They live under
+`apps/demo/.claude/guides/`, not at the repo root.
 
-| When you are...                                              | Read                               |
-| ------------------------------------------------------------ | ---------------------------------- |
-| Building a list page with table and pagination               | `.claude/guides/list-pages.md`     |
-| Configuring an AgGrid table                                  | `.claude/guides/aggrid-tables.md`  |
-| Writing MongoDB aggregation pipelines                        | `.claude/guides/aggregations.md`   |
-| Adding search/filter controls to a page                      | `.claude/guides/filters.md`        |
-| Adding pagination to a list                                  | `.claude/guides/pagination.md`     |
-| Building a detail/view page                                  | `.claude/guides/detail-pages.md`   |
-| Building an edit/create form page                            | `.claude/guides/edit-pages.md`     |
-| Defining enums (colors, titles, options helpers)             | `.claude/guides/enums.md`          |
-| Working with status arrays, transitions, and history         | `.claude/guides/status-fields.md`  |
-| Adding created/updated audit stamps                          | `.claude/guides/change-stamps.md`  |
-| Wrapping content in page layout or cards                     | `.claude/guides/page-layouts.md`   |
-| Adding sidebar tiles (events, files, related)                | `.claude/guides/sidebar-tiles.md`  |
-| Logging audit events and displaying timelines                | `.claude/guides/events.md`         |
-| Building charts, reports, and KPI dashboards                 | `.claude/guides/charts.md`         |
-| Writing API routines (create/update endpoints)               | `.claude/guides/api-routines.md`   |
-| Working with contact fields or the user_contacts schema      | `.claude/guides/contact-fields.md` |
-| Designing data schemas, naming fields, or adding collections | `.claude/guides/data-schema.md`    |
-| Adding notifications (inbox, bell, emails, Lambda pipeline)  | `.claude/guides/notifications.md`  |
-| Using Lowdefy operators (build-time, runtime, functions)     | `.claude/guides/operators.md`      |
-| Writing inline JavaScript with the `_js` operator            | `.claude/guides/js-operator.md`    |
-| Rendering dynamic arrays with List or ControlledList         | `.claude/guides/lists.md`          |
-| Styling blocks with Tailwind, inline CSS, and theme tokens   | `.claude/guides/styling.md`        |
-| Deciding where new files go and naming them                  | `.claude/guides/file-structure.md` |
-| Authoring, wiring, or extending a Lowdefy module             | `.claude/guides/modules.md`        |
+| When you are...                                              | Read                                         |
+| ------------------------------------------------------------ | -------------------------------------------- |
+| Building a list page with table and pagination               | `apps/demo/.claude/guides/list-pages.md`     |
+| Configuring an AgGrid table                                  | `apps/demo/.claude/guides/aggrid-tables.md`  |
+| Writing MongoDB aggregation pipelines                        | `apps/demo/.claude/guides/aggregations.md`   |
+| Adding search/filter controls to a page                      | `apps/demo/.claude/guides/filters.md`        |
+| Adding pagination to a list                                  | `apps/demo/.claude/guides/pagination.md`     |
+| Building a detail/view page                                  | `apps/demo/.claude/guides/detail-pages.md`   |
+| Building an edit/create form page                            | `apps/demo/.claude/guides/edit-pages.md`     |
+| Defining enums (colors, titles, options helpers)             | `apps/demo/.claude/guides/enums.md`          |
+| Working with status arrays, transitions, and history         | `apps/demo/.claude/guides/status-fields.md`  |
+| Adding created/updated audit stamps                          | `apps/demo/.claude/guides/change-stamps.md`  |
+| Wrapping content in page layout or cards                     | `apps/demo/.claude/guides/page-layouts.md`   |
+| Logging audit events and displaying timelines                | `apps/demo/.claude/guides/events.md`         |
+| Building charts, reports, and KPI dashboards                 | `apps/demo/.claude/guides/charts.md`         |
+| Writing API routines (create/update endpoints)               | `apps/demo/.claude/guides/api-routines.md`   |
+| Working with contact fields or the user_contacts schema      | `apps/demo/.claude/guides/contact-fields.md` |
+| Designing data schemas, naming fields, or adding collections | `apps/demo/.claude/guides/data-schema.md`    |
+| Adding notifications (inbox, bell, emails, Lambda pipeline)  | `apps/demo/.claude/guides/notifications.md`  |
+| Using Lowdefy operators (build-time, runtime, functions)     | `apps/demo/.claude/guides/operators.md`      |
+| Writing inline JavaScript with the `_js` operator            | `apps/demo/.claude/guides/js-operator.md`    |
+| Rendering dynamic arrays with List or ControlledList         | `apps/demo/.claude/guides/lists.md`          |
+| Styling blocks with Tailwind, inline CSS, and theme tokens   | `apps/demo/.claude/guides/styling.md`        |
+| Deciding where new files go and naming them                  | `apps/demo/.claude/guides/file-structure.md` |
+| Authoring, wiring, or extending a Lowdefy module             | `apps/demo/.claude/guides/modules.md`        |
 
-## Skills
-
-- `/lowdefy-modules` — Module structure, manifests, operators, cross-module refs.
-- `/add-guide` — Discover a pattern in the codebase and create a new guide.
+This branch ships **no repo-level skills** — there is no `.claude/skills/`. Module
+and operator questions are answered by the guides above; anything else comes from
+skills the plugin layer provides, which are listed at runtime rather than here.

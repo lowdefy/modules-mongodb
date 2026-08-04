@@ -30,6 +30,12 @@ routine:
           _user: id
         deleted.timestamp:
           $exists: false
+      # Authorization lives in this filter, so a caller who may not do this
+      # matches nothing — the expected outcome, not a fault. Without this flag
+      # the request THROWS on a zero match, and the error body hands that caller
+      # the filter, this file path and a stack trace. A zero modifiedCount
+      # discloses nothing.
+      disableNoMatchError: true
       update:
         $set:
           deleted:

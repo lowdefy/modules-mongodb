@@ -1,6 +1,6 @@
 import validateReportSpec from "./validateReportSpec.js";
 import testCatalog from "./testDatasets.js";
-import { MAX_SECTIONS } from "./constants.js";
+import { MAX_LABEL_LENGTH, MAX_SECTIONS } from "./constants.js";
 
 const roles = ["analyst"];
 
@@ -465,7 +465,7 @@ test("a filter section carrying the id this validator assigns re-validates", () 
   };
   const once = validateReportSpec({ spec, catalog: testCatalog, roles });
   expect(once.sections[0].id).toBe("s0");
-  // Feed the normalized filter section back in; the id is ignored, not read.
+  // Feed the normalized filter section back in; the id is read and preserved.
   const twice = validateReportSpec({
     spec: { ...spec, sections: [once.sections[0], spec.sections[1]] },
     catalog: testCatalog,
@@ -822,4 +822,321 @@ test("options-source check: a multiselect with no source and no catalog values f
     roles,
   });
   expect(result.sections[0].type).toBe("filter");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Idempotency: the reports store persists this function's OUTPUT
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Every writer stores the return value rather than the spec it was handed, so a
+// stored spec is re-validated by this same function on every read (querySections,
+// compileReport) and again on remove_report_section's read → cascade → revalidate
+// → write path. Validating the output must therefore return the output.
+//
+// This is the only thing holding that property, and the failure it guards is not
+// subtle: before it, a kpi that omitted `format` came back with `format: null`
+// and the next read threw `format must be an object` — which surfaces as the
+// whole-report "Report not found" fallback, so every kpi report was broken on
+// first open. A new optional field reintroduces it unless this block fails.
+
+const boundTable = (filterField) => ({
+  type: "table",
+  label: "Orders",
+  query: ordersByRegion,
+  columns: [{ key: "region" }],
+  filterBy: [filterField],
+});
+
+const roundTripCases = {
+  "kpi with format": [
+    {
+      type: "kpi",
+      label: "Total Revenue",
+      query: orderTotal,
+      valueKey: "total",
+      format: { style: "currency", currency: "USD", locale: "en-US" },
+    },
+  ],
+  // The case that was broken: `format` absent came back as `format: null`.
+  "kpi without format": [
+    { type: "kpi", label: "Orders", query: orderTotal, valueKey: "total" },
+  ],
+  chart: [
+    {
+      type: "chart",
+      chart: "bar",
+      label: "Revenue by Region",
+      query: ordersByRegion,
+      x: "region",
+      y: ["total"],
+    },
+  ],
+  "table with a plain and a formatted column": [
+    {
+      type: "table",
+      label: "Orders",
+      query: ordersByRegion,
+      columns: [
+        { key: "region" },
+        { key: "total", label: "Total", format: { style: "decimal" } },
+      ],
+    },
+  ],
+  "select filter with declared options": [
+    {
+      type: "filter",
+      control: "select",
+      field: "status",
+      label: "Status",
+      options: ["pending", "paid"],
+    },
+    boundTable("status"),
+  ],
+  // `match` omitted normalizes to "any", and that default must FREEZE in the
+  // document — it is a create-time input, not a read-time fallback.
+  "multiselect filter with match omitted": [
+    {
+      type: "filter",
+      control: "multiselect",
+      field: "region",
+      label: "Region",
+      options: ["North", "South"],
+    },
+    boundTable("region"),
+  ],
+  "multiselect filter with match: all": [
+    {
+      type: "filter",
+      control: "multiselect",
+      field: "region",
+      label: "Region",
+      options: ["North", "South"],
+      match: "all",
+    },
+    boundTable("region"),
+  ],
+  // A daterange carries no options source at all, so all three optionals are
+  // absent — the shape that tripped three separate checks before this change.
+  "daterange filter": [
+    {
+      type: "filter",
+      control: "daterange",
+      field: "created_at",
+      label: "Created",
+    },
+    boundTable("created_at"),
+  ],
+  "optionsQuery filter": [
+    {
+      type: "filter",
+      control: "multiselect",
+      field: "month",
+      label: "Month",
+      optionsQuery: regionOptionsQuery,
+    },
+    boundTable("month"),
+  ],
+  markdown: [{ type: "markdown", content: "## Notes" }],
+  download: [
+    { type: "download", label: "Download CSV", query: ordersByRegion },
+  ],
+};
+
+// Simulates what persisting the output does to it: the MongoDB driver's
+// ignoreUndefined default is false and nothing in this repo sets it, so an
+// explicit `undefined` property value is stored as BSON null and reads back null.
+//
+// This step is what makes the filter cases load-bearing. An in-process round trip
+// passes them either way — `:set_state` hands the operator's result to the insert
+// with no serialization, so an absent `options` is still undefined and any
+// `!== undefined` check treats it as absent. Only a spec that has actually been
+// through the store comes back with nulls where the optionals were.
+function throughTheStore(value) {
+  if (value === undefined || value === null) return null;
+  if (Array.isArray(value)) return value.map(throughTheStore);
+  if (typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, v]) => [key, throughTheStore(v)]),
+    );
+  }
+  return value;
+}
+
+describe("validateReportSpec is idempotent — validating its output returns it", () => {
+  for (const [name, sections] of Object.entries(roundTripCases)) {
+    test(name, () => {
+      const spec = { title: "T", description: "D", sections };
+      const once = validateReportSpec({ spec, catalog: testCatalog, roles });
+      const twice = validateReportSpec({
+        spec: once,
+        catalog: testCatalog,
+        roles,
+      });
+      expect(twice).toEqual(once);
+      // ...and again after a trip through the store.
+      expect(
+        validateReportSpec({
+          spec: throughTheStore(once),
+          catalog: testCatalog,
+          roles,
+        }),
+      ).toEqual(once);
+    });
+  }
+
+  // description is a document field in the store, and `_payload` of an absent
+  // key resolves to null rather than undefined — so the no-description round
+  // trip is the one that goes through a null, not merely an absent key.
+  test("a spec with no description", () => {
+    const spec = {
+      title: "T",
+      sections: [{ type: "markdown", content: "## Notes" }],
+    };
+    const once = validateReportSpec({ spec, catalog: testCatalog, roles });
+    expect("description" in once).toBe(false);
+    expect(
+      validateReportSpec({ spec: once, catalog: testCatalog, roles }),
+    ).toEqual(once);
+    expect(
+      validateReportSpec({
+        spec: { ...once, description: null },
+        catalog: testCatalog,
+        roles,
+      }),
+    ).toEqual(once);
+  });
+
+  test("the whole design example, with and without a catalog", () => {
+    const withCatalog = validateReportSpec({
+      spec: designExampleSpec,
+      catalog: testCatalog,
+      roles,
+    });
+    expect(
+      validateReportSpec({ spec: withCatalog, catalog: testCatalog, roles }),
+    ).toEqual(withCatalog);
+
+    // resolve-time: no catalog, so no pipeline gate and no options-source check.
+    const noCatalog = validateReportSpec({ spec: designExampleSpec, roles });
+    expect(validateReportSpec({ spec: noCatalog, roles })).toEqual(noCatalog);
+  });
+});
+
+// Walks the return value for nulls and undefineds, skipping `pipeline` contents.
+// A pipeline is pass-through payload the validator returns byte-for-byte, and a
+// legitimate one contains nulls — `{ $group: { _id: null } }` is how you group a
+// whole collection. The invariant is about the keys this validator AUTHORS.
+function findNullish(value, path = "<root>") {
+  if (value === null || value === undefined) return [path];
+  if (Array.isArray(value)) {
+    return value.flatMap((v, i) => findNullish(v, `${path}[${i}]`));
+  }
+  if (typeof value === "object") {
+    return Object.entries(value).flatMap(([key, v]) =>
+      key === "pipeline" ? [] : findNullish(v, `${path}.${key}`),
+    );
+  }
+  return [];
+}
+
+test("no null or undefined at any depth of the output", () => {
+  for (const [name, sections] of Object.entries(roundTripCases)) {
+    const out = validateReportSpec({
+      spec: { title: "T", description: "D", sections },
+      catalog: testCatalog,
+      roles,
+    });
+    expect(findNullish(out, name)).toEqual([]);
+  }
+  expect(
+    findNullish(
+      validateReportSpec({
+        spec: designExampleSpec,
+        catalog: testCatalog,
+        roles,
+      }),
+    ),
+  ).toEqual([]);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Durable section ids
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// remove_report_section addresses a section by id, and compileReport uses the id
+// as a block id, a request id, a download id and a page-state path
+// (`sections.${id}.rows`). A stored spec must keep the id it was saved with, and
+// a supplied id is checked rather than trusted because this function cannot tell
+// a stored id from one the model invented.
+
+const specWithSectionIds = (...ids) => ({
+  title: "T",
+  sections: ids.map((id, i) => ({
+    ...(id === undefined ? {} : { id }),
+    type: "markdown",
+    content: `## Section ${i}`,
+  })),
+});
+
+test("a valid supplied section id is preserved, not re-derived", () => {
+  const result = validateReportSpec({
+    spec: specWithSectionIds("revenue", "notes"),
+    catalog: testCatalog,
+    roles,
+  });
+  expect(result.sections.map((s) => s.id)).toEqual(["revenue", "notes"]);
+});
+
+test("an absent or null section id derives from position", () => {
+  expect(
+    validateReportSpec({
+      spec: specWithSectionIds(undefined, null, "kept"),
+      catalog: testCatalog,
+      roles,
+    }).sections.map((s) => s.id),
+  ).toEqual(["s0", "s1", "kept"]);
+});
+
+test.each([
+  ["an empty string", "", /section 0 id must be a non-empty string/],
+  ["a non-string", 7, /section 0 id must be a non-empty string/],
+  ["a '.'", "rev.enue", /section 0 id must not contain/],
+  ["a '\\$'", "$revenue", /section 0 id must not contain/],
+  [
+    "over the label cap",
+    "x".repeat(MAX_LABEL_LENGTH + 1),
+    /section 0 id exceeds/,
+  ],
+])("rejects a section id that is %s", (_name, id, message) => {
+  expect(() =>
+    validateReportSpec({
+      spec: specWithSectionIds(id),
+      catalog: testCatalog,
+      roles,
+    }),
+  ).toThrow(message);
+});
+
+test("rejects two sections supplying the same id", () => {
+  expect(() =>
+    validateReportSpec({
+      spec: specWithSectionIds("revenue", "revenue"),
+      catalog: testCatalog,
+      roles,
+    }),
+  ).toThrow(/section ids must be unique across the report — "revenue"/);
+});
+
+// Uniqueness is checked over the RESOLVED ids, not the supplied ones: a supplied
+// "s1" on section 0 collides with the id section 1 derives from its position.
+// Two sections sharing an id collide in compileReport's rows Map, so both render
+// the same rows — wrong numbers, not a rendering glitch.
+test("rejects a supplied id that collides with a derived one", () => {
+  expect(() =>
+    validateReportSpec({
+      spec: specWithSectionIds("s1", undefined),
+      catalog: testCatalog,
+      roles,
+    }),
+  ).toThrow(/section ids must be unique across the report — "s1"/);
 });

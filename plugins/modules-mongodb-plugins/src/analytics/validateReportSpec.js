@@ -35,13 +35,32 @@ import validateChartSpec, { validateQuery } from "./validateChartSpec.js";
  * is omitted so a section a viewer can't access becomes a per-section Alert
  * card (the AnalyticsPipeline gate), not a whole-report failure.
  *
- * Returns the normalized spec: sections carry positional ids (s0, s1, …).
+ * Returns the normalized spec. A section's `id` is preserved when supplied and
+ * derived from its position (s0, s1, …) otherwise, and ids are unique across the
+ * report — they are durable identities, not positions, because remove_report_section
+ * addresses a section by id and compileReport uses it as a block id and a
+ * page-state path.
+ *
+ * This function is IDEMPOTENT: validating its own output returns that output.
+ * The reports store persists the return value rather than the writer's input, so
+ * every read re-validates it — an absent optional is therefore an ABSENT KEY in
+ * the output, never null or undefined, and a null READS as absent everywhere an
+ * optional is read. Breaking either half bricks every stored report that omitted
+ * the field, on next open rather than at write time.
+ *
  * Throws with an actionable message.
  */
 
 function fail(message) {
   throw new Error(`Invalid report spec: ${message}`);
 }
+
+// An optional is absent whether it arrived as undefined or as null. A stored
+// spec reaches this function through MongoDB, which turns an undefined into a
+// null (the driver's ignoreUndefined default is false and nothing in this repo
+// sets it), so treating only undefined as absent would make this function's own
+// output invalid input to itself.
+const absent = (value) => value === undefined || value === null;
 
 function validateLabel(section, index) {
   const label = section.label;
@@ -52,6 +71,30 @@ function validateLabel(section, index) {
     fail(`section ${index} label exceeds ${MAX_LABEL_LENGTH} characters.`);
   }
   return label;
+}
+
+// A section's id is durable: compileReport uses it as the block id, the request
+// id (`query_${id}`), the download id and the page-state path
+// (`sections.${id}.rows`), so a stored spec must keep the id it was saved with.
+// This function cannot tell a stored id from one the model invented —
+// generate_report's payload schema constrains a section only to { type } — so a
+// supplied id is checked rather than trusted, and rejected rather than silently
+// re-derived: a rejected tool call carries a message the model can act on, where
+// a stored spec whose ids changed under it is the exact bug durable ids remove.
+function resolveSectionId(section, index) {
+  if (absent(section.id)) return `s${index}`;
+  if (typeof section.id !== "string" || section.id === "") {
+    fail(`section ${index} id must be a non-empty string.`);
+  }
+  if (section.id.length > MAX_LABEL_LENGTH) {
+    fail(`section ${index} id exceeds ${MAX_LABEL_LENGTH} characters.`);
+  }
+  // A '.' forks the page-state path so the section reads rows nothing writes;
+  // '$' is excluded for the same reason every other field name here is.
+  if (section.id.includes(".") || section.id.includes("$")) {
+    fail(`section ${index} id must not contain "." or "$".`);
+  }
+  return section.id;
 }
 
 // A presentation-contract number format: inert display data the agent copies
@@ -65,14 +108,14 @@ function validateFormat(format, where) {
       `${where} format.style "${format.style}" is not one of ${FORMAT_STYLES.join(", ")}.`,
     );
   }
-  if (format.currency !== undefined && typeof format.currency !== "string") {
+  if (!absent(format.currency) && typeof format.currency !== "string") {
     fail(`${where} format.currency must be a string.`);
   }
-  if (format.locale !== undefined && typeof format.locale !== "string") {
+  if (!absent(format.locale) && typeof format.locale !== "string") {
     fail(`${where} format.locale must be a string.`);
   }
   if (
-    format.decimals !== undefined &&
+    !absent(format.decimals) &&
     (!Number.isInteger(format.decimals) ||
       format.decimals < 0 ||
       format.decimals > 20)
@@ -80,9 +123,9 @@ function validateFormat(format, where) {
     fail(`${where} format.decimals must be an integer between 0 and 20.`);
   }
   const out = { style: format.style };
-  if (format.currency !== undefined) out.currency = format.currency;
-  if (format.locale !== undefined) out.locale = format.locale;
-  if (format.decimals !== undefined) out.decimals = format.decimals;
+  if (!absent(format.currency)) out.currency = format.currency;
+  if (!absent(format.locale)) out.locale = format.locale;
+  if (!absent(format.decimals)) out.decimals = format.decimals;
   return out;
 }
 
@@ -143,7 +186,7 @@ function validateReportSpec({ spec, catalog, roles }) {
   if (spec.title.length > MAX_LABEL_LENGTH) {
     fail(`title exceeds ${MAX_LABEL_LENGTH} characters.`);
   }
-  if (spec.description !== undefined && typeof spec.description !== "string") {
+  if (!absent(spec.description) && typeof spec.description !== "string") {
     fail("description must be a string.");
   }
   if (!Array.isArray(spec.sections) || spec.sections.length === 0) {
@@ -157,7 +200,7 @@ function validateReportSpec({ spec, catalog, roles }) {
   const sections = spec.sections.map((section, index) => {
     if (!section || typeof section !== "object")
       fail(`section ${index} must be an object.`);
-    const id = `s${index}`;
+    const id = resolveSectionId(section, index);
 
     if (section.type === "kpi") {
       const label = validateLabel(section, index);
@@ -176,19 +219,18 @@ function validateReportSpec({ spec, catalog, roles }) {
           `section ${index} (kpi) valueKey exceeds ${MAX_LABEL_LENGTH} characters.`,
         );
       }
-      const format =
-        section.format !== undefined
-          ? validateFormat(section.format, `section ${index} (kpi)`)
-          : null;
-      return {
+      const out = {
         id,
         type: "kpi",
         label,
         query,
         valueKey: section.valueKey,
-        format,
         filterBy: section.filterBy ?? [],
       };
+      if (!absent(section.format)) {
+        out.format = validateFormat(section.format, `section ${index} (kpi)`);
+      }
+      return out;
     }
 
     if (section.type === "chart") {
@@ -247,7 +289,7 @@ function validateReportSpec({ spec, catalog, roles }) {
           );
         }
         const out = { key: col.key };
-        if (col.label !== undefined) {
+        if (!absent(col.label)) {
           if (
             typeof col.label !== "string" ||
             col.label.length > MAX_LABEL_LENGTH
@@ -258,7 +300,7 @@ function validateReportSpec({ spec, catalog, roles }) {
           }
           out.label = col.label;
         }
-        if (col.format !== undefined) {
+        if (!absent(col.format)) {
           out.format = validateFormat(
             col.format,
             `section ${index} (table) column ${ci}`,
@@ -281,10 +323,10 @@ function validateReportSpec({ spec, catalog, roles }) {
 
       // Strict keys: an allowed-key list catches misspellings (`optionsquery`)
       // and stray keys that would otherwise be silently dropped. `id` is on the
-      // list although the agent never writes it — this validator ASSIGNS it, so
-      // excluding it would make a normalized section the one thing that cannot
-      // be re-validated. It is ignored, not read: the id below is always
-      // derived from the section's position.
+      // list because a normalized section must be re-validatable — the store
+      // holds this function's output, so every read feeds a section that already
+      // carries one. It is READ, not ignored: resolveSectionId preserves and
+      // checks it, deriving `s${index}` only when it is absent.
       for (const key of Object.keys(section)) {
         if (
           ![
@@ -315,7 +357,7 @@ function validateReportSpec({ spec, catalog, roles }) {
           `section ${index} (filter) requires a field (a non-'$'-prefixed base-collection field name).`,
         );
       }
-      if (section.options !== undefined) {
+      if (!absent(section.options)) {
         if (
           !Array.isArray(section.options) ||
           section.options.length > MAX_FILTER_OPTIONS
@@ -341,7 +383,7 @@ function validateReportSpec({ spec, catalog, roles }) {
       // every report open, spending a query per open on rows nothing reads.
       if (
         !["select", "multiselect"].includes(section.control) &&
-        (section.options !== undefined || section.optionsQuery !== undefined)
+        (!absent(section.options) || !absent(section.optionsQuery))
       ) {
         fail(
           `section ${index} (filter) options and optionsQuery are only valid on a select or multiselect control.`,
@@ -360,13 +402,13 @@ function validateReportSpec({ spec, catalog, roles }) {
             `section ${index} (filter) match "${match}" is not one of ${FILTER_MATCH_MODES.join(", ")}.`,
           );
         }
-      } else if (section.match !== undefined) {
+      } else if (!absent(section.match)) {
         fail(
           `section ${index} (filter) match is only valid on a multiselect control.`,
         );
       }
 
-      if (section.options !== undefined && section.optionsQuery !== undefined) {
+      if (!absent(section.options) && !absent(section.optionsQuery)) {
         fail(
           `section ${index} (filter) declares both options and optionsQuery — pick one source, they are not merged.`,
         );
@@ -378,7 +420,7 @@ function validateReportSpec({ spec, catalog, roles }) {
       // { collection, pipeline }, so dropping them here would silently lose
       // the presentation contract and yield a dropdown of blank options.
       let optionsQuery;
-      if (section.optionsQuery !== undefined) {
+      if (!absent(section.optionsQuery)) {
         const query = validateQuery(section.optionsQuery, {
           catalog,
           roles,
@@ -413,16 +455,20 @@ function validateReportSpec({ spec, catalog, roles }) {
         };
       }
 
-      return {
+      const out = {
         id,
         type: "filter",
         control: section.control,
         field: section.field,
         label,
-        options: section.options,
-        match,
-        optionsQuery,
       };
+      if (!absent(section.options)) out.options = section.options;
+      // `match` is set on every multiselect — it is defaulted to "any" above,
+      // and that default is a create-time input that freezes in the document
+      // rather than a read-time fallback. On any other control it is never set.
+      if (!absent(match)) out.match = match;
+      if (!absent(optionsQuery)) out.optionsQuery = optionsQuery;
+      return out;
     }
 
     if (section.type === "markdown") {
@@ -452,6 +498,21 @@ function validateReportSpec({ spec, catalog, roles }) {
         `markdown, download.`,
     );
   });
+
+  // Checked over the RESOLVED ids rather than the supplied ones: a supplied "s1"
+  // on section 0 collides with the derived "s1" on section 1, and that collision
+  // is exactly what the rule exists to prevent. Two sections sharing an id
+  // collide in compileReport's rows Map, so both render the same rows — wrong
+  // numbers, not a rendering glitch.
+  const ids = new Set();
+  for (const section of sections) {
+    if (ids.has(section.id)) {
+      fail(
+        `section ids must be unique across the report — "${section.id}" is used more than once.`,
+      );
+    }
+    ids.add(section.id);
+  }
 
   // ── Second pass: filter bindings ──
   const filterSections = sections.filter((s) => s.type === "filter");
@@ -496,8 +557,8 @@ function validateReportSpec({ spec, catalog, roles }) {
     if (
       catalog &&
       ["select", "multiselect"].includes(filter.control) &&
-      filter.options === undefined &&
-      filter.optionsQuery === undefined
+      absent(filter.options) &&
+      absent(filter.optionsQuery)
     ) {
       const collections = boundSections
         .map((s) => s.query?.collection)
@@ -511,11 +572,10 @@ function validateReportSpec({ spec, catalog, roles }) {
     }
   }
 
-  return {
-    title: spec.title,
-    description: spec.description,
-    sections,
-  };
+  const out = { title: spec.title };
+  if (!absent(spec.description)) out.description = spec.description;
+  out.sections = sections;
+  return out;
 }
 
 export default validateReportSpec;

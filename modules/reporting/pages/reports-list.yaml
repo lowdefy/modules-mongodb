@@ -1,4 +1,9 @@
 # Saved reports: open or delete (delete is owner-scoped server-side).
+#
+# `list-reports` takes the scope as a required parameter because the scope match
+# is its authorization boundary, so this page names one: `mine`. It reads the
+# default page of that scope and ignores the total — this is a stacked-card list
+# with no toolbar and no pager.
 id: reports-list
 type: Box
 properties:
@@ -13,6 +18,8 @@ events:
       params:
         endpointId:
           _module.endpointId: list-reports
+        payload:
+          scope: mine
     - id: set_reports
       type: SetState
       params:
@@ -20,7 +27,7 @@ events:
           _api:
             _build.string.concat:
               - _module.endpointId: list-reports
-              - ".response"
+              - ".response.reports"
 blocks:
   - id: reports_title
     type: Title
@@ -95,6 +102,8 @@ blocks:
                   params:
                     endpointId:
                       _module.endpointId: list-reports
+                    payload:
+                      scope: mine
                 - id: reset_reports
                   type: SetState
                   params:
@@ -102,4 +111,4 @@ blocks:
                       _api:
                         _build.string.concat:
                           - _module.endpointId: list-reports
-                          - ".response"
+                          - ".response.reports"

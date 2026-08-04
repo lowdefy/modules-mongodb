@@ -19,6 +19,18 @@ exports:
       description: Constrained analytics query (agent tool + report re-queries)
     - id: generate-report
       description: Validate and persist a report spec (agent tool)
+    - id: set-report-visibility
+      description: Publish a saved report to the app, or retract it
+    - id: set-report-title
+      description: Rename a saved report (owner only)
+    - id: restore-report
+      description: Bring a soft-deleted report back, as private (owner only)
+    - id: set-report-favourite
+      description: Star or unstar a readable report, per user
+    - id: duplicate-report
+      description: Copy a readable report into a private one the caller owns
+    - id: remove-report-section
+      description: Drop one section from a report, cascading filter bindings (owner only)
   connections:
     - id: reports-store
       description: MongoDB collection for saved report specs
@@ -73,7 +85,36 @@ vars:
   reports_collection:
     type: string
     default: report_layouts
-    description: Collection name for saved report specs.
+    description: >
+      Collection name for saved report specs.
+
+      The default is `report_layouts` although this module and every endpoint
+      call them reports — the name is left over from an earlier concept and is
+      deliberately NOT renamed: changing the default would silently point an
+      existing app at an empty collection.
+  share_roles:
+    type: array
+    description: >
+      User roles whose holders may publish a saved report to the whole app. A
+      string array — more than one role can legitimately carry the privilege.
+      Checked server-side by set-report-visibility, never in the UI: a hidden
+      menu item is an affordance, the match in the endpoint is the
+      authorization.
+
+      Publishing and unpublishing are gated differently, deliberately.
+      Publishing requires the caller to be the report's owner AND to hold one of
+      these roles. Unpublishing requires the caller to be the owner OR to hold
+      one of them — so a share_roles holder can retract a report they do not own
+      (anyone trusted to decide what the whole app sees is trusted to decide it
+      should stop seeing something), and a report stays retractable after its
+      author's role is revoked, after the author leaves, or after this var is
+      removed. There is no equivalent power to publish, rename, delete or edit
+      someone else's report.
+
+      Unset means nothing can be published: every publish call is rejected and
+      no publish control renders anywhere. It is NOT a retroactive switch —
+      reports already shared stay listed and readable, and their owners can
+      still unpublish them.
   conversations_collection:
     type: string
     default: conversations
@@ -120,6 +161,12 @@ api:
   - _ref: api/set-conversation-title.yaml
   - _ref: api/list-reports.yaml
   - _ref: api/delete-report.yaml
+  - _ref: api/set-report-visibility.yaml
+  - _ref: api/set-report-title.yaml
+  - _ref: api/restore-report.yaml
+  - _ref: api/set-report-favourite.yaml
+  - _ref: api/duplicate-report.yaml
+  - _ref: api/remove-report-section.yaml
 
 agents:
   - _ref: agents/reporting-assistant.yaml
