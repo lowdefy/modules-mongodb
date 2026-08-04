@@ -4,6 +4,7 @@ import querySections from "./querySections.js";
 import validateChartSpec from "./validateChartSpec.js";
 import validateExportSpec from "./validateExportSpec.js";
 import validateReportSpec from "./validateReportSpec.js";
+import validateTableSpec from "./validateTableSpec.js";
 
 /**
  * The _analytics server operator — the reporting module's presentation and
@@ -11,6 +12,7 @@ import validateReportSpec from "./validateReportSpec.js";
  *
  *   _analytics.validateReportSpec  { spec, catalog?, roles } → normalized spec
  *   _analytics.validateChartSpec   { spec, catalog?, roles } → normalized spec
+ *   _analytics.validateTableSpec   { spec, catalog?, roles } → normalized spec
  *   _analytics.validateExportSpec  { spec, catalog?, roles } → normalized spec
  *   _analytics.querySections       { spec, catalog?, roles } → resolve-time queries
  *   _analytics.compileReport       { spec, results, catalog?, roles, endpointId } → blocks
@@ -34,6 +36,7 @@ const functions = new Map([
   ["validateChartSpec", validateChartSpec],
   ["validateExportSpec", validateExportSpec],
   ["validateReportSpec", validateReportSpec],
+  ["validateTableSpec", validateTableSpec],
 ]);
 
 function _analytics({ params, location, methodName }) {
