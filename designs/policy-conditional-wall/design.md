@@ -30,7 +30,10 @@ corrections in Decision 3.
    policy is `pinned`, so the connection applies nothing — no read filter, no write
    stamp, no selector merge, no change-stream scoping.
 2. **Module connection declarations do not change.** All 14 `tenant: true` lines stay
-   exactly as they are.
+   exactly as they are. _(Superseded by
+   [declare-shared-connections](../declare-shared-connections/design.md): the default
+   inverts, and those declarations — 16, once the `deals` module was walled — are deleted
+   in favour of `tenant: shared` on the exceptions. The policy gate below is unaffected.)_
 3. **The 13 module files that author the org clause themselves become
    policy-conditional at build time** — the 8 `tenant: authored` requests plus 5
    join/write sites that state their own organization.

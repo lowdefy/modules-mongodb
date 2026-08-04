@@ -100,15 +100,17 @@ to serve while walled collections hold unstamped rows, naming them in one error.
 
 ## 6. Rename `tenant:` to a scoping-key declaration
 
-> **Tracked, not raised.** Noted here per
-> [policy-conditional-wall](../policy-conditional-wall/design.md)'s non-goals; raise
-> it when the wall's config surface is next revised.
+> **Superseded by ask 8.** Noted here per
+> [policy-conditional-wall](../policy-conditional-wall/design.md)'s non-goals, to be
+> raised when the wall's config surface was next revised. Ask 8 is that revision, and
+> it deletes `tenant: true` rather than renaming it — so the misreading below has
+> nothing left to attach to. No rename is needed.
 
 **To**: the tenant wall (lowdefy PR #2280).
 
 Under the policy-conditional wall, `tenant: true` on a connection declares a
-property of the data — *these rows are organization-scoped when the deployment is
-multi-org* — and does nothing under `pinned`. A name like `scopeField:` (or
+property of the data — _these rows are organization-scoped when the deployment is
+multi-org_ — and does nothing under `pinned`. A name like `scopeField:` (or
 similar) would read as the declaration it now is, rather than as an imperative
 that suggests the wall is always on. Config-breaking for every declaration, so it
 should ride a release that touches the wall's config surface anyway.
@@ -136,3 +138,48 @@ declares `tenant:` to a target connection that does not is a build error naming
 both connections and the fix (declare `tenant:` on the target, or drop the
 remap). Under `pinned` remaps stay unrestricted — the flip to `tenant` is a
 rebuild, so the guard fires there, before any traffic.
+
+## 8. Invert the default: declare what is shared, not what is scoped
+
+> **Raised as a framework amendment** —
+> `auth-upgrade/mongodb-data-scoping/amendment-3-declare-shared`. Modules-side plan:
+> [declare-shared-connections](../declare-shared-connections/design.md).
+> **Subsumes ask 6**: with `tenant: true` deleted rather than renamed, the
+> misreading that ask describes has nothing left to attach to.
+
+**To**: the tenant wall (lowdefy PR #2280), before the release.
+
+`tenant: true` on a connection does nothing under `pinned`, and `pinned` is what
+every deployment that exists runs. Requiring it taxes every module author —
+consuming apps author their own modules, so that means every app team — so the
+framework can catch a mistake in the one deployment that may want multiple
+organizations. Worse, a missing declaration is unauditable: this repo has 16
+deliberate omissions, so absence carries no signal, and every mechanism that
+could complain (the preflight, the entry-stage check, the remap guard) is
+downstream of the declaration. The `deals` gap (T11/T12) went unnoticed through
+three layers for exactly that reason.
+
+**Ask**: make `auth.organizations.policy` set the scoping default for every
+connection in the app. Under `tenant`, a connection whose type implements the
+scoping contract is scoped; under `pinned`, none is, as today. A connection then
+declares only its exception to that default — `tenant: shared`, for data
+deliberately shared across organizations. Remove `tenant: true`. Stated this way
+a connection carries no default of its own but inherits the app it is built into,
+which is what lets one module file serve both policies with nothing in it about
+tenancy.
+Apply the rule uniformly to module-owned and app-owned connections; a split
+would leave silence meaning "unscoped" for every connection an app defines
+itself. This reverses mongodb-data-scoping Decision 6's refusal of a
+connection-level opt-out, whose _intent_ — you cannot end up outside the wall
+without saying so — the inversion serves and the opt-in rule never did.
+
+**Also needed**, or the inversion opens a hole one layer down: a connection
+**type** must declare whether it implements the scoping contract or is
+non-scopable, and a type declaring neither is a build error under `tenant`.
+Otherwise a data-bearing connection whose custom type implements no contract is
+silently unscoped — a shape that already exists in a consuming app's own module.
+
+**Settle in the amendment**: whether the framework recognises the auth adapter's
+own collections. Ten of this repo's sixteen exceptions are module connections
+onto engine-owned collections; if the platform knows that set, those need no
+declaration and the exception list shrinks to the four interesting cases.

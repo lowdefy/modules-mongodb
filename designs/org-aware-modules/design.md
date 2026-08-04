@@ -64,6 +64,14 @@ Modules stamp and scope by organization _always_, under both policies. Under `pi
 
 ### 2. The wall is the one scoping mechanism — no org vars, no authored filters
 
+> **The declaration rule is superseded by
+> [declare-shared-connections](../declare-shared-connections/design.md).** Scoped is now
+> the default under `policy: tenant`: a connection whose type can be scoped is scoped, and
+> modules declare only the connections deliberately shared across organizations
+> (`tenant: shared`). The 16 `tenant: true` declarations are deleted. Everything else in
+> this decision stands — the wall is still the one scoping mechanism, authored tenant-field
+> usage is still rejected, and the consequences listed below still hold.
+
 Every module-owned connection (see the inventory below) declares `tenant: true`. No module pipeline references `organizationId` in a `$match`, filter, or write — the wall _rejects_ authored tenant-field usage in those positions, and that rejection is the point: scoping happens in exactly one place, mechanically. The one carve-out is system-context writes, which run outside the wall by necessity and must name the org explicitly under Decision 7's rule.
 
 Consequences worth naming:
@@ -104,15 +112,15 @@ Known surfaces today: notification sends from scheduled or hook-driven routines 
 
 ## Collection inventory
 
-| Module                               | Connection                                   | Collection             | Change                                                                                                    |
-| ------------------------------------ | -------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------- |
-| contacts / user-account / user-admin | `contacts-collection` (and siblings)         | `user-contacts`        | `organizationId` + `tenant: true`; compound unique email index (Decision 4)                               |
-| companies                            | `companies-collection`                       | `companies`            | `organizationId` + `tenant: true` (covers `$graphLookup` hierarchy)                                       |
-| activities                           | `activities-collection`                      | `activities`           | `organizationId` + `tenant: true`                                                                         |
-| workflows (+ activities lookups)     | `actions-collection`, `workflows-collection` | `actions`, `workflows` | `organizationId` + `tenant: true`; `access.{app_name}` stays (app axis, orthogonal)                       |
-| events                               | `events-collection`, `events-timeline`       | `log-events`           | `organizationId` + `tenant: true` (timeline gains org defense in depth)                                   |
-| files                                | `files-collection`                           | `files`                | `organizationId` + `tenant: true`; S3 object keys unchanged — access is gated by the walled metadata read |
-| notifications                        | `notifications-collection`                   | `notifications`        | `organizationId` + `tenant: true`, composing with the existing `contact_id` + `created.app_name` filters  |
+| Module                               | Connection                                   | Collection             | Change                                                                                                                                                    |
+| ------------------------------------ | -------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| contacts / user-account / user-admin | `contacts-collection` (and siblings)         | `user-contacts`        | `organizationId` + `tenant: true`; compound unique email index (Decision 4)                                                                               |
+| companies                            | `companies-collection`                       | `companies`            | `organizationId` + `tenant: true` (covers `$graphLookup` hierarchy)                                                                                       |
+| activities                           | `activities-collection`                      | `activities`           | `organizationId` + `tenant: true`                                                                                                                         |
+| workflows (+ activities lookups)     | `actions-collection`, `workflows-collection` | `actions`, `workflows` | `organizationId` + `tenant: true`; `access.{app_name}` stays (app axis, orthogonal)                                                                       |
+| events                               | `events-collection`, `events-timeline`       | `log-events`           | `organizationId` + `tenant: true` (timeline gains org defense in depth)                                                                                   |
+| files                                | `files-collection`                           | `files`                | `organizationId` + `tenant: true`; S3 object keys unchanged — access is gated by the walled metadata read                                                 |
+| notifications                        | `notifications-collection`                   | `notifications`        | `organizationId` + `tenant: true`, composing with the existing `contact_id` + `created.app_name` filters                                                  |
 | deals                                | `deals-collection`, `events-collection`      | `deals`, `log-events`  | `organizationId` + `tenant: true`; `get_deals_list`'s `$search` still needs its authored clause — see [deals-org-awareness](tasks/deals-org-awareness.md) |
 
 `layout` and `release-notes` touch no collections; user-admin/user-account's read-only auth-collection connections (`users`, `user-members`, …) stay unwalled per Decision 2. Index guidance follows the wall design's Decision 8: each collection's primary compound indexes gain the `organizationId` prefix; index definitions are consumer/app-owned, documented in the migration guide.
