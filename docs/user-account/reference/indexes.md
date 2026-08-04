@@ -56,7 +56,7 @@ This is a **different invariant** from the `lowercase_email` index and does **no
 db["user-two-factors"].createIndex({ userId: 1 }, { unique: true })
 ```
 
-`/two-factor/enable` deletes the user's row and then creates a new one, with no lock between the two writes. Two concurrent calls to `/two-factor/enable` can interleave into **two rows for one user**. Sign-in reads with `findOne`, which carries no ordering, so it may return the unverified row and offer no methods — a user whose sign-in demands a second factor and presents none. That is a lockout, and it reproduces deterministically upstream: https://github.com/better-auth/better-auth/issues/10561
+`/two-factor/enable` deletes the user's row and then creates a new one, with no lock between the two writes. Two concurrent calls to `/two-factor/enable` can interleave into **two rows for one user**. Sign-in reads with `findOne`, which carries no ordering, so it may return the unverified row and offer no methods — a user whose sign-in demands a second factor and presents none. That is a lockout, and it reproduces deterministically upstream: [#10561](https://github.com/better-auth/better-auth/issues/10561).
 
 Every reader already assumes one row per user — `findOne` by `userId` with no ordering is the read the whole plugin uses — so this index encodes an invariant the schema always had and never enforced.
 
@@ -67,6 +67,6 @@ Every reader already assumes one row per user — `findOne` by `userId` with no 
 **Without this index, the lockout is silent.** An operator who does not apply it keeps the race exactly as described above — concurrent enable calls can leave a user locked out with no error at either the write or the read.
 
 | Query site                               | Operation                                                          |
-| ----------------------------------------- | ------------------------------------------------------------------ |
+| ---------------------------------------- | ------------------------------------------------------------------ |
 | `/two-factor/enable` (BetterAuth plugin) | Delete by `userId`, then create — the unique index bounds the pair |
-| Sign-in two-factor lookup                 | `findOne` by `userId`, no ordering — relies on one row per user    |
+| Sign-in two-factor lookup                | `findOne` by `userId`, no ordering — relies on one row per user    |
