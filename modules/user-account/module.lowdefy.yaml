@@ -162,6 +162,9 @@ auth:
     forgotPassword: forgot-password
     resetPassword: reset-password
     verifyEmail: verify-email
+    # The engine routes a two-factor challenge here (required whenever the app
+    # enables twoFactor); the ln page is this module's challenge surface.
+    twoFactor: ln
     # No dedicated error page — the login page serves the error role,
     # rendering the failure as a login-page state (Decision 2).
     error: login
