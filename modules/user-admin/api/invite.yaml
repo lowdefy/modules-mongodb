@@ -38,7 +38,7 @@ routine:
       pipeline:
         - $match:
             organizationId:
-              _organization: id
+              _module.var: org_slug
             status: pending
             $expr:
               $eq:
@@ -56,6 +56,10 @@ routine:
 
   # 2) Cancel each stale row by id so the fresh invite below can't leave a
   #    duplicate pending row beside it. No-op when find_stale returned nothing.
+  #    Every auth step here names its organization explicitly (the write-profile
+  #    splice through its `organization_id` var): an absent one falls back to the
+  #    APP's pinned organization, so an instance administering another organization
+  #    would be authorized against — and write into — the wrong one.
   - :for: stale
     :in:
       _step: find_stale
@@ -65,6 +69,8 @@ routine:
         properties:
           invitationId:
             _item: stale._id
+          organizationId:
+            _module.var: org_slug
 
   # 3) Create-or-link the contact (shared fragment, inlined by relative _ref).
   #    The canonical fragment keys on `user.email` and resolves the row into the
@@ -119,17 +125,20 @@ routine:
           _module.var: avatar_colors
         write_stages:
           _module.var: request_stages.write
+        organization_id:
+          _module.var: org_slug
 
   # 4) Invite the member. `role` is the catalog-id array joined to the
   #    comma-separated string BetterAuth expects; member attributes ride the
   #    invitation (applied to the minted member at accept by afterAcceptInvitation,
-  #    Decision 5); profile carries the linked contactId. organizationId defaults
-  #    to the pinned org.
+  #    Decision 5); profile carries the linked contactId.
   - id: invite_member
     type: InviteMember
     properties:
       email:
         _payload: email
+      organizationId:
+        _module.var: org_slug
       role:
         _array.join:
           - _if_none:

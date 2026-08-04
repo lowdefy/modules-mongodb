@@ -1,5 +1,6 @@
 # Invitations base stages (design Decision 2/7) — shared by the Invitations list
-# read and the Excel export. Root is `user-invitations` for the pinned org.
+# read and the Excel export. Root is `user-invitations` for the organization this
+# instance administers, welded in at build time from the `org_slug` var.
 # Reads the collection directly (bypassing the org-plugin helpers) so it can do
 # its own status/expiry derivation:
 #   $match status: "pending" — excludes accepted / rejected / canceled rows,
@@ -10,7 +11,7 @@
 #   inviter_name / inviter_id — the "Invited by" column (join `users`).
 - $match:
     organizationId:
-      _organization: id
+      _module.var: org_slug
     status: pending
 - $lookup:
     from: users

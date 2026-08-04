@@ -6,8 +6,11 @@
 # catalog-valid ids — the routine passes them straight through.
 #
 # `role` is a comma-separated string on the member row (user-model Decision 5);
-# the role picker yields an array, joined to CSV here. organizationId defaults to
-# the pinned org. Role-gated app-side; both steps floored by `auth.userAdminRole`.
+# the role picker yields an array, joined to CSV here. `organizationId` is named
+# explicitly on both steps: an absent one falls back to the APP's pinned
+# organization, so an instance administering another organization would be
+# authorized against — and write into — the wrong one.
+# Role-gated app-side; both steps floored by `auth.userAdminRole`.
 #
 # Payload: { member_id, roles (array of catalog ids), member_attributes (object)?,
 #            user_id?, target_name?, target_email? }
@@ -21,6 +24,8 @@ routine:
     properties:
       memberId:
         _payload: member_id
+      organizationId:
+        _module.var: org_slug
       role:
         _array.join:
           - _if_none:
@@ -32,6 +37,8 @@ routine:
     properties:
       memberId:
         _payload: member_id
+      organizationId:
+        _module.var: org_slug
       attributes:
         _if_none:
           - _payload: member_attributes

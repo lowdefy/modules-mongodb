@@ -4,6 +4,11 @@
 # floored by `auth.userAdminRole` (targets the edited user, never the admin, so
 # the self-target exemption is not hit).
 #
+# The fragment's `organization_id` var is the organization that floor authorizes
+# in. It must be `org_slug`, not the fragment's absent-means-pinned default: an
+# instance administering another organization would otherwise ask whether the
+# caller administers the APP's organization, and refuse.
+#
 # Payload: { user_id, contact_id, profile, email?, target_name? }
 # The audit event is the FINAL step, so it fires only on full success.
 id: update-profile
@@ -26,6 +31,8 @@ routine:
           _module.var: avatar_colors
         write_stages:
           _module.var: request_stages.write
+        organization_id:
+          _module.var: org_slug
   - id: audit
     type: CallApi
     properties:

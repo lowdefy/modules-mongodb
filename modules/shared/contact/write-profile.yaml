@@ -26,6 +26,13 @@
 #                    `avatar_colors` module var)
 #   write_stages   — extra MongoDB update stages appended to the contact write
 #                    (the caller's `request_stages.write`; pass [] if none)
+#   organization_id — OPTIONAL. The organization the `UpdateUserProfile` floor
+#                     authorizes in: the caller must administer it and the target
+#                     must hold a member row there. Absent resolves to null, which
+#                     the engine reads as "default to the app's pinned
+#                     organization" — right for a self-service caller, wrong for an
+#                     admin surface administering a DIFFERENT organization, which
+#                     must name it.
 #
 # It is a YAML sequence of routine steps — splice it into a routine with
 # `_build.array.concat` so the steps flatten inline. Routine steps share one flat
@@ -146,6 +153,8 @@
       properties:
         userId:
           _var: user_id
+        organizationId:
+          _var: organization_id
         profile:
           _step: reread_contact.profile
         name:

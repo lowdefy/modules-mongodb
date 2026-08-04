@@ -2,9 +2,11 @@ name: User Admin
 version: 0.17.0
 description: >-
   User administration on the BetterAuth engine — the operator console for a
-  person's access lifecycle in one pinned org. Native $lookup reads over the
-  auth collections joined to user-contacts; per-concern write routines driven
-  through the sanctioned admin-step surface.
+  person's access lifecycle in the organization named by the `org_slug` var.
+  Native $lookup reads over the auth collections joined to user-contacts;
+  per-concern write routines driven through the sanctioned admin-step surface.
+  Two admin surfaces in one app are two module instances with different
+  `org_slug` values.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Same-database co-location precondition (design Decision 1)
@@ -27,6 +29,29 @@ dependencies:
     description: Audit event logging and change stamp
 
 vars:
+  # No default: a defaulted slug would silently administer the WRONG organization,
+  # where a missing one fails the build.
+  org_slug:
+    type: string
+    required: true
+    description: >-
+      Slug of the organization this instance administers. Under the `pinned`
+      organizations policy the organization's id IS its slug, so this value feeds
+      every read $match on `organizationId` and every write step's
+      `organizationId`. Two admin surfaces in one app are two module instances
+      with different `org_slug` values.
+
+      Deployment ordering: this module does not create the organization. The app
+      whose `auth.organizations.org` names this slug creates it at startup, so an
+      instance administering ANOTHER app's organization requires that app to have
+      booted against the same database first. Until it has, reads render EMPTY
+      with no error and `InviteMember` throws ORGANIZATION_NOT_FOUND. The
+      alternative is inserting the organization row alongside the bootstrap
+      invitation.
+
+      Renaming the organization's slug strands every member row, because the
+      engine's startup ensure is by slug — a rename mints a fresh organization
+      rather than renaming one.
   app_title:
     type: string
     default: ""

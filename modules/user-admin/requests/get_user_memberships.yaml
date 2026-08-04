@@ -1,9 +1,13 @@
 # Cross-app memberships read (design Decision 4/6) — the target's memberships in
-# OTHER apps of the suite (this pinned org excluded). ONE read powers three
-# things: (a) the Apps-tile badges, (b) the suspend dialog's blast-radius
-# enumeration, and (c) the other-membership COUNT that switches Decision 6
-# degradation (count 0 → hide Apps tile, plain "Suspend", enable Delete, collapse
-# "suite" copy). Joined to `user-organizations` for the org display name.
+# OTHER apps of the suite, the organization this instance administers excluded.
+# ONE read powers three things: (a) the Apps-tile badges, (b) the suspend dialog's
+# blast-radius enumeration, and (c) the other-membership COUNT that switches
+# Decision 6 degradation (count 0 → hide Apps tile, plain "Suspend", enable
+# Delete, collapse "suite" copy). Joined to `user-organizations` for the org
+# display name.
+#
+# The $match is a NEGATION of `org_slug`: invert the polarity and this instance's
+# own membership lands in the "other apps" list, distorting all three consumers.
 #
 # Cross-app visibility rests on the trusted-operator deployment premise
 # (Decision 6); in a single-app deployment this naturally returns empty.
@@ -21,7 +25,7 @@ properties:
           _payload: user_id
         organizationId:
           $ne:
-            _organization: id
+            _module.var: org_slug
     - $lookup:
         from: user-organizations
         localField: organizationId

@@ -7,6 +7,12 @@
 # `auth.api.roles` (admin_roles var), and BanUser is floored by the engine's
 # `auth.userAdminRole` before it runs.
 #
+# `organizationId` names the organization the floor authorizes in. The ban reaches
+# a deployment-wide `user` row, so the floor asks whether the caller administers
+# THAT organization and whether the target holds a member row in it; an absent one
+# falls back to the APP's pinned organization, which refuses an administrator of
+# any other.
+#
 # Payload: { user_id, ban_reason?, target_name?, target_email? }
 # The audit event is the FINAL step, so it fires only on full success.
 id: suspend
@@ -25,6 +31,8 @@ routine:
         properties:
           userId:
             _payload: user_id
+          organizationId:
+            _module.var: org_slug
           banReason:
             _payload: ban_reason
       - id: audit

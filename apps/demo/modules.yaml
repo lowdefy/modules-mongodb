@@ -64,3 +64,17 @@
   source: "file:../../modules/user-admin"
   vars:
     _ref: modules/user-admin/vars.yaml
+
+# A second admin surface administering ANOTHER app's organization: one module
+# source, two entries, two `org_slug` values. Auto-scoping keeps the two apart
+# (`customer-user-admin/all` beside `user-admin/all`).
+#
+# This app does not create `customer-portal` — the app whose
+# `auth.organizations.org` names it does, at startup. Until that app has booted
+# against this database the surface reads EMPTY and its invite throws
+# ORGANIZATION_NOT_FOUND, so nothing is wired into the demo menu.
+- id: customer-user-admin
+  source: "file:../../modules/user-admin"
+  vars:
+    org_slug: customer-portal
+    app_title: Customer
