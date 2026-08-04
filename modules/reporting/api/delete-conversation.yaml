@@ -1,0 +1,44 @@
+# Owner-scoped soft delete from the chat page's conversations rail.
+#
+# Soft, not hard: nothing in this module hard-deletes — see
+# docs/shared/soft-delete.md for the idiom. The stamp comes from this
+# module's own defaults/change_stamp.yaml rather than the events module's
+# exported component, because reporting declares no dependencies. The shape
+# is identical either way.
+id: delete-conversation
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to delete a conversation.
+  - id: delete
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: conversations-store
+    properties:
+      # Already-deleted conversations are excluded so a repeat delete reports
+      # 0 modified rather than overwriting the original stamp's who/when.
+      filter:
+        _id:
+          _payload: conversationId
+        owner.user_id:
+          _user: id
+        deleted.timestamp:
+          $exists: false
+      # Authorization lives in this filter, so a caller who may not do this
+      # matches nothing — the expected outcome, not a fault. Without this flag
+      # the request THROWS on a zero match, and the error body hands that caller
+      # the filter, this file path and a stack trace. A zero modifiedCount
+      # discloses nothing.
+      disableNoMatchError: true
+      update:
+        $set:
+          deleted:
+            _ref: defaults/change_stamp.yaml
+  - :return:
+      ok: true
+      deletedCount:
+        _step: delete.modifiedCount

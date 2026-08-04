@@ -163,6 +163,7 @@ api:
   - _ref: api/list-conversations.yaml
   - _ref: api/get-conversation-results.yaml
   - _ref: api/set-conversation-title.yaml
+  - _ref: api/delete-conversation.yaml
   - _ref: api/list-reports.yaml
   - _ref: api/delete-report.yaml
   - _ref: api/set-report-visibility.yaml
