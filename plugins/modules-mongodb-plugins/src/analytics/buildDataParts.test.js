@@ -23,8 +23,8 @@ const exportSpec = {
 
 test("builds chart and download parts", () => {
   const rows = [
-    { status: "paid", count: 5 },
-    { status: "pending", count: 2 },
+    { status: "paid", count: 5, region: "west" },
+    { status: "pending", count: 2, region: "east" },
   ];
   const parts = buildDataParts({
     charts: [chartSpec],
@@ -35,7 +35,10 @@ test("builds chart and download parts", () => {
   expect(parts).toHaveLength(2);
   expect(parts[0].type).toBe("data-report-chart");
   expect(parts[0].data.title).toBe("Orders by Status");
-  expect(parts[0].data.option.dataset.source).toEqual(rows);
+  expect(parts[0].data.option.dataset.source).toEqual([
+    { status: "paid", count: 5 },
+    { status: "pending", count: 2 },
+  ]);
   expect(parts[0].data.option.series[0].encode).toEqual({ itemName: "status", value: "count" });
   expect(parts[1]).toEqual({
     type: "data-report-download",
@@ -140,6 +143,16 @@ test("zero rows and null value cells build a chart without a verification failur
     roles,
   });
   expect(withNulls).toHaveLength(1);
+});
+
+test("a chart part's source carries only the contract's columns, not a fat extra field", () => {
+  const parts = buildDataParts({
+    charts: [chartSpec],
+    results: [[{ status: "paid", count: 5, meta: { region: "west", tags: ["a", "b"] } }]],
+    roles,
+  });
+  expect(parts).toHaveLength(1);
+  expect(Object.keys(parts[0].data.option.dataset.source[0])).toEqual(["status", "count"]);
 });
 
 test("a contract-shaped export payload is skipped, not thrown", () => {
