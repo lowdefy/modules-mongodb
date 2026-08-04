@@ -1,6 +1,9 @@
 import AnalyticsPipeline from "./AnalyticsPipeline.js";
 import getMongoDb from "../../mongo/getMongoDb.js";
-import { PIPELINE_RESULT_CAP } from "../../../analytics/constants.js";
+import {
+  MAX_RESULT_BYTES,
+  PIPELINE_RESULT_CAP,
+} from "../../../analytics/constants.js";
 
 // The request imports getMongoDb directly; mock it so no real MongoDB (or
 // MongoMemoryServer) is needed and the aggregate call can be captured.
@@ -305,6 +308,77 @@ describe("result byte budget", () => {
       connection: connectionWith({ maxResultBytes: 5000 }),
     });
     expect(rows).toHaveLength(3);
+  });
+
+  // request > connection > MAX_RESULT_BYTES. The request-set budget is what
+  // lets the agent's read path be far tighter than the connection default:
+  // its rows are persisted and re-sent as model context, unlike every other
+  // caller's.
+  describe("precedence", () => {
+    function withDocs(count) {
+      aggregate = jest.fn(() =>
+        mockCursor(Array.from({ length: count }, () => fatDoc)),
+      );
+      collection = jest.fn(() => ({ aggregate }));
+      getMongoDb.mockResolvedValue({ mongoDb: { collection } });
+    }
+
+    test("a request budget below the result size throws, naming its number", async () => {
+      withDocs(100);
+      await expect(
+        AnalyticsPipeline({
+          request: {
+            query: { collection: "demo_orders", pipeline: [] },
+            roles: ["analyst"],
+            maxResultBytes: 5000,
+          },
+          connection: connectionWith(),
+        }),
+      ).rejects.toThrow(/exceeds the 5000 byte result budget/);
+    });
+
+    test("a request budget above the result size passes, over a lower connection budget", async () => {
+      withDocs(10); // ~10KB — over the connection's budget, under the request's.
+      const rows = await AnalyticsPipeline({
+        request: {
+          query: { collection: "demo_orders", pipeline: [] },
+          roles: ["analyst"],
+          maxResultBytes: 50000,
+        },
+        connection: connectionWith({ maxResultBytes: 5000 }),
+      });
+      expect(rows).toHaveLength(10);
+    });
+
+    test("with no request budget the connection's value applies", async () => {
+      withDocs(100);
+      await expect(
+        AnalyticsPipeline({
+          request: {
+            query: { collection: "demo_orders", pipeline: [] },
+            roles: ["analyst"],
+          },
+          connection: connectionWith({ maxResultBytes: 5000 }),
+        }),
+      ).rejects.toThrow(/exceeds the 5000 byte result budget/);
+    });
+
+    test("with neither set, MAX_RESULT_BYTES applies", async () => {
+      // One fat doc per iteration keeps this cheap: the same string by
+      // reference, drained until it crosses 8 MB.
+      withDocs(Math.ceil(MAX_RESULT_BYTES / 1000) + 10);
+      await expect(
+        AnalyticsPipeline({
+          request: {
+            query: { collection: "demo_orders", pipeline: [] },
+            roles: ["analyst"],
+          },
+          connection: connectionWith(),
+        }),
+      ).rejects.toThrow(
+        new RegExp(`exceeds the ${MAX_RESULT_BYTES} byte result budget`),
+      );
+    });
   });
 });
 

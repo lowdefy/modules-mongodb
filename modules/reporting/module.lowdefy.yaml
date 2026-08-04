@@ -16,7 +16,7 @@ exports:
       description: Report renderer (Dynamic block over resolve-report)
   api:
     - id: query-data
-      description: Constrained analytics query (agent tool + report re-queries)
+      description: Constrained analytics query (report re-queries + panel downloads)
     - id: generate-report
       description: Validate and persist a report spec (agent tool)
     - id: set-report-visibility
@@ -150,6 +150,9 @@ connections:
 
 api:
   - _ref: api/query-data.yaml
+  # Deliberately absent from exports.api: it exists for the agent, and a
+  # consumer calling it directly would be calling the wrong one of the two.
+  - _ref: api/query-data-tool.yaml
   - _ref: api/render-chart.yaml
   - _ref: api/export-data.yaml
   - _ref: api/generate-report.yaml

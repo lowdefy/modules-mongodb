@@ -38,6 +38,14 @@ import { MAX_RESULT_BYTES } from "../../../analytics/constants.js";
  *             against each touched collection's catalog roles on execution.
  *   filters — optional [{ field, op, value }] triples, built into a leading
  *             $match.
+ *   maxResultBytes — optional per-caller result budget, overriding
+ *             connection.maxResultBytes. It exists because the two read paths
+ *             want different numbers: the agent's rows are persisted into the
+ *             conversation document and re-sent as model context on every
+ *             later step and turn, so that caller sets a far tighter budget,
+ *             while everywhere else the connection's 8 MB default is only an
+ *             app-memory backstop on rows nobody re-sends. There is no schema
+ *             to declare it in, for the reason below.
  *
  * Statics are read by the request pipeline (checkConnectionRead/Write access
  * requestResolver.meta.*); without them every execution throws "Cannot read
@@ -89,7 +97,7 @@ function buildFilterMatch(filters) {
 }
 
 async function AnalyticsPipeline({ request = {}, connection }) {
-  const { query, roles, filters } = request;
+  const { query, roles, filters, maxResultBytes } = request;
 
   // A destructuring default would miss an explicit null (an unresolved
   // _payload read, or a persisted part from the pre-pipeline model) — fail
@@ -130,7 +138,10 @@ async function AnalyticsPipeline({ request = {}, connection }) {
   // row — so an unbounded .toArray() lets a permitted 1000-row result become
   // gigabytes of app-process memory. Measuring per document and aborting mid-
   // stream keeps the peak bounded; checking after the fact would not.
-  const maxBytes = connection.maxResultBytes ?? MAX_RESULT_BYTES;
+  // Request over connection: a caller that re-sends the rows it reads wants a
+  // tighter bound than the connection-wide memory backstop.
+  const maxBytes =
+    maxResultBytes ?? connection.maxResultBytes ?? MAX_RESULT_BYTES;
   const rows = [];
   let bytes = 0;
   try {
