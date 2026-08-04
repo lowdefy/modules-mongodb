@@ -125,6 +125,72 @@ vars:
     description: >
       Gateway model id (provider/model) for the reporting assistant, e.g.
       anthropic/claude-sonnet-4.5 or anthropic/claude-haiku-4.5.
+  welcome:
+    type: object
+    description: >
+      Copy for the chat page's empty state — the surface that teaches both of
+      the module's jobs, asking a question and building a report. Six leaves:
+      a title, a line naming what the assistant can see, and a label plus a
+      starter-prompt list per job track. Not the block's `welcome` — AgentChat
+      has its own `welcome` property, which the chat page deliberately leaves
+      unset, because that block flattens `prompts` into one row and declares
+      no areas, so two tracks cannot live inside it. This var's copy renders
+      in the page's own empty state instead.
+    properties:
+      title:
+        type: string
+        default: Ask about your data
+        description: The heading shown above both starter tracks.
+      data_scope:
+        type: string
+        description: >
+          One line naming what the assistant can see, in the words this
+          app's users use — e.g. "I can see your orders, customers and
+          shipments." NO default: there is no generic sentence true of every
+          app, and a wrong one is a promise the agent then fails to keep, so
+          when unset the line is simply not rendered — it never falls back to
+          collection names. Deliberately not derived from `catalog`: a
+          collection is not an entity a user recognises (one collection can
+          span several entities a user asks about by name, several
+          collections can be one entity to a user, and a collection can be
+          internal plumbing that should never appear in a welcome), and
+          `catalog`'s per-collection `description` is prompt material for the
+          agent, not copy written for a person.
+      explore_label:
+        type: string
+        default: Get an answer
+        description: >
+          Heading over the "ask a question" track's starters. An app whose
+          users would not describe the module's other job as building a
+          "report" should override this alongside `report_label`.
+      explore_starters:
+        type: array
+        default:
+          - What does this data cover?
+          - Show me the most recent records.
+          - What are the top 5 by count?
+        description: >
+          Starter prompts for the "ask a question" track — a string array.
+          Clicking a starter fills the composer rather than sending it, which
+          is what makes a generic shipped default safe: a near-miss is an
+          editable first draft, not a message the user never meant to send.
+      report_label:
+        type: string
+        default: Build a report
+        description: >
+          Heading over the "build a report" track's starters. An app whose
+          users do not call the output a "report" should override this
+          alongside `explore_label`.
+      report_starters:
+        type: array
+        default:
+          - Build a report showing trends over time.
+          - Build a report comparing categories side by side.
+        description: >
+          Starter prompts for the "build a report" track — a string array.
+          Clicking a starter fills the composer rather than sending it, which
+          is what makes a generic shipped default safe: a near-miss is an
+          editable first draft, not a message the user never meant to send.
 
 secrets:
   - name: REPORTING_MONGODB_URI
