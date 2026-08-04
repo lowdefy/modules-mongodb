@@ -2,12 +2,13 @@
 title: Indexes
 module: user-account
 type: reference
-concepts: [indexes, mongodb, contacts, users, uniqueness, two-factor, auth]
+concepts:
+  [indexes, mongodb, contacts, users, uniqueness, two-factor, auth, roles]
 ---
 
 # User Account — Indexes
 
-The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collections backing the module's connections before running the create-or-link and profile flows.
+The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collections the auth modules read and write, before running the create-or-link, profile, two-factor and user-administration flows.
 
 ## `user-contacts` collection
 
@@ -47,6 +48,26 @@ db.users.createIndex(
 Enforces **one `user` per `contact`** — the invariant that a single contact record is not linked to two auth users. It is partial-unique on `$exists` for the same reason as above: a `user` row may exist before its `profile.contactId` is written (the `user.create.before` / `email.verified` link-back sets it), and multiple such unlinked rows must coexist without colliding on a missing key.
 
 This is a **different invariant** from the `lowercase_email` index and does **not** prevent duplicate contacts for one email — that guard lives on `user-contacts.lowercase_email`. The two indexes are complementary: `lowercase_email` bounds contacts by email, `profile.contactId` bounds users by contact.
+
+## `user-members` collection
+
+### Index: `{ organizationId: 1, appRoles: 1 }` — **multikey compound**, not unique
+
+```
+db["user-members"].createIndex({ organizationId: 1, appRoles: 1 })
+```
+
+Serves the `user-admin` members list's role filter. `member.appRoles` is a native array of app-role ids, so an index on it is **multikey** — MongoDB indexes one key per element, and a member holding three roles has three entries.
+
+**Not unique.** A member holds many app roles, and many members of one organization hold the same role. Uniqueness would reject the second member granted any role.
+
+**Key order matters.** The members-list read matches `organizationId` (the organization the module instance administers) and `appRoles` (the selected filter ids) together, and both clauses sit on the member root ahead of the read's `$lookup`s. Leading on `appRoles` instead would leave the organization scope unindexed.
+
+| Query site                     | Operation                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| `user-admin` members list read | `$match` on `organizationId`, then `$match` on `appRoles: { $in: [...] }` |
+
+**Module-owned, host-app-created** — the same footing as `users { "profile.contactId": 1 }` above. Nothing in this repo provisions it. The platform's own per-request read is the membership-wall lookup on `{ userId, organizationId }`, which this index neither serves nor needs to: without this index the members list still returns correct rows, it just scans the organization's whole membership on every role filter.
 
 ## `user-two-factors` collection
 

@@ -7,7 +7,11 @@
 #     which appear in neither the Invitations tab nor the export.
 #   status — there is NO "expired" status in BetterAuth; it is derived from a
 #     pending row's expiresAt: future → Invited, past → Expired (Decision 2).
-#   roles_arr — invitation.role is the same CSV shape as member.role; $split it.
+#   roles_arr / role_ids — the two published wire names for the invitation's app
+#     roles, both aliased from the native `invitation.appRoles` array; the list's
+#     Resend button reads `role_ids`. $ifNull because $addFields omits a field
+#     whose source path is missing, and an invitation carrying no `appRoles` must
+#     still present an array.
 #   inviter_name / inviter_id — the "Invited by" column (join `users`).
 - $match:
     organizationId:
@@ -25,25 +29,14 @@
     inviter_name: "$inviter.name"
     inviter_id: "$inviterId"
     roles_arr:
-      $split:
-        - $ifNull:
-            - "$role"
-            - ""
-        - ","
-    # Clean id list (empties dropped) — the resend action re-sends these ids.
+      $ifNull:
+        - "$appRoles"
+        - []
+    # The resend action re-sends these ids.
     role_ids:
-      $filter:
-        input:
-          $split:
-            - $ifNull:
-                - "$role"
-                - ""
-            - ","
-        as: r
-        cond:
-          $ne:
-            - "$$r"
-            - ""
+      $ifNull:
+        - "$appRoles"
+        - []
     expires_at: "$expiresAt"
     # Stored invite-time member attributes (applied to the member at accept) —
     # carried through so Resend can preserve them rather than blank them.

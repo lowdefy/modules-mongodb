@@ -62,9 +62,14 @@ routine:
                 - _step: find_contact._id
                 - "__none__"
         - $limit: 1
+        # An explicit whitelist, so a field the UI needs has to be named here or
+        # it arrives undefined with nothing erroring. `appRoles` is the app roles
+        # array; `role` is BetterAuth's owner/admin/member org tier — two
+        # unrelated facts that both ride this row.
         - $project:
             _id: 1
             userId: 1
+            appRoles: 1
             role: 1
             "user.email": 1
             "user.name": 1
@@ -94,10 +99,16 @@ routine:
         expiresAt:
           $gt:
             _date: now
+      # Same whitelist hazard as find_member above: an unnamed field arrives
+      # undefined and the pending panel renders empty rather than failing.
       options:
         projection:
           _id: 1
           email: 1
+          # The invitation's app roles, and separately BetterAuth's org tier.
+          # Resend re-sends both, so a resend preserves what the invitation
+          # granted instead of quietly reducing it.
+          appRoles: 1
           role: 1
           inviterId: 1
           expiresAt: 1

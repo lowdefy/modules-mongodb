@@ -192,9 +192,7 @@ _ref:
                                   email:
                                     _state: email
                                   roles:
-                                    _js: |
-                                      const csv = state('resolved_invitation.role');
-                                      return (csv || '').split(',').map(s => s.trim()).filter(Boolean);
+                                    _state: resolved_invitation.appRoles
                                   member_attributes:
                                     _state: resolved_invitation.attributes
                       - id: pending_cancel_btn

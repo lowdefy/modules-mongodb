@@ -1,14 +1,18 @@
-# Members filter $match, applied AFTER members_base's $lookups — the searchable
-# fields (contact name, user email) only coexist on the row once the joins have
-# flattened them.
+# Members filter $match — the clauses that CANNOT run before members_base's
+# $lookups, because each reads a field the joins put on the row:
 #   search — case-insensitive regex over the flattened name / email, built by the
 #            shared regex_clause.yaml, which owns escaping the term (an
 #            unescaped `(` makes MongoDB reject the regex, and a raw `.*` would
 #            match every member)
-#   roles  — EXACT split-array element match: $in on the post-$split roles_arr,
-#            never a substring/regex over the raw CSV (so "admin" does not match
-#            "super-admin")
 #   status — the derived Active / Suspended value
+#
+# The roles clause is deliberately NOT here. `appRoles` is on the member root, so
+# it filters ahead of the joins through members_base's `pre_join_stages` slot,
+# where the { organizationId, appRoles } index can serve it — see
+# get_all_members.yaml. Putting it back in this $match would leave the module's
+# most expensive read waiting on the optimizer to push it there, which it may or
+# may not do.
+#
 # Each clause drops out when its filter is unset, and the set clauses are ANDed
 # as a $and array rather than merged into one object, so no two of them can
 # collide on a top-level key. The leading `{}` keeps the array non-empty with
@@ -25,19 +29,6 @@ $match:
             paths:
               - name
               - email
-      - _if:
-          test:
-            _gt:
-              - _array.length:
-                  _if_none:
-                    - _payload: filter.roles
-                    - []
-              - 0
-          then:
-            - roles_arr:
-                $in:
-                  _payload: filter.roles
-          else: []
       - _if:
           test:
             _eq:

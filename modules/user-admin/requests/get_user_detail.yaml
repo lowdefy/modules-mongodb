@@ -53,19 +53,13 @@ properties:
                 $ifNull:
                   - "$passkeys"
                   - []
-            # Clean current role id list (incl. orphans, empties dropped) — seeds
-            # the access modal's role picker and the update-access payload.
+            # Current role id list, orphans included — seeds the access modal's
+            # role picker AND the update-access payload it posts back, so an
+            # empty array here is a save that clears the member's roles.
             role_ids:
-              $filter:
-                input:
-                  $ifNull:
-                    - "$roles_arr"
-                    - []
-                as: r
-                cond:
-                  $ne:
-                    - "$$r"
-                    - ""
+              $ifNull:
+                - "$appRoles"
+                - []
             # True when any held role is orphaned (absent from the catalog) —
             # drives the access modal's orphan hint (Decision 8).
             has_orphan:

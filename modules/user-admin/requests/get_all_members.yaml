@@ -19,8 +19,33 @@ payload:
 properties:
   pipeline:
     _build.array.concat:
-      # Join + flatten the display shape.
-      - _ref: requests/stages/members_base.yaml
+      # Join + flatten the display shape, with the roles clause spliced into the
+      # base's pre-join slot: `appRoles` is a stored member field, so matching it
+      # on the root — before the $lookups — is what lets the compound
+      # { organizationId: 1, appRoles: 1 } index serve the filter. The base's own
+      # $match supplies the leading `organizationId` key, and MongoDB coalesces
+      # the two adjacent $matches into one, so repeating it here would be dead
+      # weight. `$match: {}` when no role is selected, matching every member —
+      # the filter is a runtime payload, so the stage cannot be dropped at build
+      # time.
+      - _ref:
+          path: requests/stages/members_base.yaml
+          vars:
+            pre_join_stages:
+              - $match:
+                  _if:
+                    test:
+                      _gt:
+                        - _array.length:
+                            _if_none:
+                              - _payload: filter.roles
+                              - []
+                        - 0
+                    then:
+                      appRoles:
+                        $in:
+                          _payload: filter.roles
+                    else: {}
       # Post-$lookup filter, then the consumer's plain-$match filter_match slot.
       - - _ref: requests/stages/members_filter.yaml
       - _module.var: request_stages.filter_match

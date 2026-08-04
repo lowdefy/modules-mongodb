@@ -52,23 +52,19 @@ properties:
                   - "?"
               - 0
               - 1
+        # The person's APP roles in the other organization, the same fact every
+        # other `roles` surface in the module shows. Not `role` — that is the org
+        # tier, an administrative fact about an organization this instance does
+        # not administer, and reading it here would render `member` / `admin` /
+        # `owner` on a support badge with nothing blank and nothing erroring.
         roles:
           $trim:
             input:
               $reduce:
                 input:
-                  $filter:
-                    input:
-                      $split:
-                        - $ifNull:
-                            - "$role"
-                            - ""
-                        - ","
-                    as: r
-                    cond:
-                      $ne:
-                        - "$$r"
-                        - ""
+                  $ifNull:
+                    - "$appRoles"
+                    - []
                 initialValue: ""
                 in:
                   $concat:

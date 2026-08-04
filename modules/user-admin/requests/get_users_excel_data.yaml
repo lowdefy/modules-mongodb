@@ -29,16 +29,9 @@ properties:
                 input:
                   $reduce:
                     input:
-                      $filter:
-                        input:
-                          $ifNull:
-                            - "$roles_arr"
-                            - []
-                        as: r
-                        cond:
-                          $ne:
-                            - "$$r"
-                            - ""
+                      $ifNull:
+                        - "$appRoles"
+                        - []
                     initialValue: ""
                     in:
                       $concat:
@@ -60,16 +53,9 @@ properties:
                           input:
                             $reduce:
                               input:
-                                $filter:
-                                  input:
-                                    $ifNull:
-                                      - "$roles_arr"
-                                      - []
-                                  as: r
-                                  cond:
-                                    $ne:
-                                      - "$$r"
-                                      - ""
+                                $ifNull:
+                                  - "$appRoles"
+                                  - []
                               initialValue: ""
                               in:
                                 $concat:

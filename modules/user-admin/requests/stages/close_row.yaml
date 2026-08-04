@@ -9,9 +9,15 @@
 #   2. Every stored field that already ships under a canonical alias, so the row
 #      never offers two paths to one value:
 #        attributes    → member_attributes
+#        appRoles      → roles_arr (ids) / roles (resolved { label, orphan })
 #        createdAt     → signed_up (members) / created (invitations)
 #        expiresAt     → expires_at (Invitations tab) / expires (export)
 #        profile.picture → top-level picture
+#   3. Every stored field the contract deliberately does not publish: `role` is
+#      BetterAuth's owner/admin/member tier, unrelated to the app roles
+#      `roles_arr` and `roles` carry. Left on the row it reads as the Roles
+#      column's stored value, so a consumer binds a column to it and gets a tier.
+#      An instance that wants the tier displayed gets it under its own name.
 #
 # `profile.picture` earns its place beyond tidiness: it holds an ~800-character
 # data:image/svg+xml gradient avatar, so leaving both paths ships the blob twice
@@ -36,6 +42,8 @@ $unset:
   - passkeys
   - inviter
   - attributes
+  - appRoles
+  - role
   - createdAt
   - expiresAt
   - profile.picture

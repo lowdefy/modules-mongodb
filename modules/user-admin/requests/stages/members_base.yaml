@@ -5,8 +5,8 @@
 # `user-contacts` record, then flattens the display shape:
 #   name / picture — from the contact profile (fallback to the user display name)
 #   email          — from the auth user row
-#   roles_arr      — member.role is a CSV string (user-model Decision 5); $split
-#                    it here (nothing reads a role array from the DB)
+#   roles_arr      — the published wire name for the member's app roles, aliased
+#                    from the native `appRoles` array
 #   status         — Active unless user.banned === true → Suspended (Decision 2;
 #                    permanent bans only, so banExpires is never consulted)
 #   created/updated— the contact change-stamp timestamps
@@ -19,73 +19,86 @@
 #   user_attributes   — fields.user_attributes   (user.attributes)
 #   member_attributes — fields.member_attributes (member.attributes)
 #
-# `picture`, `created` and `updated` are wrapped in $ifNull so the keys exist
-# even when their source doesn't: $addFields OMITS a field whose source path is
-# missing, and `created`/`updated` both vanish when the contact $lookup finds no
-# match (reachable — the $unwind below preserves empties). A blank column is then
-# always a data question, never a shape question.
+# `picture`, `created`, `updated` and `roles_arr` are wrapped in $ifNull so the
+# keys exist even when their source doesn't: $addFields OMITS a field whose
+# source path is missing, `created`/`updated` both vanish when the contact
+# $lookup finds no match (reachable — the $unwind below preserves empties), and
+# `roles_arr` vanishes on a member row carrying no `appRoles`, which the row
+# contract still promises as an array. A blank column is then always a data
+# question, never a shape question.
+#
+# `pre_join_stages` is the slot for stages that must run on the MEMBER ROOT —
+# after the org-scope $match, before the $lookups. That window is the only place
+# a clause on a stored member field can use an index, so the members list puts
+# its roles $match here. The slot lives on this file rather than in each consumer
+# because the root match and the joins that flatten the display shape are one
+# unit: three consumers assembling that order themselves is three places to get
+# it wrong. It defaults to [], so the two reads that filter nothing are as they
+# were.
 #
 # Co-location precondition (Decision 1): the user-contacts $lookup returns empty
 # if the read connection and the auth adapter resolve to different databases —
 # blank contact data is a co-location violation, not a wiring bug.
-- $match:
-    organizationId:
-      _module.var: org_slug
-- $lookup:
-    from: users
-    localField: userId
-    foreignField: _id
-    as: user
-- $unwind: "$user"
-- $lookup:
-    from: user-contacts
-    localField: user.profile.contactId
-    foreignField: _id
-    as: contact
-- $unwind:
-    path: "$contact"
-    preserveNullAndEmptyArrays: true
-- $addFields:
-    name:
-      $ifNull:
-        - "$contact.profile.name"
-        - "$user.name"
-    picture:
-      $ifNull:
-        - "$contact.profile.picture"
-        - null
-    email: "$user.email"
-    roles_arr:
-      $split:
-        - $ifNull:
-            - "$role"
-            - ""
-        - ","
-    status:
-      $cond:
-        - $eq:
-            - "$user.banned"
-            - true
-        - Suspended
-        - Active
-    created:
-      $ifNull:
-        - "$contact.created.timestamp"
-        - null
-    updated:
-      $ifNull:
-        - "$contact.updated.timestamp"
-        - null
-    signed_up: "$createdAt"
-    profile:
-      $ifNull:
-        - "$contact.profile"
-        - {}
-    user_attributes:
-      $ifNull:
-        - "$user.attributes"
-        - {}
-    member_attributes:
-      $ifNull:
-        - "$attributes"
-        - {}
+_build.array.concat:
+  - - $match:
+        organizationId:
+          _module.var: org_slug
+  - _var:
+      key: pre_join_stages
+      default: []
+  - - $lookup:
+        from: users
+        localField: userId
+        foreignField: _id
+        as: user
+    - $unwind: "$user"
+    - $lookup:
+        from: user-contacts
+        localField: user.profile.contactId
+        foreignField: _id
+        as: contact
+    - $unwind:
+        path: "$contact"
+        preserveNullAndEmptyArrays: true
+    - $addFields:
+        name:
+          $ifNull:
+            - "$contact.profile.name"
+            - "$user.name"
+        picture:
+          $ifNull:
+            - "$contact.profile.picture"
+            - null
+        email: "$user.email"
+        roles_arr:
+          $ifNull:
+            - "$appRoles"
+            - []
+        status:
+          $cond:
+            - $eq:
+                - "$user.banned"
+                - true
+            - Suspended
+            - Active
+        created:
+          $ifNull:
+            - "$contact.created.timestamp"
+            - null
+        updated:
+          $ifNull:
+            - "$contact.updated.timestamp"
+            - null
+        signed_up: "$createdAt"
+        profile:
+          $ifNull:
+            - "$contact.profile"
+            - {}
+        user_attributes:
+          $ifNull:
+            - "$user.attributes"
+            - {}
+        member_attributes:
+          $ifNull:
+            - "$attributes"
+            - {}

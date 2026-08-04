@@ -1,11 +1,12 @@
-# Resolve split role ids against the app's authored role catalog
+# Resolve held role ids against the app's authored role catalog
 # (`_build.authConfig.roles`, design Decision 8) — the single source of truth
-# for role labels. Each id in `roles_arr` becomes { label, orphan }:
+# for role labels. Each id in the member's / invitation's `appRoles` array becomes
+# { label, orphan }:
 #   label  — the catalog `label` for the id, or the raw id when unmatched
 #   orphan — true when the id is held in data but absent from the catalog
 #            (a role removed from config); rendered flagged "no longer
 #            configured", never silently stripped (Decision 8).
-# Empty CSV entries are dropped.
+# $ifNull because $map errors outright on a row that carries no `appRoles`.
 #
 # NOTE (running-engine gap): `_build.authConfig` is not yet available to module
 # config in the experimental @lowdefy/server build (it throws "cannot be used
@@ -16,16 +17,9 @@ $addFields:
   roles:
     $map:
       input:
-        $filter:
-          input:
-            $ifNull:
-              - "$roles_arr"
-              - []
-          as: r
-          cond:
-            $ne:
-              - "$$r"
-              - ""
+        $ifNull:
+          - "$appRoles"
+          - []
       as: rid
       in:
         label:
