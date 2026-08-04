@@ -39,13 +39,12 @@ test("the owner, holding the share role, publishes their report", async ({
   ]);
 
   await ldf.user(USER_A);
-  const { status, body } = await callEndpoint(page, "set-report-visibility", {
+  const { response } = await callEndpoint(page, "set-report-visibility", {
     report_id: "e2e-vis-publish",
     visibility: "shared",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true, modifiedCount: 1 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 1 });
   expect(await visibilityOf(mdb, "e2e-vis-publish")).toBe("shared");
 });
 
@@ -61,12 +60,12 @@ test("the owner without the share role cannot publish", async ({
   ]);
 
   await ldf.user(USER_B);
-  const { status } = await callEndpoint(page, "set-report-visibility", {
+  const { rejected } = await callEndpoint(page, "set-report-visibility", {
     report_id: "e2e-vis-no-role",
     visibility: "shared",
   });
 
-  expect(status).toBeGreaterThanOrEqual(400);
+  expect(rejected).toBe(true);
   expect(await visibilityOf(mdb, "e2e-vis-no-role")).toBe("private");
 });
 
@@ -83,13 +82,12 @@ test("a non-owner holding the share role cannot publish", async ({
   ]);
 
   await ldf.user(USER_A);
-  const { status, body } = await callEndpoint(page, "set-report-visibility", {
+  const { response } = await callEndpoint(page, "set-report-visibility", {
     report_id: "e2e-vis-not-mine",
     visibility: "shared",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true, modifiedCount: 0 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 0 });
   expect(await visibilityOf(mdb, "e2e-vis-not-mine")).toBe("private");
 });
 
@@ -108,13 +106,12 @@ test("the owner unpublishes their shared report", async ({
   ]);
 
   await ldf.user(USER_A);
-  const { status, body } = await callEndpoint(page, "set-report-visibility", {
+  const { response } = await callEndpoint(page, "set-report-visibility", {
     report_id: "e2e-vis-retract",
     visibility: "private",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true, modifiedCount: 1 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 1 });
   expect(await visibilityOf(mdb, "e2e-vis-retract")).toBe("private");
 });
 
@@ -136,13 +133,12 @@ test("a share role holder unpublishes someone else's shared report", async ({
   ]);
 
   await ldf.user(USER_A);
-  const { status, body } = await callEndpoint(page, "set-report-visibility", {
+  const { response } = await callEndpoint(page, "set-report-visibility", {
     report_id: "e2e-vis-moderate",
     visibility: "private",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true, modifiedCount: 1 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 1 });
   expect(await visibilityOf(mdb, "e2e-vis-moderate")).toBe("private");
 });
 
@@ -161,13 +157,12 @@ test("a non-owner without the share role cannot unpublish", async ({
   ]);
 
   await ldf.user(USER_B);
-  const { status, body } = await callEndpoint(page, "set-report-visibility", {
+  const { response } = await callEndpoint(page, "set-report-visibility", {
     report_id: "e2e-vis-stays-shared",
     visibility: "private",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true, modifiedCount: 0 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 0 });
   expect(await visibilityOf(mdb, "e2e-vis-stays-shared")).toBe("shared");
 });
 
@@ -185,13 +180,12 @@ test("a deleted report cannot be published", async ({ ldf, page, mdb }) => {
   ]);
 
   await ldf.user(USER_A);
-  const { status, body } = await callEndpoint(page, "set-report-visibility", {
+  const { response } = await callEndpoint(page, "set-report-visibility", {
     report_id: "e2e-vis-deleted",
     visibility: "shared",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true, modifiedCount: 0 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 0 });
   expect(await visibilityOf(mdb, "e2e-vis-deleted")).toBe("private");
 });
 
@@ -242,11 +236,11 @@ test("an unrecognised visibility value is rejected", async ({
   ]);
 
   await ldf.user(USER_A);
-  const { status } = await callEndpoint(page, "set-report-visibility", {
+  const { rejected } = await callEndpoint(page, "set-report-visibility", {
     report_id: "e2e-vis-invalid",
     visibility: "public",
   });
 
-  expect(status).toBeGreaterThanOrEqual(400);
+  expect(rejected).toBe(true);
   expect(await visibilityOf(mdb, "e2e-vis-invalid")).toBe("private");
 });

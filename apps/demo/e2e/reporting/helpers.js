@@ -9,12 +9,20 @@
 // `sub` is set to a deliberately different value on both and is never seeded
 // against, so these specs double as a guard on the identity key — if a read or
 // write goes back to preferring `sub`, the seeded owners stop matching.
+//
+// `profile.name` is NOT decoration. Every change stamp and owner reference in
+// this repo reads `_user: profile.name`, not the top-level `name` — so a fixture
+// user without a `profile` writes `name: null` into every stamp it produces, and
+// a spec asserting on a stored name fails for a reason that has nothing to do
+// with the endpoint under test. `ldf.user()` serializes this object verbatim into
+// the session cookie, so what is here is exactly what `_user` resolves against.
 export const USER_A = {
   id: "e2e-owner-id",
   sub: "e2e-owner-sub",
   name: "Report Owner",
   email: "owner@example.com",
   roles: ["admin", "report-publisher"],
+  profile: { name: "Report Owner" },
 };
 
 export const USER_B = {
@@ -23,6 +31,7 @@ export const USER_B = {
   name: "Other User",
   email: "other@example.com",
   roles: ["admin"],
+  profile: { name: "Other User" },
 };
 
 export const ORDERS = [
@@ -148,14 +157,25 @@ export function changeStamp(user) {
 // The session cookie `ldf.user()` sets lives on the browser context and
 // `page.request` shares that cookie jar, so the call runs as whoever the test
 // last became — which is what makes the non-owner half of every matrix testable.
+// Note the two layers in the return value. A routine's `:return:` value arrives
+// nested under `body.response`, alongside `success` and `status` — and a
+// `:reject:` is HTTP **200** with `success: false, status: "reject"`, not a 4xx.
+// So assert on `response` for the happy path and `rejected` for a refusal;
+// asserting a status code would pass or fail for the wrong reason.
 export async function callEndpoint(page, endpointId, payload) {
-  const response = await page.request.post(
+  const raw = await page.request.post(
     `/api/endpoints/reporting/${endpointId}`,
-    { data: { payload } },
+    {
+      data: { payload },
+    },
   );
+  const body = await raw.json().catch(() => null);
   return {
-    status: response.status(),
-    body: await response.json().catch(() => null),
+    status: raw.status(),
+    body,
+    response: body?.response ?? null,
+    rejected: body?.success === false && body?.status === "reject",
+    errored: body?.success === false && body?.status === "error",
   };
 }
 

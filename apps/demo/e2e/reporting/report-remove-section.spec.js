@@ -39,13 +39,12 @@ test("dropping a filter strips its field from every section that named it", asyn
   await seedFull(mdb, "e2e-rm-filter");
   await ldf.user(USER_A);
 
-  const { status, body } = await callEndpoint(page, "remove-report-section", {
+  const { response } = await callEndpoint(page, "remove-report-section", {
     report_id: "e2e-rm-filter",
     section_id: "s3",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true });
+  expect(response).toMatchObject({ ok: true });
 
   const sections = await sectionsOf(mdb, "e2e-rm-filter");
   expect(sections.map((s) => s.id)).toEqual(["s0", "s1", "s2", "s4", "s5"]);
@@ -164,12 +163,12 @@ test("a removal that would empty the report is refused, naming the alternative",
   const before = await sectionsOf(mdb, "e2e-rm-empty");
   await ldf.user(USER_A);
 
-  const { body } = await callEndpoint(page, "remove-report-section", {
+  const { body, rejected } = await callEndpoint(page, "remove-report-section", {
     report_id: "e2e-rm-empty",
     section_id: "c0",
   });
 
-  expect(body).toMatchObject({ success: false, status: "reject" });
+  expect(rejected).toBe(true);
   expect(JSON.stringify(body)).toMatch(/delete the report/i);
   expect(await sectionsOf(mdb, "e2e-rm-empty")).toEqual(before);
 });
@@ -190,12 +189,12 @@ test("a repeated removal is rejected, not applied to whatever took the slot", as
   });
   const afterFirst = await sectionsOf(mdb, "e2e-rm-twice");
 
-  const { body } = await callEndpoint(page, "remove-report-section", {
+  const { rejected } = await callEndpoint(page, "remove-report-section", {
     report_id: "e2e-rm-twice",
     section_id: "s4",
   });
 
-  expect(body).toMatchObject({ success: false, status: "reject" });
+  expect(rejected).toBe(true);
   expect(await sectionsOf(mdb, "e2e-rm-twice")).toEqual(afterFirst);
 });
 
@@ -208,14 +207,14 @@ test("a non-owner cannot remove a section from a report they can read", async ({
   const before = await sectionsOf(mdb, "e2e-rm-shared");
 
   await ldf.user(USER_B);
-  const { body } = await callEndpoint(page, "remove-report-section", {
+  const { rejected } = await callEndpoint(page, "remove-report-section", {
     report_id: "e2e-rm-shared",
     section_id: "s4",
   });
 
   // Owner-matched in the load, so a non-owner gets not-found rather than a
   // silent no-op.
-  expect(body).toMatchObject({ success: false, status: "reject" });
+  expect(rejected).toBe(true);
   expect(await sectionsOf(mdb, "e2e-rm-shared")).toEqual(before);
 });
 
@@ -228,12 +227,12 @@ test("nobody can remove a section from a deleted report", async ({
   const before = await sectionsOf(mdb, "e2e-rm-deleted");
 
   await ldf.user(USER_A);
-  const { body } = await callEndpoint(page, "remove-report-section", {
+  const { rejected } = await callEndpoint(page, "remove-report-section", {
     report_id: "e2e-rm-deleted",
     section_id: "s4",
   });
 
-  expect(body).toMatchObject({ success: false, status: "reject" });
+  expect(rejected).toBe(true);
   expect(await sectionsOf(mdb, "e2e-rm-deleted")).toEqual(before);
 });
 
@@ -270,11 +269,11 @@ test("the report still resolves after a cascading removal", async ({
   await seedFull(mdb, "e2e-rm-resolves");
   await ldf.user(USER_A);
 
-  const { body } = await callEndpoint(page, "remove-report-section", {
+  const { response } = await callEndpoint(page, "remove-report-section", {
     report_id: "e2e-rm-resolves",
     section_id: "s3",
   });
-  expect(body).toMatchObject({ ok: true });
+  expect(response).toMatchObject({ ok: true });
 
   // Every section that survived carries an id, and no filterBy names a filter
   // the report no longer has — the two invariants validateReportSpec enforces.

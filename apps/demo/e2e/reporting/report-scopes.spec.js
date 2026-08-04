@@ -264,7 +264,7 @@ test.describe("list-reports scopes", () => {
     expect(own.filter_count).toBe(1);
   });
 
-  test("an unauthenticated caller is rejected", async ({ ldf, page }) => {
+  test("an unauthenticated caller gets no reports", async ({ ldf, page }) => {
     await ldf.user();
 
     const { body } = await callEndpoint(page, "list-reports", {
@@ -272,10 +272,18 @@ test.describe("list-reports scopes", () => {
     });
 
     // Every scope's readable half is "an authenticated user", so an anonymous
-    // caller has no scope to be in. Returning an empty list instead would read
-    // as "you have no reports" rather than "sign in".
-    expect(body.success).toBe(false);
-    expect(body.status).toBe("reject");
+    // caller has no scope to be in — and it never reaches the routine's own
+    // signed-in guard to say so. Without a session the endpoint is not in the
+    // caller's config at all, so the server answers `API Endpoint
+    // "reporting/list-reports" does not exist` before any routine runs.
+    //
+    // Asserted as "did not succeed and returned no rows" rather than as a
+    // specific error shape: which of the two mechanisms refuses an anonymous
+    // caller is the framework's business, and pinning the message here would
+    // make this spec fail on an unrelated auth-config change. What must hold is
+    // that no reports come back.
+    expect(body?.success).not.toBe(true);
+    expect(body?.response?.reports ?? []).toEqual([]);
   });
 
   test("an unrecognised or absent scope is rejected, not defaulted", async ({

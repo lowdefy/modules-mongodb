@@ -22,9 +22,13 @@ import {
 // "B cannot open it" assertion here would pass whether the model worked or not,
 // so it is not made. The scopes are endpoint-driven and mean what they say.
 
-async function scopeTitles(page, scope) {
-  const { body } = await callEndpoint(page, "list-reports", { scope });
-  return (body?.response?.reports ?? []).map((r) => r.title).sort();
+// Membership is asserted by id, never by title. `duplicate-report` copies the
+// title verbatim, so once B has a copy the original and the copy are
+// indistinguishable by name — a title-based assertion then reads B's own copy as
+// the original still being visible, and fails on a leak that isn't there.
+async function scopeIds(page, scope) {
+  const { response } = await callEndpoint(page, "list-reports", { scope });
+  return (response?.reports ?? []).map((r) => r._id).sort();
 }
 
 async function readReport(mdb, id) {
@@ -47,11 +51,11 @@ test("a report's whole publish life cycle, across two users", async ({
   // A's report is A's alone. B cannot see it in any scope, including `all` —
   // which is the scope that would leak if the readable predicate were wrong.
   await ldf.user(USER_B);
-  expect(await scopeTitles(page, "shared")).not.toContain(TITLE);
-  expect(await scopeTitles(page, "all")).not.toContain(TITLE);
+  expect(await scopeIds(page, "shared")).not.toContain("lifecycle");
+  expect(await scopeIds(page, "all")).not.toContain("lifecycle");
 
   await ldf.user(USER_A);
-  expect(await scopeTitles(page, "mine")).toContain(TITLE);
+  expect(await scopeIds(page, "mine")).toContain("lifecycle");
 
   // ── Act 2: published ───────────────────────────────────────────────────────
   // A holds a share_roles role, so A may publish A's own report.
@@ -59,23 +63,23 @@ test("a report's whole publish life cycle, across two users", async ({
     report_id: "lifecycle",
     visibility: "shared",
   });
-  expect(published.body).toMatchObject({ ok: true, modifiedCount: 1 });
+  expect(published.response).toMatchObject({ ok: true, modifiedCount: 1 });
 
   // Publishing does not remove a report from Mine — it is in both.
-  expect(await scopeTitles(page, "mine")).toContain(TITLE);
-  expect(await scopeTitles(page, "shared")).toContain(TITLE);
+  expect(await scopeIds(page, "mine")).toContain("lifecycle");
+  expect(await scopeIds(page, "shared")).toContain("lifecycle");
 
   // ── Act 3: visible to B, and actionable within limits ──────────────────────
   await ldf.user(USER_B);
-  expect(await scopeTitles(page, "shared")).toContain(TITLE);
-  expect(await scopeTitles(page, "all")).toContain(TITLE);
+  expect(await scopeIds(page, "shared")).toContain("lifecycle");
+  expect(await scopeIds(page, "all")).toContain("lifecycle");
 
   // B is not the owner, and the list says so — that flag is what makes the page
   // hide the edit actions.
-  const { body: listed } = await callEndpoint(page, "list-reports", {
+  const { response: listed } = await callEndpoint(page, "list-reports", {
     scope: "shared",
   });
-  const row = listed.response.reports.find((r) => r.title === TITLE);
+  const row = listed.reports.find((r) => r.title === TITLE);
   expect(row.is_owner).toBe(false);
   expect(row.visibility).toBe("shared");
   // Never leaked, whatever the scope: who else favourited a report.
@@ -86,9 +90,11 @@ test("a report's whole publish life cycle, across two users", async ({
     report_id: "lifecycle",
     favourite: true,
   });
-  expect((await readReport(mdb, "lifecycle")).favourite_of).toContain(USER_B.id);
+  expect((await readReport(mdb, "lifecycle")).favourite_of).toContain(
+    USER_B.id,
+  );
 
-  const { body: copy } = await callEndpoint(page, "duplicate-report", {
+  const { response: copy } = await callEndpoint(page, "duplicate-report", {
     report_id: "lifecycle",
   });
   expect(copy).toMatchObject({ ok: true });
@@ -101,23 +107,23 @@ test("a report's whole publish life cycle, across two users", async ({
     report_id: "lifecycle",
     title: "Renamed by a stranger",
   });
-  expect(rename.body).toMatchObject({ modifiedCount: 0 });
+  expect(rename.response).toMatchObject({ modifiedCount: 0 });
 
   const remove = await callEndpoint(page, "delete-report", {
     report_id: "lifecycle",
   });
-  expect(remove.body).toMatchObject({ deletedCount: 0 });
+  expect(remove.response).toMatchObject({ deletedCount: 0 });
 
   const restore = await callEndpoint(page, "restore-report", {
     report_id: "lifecycle",
   });
-  expect(restore.body).toMatchObject({ modifiedCount: 0 });
+  expect(restore.response).toMatchObject({ modifiedCount: 0 });
 
   const dropSection = await callEndpoint(page, "remove-report-section", {
     report_id: "lifecycle",
     section_id: "s4",
   });
-  expect(dropSection.body).toMatchObject({ success: false, status: "reject" });
+  expect(dropSection.rejected).toBe(true);
 
   const untouched = await readReport(mdb, "lifecycle");
   expect(untouched.title).toBe(TITLE);
@@ -130,11 +136,11 @@ test("a report's whole publish life cycle, across two users", async ({
     report_id: "lifecycle",
     visibility: "private",
   });
-  expect(retracted.body).toMatchObject({ ok: true, modifiedCount: 1 });
+  expect(retracted.response).toMatchObject({ ok: true, modifiedCount: 1 });
 
   await ldf.user(USER_B);
-  expect(await scopeTitles(page, "shared")).not.toContain(TITLE);
-  expect(await scopeTitles(page, "all")).not.toContain(TITLE);
+  expect(await scopeIds(page, "shared")).not.toContain("lifecycle");
+  expect(await scopeIds(page, "all")).not.toContain("lifecycle");
 
   // B's star SURVIVES in the document but goes dormant, because the favourites
   // scope carries the readable predicate as well as the marker. A favourite is
@@ -142,7 +148,7 @@ test("a report's whole publish life cycle, across two users", async ({
   expect((await readReport(mdb, "lifecycle")).favourite_of).toContain(
     USER_B.id,
   );
-  expect(await scopeTitles(page, "favourites")).not.toContain(TITLE);
+  expect(await scopeIds(page, "favourites")).not.toContain("lifecycle");
 
   // ── Act 5: B's copy is unaffected by any of it ─────────────────────────────
   // This is what "duplicate is the escape hatch" means once the original is
@@ -151,7 +157,7 @@ test("a report's whole publish life cycle, across two users", async ({
   expect(kept.owner).toEqual({ user_id: USER_B.id, name: USER_B.name });
   expect(kept.visibility).toBe("private");
   expect(kept.deleted).toBeNull();
-  expect(await scopeTitles(page, "mine")).toContain(kept.title);
+  expect(await scopeIds(page, "mine")).toContain(copyId);
 });
 
 test("deleting a published report drops it from everyone's Shared scope", async ({
@@ -173,42 +179,32 @@ test("deleting a published report drops it from everyone's Shared scope", async 
   ]);
 
   await ldf.user(USER_B);
-  expect(await scopeTitles(page, "shared")).toContain("Published then deleted");
+  expect(await scopeIds(page, "shared")).toContain("lifecycle-delete");
 
   await ldf.user(USER_A);
-  const { body } = await callEndpoint(page, "delete-report", {
+  const { response } = await callEndpoint(page, "delete-report", {
     report_id: "lifecycle-delete",
   });
-  expect(body).toMatchObject({ ok: true, deletedCount: 1 });
+  expect(response).toMatchObject({ ok: true, deletedCount: 1 });
 
   // Gone for the audience it was published to...
   await ldf.user(USER_B);
-  expect(await scopeTitles(page, "shared")).not.toContain(
-    "Published then deleted",
-  );
-  expect(await scopeTitles(page, "all")).not.toContain(
-    "Published then deleted",
-  );
+  expect(await scopeIds(page, "shared")).not.toContain("lifecycle-delete");
+  expect(await scopeIds(page, "all")).not.toContain("lifecycle-delete");
 
   // ...and gone from the owner's live list, but recoverable — the stamp is a
   // filter, not an erasure. Nothing in this module hard-deletes.
   await ldf.user(USER_A);
-  expect(await scopeTitles(page, "mine")).not.toContain(
-    "Published then deleted",
-  );
-  expect(await scopeTitles(page, "deleted")).toContain(
-    "Published then deleted",
-  );
+  expect(await scopeIds(page, "mine")).not.toContain("lifecycle-delete");
+  expect(await scopeIds(page, "deleted")).toContain("lifecycle-delete");
 
   const restored = await callEndpoint(page, "restore-report", {
     report_id: "lifecycle-delete",
   });
-  expect(restored.body).toMatchObject({ ok: true, modifiedCount: 1 });
+  expect(restored.response).toMatchObject({ ok: true, modifiedCount: 1 });
 
   // Restore returns it to private, so it does NOT go back in front of the app.
-  expect(await scopeTitles(page, "mine")).toContain("Published then deleted");
+  expect(await scopeIds(page, "mine")).toContain("lifecycle-delete");
   await ldf.user(USER_B);
-  expect(await scopeTitles(page, "shared")).not.toContain(
-    "Published then deleted",
-  );
+  expect(await scopeIds(page, "shared")).not.toContain("lifecycle-delete");
 });

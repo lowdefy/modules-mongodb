@@ -34,13 +34,12 @@ test("the owner renames their report and the change is stamped", async ({
   const before = await readReport(mdb, "e2e-rename");
 
   await ldf.user(USER_A);
-  const { status, body } = await callEndpoint(page, "set-report-title", {
+  const { response } = await callEndpoint(page, "set-report-title", {
     report_id: "e2e-rename",
     title: "After",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true, modifiedCount: 1 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 1 });
 
   const after = await readReport(mdb, "e2e-rename");
   expect(after.title).toBe("After");
@@ -85,13 +84,12 @@ test("a non-owner cannot rename a report they can read", async ({
   ]);
 
   await ldf.user(USER_B);
-  const { status, body } = await callEndpoint(page, "set-report-title", {
+  const { response } = await callEndpoint(page, "set-report-title", {
     report_id: "e2e-rename-shared",
     title: "Renamed by a stranger",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true, modifiedCount: 0 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 0 });
   expect((await readReport(mdb, "e2e-rename-shared")).title).toBe(
     "Not yours to rename",
   );
@@ -104,20 +102,24 @@ test("an empty or over-cap title is rejected", async ({ ldf, page, mdb }) => {
   await ldf.user(USER_A);
 
   for (const title of ["", "x".repeat(201), null, 7]) {
-    const { body } = await callEndpoint(page, "set-report-title", {
-      report_id: "e2e-rename-invalid",
-      title,
-    });
-    expect(body).toMatchObject({ success: false, status: "reject" });
+    const { body, response, rejected } = await callEndpoint(
+      page,
+      "set-report-title",
+      {
+        report_id: "e2e-rename-invalid",
+        title,
+      },
+    );
+    expect(rejected).toBe(true);
   }
 
   // The cap is MAX_LABEL_LENGTH, so exactly 200 is accepted — a rename that
   // rejected what the validator accepts would be a different bug.
-  const { body } = await callEndpoint(page, "set-report-title", {
+  const { response } = await callEndpoint(page, "set-report-title", {
     report_id: "e2e-rename-invalid",
     title: "x".repeat(200),
   });
-  expect(body).toMatchObject({ ok: true, modifiedCount: 1 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 1 });
 });
 
 test("the owner restores a deleted report, and it comes back private", async ({
@@ -138,12 +140,11 @@ test("the owner restores a deleted report, and it comes back private", async ({
   ]);
 
   await ldf.user(USER_A);
-  const { status, body } = await callEndpoint(page, "restore-report", {
+  const { response } = await callEndpoint(page, "restore-report", {
     report_id: "e2e-restore",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true, modifiedCount: 1 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 1 });
 
   const after = await readReport(mdb, "e2e-restore");
   expect(after.deleted).toBeNull();
@@ -190,12 +191,11 @@ test("a non-owner cannot restore, and holding the share role does not help", asy
   ]);
 
   await ldf.user(USER_A);
-  const { status, body } = await callEndpoint(page, "restore-report", {
+  const { response } = await callEndpoint(page, "restore-report", {
     report_id: "e2e-restore-other",
   });
 
-  expect(status).toBe(200);
-  expect(body).toMatchObject({ ok: true, modifiedCount: 0 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 0 });
   expect((await readReport(mdb, "e2e-restore-other")).deleted).not.toBeNull();
 });
 
@@ -212,10 +212,10 @@ test("restoring a live report is a no-op", async ({ ldf, page, mdb }) => {
   ]);
 
   await ldf.user(USER_A);
-  const { body } = await callEndpoint(page, "restore-report", {
+  const { response } = await callEndpoint(page, "restore-report", {
     report_id: "e2e-restore-live",
   });
 
-  expect(body).toMatchObject({ ok: true, modifiedCount: 0 });
+  expect(response).toMatchObject({ ok: true, modifiedCount: 0 });
   expect((await readReport(mdb, "e2e-restore-live")).visibility).toBe("shared");
 });
