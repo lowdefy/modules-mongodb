@@ -80,10 +80,10 @@ auth:
   # verify-email, …) and public pages (two-factor, logout) via its manifest, so
   # they are NOT repeated in `pages.public` below; app config would win on
   # collision.
-  # Pinned-org policy (design Decision 1): one deployment = one pinned org.
-  # The engine ensures this org by slug at startup; the user-admin module's
-  # native reads $match on it via `_organization: id`, and org-scoped admin
-  # steps default their organizationId to it.
+  # Pinned-org policy: this app's own organization, ensured by slug at startup
+  # with its id set to that slug. A user-admin instance names the organization it
+  # administers through its own `org_slug` var, so the instance administering this
+  # one repeats the value below rather than inheriting it.
   organizations:
     policy: pinned
     org: demo
