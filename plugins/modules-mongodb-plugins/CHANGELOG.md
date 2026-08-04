@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.24.0
+
 ## 0.23.1
 
 ## 0.23.0

@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-deals
 
+## 0.24.0
+
 ## 0.23.1
 
 ### Patch Changes
