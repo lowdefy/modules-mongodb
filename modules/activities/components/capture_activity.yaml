@@ -16,12 +16,10 @@
 #                   over the module's own seeded defaults (today's date, a
 #                   45 min duration, Sent direction) with consumer values
 #                   winning, so a consumer can override a default or add
-#                   new keys. Page mode carries only `type`, `title`,
-#                   `contacts`, `company_ids` in urlQuery — it drops
-#                   `description` (see design.md / decisions.md §8) and
-#                   also drops `attributes`/`references`, since those are
-#                   seeded in the modal's onOpen and so apply in modal
-#                   mode only.
+#                   new keys. Page mode carries every key except
+#                   `description` in urlQuery (see design.md /
+#                   decisions.md §8), and the new page merges `attributes`
+#                   over its own defaults the same way.
 #   label         — button text. Default "Log activity".
 #   icon          — button icon. Default `AiOutlinePlus`.
 #   button_type   — `primary | default | link | text`. Default `primary`.
@@ -101,6 +99,10 @@ blocks:
                         _var: prefill.contacts
                       company_ids:
                         _var: prefill.company_ids
+                      attributes:
+                        _var: prefill.attributes
+                      references:
+                        _var: prefill.references
               else:
                 - id: open_modal
                   type: CallMethod
