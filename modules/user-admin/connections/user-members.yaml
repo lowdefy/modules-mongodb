@@ -3,6 +3,7 @@
 # precondition applies (see module.lowdefy.yaml).
 id: user-members
 type: MongoDBCollection
+tenant: shared # the switcher reads the caller's memberships across organizations; per-organization reads filter explicitly
 properties:
   databaseUri:
     _secret: MONGODB_URI

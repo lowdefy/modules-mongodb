@@ -3,6 +3,7 @@
 # precondition applies (see module.lowdefy.yaml).
 id: user-invitations
 type: MongoDBCollection
+tenant: shared # an invitation is read before the invitee holds a membership, so no caller organization resolves
 properties:
   databaseUri:
     _secret: MONGODB_URI

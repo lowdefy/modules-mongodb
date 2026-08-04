@@ -30,10 +30,11 @@ import getMongoDb from "../../mongo/getMongoDb.js";
  * every log-changes entry.
  *
  * `tenant` is the framework's resolved tenant verdict `{ field, value }` —
- * present on every resolver call when the connection declares `tenant: true`
- * (the framework rejects org-less callers BEFORE the resolver runs, so a
- * non-null verdict always carries a value); null when the connection has no
- * tenant declaration or the request opted out. The engine threads it into
+ * present on every resolver call when the connection is scoped (policy:
+ * tenant, and the connection does not declare `tenant: shared`; the framework
+ * rejects org-less callers BEFORE the resolver runs, so a non-null verdict
+ * always carries a value); null under pinned, on a shared connection, or when
+ * the request opted out. The engine threads it into
  * every `mongo/` wrapper call so all reads are org-scoped and all writes are
  * org-stamped (tenant-wall contract).
  *

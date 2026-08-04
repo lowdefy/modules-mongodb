@@ -1,8 +1,9 @@
 /**
  * Tenant-wall primitives for the engine's mongo wrappers (framework tenant
- * contract). A connection that declares `tenant: true` receives a resolved
- * verdict `{ field, value }` on every resolver call (null when the connection
- * has no tenant declaration or the request opted out). These two functions are
+ * contract). A scoped connection receives a resolved verdict
+ * `{ field, value }` on every resolver call (null under the pinned policy, on
+ * a `tenant: shared` connection, or when the request opted out with
+ * `tenant: none`). These two functions are
  * the single place the verdict becomes a query clause or a doc stamp, so every
  * wrapper enforces the wall identically ("one correct way") — no wrapper
  * re-implements the merge.

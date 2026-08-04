@@ -12,9 +12,11 @@ connection**, and a module connection declares only its exception to that defaul
 policy-conditional-wall's proposed change 2 ("module connection declarations do not
 change"). **Amends**: the collection inventory in both.
 
-**Status**: proposed. Depends on the framework amendment
-`auth-upgrade/mongodb-data-scoping/amendment-3-declare-shared`, which is unmerged. No
-deployment carries `policy: tenant`, so nothing in this repo is live under either rule.
+**Status**: implemented, alongside the framework amendment
+`auth-upgrade/mongodb-data-scoping/amendment-3-declare-shared` on
+`feat/mongodb-tenant-wall` (unreleased — the repo's demo builds pick it up with the
+next experimental release). No deployment carries `policy: tenant`, so nothing in this
+repo is live under either rule.
 
 ## Proposed change
 
@@ -103,12 +105,14 @@ the organization switcher shows only the organization the caller is already in, 
 makes switching impossible. This is the one behaviour that breaks if the exception set is
 wrong, so it is worth a test rather than a comment.
 
-**Open, and settled upstream, not here**: whether the framework recognises the auth
-adapter's collections and exempts them without a declaration. If it does, this table
-shrinks to `user-members`, `user-organizations`, `user-invitations` and
-`user-contacts-system` — the four that are interesting — and the ten identical
-auth-collection lines disappear. That question belongs to the amendment; this design
-assumes the explicit form and gets shorter if the answer is yes.
+**Settled upstream, in the framework amendment's Migration section: the framework does
+not recognise the adapter's collections, and the exceptions stay explicit.** There is no
+sound build-time key to exempt on — connection properties are operator-composed
+(`_secret: MONGODB_URI`), so a match degrades to collection *names*, which would silently
+exempt any app collection sharing one — and a carve-out would reintroduce an invisible
+path out of the wall beside `tenant: shared`, the one visible path the inversion leaves.
+The table above is the final form: all sixteen exceptions are declared in the connection
+files.
 
 ### 3. Plugin connection types declare their capability
 

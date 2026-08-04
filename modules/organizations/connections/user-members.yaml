@@ -2,14 +2,15 @@
 # Adapter-fixed collection name (mongodb Decision 2). Same-database co-location
 # precondition applies (see module.lowdefy.yaml).
 #
-# Deliberately UNWALLED: the auth collections are engine-owned and carry no
-# tenant stamp of their own, so every read here scopes itself explicitly on
+# Deliberately shared (tenant: shared): the auth collections are engine-owned
+# and carry no tenant stamp of their own, so every read here scopes itself on
 # `organizationId: { _user: organizationId }` (the shared org stages do exactly
 # that). The one read that does not — the caller's own membership list for the
 # switcher — is scoped by `userId: { _user: id }` instead, which is the caller's
 # own row set by definition.
 id: user-members
 type: MongoDBCollection
+tenant: shared # the switcher reads the caller's memberships across organizations; per-organization reads filter explicitly
 properties:
   databaseUri:
     _secret: MONGODB_URI

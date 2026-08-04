@@ -1,8 +1,5 @@
 id: workflow-api
 type: WorkflowAPI
-# Tenant wall: every engine read and write (workflows, actions, change log)
-# is scoped to the caller's organization; written docs are stamped.
-tenant: true
 properties:
   databaseUri:
     _secret: MONGODB_URI

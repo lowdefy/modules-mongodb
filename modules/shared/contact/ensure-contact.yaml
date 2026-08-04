@@ -41,7 +41,7 @@
 #                     unlinked and resolve-own-contact claims it on that person's
 #                     first own-contact resolution.
 #   organization_id — optional; explicit organization for system-context callers
-#                     writing through an UNWALLED connection (Decision 7). When
+#                     writing through a shared connection (Decision 7). When
 #                     set, it joins the upsert filter and read query, so the
 #                     match key is the compound-unique {organizationId,
 #                     lowercase_email} tuple and MongoDB carries the equality

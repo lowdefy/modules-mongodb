@@ -4,6 +4,7 @@
 # engine steps, never this connection.
 id: users
 type: MongoDBCollection
+tenant: shared # a user is one person platform-wide; the row carries no organization under either policy
 properties:
   databaseUri:
     _secret: MONGODB_URI

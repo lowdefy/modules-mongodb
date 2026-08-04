@@ -4,6 +4,7 @@
 # module.lowdefy.yaml).
 id: user-passkeys
 type: MongoDBCollection
+tenant: shared # credentials belong to the global user
 properties:
   databaseUri:
     _secret: MONGODB_URI

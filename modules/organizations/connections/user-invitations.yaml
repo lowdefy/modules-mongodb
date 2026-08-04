@@ -3,11 +3,12 @@
 # Adapter-fixed collection name (mongodb Decision 2). Same-database co-location
 # precondition applies (see module.lowdefy.yaml).
 #
-# Deliberately UNWALLED (see user-members.yaml): the shared invitations stages
+# Deliberately shared (see user-members.yaml): the shared invitations stages
 # scope the read on `organizationId: { _user: organizationId }`. Invitations are
 # created and cancelled through the client actions, never written here.
 id: user-invitations
 type: MongoDBCollection
+tenant: shared # an invitation is read before the invitee holds a membership, so no caller organization resolves
 properties:
   databaseUri:
     _secret: MONGODB_URI

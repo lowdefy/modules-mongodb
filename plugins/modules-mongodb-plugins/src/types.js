@@ -9,9 +9,10 @@ export default {
   actions: Object.keys(actions),
   operators: {},
   connections: Object.keys(connections),
-  // Build-side tenant contract declaration: the build only allows `tenant:` on
-  // a connection whose type declares support here (the runtime half is the
-  // `meta: { tenant: true }` on each connection's export).
+  // Build-side tenant capability declaration: these types implement the
+  // scoping contract, so under auth.organizations.policy: tenant their
+  // connections are scoped by default and may declare `tenant: shared` (the
+  // runtime half is the `meta: { tenant: true }` on each connection's export).
   connectionMetas: {
     EventsTimeline: { tenant: true },
     WorkflowAPI: { tenant: true },

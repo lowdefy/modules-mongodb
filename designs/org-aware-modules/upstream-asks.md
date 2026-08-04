@@ -141,9 +141,18 @@ rebuild, so the guard fires there, before any traffic.
 
 ## 8. Invert the default: declare what is shared, not what is scoped
 
-> **Raised as a framework amendment** —
-> `auth-upgrade/mongodb-data-scoping/amendment-3-declare-shared`. Modules-side plan:
-> [declare-shared-connections](../declare-shared-connections/design.md).
+> **Resolved (2026-08-04).** Landed on `feat/mongodb-tenant-wall` (rides the next
+> experimental release), per the framework amendment
+> `auth-upgrade/mongodb-data-scoping/amendment-3-declare-shared`. Modules-side:
+> [declare-shared-connections](../declare-shared-connections/design.md) —
+> implemented in the same change (16 `tenant: true` deleted, 16 `tenant: shared`
+> exceptions declared with reasons). The amendment's open question — whether the
+> framework auto-exempts the auth adapter's collections — is settled **no**: the
+> framework has no sound build-time key to exempt on, and a carve-out would
+> reintroduce an invisible path out of the wall; the exceptions stay explicit.
+> Connection types now declare tenancy capability (`connectionMetas`
+> `tenant: true` / `tenant: false`); a type declaring neither is a build error
+> under `policy: tenant`.
 > **Subsumes ask 6**: with `tenant: true` deleted rather than renamed, the
 > misreading that ask describes has nothing left to attach to.
 

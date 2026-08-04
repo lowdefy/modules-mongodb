@@ -4,11 +4,12 @@
 # Adapter-fixed collection name (mongodb Decision 2). Same-database co-location
 # precondition applies (see module.lowdefy.yaml).
 #
-# Deliberately UNWALLED (see user-members.yaml): reads scope themselves on the
+# Deliberately shared (see user-members.yaml): reads scope themselves on the
 # organization ids the caller demonstrably belongs to. Renames go through the
 # UpdateOrganization client action, never through this connection.
 id: user-organizations
 type: MongoDBCollection
+tenant: shared # the switcher lists every organization the caller belongs to; scoped, it collapses to the active one
 properties:
   databaseUri:
     _secret: MONGODB_URI
