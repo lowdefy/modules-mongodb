@@ -188,7 +188,7 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 
 - [x] **Profile** tile edit (admin editing the target) → write-profile → **target's** `users.profile` re-denormed (Verify in Compass) — confirmed: `job_title`/honorific `title` written to `user-contacts.profile` + re-denormed to `users.profile`; change stamp now carries `updated.user {name, id}`. (Self-edit here since admin is the only user; target = admin. Form UX → **F27**.)
 - [x] **Attributes** tile: roles from the catalog (labels + descriptions in the picker); save → `UpdateMemberRoles` + `UpdateMemberAttributes` — confirmed: role `manager` added (`user-members.role: "user-admin,manager"`) and `attributes.team: "beta"` written
-- [~] **Orphaned role** (in `member.role` but not in the catalog) → shown as a flagged "no longer configured" chip, removable, never silently stripped — **display** confirmed (card chip renders); **edit** broken → **F29**: selector shows a label-less tag, and saving with the orphaned role throws `ROLE_NOT_FOUND` (uninformative; conflicts with "removable, never silently stripped")
+- [~] **Orphaned role** (in `member.appRoles` but not in the catalog) → shown as a flagged "no longer configured" chip, removable, never silently stripped — **display** confirmed (card chip renders); **edit** broken → **F29**: selector shows a label-less tag, and saving with the orphaned role throws `ROLE_NOT_FOUND` (uninformative; conflicts with "removable, never silently stripped")
 - [x] **Global attributes** tile → `UpdateUserAttributes` — confirmed: `users.attributes.notes` written
 - [ ] **Security** tile: sessions (token projected out), "sign out everywhere" (`RevokeUserSessions`); auth methods read-only (linked providers, passkey count, MFA, email-verified)
 - [ ] **Suspend** (`BanUser`) → `users.banned: true`, sessions revoked, status → Suspended; blast-radius dialog enumerates other memberships (when any exist)
@@ -198,7 +198,7 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 - [ ] **Delete login identity** (`DeleteUser`) — available **only** when the user has no other memberships; user row hard-deleted, contact survives
 - [x] **Apps** tile: cross-app badges from other memberships; **hidden** when the user belongs only to this app — confirmed hidden (single-app membership)
 - [ ] **Activity** tile: event timeline renders module audit events — **empty despite events existing** (8 `log-events`, 4 matching the target); read-side schema mismatch → **F28**
-- [x] Impersonation **off** by default (`impersonation: false`) — confirmed off; (enabled-path `ImpersonateUser` not exercised)
+- [ ] **Organization authority** (Attributes tile, behind `org_authority`, default on): its own selector and its own submit → `UpdateMemberOrgRole` writes `user-members.role` (`owner` / `admin` / `member`); revoking writes `member`, not an empty value; demoting the organization's sole owner is refused with the plugin's own message. **Verify in Compass**
 
 ---
 
@@ -207,7 +207,7 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 - [ ] **Freshness across modules**: admin edits a target's profile → the target's **next request** shows the fresh header/avatar (re-denorm on the target's `users` row; no target-side `UpdateSession` needed)
 - [ ] **Contact uniqueness**: a signup and an invite racing on the same email yield **one** `user-contacts` row (partial-unique `lowercase_email` reconcile) — not two
 - [ ] **Co-location (negative)**: temporarily point one module connection at a different DB → contact data goes **blank everywhere** (the silent `$lookup` failure); then revert
-- [ ] **Endpoint gate**: a non-admin caller hitting a `user-admin/*` routine is rejected (`auth.api.roles` + the `userAdminRole` step-floor)
+- [ ] **Endpoint gate**: a caller without the instance's gate role hitting a `user-admin/**` routine is rejected by the app's own `auth.api.roles`; a caller who holds the gate role but not `admin` in the administered organization is rejected by the step's per-organization floor
 - [ ] **Change stamps**: every contact write carries `created`/`updated` stamps (Verify in Compass)
 
 ### Required-field validation — `Validate` scoping _(landed 2026-07-31)_

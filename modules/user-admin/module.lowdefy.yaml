@@ -64,10 +64,17 @@ vars:
     description: >-
       Gates the organization-authority control on the access modal — promoting a
       member to `admin` or `owner` in the administered organization, or revoking
-      them back to `member` (the no-authority value) — and the matching `orgRole`
-      field on the invite form. Holding `admin` in an organization is what lets a
-      person administer it, so this control is how a deployment grants that. Set
-      false in a deployment where org authority is granted out of band.
+      them back to `member` (the no-authority value; there is no empty tier and
+      the write refuses one) — and the matching `orgRole` field on the invite
+      form. Holding `admin` in an organization is what lets a person administer
+      it, so this control is how a deployment grants that. Set false in a
+      deployment where org authority is granted out of band.
+
+      Gates the UI only: the `update-org-role` endpoint stays registered and
+      callable either way, so false means "no admin surface for granting
+      authority", not "nobody can write the tier". (`suspension` is stronger — it
+      also makes its routines reject.) The write is still floored by the engine
+      against the caller's member row in the administered organization.
   suspension:
     type: boolean
     default: true

@@ -20,13 +20,12 @@ build error.
 | ----------------------- | ------------------- | -------------------------------------------------------- |
 | `_id`                   | string              | member id                                                |
 | `userId`                | string              | auth user id                                             |
-| `organizationId`        | string              | the pinned org                                           |
-| `role`                  | string              | raw CSV role ids                                         |
+| `organizationId`        | string              | the organization named by `org_slug`                     |
 | `name`                  | string              | `contact.profile.name` ?? `user.name`                    |
 | `email`                 | string              | `user.email`                                             |
 | `picture`               | string \| null      | `contact.profile.picture`                                |
-| `roles_arr`             | string[]            | split role ids                                           |
-| `roles`                 | `{label, orphan}[]` | resolved against the app's role catalog                  |
+| `roles_arr`             | string[]            | the member's app-role ids — alias of stored `appRoles`   |
+| `roles`                 | `{label, orphan}[]` | `appRoles` resolved against the app's role catalog       |
 | `status`                | string              | `Active` / `Suspended`                                   |
 | `created` / `updated`   | date \| null        | contact change-stamp timestamps                          |
 | `signed_up`             | date                | member `createdAt`                                       |
@@ -63,6 +62,34 @@ components:
       width: 20
 ```
 
+## The two role keys, and the organization tier
+
+The row publishes the member's **app roles** twice, both fed from the stored
+`member.appRoles` array — a native `string[]` of catalog role ids:
+
+- **`roles_arr`** — the ids as stored. Nothing inside the module reads it; it exists
+  for consumer column bindings, so it is yours to bind and it keeps its name.
+- **`roles`** — the same ids resolved against the app's authored `auth.roles` catalog
+  into `{ label, orphan }` objects. `orphan: true` marks an id held in data but no
+  longer in the catalog.
+
+Both keys exist on every row (`$ifNull` to `[]`), so a blank Roles column is always a
+data question, never a shape question.
+
+`member.role` is a **different fact**: BetterAuth's `owner` / `admin` / `member`
+organization-authority tier, which decides who may administer the organization. It is
+not an app role and not a display column, so **it does not ship on the row** — the
+last stage of every read `$unset`s both `role` and `appRoles`. The **user detail read
+alone** publishes the tier under its own name, **`org_role`** (`member` when unset),
+because the detail page's access modal binds it. `org_role` is not on the Members list
+row, not on the Invitations row, and not in the export.
+
+> **Breaking change.** A `table_columns` `field: role` or a `download_columns`
+> `value: role` **blanks** — silently, like any path outside the contract. Bind
+> `roles_arr` for the ids or `roles` for the resolved labels. This is the only
+> wire-visible break in the members row: `roles_arr` kept its name and its meaning
+> precisely so a column bound to the app roles needed no change.
+
 ## A bag column renders the stored value
 
 The row carries what the form wrote. An enum-backed field — a `Selector` over
@@ -79,8 +106,9 @@ including the slug→label renderer on the Team column.
 The export merges member and pending-invitation rows into one sheet, so three keys
 differ from the table above:
 
-- **`roles`** is the stored role ids joined by `", "`, not the `{label, orphan}[]`
-  catalog objects — a spreadsheet cell can't hold the array.
+- **`roles`** is the stored `appRoles` ids joined by `", "`, not the `{label, orphan}[]`
+  catalog objects — a spreadsheet cell can't hold the array. `roles_arr` still carries
+  the array itself on both branches.
 - **`expires`** is added: the invitation expiry, `null` on member rows.
 - **`picture`** is dropped. It holds an ~800-character `data:` URI SVG and the export
   fetches every row at once, so it is stripped rather than repeated per row.
@@ -96,8 +124,9 @@ part of this contract.
 
 The row is deliberately closed: the raw `$lookup` payloads (`user`, `contact`,
 `passkeys`, `inviter`) are stripped before the row reaches the browser, as are the
-stored fields that already ship under a canonical alias (`attributes`, `createdAt`,
-`expiresAt`, `profile.picture`).
+stored fields that already ship under a canonical alias (`appRoles`, `attributes`,
+`createdAt`, `expiresAt`, `profile.picture`) and the one the contract deliberately does
+not publish (`role`, the organization tier).
 
 For a column the three bags don't cover, use
 [`request_stages.get_all_users`](vars.md) to lift the value to a top-level key. That
