@@ -292,7 +292,6 @@ Read the relevant guide **before** writing code for that topic. They live under
 | Deciding where new files go and naming them                  | `apps/demo/.claude/guides/file-structure.md` |
 | Authoring, wiring, or extending a Lowdefy module             | `apps/demo/.claude/guides/modules.md`        |
 
-## Skills
-
-- `/lowdefy-modules` — Module structure, manifests, operators, cross-module refs.
-- `/add-guide` — Discover a pattern in the codebase and create a new guide.
+This branch ships **no repo-level skills** — there is no `.claude/skills/`. Module
+and operator questions are answered by the guides above; anything else comes from
+skills the plugin layer provides, which are listed at runtime rather than here.
