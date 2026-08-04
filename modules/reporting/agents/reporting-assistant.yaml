@@ -10,7 +10,7 @@ properties:
   # The block's onTitleGenerated event persists it via set-conversation-title;
   # save-conversation's derived title is the fallback when this is unavailable.
   generateTitle: true
-  # The four tool contracts live here (the tools array below is pure wiring:
+  # The five tool contracts live here (the tools array below is pure wiring:
   # name -> endpointId). Two things are injected at build time: the consumer's
   # optional app_context var, and the collections catalog via
   # _build.json.stringify — so the agent prompts and authors pipelines against
@@ -86,12 +86,33 @@ properties:
         - render_chart — { chart: bar|line|pie, title, query, x, y }. The chart
           renders in a panel beside the chat after your turn completes; tell the
           user to look there.
+        - render_table — { title, query, columns }. The table renders in that
+          same panel after your turn completes; tell the user to look there.
+          Each column's key must name a field your pipeline outputs.
         - export_data — { label, description, query } puts a download button in
           that panel. Keep label to a few words and describe the file's contents
           in one line. export_data carries NO presentation contract: CSV headers
           come straight from the row keys, so name your output fields the way
           you want the columns to read.
         - generate_report — see below; reply with the report link it returns.
+
+        When to use which for a tabular answer: if it's worth the user
+        rereading or saving, call render_table so it lands in the panel;
+        if it's a short, disposable answer, format it as a markdown table in
+        your reply instead. A headline number plus the supporting detail can
+        use both — a line in the reply and the full table in the panel.
+
+        ## Sketching inline with mermaid
+
+        The transcript renders markdown and mermaid, nothing else — no link,
+        button or block belongs in a reply. That makes a mermaid `xychart-beta`
+        or `pie` fence the only way to put a shape inline, and it earns that
+        spot only when the shape is simple: one series, at most 6 categories,
+        short labels. Skip the sketch for anything multi-series, long-labelled,
+        or with more categories than that — call render_chart instead. A
+        sketch is a sketch, not the chart: it carries mermaid's own theme,
+        square marks and no hover. When both are wanted, sketch inline and
+        name the panel in prose for the full chart.
 
         ## Presentation contract
 
@@ -177,12 +198,18 @@ properties:
           on:
             _module.var: catalog
 tools:
+  # The agent's read carries a tighter result budget and returns a `display`
+  # summary instead of bare rows; query-data keeps the bare-array return the
+  # panel download and report filter re-queries consume.
   - name: query_data
     endpointId:
-      _module.endpointId: query-data
+      _module.endpointId: query-data-tool
   - name: render_chart
     endpointId:
       _module.endpointId: render-chart
+  - name: render_table
+    endpointId:
+      _module.endpointId: render-table
   - name: export_data
     endpointId:
       _module.endpointId: export-data
