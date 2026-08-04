@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Breaking:** the `admin_roles` var is removed — it gated nothing. Each instance
+is gated by the app itself, one glob per module entry per entity in the app's own
+`auth` block (`pages.roles` and `api.roles`: `user-admin/**`), naming a role
+declared in `auth.roles`. Writing those lines is a required install step: an
+ungated instance's endpoints resolve public in an app that declares no
+`auth.api.protected` or `auth.api.public` list.
+
 **Breaking:** the Security tile's "View as user" control and the `impersonation`
 var are removed. The engine no longer ships the `ImpersonateUser` /
 `StopImpersonating` client actions, so the control is unbuildable and the var

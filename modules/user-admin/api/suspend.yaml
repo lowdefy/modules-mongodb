@@ -3,8 +3,8 @@
 # it blocks sign-in across EVERY app in the suite and revokes sessions.
 #
 # Behind the `suspension` var (default true): when false, the routine is a bare
-# reject (the UI surface is also excluded — task 13). Role-gated app-side via
-# `auth.api.roles` (admin_roles var); BanUser additionally declares the permission
+# reject (the UI surface is also excluded — task 13). Role-gated app-side via the
+# app's own `auth.api.roles`; BanUser additionally declares the permission
 # it needs and the engine floors it against the caller's member row in the
 # organization the step names before it runs.
 #

@@ -58,17 +58,6 @@ vars:
     description: >-
       Optional display prefix (e.g., Team). When set: "Team User Admin",
       "Invite Team User". When not set: "User Admin", "Invite User".
-  admin_roles:
-    type: array
-    default:
-      - user-admin
-    description: >-
-      Catalog role id(s) that gate every routine endpoint's `auth.api.roles`
-      (design Decision 3). This is the "show me the UI" gate; it is not the
-      authority to write. Every auth-owned write is additionally floored by the
-      engine against the caller's member row in the organization the step names —
-      `org_slug`'s — so an app role alone changes nothing (defense in depth). Each
-      id must be a declared `auth.roles` catalog id.
   org_authority:
     type: boolean
     default: true

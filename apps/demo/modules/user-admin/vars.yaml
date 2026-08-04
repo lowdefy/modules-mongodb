@@ -5,8 +5,6 @@
 # The app's own `auth.organizations.org` — the organization the engine ensures at
 # startup, so this instance administers a slug that exists.
 org_slug: demo
-admin_roles:
-  - user-admin
 suspension: true
 download: true
 fields:

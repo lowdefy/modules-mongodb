@@ -78,7 +78,6 @@ auth:
   organizations:
     policy: pinned
     org: passwordless-demo
-  userAdminRole: user-admin
   roles:
     - id: user-admin
       label: User Admin
