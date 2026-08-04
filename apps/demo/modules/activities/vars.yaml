@@ -45,40 +45,44 @@ fields:
         type: TextInput
         properties:
           title: Site Reference
-      # Request-backed field: options come from `form_requests` below, so it
-      # only works on the full new/edit pages. Gate on activity_form_context
-      # == page to keep it out of the capture modal and the read-only view.
-      - id: attributes.deal_id
-        type: Selector
+      # This field *is* the deal link, so it must render in the capture modal — a
+      # `visible: false` there would delete the reference the host prefilled. Hence
+      # its own options request; `form_requests` are page-only. Not shown in the view.
+      - id: references.deal_ids
+        type: MultipleSelector
         visible:
-          _eq:
+          _ne:
             - _state: activity_form_context
-            - page
+            - view
+        requests:
+          - id: selector_deals_inline
+            type: MongoDBAggregation
+            connectionId:
+              _module.connectionId: { id: deals-collection, module: deals }
+            properties:
+              pipeline:
+                - $match:
+                    removed:
+                      $ne: true
+                - $project:
+                    _id: 0
+                    value: $_id
+                    label: $name
+                - $sort:
+                    label: 1
+        events:
+          onMount:
+            - id: fetch_deal_options
+              type: Request
+              params: selector_deals_inline
         properties:
           title: Related Deal
+          disabled:
+            _ne:
+              - _state: activity_form_context
+              - page
           options:
-            _request: selector_deals
-
-# Option source for the request-backed `attributes.deal_id` field above.
-# Spliced into the new/edit page request lists and fired on page init; not
-# added to the capture modal (a modal can't own page requests). Cross-module
-# reference to the deals module's collection.
-form_requests:
-  - id: selector_deals
-    type: MongoDBAggregation
-    connectionId:
-      _module.connectionId: { id: deals-collection, module: deals }
-    properties:
-      pipeline:
-        - $match:
-            removed:
-              $ne: true
-        - $project:
-            _id: 0
-            value: "$_id"
-            label: "$name"
-        - $sort:
-            label: 1
+            _request: selector_deals_inline
 
 # Post-create hook: runs after every successful create (new page + capture
 # modal) with the new activity id at `_state: activity_id`. This one just
