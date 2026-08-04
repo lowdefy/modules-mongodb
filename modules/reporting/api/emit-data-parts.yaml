@@ -1,8 +1,9 @@
-# onFinish hook: read the validated chart/export specs from the turn's
-# toolResults, run each chart's query once (bounded, inside :try — a failed
-# query skips its chart), and return chart + download data parts for the chat
-# page's adjacent panel. Tools cannot write to the stream — the parts are
-# written only from onFinish hook responses. No-ops when the payload carries no
+# onFinish hook: read the validated chart/table/export specs from the turn's
+# toolResults, run each chart's and table's query once (bounded, inside :try — a
+# failed query skips only its own part), mint an id and the turn's date onto each
+# built part, and return chart + table + download data parts for the chat page's
+# adjacent panel. Tools cannot write to the stream — the parts are written only
+# from onFinish hook responses. No-ops when the payload carries no
 # conversationId — the parts have nowhere to be snapshotted.
 id: emit-data-parts
 type: Api
@@ -13,7 +14,9 @@ routine:
         - null
     :then:
       - :return: {}
-  # The validated chart specs, in tool-call order, capped at 8 per turn.
+  # The validated specs, in tool-call order, each kind capped at 8 per turn —
+  # three independent budgets, so a chart-heavy turn cannot starve the tables and
+  # downloads it also produced.
   - :set_state:
       chart_specs:
         _mql.expr:
@@ -30,6 +33,23 @@ routine:
                         $eq:
                           - $$this.toolName
                           - render_chart
+                  in: $$this.output.spec
+              - 8
+      table_specs:
+        _mql.expr:
+          on:
+            results:
+              _payload: toolResults
+          expr:
+            $slice:
+              - $map:
+                  input:
+                    $filter:
+                      input: $results
+                      cond:
+                        $eq:
+                          - $$this.toolName
+                          - render_table
                   in: $$this.output.spec
               - 8
       download_specs:
@@ -65,23 +85,98 @@ routine:
                 _user: roles
         :catch:
           - :log: A chart pipeline failed at turn end — its chart is skipped.
+  # This loop and the chart loop above deliberately set no maxResultBytes, taking
+  # the connection's 8 MB default rather than the 200 KB budget query_data uses.
+  # That tight budget belongs on the agent's read path, where every row becomes
+  # model context re-sent on each later step. Here the part is projected to the
+  # columns it displays and its rows are capped before anything is persisted, so
+  # fetch size and persisted size are barely related: a `$$ROOT` pipeline
+  # charting or tabulating two of its fields is fat to fetch and tiny to store,
+  # and a tight budget would reject it for nothing. It would also fail badly —
+  # the turn is over, so the agent cannot narrow anything, and the :catch only
+  # logs and skips, so the user loses the artefact with no explanation. 8 MB is
+  # the right bound for a fetch nobody re-sends: an app-memory backstop, not a
+  # context budget.
+  - :for: table
+    :in:
+      _state: table_specs
+    :do:
+      - :try:
+          - id: table_rows
+            type: AnalyticsPipeline
+            connectionId:
+              _module.connectionId: reporting-data
+            properties:
+              query:
+                _item: table.query
+              roles:
+                _user: roles
+        :catch:
+          - :log: A table pipeline failed at turn end — its table is skipped.
   # buildDataParts holds the fetched rows already, so it needs no catalog: it
-  # re-checks the inert spec shapes and verifies each chart's x/y contract
-  # against its rows. A spec that fails is skipped inside buildDataParts, not
-  # thrown — the agent's turn is over so it cannot self-correct, and a throw
-  # here would lose every chart and download of the turn (handleAgentChat only
-  # console.warns a failed hook).
+  # re-checks the inert spec shapes and verifies each chart's x/y and each
+  # table's column contract against its rows. A spec that fails is skipped inside
+  # buildDataParts, not thrown — the agent's turn is over so it cannot
+  # self-correct, and a throw here would lose every chart, table and download of
+  # the turn (handleAgentChat only console.warns a failed hook).
   - :set_state:
-      data_parts:
+      built_parts:
         _analytics.buildDataParts:
           charts:
             _state: chart_specs
           results:
             _step: chart_rows
+          tables:
+            _state: table_specs
+          tableResults:
+            _step: table_rows
           downloads:
             _state: download_specs
           roles:
             _user: roles
+  # One reading for the whole turn, because every part of a turn is an artefact
+  # of the same moment — that is in fact what they share. Read out here rather
+  # than inside the map below, where a `__date` re-fires per item and would drift
+  # the parts of one turn milliseconds apart for no reason.
+  - :set_state:
+      turn_timestamp:
+        _date: now
+  # Selection binds to a part's `id`, never its array index: the retention $slice
+  # below and a concurrent turn's $push each shift the array under an open
+  # selection. `created` dates the frozen artefact, so a card can say "as of 14
+  # July" about data that no longer matches the collection.
+  #
+  # Minted out here rather than inside buildDataParts because that function is
+  # pure, with a unit test file beside it — a uuid or a clock read in it would
+  # make it non-deterministic. `_uuid` is declared dynamic, so it stays deferred
+  # to runtime and the callback re-evaluates it per item; a non-dynamic operator
+  # would be resolved once and every part of the turn would carry one id.
+  #
+  # `created` keeps `_state` on a single underscore while the item reads take the
+  # `__` prefix. The prefixed forms resolve per call in the callback's `__args`
+  # scope, which _function gives no state — `__state` reads null. A single
+  # underscore resolves once in the enclosing scope before the callback exists,
+  # which is exactly the one-timestamp-per-turn sharing wanted.
+  #
+  # It is a bare timestamp, not the _ref'd defaults/change_stamp.yaml every
+  # DOCUMENT this module writes carries: a part is not a document and has no
+  # author of its own, since the conversation's `owner` already answers who. A
+  # user id and display name repeated across fifty array elements buys nothing
+  # and goes stale independently of the name it was copied from.
+  - :set_state:
+      data_parts:
+        _array.map:
+          - _state: built_parts
+          - _function:
+              type:
+                __args: 0.type
+              data:
+                __object.assign:
+                  - id:
+                      __uuid: true
+                    created:
+                      _state: turn_timestamp
+                  - __args: 0.data
   # Snapshot this turn's built parts onto the conversation doc so reopening it
   # restores the Results panel. save-conversation (the prior onFinish hook)
   # owns the doc lifecycle (messages, title, created); this hook only appends
@@ -112,6 +207,14 @@ routine:
               data_parts:
                 $each:
                   _state: data_parts
+                # Panel length, not document size: the column projection and the
+                # 200-row cap are what bound the bytes. The 8-per-kind cap is per
+                # TURN, so without this the array grows for the life of the
+                # conversation — and a panel of two hundred cards is not a panel.
+                # It is a correctness bound as much as a UI one: an unbounded
+                # array under an id-keyed selection keeps growing behind the
+                # selection made against it. A starting number, not a derived one.
+                $slice: -50
           options:
             upsert: false
   # `dataParts` is the agent framework's key for parts written back to the

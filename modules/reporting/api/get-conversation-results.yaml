@@ -1,11 +1,13 @@
-# Fetches a conversation's transcript and persisted result parts (charts +
-# downloads) for the chat page, owner-scoped. The page calls this on
+# Fetches a conversation's transcript and persisted result parts (charts,
+# tables + downloads) for the chat page, owner-scoped. The page calls this on
 # select and restores messages FROM THIS FRESH READ — never from the sidebar
 # list snapshot, which races the onFinish save hook and can be a turn behind;
 # restoring a stale transcript and continuing would overwrite the saved doc
 # with the stale messages (permanent turn loss). Returns the parts already
-# split by type, matching the charts/downloads state keys. Charts carry a
-# baked ECharts option (a snapshot of the data as of the turn); downloads
+# split by type, matching the page's three charts/tables/downloads state keys.
+# Charts carry a baked ECharts option and tables their capped rows (a snapshot
+# of the data as of the turn, which each part's `created` date is what dates)
+# plus the validated spec a saved report section is built from; downloads
 # carry a query spec that re-runs live on click.
 id: get-conversation-results
 type: Api
@@ -21,6 +23,7 @@ routine:
       - :return:
           messages: []
           charts: []
+          tables: []
           downloads: []
   - id: load
     type: MongoDBFindOne
@@ -60,6 +63,16 @@ routine:
                           - $$this.type
                           - data-report-chart
                   in: $$this.data
+              tables:
+                $map:
+                  input:
+                    $filter:
+                      input: $parts
+                      cond:
+                        $eq:
+                          - $$this.type
+                          - data-report-table
+                  in: $$this.data
               downloads:
                 $map:
                   input:
@@ -73,4 +86,5 @@ routine:
             in:
               messages: $messages
               charts: $$charts
+              tables: $$tables
               downloads: $$downloads
