@@ -87,13 +87,6 @@ vars:
       permanent, user-level (suite-wide) ban via BanUser. Default true rests on
       the deployment premise that the pinned suite is administered by one trusted
       operator group; set false to limit app-admins to app-scoped RemoveMember.
-  impersonation:
-    type: boolean
-    default: false
-    description: >-
-      Gates the "View as user" (ImpersonateUser) client action on the Security
-      tile (design Decision 5). Off by default; the action only works for a caller
-      the deployment's admin-plugin access control lets impersonate.
   download:
     type: boolean
     default: false

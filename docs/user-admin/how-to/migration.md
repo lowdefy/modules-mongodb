@@ -35,7 +35,6 @@ see [Same-database co-location](../concepts/co-location.md).
 | `fields.app_attributes`    | `fields.member_attributes` | Renamed to the model: this app's attributes live on the `member` row.                        |
 | —                          | `admin_roles`              | Catalog role id(s) gating the routine endpoints; name the same role as `auth.userAdminRole`. |
 | —                          | `suspension`               | Gates suspend/reinstate (default `true`).                                                    |
-| —                          | `impersonation`            | Gates the "View as user" client action (default `false`).                                    |
 | —                          | `download`                 | Gates the Excel export (default `false`).                                                    |
 
 `app_title`, `event_display`, `components.*`, `request_stages.*`, `filter_requests`,
@@ -110,8 +109,8 @@ modules (`user-account`).
   user-level, and reaches every app in the suite; **Remove from app**
   (`RemoveMember`) is app-scoped. **Delete login identity** (`DeleteUser`) is
   offered only when the user belongs to no other apps.
-- **New engine capabilities**: session listing + sign-out-everywhere, read-only
-  auth-method visibility (email-verified, OAuth providers, MFA, passkeys), and
-  impersonation (behind its var).
+- **New engine capabilities**: session listing + sign-out-everywhere, and
+  read-only auth-method visibility (email-verified, OAuth providers, MFA,
+  passkeys).
 - **All raw writes to auth-owned data are gone** — every auth write goes through
   a sanctioned admin step, role-gated and floored by `auth.userAdminRole`.

@@ -1,5 +1,27 @@
 # @lowdefy/modules-mongodb-user-admin
 
+## Unreleased
+
+**Breaking:** the Security tile's "View as user" control and the `impersonation`
+var are removed. The engine no longer ships the `ImpersonateUser` /
+`StopImpersonating` client actions, so the control is unbuildable and the var
+would gate nothing. A consumer app still passing `impersonation` is silently
+ignored — the build does not flag an undeclared module var — so remove it from
+your `vars` by hand; the button simply stops rendering either way.
+
+Why it goes rather than staying gated off: an impersonated session is by design
+indistinguishable from the person's own activity, every event it writes reads as
+theirs, and while the session row records who started it, neither the module's
+audit events nor any read surface it. The capability also shipped **off** — the
+var defaulted to `false` — and nothing builds on it.
+
+Restoring it means restoring the whole mechanism, not re-adding a button: a
+curated `user: ['impersonate']` role in the app's role catalog, a sync writing
+`user.role` from the caller's member row in the pinned organization, two
+`disabledPaths` exemptions for the impersonate/stop-impersonate routes, and this
+control. Solve the model problem first: `user.role` is one field per deployment,
+so two pinned apps sharing one database fight over the grant.
+
 ## 0.17.0
 
 ## 0.16.0

@@ -8,7 +8,6 @@ org_slug: demo
 admin_roles:
   - user-admin
 suspension: true
-impersonation: false
 download: true
 fields:
   show_honorific: true

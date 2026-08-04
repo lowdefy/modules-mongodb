@@ -27,7 +27,7 @@ module. The self-service counterpart is [`user-account`](../user-account/index.m
 - **User detail** (`view` page) — one page with section-scoped edits: **Profile**
   (contact fields), **Attributes** (this app's roles + member attributes),
   **Global attributes** (user attributes), **Security** (suspend/reinstate,
-  sign-out-everywhere, remove, delete, sessions, auth methods, impersonation),
+  sign-out-everywhere, remove, delete, sessions, auth methods),
   **Apps** (cross-app badges), **Activity** (event timeline). Each tile edits
   through its own modal and its own routine. The **auth methods** block is
   read-only visibility of how the user can sign in — email-verified, OAuth

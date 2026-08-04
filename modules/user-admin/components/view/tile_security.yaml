@@ -1,7 +1,7 @@
 # Security tile (design Decision 5) — "Access & sign-in". Suspend/reinstate
 # (behind the suspension var, Decision 4), Remove from app, Sign out everywhere,
-# Delete identity, and the impersonation affordance (behind the impersonation
-# var). Active sessions (token projected out) and read-only auth methods.
+# and Delete identity. Active sessions (token projected out) and read-only auth
+# methods.
 #
 # Multi-app vs single-app degradation (Decision 6 — blast-radius copy, Delete
 # enablement, "suite"/"every app" phrasing) keys off the person's other-
@@ -105,37 +105,6 @@ _ref:
                           params:
                             blockId: modal_delete
                             method: toggleOpen
-                # Impersonation — "View as user", behind the impersonation var
-                # (Decision 5). Off by default; works only for a caller the
-                # deployment's admin-plugin access control lets impersonate.
-                - _build.if:
-                    test:
-                      _module.var: impersonation
-                    then:
-                      - id: impersonate_btn
-                        type: Button
-                        layout:
-                          flex: 0 0 auto
-                        properties:
-                          title: View as user
-                          icon: AiOutlineEye
-                          variant: outlined
-                        events:
-                          onClick:
-                            # Session-scoped client action, governed by
-                            # BetterAuth's admin-plugin access control
-                            # (Decision 5). Then land on the app root as the
-                            # impersonated user.
-                            - id: impersonate_user
-                              type: ImpersonateUser
-                              params:
-                                userId:
-                                  _url_query: userId
-                            - id: go_home_after_impersonate
-                              type: Link
-                              params:
-                                url: "/"
-                    else: []
           - id: security_hint
             type: Html
             properties:
