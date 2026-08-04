@@ -111,7 +111,7 @@ The three bends — drag-to-reorder becoming ↑ / ↓, the tool trace line's ti
 
 ## Vars
 
-`share_roles` (string array) is the only var this design _requires_, and it belongs to [ownership](ownership/design.md). Candidates for app-specific copy, all optional and belonging to [chat](chat/design.md): `welcome_title`, `starters_explore`, `starters_report`. The collection names in the welcome and the fields the save sheet offers both derive from the catalog — no var for either.
+`share_roles` (string array) is the only var this design _requires_, and it belongs to [ownership](ownership/design.md). App-specific copy is one optional namespace var belonging to [chat](chat/design.md): `welcome`, with `title`, `data_scope`, and a label plus a starter list per track. All of it is consumer-authored rather than catalog-derived, including the line naming what the assistant can see — a collection is not an entity a user recognises, and the catalog's `description` is prompt material for the agent, not copy for a person ([why](chat/design.md#the-empty-states-copy-is-consumer-authored-not-catalog-derived)). The fields the save sheet offers still derive from the catalog — no var there.
 
 Every var carries full `description` / `type` / `default` in `modules/reporting/module.lowdefy.yaml`, then `pnpm docs:gen`.
 
