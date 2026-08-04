@@ -10,6 +10,13 @@ export const MAX_MARKDOWN_LENGTH = 5000;
 // downloads independently, and a single shared budget meant eight charts
 // starved every download in the same turn.
 export const MAX_DATA_PARTS_SPECS = 8;
+// Rows retained on a table dataPart. A table part freezes its rows onto the
+// conversation document, which is rewritten every turn and capped at 16 MB, so
+// what a card may CARRY is bounded independently of PIPELINE_RESULT_CAP, which
+// bounds only what a query may RETURN. `row_count` on the part records the true
+// total, so a card can say "first 200 of 964", and export_data is the
+// affordance for the whole result.
+export const MAX_DATA_PART_ROWS = 200;
 export const MAX_FILTER_OPTIONS = 50;
 // Options cap for a filter whose options are resolved server-side from a
 // query (not typed into the persisted spec). MAX_FILTER_OPTIONS bounds what
