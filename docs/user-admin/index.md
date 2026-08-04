@@ -112,8 +112,8 @@ Organization authority is a separate endpoint rather than a fourth step on
 tier through the organization plugin so its creator-protection and last-owner guards
 run), they are separately audited, and a refused tier write must not leave an
 app-role write applied with nothing to roll it back. `org_authority: false` removes the
-two controls that reach it and nothing else — the endpoint stays registered, so the
-app-side gate and the engine's per-organization floor are what bound it.
+two controls that reach it and makes the endpoint reject, so a deployment granting
+organization authority out of band closes the surface rather than only hiding it.
 
 The two shared write-path fragments — `write-profile` and `create-or-link-contact`
 — live in `modules/shared/contact/` and are `_ref`'d by relative path (also by

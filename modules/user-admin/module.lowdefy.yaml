@@ -70,11 +70,12 @@ vars:
       it, so this control is how a deployment grants that. Set false in a
       deployment where org authority is granted out of band.
 
-      Gates the UI only: the `update-org-role` endpoint stays registered and
-      callable either way, so false means "no admin surface for granting
-      authority", not "nobody can write the tier". (`suspension` is stronger — it
-      also makes its routines reject.) The write is still floored by the engine
-      against the caller's member row in the administered organization.
+      When false the control does not render AND `update-org-role` rejects, so a
+      deployment granting org authority out of band cannot have the tier written
+      through this module by a caller who reaches the endpoint directly. The
+      endpoint stays registered either way — the rejection is the routine's first
+      step, not an absence. When true the write is floored by the engine against
+      the caller's member row in the administered organization.
   suspension:
     type: boolean
     default: true

@@ -224,12 +224,10 @@ what lets a person administer it. Revoking writes `member`, the no-authority val
 there is no empty value, and the endpoint refuses one.
 
 Set `org_authority: false` in a deployment that grants organization authority out of
-band. Note what that does and does not do: it **hides the two controls, and nothing
-more**. The `update-org-role` endpoint is still registered and still answers a caller
-holding the instance's gate role — this var is weaker than `suspension`, which also
-makes `suspend` / `reinstate` reject when it is false. The write remains floored by the
-engine against the caller's member row in the administered organization, which is what
-actually stops it.
+band. That hides the two controls **and** makes `update-org-role` reject, so a caller
+who reaches the endpoint directly with the instance's gate role cannot write the tier
+either — the same shape as `suspension: false` on `suspend` / `reinstate`. The endpoint
+stays registered; the rejection is the routine's first step.
 
 ### 7. Bump the engine
 
