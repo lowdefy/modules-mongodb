@@ -1,4 +1,8 @@
 {
+  "enabledPlugins": {
+    "r@resonancy": true,
+    "r2@resonancy": true
+  },
   "extraKnownMarketplaces": {
     "resonancy": {
       "source": {
@@ -8,21 +12,18 @@
       "autoUpdate": true
     }
   },
-  "enabledPlugins": {
-    "r@resonancy": true
-  },
   "sandbox": {
     "enabled": true,
-    "excludedCommands": [
-      "gh",
-      "pnpm e2e*",
-      "pnpm --filter @lowdefy/modules-demo e2e*"
-    ],
     "network": {
       "allowedDomains": ["github.com", "api.github.com", "registry.npmjs.org"]
     },
     "filesystem": {
       "allowWrite": ["~/Library/pnpm", "~/Library/Caches/pnpm"]
-    }
+    },
+    "excludedCommands": [
+      "gh",
+      "pnpm e2e*",
+      "pnpm --filter @lowdefy/modules-demo e2e*"
+    ]
   }
 }

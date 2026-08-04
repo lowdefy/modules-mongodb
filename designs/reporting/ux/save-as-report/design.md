@@ -26,7 +26,9 @@ Report creation stops depending on a phrase: the user ticks the results that ans
 
 (An earlier revision had a ★ on each card to "mark a result to find later in this conversation"; it was removed as invented surface with no job — a conversation is short enough to scroll, and two marking affordances on one card make neither legible.)
 
-Selection is `CheckboxSwitch` bound to `charts.$.selected` in the panel's state arrays — no new machinery, and the same shape for a chart, a table or an export result.
+Selection is `CheckboxSwitch` bound to `charts.$.selected` in the panel's state arrays — no new machinery, and the same shape for a chart, a table or an export result. What the sheet reads off a ticked result is the **validated spec the part carries**, not its rendered payload: a chart part persists a baked ECharts option, and an option cannot be reversed into a pipeline, so without the spec beside it a ticked chart could not become a section at all. That part shape is [chat](../chat/design.md#the-panel-is-an-artefact-store-so-its-parts-need-identity-a-date-and-a-bound)'s, and this sub-design is the reason it exists — along with the part `id` the selection keys on, so retention or a concurrent turn cannot shift the array under an open selection.
+
+The division that makes this coherent: the panel card stays a **snapshot** of its turn, and the section the sheet creates from it is **live**, re-queried at every report open. Same spec, two lifetimes.
 
 ### One confirm sheet, two routes into it
 
@@ -56,11 +58,11 @@ The field itself is in the [parent's data model](../design.md#data-model); this 
 
 ## Endpoints
 
-| Endpoint        | Status | Shape                                                                                             |
-| --------------- | ------ | ------------------------------------------------------------------------------------------------- |
-| `create-report` | new    | `{ spec, conversation_id }` → validate, insert, return `{ report_id, url }`. Called by the sheet. |
+| Endpoint        | Status | Shape                                                                                                                        |
+| --------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `create-report` | new    | `{ spec, conversation_id }` → validate, insert **the validator's output**, return `{ report_id, url }`. Called by the sheet. |
 
-The insert writes the same document shape as `generate-report`, including the [ownership](../ownership/design.md) defaults — `visibility: "private"`, `favourite_of: []`, `deleted: null`, `owner` = caller — plus the `conversation_id` the tool path cannot supply. Validation is `validateReportSpec`, shared with the tool path.
+The insert writes the same document shape as `generate-report`, including the [ownership](../ownership/design.md) defaults — `visibility: "private"`, `favourite_of: []`, `deleted: null`, `spec_version: 1`, `owner` = caller — plus the `conversation_id` the tool path cannot supply. Validation is `validateReportSpec`, shared with the tool path, and both paths persist **its output** rather than their input: `spec` holds `{ sections }` with durable section ids, while `title` and `description` are document fields the sheet writes directly ([why](../ownership/design.md#the-stored-spec-is-the-validators-output)). Two authors, one stored shape — which is what keeps the two creation paths from drifting.
 
 ## Files changed (anticipated)
 
