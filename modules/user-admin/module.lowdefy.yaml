@@ -64,10 +64,21 @@ vars:
       - user-admin
     description: >-
       Catalog role id(s) that gate every routine endpoint's `auth.api.roles`
-      (design Decision 3). Should name the same administering role as the app's
-      `auth.userAdminRole`, which the engine additionally enforces as a
-      step-level floor before every auth-owned write (defense in depth). Each id
-      must be a declared `auth.roles` catalog id.
+      (design Decision 3). This is the "show me the UI" gate; it is not the
+      authority to write. Every auth-owned write is additionally floored by the
+      engine against the caller's member row in the organization the step names —
+      `org_slug`'s — so an app role alone changes nothing (defense in depth). Each
+      id must be a declared `auth.roles` catalog id.
+  org_authority:
+    type: boolean
+    default: true
+    description: >-
+      Gates the organization-authority control on the access modal — promoting a
+      member to `admin` or `owner` in the administered organization, or revoking
+      them back to `member` (the no-authority value) — and the matching `orgRole`
+      field on the invite form. Holding `admin` in an organization is what lets a
+      person administer it, so this control is how a deployment grants that. Set
+      false in a deployment where org authority is granted out of band.
   suspension:
     type: boolean
     default: true
@@ -81,8 +92,8 @@ vars:
     default: false
     description: >-
       Gates the "View as user" (ImpersonateUser) client action on the Security
-      tile (design Decision 5). Off by default; the action only works once the
-      app configures `auth.userAdminRole` and the caller holds that role.
+      tile (design Decision 5). Off by default; the action only works for a caller
+      the deployment's admin-plugin access control lets impersonate.
   download:
     type: boolean
     default: false
@@ -253,6 +264,8 @@ exports:
       description: Change-stamped contact write + UpdateUserProfile re-denorm (write-profile fragment)
     - id: update-access
       description: UpdateMemberRoles + UpdateMemberAttributes for this app
+    - id: update-org-role
+      description: UpdateMemberOrgRole — the member's owner/admin/member tier in the administered organization (surfaced behind the `org_authority` var)
     - id: update-user-attributes
       description: UpdateUserAttributes (global/user attributes)
     - id: suspend
@@ -286,6 +299,7 @@ api:
   - _ref: api/resend-invitation.yaml
   - _ref: api/update-profile.yaml
   - _ref: api/update-access.yaml
+  - _ref: api/update-org-role.yaml
   - _ref: api/update-user-attributes.yaml
   - _ref: api/suspend.yaml
   - _ref: api/reinstate.yaml

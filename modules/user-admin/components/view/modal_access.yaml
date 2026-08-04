@@ -1,8 +1,17 @@
-# Edit attributes modal — UpdateMemberRoles + UpdateMemberAttributes (Decision 3).
+# Edit attributes modal — the app roles and member attributes this app authorizes
+# on (UpdateMemberRoles + UpdateMemberAttributes), plus, behind the `org_authority`
+# var, the member's organization-authority tier.
+#
+# The tier is a separate control with its own submit, because it is a separate
+# authority: an app role says "show this person the UI", the member row's tier says
+# "this person may actually administer the organization", and nothing keeps the two
+# in agreement. Folding them into one submit would also mean a refused tier write
+# leaving the app-role write applied, with nothing to roll it back.
+#
 # Role picker options/labels/descriptions come from the app role catalog
-# (_build.authConfig.roles, Decision 8) — wired task 13. An orphaned role (held
-# but no longer in the catalog) stays selected and can be removed, but is not an
-# option to re-add. Member attributes bind state.member_attributes.*.
+# (_build.authConfig.roles). An orphaned role (held but no longer in the catalog)
+# stays selected and can be removed, but is not an option to re-add. Member
+# attributes bind state.member_attributes.*.
 id: modal_access
 type: Modal
 properties:
@@ -20,6 +29,11 @@ events:
           _request: get_user_detail.0.role_ids
         member_attributes:
           _request: get_user_detail.0.member_attributes
+        # Seeded on every open, so reopening the modal shows the stored tier
+        # rather than an abandoned edit. Seeded whether or not the control renders
+        # — one unread state key costs less than a conditional SetState.
+        org_role:
+          _request: get_user_detail.0.org_role
   onOk:
     _build.array.concat:
       - - id: validate_access
@@ -28,8 +42,9 @@ events:
             regex:
               - '^roles$'
               - '^member_attributes\.'
-        # UpdateMemberRoles + UpdateMemberAttributes (Decision 3). Submits only
-        # the selected ids; catalog validation is enforced by the AC.
+        # UpdateMemberRoles + UpdateMemberAttributes. The selected ids submit
+        # as-is: an orphan among them is accepted and grants nothing, so an admin
+        # who never touched it does not lose the whole save over it.
         - id: save_access
           type: CallAPI
           messages:
@@ -103,3 +118,73 @@ blocks:
                           else: ""
                       - "</div>"
     - _module.var: fields.member_attributes
+    # Organization authority — behind the `org_authority` var. Its own selector and
+    # its own button: the tier is a different authority from the app roles above and
+    # a different write, so it is not part of "Save attributes".
+    - _build.if:
+        test:
+          _module.var: org_authority
+        then:
+          - id: org_role_divider
+            type: Divider
+            properties:
+              margin: 4
+          - id: org_role
+            type: Selector
+            required: true
+            properties:
+              label:
+                title: Organization authority
+                extra: Who may administer this organization — separate from the app roles above, and not implied by them.
+              # `member` is the no-authority value, not an empty one: the write
+              # refuses an empty role, so revoking authority writes `member`.
+              # Labelled in the app's language rather than BetterAuth's, where
+              # "member" reads as a status instead of an absence of authority.
+              options:
+                - value: owner
+                  label: Organization owner
+                - value: admin
+                  label: Organization admin
+                - value: member
+                  label: No organization authority
+          - id: save_org_role_btn
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Update organization role
+              variant: outlined
+            events:
+              onClick:
+                _build.array.concat:
+                  - - id: validate_org_role
+                      type: Validate
+                      params:
+                        regex:
+                          - '^org_role$'
+                    # No `error` message: the write's refusals — demoting the
+                    # organization's sole owner, or demoting its creator — are the
+                    # reason it runs through the organization plugin at all, and an
+                    # admin needs to read them. A static error string here would
+                    # replace them with "something went wrong".
+                    - id: save_org_role
+                      type: CallAPI
+                      messages:
+                        loading: Updating…
+                        success: Organization role updated.
+                      params:
+                        endpointId:
+                          _module.endpointId: update-org-role
+                        payload:
+                          member_id:
+                            _request: get_user_detail.0.member_id
+                          user_id:
+                            _request: get_user_detail.0.user_id
+                          org_role:
+                            _state: org_role
+                          target_name:
+                            _request: get_user_detail.0.name
+                          target_email:
+                            _request: get_user_detail.0.email
+                  - _ref: actions/detail_refetch.yaml
+        else: []

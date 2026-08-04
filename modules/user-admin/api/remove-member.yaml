@@ -4,7 +4,9 @@
 # existence). `organizationId` is named explicitly: an absent one falls back to the
 # APP's pinned organization, so an instance administering another organization would
 # be authorized against — and delete a member row in — the wrong one. Role-gated
-# app-side; step-floored by `auth.userAdminRole`. Audit event is the final step.
+# app-side; the step declares the permission it needs and the engine floors it
+# against the caller's member row in the organization the step names. Audit event
+# is the final step.
 #
 # Payload: { member_id (member row id or email), user_id?, target_name?, target_email? }
 id: remove-member

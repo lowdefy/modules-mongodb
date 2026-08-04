@@ -7,7 +7,9 @@
 # identity app B depends on. The check counts member rows in any organization
 # OTHER than the one this instance administers (`org_slug`).
 #
-# Role-gated app-side; step-floored by `auth.userAdminRole`. Audit is the final step.
+# Role-gated app-side; the step declares the permission it needs and the engine
+# floors it against the caller's member row in the organization the step names.
+# Audit is the final step.
 #
 # `organizationId` names the organization the floor authorizes in. The delete reaches
 # a deployment-wide `user` row, so the floor asks whether the caller administers

@@ -1,13 +1,19 @@
 # resend-invitation — InviteMember with native `resend: true` (design Decision 7).
 # Re-renders the invitation through the same `auth.email` send path and refreshes
 # stored attributes. Only refreshes a still-pending, NON-expired row (re-inviting
-# an Expired row routes through `invite` instead — task 5). `organizationId` is
-# named explicitly: an absent one falls back to the APP's pinned organization, so
-# an instance administering another organization would be authorized against — and
-# write into — the wrong one. Role-gated app-side; step-floored by
-# `auth.userAdminRole`. Audit event is the final step.
+# an Expired row routes through `invite` instead). `organizationId` is named
+# explicitly: an absent one falls back to the APP's pinned organization, so an
+# instance administering another organization would be authorized against — and
+# write into — the wrong one. Role-gated app-side; the step declares the
+# permission it needs and the engine floors it against the caller's member row in
+# the organization the step names. Audit event is the final step.
 #
-# Payload: { email, roles (array of catalog ids), member_attributes (object)? }
+# `appRoles` is the invitation's native app-role array (array-only at the step)
+# and `orgRole` its organization-authority tier. BOTH are re-sent: the step
+# defaults an absent `orgRole` to `member`, so a resend that omitted it would
+# quietly strip the org authority the invitation was created with.
+#
+# Payload: { email, roles (array of role ids), org_role?, member_attributes? }
 id: resend-invitation
 type: Api
 routine:
@@ -18,12 +24,12 @@ routine:
         _payload: email
       organizationId:
         _module.var: org_slug
-      role:
-        _array.join:
-          - _if_none:
-              - _payload: roles
-              - []
-          - ","
+      appRoles:
+        _if_none:
+          - _payload: roles
+          - []
+      orgRole:
+        _payload: org_role
       attributes:
         _if_none:
           - _payload: member_attributes

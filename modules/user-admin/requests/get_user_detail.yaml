@@ -5,6 +5,7 @@
 # profile / user_attributes / member_attributes) and the catalog role-resolve,
 # then adds the fields only the detail page needs:
 #   user_id / member_id / contact_id — the ids the write routines take
+#   org_role — the member's owner|admin|member organization-authority tier
 #   status_slug — lowercase active|suspended for the title-block status pill
 #   email_verified / two_factor_enabled / banned / passkey_count — Security-tile facts
 # Returns a single-element array; the page binds get_user_detail.0.*.
@@ -60,6 +61,15 @@ properties:
               $ifNull:
                 - "$appRoles"
                 - []
+            # The member's organization-authority tier, published under its own
+            # name because it is a different authority from the app roles
+            # `role_ids` / `roles` carry — the access modal's organization control
+            # binds it. $ifNull because $addFields omits a field whose source is
+            # missing, and `member` is exactly what an absent tier means.
+            org_role:
+              $ifNull:
+                - "$role"
+                - member
             # True when any held role is orphaned (absent from the catalog) —
             # drives the access modal's orphan hint (Decision 8).
             has_orphan:

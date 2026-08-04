@@ -8,6 +8,10 @@ access-updated:
   color: "#1890ff"
   title: Access Updated
   icon: AiOutlineSafety
+org-role-updated:
+  color: "#722ed1"
+  title: Organization Role Changed
+  icon: AiOutlineKey
 user-attributes-updated:
   color: "#1890ff"
   title: Global Attributes Updated

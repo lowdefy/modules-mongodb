@@ -4,8 +4,9 @@
 #
 # Behind the `suspension` var (default true): when false, the routine is a bare
 # reject (the UI surface is also excluded — task 13). Role-gated app-side via
-# `auth.api.roles` (admin_roles var), and BanUser is floored by the engine's
-# `auth.userAdminRole` before it runs.
+# `auth.api.roles` (admin_roles var); BanUser additionally declares the permission
+# it needs and the engine floors it against the caller's member row in the
+# organization the step names before it runs.
 #
 # `organizationId` names the organization the floor authorizes in. The ban reaches
 # a deployment-wide `user` row, so the floor asks whether the caller administers

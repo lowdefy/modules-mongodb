@@ -1,6 +1,8 @@
 # update-user-attributes — global/user attributes on the `user` row via
 # UpdateUserAttributes (applied across every app, design Decision 3). Role-gated
-# app-side; step-floored by `auth.userAdminRole`. Audit event is the final step.
+# app-side; the step declares the permission it needs and the engine floors it
+# against the caller's member row in the organization the step names. Audit event is
+# the final step.
 #
 # `organizationId` names the organization the floor authorizes in. The write reaches
 # a deployment-wide `user` row, so the floor asks whether the caller administers

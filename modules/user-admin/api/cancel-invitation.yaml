@@ -1,8 +1,10 @@
 # cancel-invitation — CancelInvitation (design Decision 7). Cancels a pending
 # invitation by id. `organizationId` is named explicitly: an absent one falls back
 # to the APP's pinned organization, so an instance administering another
-# organization would be authorized against the wrong one. Role-gated app-side;
-# step-floored by `auth.userAdminRole`. Audit event is the final step.
+# organization would be authorized against the wrong one. Role-gated app-side; the
+# step declares the permission it needs and the engine floors it against the
+# caller's member row in the organization the step names. Audit event is the final
+# step.
 #
 # Payload: { invitation_id, email? }
 id: cancel-invitation

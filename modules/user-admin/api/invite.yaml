@@ -19,7 +19,7 @@
 # invite that fails at InviteMember may leave an orphan contact the next check
 # resolves to "contact, no membership".
 #
-# Role-gated app-side. Payload: { email, roles (array of catalog ids),
+# Role-gated app-side. Payload: { email, roles (array of role ids), org_role?,
 #                                 member_attributes? (object), profile? (object) }
 # create-or-link mints the contact bare; the write-profile splice then persists
 # the captured profile onto it (and re-denorms onto the user only if one already
@@ -128,10 +128,11 @@ routine:
         organization_id:
           _module.var: org_slug
 
-  # 4) Invite the member. `role` is the catalog-id array joined to the
-  #    comma-separated string BetterAuth expects; member attributes ride the
-  #    invitation (applied to the minted member at accept by afterAcceptInvitation,
-  #    Decision 5); profile carries the linked contactId.
+  # 4) Invite the member. `appRoles` is the app-role id array the member row is
+  #    minted with; `orgRole` is the unrelated organization-authority tier, which
+  #    the step defaults to `member` (no authority) when the form omits it. Member
+  #    attributes ride the invitation (applied to the minted member at accept by
+  #    afterAcceptInvitation); profile carries the linked contactId.
   - id: invite_member
     type: InviteMember
     properties:
@@ -139,12 +140,12 @@ routine:
         _payload: email
       organizationId:
         _module.var: org_slug
-      role:
-        _array.join:
-          - _if_none:
-              - _payload: roles
-              - []
-          - ","
+      appRoles:
+        _if_none:
+          - _payload: roles
+          - []
+      orgRole:
+        _payload: org_role
       profile:
         contactId:
           _step: read_contact._id

@@ -3,6 +3,7 @@
 # per-type via the `event_display` module var (design Decision 8).
 profile-updated: "{{ user.profile.name }} updated {{ target.name }}'s profile"
 access-updated: "{{ user.profile.name }} updated {{ target.name }}'s access"
+org-role-updated: "{{ user.profile.name }} changed {{ target.name }}'s organization role"
 user-attributes-updated: "{{ user.profile.name }} updated {{ target.name }}'s global attributes"
 user-suspended: "{{ user.profile.name }} suspended {{ target.name }}"
 user-reinstated: "{{ user.profile.name }} reinstated {{ target.name }}"

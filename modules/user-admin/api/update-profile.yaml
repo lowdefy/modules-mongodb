@@ -1,8 +1,9 @@
 # update-profile — the shared write-profile fragment (change-stamped `contact`
 # write + `UpdateUserProfile` re-denorm of the TARGET's user.profile bag), then
-# the audit event (design Decision 3). Role-gated app-side; the re-denorm step is
-# floored by `auth.userAdminRole` (targets the edited user, never the admin, so
-# the self-target exemption is not hit).
+# the audit event (design Decision 3). Role-gated app-side; the re-denorm step
+# declares the permission it needs and the engine floors it against the caller's
+# member row in the organization the step names (it targets the edited user, never
+# the admin, so the self-target exemption is not hit).
 #
 # The fragment's `organization_id` var is the organization that floor authorizes
 # in. It must be `org_slug`, not the fragment's absent-means-pinned default: an

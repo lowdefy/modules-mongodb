@@ -1,18 +1,21 @@
-# update-access — this app's access: UpdateMemberRoles + UpdateMemberAttributes
-# (both SET, not append — idempotent, design Decision 3). Roles submitted must be
-# catalog-valid ids only (Decision 8): an untouched orphaned role held in data
-# but absent from the catalog must NOT be re-submitted (it can't fail the write
-# with ROLE_NOT_FOUND); the admin may remove an orphan. The UI submits only
-# catalog-valid ids — the routine passes them straight through.
+# update-access — this app's app roles + member attributes: UpdateMemberRoles +
+# UpdateMemberAttributes (both SET, not append — idempotent). Submitted role ids
+# are NOT validated against the app role catalog: an unrecognised id grants
+# nothing, so an orphan held in data rides through untouched and only an admin
+# removing it takes it away. Rejecting one would fail an admin's whole save over
+# a stale role they never touched.
 #
-# `role` is a comma-separated string on the member row (user-model Decision 5);
-# the role picker yields an array, joined to CSV here. `organizationId` is named
-# explicitly on both steps: an absent one falls back to the APP's pinned
-# organization, so an instance administering another organization would be
-# authorized against — and write into — the wrong one.
-# Role-gated app-side; both steps floored by `auth.userAdminRole`.
+# `appRoles` is the member row's native array — array-only at the step, never a
+# CSV. The organization-authority tier (`member.role`) is a different authority
+# with its own endpoint (update-org-role); nothing here touches it.
 #
-# Payload: { member_id, roles (array of catalog ids), member_attributes (object)?,
+# `organizationId` is named explicitly on both steps: an absent one falls back to
+# the APP's pinned organization, so an instance administering another organization
+# would be authorized against — and write into — the wrong one. Role-gated
+# app-side; each step declares the permission it needs and the engine floors it
+# against the caller's member row in the organization the step names.
+#
+# Payload: { member_id, roles (array of role ids), member_attributes (object)?,
 #            user_id?, target_name?, target_email? }
 # The two-step chain's benign partial state (new roles, old attributes) is
 # resolved by retry. Audit event is the FINAL step.
@@ -26,12 +29,10 @@ routine:
         _payload: member_id
       organizationId:
         _module.var: org_slug
-      role:
-        _array.join:
-          - _if_none:
-              - _payload: roles
-              - []
-          - ","
+      appRoles:
+        _if_none:
+          - _payload: roles
+          - []
   - id: set_member_attributes
     type: UpdateMemberAttributes
     properties:

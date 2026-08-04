@@ -106,8 +106,8 @@ _ref:
                             blockId: modal_delete
                             method: toggleOpen
                 # Impersonation — "View as user", behind the impersonation var
-                # (Decision 5). Off by default; works once auth.userAdminRole is
-                # configured and held. The client action is wired in task 13.
+                # (Decision 5). Off by default; works only for a caller the
+                # deployment's admin-plugin access control lets impersonate.
                 - _build.if:
                     test:
                       _module.var: impersonation
@@ -123,9 +123,9 @@ _ref:
                         events:
                           onClick:
                             # Session-scoped client action, governed by
-                            # BetterAuth's admin-plugin AC bridged from
-                            # auth.userAdminRole (Decision 5). Then land on the
-                            # app root as the impersonated user.
+                            # BetterAuth's admin-plugin access control
+                            # (Decision 5). Then land on the app root as the
+                            # impersonated user.
                             - id: impersonate_user
                               type: ImpersonateUser
                               params:

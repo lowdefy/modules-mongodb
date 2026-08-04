@@ -1,7 +1,8 @@
 # reinstate — UnbanUser (design Decision 4). Reversible counterpart to suspend;
 # clears the user-level ban. Behind the `suspension` var (default true): when
-# false, the routine is a bare reject. Role-gated app-side; step-floored by
-# `auth.userAdminRole`.
+# false, the routine is a bare reject. Role-gated app-side; the step declares the
+# permission it needs and the engine floors it against the caller's member row in
+# the organization the step names.
 #
 # `organizationId` names the organization the floor authorizes in. The unban reaches
 # a deployment-wide `user` row, so the floor asks whether the caller administers
