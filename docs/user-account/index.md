@@ -153,8 +153,8 @@ and leaves the change stamp alone.
 
 - The app runs the BetterAuth-based auth engine with a **pinned** org policy and
   an authored `auth:` config (method gates, `providers`, `auth.email`).
-- The [required indexes](reference/indexes.md) exist on `user-contacts` and
-  `users`.
+- The [required indexes](reference/indexes.md) exist on `user-contacts`, and on
+  `user-two-factors` where two-factor auth is enabled.
 - **Same-database co-location** — the adapter database, the `user-contacts`
   connection, and the module's read connections must resolve to one MongoDB
   database (the workspace's `$lookup` joins cannot cross databases). See

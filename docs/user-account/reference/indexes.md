@@ -2,14 +2,14 @@
 title: Indexes
 module: user-account
 type: reference
-concepts: [indexes, mongodb, contacts, users, uniqueness]
+concepts: [indexes, mongodb, contacts, users, uniqueness, two-factor, auth]
 ---
 
 # User Account — Indexes
 
-The module does not create indexes — index creation is a host-app concern. Host apps must add both of the following indexes to the collection backing the module's contact connections before running the contact and profile flows.
+The module does not create indexes — index creation is a host-app concern. Host apps must add both `user-contacts` indexes below to the collection backing the module's contact connections before running the contact and profile flows, and the `user-two-factors` index before enabling two-factor auth.
 
-**Policy note.** The definitions below are the `auth.organizations.policy: tenant` shape, with the `organizationId` prefix. Under `pinned` (the default) documents carry no `organizationId` at all ([Organization scoping](../../shared/org-scoping.md)), and the single-field equivalents are the baseline: `{ lowercase_email: 1 }` and `{ userId: 1 }`, each unique with the same partial filter. The compound shape also works under `pinned` — a missing `organizationId` indexes as `null`, so the compound key degenerates to the single-field guarantee — so a deployment planning a later flip to `tenant` can create the compound shape from day one and skip the index rebuild at flip time.
+**Policy note.** The two `user-contacts` definitions below are the `auth.organizations.policy: tenant` shape, with the `organizationId` prefix. Under `pinned` (the default) documents carry no `organizationId` at all ([Organization scoping](../../shared/org-scoping.md)), and the single-field equivalents are the baseline: `{ lowercase_email: 1 }` and `{ userId: 1 }`, each unique with the same partial filter. The compound shape also works under `pinned` — a missing `organizationId` indexes as `null`, so the compound key degenerates to the single-field guarantee — so a deployment planning a later flip to `tenant` can create the compound shape from day one and skip the index rebuild at flip time. The `user-two-factors` index is the same under both policies.
 
 ## `user-contacts` collection
 
@@ -54,6 +54,31 @@ Partial on `$exists` because a CRM contact is a real person record with no auth 
 | `resolve-own-contact`                     | Match the caller's own contact by `{ organizationId, userId }`; on a miss, claim the unlinked row for their address |
 | `ensure-contact`                          | Stamp `userId` on insert when the caller already knows the auth user (the login hook always does)                   |
 | `get_account`, members and selector reads | Join `users` → `user-contacts` on `userId`, tolerating the address while a contact is still unclaimed               |
+
+## `user-two-factors` collection
+
+### Index: `{ userId: 1 }` — **unique**
+
+```
+db["user-two-factors"].createIndex({ userId: 1 }, { unique: true })
+```
+
+`/two-factor/enable` deletes the user's row and then creates a new one, with no lock between the two writes. Two concurrent calls to `/two-factor/enable` can interleave into **two rows for one user**. Sign-in reads with `findOne`, which carries no ordering, so it may return the unverified row and offer no methods — a user whose sign-in demands a second factor and presents none. That is a lockout, and it reproduces deterministically upstream: https://github.com/better-auth/better-auth/issues/10561
+
+Every reader already assumes one row per user — `findOne` by `userId` with no ordering is the read the whole plugin uses — so this index encodes an invariant the schema always had and never enforced.
+
+**Must be plain unique, not partial.** Unlike the two `user-contacts` indexes above, every `user-two-factors` row has a `userId` — there is no missing-key case to carve out with a partial filter, so a plain unique index is the right shape here.
+
+**Not organization-scoped, under either policy.** The collection is written only by the auth engine's two-factor plugin — it backs no module connection — and its rows key to the global auth `user`, like `user-accounts` and `user-passkeys` (both declared `tenant: shared`). An enrolment is a property of the person, not of one of their organizations, so there is no `organizationId` to prefix and the index above is the definition under both `pinned` and `tenant`.
+
+**Does not fix the race.** The window between the delete and the create still exists, and a concurrent pair of calls can still have one of them fail. What the index changes is what happens when they collide: instead of writing a second row and leaving the lockout to surface silently at the next sign-in, the second `create` fails with a duplicate-key error. The user sees an error and retries; they do not silently acquire an enrolment that sign-in may or may not find.
+
+**Without this index, the lockout is silent.** An operator who does not apply it keeps the race exactly as described above — concurrent enable calls can leave a user locked out with no error at either the write or the read.
+
+| Query site                               | Operation                                                          |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| `/two-factor/enable` (BetterAuth plugin) | Delete by `userId`, then create — the unique index bounds the pair |
+| Sign-in two-factor lookup                | `findOne` by `userId`, no ordering — relies on one row per user    |
 
 ## `users` collection
 
