@@ -15,12 +15,13 @@ events:
         conversationId:
           _uuid: true
         charts: []
+        tables: []
         downloads: []
         results_scope: all
-    # Globals outlive the page for the session, so this seed has to be
-    # idempotent: onInit fires again on every return from the reports list, and
-    # a plain assignment would discard the collapse the user chose on the way
-    # out. `_if_none` keeps an explicit `false`.
+    # The collapse globals are app-scoped and outlive this page's context, while
+    # this seed runs only when that context is built — so it fills in a missing
+    # value rather than assigning one, and `_if_none` keeps an explicit `false`
+    # that a truthiness default would overwrite.
     #
     # The 232 + 348 side columns, two 16px gaps and 48px of page padding are
     # 660px of chrome, so under 1280 the transcript gets less than its ~520px
@@ -63,20 +64,31 @@ layout:
   wrap: nowrap
 blocks:
   # The rail's collapsed form. `AgentConversations` has no collapsed mode of its
-  # own and unmounts with its column, so the strip has to re-offer New chat
+  # own and is hidden with its column, so the strip has to re-offer New chat
   # itself — the rail's own `creation` button is gone while this is showing.
+  # Compared against `true` so the strip and the rail are exact complements: the
+  # engine treats any non-`false` as visible, so a null global would otherwise
+  # show both.
   - id: conversations_strip
     type: Box
     layout:
       flex: 0 0 auto
       gap: 8
     visible:
-      _global: reporting_rail_collapsed
+      _eq:
+        - _global: reporting_rail_collapsed
+        - true
     blocks:
       - id: expand_rail_button
         type: Button
         properties:
-          icon: AiOutlineDoubleRight
+          # `hideTitle` drops the button's own title from the DOM — with it the
+          # tooltip and the accessible name — so the name goes on the icon,
+          # which renders it into the svg. `hideTitle` still has to stay:
+          # without it an untitled button labels itself with its block id.
+          icon:
+            name: AiOutlineDoubleRight
+            title: Show conversations
           hideTitle: true
           type: text
         events:
@@ -90,26 +102,33 @@ blocks:
       - id: strip_new_chat_button
         type: Button
         properties:
-          icon: AiOutlinePlus
+          icon:
+            name: AiOutlinePlus
+            title: New chat
           hideTitle: true
           type: text
         events:
           onClick:
-            - id: new_conversation
-              type: SetState
-              params:
-                conversationId:
-                  _uuid: true
-                messages: []
-                charts: []
-                downloads: []
+            _ref: pages/chat/actions/new_conversation.yaml
   - id: conversations_panel
     type: Box
     layout:
       flex: 0 0 232px
-    visible:
-      _not:
-        _global: reporting_rail_collapsed
+    # Hidden with CSS, never `visible:`. Hiding a container deletes the state of
+    # every block beneath it, and only input blocks republish a value when they
+    # come back — so `conversations`, written by SetState and rendered by a
+    # display block, would be gone for good, and the rail only refetches on
+    # mount and at the end of a turn. `display: none` leaves the flex row as if
+    # the column were absent.
+    style:
+      display:
+        _if:
+          test:
+            _eq:
+              - _global: reporting_rail_collapsed
+              - true
+          then: none
+          else: null
     blocks:
       - id: conversations_header
         type: Box
@@ -121,7 +140,9 @@ blocks:
             layout:
               flex: 0 0 auto
             properties:
-              icon: AiOutlineDoubleLeft
+              icon:
+                name: AiOutlineDoubleLeft
+                title: Hide conversations
               hideTitle: true
               type: text
             events:
@@ -168,14 +189,7 @@ blocks:
             label: New chat
         events:
           onNew:
-            - id: new_conversation
-              type: SetState
-              params:
-                conversationId:
-                  _uuid: true
-                messages: []
-                charts: []
-                downloads: []
+            _ref: pages/chat/actions/new_conversation.yaml
           onSelect:
             # Switch first (atomic, infallible) and clear the transcript and
             # panel as the loading state, so a failed fetch can never strand
@@ -332,15 +346,24 @@ blocks:
     layout:
       flex: 0 0 348px
       gap: 12
-    visible:
-      _not:
-        _global: reporting_panel_collapsed
+    # Hidden with CSS, never `visible:` — hiding this container would delete
+    # `charts` and `downloads` with it, and the display blocks that render them
+    # republish nothing when it comes back, so the strip's counts and the panel
+    # itself would read empty with results in hand.
+    style:
+      display:
+        _if:
+          test:
+            _eq:
+              - _global: reporting_panel_collapsed
+              - true
+          then: none
+          else: null
     blocks:
       - id: results_header
         type: Box
         layout:
           justify: space-between
-          align: middle
         blocks:
           - id: results_title
             type: Title
@@ -354,7 +377,9 @@ blocks:
             layout:
               flex: 0 0 auto
             properties:
-              icon: AiOutlineDoubleRight
+              icon:
+                name: AiOutlineDoubleRight
+                title: Hide results
               hideTitle: true
               type: text
             events:
@@ -410,14 +435,22 @@ blocks:
             a report.
       - id: charts_section
         type: Box
-        visible:
-          _or:
-            - _eq:
-                - _state: results_scope
-                - all
-            - _eq:
-                - _state: results_scope
-                - charts
+        # Hidden with CSS, never `visible:` — scoping the panel to Exports would
+        # otherwise delete `charts` along with this section, and the list of
+        # display blocks under it republishes nothing on the way back.
+        style:
+          display:
+            _if:
+              test:
+                _or:
+                  - _eq:
+                      - _state: results_scope
+                      - all
+                  - _eq:
+                      - _state: results_scope
+                      - charts
+              then: null
+              else: none
         blocks:
           - id: charts_empty
             type: Paragraph
@@ -449,14 +482,21 @@ blocks:
                     _state: charts.$.option
       - id: downloads_section
         type: Box
-        visible:
-          _or:
-            - _eq:
-                - _state: results_scope
-                - all
-            - _eq:
-                - _state: results_scope
-                - exports
+        # Hidden with CSS, never `visible:` — scoping the panel to Charts would
+        # otherwise delete `downloads` along with this section.
+        style:
+          display:
+            _if:
+              test:
+                _or:
+                  - _eq:
+                      - _state: results_scope
+                      - all
+                  - _eq:
+                      - _state: results_scope
+                      - exports
+              then: null
+              else: none
         blocks:
           - id: downloads_empty
             type: Paragraph
@@ -524,19 +564,24 @@ blocks:
                         marginBottom: 0
   # The panel's collapsed form. Counts, not just an icon: the point of the strip
   # is that three charts waiting is visible without paying the expand to find
-  # out.
+  # out. Compared against `true` so the strip and the panel are exact
+  # complements for any value of the global.
   - id: results_strip
     type: Box
     layout:
       flex: 0 0 auto
       gap: 8
     visible:
-      _global: reporting_panel_collapsed
+      _eq:
+        - _global: reporting_panel_collapsed
+        - true
     blocks:
       - id: expand_panel_button
         type: Button
         properties:
-          icon: AiOutlineDoubleLeft
+          icon:
+            name: AiOutlineDoubleLeft
+            title: Show results
           hideTitle: true
           type: text
         events:
