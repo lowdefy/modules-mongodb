@@ -1,0 +1,173 @@
+# One table result in the results panel — the item template of the `tables`
+# List, so every block id is a `tables.$.` path the List resolves per item.
+# The rows and columns are the frozen snapshot the turn produced (rows capped at
+# 200, the true total in `row_count`), so a reopened conversation shows the
+# numbers from that turn rather than re-running the query.
+- id: tables.$.item
+  type: Box
+  layout:
+    gap: 2
+  blocks:
+    - id: tables.$.table_title
+      type: Title
+      properties:
+        content:
+          _state: tables.$.title
+        level: 5
+    # The truncation line, shown only when the card holds fewer rows than the
+    # query returned. `row_count` predates some parts, so `_if_none` falls back
+    # to the retained count — an absent total then equals it and the line stays
+    # hidden (the part reads as complete). A total on the engine's 1000-row cap
+    # was itself probably cut, so the line adds the report side's own wording
+    # (`— first 1000 rows`) rather than inventing a second phrasing.
+    - id: tables.$.truncation
+      type: Paragraph
+      visible:
+        _gt:
+          - _if_none:
+              - _state: tables.$.row_count
+              - _array.length:
+                  _state: tables.$.rows
+          - _array.length:
+              _state: tables.$.rows
+      properties:
+        content:
+          _nunjucks:
+            template: >-
+              first {{ shown }} of {{ total }} rows{% if capped %} — first {{
+              cap }} rows{% endif %}
+            on:
+              shown:
+                _array.length:
+                  _state: tables.$.rows
+              total:
+                _if_none:
+                  - _state: tables.$.row_count
+                  - _array.length:
+                      _state: tables.$.rows
+              capped:
+                _gte:
+                  - _if_none:
+                      - _state: tables.$.row_count
+                      - 0
+                  - 1000
+              cap: 1000
+        style:
+          fontSize: 12px
+          color: var(--ant-color-text-secondary)
+          marginBottom: 0
+    - id: tables.$.grid
+      type: AgGridBalham
+      properties:
+        height: 300
+        rowData:
+          _state: tables.$.rows
+        # Matches saved reports: compileReport's minimal defaultColDef.
+        defaultColDef:
+          sortable: true
+          resizable: true
+        # Built at runtime from the one column copy on the part's spec, in
+        # declared order. Mirrors compileReport.tableColumnDef so a column
+        # formats identically here and in a saved report: a `format` column
+        # right-aligns and renders through Intl.NumberFormat (the same call
+        # `_intl.numberFormat` makes there); a formatless-but-numeric column is
+        # right-aligned but left raw; text is left alone. `label` falls back to
+        # the key. `_js` over operators here because the transform is a
+        # per-column map with a live cell renderer — no operator expresses that.
+        columnDefs:
+          _js:
+            args:
+              columns:
+                _state: tables.$.spec.columns
+              rows:
+                _state: tables.$.rows
+            fn: |
+              const columns = args.columns || [];
+              const rows = args.rows || [];
+              const REPORT_LOCALE = 'en-US';
+              const REPORT_CURRENCY = 'USD';
+              const REPORT_DECIMALS = 2;
+              const numberDisplay = (format) => {
+                const locale = (format && format.locale) || REPORT_LOCALE;
+                const decimals = Number.isInteger(format && format.decimals)
+                  ? format.decimals
+                  : REPORT_DECIMALS;
+                if (format && format.style === 'currency') {
+                  return {
+                    style: 'currency',
+                    decimals,
+                    currency: format.currency || REPORT_CURRENCY,
+                    locale,
+                  };
+                }
+                return { style: 'decimal', decimals, locale };
+              };
+              const numberFormatOptions = (d) => {
+                const base = {
+                  minimumFractionDigits: d.decimals,
+                  maximumFractionDigits: d.decimals,
+                };
+                return d.style === 'currency'
+                  ? { style: 'currency', currency: d.currency, ...base }
+                  : { style: 'decimal', ...base };
+              };
+              // Conservative, like the report: one non-numeric cell disqualifies
+              // the column, and no rows or all-empty cells yields no evidence.
+              const isNumericColumn = (key) => {
+                if (!Array.isArray(rows) || rows.length === 0) return false;
+                let sawNumber = false;
+                for (const row of rows) {
+                  const value = row ? row[key] : undefined;
+                  if (value === null || value === undefined) continue;
+                  if (typeof value !== 'number') return false;
+                  sawNumber = true;
+                }
+                return sawNumber;
+              };
+              return columns.map((column) => {
+                const def = {
+                  field: column.key,
+                  headerName:
+                    column.label === undefined || column.label === null
+                      ? column.key
+                      : column.label,
+                };
+                if (column.format) {
+                  const display = numberDisplay(column.format);
+                  const options = numberFormatOptions(display);
+                  def.cell = { align: 'right' };
+                  def.cellRenderer = (params) =>
+                    new Intl.NumberFormat(display.locale, options).format(
+                      params.value,
+                    );
+                } else if (isNumericColumn(column.key)) {
+                  def.cell = { align: 'right' };
+                }
+                return def;
+              });
+    # Dates the snapshot, for the same reason the chart card does. A leaf, so
+    # `visible:` is safe; read through `_if_none` so a part predating `created`
+    # renders with no line rather than a blank one.
+    - id: tables.$.as_of
+      type: Paragraph
+      visible:
+        _ne:
+          - _if_none:
+              - _state: tables.$.created
+              - null
+          - null
+      properties:
+        content:
+          _nunjucks:
+            template: "as of {{ d }}"
+            on:
+              d:
+                _dayjs:
+                  - _if_none:
+                      - _state: tables.$.created
+                      - 0
+                  - format: D MMMM
+        style:
+          fontSize: 12px
+          color: var(--ant-color-text-secondary)
+          marginBottom: 0
