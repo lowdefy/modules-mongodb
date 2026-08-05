@@ -67,6 +67,8 @@ Each item in a `form` array is one of:
 | `{ key: "path.to.field", title?, component?, enum? }` | A single field. `key` supports dot notation. `title` overrides the auto-formatted label. `component` is a renderer hint (see below). `enum` names a selector's enum map (see [Selector titles](#selector-titles)). |
 | `{ key: "items", title, form: [...] }`                | An array field. The block iterates the array at `key`, applies the nested `form` to each item (replacing `$` in nested keys with the index), and renders each as `Item N`.                                         |
 
+Array fields nest to any depth: an array item's `form` may itself contain an array field. Each level adds its own `$` to the key (e.g. `devices.$.parts.$.name`), and every `$` is replaced with the index of its enclosing array item.
+
 Fields with `null` or `undefined` values are skipped silently.
 
 ### Renderer hints

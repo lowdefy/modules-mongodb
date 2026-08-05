@@ -3,7 +3,7 @@ import createSection from "./createSection.js";
 import formatFieldName from "../../utils/formatFieldName.js";
 import detectFieldType from "./detectFieldType.js";
 
-function processConfigItems(data, formItems, level) {
+function processConfigItems(data, formItems, level, arrayIndices = []) {
   const fields = [];
   const sections = [];
 
@@ -15,7 +15,12 @@ function processConfigItems(data, formItems, level) {
       const title = item.title || null;
       const form = item.form || [];
 
-      const sectionItems = processConfigItems(data, form, level + 1);
+      const sectionItems = processConfigItems(
+        data,
+        form,
+        level + 1,
+        arrayIndices,
+      );
 
       if (sectionItems.length > 0) {
         sections.push(createSection(title, level, sectionItems));
@@ -23,7 +28,7 @@ function processConfigItems(data, formItems, level) {
     }
     // Box component - transparent container
     else if (item.component === "box" && item.form) {
-      const boxItems = processConfigItems(data, item.form, level);
+      const boxItems = processConfigItems(data, item.form, level, arrayIndices);
 
       // Merge box contents into current level
       boxItems.forEach((boxItem) => {
@@ -37,33 +42,24 @@ function processConfigItems(data, formItems, level) {
     // Array field with nested form (controlled_list)
     else if (item.key && item.form) {
       const title = item.title || null;
-      const arrayValue = get(data, item.key);
+      const arrayValue = get(data, applyArrayIndices(arrayIndices, item.key));
       const items = [];
 
       if (type.isArray(arrayValue) && arrayValue.length > 0) {
-        // Create sections for each array item
+        // Create sections for each array item. Keys keep their `$` markers;
+        // the accumulated indices expand them at lookup, so lists nest to
+        // any depth (e.g. form.devices.$.parts.$.name).
         arrayValue.forEach((_, index) => {
-          // Expand $ syntax in nested form keys
-          const expandedForm = item.form.map((formItem) => {
-            if (!formItem.key) return formItem;
-            // Replace $ with actual index
-            const expandedKey = applyArrayIndices([index], formItem.key);
-
-            return {
-              ...formItem,
-              key: expandedKey,
-            };
-          });
-          // Process expanded form recursively
-          const itemStructure = processConfigItems(
-            data,
-            expandedForm,
-            level + 1,
-          );
+          const itemStructure = processConfigItems(data, item.form, level + 1, [
+            ...arrayIndices,
+            index,
+          ]);
           // Add section for array item
           if (itemStructure.length > 0) {
             items.push(
-              createSection(`Item ${index + 1}`, level + 1, itemStructure),
+              createSection(`Item ${index + 1}`, level + 1, itemStructure, {
+                isListItem: true,
+              }),
             );
           }
         });
@@ -72,7 +68,8 @@ function processConfigItems(data, formItems, level) {
     }
     // Simple field item
     else if (item.key) {
-      const value = get(data, item.key);
+      const expandedKey = applyArrayIndices(arrayIndices, item.key);
+      const value = get(data, expandedKey);
 
       if (value === undefined || value === null) return;
 
@@ -87,11 +84,11 @@ function processConfigItems(data, formItems, level) {
 
       fields.push({
         type: "field",
-        key: item.key,
+        key: expandedKey,
         value,
         configHint: item.component || null,
         customLabel,
-        label: customLabel || formatFieldName(item.key),
+        label: customLabel || formatFieldName(expandedKey),
         fieldType: typeInfo.type,
         isArray: typeInfo.isArray,
         fullWidth: typeInfo.config?.fullWidth ?? false,

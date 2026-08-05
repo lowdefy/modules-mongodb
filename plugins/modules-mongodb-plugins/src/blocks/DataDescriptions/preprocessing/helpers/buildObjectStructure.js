@@ -41,7 +41,9 @@ function buildObjectStructure(obj, level) {
       // Array of objects
       const arrayItems = value.map((item) => {
         const itemStructure = buildObjectStructure(item, level + 2);
-        return createSection(null, level + 2, itemStructure);
+        return createSection(null, level + 2, itemStructure, {
+          isListItem: true,
+        });
       });
       items.push(createSection(formatFieldName(key), level + 1, arrayItems));
     } else {

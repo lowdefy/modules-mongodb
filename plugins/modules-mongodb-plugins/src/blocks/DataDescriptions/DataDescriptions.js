@@ -58,7 +58,8 @@ const DataDescriptions = ({
 
   // Recursively render a group and its children.
   // Top-level groups (depth 0) render as bare Descriptions.
-  // Nested groups (depth 1+) render as Card type="inner" wrapping Descriptions.
+  // Nested named sections render as Card type="inner"; array elements render
+  // as light left-accented blocks so nesting doesn't stack card chrome.
   function renderGroup(group, depth, index, extra) {
     const title = group.title || null;
     const hasFields = group.fields?.length > 0;
@@ -81,8 +82,25 @@ const DataDescriptions = ({
       );
     }
 
+    if (group.isListItem) {
+      return (
+        <div className="dataview-list-item" key={`${depth}-${index}`}>
+          {title && <div className="dataview-list-item-title">{title}</div>}
+          {hasFields && renderDescriptions(group, null)}
+          {hasChildren &&
+            group.children.map((child, i) => renderGroup(child, depth + 1, i))}
+        </div>
+      );
+    }
+
     return (
-      <Card type="inner" title={title} key={`${depth}-${index}`} size="small">
+      <Card
+        type="inner"
+        title={title}
+        key={`${depth}-${index}`}
+        size="small"
+        className="dataview-section-card"
+      >
         {hasFields && renderDescriptions(group, null)}
         {hasChildren &&
           group.children.map((child, i) => renderGroup(child, depth + 1, i))}
@@ -91,7 +109,7 @@ const DataDescriptions = ({
   }
 
   return (
-    <div id={blockId}>
+    <div id={blockId} className="dataview-groups">
       {groups.map((group, i) =>
         renderGroup(
           group,

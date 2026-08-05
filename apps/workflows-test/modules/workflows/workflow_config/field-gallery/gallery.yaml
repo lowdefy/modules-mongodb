@@ -243,6 +243,16 @@ form:
       - key: form.devices.$.name
         component: text_input
         title: Device name
+      # Nested list — lists nest to any depth; each level adds its own `$` to
+      # the key, expanded per row index at runtime and again when the saved
+      # data renders on the view/review pages (DataDescriptions).
+      - key: form.devices.$.parts
+        component: controlled_list
+        title: Parts
+        form:
+          - key: form.devices.$.parts.$.name
+            component: text_input
+            title: Part name
 
 # form_review — a small writable section the review page renders below the
 # read-only main form (proves the form_review surface is wired).

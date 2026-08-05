@@ -2,6 +2,46 @@
    unhashed (the themeable cssKeys); Next/Turbopack rejects both a plain global
    .css import and the :global block form, so selectors are wrapped per-rule. */
 @layer components {
+  /* Section spacing — the root group list and each section card's body stack
+     their children (fields table, nested item cards) as a column with a gap;
+     antd Card adds no sibling margins, so without this a Descriptions table
+     renders flush against a nested card. */
+
+  :global(.dataview-groups) {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  :global(.dataview-section-card > .ant-card-body) {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Nested list items — each array element renders as a light left-accented
+     block (same idiom as .dataview-array-item) instead of stacking another
+     card. The fixed label width keeps sibling items' columns aligned, since
+     each item is its own Descriptions table. */
+
+  :global(.dataview-list-item) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0 4px 12px;
+    border-left: 2px solid var(--ant-color-border);
+  }
+
+  :global(.dataview-list-item-title) {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ant-color-text-secondary);
+  }
+
+  :global(.dataview-list-item .ant-descriptions-item-label) {
+    width: 25%;
+  }
+
   :global(.dataview-value) {
     font-size: 14px;
     color: var(--ant-color-text);
