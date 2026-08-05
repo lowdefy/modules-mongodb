@@ -1,0 +1,30 @@
+id: get_user_passkeys
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-passkeys
+payload:
+  user_id:
+    _url_query: userId
+properties:
+  pipeline:
+    - $match:
+        userId:
+          _payload: user_id
+    - $sort:
+        createdAt: -1
+    - $project:
+        _id: 0
+        passkey_id: "$_id"
+        name:
+          $ifNull:
+            - "$name"
+            - Passkey
+        device:
+          $ifNull:
+            - "$deviceType"
+            - ""
+        created_str:
+          $dateToString:
+            date: "$createdAt"
+            format: "%Y-%m-%d"
+            onNull: ""
