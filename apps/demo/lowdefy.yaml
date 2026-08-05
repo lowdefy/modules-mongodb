@@ -57,6 +57,7 @@ auth:
     expiresIn: 1800
   twoFactor:
     enabled: true
+    required: true
   passkey:
     enabled: true
     rpId: localhost

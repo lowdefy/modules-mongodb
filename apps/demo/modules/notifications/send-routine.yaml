@@ -177,3 +177,131 @@
           on: _id
           whenMatched: keepExisting
           whenNotMatched: insert
+
+# Two-factor reset — recovery notification to the affected user after an admin
+# clears their authenticator and revokes their sessions.
+- id: notify_two_factor_reset
+  type: MongoDBAggregation
+  connectionId:
+    _module.connectionId:
+      id: events-collection
+      module: events
+  properties:
+    pipeline:
+      - $match:
+          _id:
+            $in:
+              _payload: event_ids
+          type: two-factor-reset
+      - $set:
+          recipient_id:
+            $first: $user_ids
+      - $project:
+          _id:
+            $function:
+              body: |
+                function(){
+                  return UUID().toString().split('"')[1]
+                }
+              args: []
+              lang: js
+          key:
+            $concat:
+              - $_id
+              - ":"
+              - $recipient_id
+              - ":"
+              - $dateToString:
+                  date: $created.timestamp
+          popup:
+            $literal: false
+          contact_id: $recipient_id
+          title: Two-factor authentication reset
+          description: An administrator reset your two-factor authentication.
+          body: "<p>An administrator reset your two-factor authentication. You'll be asked to set it up again next time you sign in.</p>"
+          links:
+            button:
+              pageId:
+                _module.pageId:
+                  id: login
+                  module: user-account
+          type: two-factor-reset
+          event_type: two-factor-reset
+          event_id: $_id
+          created:
+            _ref:
+              module: events
+              component: change_stamp
+          read:
+            $literal: false
+          priority:
+            $literal: 50
+      - $merge:
+          into: notifications
+          on: _id
+          whenMatched: keepExisting
+          whenNotMatched: insert
+
+# Passkeys revoked — recovery notification to the affected user after an admin
+# revokes their passkeys and revokes their sessions.
+- id: notify_passkeys_revoked
+  type: MongoDBAggregation
+  connectionId:
+    _module.connectionId:
+      id: events-collection
+      module: events
+  properties:
+    pipeline:
+      - $match:
+          _id:
+            $in:
+              _payload: event_ids
+          type: passkeys-revoked
+      - $set:
+          recipient_id:
+            $first: $user_ids
+      - $project:
+          _id:
+            $function:
+              body: |
+                function(){
+                  return UUID().toString().split('"')[1]
+                }
+              args: []
+              lang: js
+          key:
+            $concat:
+              - $_id
+              - ":"
+              - $recipient_id
+              - ":"
+              - $dateToString:
+                  date: $created.timestamp
+          popup:
+            $literal: false
+          contact_id: $recipient_id
+          title: Passkeys revoked
+          description: An administrator revoked your passkeys.
+          body: "<p>An administrator revoked your passkeys. Sign in again to continue.</p>"
+          links:
+            button:
+              pageId:
+                _module.pageId:
+                  id: login
+                  module: user-account
+          type: passkeys-revoked
+          event_type: passkeys-revoked
+          event_id: $_id
+          created:
+            _ref:
+              module: events
+              component: change_stamp
+          read:
+            $literal: false
+          priority:
+            $literal: 50
+      - $merge:
+          into: notifications
+          on: _id
+          whenMatched: keepExisting
+          whenNotMatched: insert
