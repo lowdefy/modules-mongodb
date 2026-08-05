@@ -10,7 +10,7 @@ stops the routine maintenance operation — "I need new backup codes" — from b
 reachable only through the one that destroys the user's authenticator.
 
 Resolves **F21 (remainder)** and **F22 (a/b/c)** from
-[`../04-planning/findings.md`](../../04-planning/findings.md), plus a rotation hazard
+[`../04-planning/findings.md`](../04-planning/findings.md), plus a rotation hazard
 found while verifying them.
 
 **Everything specified here has shipped.** The one branch of D4 that depended on a

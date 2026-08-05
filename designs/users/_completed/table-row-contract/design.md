@@ -412,7 +412,7 @@ developer to make — not part of the build gate.
 
 ## Related
 
-- F26 in [`../04-planning/findings.md`](../../04-planning/findings.md) — the originating finding.
+- F26 in [`../04-planning/findings.md`](../04-planning/findings.md) — the originating finding.
 - [`designs/user-account-better-auth/design.md`](../../../users/_completed/user-account-better-auth/design.md) — parent
   rebuild; Decisions 1/2/3 define the members reads this design reshapes.
 - [`docs/user-admin/concepts/co-location.md`](../../../../docs/user-admin/concepts/co-location.md) — the
