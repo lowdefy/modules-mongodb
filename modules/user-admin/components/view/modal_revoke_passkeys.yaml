@@ -1,0 +1,110 @@
+# Passkey revoke confirm modal — RevokeUserPasskeys, admin recovery when a
+# security key is lost or stolen (design Decision 3). Passkeys are keyed to the
+# user, not the member, so a revoke removes them from every app in the suite the
+# person can sign into; "across the suite" collapses to this-app framing at
+# other-membership count 0, the same switch modal_reset_2fa.yaml uses. When the
+# person has more than one passkey a picker (Decision 2) lets the admin revoke a
+# single credential or all of them; the "All passkeys" option leaves
+# revokepk.passkey_id null, which the routine reads as revoke-all. The
+# attestation is a client-side gate only — it is never sent to the routine.
+id: modal_revoke_passkeys
+type: Modal
+properties:
+  title:
+    _nunjucks:
+      template: "Revoke passkeys for {{ name }}?"
+      on:
+        name:
+          _request: get_user_detail.0.name
+  width: 480
+  okText: Revoke passkeys
+  cancelText: Cancel
+  okButtonProps:
+    danger: true
+    disabled:
+      _not:
+        _state: revokepk.attested
+events:
+  onClose:
+    - id: reset_revokepk
+      type: SetState
+      params:
+        revokepk.passkey_id: null
+        revokepk.attested: false
+  onOk:
+    _build.array.concat:
+      # RevokeUserPasskeys (Decision 3). Only the revoke routine's own payload
+      # keys go over the wire — the attestation checkbox is never sent. A null
+      # passkey_id (the "All passkeys" pick, or the single-passkey case where no
+      # picker renders) revokes every passkey.
+      - - id: revoke_passkeys
+          type: CallAPI
+          messages:
+            loading: Revoking…
+            success: Passkeys revoked.
+          params:
+            endpointId:
+              _module.endpointId: revoke-passkeys
+            payload:
+              user_id:
+                _request: get_user_detail.0.user_id
+              passkey_id:
+                _state: revokepk.passkey_id
+              target_name:
+                _request: get_user_detail.0.name
+              target_email:
+                _request: get_user_detail.0.email
+      - _ref: actions/detail_refetch.yaml
+blocks:
+  - id: revokepk_message
+    type: Html
+    properties:
+      # "across the suite" collapses to this-app framing at other-membership
+      # count 0 (Decision 3); single-passkey framing collapses the picker copy
+      # when only one credential is registered.
+      html:
+        _nunjucks:
+          template: >-
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">{% if count == 1 %}Revokes the one passkey <b>{{ name }}</b> has registered{% else %}Revokes <b>{{ name }}</b>'s registered passkeys — pick one below, or revoke all of them{% endif %}. Passkeys are tied to the person, not this app, so this removes them{% if others > 0 %} across every app in the suite{% endif %}. They can register a new passkey the next time they sign in.</div>
+          on:
+            name:
+              _request: get_user_detail.0.name
+            count:
+              _request: get_user_detail.0.passkey_count
+            others:
+              _array.length:
+                _if_none:
+                  - _request: get_user_memberships
+                  - []
+  # Per-key picker (Decision 2) — only when more than one passkey is registered.
+  # Rows come from get_user_passkeys; the prepended null-id row is "All
+  # passkeys", so selecting it stores null and the routine revokes all.
+  - id: revokepk.passkey_id
+    type: RadioSelector
+    visible:
+      _gt:
+        - _request: get_user_detail.0.passkey_count
+        - 1
+    layout:
+      span: 24
+    properties:
+      label:
+        disabled: true
+      direction: vertical
+      data:
+        _build.array.concat:
+          - - passkey_id: null
+          - _if_none:
+              - _request: get_user_passkeys
+              - []
+      valueKey: passkey_id
+      html: >-
+        {% if item.passkey_id %}<div style="font-size:13px;">{{ item.name }}{% if item.device %} · {{ item.device }}{% endif %}</div>{% if item.created_str %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Added {{ item.created_str }}</div>{% endif %}{% else %}All passkeys{% endif %}
+  - id: revokepk.attested
+    type: CheckboxSwitch
+    layout:
+      span: 24
+    properties:
+      description: I have verified this person's identity through a channel other than email.
+      label:
+        disabled: true

@@ -27,6 +27,8 @@ dependencies:
     description: Page layout wrapper
   - id: events
     description: Audit event logging and change stamp
+  - id: notifications
+    description: Notification dispatch for recovery notices (send-notification)
 
 vars:
   # No default: a defaulted slug would silently administer the WRONG organization,
@@ -264,6 +266,10 @@ exports:
       description: UnbanUser (behind the `suspension` var)
     - id: revoke-sessions
       description: RevokeUserSessions — sign out everywhere
+    - id: reset-two-factor
+      description: ResetUserTwoFactor → revoke sessions → audit → notify (Decision 3/8)
+    - id: revoke-passkeys
+      description: RevokeUserPasskeys → revoke sessions → audit → notify; optional passkey_id
     - id: remove-member
       description: RemoveMember — delete this app's member row
     - id: delete-user
@@ -294,6 +300,8 @@ api:
   - _ref: api/suspend.yaml
   - _ref: api/reinstate.yaml
   - _ref: api/revoke-sessions.yaml
+  - _ref: api/reset-two-factor.yaml
+  - _ref: api/revoke-passkeys.yaml
   - _ref: api/remove-member.yaml
   - _ref: api/delete-user.yaml
 

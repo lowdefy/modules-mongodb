@@ -48,3 +48,11 @@ invitation-resent:
   color: "#faad14"
   title: Invitation Resent
   icon: AiOutlineSend
+two-factor-reset:
+  color: "#722ed1"
+  title: Two-Factor Reset
+  icon: AiOutlineSafety
+passkeys-revoked:
+  color: "#faad14"
+  title: Passkeys Revoked
+  icon: AiOutlineKey

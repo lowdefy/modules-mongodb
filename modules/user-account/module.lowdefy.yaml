@@ -114,6 +114,7 @@ pages:
       - _ref: pages/logout.yaml
       - _ref: pages/view.yaml
       - _ref: pages/onboarding.yaml
+      - _ref: pages/two-factor-enrol.yaml
     # Signup is a distinct page only where a password registration form
     # exists (emailAndPassword.enabled). In a passwordless deployment signup ≡
     # login, so the page is not assembled and no /signup route exists.
@@ -179,6 +180,12 @@ auth:
     # plain public page) so Login/PhoneNumberVerify can navigate to it and it is
     # auto-public without a session to authenticate against.
     twoFactor: two-factor
+    # Forced-enrolment target for the engine's `required` enforcement. Unlike
+    # every other auth page this one is protected (public: false) — the caller
+    # arrives holding a valid session, only missing a factor — so it is
+    # contributed via THIS role, never an auth.public entry, and the engine
+    # exempts it from its own enrolment gate.
+    twoFactorEnrol: two-factor-enrol
   # Public pages beyond the authPages roles (role pages — including accept via
   # acceptInvitation and the two-factor challenge — are auto-public): logout must
   # render when signed out.
@@ -212,6 +219,8 @@ exports:
       description: Account workspace — profile, security, and session tiles.
     - id: onboarding
       description: First-login profile completion.
+    - id: two-factor-enrol
+      description: Forced two-factor enrolment (TOTP + passkey); the twoFactorEnrol authPages target.
   connections:
     - id: user-contacts-collection
       description: Read-write MongoDB connection for the app-owned contact records.

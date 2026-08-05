@@ -11,6 +11,8 @@ concepts:
     onboarding,
     magic-link,
     passwordless,
+    two-factor-required,
+    twoFactorEnrolled,
   ]
 ---
 
@@ -66,6 +68,12 @@ operator console). Both run against the same `contact` / `user` / `member` /
 - **Onboarding** (`onboarding` page) — chrome-less first-login profile
   completion; on save it sets `profile.profile_created: true`, the marker the
   app router reads to stop routing the user here.
+- **Two-factor enrolment** (`two-factor-enrol` page) — the module's contributed
+  `authPages.twoFactorEnrol` target. When the deployment sets
+  `auth.twoFactor.required`, a signed-in caller who has not yet enrolled a
+  qualifying factor (TOTP or passkey) is redirected here on their next
+  request. Unlike every other auth page in this module, it is **protected**,
+  not public. See [Auth methods](concepts/auth-methods.md#required-enrolment-authtwofactorrequired).
 - **Logout** (`logout` page) — signs out and offers a sign-in link.
 
 ## Dependencies
