@@ -9,9 +9,11 @@
 # leaving the app-role write applied, with nothing to roll it back.
 #
 # Role picker options/labels/descriptions come from the app role catalog
-# (_build.authConfig.roles). An orphaned role (held but no longer in the catalog)
-# stays selected and can be removed, but is not an option to re-add. Member
-# attributes bind state.member_attributes.*.
+# (_build.authConfig.roles), concatenated with one option per held orphan (a role
+# the member holds that the catalog no longer declares). The picker seeds from the
+# resolved `roles`, so an orphan the member already holds is offered as a removable
+# chip; removing and saving drops it, and a dropped orphan is not re-addable since
+# it is gone from the catalog. Member attributes bind state.member_attributes.*.
 id: modal_access
 type: Modal
 properties:
@@ -24,9 +26,14 @@ events:
     - id: seed_access
       type: SetState
       params:
-        # Current role ids incl. orphans (removable, not re-addable).
+        # Held role ids, mapped from the resolved roles (catalog + held orphans).
         roles:
-          _request: get_user_detail.0.role_ids
+          _array.map:
+            on:
+              _request: get_user_detail.0.roles
+            callback:
+              _function:
+                __args: 0.id
         member_attributes:
           _request: get_user_detail.0.member_attributes
         # Seeded on every open, so reopening the modal shows the stored tier
@@ -71,7 +78,6 @@ blocks:
   _build.array.concat:
     - - id: roles
         type: MultipleSelector
-        required: true
         properties:
           label:
             title: Roles
@@ -82,41 +88,67 @@ blocks:
                   _request: get_user_detail.0.has_orphan
                 then: A role shown here that is no longer in this app can be removed, but not added back.
                 else: null
-          # Options from the app role catalog (design Decision 8): value=id, a
-          # rich label (name + description subtitle), filterString for search,
-          # and a plain tag for the selected chip. Orphaned roles are not in the
-          # catalog so they are not options — a held orphan stays selected and can
-          # be removed, but not re-added.
+          # Options are the app role catalog concatenated with one option per held
+          # orphan. A catalog option: value=id, a rich label (name + description
+          # subtitle), a filterString spanning label + description for search, and a
+          # plain tag for the selected chip. An orphan option: value=the real id,
+          # labelled "<id> (no longer configured)", enabled so its chip stays
+          # removable (a disabled option would render a non-removable chip).
           options:
-            _build.array.map:
-              on:
-                _build.authConfig: roles
-              callback:
-                _build.function:
-                  value:
-                    __build.args: 0.id
-                  filterString:
-                    __build.args: 0.label
-                  tag:
-                    title:
-                      __build.args: 0.label
-                  label:
-                    __build.string.concat:
-                      - '<div style="line-height:1.3"><div>'
-                      - __build.args: 0.label
-                      - "</div>"
-                      - __build.if:
-                          test:
-                            __build.ne:
+            _array.concat:
+              - _build.array.map:
+                  on:
+                    _build.authConfig: roles
+                  callback:
+                    _build.function:
+                      value:
+                        __build.args: 0.id
+                      filterString:
+                        __build.string.concat:
+                          - __build.args: 0.label
+                          - " "
+                          - __build.if_none:
                               - __build.args: 0.description
-                              - null
-                          then:
-                            __build.string.concat:
-                              - '<div style="font-size:11px;color:var(--ant-color-text-tertiary)">'
-                              - __build.args: 0.description
-                              - "</div>"
-                          else: ""
-                      - "</div>"
+                              - ""
+                      tag:
+                        title:
+                          __build.args: 0.label
+                      label:
+                        __build.string.concat:
+                          - '<div style="line-height:1.3"><div>'
+                          - __build.args: 0.label
+                          - "</div>"
+                          - __build.if:
+                              test:
+                                __build.ne:
+                                  - __build.args: 0.description
+                                  - null
+                              then:
+                                __build.string.concat:
+                                  - '<div style="font-size:11px;color:var(--ant-color-text-tertiary)">'
+                                  - __build.args: 0.description
+                                  - "</div>"
+                              else: ""
+                          - "</div>"
+              - _array.map:
+                  on:
+                    _request: get_user_detail.0.orphan_ids
+                  callback:
+                    _function:
+                      value:
+                        __args: 0
+                      filterString:
+                        __args: 0
+                      tag:
+                        title:
+                          __string.concat:
+                            - __args: 0
+                            - " (no longer configured)"
+                      label:
+                        __string.concat:
+                          - '<div style="line-height:1.3"><div>'
+                          - __args: 0
+                          - " (no longer configured)</div></div>"
     - _module.var: fields.member_attributes
     # Organization authority — behind the `org_authority` var. Its own selector and
     # its own button: the tier is a different authority from the app roles above and

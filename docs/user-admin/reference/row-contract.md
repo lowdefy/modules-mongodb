@@ -24,8 +24,7 @@ build error.
 | `name`                  | string              | `contact.profile.name` ?? `user.name`                    |
 | `email`                 | string              | `user.email`                                             |
 | `picture`               | string \| null      | `contact.profile.picture`                                |
-| `roles_arr`             | string[]            | the member's app-role ids — alias of stored `appRoles`   |
-| `roles`                 | `{label, orphan}[]` | `appRoles` resolved against the app's role catalog       |
+| `roles`                 | `{ id, label, description, orphan }[]` | `appRoles` resolved against the app's role catalog |
 | `status`                | string              | `Active` / `Suspended`                                   |
 | `created` / `updated`   | date \| null        | contact change-stamp timestamps                          |
 | `signed_up`             | date                | member `createdAt`                                       |
@@ -62,19 +61,22 @@ components:
       width: 20
 ```
 
-## The two role keys, and the organization tier
+## The app-role key, and the organization tier
 
-The row publishes the member's **app roles** twice, both fed from the stored
-`member.appRoles` array — a native `string[]` of catalog role ids:
+The row publishes the member's **app roles** under a single key, `roles`, fed from
+the stored `member.appRoles` array — a native `string[]` of catalog role ids —
+resolved against the app's authored `auth.roles` catalog into
+`{ id, label, description, orphan }` objects:
 
-- **`roles_arr`** — the ids as stored. Nothing inside the module reads it; it exists
-  for consumer column bindings, so it is yours to bind and it keeps its name.
-- **`roles`** — the same ids resolved against the app's authored `auth.roles` catalog
-  into `{ label, orphan }` objects. `orphan: true` marks an id held in data but no
-  longer in the catalog.
+- **`id`** — the id as stored in `appRoles`.
+- **`label`** — the catalog's display label for that id.
+- **`description`** — the catalog's description for that id, or `null` if the
+  catalog entry carries none.
+- **`orphan`** — `true` when the id is held in data but no longer in the catalog.
 
-Both keys exist on every row (`$ifNull` to `[]`), so a blank Roles column is always a
-data question, never a shape question.
+`roles` is the one roles binding: there is no separate raw-id key. It exists on
+every row (`$ifNull` to `[]`), so a blank Roles column is always a data question,
+never a shape question.
 
 `member.role` is a **different fact**: BetterAuth's `owner` / `admin` / `member`
 organization-authority tier, which decides who may administer the organization. It is
@@ -84,11 +86,19 @@ alone** publishes the tier under its own name, **`org_role`** (`member` when uns
 because the detail page's access modal binds it. `org_role` is not on the Members list
 row, not on the Invitations row, and not in the export.
 
-> **Breaking change.** A `table_columns` `field: role` or a `download_columns`
-> `value: role` **blanks** — silently, like any path outside the contract. Bind
-> `roles_arr` for the ids or `roles` for the resolved labels. This is the only
-> wire-visible break in the members row: `roles_arr` kept its name and its meaning
-> precisely so a column bound to the app roles needed no change.
+> **Breaking change.** A `table_columns` `field:` or `download_columns` `value:`
+> bound to `role`, `roles_arr`, or `role_ids` all **blank** — silently, like any path
+> outside the contract. `roles_arr` and `role_ids` are removed; the per-entry ids are
+> available as `roles[].id`. Bind `roles` for both the ids and the resolved labels —
+> it is the single roles binding on the row.
+
+An earlier iteration of this module kept `roles_arr` (and the invitation-row
+`role_ids`) as published contract fields, mirroring org-authority Decision 11 — the
+premise there being that a consumer would bind `table_columns` / `download_columns`
+directly to the raw ids. That premise does not hold for this module: consumers bind
+their own custom attributes rather than the raw role ids, and roles display through
+the resolved `roles` column on both the table and the export. Both raw-id aliases are
+dropped; `roles` is the single roles surface.
 
 ## A bag column renders the stored value
 
@@ -106,9 +116,9 @@ including the slug→label renderer on the Team column.
 The export merges member and pending-invitation rows into one sheet, so three keys
 differ from the table above:
 
-- **`roles`** is the stored `appRoles` ids joined by `", "`, not the `{label, orphan}[]`
-  catalog objects — a spreadsheet cell can't hold the array. `roles_arr` still carries
-  the array itself on both branches.
+- **`roles`** is the stored `appRoles` ids joined by `", "`, not the
+  `{ id, label, description, orphan }[]` catalog objects — a spreadsheet cell can't
+  hold the array or object shape.
 - **`expires`** is added: the invitation expiry, `null` on member rows.
 - **`picture`** is dropped. It holds an ~800-character `data:` URI SVG and the export
   fetches every row at once, so it is stripped rather than repeated per row.
@@ -116,9 +126,9 @@ differ from the table above:
 **Invitation rows carry `member_attributes` but no `profile` and no
 `user_attributes`.** There is no user and no contact yet, so a column bound to a
 profile path is blank for invited rows — which is the honest answer rather than an
-error. Invitation rows also carry their own keys (`inviter_name`, `expires_at`,
-`role_ids`) and their `_id` is the invitation id, not a member id; none of those are
-part of this contract.
+error. Invitation rows also carry their own keys (`inviter_name`, `expires_at`) and
+their `_id` is the invitation id, not a member id; none of those are part of this
+contract.
 
 ## Binding something outside the contract
 

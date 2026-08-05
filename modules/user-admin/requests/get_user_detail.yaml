@@ -1,10 +1,14 @@
 # User detail read (design Decision 3). Native aggregation rooted on the target's
 # `user-members` row (matched by the urlQuery userId, scoped to the pinned org),
 # joined to `users` + `user-contacts`. Reuses the shared members base shape
-# (name/email/picture/status/roles_arr/dates plus the three editable bags —
-# profile / user_attributes / member_attributes) and the catalog role-resolve,
-# then adds the fields only the detail page needs:
+# (name/email/picture/status/dates plus the three editable bags —
+# profile / user_attributes / member_attributes) and the catalog role-resolve
+# (`roles` — [{ id, label, description, orphan }]), then adds the fields only the
+# detail page needs:
 #   user_id / member_id / contact_id — the ids the write routines take
+#   orphan_ids — the held role ids the catalog no longer declares; seeds the
+#     access modal's orphan picker options
+#   has_orphan — true when any held role is orphaned; drives the modal's hint
 #   org_role — the member's owner|admin|member organization-authority tier
 #   status_slug — lowercase active|suspended for the title-block status pill
 #   email_verified / two_factor_enabled / banned / passkey_count — Security-tile facts
@@ -54,16 +58,20 @@ properties:
                 $ifNull:
                   - "$passkeys"
                   - []
-            # Current role id list, orphans included — seeds the access modal's
-            # role picker AND the update-access payload it posts back, so an
-            # empty array here is a save that clears the member's roles.
-            role_ids:
-              $ifNull:
-                - "$appRoles"
-                - []
+            # The member's held role ids the catalog no longer declares. Seeds the access
+            # modal's orphan selector options.
+            orphan_ids:
+              $map:
+                input:
+                  $filter:
+                    input: "$roles"
+                    as: r
+                    cond: "$$r.orphan"
+                as: r
+                in: "$$r.id"
             # The member's organization-authority tier, published under its own
             # name because it is a different authority from the app roles
-            # `role_ids` / `roles` carry — the access modal's organization control
+            # `roles` carries — the access modal's organization control
             # binds it. $ifNull because $addFields omits a field whose source is
             # missing, and `member` is exactly what an absent tier means.
             org_role:

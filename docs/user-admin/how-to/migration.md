@@ -203,10 +203,11 @@ Every role named must be declared in `auth.roles`; one that isn't fails the buil
 
 `member.role` now holds the organization's `owner` / `admin` / `member` tier, so it is
 no longer shipped on the members row. A `table_columns` `field: role` or a
-`download_columns` `value: role` renders empty. Bind `roles_arr` (the app-role ids) or
-`roles` (the resolved `{ label, orphan }` objects) instead — both kept their names and
-their meanings. See
-[the row contract's breaking-change note](../reference/row-contract.md#the-two-role-keys-and-the-organization-tier).
+`download_columns` `value: role` renders empty — as do the removed raw-id aliases
+`roles_arr` and `role_ids`. Bind `roles` (the resolved
+`{ id, label, description, orphan }` objects; the per-entry ids are at `roles[].id`)
+instead — it is the single roles binding on the row. See
+[the row contract's breaking-change note](../reference/row-contract.md#the-app-role-key-and-the-organization-tier).
 
 ### 5. Create the members-list role-filter index
 

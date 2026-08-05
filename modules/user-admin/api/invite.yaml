@@ -1,8 +1,7 @@
-# invite — submit the invite form (design Decision 7 + task-5 stale-expired
-# reconciliation). Reconcile any genuinely-stale invitation → create-or-link the
-# contact → InviteMember with profile.contactId + roles + member attributes →
-# audit. The invitation email itself is sent by BetterAuth via `auth.email`; this
-# module ships no email endpoint/hook/binding (Decision 7).
+# invite — submit the invite form. Reconcile any genuinely-stale invitation →
+# create-or-link the contact → InviteMember with profile.contactId + roles +
+# member attributes → audit. The invitation email itself is sent by BetterAuth
+# via `auth.email`; this module ships no email endpoint/hook/binding (Decision 7).
 #
 # Stale-expired reconciliation (verified against BetterAuth 1.6.23):
 # createInvitation's re-invite guard (findPendingInvitation) EXCLUDES expired rows

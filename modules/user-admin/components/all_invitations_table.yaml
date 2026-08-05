@@ -128,14 +128,11 @@ events:
         endpointId:
           _module.endpointId: resend-invitation
         payload:
+          # The endpoint reads the stored invitation and preserves its roles,
+          # org tier, and attributes when the payload omits them, so the
+          # email is all this button needs to send.
           email:
             _event: row.email
-          # Preserve the invitation's current roles + attributes (resend
-          # refreshes stored values, so re-send them rather than blank them).
-          roles:
-            _event: row.role_ids
-          member_attributes:
-            _event: row.member_attributes
     # Cancel — CancelInvitation (reversible; re-invitable later, so no confirm
     # modal on the list — the invite page's pending panel keeps the confirm).
     - id: cancel_invitation
