@@ -177,3 +177,61 @@ _ref:
                       _request: get_user_detail.0.passkey_count
                     providers:
                       _request: get_user_accounts
+          # Recovery controls (Decision 4) — sit beneath the Auth-methods badges,
+          # not among them (the badges are one read-only _nunjucks block). Each
+          # control is BUILT only when its factor is possible in the deployment
+          # (_build.authConfig), and per-user VISIBLE only when the badge's own
+          # runtime fact says the person actually has that factor enrolled.
+          - id: security_recovery_actions
+            type: Box
+            layout:
+              direction: row
+              gap: 8
+            blocks:
+              _build.array.concat:
+                - _build.if:
+                    test:
+                      _build.authConfig: twoFactor.enabled
+                    then:
+                      - id: reset_2fa_btn
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          title: Reset two-factor authentication
+                          danger: true
+                          variant: outlined
+                        visible:
+                          _request: get_user_detail.0.two_factor_enabled
+                        events:
+                          onClick:
+                            - id: open_reset_2fa_modal
+                              type: CallMethod
+                              params:
+                                blockId: modal_reset_2fa
+                                method: toggleOpen
+                    else: []
+                - _build.if:
+                    test:
+                      _build.authConfig: passkey.enabled
+                    then:
+                      - id: revoke_passkeys_btn
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          title: Revoke passkeys
+                          danger: true
+                          variant: outlined
+                        visible:
+                          _gt:
+                            - _request: get_user_detail.0.passkey_count
+                            - 0
+                        events:
+                          onClick:
+                            - id: open_revoke_passkeys_modal
+                              type: CallMethod
+                              params:
+                                blockId: modal_revoke_passkeys
+                                method: toggleOpen
+                    else: []

@@ -32,6 +32,7 @@ _ref:
       - _ref: requests/get_user_sessions.yaml
       - _ref: requests/get_user_accounts.yaml
       - _ref: requests/get_user_memberships.yaml
+      - _ref: requests/get_user_passkeys.yaml
     events:
       onMount:
         - id: fetch_detail
@@ -41,6 +42,7 @@ _ref:
             - get_user_sessions
             - get_user_accounts
             - get_user_memberships
+            - get_user_passkeys
         # No member row for this userId in the pinned org → back to the list.
         - id: redirect_if_not_found
           type: Link
@@ -124,3 +126,5 @@ _ref:
       - _ref: components/view/modal_remove.yaml
       - _ref: components/view/modal_revoke.yaml
       - _ref: components/view/modal_delete.yaml
+      - _ref: components/view/modal_reset_2fa.yaml
+      - _ref: components/view/modal_revoke_passkeys.yaml
