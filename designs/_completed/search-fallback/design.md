@@ -193,7 +193,7 @@ atlas_search:
     key: atlas_search
 ```
 
-**This reintroduces a file [`designs/app-operator`](../_completed/app-operator/design.md) deleted, deliberately and without conflict.** That design did not reject the shared-config pattern; `app_config.yaml` held exactly one key (`app_name`), `_app: slug` replaced it, and the file was removed because nothing read it any more (its task 07). A one-key file whose key becomes obsolete gets deleted; that says nothing about the next app-level key. `atlas_search` is a better fit than `app_name` ever was — `app_name` was app _identity_, which the platform can now supply via `_app`, whereas this is deployment _capability_, which no operator exposes. It holds this one key; do not populate it speculatively.
+**This reintroduces a file [`designs/app-operator`](../app-operator/design.md) deleted, deliberately and without conflict.** That design did not reject the shared-config pattern; `app_config.yaml` held exactly one key (`app_name`), `_app: slug` replaced it, and the file was removed because nothing read it any more (its task 07). A one-key file whose key becomes obsolete gets deleted; that says nothing about the next app-level key. `atlas_search` is a better fit than `app_name` ever was — `app_name` was app _identity_, which the platform can now supply via `_app`, whereas this is deployment _capability_, which no operator exposes. It holds this one key; do not populate it speculatively.
 
 There is no operator route. `_app` reads a fixed metadata set — `slug`, `name`, `version`, `description`, `license`, `lowdefyVersion`, `gitSha` — and cannot carry an arbitrary app-level flag. `_secret` is server-runtime-only, which would forfeit decision 2's build-time collapse.
 
