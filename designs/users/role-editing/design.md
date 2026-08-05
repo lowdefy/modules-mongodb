@@ -34,8 +34,11 @@ so no host app will create it.
    invitation by omitting a field (D-resend).
 6. **Document the role-filter index** in a new `docs/user-admin/reference/indexes.md`, and confirm the
    shipped pre-join `$match` actually uses it (D7).
-7. **Resolve the double id-alias** `roles_arr` / `role_ids` on the detail row, which offers two paths
-   to one value against `close_row`'s own rule (D-alias).
+7. **Drop both raw-id aliases** `roles_arr` and `role_ids` across the module. `roles` — the resolved
+   array, now carrying `id` per entry (D4) — becomes the single published roles surface, and every
+   internal id need derives from it. This supersedes org-authority Decision 11's kept-aliases choice on
+   new evidence: no consumer binds the raw ids, so the surface Decision 11 was protecting is a phantom
+   (D-alias).
 8. **Cut dead and stale config** — the unreachable `{% elif r.primary %}` branch in the members
    table, and the journey/task-number and stale-model comments the migration left behind.
 
@@ -48,13 +51,14 @@ so the context matters:
 - **App roles are read natively from `member.appRoles`.** Every `$split` is gone, the role filter is a
   pre-join `$match`, and the write paths pass arrays on the `appRoles` step property. Verified across
   the read stages and all thirteen write endpoints.
-- **`roles_arr` and `role_ids` are kept as published wire aliases**, fed from `appRoles`. The earlier
-  version of this design argued to _drop_ both and expose `appRoles` directly, on `close_row`'s
-  "never two paths to one value" rule. org-authority Decision 11 kept them, because they are a
-  published row-contract surface a consumer app binds `table_columns` / `download_columns` to, and
-  deleting a contract field silently blanks those columns. That decision has shipped and
-  `docs/user-admin/reference/row-contract.md` documents it — so it is settled, and the drop is
-  withdrawn. (D-alias below cleans up the one place the migration overshot into genuine redundancy.)
+- **`roles_arr` and `role_ids` shipped as published wire aliases**, fed from `appRoles` — and this
+  design drops both (D-alias), superseding org-authority Decision 11. Decision 11 kept them on the
+  premise that they are a row-contract surface a consumer app binds `table_columns` /
+  `download_columns` to, so deleting them would silently blank those columns. That premise does not
+  hold for this module: consumers bind their own custom attributes, not roles, and roles already
+  display through the resolved `roles` column on both the table and the export — so nothing binds the
+  raw id arrays. The reversal is recorded here and in `row-contract.md`; the `_completed/org-authority`
+  design stays as history.
 - **The organization is welded per instance** through the `org_slug` var (org-authority Decision 12),
   replacing `_organization: id` at every read `$match` and defaulting every step's `organizationId`.
   Out of this design's scope, but it is why the reads and writes all name `org_slug`.
@@ -146,12 +150,15 @@ row; a description would not fit and there is nowhere to put a tooltip that does
 button. The dropdown is where the admin is choosing and where the explanation belongs. A role with no
 `description` renders label-only everywhere, unchanged.
 
-**`id` is carried too, and it is load-bearing for D1.** The orphan option's `value:` is written back
-to `appRoles`, so it must be the real id — not the resolved entry's `label`, which falls back to the
-raw id for an unmatched value (`$ifNull: ["$$hit.label", "$$rid"]`) only so the display chip reads.
+**`id` is carried too, and it is load-bearing well beyond D1.** The orphan option's `value:` is written
+back to `appRoles`, so it must be the real id — not the resolved entry's `label`, which falls back to
+the raw id for an unmatched value (`$ifNull: ["$$hit.label", "$$rid"]`) only so the display chip reads.
 Deriving the orphan option value from that display default means a future change to the fallback — a
-prefix, "Unknown role", a translated string — silently writes a fabricated role id. One extra field
-removes the coupling, and it is the field `orphan_ids` (below) is built from.
+prefix, "Unknown role", a translated string — silently writes a fabricated role id. Carrying the real
+`id` on every resolved entry removes that coupling — and it is what lets `roles` be the module's single
+id source (D-alias): `orphan_ids` is built from it, and the access modal seeds its picker by mapping
+`roles` to its `id`s, so the raw-id aliases `roles_arr` / `role_ids` are redundant internally as well
+as externally.
 
 ### D5-notes. The three stale gap notes are deleted, verified against the built artifact
 
@@ -254,23 +261,42 @@ Two things the general migration got subtly and must be nailed down:
   the names are the physical adapter-derived columns and is regenerated with the snake-case names when
   that design lands.
 
-### D-alias. The double id-alias on the detail row is resolved
+### D-alias. Both raw-id aliases are dropped; `roles` is the single roles surface
 
-The detail row carries **both** `roles_arr` (from `members_base.yaml`) and `role_ids` (added in
-`get_user_detail.yaml`), each equal to the member's `appRoles` id array. That is two published paths to
-one value on one row — exactly what `close_row.yaml`'s rule 2 forbids in its own words ("the row never
-offers two paths to one value") — and `close_row`'s alias-map comment does not even list `role_ids`.
+The module publishes the member's app-role ids under **three** names: `roles_arr` (from
+`members_base.yaml` / `invitations_base.yaml`), `role_ids` (a duplicate id array, added in both
+`get_user_detail.yaml` and `invitations_base.yaml`), and `roles` (the same ids resolved against the
+catalog into objects). `roles_arr` and `role_ids` are the identical raw id array under two names — two
+paths to one value, which `close_row.yaml`'s rule 2 forbids in its own words ("the row never offers two
+paths to one value"), on the terminal stage shared by **every** members and invitations read.
 
-`role_ids` is the seed the access modal and the update-access payload read, and `roles_arr` is the
-list/export column; both being the raw id array, one is redundant on the detail row. **Drop `role_ids`
-from `get_user_detail` and point the modal seed at `roles_arr`** — the alias already present on every
-members read, so the detail row keeps a single id path (`roles_arr`) plus the resolved `roles`, and
-the invitations branch keeps `role_ids` where the Resend button reads it. Then `close_row`'s alias-map
-comment is corrected to list every alias it actually governs.
+**Both raw-id aliases are dropped. `roles` — now carrying `id` per entry (D4) — is the single roles
+surface.** This reverses org-authority Decision 11, which kept `roles_arr` as a published contract
+field on the premise that a consumer app binds `table_columns` / `download_columns` to the raw ids.
+That premise is false for this module: consumers bind their own custom attributes, and roles already
+display through the resolved `roles` column on the table and the export — so nothing external reads the
+raw arrays. And once D4 puts `id` on each resolved entry, nothing internal needs them either: every id
+the module uses is derivable from `roles`.
 
-This is the one place the migration overshot the kept-aliases decision (D5-context) into genuine
-redundancy. It is not the withdrawn "drop the aliases" change — `roles_arr` stays as the published
-contract field; only the duplicate second name for the same value on one row goes.
+The two internal readers move to `roles`, and both get simpler:
+
+- **The access-modal seed** (`modal_access.yaml`) currently reads `get_user_detail.0.role_ids`. It
+  seeds from `roles` mapped to its `id`s instead — the same array `orphan_ids` is filtered from, so the
+  picker seed and the orphan options come from one source and cannot disagree.
+- **The Invitations-list Resend button** (`all_invitations_table.yaml`) currently sends
+  `roles: { _event: row.role_ids }`. It stops sending roles entirely: D-resend makes
+  `resend-invitation.yaml` default `appRoles` from the stored invitation server-side, so the button
+  needs only `email` and the endpoint preserves the roles by construction.
+
+Then `role_ids` and `roles_arr` leave `get_user_detail.yaml`, `members_base.yaml` and
+`invitations_base.yaml`; `close_row.yaml`'s rule 2 reduces to a single roles path
+(`appRoles → roles`); and `row-contract.md` documents `roles` as the one roles binding, recording the
+Decision 11 reversal (see Files changed).
+
+Rejected — keep `roles_arr` as the sole id array (dropping only the `role_ids` duplicate). It removes
+the two-paths violation but leaves a raw-id field on the wire that no consumer binds and no internal
+reader needs once `roles` carries `id`. A field shipped and documented for a phantom consumer is the
+surface this design is trying to shed, not preserve.
 
 ## Current state
 
@@ -359,11 +385,11 @@ $addFields:
 `description` resolves to `null` for a role with none and for an orphan, which is what the tooltip and
 the option label already handle.
 
-### `get_user_detail.yaml` — `orphan_ids` in, duplicate `role_ids` out
+### `get_user_detail.yaml` — `orphan_ids` in, `role_ids` out
 
-`role_ids` is dropped (D-alias); the modal seed moves to `roles_arr`, already on the row. `has_orphan`
-stays. Added alongside it, from the same resolved `roles` array `has_orphan` reads, so the two cannot
-disagree:
+`role_ids` is dropped (D-alias); `roles_arr` is dropped from the shared `members_base.yaml` it rides in
+on (below). `has_orphan` stays, and `orphan_ids` is added alongside it, from the same resolved `roles`
+array `has_orphan` reads, so the two cannot disagree:
 
 ```yaml
 # The member's held role ids the catalog no longer declares. Seeds the access
@@ -381,7 +407,20 @@ orphan_ids:
 
 ### `modal_access.yaml` — seed, orphan options, no `required`
 
-Seed from `roles_arr`; concatenate the held orphans onto the catalog options; drop `required: true`:
+Seed the picker by mapping `get_user_detail.0.roles` to its `id`s (`roles` now carries `id` per entry,
+D4) rather than reading a raw id array; concatenate the held orphans onto the catalog options; drop
+`required: true`:
+
+```yaml
+# SetState seed — the picker's value is the array of held ids.
+roles:
+  _array.map:
+    on:
+      _request: get_user_detail.0.roles
+    callback:
+      _function:
+        __args: 0.id
+```
 
 ```yaml
 options:
@@ -413,6 +452,14 @@ paths. The orphan option has no description subtitle — there is no catalog ent
 which is the point the label is making. The `has_orphan` hint copy already reads well; if reworded, it
 should state that the save works ("You can save as-is, or remove it — once removed it cannot be added
 back").
+
+### `members_base.yaml` / `invitations_base.yaml` / `close_row.yaml` — raw-id aliases dropped
+
+`roles_arr` and `role_ids` are removed from both base stages (`members_base.yaml`, `invitations_base.yaml`)
+and from `get_user_detail.yaml`. `roles` — the resolved array — stays as the single roles field. In
+`close_row.yaml`, rule 2's alias list drops the two raw-id names, leaving `appRoles → roles`, and the
+header comment loses the "two published wire names" framing. The `$unset` list is unchanged: it already
+strips `appRoles`, and neither alias needs unsetting once it is never added.
 
 ### `filterString` carries the description
 
@@ -469,9 +516,11 @@ field to the stored value:
     resend: true
 ```
 
-The list Resend button (`all_invitations_table.yaml`) needs no change once the default is server-side,
-but its comment claiming it "re-send[s] them rather than blank them" is corrected — the endpoint, not
-the caller, is now what preserves.
+The list Resend button (`all_invitations_table.yaml`) currently sends `roles: { _event: row.role_ids }`.
+D-alias removes `role_ids` from the invitations row, so that binding goes: with the server-side default
+in place the button sends only `email` (and its other existing fields), and the endpoint preserves the
+roles by construction. Its comment claiming it "re-send[s] them rather than blank them" is corrected —
+the endpoint, not the caller, is now what preserves.
 
 ### `all_members_table.yaml` — dead branch and stale comments
 
@@ -492,26 +541,28 @@ it.
 
 ## Files changed
 
-| File                                                         | Change                                                                                                       |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `modules/user-admin/requests/stages/roles_from_catalog.yaml` | add `id` + `description`; delete the stale gap NOTE                                                          |
-| `modules/user-admin/requests/get_user_detail.yaml`           | drop duplicate `role_ids`, add `orphan_ids` (D-alias, D1)                                                    |
-| `modules/user-admin/requests/stages/close_row.yaml`          | correct the alias-map comment and the `role` framing (D-alias, comment cleanup)                              |
-| `modules/user-admin/components/view/modal_access.yaml`       | seed from `roles_arr`, concat orphan options, drop `required`, hint copy                                     |
-| `modules/user-admin/components/view/tile_attributes.yaml`    | `title=` description tooltip on the ordinary chip; fix the stale `on:` comment                               |
-| `modules/user-admin/components/invite_form.yaml`             | `filterString` + description; drop `required`; delete the stale gap NOTE                                     |
-| `modules/user-admin/components/all_members_filters.yaml`     | rich two-line options **+ `tag: { title: label }`**, `filterString` + description; delete the stale gap NOTE |
-| `modules/user-admin/components/all_members_table.yaml`       | drop the dead `{% elif r.primary %}` branch; update the `{ label, orphan }` entry-shape comments to the resolved shape |
-| `modules/user-admin/components/all_invitations_table.yaml`   | correct the "re-send rather than blank" comment (server-side preserve owns it now)                           |
-| `modules/user-admin/api/resend-invitation.yaml`              | add `find_invitation`; default `orgRole` / `appRoles` / `attributes` to stored (D-resend)                    |
-| `modules/user-admin/api/invite.yaml`                         | cut the task-5 journey comment                                                                               |
-| `modules/user-admin/api/suspend.yaml`                        | cut the task-13 journey comment                                                                              |
-| `modules/user-admin/api/update-access.yaml`                  | cut the stale "never a CSV" comment                                                                          |
-| `docs/user-admin/reference/indexes.md`                       | **new page** — the module-owned role-filter index, host-app-creates framing, physical names (D7)             |
-| `docs/user-admin/index.md`                                   | link the new indexes page                                                                                    |
-| `docs/user-admin/reference/row-contract.md`                  | `role_ids` off the members detail row (kept on invitations); `roles` gains `id` + `description`              |
-| `docs/llms.txt`                                              | regenerated via `pnpm docs:gen` after the new page (`docs:check` fails CI on drift)                          |
-| `apps/demo/`                                                 | a worked example / verification path for an orphan-holding member (see Verification)                         |
+| File                                                         | Change                                                                                                                                                                  |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modules/user-admin/requests/stages/roles_from_catalog.yaml` | add `id` + `description`; delete the stale gap NOTE                                                                                                                     |
+| `modules/user-admin/requests/get_user_detail.yaml`           | drop `role_ids`, add `orphan_ids` (D-alias, D1)                                                                                                                         |
+| `modules/user-admin/requests/stages/members_base.yaml`       | drop the `roles_arr` alias (D-alias)                                                                                                                                    |
+| `modules/user-admin/requests/stages/invitations_base.yaml`   | drop the `roles_arr` and `role_ids` aliases; fix the header comment (D-alias)                                                                                           |
+| `modules/user-admin/requests/stages/close_row.yaml`          | rule 2 alias-map drops the raw-id names (`appRoles → roles`); correct the `role` framing (D-alias, comments)                                                            |
+| `modules/user-admin/components/view/modal_access.yaml`       | seed by mapping `roles` → ids, concat orphan options, drop `required`, hint copy                                                                                        |
+| `modules/user-admin/components/view/tile_attributes.yaml`    | `title=` description tooltip on the ordinary chip; fix the stale `on:` comment                                                                                          |
+| `modules/user-admin/components/invite_form.yaml`             | `filterString` + description; drop `required`; delete the stale gap NOTE                                                                                                |
+| `modules/user-admin/components/all_members_filters.yaml`     | rich two-line options **+ `tag: { title: label }`**, `filterString` + description; delete the stale gap NOTE                                                            |
+| `modules/user-admin/components/all_members_table.yaml`       | drop the dead `{% elif r.primary %}` branch; update the `{ label, orphan }` entry-shape comments to the resolved shape                                                  |
+| `modules/user-admin/components/all_invitations_table.yaml`   | drop the `roles: row.role_ids` Resend payload; correct the "re-send rather than blank" comment (D-alias, D-resend)                                                      |
+| `modules/user-admin/api/resend-invitation.yaml`              | add `find_invitation`; default `orgRole` / `appRoles` / `attributes` to stored (D-resend)                                                                               |
+| `modules/user-admin/api/invite.yaml`                         | cut the task-5 journey comment                                                                                                                                          |
+| `modules/user-admin/api/suspend.yaml`                        | cut the task-13 journey comment                                                                                                                                         |
+| `modules/user-admin/api/update-access.yaml`                  | cut the stale "never a CSV" comment                                                                                                                                     |
+| `docs/user-admin/reference/indexes.md`                       | **new page** — the module-owned role-filter index, host-app-creates framing, physical names (D7)                                                                        |
+| `docs/user-admin/index.md`                                   | link the new indexes page                                                                                                                                               |
+| `docs/user-admin/reference/row-contract.md`                  | drop `roles_arr` + `role_ids` entirely (members and invitations); `roles` becomes the one roles binding and gains `id` + `description`; record the Decision 11 reversal |
+| `docs/llms.txt`                                              | regenerated via `pnpm docs:gen` after the new page (`docs:check` fails CI on drift)                                                                                     |
+| `apps/demo/`                                                 | a worked example / verification path for an orphan-holding member (see Verification)                                                                                    |
 
 ## Verification
 
@@ -542,11 +593,18 @@ holding a role removed from the demo catalog:
 - attributes save in every one of the above, including with the orphan present;
 - typing a word from a role's description finds that role in the picker and in the roles filter.
 
+**The dropped aliases (D-alias).** In the built `view.json` / `all.json` and a live row, confirm neither
+`roles_arr` nor `role_ids` appears on any members or invitations row — `roles` is the only roles field.
+Confirm the access modal still opens with the member's current roles pre-selected (the seed now maps
+`roles` → ids), and that a Resend from the Invitations list re-sends the invitation's app roles intact
+(the button no longer carries them; the endpoint preserves them). The roles column and export are
+unchanged, since both already render the resolved `roles`.
+
 ## Non-goals
 
-- **Re-litigating the kept aliases.** `roles_arr` / `role_ids` stay as published wire aliases
-  (org-authority Decision 11, shipped). This design only removes the one duplicate on the members
-  detail row (D-alias), not the contract fields.
+- **Other contract fields.** D-alias drops the raw-id aliases `roles_arr` / `role_ids` (superseding
+  org-authority Decision 11 — see D-alias), but touches no other row-contract field: `member_attributes`,
+  `profile`, the change stamps, the invitation-only keys and the `org_role` tier all stand.
 - **The org-authority grant surface.** The `org_role` selector, `UpdateMemberOrgRole` and the
   `org_authority` var shipped with the migration. This design corrects only the resend path (D-resend);
   it does not touch the grant UI.

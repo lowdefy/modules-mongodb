@@ -10,6 +10,18 @@ stale; `snake-case-data-fields` is still under `features/`, matching D7). Three 
 
 ### 1. The invitations row has the same `roles_arr` / `role_ids` redundancy D-alias calls "the one place"
 
+> **Resolved.** Confirmed: `invitations_base.yaml` emits both `roles_arr` and `role_ids` (both
+> `$ifNull: [$appRoles, []]`), and `close_row` is the shared terminal stage, so the "one place" claim
+> was wrong. The finding surfaced a bad requirement underneath it, not just a scope gap: the module
+> owner confirms **no consumer binds the raw id arrays** — consumers bind their own custom attributes,
+> and roles already display through the resolved `roles` column on the table and export. So D-alias was
+> reframed to drop **both** `roles_arr` and `role_ids` module-wide (members and invitations),
+> superseding org-authority Decision 11's kept-aliases choice. `roles` — now carrying `id` per entry
+> (D4) — is the single roles surface; the modal seed maps `roles` → ids, and the list Resend button
+> stops sending roles (D-resend preserves them server-side). `close_row` rule 2 then reduces to one
+> path (`appRoles → roles`) on every read. The reversal is recorded in this design and in
+> `row-contract.md`; the `_completed/org-authority` design stays as history.
+
 The decision to drop the duplicate id-alias (D-alias) says the members detail row is
 "the one place the migration overshot the kept-aliases decision into genuine redundancy"
 (design lines 271–273). It is not the only place. `invitations_base.yaml:31-39` emits
@@ -47,6 +59,12 @@ alias-map comment document `role_ids` as a governed alias rather than implying r
 holds everywhere.
 
 ### 2. Repointing the modal seed to `roles_arr` falsifies a row-contract claim the design does not update
+
+> **Resolved.** Dissolved by the finding-1 reframe. The seed no longer moves _to_ `roles_arr` — both
+> raw-id aliases are dropped, and the seed maps the resolved `roles` array to its ids. So the
+> row-contract sentence "`roles_arr` — the ids as stored. Nothing inside the module reads it" is not
+> corrected but **deleted**: the field it describes is gone. The design's `row-contract.md` change is
+> updated accordingly (drop `roles_arr` and `role_ids` entirely, `roles` becomes the one roles binding).
 
 D-alias repoints the access-modal seed from `role_ids` to `roles_arr`
 (`modal_access.yaml:29` → `get_user_detail.0.roles_arr`), making the module read
