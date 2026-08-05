@@ -1,401 +1,426 @@
-# Two-factor lifecycle: admin reset and required enrolment
+# Two-factor lifecycle: admin recovery and required enrolment
 
-Two capabilities that only make sense together. **Admin reset** gives an operator a route to
-recover a person who has lost their authenticator — today there is none, at any layer of the
-stack. **Required enrolment** (`auth.twoFactor.required`) lets a deployment insist every member
-holds a second factor. Each is useful alone; together they compose into the shape every mature
-identity product ships, where "reset" means _re-register_, not _exempt_.
+The module side of a two-factor lifecycle whose engine half is now owned upstream. **Admin recovery**
+gives an operator a route to recover a person who has lost their second factor — clearing a TOTP
+authenticator, or revoking compromised passkeys — where today the module can display enrolment but do
+nothing about it. **Required enrolment** (`auth.twoFactor.required`) lets a deployment insist every
+member holds a second factor; the engine enforces it, and the module contributes the page an
+unenrolled caller is sent to and reads the enrolment fact the UI must agree with.
 
-Spans three surfaces, which is why this is a top-level design rather than a sub-design of
-[user-admin-better-auth](../_completed/user-admin-better-auth/design.md):
+The engine work is specified and owned by the platform's
+[two-factor-lifecycle design](../../../../lowdefy-design/designs/auth-upgrade/features/two-factor-lifecycle/design.md),
+which itself sits on two now-baseline platform designs —
+[auth-hardening](../../../../lowdefy-design/designs/auth-upgrade/_completed/auth-hardening/design.md)
+(closes the magic-link/OAuth 2FA bypass) and
+[org-authority](../../../../lowdefy-design/designs/auth-upgrade/features/org-authority/design.md)
+(retires `auth.userAdminRole`, sources authority from the caller's member row). This design owns the
+two module surfaces those decisions land in.
 
-| Surface                | Change                                                                                        |
-| ---------------------- | --------------------------------------------------------------------------------------------- |
-| Engine (`lowdefy`)     | `ResetUserTwoFactor` step; `auth.twoFactor.required`; two `authPages` keys; two sign-in hooks |
-| `modules/user-admin`   | Reset action on the Security tile + `reset-two-factor` routine                                |
-| `modules/user-account` | Forced-enrolment page; challenge page taught the redirect arrival path                        |
-
-Platform-side changes are specified in [upstream-asks.md](upstream-asks.md). All three asks are
-outstanding — nothing here ships without them.
+| Surface                | Change                                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------- |
+| `modules/user-admin`   | Reset-TOTP and revoke-passkeys controls on the Security tile, each with a routine and dialog |
+| `modules/user-account` | Forced-enrolment page contributed as `authPages.twoFactorEnrol`; UI reads enrolment fact     |
 
 ---
 
 ## Proposed change
 
-- **A `ResetUserTwoFactor` auth step** — adapter-direct, clears the `twoFactor` row, sets
-  `user.twoFactorEnabled: false`, and deletes the user's trust-device verification records.
-- **A `reset-two-factor` routine** in `user-admin`: reset → `RevokeUserSessions` → audit event,
-  driven from a button on the Security tile beside the existing `MFA · TOTP` badge.
-- **`auth.twoFactor.required: true`** — a deployment flag enforced by the engine, not by app config.
-- **Satisfaction is `twoFactorEnabled || passkeyCount > 0`**, computed server-side and exposed as
-  `_user.twoFactorSatisfied`. A passkey is phishing-resistant on its own; it counts.
-- **Unsatisfied callers are redirected to enrolment**, via a new `authPages.twoFactorEnrol`.
-- **Magic-link and OAuth sign-ins are challenged too**, via engine hooks that replicate BetterAuth's
-  password-path interception and redirect to a new `authPages.twoFactor`.
-- **Reset and required compose**: a reset user becomes unsatisfied, so the engine routes them
-  straight into re-enrolment. "Require re-register" is not built; it emerges.
+- **A `reset-two-factor` routine** in `user-admin`: `ResetUserTwoFactor` → `RevokeUserSessions` →
+  audit event → notify target, driven from a button in the Security tile's Auth-methods area, shown per-user
+  where the `MFA · TOTP` badge is (Decision 4).
+- **A `revoke-passkeys` routine**: `RevokeUserPasskeys` → `RevokeUserSessions` → audit event → notify
+  target, driven from a button shown per-user where the passkey badge is. All-or-per-key.
+- **Both routines call adapter-direct engine steps**, floored by the caller's org role plus the new
+  `user: ['reset-two-factor']` / `user: ['revoke-passkeys']` permissions — not by `auth.userAdminRole`,
+  which org-authority retired.
+- **A forced-enrolment page** contributed as `authPages.twoFactorEnrol`: protected (unlike every other
+  auth page), self-sufficient on auth client actions, offering passkey registration as the route for a
+  passwordless caller.
+- **Module UI reads `_user.twoFactorEnrolled`** — `twoFactorEnabled || passkeyCount > 0`, computed
+  server-side by the engine and symmetric on both sides — so the security tile agrees with the gate
+  about who is compliant.
+- **The target is notified** on both reset and revoke, through the `notifications` dispatch the module
+  already owns — the platform declines to send it, so the module must.
+- **Recovery and required compose**: a reset or fully-revoked user becomes unenrolled, so the engine
+  routes them into re-enrolment. "Require re-register" is not built; it emerges.
 
 ## Problem
 
-### There is no admin 2FA reset, anywhere
+### The module can see the factor but cannot act on it
 
-Verified against `better-auth@1.6.23` and the engine at `Developer/lowdefy`:
+`tile_security.yaml` renders an `MFA · TOTP` badge off `get_user_detail.0.two_factor_enabled` and a
+`Passkey` badge off `get_user_detail.0.passkey_count`, so an admin can see a person's second factors
+and has no control that touches either. That gap is the whole recovery case: a person who loses their
+authenticator with no backup codes left, or whose registered passkey was on a stolen device, is
+locked out or compromised and no operator can help.
 
-- **The `twoFactor` plugin ships two management endpoints** — `/two-factor/enable` and
-  `/two-factor/disable` — and both take their target from `ctx.context.session.user`. Self only,
-  password-gated. The remaining endpoints (`get-totp-uri`, `verify-totp`, `verify-otp`,
-  `verify-backup-code`, `generate-backup-codes`) are equally session-scoped. There is no admin
-  variant of any of them.
-- **The admin plugin has no 2FA verb.** Its statement list is
-  `user: [create, list, set-role, ban, impersonate, impersonate-admins, delete, set-password, set-email, get, update]`,
-  `session: [list, revoke, delete]` (`dist/plugins/admin/access/statement.mjs`).
-- **`/admin/update-user` cannot backdoor it.** `twoFactorEnabled` is declared `input: false` in the
-  plugin's user schema, and `parseInputData` (`dist/db/schema.mjs:59`) drops `input: false` keys on
-  update — silently when falsy, with `FIELD_NOT_ALLOWED` when truthy. So even
-  `data: { twoFactorEnabled: false }` is a no-op.
-- **The Lowdefy step catalog has nothing.** Thirteen steps in
-  `packages/plugins/plugins/plugin-better-auth/src/steps/`; none touch 2FA.
+The engine analysis behind this — that BetterAuth's 2FA endpoints are all session-scoped to the
+caller, the admin plugin has no 2FA verb, `/admin/update-user` cannot reach `twoFactorEnabled`, and
+the step catalog had nothing — is documented in full in the platform design's Problem section. It
+resolves to two adapter-direct steps, `ResetUserTwoFactor` and `RevokeUserPasskeys`, which this module
+consumes. The module's own escape hatches for the user (backup codes, self-service re-enrolment) do
+not reach a person who has no session to act from; that is
+[Decision 2 of the platform design](../../../../lowdefy-design/designs/auth-upgrade/features/two-factor-lifecycle/design.md),
+and it is why an admin route exists at all.
 
-The module already _displays_ enrolment — `tile_security.yaml:198-206` renders an `MFA · TOTP` badge
-off `get_user_detail.0.two_factor_enabled` — so an admin can see the problem and do nothing about it.
+### The module cannot require 2FA, and must not pretend to
 
-The user's own escape hatches are backup codes, and they are thin. Codes are consumed one per use
-with no remaining-count surface anywhere, so reaching zero is silent. Regenerating them
-independently of the authenticator is itself an outstanding ask
-([2fa-enrolment-modal ask 1](../users-fixes/2fa-enrolment-modal/upstream-asks.md)); until that
-lands, "I need new codes" is only reachable through `TwoFactorEnable`, which rotates the secret and
-destroys the working authenticator. So the self-service path is one that a person who has _already_
-lost their phone cannot reach at all.
+A deployment cannot insist on a second factor from module or app config: BetterAuth ships no
+enforcement option and the router-branch workaround gates navigation only, cannot see passkeys, and is
+opt-in correctness. So `required` is a deployment flag the **engine** acts on. The module's part is to
+contribute the page an unenrolled caller is redirected to, and to read the same enrolment fact the gate
+reads so the security tile never nags a caller the engine treats as compliant.
 
-### There is no way to require 2FA
-
-- **BetterAuth has no enforcement option.** The whole of `TwoFactorOptions` is `issuer`,
-  `twoFactorTable`, `totpOptions`, `otpOptions`, `backupCodeOptions`, `skipVerificationOnEnable`,
-  `allowPasswordless`, `schema`, `twoFactorCookieMaxAge`, `trustDeviceMaxAge`, `accountLockout`.
-  Nothing about requiring it.
-- **Lowdefy's `auth.twoFactor` accepts only `enabled`** (`packages/build/src/lowdefySchema.js:865`).
-- **The challenge only fires on three paths.** The plugin's sign-in hook matches
-  `/sign-in/email`, `/sign-in/username`, `/sign-in/phone-number`
-  (`dist/plugins/two-factor/index.mjs:192`) — so magic-link, OAuth, and passkey sign-ins walk past
-  the second factor entirely. Since `user-account` ships magic-link login, an enrolled user in this
-  suite can already avoid their own 2FA by requesting a magic link.
-
-That last point is the one that makes a naive `required` flag misleading rather than merely
-incomplete: it would advertise a guarantee the sign-in surface does not deliver.
+The honesty caveat is the platform's to state and the module's to not undercut: under
+`auth-hardening` the magic-link/OAuth challenge bypass is closed, but `required` remains an **enrolment
+floor, not a per-session challenge guarantee** — a user holding a passkey and a password can sign in
+with the password alone and is admitted having presented one factor. The module's enrolment copy must
+not imply more than the engine delivers.
 
 ## What the industry does
 
-Worth stating because it settles several decisions below rather than leaving them to taste.
+Worth stating because it settles the recovery verbs rather than leaving them to taste.
 
 | Product            | Admin capability                                                                                         |
 | ------------------ | -------------------------------------------------------------------------------------------------------- |
-| Okta               | **Reset Multifactor** — clears enrolled factors; user re-enrols at next sign-in                          |
-| Microsoft Entra ID | **Require re-register MFA** — revokes methods, forces re-enrolment; _separately_ **Revoke MFA sessions** |
-| Google Workspace   | Turn off 2SV for a user, **or** issue backup codes on their behalf                                       |
+| Okta               | **Reset Multifactor** — clears selected factors; user re-enrols at next sign-in                          |
+| Microsoft Entra ID | **Require re-register MFA** — revokes _all_ methods including FIDO2 keys; separately **Revoke sessions** |
+| Google Workspace   | Turn off 2SV for a user, or issue backup codes on their behalf                                           |
 | AWS IAM            | Deactivate MFA device                                                                                    |
 | GitHub (org)       | Owners **cannot** reset a member's 2FA — the user owns the factor                                        |
 
-Four things are near-universal and are adopted wholesale here: the verb is **reset**, not
-_disable_ (Decision 2); **reset revokes sessions** (Decision 3); **an audit event fires**; and
-**out-of-band verification of the requester** is the control that actually matters — help-desk MFA
-reset is the dominant social-engineering vector, and it is how the 2023 casino intrusions began
-(Decision 4).
+Four things are near-universal and adopted wholesale: the verb is **reset** (or **revoke**), not
+_disable_ (Decision 2); **recovery revokes sessions** (Decision 3); **an audit event fires** and
+**the target is notified** (Decision 8); and **out-of-band verification of the requester** is the
+control that actually matters — help-desk MFA reset is the dominant social-engineering vector
+(Decision 4). Entra revoking FIDO2 keys on re-register is the direct precedent for shipping passkey
+revocation alongside TOTP reset (Decision 2). Entra and Okta both treating **a passkey as satisfying
+MFA on its own** is why enrolment counts a passkey (Decision 5).
 
-GitHub is the interesting dissent: in a consumer-ish setting where the account belongs to the
-person, no admin reset exists at all. It does not apply here — under the `pinned` policy the org
-_is_ the deployment and the trusted-operator premise of user-admin Decisions 4 and 6 already
-licenses stronger cross-app authority than this.
-
-On enforcement, Entra and Okta both treat **a passkey as satisfying MFA on its own**, because it is
-possession plus biometric in one phishing-resistant ceremony. That is Decision 6.
+GitHub is the interesting dissent: where the account belongs to the person, no admin reset exists. It
+does not apply here — under the `pinned` policy the org _is_ the deployment, and org-authority's
+trusted-operator premise already licenses this authority.
 
 ---
 
 ## Decisions
 
-### 1. `ResetUserTwoFactor` is an auth step, not a module write
+### 1. Recovery runs through upstream steps, not module writes
 
-The module cannot write auth-owned records directly — that is the hard wall the user-admin design is
-built on. And every existing route into the 2FA data is session-scoped to the caller, so there is no
-BetterAuth endpoint to call either. That leaves a step.
+The module cannot write auth-owned records directly — the `user-passkeys` connection is `write: false`
+and the `twoFactor` and `user` rows are equally off-limits. That is the hard wall the user-admin design
+is built on, and it is why recovery is two engine steps the module calls rather than a module write:
 
-Cheap, as it turns out: steps run adapter-direct, and the raw `adapter.*` surface does **not** run
-`parseInputData` (it is only reached through `internalAdapter` / with-hooks), so the `input: false`
-guard that blocks `/admin/update-user` does not apply. `UpdateUserAttributes.js` is the shape to
-copy. The step does three writes:
+- `ResetUserTwoFactor({ userId })` clears the TOTP secret and its backup codes (one row), sets
+  `user.twoFactorEnabled: false`, and deletes the user's trust-device verification records so a
+  previously-trusted stolen device cannot skip the challenge after re-enrolment.
+- `RevokeUserPasskeys({ userId, passkeyId? })` clears registered passkeys — all of them, or one when
+  `passkeyId` is given.
 
-1. `adapter.deleteMany({ model: 'twoFactor', where: [{ field: 'userId', ... }] })` — the secret and
-   the backup codes live on the same row, so one delete takes both.
-2. `adapter.update({ model: 'user', ..., update: { twoFactorEnabled: false } })`.
-3. Delete the user's `trust-device-*` verification records.
+Both are adapter-direct and their internals — the exact `where` clauses, why the trust-device sweep
+carries a second `starts_with` clause, why the `input: false` guard does not apply — are the platform
+design's
+[Decision 1](../../../../lowdefy-design/designs/auth-upgrade/features/two-factor-lifecycle/design.md),
+not this module's to re-specify. The module's concern is that both steps **throw on an unknown
+`userId`**: a silent no-op leaves the admin believing the person can now sign in, which is worse than
+an error.
 
-**Why (3) is not optional.** A device the user previously ticked "trust this device" on holds a
-signed `trust_device` cookie whose verification record lets it skip the challenge for up to 30 days
-(`trustDeviceMaxAge`, default `2592000`). BetterAuth's own `/two-factor/disable` deletes that record
-and expires the cookie. An admin reset that skipped it would leave the single most important reset
-scenario — _this person's device was stolen_ — with the thief's device still trusted. The cookie
-itself cannot be expired server-side from an admin's request (it lives in the target's browser), but
-deleting the verification record is sufficient: the sign-in hook looks the record up and falls
-through to the challenge when it is absent.
+### 2. Reset clears TOTP; revoke clears passkeys; neither grants an exemption
 
-**Unknown `userId` fails loudly**, mirroring `UpdateUserAttributes` and `UpdateMemberAttributes` —
-a reset that silently no-ops is worse than an error, because the admin walks away believing the
-person can now get in.
+The word matters. "Disable 2FA for this user" implies a persistent exempt state, and that state is
+exactly what a required-2FA deployment must not reach by accident. Recovery returns the user to
+_unenrolled_ for the factor cleared, which under `required` is a state the engine actively pushes them
+out of (Decision 7). So the UI verbs are **Reset two-factor authentication** and **Revoke passkeys**,
+and there is deliberately no admin "exempt from 2FA" control. Per-person exemptions, if ever needed,
+are a policy feature on roles or attributes, not a side effect of a recovery action (Non-goals).
 
-### 2. Reset clears the factor; it never grants an exemption
+**Two controls, not one, because they are two incidents.** "I lost my authenticator" and "my security
+key was stolen" have different recovery, and under Decision 5 a passkey independently satisfies
+`required` — so folding them together would mean a TOTP reset silently stripping a working passkey, or
+a passkey revoke needlessly clearing a working authenticator. The platform ships them as two steps
+precisely so an operator can address the incident they have (its Decision 1); the module mirrors that
+with two controls. This reverses the earlier scoping of this design, which treated passkeys as out of
+scope — the platform's argument for `RevokeUserPasskeys` is _this module's own badge_: a stolen passkey
+both authenticates and satisfies the requirement, and no operator could revoke it.
 
-The word matters. "Disable 2FA for this user" implies a persistent state — this person is now
-exempt — and that state is exactly what a required-2FA deployment must not be able to reach by
-accident. Reset returns the user to _unenrolled_, which under `required` is a state the engine
-actively pushes them out of (Decision 7).
+**`passkeyId` is optional; omitted revokes all.** Both incidents are real — "my bag was stolen, I don't
+know which credential is where" wants all; "I lost my YubiKey but my phone passkey is fine" wants one.
+The module's revoke dialog offers the choice where the user holds more than one passkey, and revokes
+all where they hold one. This matches the self-service `PasskeyDelete`, which already takes a single
+passkey, keeping the two surfaces legible together.
 
-So the UI verb is **Reset two-factor authentication**, and there is deliberately no admin
-"exempt from 2FA" control. If a deployment needs per-person exemptions, that is a policy feature
-built on roles or attributes, not a side effect of a recovery action (Non-goals).
+The per-key picker needs per-credential data the detail read does not carry: `get_user_detail` `$lookup`s
+the `user-passkeys` rows only to count them, and `close_row.yaml` `$unset`s the whole `passkeys` array
+before the row reaches the browser — only the integer `passkey_count` survives. So the dialog is fed by a
+dedicated read, `get_user_passkeys`, over the same `user-passkeys` **read** connection
+(`write: false`), matched on the target `userId` (urlQuery), projecting `passkey_id` plus a device label
+(`name` / `deviceType` / `createdAt`) — the admin-side mirror of self-service `get_passkeys`, which reads
+the identical shape scoped to `_user.id`. The dialog lists those rows against their `passkey_id` where the
+user holds more than one, and skips the read's picker where `passkey_count` is 1.
 
-**Passkeys are not touched.** A reset clears TOTP and its backup codes only. "I lost my
-authenticator" and "I lost my security key" are different incidents with different recovery, and
-under Decision 6 a passkey independently satisfies `required` — folding them together would mean a
-TOTP reset silently locked out someone whose passkey was working fine.
+### 3. Both routines revoke sessions
 
-### 3. Reset revokes sessions, in the routine rather than the step
-
-The module routine is:
+The routines are:
 
 ```
-ResetUserTwoFactor → RevokeUserSessions → audit event
+reset-two-factor:  ResetUserTwoFactor  → RevokeUserSessions → audit event → notify target
+revoke-passkeys:   RevokeUserPasskeys  → RevokeUserSessions → audit event → notify target
 ```
 
-This sits inside user-admin Decision 3's partial-failure rules without amending them: sequential,
-halts on first error, no rollback, safe because both steps are idempotent and re-running converges,
-audit event last so a partial failure emits no misleading event.
+Each sits inside user-admin Decision 3's partial-failure rules without amending them: sequential,
+halts on first error, no rollback, safe because the steps are idempotent and re-running converges,
+audit event before the notify so a partial failure emits no misleading record and no misleading email.
 
-**Why session revocation is a separate step and not folded into the reset step.** Two reasons. It
-keeps the step honest about what it does — the catalog already has `RevokeUserSessions` and a step
-that quietly revokes sessions as a side effect is the kind of hidden blast radius the step catalog
-exists to avoid. And there is a mechanical wrinkle that makes the pairing necessary either way:
-`internalAdapter.updateUser` calls `refreshUserSessions`, but a raw `adapter.update` does not, so
-the target's live sessions would keep serving a cached `twoFactorEnabled: true`. Revoking them
-resolves that as a by-product of doing the right thing anyway.
+**Why session revocation is a separate step and not folded into the recovery step.** It keeps the step
+honest about what it does — a step that quietly revokes sessions as a side effect is the hidden blast
+radius the catalog's one-operation-per-step shape avoids. And revocation is not tidying: clearing
+`twoFactorEnabled` or deleting a passkey **does not end a session**. The scenario the recovery exists
+for is a stolen device or a compromised credential, and the thief keeps the session they already hold
+until it is revoked. Revoking is what actually recovers the account. (An earlier draft argued this from
+`refreshUserSessions` not firing on a raw `adapter.update`; the platform design established that
+argument is inert here — Lowdefy configures no `secondaryStorage`, so the function is a no-op — and the
+plain reason above is the real one.)
 
-Note this is the same reasoning Entra encodes by shipping "Require re-register MFA" and "Revoke MFA
-sessions" as two adjacent buttons — except we always run both, because an admin who resets 2FA and
-leaves the old sessions live has not actually recovered anything.
+### 4. The confirm dialogs carry the reach and the attestation
 
-### 4. The confirm dialog carries the reach and the attestation
+Two things the admin needs before confirming, on both dialogs.
 
-Two things the admin needs to see before confirming.
-
-**The reach is suite-wide.** `twoFactorEnabled` is on the `user` row, not the `member` row, so a
-reset by one app's admin removes the second factor everywhere in the suite — the same shape as ban
-(user-admin Decision 4). The dialog says so, reusing the membership enumeration the suspend dialog
-already runs, and collapsing to single-app copy when the person holds no other memberships (the
-count-driven degradation of user-admin Decision 6).
+**The reach is suite-wide.** `twoFactorEnabled` and the `passkey` rows are keyed to the `user`, not the
+`member`, so a reset or revoke by one app's admin removes the factor everywhere in the suite — the same
+shape as ban (user-admin Decision 4). The dialog says so, reusing the membership enumeration the
+suspend dialog already runs, and collapsing to single-app copy when the person holds no other
+memberships. **Who may perform it is now bounded** by org-authority: the step declares `org` authority
+with `targetUser: 'userId'`, so the floor additionally requires the target to hold a member row in the
+admin's organization. The effect stays suite-wide; the bound governs _who_ may be recovered, not _how
+far the recovery reaches_ — the identical trade org-authority accepts for ban.
 
 **The requester must be verified out of band.** This is the control the whole industry leans on and
 software cannot enforce, so the dialog makes it explicit: a confirmation checkbox reading roughly
-_"I have verified this person's identity through a channel other than email."_ It is a speed bump
-and a paper trail, not a guard — but the failure mode it addresses (a caller impersonating an
-employee to a help desk) is the single most common way 2FA is defeated in practice, and a dialog
-that just says "Are you sure?" trains the opposite instinct.
+_"I have verified this person's identity through a channel other than email."_ It is a speed bump and a
+paper trail, not a guard — but the failure mode it addresses (a caller impersonating an employee to a
+help desk) is the most common way 2FA is defeated in practice.
 
-**No new module var.** The action's visibility is gated by `_build.authConfig.twoFactor.enabled` —
-if the deployment has no 2FA, there is nothing to reset. Restating that as a var would be exactly
-the mirror-var drift `_build.authConfig` exists to prevent (user-account Decision 8), and the
-suite-wide reach rides the trusted-operator premise Decisions 4 and 6 already establish rather than
-needing its own switch. This is a deliberate departure from `suspension` / `impersonation`, which
-are vars because they gate _authority a deployment might not want its app-admins to have_; a
-deployment that does not want reset can simply not grant `auth.userAdminRole`, and one that has 2FA
-enabled but no way to recover from a lost phone is not a configuration anyone wants.
+**No new module var.** Whether the reset control is _built at all_ is gated by
+`_build.authConfig.twoFactor.enabled` — no 2FA in the deployment, no reset routine or button shipped. Its
+_per-user visibility_ then keys on the same runtime fact its badge reads, `get_user_detail.0.two_factor_enabled`:
+a user in a 2FA deployment who never enrolled TOTP carries no `MFA · TOTP` badge, and must get no reset
+control beside an absent badge acting on nothing. The revoke control mirrors this exactly — built where
+passkeys are possible, visible per-user on `passkey_count > 0`. Restating either gate as a var would be exactly the mirror-var drift
+`_build.authConfig` exists to prevent (user-account Decision 8). This is a deliberate departure from
+`suspension` / `impersonation`, which are vars because they gate _authority a deployment might not want
+its app-admins to have_. The escape hatch for a deployment that wants member management without
+recovery is now a per-action org role: because `reset-two-factor` and `revoke-passkeys` are distinct
+permissions (org-authority Decision 5 makes narrower roles possible the moment anyone registers one), a
+deployment can grant member management and withhold recovery — no var needed, and nothing to remove
+later. (This replaces the earlier third ground for shipping no var — _"can simply not grant
+`auth.userAdminRole`"_ — since org-authority retired that key.)
 
-### 5. `auth.twoFactor.required` is one engine feature, not app config
+**Where the controls render.** "Beside the badge" is the intent, not the mechanism: the `MFA · TOTP` and
+`Passkey` badges are static spans inside one read-only `_nunjucks` `Html` block (`auth_methods`), so a
+`Button` cannot be interleaved among them. The two controls instead sit in their own actions row beneath the
+Auth-methods badges, each carrying the `visible` gate above (`two_factor_enabled` / `passkey_count > 0`) so
+each appears only where the method it recovers is present — the same badge-plus-control pairing, expressed as
+a sibling row rather than inline markup. This is the tile's only structural change; the existing
+`security_actions` row (access: suspend / remove / sign-out / delete) is untouched.
 
-The tempting cheap version is a branch in each app's `router.yaml`, mirroring the
-`_user: profile.profile_created` → onboarding branch that already exists at
-`apps/demo/pages/router.yaml:19-26`. Rejected, for three reasons:
+### 5. The module reads `_user.twoFactorEnrolled`
 
-1. **It only gates navigation.** The router runs on page mount. APIs, requests, and direct URL
-   entry to a non-router page do not pass through it. A thing described as a security requirement
-   that any API call bypasses is worse than no thing at all.
-2. **Passkey satisfaction is not computable there.** `context.user` is
-   `{...session.user, roles, attributes, activeOrganizationId}` (`resolveAuthentication.js:92`) —
-   `twoFactorEnabled` rides along because it is a returned user field, but nothing knows about
-   passkeys. Decision 6 needs a server-side count.
-3. **It is opt-in correctness.** Every consuming app must remember the branch, and one that forgets
-   silently has no enforcement. "One correct way" says the mechanism should be mandatory, not
-   remembered.
+Enrolment is `twoFactorEnabled || passkeyCount > 0`, computed by the engine in `resolveAuthentication`
+and exposed on `context.user`, so it is `_user.twoFactorEnrolled` in app config on both client and
+server. The module reads exactly this value, and reads no other — a UI that agreed with the gate about
+who is compliant, computed from a different expression, would be a value that can disagree with itself.
 
-So `required` is a deployment flag the engine acts on: added to the `auth.twoFactor` schema
-(`lowdefySchema.js`), defaulting `false`, and projected through `computeAuthConfigProjection` so
-modules can read `_build.authConfig.twoFactor.required` for their own copy and control visibility.
+**A passkey counts** because it is a phishing-resistant possession factor with a user-verification
+ceremony bound to it — the reason Entra and Okta accept one outright. Telling a user who registered a
+hardware key that they must _also_ set up TOTP is theatre that pushes them toward the weaker factor.
+The field means **holds a factor that satisfies `auth.twoFactor.required`**, which is why it reads
+`twoFactorEnrolled: true` for a passkey-only user; the docs say so.
 
-### 6. Satisfaction is `twoFactorEnabled || passkeyCount > 0`
+**The name is `twoFactorEnrolled`, not `twoFactorSatisfied`.** This is a rename from the earlier draft
+of this design. The platform reserves "satisfied" for the session-scoped successor (did _this session_
+present a factor — the step-up feature), which must not find the name already taken; "enrolled" is what
+this measures. The field is computed **always** (not only under `required`): `twoFactorEnabled` already
+rides `session.user`, so the expression short-circuits for an enrolled caller at no cost, and only an
+unenrolled caller costs a passkey read — gated engine-side on the passkey plugin being configured. So a
+module reading it in a deployment without `required` sees a correct value, not the `undefined` an
+earlier `required`-gated computation would have returned.
 
-Computed server-side in `resolveAuthentication` and exposed as `_user.twoFactorSatisfied`, so both
-the engine's own enforcement and any module UI read one value that cannot disagree with itself.
+The concrete consumer is the security tile: with only `twoFactorEnabled` available, a passkey-holding
+caller reads as unenrolled and the UI nags someone the engine treats as compliant — the theatre the
+passkey rule prevents, leaking back one layer up. Reading `twoFactorEnrolled` closes that.
 
-A passkey counts because it is a phishing-resistant possession factor with a user-verification
-ceremony bound to it — the reason Entra and Okta both accept one as satisfying MFA outright. Telling
-a user who has registered a hardware key that they must _also_ set up TOTP is security theatre that
-pushes them toward the weaker factor.
+### 6. The forced-enrolment page
 
-The cost is a per-request passkey read for deployments with `required` on. The user-admin detail page
-already reads the `user-passkeys` connection for its badge, so the collection and the access pattern
-exist; this is a count on the caller's own `userId`, gated on `required === true` so deployments
-without it pay nothing.
+`user-account` contributes `pages/two-factor-enrol.yaml`, in the `onboarding.yaml` mould (the
+`layout/auth-page` shell). It is where the engine's enforcement sends an unsatisfied caller, and three
+of its properties are not the defaults:
 
-**The awkward case, resolved: a passkey-only user signing in with a password.** They satisfy
-enrolment (a passkey), but the password path has no factor to challenge them with — there is no
-`twoFactor` row and `twoFactorMethods` would come back empty. Letting them through would mean
-`required` is trivially bypassed by choosing the password button; blocking them outright strands a
-correctly-enrolled user. So they are **routed to enrolment**, where they can either register TOTP or
-be told to sign in with their passkey. This is the same destination as an unenrolled user, which
-keeps the engine's branch simple: _if the sign-in path cannot present a factor this user holds, send
-them to enrol._
+**It is protected, not public — the first auth page that is.** Every other `authPages` role implies
+public, on the reasoning that a sign-in page behind the wall is a bootstrap paradox. Enrolment is the
+opposite case: the caller arriving holds a complete valid session and is missing a factor, not an
+identity, so there is no paradox. The engine marks it `public: false` and exempts it from the enrolment
+gate alone (platform Decision 8). The module's part is simply to contribute the page under the
+`twoFactorEnrol` role and not add an `auth.public` entry for it.
 
-### 7. Challenge interception for redirect flows
+**It must be self-sufficient on auth client actions.** An unenrolled caller is refused at every Lowdefy
+endpoint by the gate, so the page cannot call one — no server-side request to fetch copy, log an event,
+or check anything. This is fine: `TwoFactorEnable`, `TwoFactorVerify` and `PasskeyRegister` are client
+actions hitting `/api/auth/*` directly, and the page is built from those, mirroring the self-service
+enrolment modal (`modal_enroltotp.yaml`).
 
-The password path returns JSON (`{ twoFactorRedirect: true, twoFactorMethods }`) and the login page
-routes on it — that is user-account Decision "2FA challenge routing is the module's own", and it
-stays. Magic link and OAuth cannot work that way: `/magic-link/verify` and `/callback/:id` are GET
-endpoints that terminate in `throw ctx.redirect(...)`. A browser mid-redirect has nothing to read a
-JSON flag with.
+**It must offer the passkey route for a passwordless caller.** TOTP enrolment (`/two-factor/enable`) is
+password-gated unconditionally, because Lowdefy does not expose BetterAuth's `allowPasswordless`. So an
+OAuth-only or magic-link-only member cannot enrol TOTP at all — and under `required` that would be a
+permanent lockout no admin reset can fix. The passkey disjunct in Decision 5 is what keeps the gate
+satisfiable for them: `/passkey/generate-register-options` is session-gated, not password-gated, so
+registering a passkey is their enrolment route. The page therefore presents **both** TOTP enrolment and
+passkey registration, and a caller with no password reaches compliance through the passkey. (This
+resolves the lockout that review finding 2 raised: the fix is the page offering the passkey path, not a
+new upstream ask.)
 
-So the engine adds `after` hooks on those two paths, replicating what the plugin's hook does on the
-password path and then redirecting instead of returning. Precisely (all verified against
-`dist/plugins/two-factor/index.mjs:186-275`):
+### 7. Recovery and required compose without a mechanism between them
 
-1. Delete the session the sign-in just created and clear its cookie; `setNewSession(null)`.
-2. Check the `trust_device` cookie first — a valid, unexpired trust record short-circuits the whole
-   challenge, exactly as it does on the password path. Rotate it as the plugin does.
-3. Create verification value `{ identifier: '2fa-' + random20, value: user.id, expiresAt: now + twoFactorCookieMaxAge }`.
-4. **Create the attempts record** `{ identifier: '2fa-attempts-' + identifier, value: '0', expiresAt }`.
-5. Set the signed `two_factor` cookie to the identifier.
-6. `throw ctx.redirect(authPages.twoFactor)`.
+What does resetting 2FA — or revoking the last passkey — do in a deployment that requires it? Nothing
+special, and that is the point. Recovery clears the factor (Decision 2), which makes the user
+unenrolled (Decision 5), which makes the engine route them to `twoFactorEnrol` on their next request.
+Their sessions were revoked (Decision 3), so the next request is a fresh sign-in. The user recovers by
+enrolling, exactly as Okta and Entra describe "reset" behaving, and there is no third feature that
+implements it.
 
-**Step 4 is the one that will be forgotten.** `beginAttempt` in
-`dist/plugins/two-factor/verify-two-factor.mjs` calls `consumeVerificationValue` on
-`2fa-attempts-{identifier}` and throws `INVALID_TWO_FACTOR_COOKIE` when it is absent — so a hook
-that creates only the challenge record produces a challenge page where _every_ correct code is
-rejected, with an error message pointing at the cookie. It is called out here because the failure is
-both total and misleading.
+The corollary constrains future work: **recovery must never be allowed to mean "exempt"**, or this
+composition breaks and an admin recovery silently becomes a policy override. That is the real reason
+Decision 2 rejects the "disable" verb.
 
-Cookies set before a thrown redirect do reach the browser — `/magic-link/verify` already calls
-`setSessionCookie` and then redirects, so this is the established pattern in the same endpoint, not
-an assumption.
+With `required` **off**, recovery leaves the person short one factor until they choose to re-enrol —
+the honest behaviour of a deployment that has not asked for 2FA, where the revoked sessions, the audit
+event and the notification carry the weight.
 
-**Precedent for the hook itself**: `createMagicLinkSendGate` already intercepts `/sign-in/magic-link`
-as a core `hooks.before` (`getBetterAuthConfig.js:320`), and there is hook infrastructure in
-`packages/api/src/routes/auth/hooks/`.
+### 8. The module notifies the target
 
-### 8. Two new `authPages` keys — which amends a user-account decision
+The target gets told their second factor was removed. The industry treats this as non-negotiable on
+MFA changes, and it is the module's to send, not the engine's.
 
-`authPages` currently carries `signIn`, `signUp`, `error`, `forgotPassword`, `resetPassword`,
-`verifyEmail`, `acceptInvitation`. Two more:
+**The engine cannot send it.** A step is called with no context; the `auth.email` send path is a
+closure inside `getBetterAuthConfig`, never exposed, and its renderer throws on any flow outside its
+four stock templates. So a fifth `auth.email.templates` key was never the small ask it looked like — it
+needs mail-send threaded into every step's signature plus a new stock template — and the platform
+design records this and declines it
+([its Decision 12](../../../../lowdefy-design/designs/auth-upgrade/features/two-factor-lifecycle/design.md)).
+This answers the earlier open question about the reset email: no upstream template, no step mail-send,
+the notice is the module's.
 
-- **`twoFactor`** — the challenge page, needed because Decision 7's hooks must redirect a browser
-  somewhere.
-- **`twoFactorEnrol`** — the forced-enrolment page, needed because Decision 5's enforcement must
-  send an unsatisfied caller somewhere.
+**The module's existing plumbing covers it.** Each routine already emits an audit event through
+`events`, and `notifications` exposes `send-notification` — an `InternalApi` whose routine the
+deployment binds. The dispatch shape is not new: the `send_routine` contract is `{ event_ids }` — an
+array of just-committed event ids — the identical payload the `workflows` engine hands `send-notification`
+after every event, and the one every existing `send_routine` `$match`es on (`_id: { $in: event_ids }`). So
+each recovery routine ends in a final `CallApi` into `send-notification` with `{ event_ids: [ <the audit
+step's returned eventId> ] }`. This is the first Lowdefy `Api` routine to call `send-notification` (the
+`workflows` precedent dispatches engine-side, from its connection's endpoint map), but mechanically it is an
+ordinary `CallApi` to an `InternalApi` endpoint. The target is addressable because the audit event carries
+`references.user_ids`, which `new-event` flattens onto the event doc's top level (`_object.assign`), so the
+deployment's `send_routine` reads it as a top-level `user_ids` field on the row it re-reads by id. The
+notice is dispatched **after** the audit event so a failed dispatch never suppresses the record, and it is
+fire-and-forget: the writes have committed, and a bounced address must not leave the admin believing the
+recovery failed.
 
-This directly amends [user-account](../_completed/user-account-better-auth/design.md)'s statement that
-"`authPages` has no 2FA key — this routing never leaves the module." That was correct for the
-password path and remains so: the login page still routes on the JSON result. What changed is that
-sign-in paths exist which the _engine_ terminates, and for those the engine has to know the address.
-Both keys are optional; with `required` off and no OAuth/magic-link 2FA, neither is read. A
-deployment that sets `required: true` without them should fail the build rather than redirect to
-nowhere.
+**The exposure this creates, and what the module owes.** `notifications.send_routine` defaults to `[]`,
+so a deployment that never binds it sends nothing and no layer notices — opt-in correctness on a
+security notification. The module cannot close it (a dispatch is the deployment's own mail
+infrastructure), so it carries the obligation in the docs: **a deployment enabling `auth.twoFactor`
+must bind `send_routine`**, and the dialog is the wrong place to imply a notice was sent.
 
-### 9. Reset and required compose without a mechanism between them
+### 9. Both events need a display default and a type entry
 
-The question that started this: what does resetting 2FA do in a deployment that requires it?
+Each routine emits an audit event, and the timeline reads **two** registries — `event_display` for the
+title template and `enums/event_types.yaml` for colour, icon and type label. An earlier draft listed
+only `event_display`, which would render the reset in the Activity timeline with no icon or type label
+(review finding 5). So both events get both:
 
-Nothing special — and that is the point. Reset clears the factor (Decision 2), which makes the user
-unsatisfied (Decision 6), which makes the engine route them to `twoFactorEnrol` on their next
-request (Decision 5). Their sessions were revoked (Decision 3), so the next request is a fresh
-sign-in. The user recovers by enrolling, exactly as Okta and Entra describe "reset" behaving, and
-there is no third feature that implements it.
+- `defaults/event_display.yaml` — `two-factor-reset` and `passkeys-revoked` title templates.
+- `enums/event_types.yaml` — `two-factor-reset` and `passkeys-revoked` entries beside the existing
+  eleven (e.g. `sessions-revoked`), reaching the timeline through
+  `modules/shared/enums/event_types.yaml`.
 
-The corollary is worth stating explicitly because it constrains future work: **reset must never be
-allowed to mean "exempt"**, or this composition breaks and an admin recovery action silently becomes
-a policy override. That is the real reason Decision 2 rejects the "disable" verb.
-
-With `required` **off**, reset leaves the person single-factor until they choose to re-enrol. That is
-the honest behaviour of a deployment that has not asked for 2FA, and the revoked sessions plus the
-audit event are what carry the weight there.
-
-### 10. Costs, stated rather than hidden
-
-- **`required` + OAuth means double-challenge.** A user signing in with Google who has already
-  satisfied Google's own MFA will be challenged again by us. This is the correct default — we cannot
-  see what the IdP enforced, and an IdP's MFA is not ours — but it is a real friction, and the
-  deployment-level answer is to not enable `required` alongside a trusted enterprise IdP.
-- **The invite path gets longer.** A new member now hits the accept page, then onboarding
-  (`profile_created`), then enrolment. Three gates before the app. Ordering them so enrolment comes
-  last is deliberate — a person who abandons at enrolment has at least a complete contact record.
-- **`required` cannot be enforced retroactively without lockout risk.** Turning it on in a live
-  deployment sends every existing unenrolled user to enrolment at their next request, including
-  admins. There is no grace period in this design (Non-goals); the operational advice is to enrol
-  the admin accounts first.
+Neither needs a manifest change: `event_display` is a bare `type: object` var with no per-type
+sub-properties, so new keys need no `docs:gen` run (Decision 4's "no new manifest vars" holds).
 
 ---
 
 ## Surface
 
-**Engine** (all in [upstream-asks.md](upstream-asks.md)):
-
-| Piece                                     | Location                                                                |
-| ----------------------------------------- | ----------------------------------------------------------------------- |
-| `ResetUserTwoFactor` step                 | `packages/plugins/plugins/plugin-better-auth/src/steps/`                |
-| `auth.twoFactor.required`                 | `packages/build/src/lowdefySchema.js`, `computeAuthConfigProjection.js` |
-| `_user.twoFactorSatisfied`                | `packages/api/src/context/resolveAuthentication.js`                     |
-| `authPages.twoFactor` / `.twoFactorEnrol` | `packages/build/src/lowdefySchema.js`                                   |
-| Challenge hooks                           | `packages/api/src/routes/auth/hooks/`                                   |
-
 **`modules/user-admin`**:
 
-- `api/reset-two-factor.yaml` — the routine of Decision 3. Payload `{ user_id, target_name?, target_email? }`,
-  matching `revoke-sessions.yaml`.
-- `components/view/modal_reset_2fa.yaml` — the confirm dialog of Decision 4.
-- `components/view/tile_security.yaml` — the action, beside the `MFA · TOTP` badge.
-- `defaults/event_display.yaml` — `two-factor-reset: "{{ user.profile.name }} reset {{ target.name }}'s two-factor authentication"`.
+- `api/reset-two-factor.yaml` — the routine of Decisions 3 and 8. Payload
+  `{ user_id, target_name?, target_email? }`, matching `revoke-sessions.yaml`, ending in a `CallApi` into
+  `send-notification` with `{ event_ids: [ <audit eventId> ] }` (Decision 8).
+- `api/revoke-passkeys.yaml` — the passkey routine. Payload adds an optional `passkey_id`; omitted
+  revokes all.
+- `requests/get_user_passkeys.yaml` — the per-credential read the revoke picker needs (Decision 2), over
+  the `user-passkeys` read connection, matched on the target `userId`, projecting `passkey_id` + device
+  label. The detail read only counts passkeys; this lists them.
+- `module.lowdefy.yaml` — a `notifications` dependency, for the Decision 8 dispatch.
+- `components/view/modal_reset_2fa.yaml` — the reset confirm dialog (Decision 4).
+- `components/view/modal_revoke_passkeys.yaml` — the revoke confirm dialog (Decision 4), listing
+  `get_user_passkeys` rows for per-key vs all where the user holds more than one.
+- `components/view/tile_security.yaml` — the two controls, in an actions row beneath the Auth-methods
+  badges, each `visible`-gated to the method it recovers (Decision 4).
+- `defaults/event_display.yaml` and `enums/event_types.yaml` — the two events (Decision 9).
 - No new manifest vars (Decision 4).
 
 **`modules/user-account`**:
 
-- `pages/two-factor-enrol.yaml` — the forced-enrolment page, in the `onboarding.yaml` mould.
-- `pages/two-factor.yaml` — taught to handle arrival by redirect (cookie already set) as well as the
-  existing JSON `twoFactorRedirect` path.
-- `module.lowdefy.yaml` — contributes both `authPages` roles.
+- `pages/two-factor-enrol.yaml` — the forced-enrolment page (Decision 6), TOTP + passkey, no Lowdefy
+  requests.
+- `module.lowdefy.yaml` — contributes the `twoFactorEnrol` `authPages` role.
 
-**`apps/demo`** — `required: true` in `auth.twoFactor`, wiring both `authPages` keys, per the
-repo rule that new capability ships with a demo consumer.
+**`apps/demo`** — `required: true` in `auth.twoFactor`, wiring `authPages.twoFactorEnrol`, and binding
+`notifications.send_routine`, per the repo rule that new capability ships with a demo consumer. Enrol
+the demo admin/owner accounts before turning `required` on (Costs).
+
+## What this consumes from upstream
+
+Baseline, not work to sequence — all owned and specified by the platform designs. Named so the module
+surfaces above have a contract to build against.
+
+| Engine piece the module consumes                                    | Platform owner                                            |
+| ------------------------------------------------------------------- | --------------------------------------------------------- |
+| `ResetUserTwoFactor`, `RevokeUserPasskeys` steps                    | two-factor-lifecycle Decision 1                           |
+| `user: ['reset-two-factor', 'revoke-passkeys']` org permissions     | two-factor-lifecycle Decision 3, on org-authority's model |
+| `auth.twoFactor.required` flag + `_build.authConfig.twoFactor.*`    | two-factor-lifecycle Decision 11                          |
+| `_user.twoFactorEnrolled`                                           | two-factor-lifecycle Decision 4                           |
+| `authPages.twoFactorEnrol` (protected, gate-exempt) + build wiring  | two-factor-lifecycle Decision 8                           |
+| Enrolment gate (`authorizeOutcome`, checked last, enumeration-safe) | two-factor-lifecycle Decisions 5–7                        |
+| Magic-link/OAuth challenge interception (closes the bypass)         | auth-hardening (baseline)                                 |
 
 ## Non-goals
 
-- **Per-user or per-role 2FA exemptions.** A policy feature, and deliberately not reachable through
-  the recovery action (Decision 2). If a concrete need appears it belongs on roles or attributes.
-- **Grace periods on `required`.** No "enrol within 14 days" state; the flag is immediate
-  (Decision 10).
-- **Admin-issued backup codes.** Google Workspace offers this as an alternative to a full reset. It
-  needs an admin-side wrapper around `generate-backup-codes` and a way to hand codes over securely;
-  reset plus self-service re-enrolment covers the same incident.
-- **Temporary Access Pass.** Entra's time-limited one-time credential for re-enrolment. A better
-  answer than reset for high-security deployments, and a much larger feature.
-- **OTP and SMS second factors.** TOTP and backup codes only, matching the engine catalog's stated
+- **The engine enforcement and challenge machinery.** The enrolment gate, `authorizeOutcome`, the
+  signed-out fork, and the magic-link/OAuth challenge hooks are owned upstream (table above), not
+  re-specified here.
+- **Per-user or per-role 2FA exemptions.** A policy feature, deliberately not reachable through the
+  recovery action (Decision 2).
+- **Admin-issued backup codes.** Google Workspace offers this as an alternative to a full reset; reset
+  plus self-service re-enrolment covers the same incident.
+- **OTP and SMS second factors.** TOTP, backup codes and passkeys only, matching the engine catalog's
   launch scope.
-- **Fixing backup-code rotation.** Tracked separately as
-  [2fa-enrolment-modal ask 1](../users-fixes/2fa-enrolment-modal/upstream-asks.md); it makes the
-  self-service path better but does not remove the need for admin reset.
+- **Self-service backup-code rotation and remaining-count surfacing.** Tracked separately as
+  [backup-codes-rotation](../backup-codes-rotation/upstream-asks.md); it improves the self-service path
+  but does not remove the need for admin recovery.
 
-## Open questions
+## Costs
 
-- **Does the target get an email when their 2FA is reset?** Standard practice, and the deployment
-  already has a unified send path (`auth.email`). But `auth.email.templates` currently accepts only
-  `verifyEmail`, `resetPassword`, `magicLink`, `invitation` (`lowdefySchema.js:591-624`), so this
-  would be a fifth template and a fourth upstream ask. Deferred pending a decision on whether the
-  audit event plus the forced re-enrolment is sufficient notice.
-- **Where the enrolment redirect is enforced** — inside `resolveAuthentication`, or as a separate
-  gate that runs after it. Affects whether an unsatisfied caller gets a redirect or a 403 on an API
-  call, which matters for how the enrolment page itself loads. Resolve when the ask is written up
-  against the engine design.
+- **`required` cannot be enforced retroactively without lockout risk.** Turning it on in a live
+  deployment sends every unenrolled user to enrolment at their next request, including admins. There is
+  no grace period and no break-glass in the platform design — the operational advice is to enrol the
+  admin/owner accounts first, and more than one.
+- **The invite path gets longer.** A new member hits the accept page, then onboarding
+  (`profile_created`), then enrolment. The platform orders enrolment last deliberately so an abandoning
+  invitee leaves a complete contact record; the module's part is only to contribute a page that loads
+  without a Lowdefy request (Decision 6).
+- **`required` is an enrolment floor, not a challenge guarantee** (platform Decision 4). A user holding
+  a passkey and a password signs in with the password and is admitted having presented one factor. The
+  module's enrolment copy must not imply otherwise.
+- **A trusted-IdP-only deployment enrols factors nothing challenges.** Same root cause; the enrolled
+  factor is still what a password or magic-link sign-in would challenge, and what admin reset restores
+  the user to.

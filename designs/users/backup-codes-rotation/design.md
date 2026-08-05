@@ -16,7 +16,12 @@ because the platform action does not exist yet.
 **Blocked on [upstream ask 1](upstream-asks.md)** —
 `TwoFactorGenerateBackupCodes`, which `@lowdefy/client` does not wrap. Nothing
 here can be built until it lands, and nothing here needs redesigning when it does:
-one phase, one button, one action call, two copy branches.
+one phase, one button, one action call, two copy branches. Re-checked against the
+platform's landed [two-factor-lifecycle design](../../../../lowdefy-design/designs/auth-upgrade/features/two-factor-lifecycle/design.md):
+it keeps this action out of scope (its Non-goals) and names this ask as the owner,
+confirming rotation is "a Lowdefy gap, not an upstream defect" and that
+`generate-backup-codes` leaves the secret, `verified` and `twoFactorEnabled`
+untouched — the non-destructiveness D1 and D6 rest on. The block stands.
 
 ## What already ships
 
@@ -133,6 +138,19 @@ would be a request that can only fail.
 This is the same argument the parent design makes for the `:else` branch of the
 replace chain's `catch`.
 
+### D7. The choose/codes affordance gates on the TOTP flag, not `_user.twoFactorEnrolled`
+
+The trigger reads `get_account.0.two_factor_enabled` — the per-account TOTP flag — to
+pick its enrolled arm (`tile_security.yaml`), and this design's `choose` and
+`codes_only` branches ride that same read. The platform's two-factor-lifecycle design
+adds `_user.twoFactorEnrolled` (`twoFactorEnabled || passkeyCount > 0`) for the tile's
+enrolment nag, and the two must not be conflated here: a passkey-only user is
+`twoFactorEnrolled: true` but holds no TOTP secret and no backup codes, so offering
+them "Get new backup codes" would fire `TwoFactorGenerateBackupCodes` into a
+`TWO_FACTOR_NOT_ENABLED` throw. Backup codes are a TOTP artifact; their rotation stays
+keyed to `two_factor_enabled`, even as the surrounding tile's enrolment nag migrates
+to `twoFactorEnrolled`.
+
 ## Verification
 
 Build (`pnpm ldf:b`) proves the config compiles; nothing here is provable by build
@@ -173,3 +191,8 @@ alone. On the auth-testing rig, as a credentialed user with 2FA already on — s
 - **Anything else in the enrolment modal.** The phased rework, the state hygiene, the
   `Validate` scoping and the disable-first replace chain all shipped in the parent
   design and are not revisited here.
+- **The forced-enrolment page.** The platform's two-factor-lifecycle design adds a
+  standalone `authPages.twoFactorEnrol` page, where the engine redirects an
+  _unenrolled_ caller under `auth.twoFactor.required`. That is a different surface for a
+  different population — this design's modal is voluntary management for an
+  _already-enrolled_ caller — and it neither supersedes nor touches the modal.
