@@ -34,12 +34,12 @@
     "dompurify": "^3"
   },
   "peerDependencies": {
-    "@lowdefy/block-utils": "0.0.0-experimental-20260805130407",
-    "@lowdefy/blocks-antd": "0.0.0-experimental-20260805130407",
-    "@lowdefy/blocks-basic": "0.0.0-experimental-20260805130407",
+    "@lowdefy/block-utils": "0.0.0-experimental-20260805140807",
+    "@lowdefy/blocks-antd": "0.0.0-experimental-20260805140807",
+    "@lowdefy/blocks-basic": "0.0.0-experimental-20260805140807",
     "@lowdefy/community-plugin-mongodb": "^3",
-    "@lowdefy/helpers": "0.0.0-experimental-20260805130407",
-    "@lowdefy/nunjucks": "0.0.0-experimental-20260805130407",
+    "@lowdefy/helpers": "0.0.0-experimental-20260805140807",
+    "@lowdefy/nunjucks": "0.0.0-experimental-20260805140807",
     "@lowdefy/plugin-aws": ">=4.0.0",
     "antd": ">=6",
     "mongodb": "^6",
