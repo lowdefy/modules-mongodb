@@ -173,6 +173,7 @@ api:
   - _ref: api/reporting-seed-orders.yaml
   - _ref: api/reporting-seed-example-report.yaml
   - _ref: api/reporting-seed-ownership.yaml
+  - _ref: api/reporting-seed-conversations.yaml
 
 pages:
   - _ref: pages/router.yaml

@@ -40,3 +40,26 @@ app_context: >
   cancelled or not-required; the fiscal year is the calendar year; time series
   run on the created date and are ordered oldest-first; report across all
   regions, categories and channels together unless one is named.
+
+# Chat empty-state copy, set PARTIALLY on purpose. Only `data_scope` and the
+# explore track's `explore_label` / `explore_starters` are overridden here; the
+# other leaves (`title`, and the whole report track — `report_label`,
+# `report_starters`) are left unset so they resolve to the module's shipped
+# defaults. That partial shape is the point: the `welcome` var fills each leaf
+# from its own default independently, and a partial entry is exactly where a
+# regression in that per-leaf resolution would slip through unnoticed. Setting
+# one track and leaving the other lets a single build prove BOTH paths at once —
+# the overridden leaves and the defaulted ones appear side by side in the built
+# chat page. `data_scope` has no default (there is no sentence true of every
+# app), so it must be set here or the line never renders; it is written in the
+# same vocabulary app_context teaches the agent, and the explore starters are
+# written against the real demo data so a click resolves to a real answer.
+welcome:
+  data_scope: >-
+    I can see your orders, and the companies, contacts, activities and workflow
+    actions in your CRM.
+  explore_label: Get a quick answer
+  explore_starters:
+    - Which region has the highest total sales?
+    - How many activities were logged in the last month?
+    - List the top 5 companies by number of contacts.
