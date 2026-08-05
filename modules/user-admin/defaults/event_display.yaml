@@ -13,3 +13,5 @@ user-deleted: "{{ user.profile.name }} deleted {{ target.name }}'s login identit
 member-invited: "{{ user.profile.name }} invited {{ target.email }}"
 invitation-cancelled: "{{ user.profile.name }} cancelled the invitation for {{ target.email }}"
 invitation-resent: "{{ user.profile.name }} resent the invitation for {{ target.email }}"
+two-factor-reset: "{{ user.profile.name }} reset {{ target.name }}'s two-factor authentication"
+passkeys-revoked: "{{ user.profile.name }} revoked {{ target.name }}'s passkeys"
