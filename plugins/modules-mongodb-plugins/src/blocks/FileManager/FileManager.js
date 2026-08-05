@@ -6,6 +6,7 @@ import {
   Tooltip,
   Modal,
   Progress,
+  Tag,
   theme,
 } from "antd";
 import { withBlockDefaults, renderHtml } from "@lowdefy/block-utils";
@@ -100,6 +101,9 @@ const FileManager = ({
   const thumbnailRef = useRef(null);
 
   const fileDocs = type.isArray(properties.files) ? properties.files : [];
+  const metadataTags = type.isArray(properties.metadataTags)
+    ? properties.metadataTags
+    : [];
   const hasForm = !!content?.form;
   const viewOnly = properties.viewOnly === true;
   const showDelete = viewOnly ? false : (properties.showDelete ?? true);
@@ -329,6 +333,14 @@ const FileManager = ({
     if (userName) metaParts.push(userName);
     if (timestamp) metaParts.push(timestamp);
 
+    // Render a tag per configured metadata_tags entry whose value matches.
+    // `when` (when present) requires an exact match; otherwise any truthy value shows the tag.
+    const tagsToShow = metadataTags.filter((tag) => {
+      if (!type.isObject(tag) || !tag.key) return false;
+      const value = fileDoc.metadata?.[tag.key];
+      return "when" in tag ? value === tag.when : Boolean(value);
+    });
+
     return (
       <div
         key={fileDoc._id ?? index}
@@ -359,6 +371,26 @@ const FileManager = ({
             <Text type="secondary" style={{ fontSize: 12 }}>
               {metaParts.join(" \u00b7 ")}
             </Text>
+          )}
+          {tagsToShow.length > 0 && (
+            <div
+              style={{
+                marginTop: 2,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 4,
+              }}
+            >
+              {tagsToShow.map((tag, ti) => (
+                <Tag
+                  key={ti}
+                  color={tag.color}
+                  style={{ marginInlineEnd: 0, fontSize: 11, lineHeight: "16px" }}
+                >
+                  {tag.label ?? tag.key}
+                </Tag>
+              ))}
+            </div>
           )}
         </div>
         <Tooltip title="Download">
