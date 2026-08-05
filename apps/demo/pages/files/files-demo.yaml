@@ -26,6 +26,79 @@ _ref:
             (`entity_type` + `entity_id`); the card and list below share one
             entity, so the list is a read-only view of the card's files.
 
+      # ── metadata_tags (static test data — no backend) ────────────────────
+      - id: tag_test_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: metadata_tags (static test data)
+      - id: tag_test_note
+        type: Paragraph
+        properties:
+          type: secondary
+          content: >
+            A read-only file-manager fed a hardcoded `files` array (no S3/Mongo)
+            so the `metadata_tags` badge is visible without a backend. Rows whose
+            `metadata.available_to_client` is `true` show the green
+            "Available to client" tag; the others do not.
+      - id: tag_test_manager
+        type: FileManager
+        properties:
+          viewOnly: true
+          metadataTags:
+            - key: available_to_client
+              label: Available to client
+              color: green
+          files:
+            - _id: test-1
+              file:
+                name: client-contract.pdf
+                key: files-demo/test-1/client-contract.pdf
+                bucket: demo
+                size: 245678
+                type: application/pdf
+              file_title: Signed contract
+              file_category: contract
+              metadata:
+                available_to_client: true
+              created:
+                timestamp: 1722800000000
+                user:
+                  name: Alice Test
+                  id: user-1
+            - _id: test-2
+              file:
+                name: internal-notes.pdf
+                key: files-demo/test-2/internal-notes.pdf
+                bucket: demo
+                size: 88123
+                type: application/pdf
+              file_title: Internal notes
+              file_category: notes
+              metadata:
+                available_to_client: false
+              created:
+                timestamp: 1722810000000
+                user:
+                  name: Bob Test
+                  id: user-2
+            - _id: test-3
+              file:
+                name: site-photo.jpg
+                key: files-demo/test-3/site-photo.jpg
+                bucket: demo
+                size: 512000
+                type: image/jpeg
+              file_title: Site photo
+              file_category: photo
+              metadata:
+                available_to_client: true
+              created:
+                timestamp: 1722820000000
+                user:
+                  name: Alice Test
+                  id: user-1
+
       # ── file-card ───────────────────────────────────────────────────────
       - id: file_card_divider
         type: Divider
