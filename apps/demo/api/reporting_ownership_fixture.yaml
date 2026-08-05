@@ -43,16 +43,23 @@ visibility:
   _var: visibility
 favourite_of:
   _if:
+    # Optional var: an unset `favourited` resolves to null, and this _if rejects
+    # a non-boolean test, so default it to false.
     test:
-      _var: favourited
+      _if_none:
+        - _var: favourited
+        - false
     then:
       - _user: id
     else: []
 conversation_id: null
 deleted:
   _if:
+    # Optional var, guarded like favourite_of above.
     test:
-      _var: is_deleted
+      _if_none:
+        - _var: is_deleted
+        - false
     then:
       timestamp:
         _date: now
