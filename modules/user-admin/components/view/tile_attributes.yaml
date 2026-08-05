@@ -41,14 +41,14 @@ _ref:
                     {% if r.orphan %}
                       <span title="Role no longer in the app's role catalog — can be removed but not re-added" style="display:inline-flex; align-items:center; gap:4px; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-warning-bg); border:1px solid var(--ant-color-warning-border); color:var(--ant-color-warning-text);">⚑ {{ r.label }}</span>
                     {% else %}
-                      <span style="display:inline-flex; align-items:center; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">{{ r.label }}</span>
+                      <span title="{{ r.description }}" style="display:inline-flex; align-items:center; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">{{ r.label }}</span>
                     {% endif %}
                   {% endfor %}
                   </span>
                 </div>
               on:
-                # Roles split from member.role + catalog-resolved to
-                # { label, orphan } by the detail read (design Decision 8).
+                # Roles are the member's appRoles, catalog-resolved to
+                # { id, label, description, orphan } by the detail read (design Decision 8).
                 roles:
                   _request: get_user_detail.0.roles
       # Member attributes — consumer fields.member_attributes (state.member_attributes.*).
