@@ -95,6 +95,10 @@ properties:
     _var:
       key: ok_text
       default: Save
+  metadataTags:
+    _var:
+      key: metadata_tags
+      default: []
 slots:
   form:
     blocks:

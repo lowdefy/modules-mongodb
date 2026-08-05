@@ -43,9 +43,14 @@ exports:
       description: >-
         Unified FileManager block — drag-drop upload, file type icons,
         thumbnails, clipboard paste, progress bar, download, delete
-        confirmation, form fields modal, single-file and max-count modes
+        confirmation, form fields modal, single-file and max-count modes.
+        `metadata_tags` renders read-only tags per file row from the file's
+        metadata (entries: { key, label, when, color }; see the FileManager
+        plugin docs).
     - id: file-card
-      description: Layout card wrapping file-manager for easy embedding
+      description: >-
+        Layout card wrapping file-manager for easy embedding. Passes through
+        file-manager's vars (incl. `form_fields` and `metadata_tags`).
     - id: file-list
       description: >-
         Lightweight read-only file list using standard Lowdefy blocks (no

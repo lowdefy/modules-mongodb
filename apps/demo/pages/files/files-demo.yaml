@@ -40,8 +40,10 @@ _ref:
             The recommended component: a titled card wrapping file-manager. This
             instance uses an upload-modal form slot (E1) — after each upload a
             modal collects a category (which sets the file's `file_category`) and
-            an "available to client" flag (stored in `metadata`) — and an
-            `on_download` hook (E3) that shows a message on download.
+            an "available to client" flag (stored in `metadata`) — a
+            `metadata_tags` entry that renders a green "Available to client" tag
+            on rows whose flag is set, and an `on_download` hook (E3) that shows
+            a message on download.
       - _ref:
           module: files
           component: file-card
@@ -52,6 +54,11 @@ _ref:
             entity_id: showcase
             modal_title: File details
             ok_text: Save file
+            metadata_tags:
+              - key: available_to_client
+                label: Available to client
+                when: true
+                color: green
             form_fields:
               - id: demo_file_card.form.file_category
                 type: Selector
@@ -180,6 +187,11 @@ _ref:
                     entity_type: files-demo
                     entity_id: showcase
                     view_only: true
+                    metadata_tags:
+                      - key: available_to_client
+                        label: Available to client
+                        when: true
+                        color: green
           # Deprecated file-list, for comparison.
           - id: deprecated_list_col
             type: Box
