@@ -5,8 +5,6 @@
 # `user-contacts` record, then flattens the display shape:
 #   name / picture — from the contact profile (fallback to the user display name)
 #   email          — from the auth user row
-#   roles_arr      — the published wire name for the member's app roles, aliased
-#                    from the native `appRoles` array
 #   status         — Active unless user.banned === true → Suspended (Decision 2;
 #                    permanent bans only, so banExpires is never consulted)
 #   created/updated— the contact change-stamp timestamps
@@ -19,13 +17,11 @@
 #   user_attributes   — fields.user_attributes   (user.attributes)
 #   member_attributes — fields.member_attributes (member.attributes)
 #
-# `picture`, `created`, `updated` and `roles_arr` are wrapped in $ifNull so the
-# keys exist even when their source doesn't: $addFields OMITS a field whose
-# source path is missing, `created`/`updated` both vanish when the contact
-# $lookup finds no match (reachable — the $unwind below preserves empties), and
-# `roles_arr` vanishes on a member row carrying no `appRoles`, which the row
-# contract still promises as an array. A blank column is then always a data
-# question, never a shape question.
+# `picture`, `created` and `updated` are wrapped in $ifNull so the keys exist
+# even when their source doesn't: $addFields OMITS a field whose source path is
+# missing, and `created`/`updated` both vanish when the contact $lookup finds no
+# match (reachable — the $unwind below preserves empties). A blank column is then
+# always a data question, never a shape question.
 #
 # `pre_join_stages` is the slot for stages that must run on the MEMBER ROOT —
 # after the org-scope $match, before the $lookups. That window is the only place
@@ -70,10 +66,6 @@ _build.array.concat:
             - "$contact.profile.picture"
             - null
         email: "$user.email"
-        roles_arr:
-          $ifNull:
-            - "$appRoles"
-            - []
         status:
           $cond:
             - $eq:
