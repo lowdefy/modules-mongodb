@@ -19,26 +19,83 @@
     gap: 12px;
   }
 
-  /* Nested list items — each array element renders as a light left-accented
-     block (same idiom as .dataview-array-item) instead of stacking another
-     card. The fixed label width keeps sibling items' columns aligned, since
-     each item is its own Descriptions table. */
+  /* Nested lists — the container card is tinted slightly darker than the
+     item cards inside it, and drops the head divider so the list title sits
+     directly above its items. Each array element is a Collapse panel styled
+     as a card. */
 
-  :global(.dataview-list-item) {
+  :global(.dataview-list-card.ant-card) {
+    background: var(--ant-color-fill-quaternary);
+  }
+
+  /* Inset the title toward the item panels' content without reaching the
+     chevron column (that read as too far right). */
+  :global(.dataview-list-card > .ant-card-head) {
+    border-bottom: none;
+    background: transparent;
+    padding: 12px 20px 0;
+  }
+
+  :global(.dataview-list-title) {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+  }
+
+  /* List cards nested inside another card keep the default title size. */
+  :global(.ant-card-body .dataview-list-title) {
+    font-size: 14px;
+  }
+
+  :global(.dataview-list-count) {
+    min-width: 20px;
+    padding: 0 7px;
+    border-radius: 10px;
+    background: var(--ant-color-fill-secondary);
+    color: var(--ant-color-text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: center;
+  }
+
+  :global(.dataview-list-collapse.ant-collapse) {
+    background: transparent;
+    border: none;
+  }
+
+  :global(.dataview-list-collapse.ant-collapse > .ant-collapse-item) {
+    background: var(--ant-color-bg-container);
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  :global(
+    .dataview-list-collapse.ant-collapse > .ant-collapse-item:not(:last-child)
+  ) {
+    margin-bottom: 12px;
+  }
+
+  :global(
+    .dataview-list-collapse.ant-collapse
+      > .ant-collapse-item
+      > .ant-collapse-header
+  ) {
+    font-weight: 600;
+  }
+
+  /* Stack an item's fields table and nested list cards with a gap, and keep
+     sibling items' label columns aligned — each item is its own table. */
+
+  :global(.dataview-list-panel) {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 4px 0 4px 12px;
-    border-left: 2px solid var(--ant-color-border);
+    gap: 12px;
   }
 
-  :global(.dataview-list-item-title) {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--ant-color-text-secondary);
-  }
-
-  :global(.dataview-list-item .ant-descriptions-item-label) {
+  :global(.dataview-list-collapse .ant-descriptions-item-label) {
     width: 25%;
   }
 

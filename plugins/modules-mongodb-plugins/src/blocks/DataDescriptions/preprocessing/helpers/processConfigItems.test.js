@@ -41,6 +41,7 @@ test("one-level list: fields resolve per index and get Item N sections", () => {
   expect(devices.items).toHaveLength(2);
   expect(devices.items[0].title).toBe("Item 1");
   expect(devices.items[0].isListItem).toBe(true);
+  expect(devices.items[1].title).toBe("Item 2");
   expect(fieldKeys(devices.items[0].items)).toEqual(["form.devices.0.name"]);
   expect(devices.items[0].items[0].value).toBe("Router");
   expect(fieldKeys(devices.items[1].items)).toEqual(["form.devices.1.name"]);

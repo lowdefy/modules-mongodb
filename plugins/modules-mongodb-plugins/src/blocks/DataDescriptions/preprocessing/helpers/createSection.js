@@ -4,7 +4,7 @@ function createSection(title, level, items, { isListItem = false } = {}) {
     title,
     level,
     showCard: level === 0, // Only root-level sections get cards
-    isListItem, // Array elements render lighter than named sections
+    isListItem, // Array elements render as collapsible panels, not cards
     items,
   };
 }
