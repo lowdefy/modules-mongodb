@@ -124,23 +124,24 @@ test("show_comment is honoured per check action on the one shared check page", a
   // `comment`, which is the form pages' path).
   const comment = page.locator('[id="current_action.comment"]');
 
-  // show_comment: false → hidden even in edit mode, which is exactly where the
-  // optional comment would otherwise render. Flip into edit before asserting, or
-  // the mode gate alone would satisfy the assertion.
+  // A freshly-started (action-required) editable action opens the surface
+  // directly in edit mode — the mode where the optional comment would otherwise
+  // render — so `button_submit` being visible is the edit-mode marker (no
+  // view→edit `button_edit` step exists in this state). show_comment: false must
+  // keep the box hidden here regardless.
   const quiet = await actionByType(mdb, workflowId, "quiet-check");
   await ldf.goto(
     `/workflows/knob-behaviors-action?action_id=${quiet._id.toString()}`,
   );
-  await ldf.block("button_edit").do.click();
   await expect(page.locator("#button_submit")).toBeVisible();
   await expect(comment).toBeHidden();
 
-  // Default (flag omitted) → the box renders in edit mode on the same page.
+  // Default (flag omitted) → the box renders in the same edit mode on the same page.
   const loud = await actionByType(mdb, workflowId, "loud-check");
   await ldf.goto(
     `/workflows/knob-behaviors-action?action_id=${loud._id.toString()}`,
   );
-  await ldf.block("button_edit").do.click();
+  await expect(page.locator("#button_submit")).toBeVisible();
   await expect(comment).toBeVisible();
 });
 

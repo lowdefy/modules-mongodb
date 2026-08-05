@@ -227,9 +227,14 @@ test("the review page renders the submitted values read-only and the error page 
   await expect(getBlock(page, "form_body")).toBeVisible();
   await expect(page.getByText("Read-only value")).toBeVisible();
   // An enum-driven selector shows the entry's title, not the stored slug
-  // (`open` → "Open"). Options-driven selectors are unchanged: `form.selector`
-  // still shows its formatted raw value.
-  await expect(page.getByText("Open", { exact: true })).toBeVisible();
+  // (`open` → "Open"), rendered as an icon + title in the read-only cell. Target
+  // the DataDescriptions cell by role, not `getByText(exact)`: the enum icon's
+  // SVG <title> ("Outline Folder Open") is concatenated into the cell's
+  // textContent, so no element's text is exactly "Open". Options-driven selectors
+  // are unchanged: `form.selector` still shows its formatted raw value.
+  await expect(
+    page.getByRole("cell", { name: "Open", exact: true }),
+  ).toBeVisible();
   // Same for a multi-select: the array of slugs renders one title per tag
   // (`weekly` → "Weekly review"), not "Weekly".
   await expect(page.getByText("Weekly review", { exact: true })).toBeVisible();
