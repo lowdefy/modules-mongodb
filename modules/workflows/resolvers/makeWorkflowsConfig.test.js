@@ -1780,6 +1780,33 @@ test("makeWorkflowsConfig: form_meta recurses into controlled_list structural co
   });
 });
 
+test("makeWorkflowsConfig: form_meta carries itemKey on controlled_list", () => {
+  const withItemKey = {
+    type: "install",
+    kind: "form",
+    form: [
+      {
+        component: "controlled_list",
+        key: "form.devices",
+        title: "Devices",
+        itemKey: "name",
+        form: [
+          {
+            component: "text_input",
+            key: "form.devices.$.name",
+            title: "Device name",
+          },
+        ],
+      },
+    ],
+  };
+  const wf = workflowWithFormActions(withItemKey);
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [wf, deviceInstallationStub],
+  });
+  expect(out.actions[0].form_meta.form[0].itemKey).toBe("name");
+});
+
 test("makeWorkflowsConfig: check-kind action has no form_meta", () => {
   const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
   expect("form_meta" in out.actions[0]).toBe(false);

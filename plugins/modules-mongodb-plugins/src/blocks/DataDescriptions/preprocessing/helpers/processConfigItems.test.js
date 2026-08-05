@@ -48,6 +48,68 @@ test("one-level list: fields resolve per index and get Item N sections", () => {
   expect(devices.items[1].items[0].value).toBe("Switch");
 });
 
+test("itemKey titles each list item from its own data, Item N on miss", () => {
+  const data = {
+    form: {
+      devices: [{ name: "Router" }, { sku: "no-name" }, { name: "" }],
+    },
+  };
+  const form = [
+    {
+      key: "form.devices",
+      title: "Devices",
+      itemKey: "name",
+      form: [
+        { key: "form.devices.$.name", component: "text_input" },
+        { key: "form.devices.$.sku", component: "text_input" },
+      ],
+    },
+  ];
+
+  const [devices] = sectionsOf(processConfigItems(data, form, 0));
+
+  expect(devices.items[0].title).toBe("Router");
+  expect(devices.items[1].title).toBe("Item 2");
+  expect(devices.items[2].title).toBe("Item 3");
+});
+
+test("itemKey supports dot notation and applies per nesting level", () => {
+  const data = {
+    form: {
+      devices: [
+        {
+          meta: { label: "Router" },
+          parts: [{ name: "Antenna" }, { sku: "no-name" }],
+        },
+      ],
+    },
+  };
+  const form = [
+    {
+      key: "form.devices",
+      itemKey: "meta.label",
+      form: [
+        { key: "form.devices.$.meta.label", component: "text_input" },
+        {
+          key: "form.devices.$.parts",
+          itemKey: "name",
+          form: [
+            { key: "form.devices.$.parts.$.name", component: "text_input" },
+            { key: "form.devices.$.parts.$.sku", component: "text_input" },
+          ],
+        },
+      ],
+    },
+  ];
+
+  const [devices] = sectionsOf(processConfigItems(data, form, 0));
+
+  expect(devices.items[0].title).toBe("Router");
+  const [parts] = sectionsOf(devices.items[0].items);
+  expect(parts.items[0].title).toBe("Antenna");
+  expect(parts.items[1].title).toBe("Item 2");
+});
+
 test("two-level nested list: inner $ expands with outer and inner indices", () => {
   const data = {
     form: {

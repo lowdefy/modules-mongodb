@@ -234,6 +234,9 @@ form:
     component: controlled_list
     title: Devices
     required: true
+    # Relative to each item — view/review/overview title the item's card with
+    # devices[i].name instead of `Item N` (falls back when the value is empty).
+    itemKey: name
     form:
       # Row children use the FULL `{list}.$.{field}` state path as their key (the
       # module's documented convention — see components/fields/README.md, e.g.
@@ -249,6 +252,7 @@ form:
       - key: form.devices.$.parts
         component: controlled_list
         title: Parts
+        itemKey: name
         form:
           - key: form.devices.$.parts.$.name
             component: text_input

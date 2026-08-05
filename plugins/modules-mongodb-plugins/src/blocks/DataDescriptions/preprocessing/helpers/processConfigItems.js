@@ -49,15 +49,25 @@ function processConfigItems(data, formItems, level, arrayIndices = []) {
         // Create sections for each array item. Keys keep their `$` markers;
         // the accumulated indices expand them at lookup, so lists nest to
         // any depth (e.g. form.devices.$.parts.$.name).
-        arrayValue.forEach((_, index) => {
+        arrayValue.forEach((itemValue, index) => {
           const itemStructure = processConfigItems(data, item.form, level + 1, [
             ...arrayIndices,
             index,
           ]);
-          // Add section for array item
+          // Add section for array item. `itemKey` (relative to the item,
+          // dot notation supported) titles the card from the item's own
+          // data; fall back to `Item N` when absent or empty.
           if (itemStructure.length > 0) {
+            const itemTitle = item.itemKey
+              ? get(itemValue, item.itemKey)
+              : undefined;
+            const sectionTitle =
+              (type.isString(itemTitle) && itemTitle !== "") ||
+              type.isNumber(itemTitle)
+                ? String(itemTitle)
+                : `Item ${index + 1}`;
             items.push(
-              createSection(`Item ${index + 1}`, level + 1, itemStructure, {
+              createSection(sectionTitle, level + 1, itemStructure, {
                 isListItem: true,
               }),
             );
