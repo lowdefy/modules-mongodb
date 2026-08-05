@@ -8,15 +8,41 @@
 # permission it needs and the engine floors it against the caller's member row in
 # the organization the step names. Audit event is the final step.
 #
-# `appRoles` is the invitation's native app-role array (array-only at the step)
-# and `orgRole` its organization-authority tier. BOTH are re-sent: the step
-# defaults an absent `orgRole` to `member`, so a resend that omitted it would
-# quietly strip the org authority the invitation was created with.
+# `find_invitation` reads the stored row so `appRoles`, `orgRole`, and
+# `attributes` each fall back to what the invitation already has when the
+# payload omits them — a caller can only ever add to or repeat what's stored,
+# never blank or downgrade it by omission. The step still defaults an absent
+# `orgRole` to `member` beneath the stored fallback, matching InviteMember's own
+# default for a genuinely first-time invite.
 #
-# Payload: { email, roles (array of role ids), org_role?, member_attributes? }
+# Payload: { email, roles? (array of role ids), org_role?, member_attributes? }
 id: resend-invitation
 type: Api
 routine:
+  # Stored invitation, read for the appRoles/role/attributes fallback below.
+  # Mirrors check-invite-email.yaml's find_invitation.
+  - id: find_invitation
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: user-invitations
+    properties:
+      query:
+        organizationId:
+          _module.var: org_slug
+        status: pending
+        $expr:
+          $eq:
+            - $toLower: "$email"
+            - _string.toLowerCase:
+                _string.trim:
+                  _if_none:
+                    - _payload: email
+                    - ""
+      options:
+        projection:
+          appRoles: 1
+          role: 1
+          attributes: 1
   - id: resend
     type: InviteMember
     properties:
@@ -27,13 +53,17 @@ routine:
       appRoles:
         _if_none:
           - _payload: roles
-          - []
+          - _step: find_invitation.appRoles
       orgRole:
-        _payload: org_role
+        _if_none:
+          - _payload: org_role
+          - _if_none:
+              - _step: find_invitation.role
+              - member
       attributes:
         _if_none:
           - _payload: member_attributes
-          - {}
+          - _step: find_invitation.attributes
       resend: true
   - id: audit
     type: CallApi
