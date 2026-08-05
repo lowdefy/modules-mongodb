@@ -213,10 +213,12 @@ blocks:
       - id: conversations
         type: AgentConversations
         properties:
-          # The block styles its own div, so the column width has to be
-          # repeated here or the rail renders at the block's 250px default
-          # inside a 232px column.
-          width: 232
+          # Fill the column's content box rather than repeat a fixed width. The
+          # block styles its own div (defaulting to 250px), and a hardcoded 232
+          # here ignored the column's 24px horizontal padding — so the block ran
+          # 48px wider than the 184px it sits in and its list bled past the right
+          # border. '100%' tracks the padded content width, whatever it is.
+          width: "100%"
           items:
             _ref: pages/chat/components/conversation_items.yaml
           # `collapsible: false` is load-bearing: the block defaults it to true,
