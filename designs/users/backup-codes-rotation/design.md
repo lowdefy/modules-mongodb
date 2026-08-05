@@ -154,8 +154,8 @@ to `twoFactorEnrolled`.
 ## Verification
 
 Build (`pnpm ldf:b`) proves the config compiles; nothing here is provable by build
-alone. On the auth-testing rig, as a credentialed user with 2FA already on — see
-`scripts/auth-testing/CHECKLIST.md`:
+alone. On the auth-testing rig, as a credentialed user with 2FA already on — see the
+auth-testing campaign ([`../auth-testing/tasks/02-account-workspace.md`](../auth-testing/tasks/02-account-workspace.md), Phase 2's 2FA items):
 
 1. **The action exists.** Confirm `TwoFactorGenerateBackupCodes` is in the installed
    catalog (`lowdefy_list_types` with `kind: actions`) **before writing any YAML**.

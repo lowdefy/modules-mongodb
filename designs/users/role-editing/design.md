@@ -686,7 +686,8 @@ stage 0 as `$match: { organizationId }`, and set must return the same rows the p
 returned before the move. `explain` on the filtered read should show the compound index in use once it
 exists.
 
-The behavioural checks belong on the rig (`scripts/auth-testing/CHECKLIST.md`), since an orphan is a
+The behavioural checks belong on the rig — the auth-testing campaign
+([`../auth-testing/`](../auth-testing/design.md), Phase 3 `view` detail) — since an orphan is a
 data state. Against a member holding a role removed from the demo catalog:
 
 - the tile shows a flagged `⚑ <id>` chip; an ordinary chip shows its description on hover;
