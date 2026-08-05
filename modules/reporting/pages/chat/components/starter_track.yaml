@@ -1,0 +1,80 @@
+# One column of the empty state: a label over a wrapping list of starter chips.
+# Referenced twice — once per track — with `label` and `list_id` as vars.
+#
+# `list_id` is the page-state key the page seeds (in onInit) from the matching
+# `welcome` starters var, NOT the starter array itself: a Lowdefy List renders
+# one item per element of the array in state at the List's own id, so the
+# starters have to live in state for the List to iterate them. The chips are
+# furniture from the `welcome` var, not data the user produced.
+#
+# `_var` sits only in operator positions here (a block id, and
+# `_build.string.concat` building the wrapper ids and per-item state paths), so
+# this stays plain `.yaml` — no `.yaml.njk` interpolation is needed. The item
+# block ids carry the `list_id` prefix so the two tracks' chips never collide in
+# the flat block map.
+#
+# A single Box (not a one-item sequence), so each `_ref` list item under the
+# tracks Box resolves to one block rather than nesting an array a level too deep.
+id:
+  _build.string.concat:
+    - _var: list_id
+    - _track
+type: Box
+layout:
+  # Equal-width columns that wrap onto their own lines on a narrow window.
+  flex: 1 1 0
+  gap: 8
+blocks:
+  - id:
+      _build.string.concat:
+        - _var: list_id
+        - _label
+    type: Title
+    properties:
+      content:
+        _var: label
+      level: 5
+  - id:
+      _var: list_id
+    type: List
+    # Chips flow along a row and wrap; the List's own gap spaces them, so no
+    # per-chip margins are needed.
+    layout:
+      gap: 8
+    properties:
+      direction: row
+      wrap: wrap
+    blocks:
+      - id:
+          _build.string.concat:
+            - _var: list_id
+            - .$.chip
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title:
+            _state:
+              _build.string.concat:
+                - _var: list_id
+                - .$
+          # A chip, not a call to action: default weight, sized to its text so
+          # a sentence-length starter reads as a suggestion.
+          type: default
+          block: false
+        events:
+          onClick:
+            # Fill the composer, never send. An imperfect starter is then an
+            # editable first draft the user finishes and sends, which is what
+            # makes a generic shipped default safe. `setInput` takes { text }.
+            - id: fill_composer
+              type: CallMethod
+              params:
+                blockId: chat
+                method: setInput
+                args:
+                  - text:
+                      _state:
+                        _build.string.concat:
+                          - _var: list_id
+                          - .$

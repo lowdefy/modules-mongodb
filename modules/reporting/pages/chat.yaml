@@ -18,6 +18,16 @@ events:
         tables: []
         downloads: []
         results_scope: all
+        # The empty-state starter chips render through two Lists, and a List
+        # iterates the array in page state at its own id — so the starters have
+        # to be seeded there. Both are furniture resolved from the `welcome`
+        # var, not user data; seeding once is enough because the empty state is
+        # hidden with `style.display` (see below), which leaves this state in
+        # place rather than deleting it.
+        explore_starters_list:
+          _module.var: welcome.explore_starters
+        report_starters_list:
+          _module.var: welcome.report_starters
     # The collapse globals are app-scoped and outlive this page's context, while
     # this seed runs only when that context is built — so it fills in a missing
     # value rather than assigning one, and `_if_none` keeps an explicit `false`
@@ -332,7 +342,78 @@ blocks:
     type: Box
     layout:
       flex: 1 1 auto
+      gap: 16
     blocks:
+      # The two-track empty state, above the chat and shown only on a fresh
+      # conversation. It teaches both of the module's jobs by making them
+      # clickable: the left track asks a question, the right builds a report.
+      #
+      # Toggled with `style.display`, not `visible:`. The two starter Lists hold
+      # their arrays in page state at their ids, and `visible: false` on a
+      # container deletes the state of every block beneath it — the chips would
+      # come back blank on the next New chat, because a display block republishes
+      # nothing on the way back. `display: none` removes the block from the flow
+      # while leaving that seeded state untouched, which is the same reason the
+      # rail and results columns collapse this way.
+      - id: chat_empty_state
+        type: Box
+        style:
+          display:
+            _if:
+              test:
+                _eq:
+                  - _array.length:
+                      _if_none:
+                        - _state: messages
+                        - []
+                  - 0
+              then: null
+              else: none
+        layout:
+          gap: 16
+        blocks:
+          - id: empty_state_title
+            type: Title
+            properties:
+              content:
+                _module.var: welcome.title
+              level: 4
+          # The data-scope line names what the assistant can read, in the app's
+          # own words. Rendered only when the app authored it: the var has no
+          # default and resolves to null when unset, so guard with `_if_none`
+          # and drop the line entirely rather than falling back to collection
+          # names — there is no generic sentence true of every app, and a wrong
+          # one is a promise the agent then fails to keep.
+          - id: empty_state_data_scope
+            type: Paragraph
+            visible:
+              _ne:
+                - _if_none:
+                    - _module.var: welcome.data_scope
+                    - ""
+                - ""
+            properties:
+              content:
+                _module.var: welcome.data_scope
+          - id: empty_state_tracks
+            type: Box
+            # The tracks share a row and wrap on a narrow window; the gap spaces
+            # them without per-track margins.
+            layout:
+              gap: 16
+            blocks:
+              - _ref:
+                  path: pages/chat/components/starter_track.yaml
+                  vars:
+                    label:
+                      _module.var: welcome.explore_label
+                    list_id: explore_starters_list
+              - _ref:
+                  path: pages/chat/components/starter_track.yaml
+                  vars:
+                    label:
+                      _module.var: welcome.report_label
+                    list_id: report_starters_list
       - id: chat
         type: AgentChat
         properties:
@@ -350,12 +431,12 @@ blocks:
           # padding (32) sit inside this container, which is what the property
           # caps.
           maxWidth: 520
-          welcome:
-            title: Ask about your data
-            description: >
-              Ask questions in natural language. Charts and downloads appear
-              in the panel on the right; say "turn this into a report" to
-              save a navigable report.
+          # The block's own `welcome` property is deliberately left unset. It
+          # flattens its `prompts` into a single row and declares no areas, so
+          # the two teaching tracks (ask a question / build a report) cannot be
+          # composed inside it — they are rendered as ordinary blocks above the
+          # chat (the `chat_empty_state` Box). This is unrelated to the module's
+          # `welcome` var, which supplies that empty state's copy.
         events:
           onDataPart:
             - id: append_chart
