@@ -47,7 +47,6 @@ blocks:
               # compact (tag.title). See the options block below.
             - - id: roles
                 type: MultipleSelector
-                required: true
                 layout:
                   span: 24
                 properties:
@@ -57,11 +56,6 @@ blocks:
                   # Options from the app role catalog (design Decision 8): value=id,
                   # a rich label (name + description subtitle), filterString for
                   # search, and a compact tag for the selected chip.
-                  #
-                  # NOTE (running-engine gap): _build.authConfig is not yet
-                  # available to module config; design-faithful per the build-red
-                  # directive, resolves once the engine ships the catalog
-                  # projection (upstream ask 7).
                   options:
                     _build.array.map:
                       on:
@@ -71,7 +65,12 @@ blocks:
                           value:
                             __build.args: 0.id
                           filterString:
-                            __build.args: 0.label
+                            __build.string.concat:
+                              - __build.args: 0.label
+                              - " "
+                              - __build.if_none:
+                                  - __build.args: 0.description
+                                  - ""
                           tag:
                             title:
                               __build.args: 0.label
