@@ -76,6 +76,9 @@ const METADATA_FIELDS = [
   "title",
   "validate",
   "enum",
+  // Titles each list item's card on the overview card's read-only
+  // DataDescriptions (value pulled from the item, relative dot-notation key).
+  "itemKey",
 ];
 
 function pickMetadata(entry) {

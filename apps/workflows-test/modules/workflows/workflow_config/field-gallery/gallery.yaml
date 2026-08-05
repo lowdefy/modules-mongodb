@@ -234,6 +234,9 @@ form:
     component: controlled_list
     title: Devices
     required: true
+    # Relative to each item — view/review/overview title the item's card with
+    # devices[i].name instead of `Item N` (falls back when the value is empty).
+    itemKey: name
     form:
       # Row children use the FULL `{list}.$.{field}` state path as their key (the
       # module's documented convention — see components/fields/README.md, e.g.
@@ -243,6 +246,17 @@ form:
       - key: form.devices.$.name
         component: text_input
         title: Device name
+      # Nested list — lists nest to any depth; each level adds its own `$` to
+      # the key, expanded per row index at runtime and again when the saved
+      # data renders on the view/review pages (DataDescriptions).
+      - key: form.devices.$.parts
+        component: controlled_list
+        title: Parts
+        itemKey: name
+        form:
+          - key: form.devices.$.parts.$.name
+            component: text_input
+            title: Part name
 
 # form_review — a small writable section the review page renders below the
 # read-only main form (proves the form_review surface is wired).

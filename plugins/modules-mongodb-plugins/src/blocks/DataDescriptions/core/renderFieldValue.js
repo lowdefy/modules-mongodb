@@ -8,14 +8,7 @@ function renderFieldValue(structure, Icon, methods, properties) {
 
   // Handle arrays
   if (isArray) {
-    return renderArray(
-      structure,
-      config,
-      Icon,
-      methods,
-      properties,
-      renderFieldValue,
-    );
+    return renderArray(structure, config, Icon, methods, properties);
   }
 
   // Non-arrays - use render function from registry
