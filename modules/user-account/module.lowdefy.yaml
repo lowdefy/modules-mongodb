@@ -173,11 +173,16 @@ auth:
     # plain auth.public entry: the accept page stays public + AcceptInvitation
     # action, but it earns public via THIS role, not auth.public.
     acceptInvitation: accept
+    # The 2FA sign-in challenge. Required whenever twoFactor.enabled is true
+    # (auth-hardening) — the engine deletes the sign-in session and sets a signed
+    # two_factor cookie, then routes here. Registered as an authPages role (not a
+    # plain public page) so Login/PhoneNumberVerify can navigate to it and it is
+    # auto-public without a session to authenticate against.
+    twoFactor: two-factor
   # Public pages beyond the authPages roles (role pages — including accept via
-  # acceptInvitation — are auto-public): the 2FA challenge runs pre-full-session;
-  # logout must render when signed out.
+  # acceptInvitation and the two-factor challenge — are auto-public): logout must
+  # render when signed out.
   public:
-    - two-factor
     - logout
   hooks:
     - point: user.create.before
