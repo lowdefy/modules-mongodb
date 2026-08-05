@@ -10,7 +10,7 @@ overrides:
 packageExtensionsChecksum: sha256-pA6UuAchL6SmdqYAfbxTiJm2Q0HvAb5lT+imHFmW5E0=
 
 patchedDependencies:
-  '@lowdefy/blocks-antd-x': b47323ece1fbe6c67e69313671f7b1ed3d698d69e14064da239bd587bc40780d
+  '@lowdefy/blocks-antd-x': 43ff7f179a091554baedba7ddefefdedb7eef1264c9d518163d77959b1ce3adf
 
 importers:
 
@@ -94,7 +94,7 @@ importers:
         version: 0.0.0-experimental-20260707145139(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd-x':
         specifier: 0.0.0-experimental-20260707145139
-        version: 0.0.0-experimental-20260707145139(patch_hash=b47323ece1fbe6c67e69313671f7b1ed3d698d69e14064da239bd587bc40780d)(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
+        version: 0.0.0-experimental-20260707145139(patch_hash=43ff7f179a091554baedba7ddefefdedb7eef1264c9d518163d77959b1ce3adf)(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
       '@lowdefy/blocks-basic':
         specifier: 0.0.0-experimental-20260707145139
         version: 0.0.0-experimental-20260707145139(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -8220,7 +8220,7 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
-  '@lowdefy/blocks-antd-x@0.0.0-experimental-20260707145139(patch_hash=b47323ece1fbe6c67e69313671f7b1ed3d698d69e14064da239bd587bc40780d)(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)':
+  '@lowdefy/blocks-antd-x@0.0.0-experimental-20260707145139(patch_hash=43ff7f179a091554baedba7ddefefdedb7eef1264c9d518163d77959b1ce3adf)(@types/react@19.2.17)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)':
     dependencies:
       '@ai-sdk/react': 3.0.178(react@18.2.0)(zod@4.4.3)
       '@ant-design/icons': 6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)

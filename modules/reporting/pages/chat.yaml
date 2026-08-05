@@ -4,9 +4,15 @@
 # persists on the conversation doc as `data_parts`.
 id: chat
 type: Box
-properties:
-  style:
-    padding: 32px 24px 24px 24px
+# Pinned to the viewport height so the page never scrolls as a whole. The height
+# itself comes from the chat column, which carries an explicit 100dvh (see the
+# chat block): Lowdefy's intermediate flex-row Area is height:auto, so a root
+# height can't cascade down through it — the tallest child has to set a real
+# viewport height for the row to fill the screen. With that, the side panels and
+# collapsed strips stretch to the same bottom edge, and each scrolls its own
+# overflow internally. This cap keeps the whole page from scrolling past 100dvh.
+style:
+  height: 100dvh
 events:
   onInit:
     - id: init_state
@@ -18,16 +24,6 @@ events:
         tables: []
         downloads: []
         results_scope: all
-        # The empty-state starter chips render through two Lists, and a List
-        # iterates the array in page state at its own id — so the starters have
-        # to be seeded there. Both are furniture resolved from the `welcome`
-        # var, not user data; seeding once is enough because the empty state is
-        # hidden with `style.display` (see below), which leaves this state in
-        # place rather than deleting it.
-        explore_starters_list:
-          _module.var: welcome.explore_starters
-        report_starters_list:
-          _module.var: welcome.report_starters
     # The collapse globals are app-scoped and outlive this page's context, while
     # this seed runs only when that context is built — so it fills in a missing
     # value rather than assigning one, and `_if_none` keeps an explicit `false`
@@ -81,6 +77,12 @@ blocks:
   # show both.
   - id: conversations_strip
     type: Box
+    properties:
+      style:
+        padding: 12px 6px
+    style:
+      background: var(--ant-color-bg-layout)
+      border: 1px solid var(--ant-color-border-secondary)
     layout:
       flex: 0 0 auto
       gap: 8
@@ -122,6 +124,9 @@ blocks:
             _ref: pages/chat/actions/new_conversation.yaml
   - id: conversations_panel
     type: Box
+    properties:
+      style:
+        padding: 32px 24px 24px 24px
     layout:
       flex: 0 0 232px
       gap: 8
@@ -140,6 +145,11 @@ blocks:
               - true
           then: none
           else: null
+      background: var(--ant-color-bg-layout)
+      border: 1px solid var(--ant-color-border-secondary)
+      # The root is a fixed 100dvh, so a conversation list taller than the
+      # viewport scrolls inside its own column rather than growing the page.
+      overflowY: auto
     blocks:
       - id: conversations_header
         type: Box
@@ -343,77 +353,31 @@ blocks:
     layout:
       flex: 1 1 auto
       gap: 16
+    # Page-wide shortcuts to collapse either side, hosted here because this
+    # column is always mounted (the two rails toggle with display, so a shortcut
+    # on them would still fire, but this is the stable home). `mod` is ⌘ on a
+    # Mac and Ctrl elsewhere. The event needs the object form to carry a
+    # `shortcut`, so the actions sit under `try`.
+    events:
+      toggle_rail:
+        shortcut: mod+b
+        try:
+          - id: shortcut_toggle_rail
+            type: SetGlobal
+            params:
+              reporting_rail_collapsed:
+                _not:
+                  _global: reporting_rail_collapsed
+      toggle_panel:
+        shortcut: mod+j
+        try:
+          - id: shortcut_toggle_panel
+            type: SetGlobal
+            params:
+              reporting_panel_collapsed:
+                _not:
+                  _global: reporting_panel_collapsed
     blocks:
-      # The two-track empty state, above the chat and shown only on a fresh
-      # conversation. It teaches both of the module's jobs by making them
-      # clickable: the left track asks a question, the right builds a report.
-      #
-      # Toggled with `style.display`, not `visible:`. The two starter Lists hold
-      # their arrays in page state at their ids, and `visible: false` on a
-      # container deletes the state of every block beneath it — the chips would
-      # come back blank on the next New chat, because a display block republishes
-      # nothing on the way back. `display: none` removes the block from the flow
-      # while leaving that seeded state untouched, which is the same reason the
-      # rail and results columns collapse this way.
-      - id: chat_empty_state
-        type: Box
-        style:
-          display:
-            _if:
-              test:
-                _eq:
-                  - _array.length:
-                      _if_none:
-                        - _state: messages
-                        - []
-                  - 0
-              then: null
-              else: none
-        layout:
-          gap: 16
-        blocks:
-          - id: empty_state_title
-            type: Title
-            properties:
-              content:
-                _module.var: welcome.title
-              level: 4
-          # The data-scope line names what the assistant can read, in the app's
-          # own words. Rendered only when the app authored it: the var has no
-          # default and resolves to null when unset, so guard with `_if_none`
-          # and drop the line entirely rather than falling back to collection
-          # names — there is no generic sentence true of every app, and a wrong
-          # one is a promise the agent then fails to keep.
-          - id: empty_state_data_scope
-            type: Paragraph
-            visible:
-              _ne:
-                - _if_none:
-                    - _module.var: welcome.data_scope
-                    - ""
-                - ""
-            properties:
-              content:
-                _module.var: welcome.data_scope
-          - id: empty_state_tracks
-            type: Box
-            # The tracks share a row and wrap on a narrow window; the gap spaces
-            # them without per-track margins.
-            layout:
-              gap: 16
-            blocks:
-              - _ref:
-                  path: pages/chat/components/starter_track.yaml
-                  vars:
-                    label:
-                      _module.var: welcome.explore_label
-                    list_id: explore_starters_list
-              - _ref:
-                  path: pages/chat/components/starter_track.yaml
-                  vars:
-                    label:
-                      _module.var: welcome.report_label
-                    list_id: report_starters_list
       - id: chat
         type: AgentChat
         properties:
@@ -423,20 +387,46 @@ blocks:
             _state: conversationId
           messages:
             _state: messages
-          height: 75vh
-          # A ~62ch measure, so answers read as prose however wide the window
-          # runs. antd's body fontSize is 14px and the system sans stack
-          # averages about 0.5em per prose character, so 62 characters is
-          # ~434px of text; the bubble's avatar (32) + gap (12) + content
-          # padding (32) sit inside this container, which is what the property
-          # caps.
-          maxWidth: 520
-          # The block's own `welcome` property is deliberately left unset. It
-          # flattens its `prompts` into a single row and declares no areas, so
-          # the two teaching tracks (ask a question / build a report) cannot be
-          # composed inside it — they are rendered as ordinary blocks above the
-          # chat (the `chat_empty_state` Box). This is unrelated to the module's
-          # `welcome` var, which supplies that empty state's copy.
+          # An explicit viewport height, not 100% — this is the column that
+          # drives the row's height. Lowdefy inserts a flex-row Area between a Box
+          # and its children that is height:auto, so a 100% here (or on any
+          # column) resolves against that auto Area and collapses to content
+          # height — which is what left every panel cut off mid-page. A viewport
+          # unit is self-determining: the block sizes its own div to 100dvh
+          # regardless of the ancestor chain, becoming the tallest child so the
+          # row grows to the full viewport and the side panels/strips stretch to
+          # the same top and bottom edge (align defaults to stretch). This full-
+          # bleed page carries no app header, so 100dvh needs no chrome subtracted.
+          # The composer stays anchored at the bottom, and the welcome renders
+          # in-flow as the transcript's leading item (see the `welcome` prop
+          # below), so there is no empty-state box stacked above and no first-send
+          # height change — the composer keeps one bottom anchor throughout.
+          #
+          # maxWidth widened from the original ~62ch measure on request. antd's
+          # body fontSize is 14px; this caps the transcript column and composer.
+          height: 100dvh
+          maxWidth: 620
+          # The two-track teaching empty state, rendered by the block inside the
+          # message scroll area: it is the transcript's leading item, so it
+          # scrolls up with the conversation and stays reachable by scrolling
+          # back rather than being hidden on the first send. A track starter
+          # fills the composer (never sends), so a generic shipped default is an
+          # editable first draft. `data_scope` has no default and resolves to
+          # null when unset — the block drops the line rather than inventing one.
+          welcome:
+            title:
+              _module.var: welcome.title
+            description:
+              _module.var: welcome.data_scope
+            tracks:
+              - label:
+                  _module.var: welcome.explore_label
+                prompts:
+                  _module.var: welcome.explore_starters
+              - label:
+                  _module.var: welcome.report_label
+                prompts:
+                  _module.var: welcome.report_starters
         events:
           onDataPart:
             - id: append_chart
@@ -501,6 +491,9 @@ blocks:
               - _ref: pages/chat/actions/refresh_conversations.yaml
   - id: results_panel
     type: Box
+    properties:
+      style:
+        padding: 32px 24px 24px 24px
     layout:
       flex: 0 0 348px
       gap: 12
@@ -517,6 +510,11 @@ blocks:
               - true
           then: none
           else: null
+      background: var(--ant-color-bg-layout)
+      border: 1px solid var(--ant-color-border-secondary)
+      # The root is a fixed 100dvh, so a long stack of charts/tables/exports
+      # scrolls inside this column rather than growing the page.
+      overflowY: auto
     blocks:
       - id: results_header
         type: Box
@@ -571,26 +569,34 @@ blocks:
       # The panel is rendered before it has anything in it, so it has to say
       # what it is for; a panel that appears only with the first chart teaches
       # nothing until the user has already succeeded without it.
+      # The single empty message for the whole panel, shown only on the All tab
+      # when nothing has landed yet. The per-section "No charts / No tables / No
+      # downloads" lines below are scoped to their own tabs, so the All tab
+      # never stacks three of them or sandwiches a lone table between two.
       - id: results_explainer
         type: Paragraph
         visible:
-          _eq:
-            - _array.length:
-                _array.concat:
-                  - _if_none:
-                      - _state: charts
-                      - []
-                  - _if_none:
-                      - _state: tables
-                      - []
-                  - _if_none:
-                      - _state: downloads
-                      - []
-            - 0
+          _and:
+            - _eq:
+                - _array.length:
+                    _array.concat:
+                      - _if_none:
+                          - _state: charts
+                          - []
+                      - _if_none:
+                          - _state: tables
+                          - []
+                      - _if_none:
+                          - _state: downloads
+                          - []
+                - 0
+            - _eq:
+                - _state: results_scope
+                - all
         properties:
           content: >-
-            Charts, tables and exports you produce land here; tick them to save
-            a report.
+            Nothing here yet — ask the assistant to create a chart, table or
+            data export. Tick items to save them as a report.
       - id: charts_section
         type: Box
         # Hidden with CSS, never `visible:` — scoping the panel to Exports would
@@ -610,15 +616,21 @@ blocks:
               then: null
               else: none
         blocks:
+          # Only on the Charts tab: on All, the panel-level explainer covers the
+          # empty case, so this would just clutter a lone table.
           - id: charts_empty
             type: Paragraph
             visible:
-              _eq:
-                - _array.length:
-                    _if_none:
-                      - _state: charts
-                      - []
-                - 0
+              _and:
+                - _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: charts
+                          - []
+                    - 0
+                - _eq:
+                    - _state: results_scope
+                    - charts
             properties:
               content: No charts yet — ask the assistant to chart something.
           - id: charts
@@ -686,15 +698,20 @@ blocks:
               then: null
               else: none
         blocks:
+          # Only on the Tables tab, for the same reason as charts_empty.
           - id: tables_empty
             type: Paragraph
             visible:
-              _eq:
-                - _array.length:
-                    _if_none:
-                      - _state: tables
-                      - []
-                - 0
+              _and:
+                - _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: tables
+                          - []
+                    - 0
+                - _eq:
+                    - _state: results_scope
+                    - tables
             properties:
               content: No tables yet — ask the assistant for a table.
           - id: tables
@@ -723,15 +740,20 @@ blocks:
               then: null
               else: none
         blocks:
+          # Only on the Exports tab, for the same reason as charts_empty.
           - id: downloads_empty
             type: Paragraph
             visible:
-              _eq:
-                - _array.length:
-                    _if_none:
-                      - _state: downloads
-                      - []
-                - 0
+              _and:
+                - _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: downloads
+                          - []
+                    - 0
+                - _eq:
+                    - _state: results_scope
+                    - exports
             properties:
               content: No downloads yet — ask the assistant to export data.
           - id: downloads
@@ -793,9 +815,15 @@ blocks:
   # complements for any value of the global.
   - id: results_strip
     type: Box
+    properties:
+      style:
+        padding: 12px 6px
     layout:
       flex: 0 0 auto
       gap: 8
+    style:
+      background: var(--ant-color-bg-layout)
+      border: 1px solid var(--ant-color-border-secondary)
     visible:
       _eq:
         - _global: reporting_panel_collapsed

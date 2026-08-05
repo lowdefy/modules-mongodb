@@ -131,11 +131,11 @@ vars:
       Copy for the chat page's empty state — the surface that teaches both of
       the module's jobs, asking a question and building a report. Six leaves:
       a title, a line naming what the assistant can see, and a label plus a
-      starter-prompt list per job track. Not the block's `welcome` — AgentChat
-      has its own `welcome` property, which the chat page deliberately leaves
-      unset, because that block flattens `prompts` into one row and declares
-      no areas, so two tracks cannot live inside it. This var's copy renders
-      in the page's own empty state instead.
+      starter-prompt list per job track. This copy feeds the AgentChat block's
+      `welcome` property, which the chat page maps to a two-track shape: the
+      block renders the tracks in-flow as the transcript's leading item, so the
+      empty state scrolls up with the conversation and stays reachable by
+      scrolling back rather than being hidden on the first send.
     properties:
       title:
         type: string
