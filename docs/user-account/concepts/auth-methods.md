@@ -9,6 +9,8 @@ concepts:
     build-authConfig,
     error-handling,
     two-factor,
+    two-factor-required,
+    twoFactorEnrolled,
     magic-link,
     passwordless,
   ]
@@ -213,3 +215,55 @@ replacement therefore leaves the account with two-factor off** until the user
 enrols again: the account stays reachable with the password alone, and the
 Security tile reads **Off** in the meantime — this is expected behaviour, not
 a lockout.
+
+## Required enrolment: `auth.twoFactor.required`
+
+When the deployment sets `auth.twoFactor.required`, the engine enforces that
+every member holds a second factor. An unenrolled caller is redirected to the
+module's contributed **`twoFactorEnrol`** page (`pages/two-factor-enrol.yaml`),
+which offers **both TOTP and passkey enrolment** — either is reachable by every
+caller, including a passwordless one (a caller with no password credential can
+still complete TOTP enrolment; BetterAuth waives the password requirement
+per-user for anyone holding none).
+
+This page is **protected**, unlike every other auth page the module ships —
+the caller reaching it already holds a valid session and is missing a factor,
+not an identity, so there is no sign-in-behind-the-wall paradox. It is also
+**self-sufficient on client actions**: an unenrolled caller is refused at every
+Lowdefy endpoint by the enrolment gate, so the page never issues a server-side
+request — it drives `TwoFactorEnable`, `TwoFactorVerify`, and `PasskeyRegister`
+directly against `/api/auth/*`.
+
+### `_user.twoFactorEnrolled`
+
+The module reads enrolment status from exactly one field:
+`_user.twoFactorEnrolled`, computed server-side by the engine as
+`twoFactorEnabled || passkeyCount > 0` and exposed identically on client and
+server. **A passkey counts** — it means "holds a factor that satisfies
+`auth.twoFactor.required`," not "has TOTP configured," so a passkey-only user
+reads `twoFactorEnrolled: true` and the engine's enrolment gate treats them as
+compliant. The enrolment page reads this same field to decide when the caller
+is done, so its completion state never disagrees with the gate about who still
+needs a factor.
+
+### `required` is an enrolment floor, not a per-session challenge guarantee
+
+**This caveat is stated plainly, not softened:** `auth.twoFactor.required`
+guarantees that every member has **enrolled** a qualifying factor — it does
+**not** guarantee that every session **presented** one. A user who holds both a
+passkey and a password can sign in with the password alone and is admitted
+having presented exactly one factor for that session; `required` never
+challenges them for the passkey they hold. Enrolment and per-session challenge
+are two different guarantees, and this module — and the engine underneath it
+— only makes the first one. A deployment that needs "this session presented a
+second factor," not just "this account has one on file," needs a
+session-scoped step-up guarantee that does not exist here.
+
+### Recovery composes with `required` automatically
+
+An admin's two-factor reset or passkey revoke (see
+[`user-admin` → Two-factor and passkey recovery](../../user-admin/index.md#two-factor-and-passkey-recovery))
+clears a factor, which can flip `twoFactorEnrolled` back to `false`. Under
+`required`, that is enough on its own to route the person back into
+`twoFactorEnrol` on their next request — there is no separate "require
+re-enrolment" feature; it falls out of the same enrolment check running again.

@@ -3,7 +3,16 @@ title: User Admin
 module: user-admin
 type: index
 concepts:
-  [access-lifecycle, org-slug, roles, org-authority, invitations, suspend]
+  [
+    access-lifecycle,
+    org-slug,
+    roles,
+    org-authority,
+    invitations,
+    suspend,
+    two-factor-recovery,
+    passkey-recovery,
+  ]
 ---
 
 # User Admin
@@ -36,7 +45,8 @@ two entries, two `org_slug` values. See
   (contact fields), **Attributes** (this app's roles + member attributes, plus — behind
   the `org_authority` var, and with its own submit — the member's organization-authority
   tier), **Global attributes** (user attributes), **Security** (suspend/reinstate,
-  sign-out-everywhere, remove, delete, sessions, auth methods),
+  sign-out-everywhere, remove, delete, sessions, auth methods, two-factor and
+  passkey recovery — see [Two-factor and passkey recovery](#two-factor-and-passkey-recovery)),
   **Apps** (cross-app badges), **Activity** (event timeline). Each tile edits
   through its own modal and its own routine. The **auth methods** block is
   read-only visibility of how the user can sign in — email-verified, OAuth
@@ -74,15 +84,69 @@ administered by one trusted operator group; it sits behind the `suspension` var
 (default on). **Remove from app** (`RemoveMember`) is the app-scoped alternative.
 **Delete login identity** is offered only when the user holds no other memberships.
 
+## Two-factor and passkey recovery
+
+The Security tile's Auth-methods area carries two recovery controls, each built
+only when the corresponding method is enabled deployment-wide
+(`_build.authConfig.twoFactor.enabled` / `.passkey.enabled`) and shown per-user
+only beside the badge for a method that user actually holds:
+
+- **Reset two-factor authentication** — clears the target's TOTP authenticator
+  (and its backup codes), shown beside the `MFA · TOTP` badge.
+- **Revoke passkeys** — clears the target's passkeys, all at once or one at a
+  time when they hold more than one, shown beside the passkey badge.
+
+Each control revokes the target's sessions, writes an audit event, and notifies
+the target — same shape as the existing suspend/ban actions, not a new pattern.
+
+**The reach is suite-wide.** `twoFactorEnabled` and passkeys are keyed to the
+`user`, not the `member`, so a reset or revoke from one app's admin console
+removes the factor across **every app in the suite**, exactly like ban (see
+[The access lifecycle](#the-access-lifecycle)). The confirm dialog enumerates the
+target's other memberships so the admin sees the blast radius.
+
+**Who may perform it is bounded by org-authority, independent of who can see
+member management.** Each action is a distinct per-action org permission —
+`reset-two-factor` and `revoke-passkeys` — floored by the caller's own member
+row in `org_slug`'s organization, the same floor as every other write in
+[Write pathways](#write-pathways). A deployment can grant a role member
+management while withholding recovery by simply not granting these two
+permissions; there is no module var for this and none is needed.
+
+**There is no admin "exempt from 2FA" control, on purpose.** Both actions return
+the target to **unenrolled** for the factor cleared — never to an exempt state.
+In a deployment running `auth.twoFactor.required`, an unenrolled user is routed
+straight back into re-enrolment on their next request (see
+[Auth methods](../user-account/concepts/auth-methods.md)); recovery is not a way
+to excuse someone from that requirement, and none is offered.
+
+### The module cannot guarantee the recovery notice is sent
+
+The target is notified on both reset and revoke — the module dispatches through
+[`notifications`](../notifications/index.md)'s `send-notification` API after the
+audit event commits. **This is stated plainly because it is a real gap, not
+softened:** `notifications.send_routine` **defaults to `[]` — a no-op.** A
+deployment that enables `auth.twoFactor` but never binds `send_routine` will
+have this module silently send no notice to a person whose second factor was
+just cleared, and nothing in the module or the build will flag it. **A
+deployment enabling `auth.twoFactor` must bind `notifications.send_routine`, or
+the security notice silently goes nowhere.** The module cannot close this gap
+itself — the dispatch is the deployment's own mail/SMS/push infrastructure.
+
 ## Dependencies
 
-| Module                       | Why                              |
-| ---------------------------- | -------------------------------- |
-| [layout](../layout/index.md) | Page wrapper                     |
-| [events](../events/index.md) | Audit logging and `change_stamp` |
+| Module                                     | Why                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------ |
+| [layout](../layout/index.md)               | Page wrapper                                                      |
+| [events](../events/index.md)               | Audit logging and `change_stamp`                                  |
+| [notifications](../notifications/index.md) | Dispatches the two-factor reset / passkey revoke recovery notice  |
 
-`notifications` is **not** a dependency — the invite email rides `auth.email`, so
-the module no longer depends on notifications for dispatch.
+**`notifications` is now a hard dependency of every `user-admin` consumer** —
+declared unconditionally in the manifest, so it is required to build the module
+at all, not only in a deployment running `auth.twoFactor`. This is new: the
+invite email still rides the platform's `auth.email` connection, not this
+dependency — `notifications` exists solely for the recovery notice above. See
+[the `send_routine` obligation](#the-module-cannot-guarantee-the-recovery-notice-is-sent).
 
 ## Write pathways
 
