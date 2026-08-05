@@ -38,6 +38,16 @@ collapses to revoke-all.
 
 ### 2. The forced-enrolment page cannot tell whether the caller can even use TOTP
 
+> **Resolved.** The premise the finding turns on — TOTP enable is password-gated unconditionally because
+> Lowdefy never sets `allowPasswordless` — no longer holds. The platform now sets `allowPasswordless: true`
+> on the twoFactor plugin (upstream Decision 4); `shouldRequirePassword` (`better-auth/dist/utils/password.mjs:26-30`)
+> waives the password **per user** for anyone holding no password credential and still enforces it for a
+> password user. So TOTP is reachable by an OAuth/magic-link caller too, the page presents it to everyone,
+> and the "which caller is passwordless" distinction the finding asks for is simply not needed — no
+> `_user.hasCredential` upstream ask is raised. Decision 6 is rewritten to say both routes work for every
+> caller; passkey is offered as an alternative (it satisfies `required` on its own, Decision 5), not as the
+> lockout escape it was.
+
 Decision 6 says the page "presents **both** TOTP enrolment and passkey registration, and a caller with
 no password reaches compliance through the passkey." Two facts from the upstream contract collide here:
 TOTP enable is password-gated unconditionally (`shouldRequirePassword` returns `true` unless

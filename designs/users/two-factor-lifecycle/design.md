@@ -34,8 +34,8 @@ two module surfaces those decisions land in.
   `user: ['reset-two-factor']` / `user: ['revoke-passkeys']` permissions — not by `auth.userAdminRole`,
   which org-authority retired.
 - **A forced-enrolment page** contributed as `authPages.twoFactorEnrol`: protected (unlike every other
-  auth page), self-sufficient on auth client actions, offering passkey registration as the route for a
-  passwordless caller.
+  auth page), self-sufficient on auth client actions, offering both TOTP and passkey enrolment — both
+  reachable by every caller, including a passwordless one.
 - **Module UI reads `_user.twoFactorEnrolled`** — `twoFactorEnabled || passkeyCount > 0`, computed
   server-side by the engine and symmetric on both sides — so the security tile agrees with the gate
   about who is compliant.
@@ -268,15 +268,15 @@ or check anything. This is fine: `TwoFactorEnable`, `TwoFactorVerify` and `Passk
 actions hitting `/api/auth/*` directly, and the page is built from those, mirroring the self-service
 enrolment modal (`modal_enroltotp.yaml`).
 
-**It must offer the passkey route for a passwordless caller.** TOTP enrolment (`/two-factor/enable`) is
-password-gated unconditionally, because Lowdefy does not expose BetterAuth's `allowPasswordless`. So an
-OAuth-only or magic-link-only member cannot enrol TOTP at all — and under `required` that would be a
-permanent lockout no admin reset can fix. The passkey disjunct in Decision 5 is what keeps the gate
-satisfiable for them: `/passkey/generate-register-options` is session-gated, not password-gated, so
-registering a passkey is their enrolment route. The page therefore presents **both** TOTP enrolment and
-passkey registration, and a caller with no password reaches compliance through the passkey. (This
-resolves the lockout that review finding 2 raised: the fix is the page offering the passkey path, not a
-new upstream ask.)
+**It presents both TOTP and passkey enrolment, and every caller can complete either.** TOTP is reachable
+by a passwordless (OAuth-only or magic-link-only) member because the platform sets BetterAuth's
+`allowPasswordless: true` on the twoFactor plugin (platform Decision 4): `shouldRequirePassword` then
+waives the password on `/two-factor/enable` **per user** for anyone holding no password credential, while
+still enforcing it for a user who has one. So the page offers TOTP to all and needs no signal to tell a
+password caller from a passwordless one. Passkey registration is presented alongside because a passkey
+independently satisfies `required` (Decision 5) and `/passkey/generate-register-options` is
+session-gated — an alternative any caller may prefer, not the sole route a passwordless caller is
+confined to.
 
 ### 7. Recovery and required compose without a mechanism between them
 
@@ -383,15 +383,16 @@ the demo admin/owner accounts before turning `required` on (Costs).
 Baseline, not work to sequence — all owned and specified by the platform designs. Named so the module
 surfaces above have a contract to build against.
 
-| Engine piece the module consumes                                    | Platform owner                                            |
-| ------------------------------------------------------------------- | --------------------------------------------------------- |
-| `ResetUserTwoFactor`, `RevokeUserPasskeys` steps                    | two-factor-lifecycle Decision 1                           |
-| `user: ['reset-two-factor', 'revoke-passkeys']` org permissions     | two-factor-lifecycle Decision 3, on org-authority's model |
-| `auth.twoFactor.required` flag + `_build.authConfig.twoFactor.*`    | two-factor-lifecycle Decision 11                          |
-| `_user.twoFactorEnrolled`                                           | two-factor-lifecycle Decision 4                           |
-| `authPages.twoFactorEnrol` (protected, gate-exempt) + build wiring  | two-factor-lifecycle Decision 8                           |
-| Enrolment gate (`authorizeOutcome`, checked last, enumeration-safe) | two-factor-lifecycle Decisions 5–7                        |
-| Magic-link/OAuth challenge interception (closes the bypass)         | auth-hardening (baseline)                                 |
+| Engine piece the module consumes                                      | Platform owner                                            |
+| --------------------------------------------------------------------- | --------------------------------------------------------- |
+| `ResetUserTwoFactor`, `RevokeUserPasskeys` steps                      | two-factor-lifecycle Decision 1                           |
+| `user: ['reset-two-factor', 'revoke-passkeys']` org permissions       | two-factor-lifecycle Decision 3, on org-authority's model |
+| `auth.twoFactor.required` flag + `_build.authConfig.twoFactor.*`      | two-factor-lifecycle Decision 11                          |
+| `_user.twoFactorEnrolled`                                             | two-factor-lifecycle Decision 4                           |
+| `authPages.twoFactorEnrol` (protected, gate-exempt) + build wiring    | two-factor-lifecycle Decision 8                           |
+| `allowPasswordless: true` on the plugin (TOTP reachable passwordless) | two-factor-lifecycle Decision 4                           |
+| Enrolment gate (`authorizeOutcome`, checked last, enumeration-safe)   | two-factor-lifecycle Decisions 5–7                        |
+| Magic-link/OAuth challenge interception (closes the bypass)           | auth-hardening (baseline)                                 |
 
 ## Non-goals
 
