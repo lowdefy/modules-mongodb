@@ -1,5 +1,13 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.25.1
+
+### Patch Changes
+
+- [#156](https://github.com/lowdefy/modules-mongodb/pull/156) [`9467f55`](https://github.com/lowdefy/modules-mongodb/commit/9467f55a7d7dc0f7a24b3e1b0cdbee3074bb554c) Thanks [@Saiby100](https://github.com/Saiby100)! - DataDescriptions array fields accept an optional `itemKey` — a dot-notation key relative to each array item — that titles each item's collapsible card from the item's own data (e.g. `itemKey: name` shows `devices[i].name`). Cards fall back to `Item N` when `itemKey` is absent or the value is missing or empty.
+
+- [#156](https://github.com/lowdefy/modules-mongodb/pull/156) [`831a1b0`](https://github.com/lowdefy/modules-mongodb/commit/831a1b044d68da037ec6b2272732e32d49939cf7) Thanks [@Saiby100](https://github.com/Saiby100)! - DataDescriptions renders nested array fields (controlled_list inside controlled_list) at any depth. Previously data below the first list level was silently dropped in form-config mode.
+
 ## 0.25.0
 
 ### Minor Changes
