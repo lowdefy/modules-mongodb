@@ -568,6 +568,38 @@ blocks:
               value: tables
             - label: Exports
               value: exports
+      # Assembles the ticked cards into report sections and opens the confirm
+      # sheet. Disabled until at least one card across the three arrays is
+      # ticked — with nothing selected the assembly would produce no sections,
+      # and the sheet's own save is already gated on a non-empty list.
+      - id: save_as_report_button
+        type: Button
+        properties:
+          title: Save as report
+          type: primary
+          block: true
+          disabled:
+            _eq:
+              - _array.length:
+                  _array.filter:
+                    - _array.concat:
+                        - _if_none:
+                            - _state: charts
+                            - []
+                        - _if_none:
+                            - _state: tables
+                            - []
+                        - _if_none:
+                            - _state: downloads
+                            - []
+                    - _function:
+                        __eq:
+                          - __args: 0.selected
+                          - true
+              - 0
+        events:
+          onClick:
+            _ref: pages/chat/actions/save_as_report.yaml
       # The panel is rendered before it has anything in it, so it has to say
       # what it is for; a panel that appears only with the first chart teaches
       # nothing until the user has already succeeded without it.
@@ -646,6 +678,15 @@ blocks:
                   content:
                     _state: charts.$.title
                   level: 5
+              # The panel's only marking affordance: ticking flags this card on
+              # its own part, and the Save-as-report button reads `selected`
+              # across the three arrays. The switch binds to its own path.
+              - id: charts.$.selected
+                type: CheckboxSwitch
+                properties:
+                  title: Save to report
+                  label:
+                    inline: true
               - id: charts.$.chart
                 type: EChart
                 properties:
@@ -768,6 +809,15 @@ blocks:
                 layout:
                   gap: 2
                 blocks:
+                  # The panel's only marking affordance: ticking flags this card
+                  # on its own part, and the Save-as-report button reads
+                  # `selected` across the three arrays.
+                  - id: downloads.$.selected
+                    type: CheckboxSwitch
+                    properties:
+                      title: Save to report
+                      label:
+                        inline: true
                   - id: downloads.$.download
                     type: Button
                     layout:
@@ -811,6 +861,10 @@ blocks:
                         fontSize: 12px
                         color: var(--ant-color-text-secondary)
                         marginBottom: 0
+      # The Save-as-report button seeds this sheet and opens it. Like the rail's
+      # conversation modals, it leaves only an empty placeholder here — antd
+      # portals the dialog to the document body — so it adds no panel chrome.
+      - _ref: pages/chat/components/save_report_sheet.yaml
   # The panel's collapsed form. Counts, not just an icon: the point of the strip
   # is that three charts waiting is visible without paying the expand to find
   # out. Compared against `true` so the strip and the panel are exact

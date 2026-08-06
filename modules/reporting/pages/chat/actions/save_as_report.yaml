@@ -1,0 +1,74 @@
+# Assemble the ticked cards into the sheet's ordered section list, seed the
+# report name, and open the confirm sheet. Selection lives on three independent
+# state arrays (charts/tables/downloads) but the sheet edits one ordered list,
+# so the order is fixed by kind — every ticked chart, then every ticked table,
+# then every ticked download — and nothing tracks a cross-array order at tick
+# time. The three card shapes don't line up (chart and table carry their pipeline
+# in a `spec` wrapper the sheet needs flattened; downloads are already flat), so
+# one `_js` pass juggles the three into the single {type,label,...} section shape
+# the sheet consumes — the shape-juggling case operators express poorly.
+- id: assemble_sections
+  type: SetState
+  params:
+    sheet_sections:
+      _js:
+        args:
+          charts:
+            _state: charts
+          tables:
+            _state: tables
+          downloads:
+            _state: downloads
+        fn: |
+          const charts = args.charts || [];
+          const tables = args.tables || [];
+          const downloads = args.downloads || [];
+          const chartSections = charts
+            .filter((c) => c.selected === true)
+            .map((c) => ({
+              type: 'chart',
+              label: c.title,
+              chart: c.spec.chart,
+              query: c.spec.query,
+              x: c.spec.x,
+              y: c.spec.y,
+            }));
+          const tableSections = tables
+            .filter((t) => t.selected === true)
+            .map((t) => ({
+              type: 'table',
+              label: t.title,
+              query: t.spec.query,
+              columns: t.spec.columns,
+            }));
+          const downloadSections = downloads
+            .filter((d) => d.selected === true)
+            .map((d) => ({
+              type: 'download',
+              label: d.label,
+              query: d.query,
+            }));
+          return [...chartSections, ...tableSections, ...downloadSections];
+    # The active conversation's title is the report's first-draft name; the user
+    # can rename it in the sheet. An unsaved/untitled conversation has no match,
+    # so fall back to empty rather than inventing a name.
+    sheet_title:
+      _js:
+        args:
+          conversations:
+            _state: conversations
+          conversationId:
+            _state: conversationId
+        fn: |
+          const conversations = args.conversations || [];
+          const active = conversations.find(
+            (c) => c._id === args.conversationId,
+          );
+          return (active && active.title) || '';
+- id: open_save_report_modal
+  type: CallMethod
+  params:
+    blockId: save_report_modal
+    method: setOpen
+    args:
+      - open: true

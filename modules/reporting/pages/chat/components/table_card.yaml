@@ -14,6 +14,15 @@
         content:
           _state: tables.$.title
         level: 5
+    # The panel's only marking affordance: ticking flags this card on its own
+    # part, and the Save-as-report button reads `selected` across the three
+    # arrays. No value is set here — the switch binds to its own `selected` path.
+    - id: tables.$.selected
+      type: CheckboxSwitch
+      properties:
+        title: Save to report
+        label:
+          inline: true
     # The truncation line, shown only when the card holds fewer rows than the
     # query returned. `row_count` predates some parts, so `_if_none` falls back
     # to the retained count — an absent total then equals it and the line stays
