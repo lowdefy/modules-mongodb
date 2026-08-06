@@ -86,8 +86,8 @@ with:
 LOWDEFY_SECRET_MONGODB_URI="mongodb://localhost:27017/demo-auth-test"
 LOWDEFY_SECRET_AUTH_SECRET="<random>"           # regenerate: openssl rand -base64 32
 LOWDEFY_SECRET_AUTH_FROM_ADDRESS="no-reply@demo.test"
-LOWDEFY_SECRET_GOOGLE_CLIENT_ID="dummy-..."     # dummy unless testing the Google button
-LOWDEFY_SECRET_GOOGLE_CLIENT_SECRET="dummy-..."
+LOWDEFY_SECRET_GITHUB_CLIENT_ID="dummy-..."     # dummy unless testing the GitHub button
+LOWDEFY_SECRET_GITHUB_CLIENT_SECRET="dummy-..."
 LOWDEFY_SECRET_SMTP_HOST="localhost"            # → Mailpit
 LOWDEFY_SECRET_SMTP_PORT="1025"
 LOWDEFY_SECRET_SMTP_SECURE="false"

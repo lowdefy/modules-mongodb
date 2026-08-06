@@ -63,13 +63,13 @@ auth:
     rpId: localhost
     rpName: Module Demo App
   providers:
-    - id: google
-      type: Google
+    - id: github
+      type: GitHub
       properties:
         clientId:
-          _secret: GOOGLE_CLIENT_ID
+          _secret: GITHUB_CLIENT_ID
         clientSecret:
-          _secret: GOOGLE_CLIENT_SECRET
+          _secret: GITHUB_CLIENT_SECRET
   # Auth emails (verify, reset, magic-link, invite) send through the `auth-smtp`
   # SMTP connection (see connections below): the runtime resolves it by
   # connectionId at send time and the connection owns from/transport/filter. An
