@@ -1,5 +1,13 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.27.0
+
+### Minor Changes
+
+- [#164](https://github.com/lowdefy/modules-mongodb/pull/164) [`786e198`](https://github.com/lowdefy/modules-mongodb/commit/786e198e5e3eb77342e90999b195fc515e9ae83d) Thanks [@Saiby100](https://github.com/Saiby100)! - The `multiple_selector` form component takes a `disabled` var (boolean, default `false`), wired to the block's `disabled` property. With the var unset, behaviour is unchanged.
+
+- [#164](https://github.com/lowdefy/modules-mongodb/pull/164) [`786e198`](https://github.com/lowdefy/modules-mongodb/commit/786e198e5e3eb77342e90999b195fc515e9ae83d) Thanks [@Saiby100](https://github.com/Saiby100)! - The `selector` form component takes a `disabled` var (boolean, default `false`), wired to the block's `disabled` property. With the var unset, behaviour is unchanged.
+
 ## 0.26.0
 
 ### Minor Changes
