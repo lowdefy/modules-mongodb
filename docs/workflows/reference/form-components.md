@@ -210,6 +210,7 @@ Single-select dropdown. Renders a `Selector`.
 | `extra`        | string  | `null`             |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
+| `disabled`     | boolean | `false`            |
 | `on_change`    | array   | `[]`               |
 
 ```yaml
@@ -238,6 +239,7 @@ Multi-select dropdown. Renders a `MultipleSelector`. When `required: true`, requ
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
 | `renderTags`   | boolean | `false`            |
+| `disabled`     | boolean | `false`            |
 | `on_change`    | array   | `[]`               |
 
 ```yaml
