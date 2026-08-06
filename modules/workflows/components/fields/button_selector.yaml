@@ -11,6 +11,9 @@ vars:
   required:
     type: boolean
     default: false
+  validate:
+    type: array
+    default: []
   options:
     type: array
     default: []
@@ -53,6 +56,10 @@ config:
     _var:
       key: required
       default: false
+  validate:
+    _var:
+      key: validate
+      default: []
   properties:
     title:
       _var: title
