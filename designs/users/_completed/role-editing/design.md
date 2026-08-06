@@ -582,7 +582,7 @@ and read the invitation's `role` / `appRoles` / `attributes` back unchanged each
 the migration shipped; it must not survive on either path.
 
 The behavioural checks belong on the rig — the auth-testing campaign
-([`../auth-testing/`](../auth-testing/design.md)) — since an orphan is a data state. Against a member
+([`../auth-testing/`](../../auth-testing/design.md)) — since an orphan is a data state. Against a member
 holding a role removed from the demo catalog:
 
 - the tile shows a flagged `⚑ <id>` chip; an ordinary chip shows its description on hover;

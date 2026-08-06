@@ -129,7 +129,7 @@ into `findings/` with their stable IDs:
   `update-session-store-refresh`); F21 and F22 (shipped in
   [`../_completed/2fa-enrolment-modal`](../_completed/2fa-enrolment-modal/design.md)).
 - **Excluded — already promoted:** F29 (owned by the active
-  [`../role-editing`](../role-editing/design.md) design — orphaned `appRoles` are first-class
+  [`../role-editing`](../_completed/role-editing/design.md) design — orphaned `appRoles` are first-class
   there).
 - **Dropped:** everything else was a bug now fixed, or a duplicate of the above.
 
