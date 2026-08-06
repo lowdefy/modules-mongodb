@@ -120,6 +120,7 @@ Role-gate individual collections with `roles` in the [catalog](reference/catalog
 
 - [Bootstrap a catalog from a live database](how-to/bootstrap-catalog.md) — the `lowdefy-reporting-catalog` CLI: running it, credentials, options, and why every drafted entry arrives commented out
 - [Reporting over complex data](how-to/complex-data.md) — direct joins via catalog relationships, the grain/fan-out risk, and the optional MongoDB-view pattern for fixed grains and field hiding
+- [Save a conversation's results as a report](how-to/save-as-report.md) — tick chart/table/download cards and confirm a pre-filled sheet to keep the discrete results a chat produced; the chart/table/download-only scope and the report ↔ chat link
 
 ## Reference
 
