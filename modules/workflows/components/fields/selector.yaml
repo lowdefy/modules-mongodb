@@ -28,6 +28,9 @@ vars:
   label_span:
     type: number
     required: false
+  disabled:
+    type: boolean
+    default: false
   on_change:
     type: array
     default: []
@@ -45,6 +48,10 @@ config:
       key: required
       default: false
   properties:
+    disabled:
+      _var:
+        key: disabled
+        default: false
     label:
       _build.object.assign:
         - inline:
