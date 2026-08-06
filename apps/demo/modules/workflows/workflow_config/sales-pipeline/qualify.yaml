@@ -90,6 +90,9 @@ form:
   - key: form.sites
     component: controlled_list
     title: Deployment sites
+    # label_span pushes the list into the input column (span 24 - 6) so it lines
+    # up with the labelled fields above it.
+    label_span: 6
     itemKey: name
     form:
       - key: form.sites.$.name

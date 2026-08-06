@@ -639,6 +639,7 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
 | `title`            | string  | —                  |
 | `visible`          | boolean | `true`             |
 | `required`         | boolean | `false`            |
+| `label_span`       | number  | `0`                |
 | `hideAddButton`    | boolean | `false`            |
 | `hideRemoveButton` | boolean | `false`            |
 | `minItems`         | number  | `0`                |
