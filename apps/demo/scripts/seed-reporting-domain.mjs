@@ -148,6 +148,132 @@ const actions = Array.from({ length: 44 }, (_, i) => {
   };
 });
 
+// ── Saved reports (report_layouts) ───────────────────────────────────────────
+// Two reports in the stored shape modules/reporting/defaults/new_report.yaml
+// produces, so the report-page surface is reproducible without driving the chat
+// agent. The one field this sub-design owns is conversation_id: report A carries
+// one (so the report page's continue-in-chat affordance resolves) and report B
+// carries null (so its absence is exercised too).
+//
+// The section specs are written as validateReportSpec's OUTPUT, not raw input —
+// each section carries a durable `id` (s0, s1, …) and every query section a
+// `filterBy: []` — because that normalized shape is what the store persists and
+// what every read re-validates (the function is idempotent). They query
+// demo_activities and demo_contacts, both seeded above, so the sections resolve
+// on the report page from a single run of this script.
+//
+// Owner is a fixed synthetic demo user rather than a signed-in one (a node
+// script has no session), and visibility is `shared` so whoever is signed in can
+// open them regardless of who owns them. The owner-scoped report/conversation
+// fixtures that DO need the live user stay in the Lowdefy seed Apis
+// (reporting-seed-example-report / -conversations / -ownership).
+const DEMO_OWNER = { user_id: "demo-user", name: "Demo User" };
+const stamp = (daysBack) => ({
+  timestamp: daysAgo(daysBack),
+  user: DEMO_OWNER,
+});
+const reports = [
+  // Report A — carries a conversation_id, so continue-in-chat resolves.
+  {
+    _id: "demo-report-with-conversation",
+    owner: DEMO_OWNER,
+    title: "Activities overview",
+    description:
+      "Activity counts across the seeded demo_activities collection — a KPI " +
+      "and a bar chart by type. Seeded with a conversation_id so the report " +
+      "page's continue-in-chat affordance resolves.",
+    spec: {
+      sections: [
+        {
+          id: "s0",
+          type: "kpi",
+          label: "Activities",
+          query: {
+            collection: "demo_activities",
+            pipeline: [{ $group: { _id: null, activities: { $sum: 1 } } }],
+          },
+          valueKey: "activities",
+          filterBy: [],
+        },
+        {
+          id: "s1",
+          type: "chart",
+          chart: "bar",
+          label: "Activities by type",
+          query: {
+            collection: "demo_activities",
+            pipeline: [
+              { $group: { _id: "$type", activities: { $sum: 1 } } },
+              { $project: { _id: 0, type: "$_id", activities: 1 } },
+              { $sort: { activities: -1 } },
+            ],
+          },
+          x: "type",
+          y: ["activities"],
+          filterBy: [],
+        },
+      ],
+    },
+    spec_version: 1,
+    visibility: "shared",
+    favourite_of: [],
+    conversation_id: "demo-conversation-001",
+    deleted: null,
+    created: stamp(14),
+    updated: stamp(14),
+  },
+  // Report B — no conversation_id (null), so the affordance's absence is shown.
+  {
+    _id: "demo-report-no-conversation",
+    owner: DEMO_OWNER,
+    title: "Contacts by company",
+    description:
+      "Contact counts across the seeded demo_contacts collection — a KPI and a " +
+      "table by surname. Seeded with conversation_id null, so the report page " +
+      "shows no continue-in-chat affordance.",
+    spec: {
+      sections: [
+        {
+          id: "s0",
+          type: "kpi",
+          label: "Contacts",
+          query: {
+            collection: "demo_contacts",
+            pipeline: [{ $group: { _id: null, contacts: { $sum: 1 } } }],
+          },
+          valueKey: "contacts",
+          filterBy: [],
+        },
+        {
+          id: "s1",
+          type: "table",
+          label: "Contacts by surname",
+          query: {
+            collection: "demo_contacts",
+            pipeline: [
+              { $group: { _id: "$profile.family_name", contacts: { $sum: 1 } } },
+              { $project: { _id: 0, surname: "$_id", contacts: 1 } },
+              { $sort: { contacts: -1 } },
+            ],
+          },
+          columns: [
+            { key: "surname", label: "Surname" },
+            { key: "contacts", label: "Contacts" },
+          ],
+          filterBy: [],
+        },
+      ],
+    },
+    spec_version: 1,
+    visibility: "shared",
+    favourite_of: [],
+    conversation_id: null,
+    deleted: null,
+    created: stamp(7),
+    updated: stamp(7),
+  },
+];
+
 // ── Views: viewOn + pipeline. Grain is fixed here, so counts are always exact.
 const VIEWS = {
   // Grain: one activity. current_stage = status[0].stage.
@@ -189,6 +315,17 @@ async function seedCollection(db, name, docs) {
   console.log(`  ${name}: ${docs.length} docs`);
 }
 
+// report_layouts is NOT script-owned: it also holds the Lowdefy seed Apis'
+// per-user example reports and any report a user saved by chatting. So the clear
+// is scoped to these two fixtures' _ids — a blanket deleteMany would destroy real
+// reports — matching how reporting-seed-example-report scopes its own clear.
+async function seedReports(db, docs) {
+  const ids = docs.map((d) => d._id);
+  await db.collection("report_layouts").deleteMany({ _id: { $in: ids } });
+  if (docs.length > 0) await db.collection("report_layouts").insertMany(docs);
+  console.log(`  report_layouts: ${docs.length} seeded reports (scoped clear)`);
+}
+
 async function createView(db, name, { viewOn, pipeline }) {
   // Drop any existing view/collection of this name so re-runs are idempotent.
   try {
@@ -210,6 +347,7 @@ try {
   await seedCollection(db, "demo_activities", activities);
   await seedCollection(db, "demo_workflows", workflows);
   await seedCollection(db, "demo_actions", actions);
+  await seedReports(db, reports);
   console.log("Creating views…");
   for (const [name, def] of Object.entries(VIEWS)) await createView(db, name, def);
   console.log("Done.");
