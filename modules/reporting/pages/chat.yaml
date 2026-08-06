@@ -13,6 +13,9 @@ type: Box
 # overflow internally. This cap keeps the whole page from scrolling past 100dvh.
 style:
   height: 100dvh
+  # height caps the box but does not clip; hidden stops the page itself from
+  # scrolling, forcing each side panel to scroll its own overflow instead.
+  overflow: hidden
 events:
   onInit:
     - id: init_state
@@ -147,8 +150,12 @@ blocks:
           else: null
       background: var(--ant-color-bg-layout)
       border: 1px solid var(--ant-color-border-secondary)
-      # The root is a fixed 100dvh, so a conversation list taller than the
-      # viewport scrolls inside its own column rather than growing the page.
+      # A definite height for the scroll to bite on. In this height:auto flex
+      # row `overflowY` alone can't constrain the column — the panel grows to
+      # its content and pushes the row past the viewport. Capped at 100dvh (a
+      # self-determining viewport unit; a % collapses through the auto Area), a
+      # long conversation list scrolls inside the column instead.
+      maxHeight: 100dvh
       overflowY: auto
     blocks:
       - id: conversations_header
@@ -429,6 +436,16 @@ blocks:
                   _module.var: welcome.report_label
                 prompts:
                   _module.var: welcome.report_starters
+          # A persistent follow-up chip, shown below the transcript whenever the
+          # agent is idle. Clicking SENDS the label as a message (not fills the
+          # composer like a welcome starter), so the label is written as the
+          # request itself — it drives the agent's generate_report route, the
+          # guided complement to ticking cards in the panel. The description is
+          # chip subtext only; the block drops any icon.
+          suggestions:
+            - key: create_report
+              label: Turn this conversation into a report
+              description: The assistant drafts a saved report from what you've explored
         events:
           onDataPart:
             - id: append_chart
@@ -497,8 +514,12 @@ blocks:
       style:
         padding: 32px 24px 24px 24px
     layout:
-      flex: 0 0 348px
-      gap: 12
+      flex: 0 0 420px
+      # The one card-to-card gap for the whole panel. This spaces the sections
+      # (chart-card → table-card) and the header/scope/save stack; each List
+      # repeats the same 16 internally, so every gap between cards matches
+      # whether the neighbours are the same kind or not.
+      gap: 16
     # Hidden with CSS, never `visible:` — hiding this container would delete
     # `charts` and `downloads` with it, and the display blocks that render them
     # republish nothing when it comes back, so the strip's counts and the panel
@@ -514,8 +535,12 @@ blocks:
           else: null
       background: var(--ant-color-bg-layout)
       border: 1px solid var(--ant-color-border-secondary)
-      # The root is a fixed 100dvh, so a long stack of charts/tables/exports
-      # scrolls inside this column rather than growing the page.
+      # A definite height for the scroll to bite on. In this height:auto flex
+      # row `overflowY` alone can't constrain the column — a tall stack of
+      # results grows the panel and pushes the row past the viewport. Capped at
+      # 100dvh (a self-determining viewport unit; a % collapses through the auto
+      # Area), the stack scrolls inside this column instead.
+      maxHeight: 100dvh
       overflowY: auto
     blocks:
       - id: results_header
@@ -568,6 +593,38 @@ blocks:
               value: tables
             - label: Exports
               value: exports
+      # Assembles the ticked cards into report sections and opens the confirm
+      # sheet. Disabled until at least one card across the three arrays is
+      # ticked — with nothing selected the assembly would produce no sections,
+      # and the sheet's own save is already gated on a non-empty list.
+      - id: save_as_report_button
+        type: Button
+        properties:
+          title: Save as report
+          type: primary
+          block: true
+          disabled:
+            _eq:
+              - _array.length:
+                  _array.filter:
+                    - _array.concat:
+                        - _if_none:
+                            - _state: charts
+                            - []
+                        - _if_none:
+                            - _state: tables
+                            - []
+                        - _if_none:
+                            - _state: downloads
+                            - []
+                    - _function:
+                        __eq:
+                          - __args: 0.selected
+                          - true
+              - 0
+        events:
+          onClick:
+            _ref: pages/chat/actions/save_as_report.yaml
       # The panel is rendered before it has anything in it, so it has to say
       # what it is for; a panel that appears only with the first chart teaches
       # nothing until the user has already succeeded without it.
@@ -637,49 +694,104 @@ blocks:
               content: No charts yet — ask the assistant to chart something.
           - id: charts
             type: List
-            layout:
-              gap: 24
+            # A List renders its items straight into its own div, skipping the
+            # flex Area that carries a container's `layout.gap` — so the gap
+            # between cards has to ride the List element itself: `direction`
+            # makes it a flex column, and the gap goes in `properties.style`
+            # (the block's own element). A top-level `style` lands on the outer
+            # .lf-col wrapper, which holds one child and ignores it.
+            properties:
+              direction: column
+              wrap: nowrap
+              style:
+                gap: 16px
             blocks:
-              - id: charts.$.chart_title
-                type: Title
-                properties:
-                  content:
-                    _state: charts.$.title
-                  level: 5
-              - id: charts.$.chart
-                type: EChart
-                properties:
-                  height: 300
-                  option:
-                    _state: charts.$.option
-              # The option is a snapshot of the turn that produced it — a reopened
-              # conversation shows those numbers, not today's — so the card dates
-              # itself. A leaf, so `visible:` is safe. Read through `_if_none`:
-              # parts written before the part gained `created` render with no
-              # date line rather than a blank one.
-              - id: charts.$.as_of
-                type: Paragraph
-                visible:
-                  _ne:
-                    - _if_none:
-                        - _state: charts.$.created
+              - id: charts.$.card
+                type: Box
+                # A bordered card per result. The tick is inline in the header
+                # with the title — the panel's only marking affordance — and the
+                # border takes the primary colour while selected, so a ticked card
+                # reads at a glance.
+                layout:
+                  gap: 12
+                style:
+                  padding: 16px
+                  borderRadius: 8px
+                  background: var(--ant-color-bg-container)
+                  border:
+                    _if:
+                      test:
+                        _state: charts.$.selected
+                      then: 1px solid var(--ant-color-primary)
+                      else: 1px solid var(--ant-color-border-secondary)
+                blocks:
+                  - id: charts.$.header
+                    type: Box
+                    # nowrap keeps the tick and title on one line; the title
+                    # (flex 1 1 auto) wraps its own text. The checkbox needs a
+                    # DEFINITE basis — its antd form wrapper is full-width, so a
+                    # basis of `auto` lets it balloon and push the title below.
+                    layout:
+                      gap: 8
+                      wrap: nowrap
+                    blocks:
+                      # Bare checkbox — no field label. The panel explainer
+                      # ("Tick items to save them as a report") carries the
+                      # instruction; each card needs only the control, inline
+                      # with its title.
+                      - id: charts.$.selected
+                        type: CheckboxSwitch
+                        layout:
+                          flex: "0 0 24px"
+                          selfAlign: top
+                        properties:
+                          label:
+                            disabled: true
+                      - id: charts.$.chart_title
+                        type: Title
+                        layout:
+                          flex: "1 1 auto"
+                          selfAlign: top
+                        properties:
+                          content:
+                            _state: charts.$.title
+                          level: 5
+                          style:
+                            marginBottom: 0
+                  - id: charts.$.chart
+                    type: EChart
+                    properties:
+                      height: 300
+                      option:
+                        _state: charts.$.option
+                  # The option is a snapshot of the turn that produced it — a
+                  # reopened conversation shows those numbers, not today's — so the
+                  # card dates itself. A leaf, so `visible:` is safe. Read through
+                  # `_if_none`: parts written before the part gained `created`
+                  # render with no date line rather than a blank one.
+                  - id: charts.$.as_of
+                    type: Paragraph
+                    visible:
+                      _ne:
+                        - _if_none:
+                            - _state: charts.$.created
+                            - null
                         - null
-                    - null
-                properties:
-                  content:
-                    _nunjucks:
-                      template: "as of {{ d }}"
-                      on:
-                        d:
-                          _dayjs:
-                            - _if_none:
-                                - _state: charts.$.created
-                                - 0
-                            - format: D MMMM
-                  style:
-                    fontSize: 12px
-                    color: var(--ant-color-text-secondary)
-                    marginBottom: 0
+                    properties:
+                      content:
+                        _nunjucks:
+                          template: "as of {{ d }}"
+                          on:
+                            d:
+                              _dayjs:
+                                - _if_none:
+                                    - _state: charts.$.created
+                                    - 0
+                                - format: D MMMM
+                      style:
+                        fontSize: 12px
+                        color: var(--ant-color-text-secondary)
+                        marginBottom: 0
       - id: tables_section
         type: Box
         # Hidden with CSS, never `visible:` — a `List`'s id IS its state key, so
@@ -718,8 +830,14 @@ blocks:
               content: No tables yet — ask the assistant for a table.
           - id: tables
             type: List
-            layout:
-              gap: 24
+            # See charts: a List skips the flex Area that carries `layout.gap`,
+            # so the inter-card gap rides the List's own element via
+            # `properties.style`.
+            properties:
+              direction: column
+              wrap: nowrap
+              style:
+                gap: 16px
             # The card file is a one-block sequence, so it fills `blocks`
             # directly — a `_ref` list item would nest it one array too deep.
             blocks:
@@ -760,23 +878,87 @@ blocks:
               content: No downloads yet — ask the assistant to export data.
           - id: downloads
             type: List
-            layout:
-              gap: 16
+            # See charts: a List skips the flex Area that carries `layout.gap`,
+            # so the inter-card gap rides the List's own element via
+            # `properties.style`.
+            properties:
+              direction: column
+              wrap: nowrap
+              style:
+                gap: 16px
             blocks:
               - id: downloads.$.item
                 type: Box
+                # A bordered card per result, matching the chart and table cards.
+                # The tick is inline in the header with the title — the panel's
+                # only marking affordance — and the border takes the primary
+                # colour while selected, so a ticked card reads at a glance.
                 layout:
-                  gap: 2
+                  gap: 12
+                style:
+                  padding: 16px
+                  borderRadius: 8px
+                  background: var(--ant-color-bg-container)
+                  border:
+                    _if:
+                      test:
+                        _state: downloads.$.selected
+                      then: 1px solid var(--ant-color-primary)
+                      else: 1px solid var(--ant-color-border-secondary)
                 blocks:
+                  - id: downloads.$.header
+                    type: Box
+                    # nowrap keeps the tick and title on one line; see the chart
+                    # card header for why the checkbox needs a definite basis.
+                    layout:
+                      gap: 8
+                      wrap: nowrap
+                    blocks:
+                      # Bare checkbox — the panel explainer carries the wording;
+                      # here it sits inline with the title.
+                      - id: downloads.$.selected
+                        type: CheckboxSwitch
+                        layout:
+                          flex: "0 0 24px"
+                          selfAlign: top
+                        properties:
+                          label:
+                            disabled: true
+                      - id: downloads.$.title
+                        type: Title
+                        layout:
+                          flex: "1 1 auto"
+                          selfAlign: top
+                        properties:
+                          content:
+                            _state: downloads.$.label
+                          level: 5
+                          style:
+                            marginBottom: 0
+                  - id: downloads.$.desc
+                    type: Paragraph
+                    visible:
+                      _ne:
+                        - _if_none:
+                            - _state: downloads.$.description
+                            - ""
+                        - ""
+                    properties:
+                      content:
+                        _state: downloads.$.description
+                      style:
+                        fontSize: 12px
+                        color: var(--ant-color-text-secondary)
+                        marginBottom: 0
+                  # Full-width button on its own line, not an icon beside the
+                  # title — an export label runs long and would otherwise shove a
+                  # header icon onto a second row.
                   - id: downloads.$.download
                     type: Button
-                    layout:
-                      flex: 0 1 auto
                     properties:
-                      title:
-                        _state: downloads.$.label
+                      title: Download CSV
                       icon: AiOutlineDownload
-                      type: default
+                      block: true
                     events:
                       onClick:
                         - id: run_download_query
@@ -796,21 +978,10 @@ blocks:
                                   - _module.endpointId: query-data
                                   - ".response"
                             filename: export.csv
-                  - id: downloads.$.desc
-                    type: Paragraph
-                    visible:
-                      _ne:
-                        - _if_none:
-                            - _state: downloads.$.description
-                            - ""
-                        - ""
-                    properties:
-                      content:
-                        _state: downloads.$.description
-                      style:
-                        fontSize: 12px
-                        color: var(--ant-color-text-secondary)
-                        marginBottom: 0
+      # The Save-as-report button seeds this sheet and opens it. Like the rail's
+      # conversation modals, it leaves only an empty placeholder here — antd
+      # portals the dialog to the document body — so it adds no panel chrome.
+      - _ref: pages/chat/components/save_report_sheet.yaml
   # The panel's collapsed form. Counts, not just an icon: the point of the strip
   # is that three charts waiting is visible without paying the expand to find
   # out. Compared against `true` so the strip and the panel are exact

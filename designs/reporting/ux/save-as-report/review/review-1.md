@@ -2,6 +2,8 @@
 
 ### 1. The confirm sheet may want to be a page rather than a `Modal`
 
+> **Resolved.** Keep the `Modal`, made deliberately generous (wide, full-height). The "confirm, not a builder" non-goal is load-bearing across the reporting design and a modal enforces it structurally, where a page would invite section-composition and need an empty state for a selection-clearing reload. State loss is not the deciding factor — `SetGlobal` survives navigation, so a page was feasible; the choice is framing. A `Drawer` is noted as the same trade in a different shape, to weigh against a running app if the modal feels tight. Surface decision, revisitable; the endpoint/validation/insert are unaffected. Recorded in the design's "One confirm sheet" section. (review-2 #5 fixed the stale line-55 justification that this finding's "blocker is not one" section had already flagged.)
+
 **Raised by the user: there is a lot going on in the sheet, and it might work better as a
 page.**
 

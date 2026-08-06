@@ -29,7 +29,7 @@ Surfaces exported as pages:
 | `reports-list` | Saved reports with open and [soft delete](../shared/soft-delete.md)  |
 | `report`       | Report renderer (`Dynamic` block over `resolve-report`)              |
 
-Reports are created from the chat surface: the agent's `generate_report` tool persists a spec and returns its URL.
+Reports are created from the chat surface two ways: the agent's `generate_report` tool persists a spec and returns its URL, or the user ticks result cards and confirms a sheet — see [Save as report](how-to/save-as-report.md).
 
 ## Quickstart
 
@@ -120,6 +120,7 @@ Role-gate individual collections with `roles` in the [catalog](reference/catalog
 
 - [Bootstrap a catalog from a live database](how-to/bootstrap-catalog.md) — the `lowdefy-reporting-catalog` CLI: running it, credentials, options, and why every drafted entry arrives commented out
 - [Reporting over complex data](how-to/complex-data.md) — direct joins via catalog relationships, the grain/fan-out risk, and the optional MongoDB-view pattern for fixed grains and field hiding
+- [Save a conversation's results as a report](how-to/save-as-report.md) — tick chart/table/download cards and confirm a pre-filled sheet to keep the discrete results a chat produced; the chart/table/download-only scope and the report ↔ chat link
 
 ## Reference
 

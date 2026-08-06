@@ -1,0 +1,265 @@
+# The confirm sheet for "save as report": names the report and reorders/removes
+# the sections the conversation already produced, then saves through create-report.
+# It edits what the chat gave it — it assembles nothing. The chat page seeds
+# `sheet_title` and `sheet_sections` and opens it with CallMethod(setOpen).
+#
+# Never hidden with `visible:` — like the conversation modals, hiding the
+# container would delete `sheet_title`/`sheet_sections` before the seeding that
+# precedes an open could take effect. A closed antd Modal is already invisible.
+#
+# Wide and full-height on purpose: a review over existing results, not a builder.
+id: save_report_modal
+type: Modal
+# One gap for the whole modal body, so the name field, the sections list and
+# the visibility control sit evenly apart. A Modal routes its blocks through
+# the framework's flex Area (unlike a List), so layout.gap applies here.
+layout:
+  gap: 16
+properties:
+  title: Save as report
+  okText: Save report
+  cancelText: Cancel
+  width: "80%"
+  # Nothing to save without a name or a section.
+  okButtonProps:
+    disabled:
+      _or:
+        - _not:
+            _state: sheet_title
+        - _eq:
+            - _array.length:
+                _if_none:
+                  - _state: sheet_sections
+                  - []
+            - 0
+events:
+  onOk:
+    - id: save_report
+      type: CallAPI
+      messages:
+        success: Report saved.
+      params:
+        endpointId:
+          _module.endpointId: create-report
+        payload:
+          spec:
+            title:
+              _state: sheet_title
+            # Non-empty string or null: the validator drops an absent/null
+            # description but stores "" verbatim, so send null when blank.
+            # `_if`'s test must be a boolean, so compare rather than lean on
+            # truthiness — a bare `_state` string throws at runtime.
+            description:
+              _if:
+                test:
+                  _ne:
+                    - _state: sheet_description
+                    - ""
+                then:
+                  _state: sheet_description
+                else: null
+            sections:
+              _state: sheet_sections
+          conversation_id:
+            _state: conversationId
+    # Reports are always created private (the insert fragment's default). When
+    # the author chose "Everyone", publish in a second step through
+    # set-report-visibility — the one place that owns publish authorization
+    # (owner AND a share_roles role) — rather than teaching create-report a
+    # second copy of that gate. Skipped for a private report. The visibility
+    # control only shows to role holders, so this publish is expected to succeed.
+    - id: publish_report
+      type: CallAPI
+      skip:
+        _ne:
+          - _state: sheet_visibility
+          - shared
+      params:
+        endpointId:
+          _module.endpointId: set-report-visibility
+        payload:
+          report_id:
+            _api:
+              _build.string.concat:
+                - _module.endpointId: create-report
+                - ".response.report_id"
+          visibility: shared
+    # CallAPI throws on rejection and stops the chain, so close and redirect only
+    # run once the save has actually persisted.
+    - id: close_save_report_modal
+      type: CallMethod
+      params:
+        blockId: save_report_modal
+        method: setOpen
+        args:
+          - open: false
+    # Open the saved report. Navigate by pageId + urlQuery (like the reports
+    # list's Open) rather than the endpoint's `url` string: the Link action
+    # routes a pageId internally, whereas a raw `url` is treated as external and
+    # the browser parses the leading path segment as a host.
+    - id: open_saved_report
+      type: Link
+      params:
+        pageId:
+          _module.pageId: report
+        urlQuery:
+          report_id:
+            _api:
+              _build.string.concat:
+                - _module.endpointId: create-report
+                - ".response.report_id"
+blocks:
+  - id: sheet_title
+    type: TextInput
+    properties:
+      title: Report name
+      placeholder: Report name
+
+  # Optional. Left blank it is sent as null (see onOk) so the stored document
+  # carries no description field, rather than an empty string the report page
+  # would render as a blank line.
+  - id: sheet_description
+    type: TextArea
+    properties:
+      title: Description
+      placeholder: What this report shows (optional)
+      autoSize:
+        minRows: 2
+        maxRows: 4
+
+  - id: sheet_sections
+    type: ControlledList
+    properties:
+      title: Sections
+      # Sections come from the conversation; the sheet only reorders and removes.
+      hideAddButton: true
+      hideRemoveButton: true
+    blocks:
+      - id: sheet_sections.$.row
+        type: Box
+        layout:
+          gap: 8
+          align: middle
+          justify: space-between
+        blocks:
+          - id: sheet_sections.$.label
+            type: Paragraph
+            layout:
+              flex: 1 1 auto
+            properties:
+              content:
+                _state: sheet_sections.$.label
+          - id: sheet_sections.$.type
+            type: Paragraph
+            layout:
+              flex: 0 0 auto
+            properties:
+              content:
+                _state: sheet_sections.$.type
+              style:
+                fontSize: 12px
+                textTransform: uppercase
+                color: var(--ant-color-text-secondary)
+          - id: sheet_sections.$.move_up
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              icon: AiOutlineArrowUp
+              variant: text
+              shape: circle
+              size: small
+            events:
+              onClick:
+                - id: move_section_up
+                  type: CallMethod
+                  params:
+                    blockId: sheet_sections
+                    method: moveItemUp
+                    args:
+                      - _index: 0
+          - id: sheet_sections.$.move_down
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              icon: AiOutlineArrowDown
+              variant: text
+              shape: circle
+              size: small
+            events:
+              onClick:
+                - id: move_section_down
+                  type: CallMethod
+                  params:
+                    blockId: sheet_sections
+                    method: moveItemDown
+                    args:
+                      - _index: 0
+          - id: sheet_sections.$.remove
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              icon: AiOutlineDelete
+              variant: text
+              color: danger
+              shape: circle
+              size: small
+            events:
+              onClick:
+                - id: remove_section
+                  type: CallMethod
+                  params:
+                    blockId: sheet_sections
+                    method: removeItem
+                    args:
+                      - _index: 0
+
+  # Filters region (reserved) — a later sub-design drops a filter picker here.
+  # Left empty so filterless reports save cleanly; no placeholder affordance.
+
+  # Who can see it. An affordance, not the authorization: it shows only to users
+  # who could actually publish — those holding a share_roles role — so nobody is
+  # offered a choice that set-report-visibility would then reject; everyone else
+  # saves a private report with no control shown. `_user.hasSomeRoles` throws on
+  # a non-array, so `_build.if` compiles an app that never set share_roles down
+  # to a literal false and the section never renders. Same construction, same
+  # reason, as set-report-visibility's own gate.
+  - id: visibility_section
+    type: Box
+    layout:
+      gap: 4
+    visible:
+      _build.if:
+        test:
+          _build.ne:
+            - _module.var: share_roles
+            - null
+        then:
+          _user.hasSomeRoles:
+            _module.var: share_roles
+        else: false
+    blocks:
+      - id: visibility_heading
+        type: Paragraph
+        properties:
+          content: Who can see it
+          style:
+            fontSize: 12px
+            textTransform: uppercase
+            letterSpacing: 0.05em
+            color: var(--ant-color-text-secondary)
+            marginBottom: 0
+      - id: sheet_visibility
+        type: SegmentedSelector
+        properties:
+          label:
+            # The heading above names the control; an unset label falls back to
+            # the block id.
+            disabled: true
+          options:
+            - label: Only me
+              value: private
+            - label: Everyone
+              value: shared

@@ -82,43 +82,22 @@ routine:
     connectionId:
       _module.connectionId: reports-store
     properties:
+      # The stored document shape lives in one place; this endpoint only supplies
+      # the validated leaves and the conversation link.
       doc:
-        _id:
-          _uuid: true
-        owner:
-          _ref: defaults/owner.yaml
-        # Off the VALIDATED object, not the payload: the validator caps the title
-        # length and rejects a non-string description, so reading the payload
-        # would store a value it had already normalized past.
-        title:
-          _state: validated.title
-        description:
-          _state: validated.description
-        spec:
-          sections:
-            _state: validated.sections
-        # What a future compatibility branch or a migration keys on. It cannot be
-        # backfilled meaningfully later — an existing document gives no way to
-        # tell which grammar it was written against — so it is written on insert
-        # by every creator. Nothing branches on it yet.
-        spec_version: 1
-        # Private until deliberately published by set-report-visibility. Absent
-        # reads as private everywhere, so this is a shape convenience.
-        visibility: private
-        # Per-user favourite markers, projected to a boolean for the caller so
-        # nobody learns who else favourited a report. $addToSet / $pull only.
-        favourite_of: []
-        # Tool endpoints receive only the tool input as payload — the agent
-        # context (conversationId) does not reach them in the current agent
-        # system, so the source conversation is not linked on this path.
-        conversation_id: null
-        # Initialised so live documents have a consistent shape; delete-report
-        # replaces it with a change stamp (docs/shared/soft-delete.md).
-        deleted: null
-        created:
-          _ref: defaults/change_stamp.yaml
-        updated:
-          _ref: defaults/change_stamp.yaml
+        _ref:
+          path: defaults/new_report.yaml
+          vars:
+            title:
+              _state: validated.title
+            description:
+              _state: validated.description
+            sections:
+              _state: validated.sections
+            # Tool endpoints receive only the tool input as payload — the agent
+            # context (conversationId) does not reach them in the current agent
+            # system, so the source conversation is not linked on this path.
+            conversation_id: null
   - :return:
       ok: true
       report_id:

@@ -141,6 +141,27 @@ properties:
 
         ## generate_report
 
+        Agree the report's shape before you build it. When a user asks for a
+        report, do NOT call generate_report on the first turn — reply with a
+        short proposed outline and confirm the parts you cannot infer:
+        - Title — propose one from the conversation; let the user correct it.
+        - Which results already in the panel to include — you authored this
+          conversation's charts, tables and downloads, so name them and carry
+          their specs straight into the report sections (same query and contract
+          fields). Ask which ones belong; not every answer is worth keeping.
+        - Anything new to add — sections the user wants that you have not
+          produced yet. Headline KPIs live here: a KPI is a single number that
+          never rendered as a panel card, so it only reaches a report through
+          this route — offer one where a report wants a figure at the top.
+        - Filters — which fields, if any, the reader should be able to filter
+          the report by.
+        Then call generate_report once, and reply with the link it returns.
+
+        Keep it to one round of questions, not an interrogation — propose, take
+        the corrections, build. And skip the questions entirely when the request
+        is unambiguous and self-contained ("save that chart as a report"): a
+        single obvious section needs no outline, only the build.
+
         Pass a report spec { title, description?, sections: [...] } — at most 24
         sections; title and every section label are required non-empty strings
         (max 200 chars). Each section carries its { collection, pipeline } as

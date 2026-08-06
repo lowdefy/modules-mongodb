@@ -33,7 +33,7 @@ Both decks stay at this level: they are one artefact covering all six surfaces, 
 | 5     | Delete confirm · recovery · empty states | new                          | [reports-list](reports-list/design.md)     |
 | 6     | `/reporting/report?report_id=…`          | page exists                  | [report-page](report-page/design.md)       |
 
-Filter **mechanics** — multi-select, array-field semantics, looked-up options — are **out of scope for this whole design** and are built in [`designs/reporting/report-filters/design.md`](../report-filters/design.md). Plates 3 and 6 show its UI; the engine reasoning lives there. Filter **placement** on the report page is in scope, and is the one open problem the implemented filters left behind — see [report-page](report-page/design.md#the-filter-row-says-nothing-about-what-it-scopes).
+Filter **mechanics** — multi-select, array-field semantics, looked-up options — are **out of scope for this whole design** and are built in [`designs/reporting/report-filters/design.md`](../report-filters/design.md). Plates 3 and 6 show its UI; the engine reasoning lives there. The **picker UI** that authors a filter inside the save-report sheet (plate 3) is in scope for this design, carved into its own sub-design [`save-as-report/filter-picker`](save-as-report/filter-picker/design.md); save-as-report ships filterless until it lands. Filter **placement** on the report page is in scope, and is the one open problem the implemented filters left behind — see [report-page](report-page/design.md#the-filter-row-says-nothing-about-what-it-scopes).
 
 ## Why this, and why now
 

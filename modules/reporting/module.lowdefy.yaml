@@ -19,6 +19,8 @@ exports:
       description: Constrained analytics query (report re-queries + panel downloads)
     - id: generate-report
       description: Validate and persist a report spec (agent tool)
+    - id: create-report
+      description: Validate and persist a report spec from the chat page (records conversation_id)
     - id: set-report-visibility
       description: Publish a saved report to the app, or retract it
     - id: set-report-title
@@ -223,6 +225,7 @@ api:
   - _ref: api/render-table.yaml
   - _ref: api/export-data.yaml
   - _ref: api/generate-report.yaml
+  - _ref: api/create-report.yaml
   - _ref: api/resolve-report.yaml
   - _ref: api/save-conversation.yaml
   - _ref: api/emit-data-parts.yaml
