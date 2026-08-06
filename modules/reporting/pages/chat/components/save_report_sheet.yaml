@@ -47,10 +47,14 @@ events:
               _state: sheet_title
             # Non-empty string or null: the validator drops an absent/null
             # description but stores "" verbatim, so send null when blank.
+            # `_if`'s test must be a boolean, so compare rather than lean on
+            # truthiness — a bare `_state` string throws at runtime.
             description:
               _if:
                 test:
-                  _state: sheet_description
+                  _ne:
+                    - _state: sheet_description
+                    - ""
                 then:
                   _state: sheet_description
                 else: null
