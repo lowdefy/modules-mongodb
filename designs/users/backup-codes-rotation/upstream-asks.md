@@ -8,7 +8,14 @@ Same shape as user-account's ask 6 (`PasskeySignIn`): the delivered catalog cove
 
 ## 1. `TwoFactorGenerateBackupCodes` action
 
-> **Status: outstanding.**
+> **Status: delivered** in `@lowdefy/client` / `@lowdefy/actions-core` /
+> `@lowdefy/engine` as of `experimental-20260805130407` (pinned here at
+> `experimental-20260805140807`). `createAuthMethods` exposes
+> `twoFactorGenerateBackupCodes` (`{ password }` → unwrapped `{ backupCodes }`),
+> `getActionMethods` wires it, and `actions-core` registers the
+> `TwoFactorGenerateBackupCodes` action — password-gated, returns `backupCodes`,
+> secret untouched, exactly as asked. Consumed by
+> [`design.md`](design.md)'s `codes_only` branch.
 
 **Lands in**: [engine](../../../../lowdefy-design/designs/auth-upgrade/concepts/engine/design.md) (_The self-service action catalog_, `@lowdefy/actions-core`).
 

@@ -9,6 +9,7 @@ concepts:
     build-authConfig,
     error-handling,
     two-factor,
+    backup-codes,
     two-factor-required,
     twoFactorEnrolled,
     magic-link,
@@ -201,8 +202,26 @@ password before it will show a QR code.
 **Backup codes are shown once and cannot be fetched again.** BetterAuth returns
 them alongside the new TOTP secret at enable time, and the flow renders them
 only in its final step — nothing in the module fetches them again afterwards.
-Dismissing that step without saving them discards them for good; the only way
-to get a fresh set is to enrol again.
+Dismissing that step without saving them discards them for good. A fresh set can
+be issued at any time from **Manage → Get new backup codes** (below) without
+enrolling again.
+
+**Manage opens on a choice between two distinct operations.** For an
+already-enrolled user the Security tile's **Manage** button opens a choice
+screen, because the two reasons to open it differ in blast radius and a support
+agent must not conflate them:
+
+- **Get new backup codes** rotates _only_ the recovery codes. It is
+  password-gated and leaves the authenticator secret, the `verified` flag and
+  the account-level two-factor flag untouched — so the existing authenticator
+  keeps working, the tile stays **On**, and only the previous backup codes are
+  invalidated. This is the common case: codes are consumed one per use with no
+  remaining-count surface, so reaching zero is silent.
+- **Replace authenticator** rotates the TOTP secret, invalidating the current
+  authenticator app — see below.
+
+A first-time (not-yet-enrolled) user skips the choice screen: **Set up** opens
+straight on the password step and enrols an authenticator.
 
 **Replacing an authenticator turns two-factor off for the duration of the
 flow.** BetterAuth's enable call deletes the caller's existing authenticator
