@@ -7,6 +7,7 @@
 - [ ] **Co-location (negative)**: temporarily point one module connection at a different DB → contact data goes **blank everywhere** (the silent `$lookup` failure); then revert
 - [ ] **Endpoint gate**: a caller without the instance's gate role hitting a `user-admin/**` routine is rejected by the app's own `auth.api.roles`; a caller who holds the gate role but not `admin` in the administered organization is rejected by the step's per-organization floor
 - [ ] **Change stamps**: every contact write carries `created`/`updated` stamps (Verify in Compass)
+- [ ] **Redirect safety (`callbackUrl`)**: a crafted off-site `?callbackUrl=https://evil.example` carried into login, magic-link, or verify-email is **not** honoured — after auth the user lands on the app home or an in-app path, never redirected off-origin. Probe each entry that forwards a `callbackUrl` (login, magic-link-send, verify-email, accept).
 
 ### Required-field validation — `Validate` scoping _(landed 2026-07-31)_
 
