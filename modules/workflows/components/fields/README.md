@@ -119,6 +119,9 @@ Single date picker. Renders a `DateSelector` with `format: DD MMMM YYYY`.
 | `required`     | boolean | `false`            |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
+| `disabled_dates` | object | — |
+
+`disabled_dates` passes straight through to the block's `disabledDates` property (supports `min`, `max`, `dates`, `ranges`).
 
 ```yaml
 - component: date_selector
