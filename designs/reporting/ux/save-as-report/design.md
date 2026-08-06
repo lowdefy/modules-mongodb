@@ -40,7 +40,7 @@ The outcome a user might reach for here is already free on the primary route: be
 
 ### Two creation routes, one validator and one stored shape
 
-The sheet is a confirm, never a blank form: it opens pre-filled — the name from the conversation title, the sections from the ticked results in kind order (and, once the [picker](filter-picker/design.md) lands, candidate filters) — and the user edits, reorders and removes before saving. Its shape maps directly onto the report spec the module already persists, so nothing new has to be modelled.
+The sheet is a confirm, never a blank form: it opens pre-filled — the name from the conversation title, the sections from the ticked results in kind order (and, once the [picker](filter-picker/design.md) lands, candidate filters) — and the user edits, reorders and removes before saving. It also takes an optional free-text **description** — a `TextArea`, blank by default — sent as a string or `null` so a blank field stores no description (`validateReportSpec` keeps `""` verbatim but drops a `null`/absent one). Its shape maps directly onto the report spec the module already persists, so nothing new has to be modelled.
 
 An earlier revision had the agent's typed route converge on this same sheet — "save this as a report" opening the same pre-filled confirm. That is **dropped**, because it cannot be built: `generate_report` is a tool endpoint, and a tool endpoint runs server-side with only the tool input in hand — it has no handle on the page and cannot open a client modal. (It is the same limitation that keeps `conversation_id` off the tool path — see [the report ↔ chat link](#the-report--chat-link-and-the-one-thing-that-blocks-it).) So the two routes stay distinct: the agent authors a spec and replies with a link; the sheet is the tick-and-save route's own confirm.
 
@@ -54,13 +54,21 @@ The picker UI belongs to this sheet, but it is a design's worth of _authoring_ d
 
 **This sheet ships without the picker first.** It reserves a filters region and otherwise creates reports with **no user-authored filters** — which is valid and useful: sections are live-queried regardless, and the agent tool path already creates filterless reports today. The picker slots into the reserved region when its sub-design lands. Nothing about selection, section assembly, the endpoint or the insert changes when it does — a filter is just another section the same `create-report` validates and stores.
 
+### Publishing from the sheet: create private, then publish
+
+The sheet carries a **"Who can see it"** control — a `SegmentedSelector`, **Only me** (`private`) / **Everyone** (`shared`) — so an author can publish at the moment they save, not only later from the report page. It fills in plate 3's "who can see this" affordance.
+
+The control is an **affordance, not the authorization**. It renders only for users who could actually publish — those holding a [`share_roles`](../ownership/design.md) role (`_user.hasSomeRoles`, wrapped in `_build.if` so an app that never set `share_roles` compiles the check to a literal `false` and never shows the control) — so nobody is offered a choice the endpoint would reject. The boundary stays server-side: the match in `set-report-visibility` is the authorization, the hidden control is only UX — the module's stated position that a hidden menu item is an affordance and the endpoint match is the authorization.
+
+The save is **create then publish**, not a `visibility` payload on `create-report`. The report is always inserted `private` (the `new_report.yaml` default, unchanged); when the author chose **Everyone**, the sheet makes a second `set-report-visibility` call. That endpoint is the single owner of publish authorization — publishing requires the caller to be the owner **and** hold a `share_roles` role ([why the two directions are gated differently](../ownership/design.md)) — so teaching `create-report` a `visibility` field would fork that gate into a second copy that drifts the moment either half changes. Because the control only shows to role holders, the follow-up publish is expected to succeed; were it ever rejected, the report is already saved `private`, the safe outcome.
+
 ### Sections reorder with ↑ / ↓, not a drag handle
 
 No block does drag reordering. `ControlledList` registers `moveItemUp(index)`, `moveItemDown(index)` and `removeItem(index)` as `CallMethod` targets, which is the whole job for a list that is typically two to four rows. A sortable list is not worth a block for this.
 
 The sheet is a `Modal`, deliberately **generous — wide and full-height** — rather than a page. It carries a name, a reorderable section list and a per-filter picker, so it is not small; but the room a page would buy is not worth what a page loses. The confirm-not-builder stance ([non-goals](#non-goals)) is structural in a modal — it is an interruption over the answer it came from, not a surface that invites composing sections from scratch — whereas a page would have to work to keep looking like a confirm and would need an empty state for the reload that clears the selection. State loss is not the reason: `SetGlobal` survives navigation, so a page route is technically open — the choice is framing, not feasibility. (A `Drawer` is the same trade in a different shape; worth weighing against a running app if the modal feels tight. This is a surface decision, revisitable — the endpoint, validation and insert are unaffected either way.)
 
-The sheet is otherwise all existing blocks: `Modal` + `TextInput` + `ControlledList` + `CheckboxSwitch` + `Selector` + `SegmentedSelector`. `MultipleSelector` supports `{ label, value }` options and tag display natively, so the filter tags plate 6 draws are compiler work, not block work.
+The sheet is otherwise all existing blocks: `Modal` + `TextInput` + `TextArea` + `ControlledList` + `CheckboxSwitch` + `Selector` + `SegmentedSelector`. `MultipleSelector` supports `{ label, value }` options and tag display natively, so the filter tags plate 6 draws are compiler work, not block work.
 
 ### The report ↔ chat link, and the one thing that blocks it
 
@@ -76,7 +84,7 @@ The field itself is in the [parent's data model](../design.md#data-model); this 
 | --------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | `create-report` | new    | `{ spec, conversation_id }` → validate, insert **the validator's output**, return `{ report_id, url }`. Called by the sheet. |
 
-The insert writes the same document shape as `generate-report`, including the [ownership](../ownership/design.md) defaults — `visibility: "private"`, `favourite_of: []`, `deleted: null`, `spec_version: 1`, `owner` = caller — plus the `conversation_id` the tool path cannot supply.
+The insert writes the same document shape as `generate-report`, including the [ownership](../ownership/design.md) defaults — `visibility: "private"`, `favourite_of: []`, `deleted: null`, `spec_version: 1`, `owner` = caller — plus the `conversation_id` the tool path cannot supply. It always inserts `private`; publishing to the whole app is a separate act, through `set-report-visibility` from the sheet's visibility control or the report page ([why](#publishing-from-the-sheet-create-private-then-publish)).
 
 Mind the two shapes the word `spec` wears. The endpoint's **input** `spec` is `{ title, description?, sections }` — the sheet's name field becomes `spec.title` — exactly as `generate-report`'s payload nests it; `validateReportSpec` reads title/description off that input and returns them at the top level. Both paths then persist the **output**, not the input: the **stored** `spec` holds `{ sections }` with durable section ids, while `title` and `description` are lifted out to document fields ([why](../ownership/design.md#the-stored-spec-is-the-validators-output)).
 
@@ -84,7 +92,7 @@ Two authors, one stored shape — and that shape lives in **one place**, not two
 
 ## Files changed (anticipated)
 
-- New `modules/reporting/pages/components/save_report_sheet.yaml` — the confirm sheet, opened by both routes.
+- New `modules/reporting/pages/chat/components/save_report_sheet.yaml` — the confirm sheet, opened by the tick-and-save route only (the typed route does not open it — see [resolved question 3](#resolved-questions)). Carries the name, optional description, section list, and the role-gated visibility control. Lives under `pages/chat/` because it is chat-only.
 - `modules/reporting/pages/chat.yaml` — result selection in the panel, the Save-as-report action, and the sheet mounted once.
 - New `modules/reporting/api/create-report.yaml`.
 - New `modules/reporting/defaults/new_report.yaml` — the shared insert document (owner, title, description, spec, defaults, `conversation_id`, change stamps), parameterised by the validated spec + `conversation_id`. Referenced by both creation endpoints.
