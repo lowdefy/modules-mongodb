@@ -65,6 +65,11 @@
             (c) => c._id === args.conversationId,
           );
           return (active && active.title) || '';
+    # Reset the visibility choice to private each time the sheet opens, so a
+    # prior "Everyone" doesn't carry over to the next report. The control only
+    # renders for share-role holders; for everyone else this seed is the value
+    # that keeps the save private.
+    sheet_visibility: private
 - id: open_save_report_modal
   type: CallMethod
   params:
