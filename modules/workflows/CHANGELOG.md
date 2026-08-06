@@ -1,5 +1,15 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.26.0
+
+### Minor Changes
+
+- [#161](https://github.com/lowdefy/modules-mongodb/pull/161) [`506a8a4`](https://github.com/lowdefy/modules-mongodb/commit/506a8a42ae37d1e427997080d22771239da887cc) Thanks [@Saiby100](https://github.com/Saiby100)! - The `button_selector` form component takes a `validate` var (array, default `[]`), wired to the block's top-level `validate` config. It mirrors the existing `text_input` pattern, so a button selector can carry field-level validation rules like every other input field. With the var unset, behaviour is unchanged.
+
+- [#161](https://github.com/lowdefy/modules-mongodb/pull/161) [`506a8a4`](https://github.com/lowdefy/modules-mongodb/commit/506a8a42ae37d1e427997080d22771239da887cc) Thanks [@Saiby100](https://github.com/Saiby100)! - The `controlled_list` form component takes a `label_span` var (number, default `0`), following the existing `button` / `alert` convention. The outer `Label` wrapper gets layout `span: 24 - label_span` with `push: label_span`, so the whole field shifts into the input column and lines up with the labelled fields above it. With the var unset (`0`), rendering is unchanged.
+
+- [#161](https://github.com/lowdefy/modules-mongodb/pull/161) [`506a8a4`](https://github.com/lowdefy/modules-mongodb/commit/506a8a42ae37d1e427997080d22771239da887cc) Thanks [@Saiby100](https://github.com/Saiby100)! - The `date_selector` form component takes a `disabled_dates` var (object, optional), passed straight through to the block's `disabledDates` property (`min` / `max` / `dates` / `ranges`) so a field can block ranges like past dates. It is wrapped in `_build.if`, so `disabledDates` is only emitted when the var is set and existing callers are unchanged. This also applies to `date_range_selector`.
+
 ## 0.25.1
 
 ## 0.25.0
