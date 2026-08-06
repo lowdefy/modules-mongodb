@@ -3,6 +3,19 @@
 # $set overrides the derived fallback title save-conversation writes on insert;
 # upsert covers the title arriving (during streaming) before that onFinish hook
 # has created the doc.
+#
+# This is usually the writer that creates the document — the title arrives
+# during streaming, before onFinish saves. $setOnInsert here has to cover every
+# field $set in save-conversation does not touch (owner, created, updated,
+# messages, data_parts, deleted), or a conversation created here would insert
+# without them. That used to be `updated`'s fate: a conversation with no
+# `updated` sorts last on the rail's `updated.timestamp: -1` sort, so the
+# conversation the user was actively talking to sat at the bottom of their own
+# rail until save-conversation's first save landed, or forever if that hook
+# failed. The two writers' $set/$setOnInsert pairs are the union of the live
+# shape, never the same shared list, because naming a path in both throws
+# MongoDB code 40 ("Updating the path 'owner' would create a conflict at
+# 'owner'") on every call, not only on inserts — probed against a real server.
 id: set-conversation-title
 type: Api
 routine:
@@ -38,6 +51,11 @@ routine:
             _ref: defaults/owner.yaml
           created:
             _ref: defaults/change_stamp.yaml
+          updated:
+            _ref: defaults/change_stamp.yaml
+          messages: []
+          data_parts: []
+          deleted: null
       options:
         upsert: true
   - :return:

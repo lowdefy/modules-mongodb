@@ -1,8 +1,16 @@
 diff --git a/dist/blocks/AgentChat/AgentChat.js b/dist/blocks/AgentChat/AgentChat.js
-index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..3ad2cd6642c961156b944c45b884ac65833ce8e3 100644
+index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..6e61908dad796f181f5287e0f349d57992c3c238 100644
 --- a/dist/blocks/AgentChat/AgentChat.js
 +++ b/dist/blocks/AgentChat/AgentChat.js
-@@ -73,6 +73,12 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+@@ -34,6 +34,7 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+     const finishMetaRef = useRef(null);
+     const fileInputRef = useRef(null);
+     const [attachedFiles, setAttachedFiles] = useState([]);
++    const [inputValue, setInputValue] = useState('');
+     // Mirror the operator-evaluated sharedState object into a ref so transport.body()
+     // sees the freshest value at send time without re-constructing the transport.
+     const sharedStateRef = useRef(null);
+@@ -73,6 +74,12 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
      ]);
      const bubbleListRef = useRef(null);
      const { messages, sendMessage, status, stop, addToolApprovalResponse, addToolOutput, setMessages, regenerate, clearError } = useChat({
@@ -15,3 +23,226 @@ index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..3ad2cd6642c961156b944c45b884ac65
          transport,
          experimental_throttle: 50,
          sendAutomaticallyWhen: (args)=>lastAssistantMessageIsCompleteWithToolCalls(args) || lastAssistantMessageIsCompleteWithApprovalResponses(args),
+@@ -204,6 +211,9 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+                 });
+             }
+         });
++        methods.registerMethod('setInput', (args)=>{
++            setInputValue(typeof args?.text === 'string' ? args.text : '');
++        });
+         methods.registerMethod('clearMessages', ()=>{
+             setMessages([]);
+         });
+@@ -391,7 +401,12 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+                 text
+             });
+         }
+-        senderRef.current?.clear();
++        // Emptying the composer sits here, after the sends and downstream of both
++        // the onBeforeSend cancellation return and the upload await, so a send that
++        // was rejected or failed to upload leaves the user's text in the box.
++        // Resetting from the Sender's onSubmit handler instead would silently lose
++        // typed input on every rejected send.
++        setInputValue('');
+     }
+     function handleStop() {
+         stop();
+@@ -407,6 +422,12 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+             text: prompt.label
+         });
+     }
++    // A two-track welcome starter fills the composer instead of sending, so a
++    // generic shipped default is an editable first draft rather than a message
++    // the user never meant to send. Reuses the controlled Sender value.
++    function handleWelcomePromptFill(text) {
++        setInputValue(typeof text === 'string' ? text : '');
++    }
+     function handleSuggestionClick(suggestion) {
+         methods.triggerEvent({
+             name: 'onSuggestionClick',
+@@ -515,7 +536,7 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+             minHeight: 0,
+             padding: '16px 0'
+         }
+-    }, isEmpty ? /*#__PURE__*/ React.createElement(WelcomeScreen, {
++    }, isEmpty && !welcome?.tracks ? /*#__PURE__*/ React.createElement(WelcomeScreen, {
+         config: welcome,
+         onPromptClick: handlePromptClick
+     }) : /*#__PURE__*/ React.createElement(MessageList, {
+@@ -523,6 +544,8 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+         messages: messages,
+         isStreaming: isBusy,
+         config: messageDisplay,
++        welcome: welcome,
++        onWelcomePromptFill: handleWelcomePromptFill,
+         addToolApprovalResponse: addToolApprovalResponse,
+         onFeedback: handleFeedback,
+         onRegenerate: handleRegenerate,
+@@ -588,6 +611,8 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+         }
+     }), /*#__PURE__*/ React.createElement(Sender, {
+         ref: senderRef,
++        value: inputValue,
++        onChange: setInputValue,
+         placeholder: sender?.placeholder ?? methods.translate('agent.sender.placeholder'),
+         submitType: sender?.submitType ?? 'enter',
+         allowSpeech: sender?.allowSpeech ?? false,
+diff --git a/dist/blocks/AgentChat/MessageList.js b/dist/blocks/AgentChat/MessageList.js
+index 04054220180ce8d3223bc2e250969a8dd186005d..83117a233b93e1a186993ba3837ea9f2a0c86097 100644
+--- a/dist/blocks/AgentChat/MessageList.js
++++ b/dist/blocks/AgentChat/MessageList.js
+@@ -21,6 +21,7 @@ import { hasVisibleContent } from './messageParts.js';
+ import MessageBubble from './MessageBubble.js';
+ import ThinkingIndicator from './ThinkingIndicator.js';
+ import useThinkingMessage from './useThinkingMessage.js';
++import WelcomeScreen from './WelcomeScreen.js';
+ function roleAvatar(roleConfig, fallbackIcon) {
+     if (roleConfig?.avatar) {
+         return /*#__PURE__*/ React.createElement(Avatar, {
+@@ -55,7 +56,7 @@ function ThinkingBubbleContent({ bubbleId, config }) {
+         label: label
+     });
+ }
+-const MessageList = /*#__PURE__*/ React.forwardRef(function MessageList({ messages, isStreaming, config, addToolApprovalResponse, onFeedback, onRegenerate, onDelete, onEditMessage, translate }, ref) {
++const MessageList = /*#__PURE__*/ React.forwardRef(function MessageList({ messages, isStreaming, config, welcome, onWelcomePromptFill, addToolApprovalResponse, onFeedback, onRegenerate, onDelete, onEditMessage, translate }, ref) {
+     // Build a lookup map for message parts.
+     // Bubble.List's contentRender callback only receives (content, info) where info.key is the
+     // item key — it does not receive the full message object with its parts array. This map
+@@ -119,10 +120,36 @@ const MessageList = /*#__PURE__*/ React.forwardRef(function MessageList({ messag
+             streaming: true
+         });
+     }
++    // The welcome renders as a leading item so it scrolls up with the transcript
++    // and stays reachable by scrolling back, rather than being swapped out on the
++    // first send. With no messages yet it is simply the only item in the list.
++    if (welcome?.tracks) {
++        items.unshift({
++            key: '__welcome__',
++            role: 'welcome'
++        });
++    }
+     return /*#__PURE__*/ React.createElement(Bubble.List, {
+         ref: ref,
+         items: items,
+         role: {
++            welcome: {
++                placement: 'start',
++                variant: 'borderless',
++                style: {
++                    maxWidth: '100%'
++                },
++                styles: {
++                    content: {
++                        width: '100%'
++                    }
++                },
++                contentRender: ()=>/*#__PURE__*/ React.createElement(WelcomeScreen, {
++                        config: welcome,
++                        onFill: onWelcomePromptFill,
++                        inFlow: true
++                    })
++            },
+             user: {
+                 placement: 'end',
+                 variant: config?.roles?.user?.variant ?? 'filled',
+diff --git a/dist/blocks/AgentChat/WelcomeScreen.js b/dist/blocks/AgentChat/WelcomeScreen.js
+index 5f5c0f5ad9d269bf4c2504b70b937dc999c442d8..b1efa067067d26711e77a8e1492ffc847070fdc7 100644
+--- a/dist/blocks/AgentChat/WelcomeScreen.js
++++ b/dist/blocks/AgentChat/WelcomeScreen.js
+@@ -14,8 +14,95 @@
+   limitations under the License.
+ */ import React from 'react';
+ import { Welcome, Prompts } from '@ant-design/x';
+-function WelcomeScreen({ config, onPromptClick }) {
++import { Button } from 'antd';
++// One track: a bordered card holding a heading and a column of starter chips.
++// A chip fills the composer (onFill) rather than sending — a near-miss starter
++// becomes an editable first draft, not a message the user never meant to send.
++function TrackCard({ track, onFill }) {
++    const prompts = track.prompts ?? [];
++    return /*#__PURE__*/ React.createElement("div", {
++        style: {
++            flex: '1 1 240px',
++            border: '1px solid var(--ant-color-border)',
++            borderRadius: 'var(--ant-border-radius-lg)',
++            padding: 16,
++            backgroundColor: 'var(--ant-color-bg-container)',
++            display: 'flex',
++            flexDirection: 'column',
++            gap: 8
++        }
++    }, track.label && /*#__PURE__*/ React.createElement("h5", {
++        style: {
++            margin: '0 0 4px',
++            fontSize: 'var(--ant-font-size-heading-5)',
++            fontWeight: 'var(--ant-font-weight-strong, 600)',
++            lineHeight: 'var(--ant-line-height-heading-5)'
++        }
++    }, track.label), prompts.map((prompt, index)=>{
++        const text = typeof prompt === 'string' ? prompt : prompt.label;
++        return /*#__PURE__*/ React.createElement(Button, {
++            key: index,
++            block: true,
++            // antd buttons are nowrap and size to their longest line; height auto
++            // plus whiteSpace normal lets a sentence-length starter wrap left.
++            style: {
++                height: 'auto',
++                whiteSpace: 'normal',
++                textAlign: 'left',
++                paddingTop: 6,
++                paddingBottom: 6
++            },
++            onClick: ()=>onFill?.(text)
++        }, text);
++    }));
++}
++// The chat empty state. Two modes:
++//   - `config.tracks` present → a two-track teaching panel (ask a question /
++//     build a report), each track a card of fill-the-composer starters. When
++//     `inFlow` it renders top-aligned as a leading item inside the message
++//     scroll area, so it scrolls up with the conversation and stays reachable
++//     by scrolling back rather than being swapped out on the first send.
++//   - otherwise → the flat Welcome + Prompts row, centred, sending on click.
++function WelcomeScreen({ config, onPromptClick, onFill, inFlow }) {
+     if (!config) return null;
++    if (config.tracks) {
++        return /*#__PURE__*/ React.createElement("div", {
++            style: inFlow ? {
++                display: 'flex',
++                flexDirection: 'column',
++                gap: 16,
++                width: '100%'
++            } : {
++                flex: 1,
++                display: 'flex',
++                flexDirection: 'column',
++                alignItems: 'center',
++                justifyContent: 'center',
++                gap: 16
++            }
++        }, config.title && /*#__PURE__*/ React.createElement("h3", {
++            style: {
++                margin: 0,
++                fontSize: 'var(--ant-font-size-heading-3)',
++                fontWeight: 'var(--ant-font-weight-strong, 600)',
++                lineHeight: 'var(--ant-line-height-heading-3)'
++            }
++        }, config.title), config.description && /*#__PURE__*/ React.createElement("div", {
++            style: {
++                color: 'var(--ant-color-text-secondary)'
++            }
++        }, config.description), /*#__PURE__*/ React.createElement("div", {
++            style: {
++                display: 'flex',
++                gap: 12,
++                flexWrap: 'wrap'
++            }
++        }, config.tracks.map((track, index)=>/*#__PURE__*/ React.createElement(TrackCard, {
++                key: index,
++                track: track,
++                onFill: onFill
++            }))));
++    }
+     const promptItems = (config.prompts ?? []).map((prompt, index)=>({
+             key: prompt.key ?? `prompt-${index}`,
+             label: prompt.label,

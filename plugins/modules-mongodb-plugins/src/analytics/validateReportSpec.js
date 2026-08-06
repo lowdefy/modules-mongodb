@@ -2,13 +2,13 @@ import {
   CHART_TYPES,
   FILTER_CONTROLS,
   FILTER_MATCH_MODES,
-  FORMAT_STYLES,
   MAX_FILTER_OPTIONS,
   MAX_LABEL_LENGTH,
   MAX_MARKDOWN_LENGTH,
   MAX_SECTIONS,
 } from "./constants.js";
 import validateChartSpec, { validateQuery } from "./validateChartSpec.js";
+import validateTableSpec, { validateFormat } from "./validateTableSpec.js";
 
 /**
  * Validates an AI-generated report spec — the durable contract persisted by
@@ -95,38 +95,6 @@ function resolveSectionId(section, index) {
     fail(`section ${index} id must not contain "." or "$".`);
   }
   return section.id;
-}
-
-// A presentation-contract number format: inert display data the agent copies
-// from the catalog's per-field display hints. Only the shape is validated.
-function validateFormat(format, where) {
-  if (!format || typeof format !== "object" || Array.isArray(format)) {
-    fail(`${where} format must be an object.`);
-  }
-  if (!FORMAT_STYLES.includes(format.style)) {
-    fail(
-      `${where} format.style "${format.style}" is not one of ${FORMAT_STYLES.join(", ")}.`,
-    );
-  }
-  if (!absent(format.currency) && typeof format.currency !== "string") {
-    fail(`${where} format.currency must be a string.`);
-  }
-  if (!absent(format.locale) && typeof format.locale !== "string") {
-    fail(`${where} format.locale must be a string.`);
-  }
-  if (
-    !absent(format.decimals) &&
-    (!Number.isInteger(format.decimals) ||
-      format.decimals < 0 ||
-      format.decimals > 20)
-  ) {
-    fail(`${where} format.decimals must be an integer between 0 and 20.`);
-  }
-  const out = { style: format.style };
-  if (!absent(format.currency)) out.currency = format.currency;
-  if (!absent(format.locale)) out.locale = format.locale;
-  if (!absent(format.decimals)) out.decimals = format.decimals;
-  return out;
 }
 
 // A filterable field must be a plausible base-collection field: a non-empty
@@ -228,7 +196,11 @@ function validateReportSpec({ spec, catalog, roles }) {
         filterBy: section.filterBy ?? [],
       };
       if (!absent(section.format)) {
-        out.format = validateFormat(section.format, `section ${index} (kpi)`);
+        out.format = validateFormat(
+          section.format,
+          `section ${index} (kpi)`,
+          fail,
+        );
       }
       return out;
     }
@@ -260,53 +232,13 @@ function validateReportSpec({ spec, catalog, roles }) {
 
     if (section.type === "table") {
       const label = validateLabel(section, index);
-      const query = validateQuery(section.query, {
+      // The returned title is discarded — a section's user-facing string is
+      // `label`, the tool's is `title`, the same asymmetry the chart branch
+      // above already carries.
+      const { query, columns } = validateTableSpec({
+        spec: { title: label, query: section.query, columns: section.columns },
         catalog,
         roles,
-        fail: (m) => fail(`section ${index} (table) ${m}`),
-      });
-      if (!Array.isArray(section.columns) || section.columns.length === 0) {
-        fail(`section ${index} (table) requires a non-empty columns array.`);
-      }
-      const columns = section.columns.map((col, ci) => {
-        if (!col || typeof col !== "object" || Array.isArray(col)) {
-          fail(`section ${index} (table) column ${ci} must be an object.`);
-        }
-        // Strict keys: no `tag` (enum tag styling dropped) or other extras.
-        for (const key of Object.keys(col)) {
-          if (!["key", "label", "format"].includes(key)) {
-            fail(
-              `section ${index} (table) column ${ci} has an unexpected key "${key}" (allowed: key, label, format).`,
-            );
-          }
-        }
-        if (typeof col.key !== "string" || col.key === "") {
-          fail(`section ${index} (table) column ${ci} requires a key.`);
-        }
-        if (col.key.length > MAX_LABEL_LENGTH) {
-          fail(
-            `section ${index} (table) column ${ci} key exceeds ${MAX_LABEL_LENGTH} characters.`,
-          );
-        }
-        const out = { key: col.key };
-        if (!absent(col.label)) {
-          if (
-            typeof col.label !== "string" ||
-            col.label.length > MAX_LABEL_LENGTH
-          ) {
-            fail(
-              `section ${index} (table) column ${ci} label must be a string of at most ${MAX_LABEL_LENGTH} characters.`,
-            );
-          }
-          out.label = col.label;
-        }
-        if (!absent(col.format)) {
-          out.format = validateFormat(
-            col.format,
-            `section ${index} (table) column ${ci}`,
-          );
-        }
-        return out;
       });
       return {
         id,

@@ -15,6 +15,11 @@
 # Hooks run through invokeEndpoint with the request context, so _user resolves
 # here exactly as it does in a browser-invoked endpoint. Same derivation as
 # set-conversation-title, so both write the same identity key.
+#
+# $set and $setOnInsert here cover this writer's half of the live document
+# shape; set-conversation-title covers the rest ($setOnInsert: owner, created,
+# updated, messages, data_parts, deleted) — see the comment there for why the
+# split is a union, not a shared list.
 id: save-conversation
 type: Api
 routine:
@@ -112,6 +117,8 @@ routine:
                                       - 60
                                   - "…"
                           default: $$text
+          data_parts: []
+          deleted: null
       options:
         upsert: true
   - :return:

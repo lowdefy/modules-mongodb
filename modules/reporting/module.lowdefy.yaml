@@ -16,7 +16,7 @@ exports:
       description: Report renderer (Dynamic block over resolve-report)
   api:
     - id: query-data
-      description: Constrained analytics query (agent tool + report re-queries)
+      description: Constrained analytics query (report re-queries + panel downloads)
     - id: generate-report
       description: Validate and persist a report spec (agent tool)
     - id: set-report-visibility
@@ -125,6 +125,72 @@ vars:
     description: >
       Gateway model id (provider/model) for the reporting assistant, e.g.
       anthropic/claude-sonnet-4.5 or anthropic/claude-haiku-4.5.
+  welcome:
+    type: object
+    description: >
+      Copy for the chat page's empty state — the surface that teaches both of
+      the module's jobs, asking a question and building a report. Six leaves:
+      a title, a line naming what the assistant can see, and a label plus a
+      starter-prompt list per job track. This copy feeds the AgentChat block's
+      `welcome` property, which the chat page maps to a two-track shape: the
+      block renders the tracks in-flow as the transcript's leading item, so the
+      empty state scrolls up with the conversation and stays reachable by
+      scrolling back rather than being hidden on the first send.
+    properties:
+      title:
+        type: string
+        default: Ask about your data
+        description: The heading shown above both starter tracks.
+      data_scope:
+        type: string
+        description: >
+          One line naming what the assistant can see, in the words this
+          app's users use — e.g. "I can see your orders, customers and
+          shipments." NO default: there is no generic sentence true of every
+          app, and a wrong one is a promise the agent then fails to keep, so
+          when unset the line is simply not rendered — it never falls back to
+          collection names. Deliberately not derived from `catalog`: a
+          collection is not an entity a user recognises (one collection can
+          span several entities a user asks about by name, several
+          collections can be one entity to a user, and a collection can be
+          internal plumbing that should never appear in a welcome), and
+          `catalog`'s per-collection `description` is prompt material for the
+          agent, not copy written for a person.
+      explore_label:
+        type: string
+        default: Get an answer
+        description: >
+          Heading over the "ask a question" track's starters. An app whose
+          users would not describe the module's other job as building a
+          "report" should override this alongside `report_label`.
+      explore_starters:
+        type: array
+        default:
+          - What does this data cover?
+          - Show me the most recent records.
+          - What are the top 5 by count?
+        description: >
+          Starter prompts for the "ask a question" track — a string array.
+          Clicking a starter fills the composer rather than sending it, which
+          is what makes a generic shipped default safe: a near-miss is an
+          editable first draft, not a message the user never meant to send.
+      report_label:
+        type: string
+        default: Build a report
+        description: >
+          Heading over the "build a report" track's starters. An app whose
+          users do not call the output a "report" should override this
+          alongside `explore_label`.
+      report_starters:
+        type: array
+        default:
+          - Build a report showing trends over time.
+          - Build a report comparing categories side by side.
+        description: >
+          Starter prompts for the "build a report" track — a string array.
+          Clicking a starter fills the composer rather than sending it, which
+          is what makes a generic shipped default safe: a near-miss is an
+          editable first draft, not a message the user never meant to send.
 
 secrets:
   - name: REPORTING_MONGODB_URI
@@ -150,7 +216,11 @@ connections:
 
 api:
   - _ref: api/query-data.yaml
+  # Deliberately absent from exports.api: it exists for the agent, and a
+  # consumer calling it directly would be calling the wrong one of the two.
+  - _ref: api/query-data-tool.yaml
   - _ref: api/render-chart.yaml
+  - _ref: api/render-table.yaml
   - _ref: api/export-data.yaml
   - _ref: api/generate-report.yaml
   - _ref: api/resolve-report.yaml
@@ -159,6 +229,7 @@ api:
   - _ref: api/list-conversations.yaml
   - _ref: api/get-conversation-results.yaml
   - _ref: api/set-conversation-title.yaml
+  - _ref: api/delete-conversation.yaml
   - _ref: api/list-reports.yaml
   - _ref: api/delete-report.yaml
   - _ref: api/set-report-visibility.yaml

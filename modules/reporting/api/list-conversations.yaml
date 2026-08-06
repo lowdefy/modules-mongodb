@@ -2,8 +2,11 @@
 # titles/metadata only: messages and data_parts are excluded — selecting a
 # conversation restores both via a fresh get-conversation-results read (a
 # list snapshot races the onFinish save and can be a turn behind, and a stale
-# restore would overwrite the saved transcript on the next turn). The list is
-# capped to keep the payload bounded.
+# restore would overwrite the saved transcript on the next turn). The cap is
+# 200, not a smaller number, because the rail's search and recency grouping
+# filter this returned window client-side — the window is what search can
+# reach, and a smaller one would make an out-of-window miss indistinguishable
+# from no match.
 id: list-conversations
 type: Api
 routine:
@@ -23,10 +26,13 @@ routine:
       query:
         owner.user_id:
           _user: id
+        # See docs/shared/soft-delete.md for the idiom.
+        deleted.timestamp:
+          $exists: false
       options:
         sort:
           updated.timestamp: -1
-        limit: 30
+        limit: 200
         projection:
           data_parts: 0
           messages: 0

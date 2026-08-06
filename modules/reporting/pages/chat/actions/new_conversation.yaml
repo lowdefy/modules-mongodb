@@ -1,0 +1,12 @@
+# Starting a fresh conversation, shared by the rail and by the collapsed
+# strip's own New chat button. One copy, so every result key a new conversation
+# has to clear is cleared at both entry points.
+- id: new_conversation
+  type: SetState
+  params:
+    conversationId:
+      _uuid: true
+    messages: []
+    charts: []
+    tables: []
+    downloads: []

@@ -203,6 +203,32 @@ _ref:
                   messages:
                     success: Ownership fixtures seeded — open the reports list.
                     error: Seed failed — sign in and check the MONGODB secret.
+          - id: seed_conversations_help
+            type: Markdown
+            properties:
+              content: >
+                **Conversation fixtures** — a handful of conversations for the
+                chat rail, spanning all three recency groups (Today, Previous 7
+                days, Older), plus one soft-deleted conversation that must stay
+                hidden. One of them carries a large table result, so opening it
+                shows the results panel's "first 200 of N rows" truncation line.
+                Seeded for the signed-in user; open the chat surface to see them.
+          - id: seed_conversations_btn
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Seed conversation fixtures
+              icon: AiOutlineMessage
+            events:
+              onClick:
+                - id: seed_conversations
+                  type: CallAPI
+                  params:
+                    endpointId: reporting-seed-conversations
+                  messages:
+                    success: Conversation fixtures seeded — open the chat surface.
+                    error: Seed failed — sign in and check the MONGODB secret.
 
       - id: surfaces_divider
         type: Divider

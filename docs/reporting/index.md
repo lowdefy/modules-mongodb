@@ -25,7 +25,7 @@ Surfaces exported as pages:
 
 | Page           | Surface                                                              |
 | -------------- | -------------------------------------------------------------------- |
-| `chat`         | Conversational — `AgentChat` with an adjacent charts/downloads panel |
+| `chat`         | Conversational — `AgentChat` with an adjacent charts, tables and downloads panel, and a two-track empty state (ask a question / build a report) taught by the `welcome` var |
 | `reports-list` | Saved reports with open and [soft delete](../shared/soft-delete.md)  |
 | `report`       | Report renderer (`Dynamic` block over `resolve-report`)              |
 
