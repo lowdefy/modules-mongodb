@@ -5,24 +5,54 @@
 # numbers from that turn rather than re-running the query.
 - id: tables.$.item
   type: Box
+  # A bordered card per result. The tick is inline in the header with the title
+  # — the panel's only marking affordance — and the border takes the primary
+  # colour while selected, so a ticked card reads at a glance.
   layout:
-    gap: 2
+    gap: 12
+  style:
+    padding: 16px
+    borderRadius: 8px
+    background: var(--ant-color-bg-container)
+    border:
+      _if:
+        test:
+          _state: tables.$.selected
+        then: 1px solid var(--ant-color-primary)
+        else: 1px solid var(--ant-color-border-secondary)
   blocks:
-    - id: tables.$.table_title
-      type: Title
-      properties:
-        content:
-          _state: tables.$.title
-        level: 5
-    # The panel's only marking affordance: ticking flags this card on its own
-    # part, and the Save-as-report button reads `selected` across the three
-    # arrays. No value is set here — the switch binds to its own `selected` path.
-    - id: tables.$.selected
-      type: CheckboxSwitch
-      properties:
-        title: Save to report
-        label:
-          inline: true
+    - id: tables.$.header
+      type: Box
+      # nowrap keeps the tick and title on one line; the checkbox needs a
+      # DEFINITE basis — its antd form wrapper is full-width, so a basis of
+      # `auto` lets it balloon and push the title below.
+      layout:
+        gap: 8
+        wrap: nowrap
+      blocks:
+        # The panel's only marking affordance: ticking flags this card on its
+        # own part, and the Save-as-report button reads `selected` across the
+        # three arrays. Bare checkbox — the panel explainer carries the wording;
+        # here it sits inline with the title.
+        - id: tables.$.selected
+          type: CheckboxSwitch
+          layout:
+            flex: "0 0 24px"
+            selfAlign: top
+          properties:
+            label:
+              disabled: true
+        - id: tables.$.table_title
+          type: Title
+          layout:
+            flex: "1 1 auto"
+            selfAlign: top
+          properties:
+            content:
+              _state: tables.$.title
+            level: 5
+            style:
+              marginBottom: 0
     # The truncation line, shown only when the card holds fewer rows than the
     # query returned. `row_count` predates some parts, so `_if_none` falls back
     # to the retained count — an absent total then equals it and the line stays
