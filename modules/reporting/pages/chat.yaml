@@ -436,6 +436,16 @@ blocks:
                   _module.var: welcome.report_label
                 prompts:
                   _module.var: welcome.report_starters
+          # A persistent follow-up chip, shown below the transcript whenever the
+          # agent is idle. Clicking SENDS the label as a message (not fills the
+          # composer like a welcome starter), so the label is written as the
+          # request itself — it drives the agent's generate_report route, the
+          # guided complement to ticking cards in the panel. The description is
+          # chip subtext only; the block drops any icon.
+          suggestions:
+            - key: create_report
+              label: Turn this conversation into a report
+              description: The assistant drafts a saved report from what you've explored
         events:
           onDataPart:
             - id: append_chart
