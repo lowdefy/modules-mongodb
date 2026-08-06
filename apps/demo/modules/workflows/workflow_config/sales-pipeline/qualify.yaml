@@ -77,6 +77,15 @@ form:
     component: number
     title: Estimated value
     extra: Approximate deal size, in dollars.
+  # date_selector with disabled_dates — a close date can't be in the past, so
+  # min disables everything before today. disabled_dates passes straight through
+  # to the block's disabledDates property (min/max/dates/ranges).
+  - key: form.expected_close_date
+    component: date_selector
+    title: Expected close date
+    disabled_dates:
+      min:
+        _date: now
   - key: form.site_visit_required
     component: yes_no_selector
     title: Site visit needed?
@@ -90,6 +99,9 @@ form:
   - key: form.sites
     component: controlled_list
     title: Deployment sites
+    # label_span pushes the list into the input column (span 24 - 6) so it lines
+    # up with the labelled fields above it.
+    label_span: 6
     itemKey: name
     form:
       - key: form.sites.$.name
