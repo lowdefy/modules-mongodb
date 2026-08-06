@@ -70,6 +70,10 @@
     # renders for share-role holders; for everyone else this seed is the value
     # that keeps the save private.
     sheet_visibility: private
+    # The description is free text the conversation doesn't supply; clear any
+    # prior value so it doesn't carry into the next report (the sheet's state
+    # persists — it is never hidden).
+    sheet_description: null
 - id: open_save_report_modal
   type: CallMethod
   params:

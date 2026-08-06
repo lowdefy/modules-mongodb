@@ -45,6 +45,15 @@ events:
           spec:
             title:
               _state: sheet_title
+            # Non-empty string or null: the validator drops an absent/null
+            # description but stores "" verbatim, so send null when blank.
+            description:
+              _if:
+                test:
+                  _state: sheet_description
+                then:
+                  _state: sheet_description
+                else: null
             sections:
               _state: sheet_sections
           conversation_id:
@@ -101,6 +110,18 @@ blocks:
     properties:
       title: Report name
       placeholder: Report name
+
+  # Optional. Left blank it is sent as null (see onOk) so the stored document
+  # carries no description field, rather than an empty string the report page
+  # would render as a blank line.
+  - id: sheet_description
+    type: TextArea
+    properties:
+      title: Description
+      placeholder: What this report shows (optional)
+      autoSize:
+        minRows: 2
+        maxRows: 4
 
   - id: sheet_sections
     type: ControlledList
