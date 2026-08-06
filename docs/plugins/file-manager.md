@@ -114,6 +114,7 @@ Form state is validated (regex-anchored to `^{blockId}\.form\.`) before `onSave`
 | `maxCount`              | number                               | —                              | Hide the dragger once `files.length >= maxCount`.                                           |
 | `modalTitle`            | string                               | `Upload File`                  | Title of the form-fields modal. Only used when the `form` slot is present.                  |
 | `okText`                | string                               | `Save`                         | Submit button label on the form-fields modal.                                               |
+| `metadataTags`          | array                                | `[]`                           | Read-only tags shown under each file row. See [Metadata tags](#metadata-tags).              |
 | `label`                 | object                               | —                              | When set, wraps the block in an Antd `Label` (with `title`, `extra`, `tooltip`, …).         |
 | `required`              | boolean                              | `false`                        | Forwarded to the `Label` wrapper for required-state styling.                                |
 | `size`                  | `"small"` \| `"middle"` \| `"large"` | —                              | Forwarded to the `Label` wrapper.                                                           |
@@ -137,6 +138,27 @@ Form state is validated (regex-anchored to `^{blockId}\.form\.`) before `onSave`
   created: { timestamp: 1700000000000, user: { name: "Alice", id: "..." } }
 }
 ```
+
+### Metadata tags
+
+`metadataTags` renders a small Antd `Tag` under each file row, driven by that file's `metadata`. Each entry is an object:
+
+| Field   | Type    | Description                                                                                                  |
+| ------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `key`   | string  | The `metadata` field to read (`fileDoc.metadata[key]`). Required — entries without a `key` are ignored.      |
+| `label` | string  | Tag text. Defaults to `key`.                                                                                 |
+| `when`  | any     | If present, the tag shows only when `metadata[key]` **strictly equals** `when`. If omitted, any truthy value shows the tag. |
+| `color` | string  | Any Antd tag color (a preset like `green`/`red` or a hex value). Optional.                                    |
+
+```yaml
+metadataTags:
+  - key: available_to_client
+    label: Available to client
+    when: true
+    color: green
+```
+
+Tags are display-only — they render in both editable and `viewOnly` modes and never affect upload, save, or delete.
 
 ## Events
 

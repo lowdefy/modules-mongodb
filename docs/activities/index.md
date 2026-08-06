@@ -135,9 +135,10 @@ form_requests:
         - $project: { _id: 0, value: $_id, label: $topic }
 fields:
   attributes:
-    - id: references.discussion_ids
+    - id: attributes.discussion_ids
       type: MultipleSelector
-      # Hidden in the capture modal, where form_requests aren't loaded.
+      # Hidden in the capture modal, where form_requests aren't loaded. Safe to
+      # gate with `visible` because nothing prefills this field — see below.
       visible:
         _eq:
           - _state: activity_form_context
@@ -147,7 +148,19 @@ fields:
           _request: discussion_options
 ```
 
-`form_requests` are **not** added to the `capture_activity` modal — a modal can't own page requests. The pages set a `state.activity_form_context` marker so request-backed fields can gate themselves to the full-page form: `page` on the new/edit pages, `view` on the detail page, `modal` in the capture modal. Gate on `activity_form_context == page` (as above) to keep such a field out of the modal and the detail view; if the field is wanted in a modal, the host page embedding `capture_activity` must supply the request itself.
+`form_requests` are **not** added to the `capture_activity` modal — a modal can't own page requests. The pages set a `state.activity_form_context` marker so request-backed fields can gate themselves to the full-page form: `page` on the new/edit pages, `view` on the detail page, `modal` in the capture modal. Gate on `activity_form_context == page` (as above) to keep such a field out of the modal and the detail view.
+
+### Prefer self-contained options where the field must appear everywhere
+
+`form_requests` makes a field **page-only**, and that has a cost worth stating plainly: the field is absent from the capture modal, so the same activity captured from a modal and from the full form carries different data, with nothing on screen indicating a field was missing. It also can't be meaningfully `required`, since the modal cannot enforce it.
+
+A field can instead declare its own `requests` and an `onMount` fetch, the way the contacts module's `role-contact-selector` does. The request is then registered on whatever page renders the field — including a host page embedding `capture_activity` — so the field works on every surface and needs no gate at all. This is the better default for anything whose absence would leave data incomplete.
+
+Reserve `form_requests` for fields that are genuinely page-only by intent: an expensive query you don't want firing on every host page that happens to embed a capture button, or one query shared by several fields.
+
+**A field writing into `references` must not be `visible`-gated in the modal.** Hiding a block deletes its state, and a host page's `prefill.references` is exactly that state — so the gate would discard the link and the activity would be created unattached. Give such a field self-contained options and render it `disabled` outside the full form instead, so the reference stays intact and stays visible.
+
+A host page cannot embed a *second* `capture_activity`: `form_activity` hardcodes the contacts selector's request id, so two instances on one page fail the build on a duplicate request id. Where a page already carries one — or wants its own entry point with different prefill — send the user to the full form instead. `open_capture`, or `capture_activity` in `mode: page`, deep-links into the new page carrying `prefill` with `attributes` and `references` included; a button on a deal passes `references: { deal_ids: [...] }`.
 
 ## Agenda topics
 

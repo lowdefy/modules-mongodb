@@ -186,6 +186,8 @@ filters: []
 components:
   info_grid_slots:
     - _ref: modules/deals/tiles/qualification.yaml
+  topbar_slots:
+    - _ref: modules/deals/tiles/log_site_visit_button.yaml
 
 # Derives a deal field from workflow form data server-side. The module appends
 # these stages while its `workflows` alias is still in scope.

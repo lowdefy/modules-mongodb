@@ -695,7 +695,10 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
 | `hideAddButton`    | boolean | `false`            |
 | `hideRemoveButton` | boolean | `false`            |
 | `minItems`         | number  | `0`                |
+| `itemKey`          | string  | —                  |
 | `blocks`           | array   | `[]`               |
+
+`itemKey` is a dot-notation key relative to each list item (e.g. `name`). On the read-only view, review, and overview surfaces it titles each item's collapsible card with the item's own value; items without the value fall back to `Item N`. It has no effect while editing.
 
 ```yaml
 - component: controlled_list
@@ -703,6 +706,7 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
   title: Devices
   required: true
   hideAddButton: true
+  itemKey: _id
   blocks:
     - component: label_value
       key: form.devices.$._id

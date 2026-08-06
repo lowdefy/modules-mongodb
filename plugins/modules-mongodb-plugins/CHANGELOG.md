@@ -1,5 +1,23 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.25.1
+
+### Patch Changes
+
+- [#156](https://github.com/lowdefy/modules-mongodb/pull/156) [`9467f55`](https://github.com/lowdefy/modules-mongodb/commit/9467f55a7d7dc0f7a24b3e1b0cdbee3074bb554c) Thanks [@Saiby100](https://github.com/Saiby100)! - DataDescriptions array fields accept an optional `itemKey` — a dot-notation key relative to each array item — that titles each item's collapsible card from the item's own data (e.g. `itemKey: name` shows `devices[i].name`). Cards fall back to `Item N` when `itemKey` is absent or the value is missing or empty.
+
+- [#156](https://github.com/lowdefy/modules-mongodb/pull/156) [`831a1b0`](https://github.com/lowdefy/modules-mongodb/commit/831a1b044d68da037ec6b2272732e32d49939cf7) Thanks [@Saiby100](https://github.com/Saiby100)! - DataDescriptions renders nested array fields (controlled_list inside controlled_list) at any depth. Previously data below the first list level was silently dropped in form-config mode.
+
+## 0.25.0
+
+### Minor Changes
+
+- [#155](https://github.com/lowdefy/modules-mongodb/pull/155) [`a96d1a2`](https://github.com/lowdefy/modules-mongodb/commit/a96d1a2db63f73464bf7a2769614ff203888838e) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Files: file rows can now show read-only tags from a file's metadata.
+
+  The files module's `file-manager` and `file-card` gain a `metadata_tags` var — a list of `{ key, label, when, color }` entries. Each renders a small tag under a file row when that file's metadata field matches (any truthy value, or an exact match when `when` is set), in both editable and read-only views. This lets a surface flag files inline — for example an "Available to client" tag — without a bespoke file list. Tags are display-only and never affect upload, save, or delete.
+
+## 0.24.0
+
 ## 0.23.1
 
 ## 0.23.0

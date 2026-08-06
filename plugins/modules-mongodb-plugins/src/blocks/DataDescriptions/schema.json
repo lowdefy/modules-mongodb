@@ -94,6 +94,10 @@
                 "type": "string",
                 "description": "Component hint for type detection (e.g., 'selector', 'date_selector', 'contact_selector_number_required'). Helps DataView determine the correct rendering type."
               },
+              "itemKey": {
+                "type": "string",
+                "description": "For array fields with a nested form: dot-notation key, relative to each array item, whose value titles the item's collapsible card (e.g. 'name'). Falls back to 'Item N' when absent or empty."
+              },
               "enum": {
                 "type": "object",
                 "description": "Selector enum map as authored (slug -> { title, color, icon }). Used to display the stored value's title, colour and icon instead of the raw value."

@@ -80,6 +80,32 @@ form:
   - key: form.site_visit_required
     component: yes_no_selector
     title: Site visit needed?
+  # Nested controlled_list — deployment sites, each carrying its own list of
+  # install locations. Lists nest to any depth: each level adds its own `$` to
+  # the key (form.sites.$.locations.$.area), resolved per row index while
+  # editing and again when the saved data renders on the view/review pages
+  # (DataDescriptions). `itemKey` (dot notation, relative to each item) titles
+  # the item's card on view/review/overview from the item's own data instead
+  # of `Item N`; each nesting level takes its own.
+  - key: form.sites
+    component: controlled_list
+    title: Deployment sites
+    itemKey: name
+    form:
+      - key: form.sites.$.name
+        component: text_input
+        title: Site name
+      - key: form.sites.$.locations
+        component: controlled_list
+        title: Install locations
+        itemKey: area
+        form:
+          - key: form.sites.$.locations.$.area
+            component: text_input
+            title: Area
+          - key: form.sites.$.locations.$.sensor_count
+            component: number
+            title: Sensors
   # Raw inline Lowdefy block — the escape hatch for a one-off field the library
   # doesn't cover. No `component:`, so it's emitted as a block; `key` becomes
   # the block id (and the form_meta key, so the value round-trips), and `title`

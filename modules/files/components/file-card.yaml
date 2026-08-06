@@ -62,6 +62,10 @@ _ref:
               _var:
                 key: ok_text
                 default: Save
+            metadata_tags:
+              _var:
+                key: metadata_tags
+                default: []
             form_fields:
               _var:
                 key: form_fields

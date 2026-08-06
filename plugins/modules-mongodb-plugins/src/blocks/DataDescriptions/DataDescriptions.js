@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { renderHtml, withBlockDefaults } from "@lowdefy/block-utils";
-import { Card, Descriptions } from "antd";
+import { Card, Collapse, Descriptions } from "antd";
 import withTheme from "@lowdefy/blocks-antd/blocks/withTheme.js";
 import preprocessData from "./preprocessing/preprocessData.js";
 import renderFieldValue from "./core/renderFieldValue.js";
@@ -58,11 +58,53 @@ const DataDescriptions = ({
 
   // Recursively render a group and its children.
   // Top-level groups (depth 0) render as bare Descriptions.
-  // Nested groups (depth 1+) render as Card type="inner" wrapping Descriptions.
+  // Nested named sections render as Card type="inner". A list group (all
+  // children are array elements) renders as a tinted card holding one
+  // collapsible card panel per element.
   function renderGroup(group, depth, index, extra) {
     const title = group.title || null;
     const hasFields = group.fields?.length > 0;
     const hasChildren = group.children?.length > 0;
+    const isList = hasChildren && group.children.every((c) => c.isListItem);
+
+    if (isList) {
+      return (
+        <Card
+          type="inner"
+          title={
+            <span className="dataview-list-title">
+              {title}
+              <span className="dataview-list-count">
+                {group.children.length}
+              </span>
+            </span>
+          }
+          key={`${depth}-${index}`}
+          size="small"
+          className="dataview-section-card dataview-list-card"
+        >
+          {hasFields && renderDescriptions(group, null)}
+          <Collapse
+            className="dataview-list-collapse"
+            bordered={false}
+            defaultActiveKey={group.children.map((_, i) => i)}
+            items={group.children.map((item, i) => ({
+              key: i,
+              label: item.title || `Item ${i + 1}`,
+              children: (
+                <div className="dataview-list-panel">
+                  {item.fields?.length > 0 && renderDescriptions(item, null)}
+                  {item.children?.length > 0 &&
+                    item.children.map((child, j) =>
+                      renderGroup(child, depth + 2, j),
+                    )}
+                </div>
+              ),
+            }))}
+          />
+        </Card>
+      );
+    }
 
     if (depth === 0) {
       return (
@@ -82,7 +124,13 @@ const DataDescriptions = ({
     }
 
     return (
-      <Card type="inner" title={title} key={`${depth}-${index}`} size="small">
+      <Card
+        type="inner"
+        title={title}
+        key={`${depth}-${index}`}
+        size="small"
+        className="dataview-section-card"
+      >
         {hasFields && renderDescriptions(group, null)}
         {hasChildren &&
           group.children.map((child, i) => renderGroup(child, depth + 1, i))}
@@ -91,7 +139,7 @@ const DataDescriptions = ({
   }
 
   return (
-    <div id={blockId}>
+    <div id={blockId} className="dataview-groups">
       {groups.map((group, i) =>
         renderGroup(
           group,
