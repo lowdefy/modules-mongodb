@@ -29,7 +29,7 @@ Surfaces exported as pages:
 | `reports-list` | Saved reports with open and [soft delete](../shared/soft-delete.md)  |
 | `report`       | Report renderer (`Dynamic` block over `resolve-report`)              |
 
-Reports are created from the chat surface: the agent's `generate_report` tool persists a spec and returns its URL.
+Reports are created from the chat surface two ways: the agent's `generate_report` tool persists a spec and returns its URL, or the user ticks result cards and confirms a sheet — see [Save as report](how-to/save-as-report.md).
 
 ## Quickstart
 
