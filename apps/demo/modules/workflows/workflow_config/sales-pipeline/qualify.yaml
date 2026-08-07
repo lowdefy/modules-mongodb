@@ -93,16 +93,18 @@ form:
   # install locations. Lists nest to any depth: each level adds its own `$` to
   # the key (form.sites.$.locations.$.area), resolved per row index while
   # editing and again when the saved data renders on the view/review pages
-  # (DataDescriptions). `itemKey` (dot notation, relative to each item) titles
-  # the item's card on view/review/overview from the item's own data instead
-  # of `Item N`; each nesting level takes its own.
+  # (DataDescriptions). `itemTitle` is a Nunjucks template rendered against
+  # each item (its fields are the template context) titling the item's card on
+  # view/review/overview; it may reference multiple fields and emit HTML, and
+  # falls back to `Item N` when its render is empty. Each nesting level takes
+  # its own.
   - key: form.sites
     component: controlled_list
     title: Deployment sites
     # label_span pushes the list into the input column (span 24 - 6) so it lines
     # up with the labelled fields above it.
     label_span: 6
-    itemKey: name
+    itemTitle: "<b>{{ name }}</b> — {{ locations | length }} location(s)"
     form:
       - key: form.sites.$.name
         component: text_input
@@ -110,7 +112,7 @@ form:
       - key: form.sites.$.locations
         component: controlled_list
         title: Install locations
-        itemKey: area
+        itemTitle: "{{ area }}"
         form:
           - key: form.sites.$.locations.$.area
             component: text_input
