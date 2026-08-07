@@ -1091,3 +1091,137 @@ describe("owner-only affordances", () => {
     expect(json).not.toContain("reporting/chat");
   });
 });
+
+// A failed section is either withheld (valid, but role-gated) or broken. Both
+// arrive as an error-free null row; the compiler tells them apart from catalog
+// + viewer roles, the same enumeration the AnalyticsPipeline gate ran. The
+// withheld Alert names no collection and no role and offers no recovery — not
+// even to the owner, since nothing is broken to fix.
+describe("withheld vs broken failed sections", () => {
+  const owner = { user_id: "u1", name: "Jane Doe" };
+
+  // demo_companies is role-gated (analyst/admin); a "viewer" cannot reach it.
+  const gatedSpec = {
+    title: "Companies",
+    sections: [
+      {
+        type: "table",
+        label: "Companies",
+        query: {
+          collection: "demo_companies",
+          pipeline: [{ $project: { _id: 0, name: 1 } }],
+        },
+        columns: [{ key: "name" }],
+      },
+    ],
+  };
+  // demo_orders is ungated: a null row here is genuinely broken.
+  const ungatedSpec = {
+    title: "Orders",
+    sections: [
+      {
+        type: "table",
+        label: "Orders",
+        query: ordersByRegion,
+        columns: [{ key: "region" }],
+      },
+    ],
+  };
+
+  const compile = (spec, extra) =>
+    Object.fromEntries(
+      compileReport({
+        spec,
+        results: [null],
+        catalog: testCatalog,
+        endpointId,
+        owner,
+        ...extra,
+      }).map((b) => [b.id, b]),
+    );
+
+  test("a viewer lacking the role gets the withheld Alert — no recoveries, no collection or role named", () => {
+    const byId = compile(gatedSpec, {
+      roles: ["viewer"],
+      is_owner: true,
+      conversation_id: "conv-1",
+    });
+
+    expect(byId.s0.type).toBe("Alert");
+    expect(byId.s0.properties.message).toBe("Companies");
+    expect(byId.s0.properties.description).toBe(
+      "You don't have access to the data in this section.",
+    );
+    // No recovery affordances — even for the owner: nothing is broken to fix.
+    expect(byId.s0_fix_in_chat).toBeUndefined();
+    expect(byId.s0_drop).toBeUndefined();
+
+    // The withheld copy leaks no gate detail — no collection, no role, no
+    // "ask the owner" from the broken non-owner path.
+    const json = JSON.stringify(byId.s0);
+    expect(json).not.toContain("demo_companies");
+    expect(json).not.toContain("analyst");
+    expect(json).not.toContain("admin");
+    expect(json).not.toContain("Jane Doe");
+  });
+
+  test("owner viewing their own withheld section gets the withheld variant, not the broken one", () => {
+    const blocks = compileReport({
+      spec: gatedSpec,
+      results: [null],
+      catalog: testCatalog,
+      roles: ["viewer"],
+      endpointId,
+      owner,
+      is_owner: true,
+      conversation_id: "conv-1",
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+
+    expect(byId.s0.properties.description).toBe(
+      "You don't have access to the data in this section.",
+    );
+    // No section recovery affordances (the header's own Continue-in-chat is
+    // unrelated to the section and stays).
+    expect(byId.s0_fix_in_chat).toBeUndefined();
+    expect(byId.s0_drop).toBeUndefined();
+    expect(JSON.stringify(blocks)).not.toContain("remove-report-section");
+  });
+
+  test("a null row over an ungated collection is broken, keeping owner recoveries", () => {
+    const byId = compile(ungatedSpec, {
+      roles: ["viewer"],
+      is_owner: true,
+      conversation_id: "conv-1",
+    });
+
+    expect(byId.s0.type).toBe("Alert");
+    expect(byId.s0.properties.description).toMatch(/failed to load/);
+    expect(byId.s0_fix_in_chat).toBeDefined();
+    expect(byId.s0_drop).toBeDefined();
+  });
+
+  test("a null row over a catalog-absent collection is broken (touchedCollections throws)", () => {
+    const missingSpec = {
+      title: "Missing",
+      sections: [
+        {
+          type: "table",
+          label: "Missing",
+          query: {
+            collection: "demo_missing",
+            pipeline: [{ $project: { _id: 0 } }],
+          },
+          columns: [{ key: "region" }],
+        },
+      ],
+    };
+    const byId = compile(missingSpec, { roles: ["viewer"], is_owner: true });
+
+    expect(byId.s0.type).toBe("Alert");
+    expect(byId.s0.properties.description).toMatch(/failed to load/);
+    expect(byId.s0.properties.description).not.toContain("access to the data");
+    // Broken → owner recoveries present.
+    expect(byId.s0_drop).toBeDefined();
+  });
+});

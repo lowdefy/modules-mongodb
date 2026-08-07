@@ -11,6 +11,7 @@ import { orderedQueries } from "./querySections.js";
 import validateReportSpec, {
   catalogFieldValues,
 } from "./validateReportSpec.js";
+import { touchedCollections } from "./validatePipeline.js";
 import {
   verifyChartContract,
   verifyFilterOptionsContract,
@@ -422,6 +423,13 @@ function sectionHeading(section, rows) {
 const SECTION_FAILED_DESCRIPTION =
   "This section failed to load — its query may reference data no longer available.";
 
+// A section whose pipeline is valid but queries a role-gated collection the
+// viewer can't reach. Names no collection and no role: doing so would leak the
+// app's access model, and there is nothing the viewer — owner or not — can do
+// about it, so no recovery affordances either.
+const SECTION_WITHHELD_DESCRIPTION =
+  "You don't have access to the data in this section.";
+
 function failedSectionBlock(section, description) {
   return {
     id: section.id,
@@ -533,6 +541,37 @@ function brokenSectionBlocks(
   });
 
   return blocks;
+}
+
+function withheldSectionBlock(section) {
+  return failedSectionBlock(section, SECTION_WITHHELD_DESCRIPTION);
+}
+
+// A failed data section is either "withheld" (valid pipeline, but it queries a
+// role-gated collection the viewer's roles don't satisfy) or "broken"
+// (everything else). The resolver's per-section :catch surfaces both as an
+// error-free null row, so classify BEFORE the fact from the same walk the
+// AnalyticsPipeline gate ran: touchedCollections enumerates every collection
+// the pipeline reaches with the role gate suppressed. A throw is a
+// grammar/catalog-membership fault — genuinely broken.
+function classifyFailure(section, catalog, roles) {
+  let touched;
+  try {
+    touched = touchedCollections({
+      collection: section.query.collection,
+      pipeline: section.query.pipeline,
+      catalog,
+    });
+  } catch {
+    return "broken";
+  }
+  const requiredRoles = [
+    ...new Set(touched.flatMap((c) => catalog[c]?.roles ?? [])),
+  ];
+  const withheld =
+    requiredRoles.length > 0 &&
+    !requiredRoles.some((r) => (roles ?? []).includes(r));
+  return withheld ? "withheld" : "broken";
 }
 
 // ICU rejects an unknown currency code ("$") or a malformed locale tag with a
@@ -718,7 +757,11 @@ function compileReport({
     if (["kpi", "chart", "table"].includes(section.type)) {
       const rows = rowsBySectionId.get(section.id);
       if (rows === null || rows === undefined) {
-        bodyBlocks.push(...brokenSectionBlocks(section, undefined, brokenCtx));
+        if (classifyFailure(section, catalog, roles) === "withheld") {
+          bodyBlocks.push(withheldSectionBlock(section));
+        } else {
+          bodyBlocks.push(...brokenSectionBlocks(section, undefined, brokenCtx));
+        }
         continue;
       }
       // Contract-vs-rows check: a mismatch renders this section as an Alert
