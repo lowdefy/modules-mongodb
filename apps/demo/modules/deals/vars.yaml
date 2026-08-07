@@ -145,6 +145,69 @@ fields:
           label: Large
         - value: bulk
           label: Bulk
+  # Captured on the deal, but its real destination is the linked company — see
+  # hooks.pre_insert below. Options match the companies module's own
+  # `fields.attributes` industry selector.
+  - id: attributes.company_industry
+    type: Selector
+    properties:
+      title: Company Industry
+      label:
+        extra: Only applied if the linked company has no industry on record yet.
+      placeholder: Select industry (optional)
+      options:
+        - Manufacturing
+        - Services
+        - Retail
+
+# Host steps spliced into the create-deal routine. The two slots differ in what
+# is in scope and in how a failure lands:
+#
+#   pre_insert  — the create payload (`form.*`, `attributes.*`), no deal id.
+#                 A failure aborts the create; nothing has been written.
+#   post_insert — the above plus `_step: insert_deal.insertedId`. Runs before
+#                 the workflow starts, so a failure leaves a deal with no
+#                 workflow (repairable) rather than a workflow with no deal.
+#
+# Both reach across to the companies module's own connection by its scoped id.
+hooks:
+  pre_insert:
+    # Back-fill the company's industry from what the deal form captured. The
+    # `attributes.industry: null` filter makes this a no-op when the company
+    # already has one, so it can never stomp a value set elsewhere between page
+    # render and submit.
+    - :if:
+        _ne:
+          - _payload: attributes.company_industry
+          - null
+      :then:
+        - id: backfill_company_industry
+          type: MongoDBUpdateOne
+          connectionId: companies/companies-collection
+          properties:
+            filter:
+              _id:
+                _payload: form.company_id
+              attributes.industry: null
+            update:
+              $set:
+                attributes.industry:
+                  _payload: attributes.company_industry
+  post_insert:
+    # Needs the new deal's id, so it cannot run in pre_insert.
+    - id: stamp_company_latest_deal
+      type: MongoDBUpdateOne
+      connectionId: companies/companies-collection
+      properties:
+        filter:
+          _id:
+            _payload: form.company_id
+        update:
+          $set:
+            attributes.latest_deal_id:
+              _step: insert_deal.insertedId
+          $inc:
+            attributes.deal_count: 1
 
 # Value + close date come from the raw fields a workflow stamps onto the deal,
 # formatted here with this app's $ currency.

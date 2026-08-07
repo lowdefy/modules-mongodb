@@ -68,6 +68,36 @@ The deal view seeds the selected deal's `get-entity-workflows` response into `en
 
 Each entry is a workflow carrying `workflow_type`, `title` and `groups[].actions[]`, where each action has `status`, `message` and a server-resolved `link`. Two rules are worth mirroring rather than reinventing: the terminal statuses are **`done` and `not-required`** — the set the engine's own `deriveGroupStatus` treats as closed — and "this deal's workflow work is finished" means every action of **every** workflow is terminal, not just the first. That distinction matters as soon as a lifecycle chains two workflows, where a rule written against one would fire early.
 
+## Extending deal creation
+
+`create-deal` persists whatever the host's `fields` blocks bind under `attributes.*`, so a host that only needs to **store** something needs nothing more. A host that needs creation to also **do** something — write to another collection, back-fill a field on the linked company — supplies routine steps through the `hooks` var.
+
+| Slot | In scope | On failure |
+| --- | --- | --- |
+| `pre_insert` | the create payload: `_payload: form.*` and `_payload: attributes.*` | aborts the create; nothing has been written |
+| `post_insert` | the above, plus `_step: insert_deal.insertedId` | the deal exists with no workflow |
+
+`post_insert` runs **before** the workflow starts, not after. That ordering is deliberate: a failing hook then leaves a deal with no workflow, which a host can detect and repair, rather than a workflow pointing at a deal that was never created, which it cannot. Steps run server-side in the same request as the insert — these are routine steps, not a client action list like the activities module's `hooks.on_created`.
+
+Hooks may reach another module's connection by its scoped id. The demo app does both, in `apps/demo/modules/deals/vars.yaml`: `pre_insert` back-fills the linked company's industry from a field the deal form captured (filtered on the company's industry being unset, so it can never stomp an existing value), and `post_insert` stamps that company with the new deal's id and increments its deal count — which it can only do because the id is in scope there.
+
+```yaml
+hooks:
+  pre_insert:
+    - id: backfill_company_industry
+      type: MongoDBUpdateOne
+      connectionId: companies/companies-collection
+      properties:
+        filter:
+          _id:
+            _payload: form.company_id
+          attributes.industry: null
+        update:
+          $set:
+            attributes.industry:
+              _payload: attributes.company_industry
+```
+
 ## Required indexes
 
 The list/workspace pipelines assume the consuming app applies these indexes on the mapped `deals` collection. The module documents the contract; the app owns creating them (e.g. under its own `actions/indexes/indexes/{app}/deals/` via `splice-actions`).
