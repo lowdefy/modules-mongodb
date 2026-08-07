@@ -6,6 +6,13 @@ description: >
   dictionary, and report pages compiled server-side from AI-generated report
   specs.
 
+dependencies:
+  - id: layout
+    description: >-
+      Page layout wrapper. Every reporting page renders through layout's `page`
+      component so the module sits in the host app's chrome (sider, menu,
+      profile, notifications) like every other module.
+
 exports:
   pages:
     - id: chat

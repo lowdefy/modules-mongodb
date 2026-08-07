@@ -1,59 +1,72 @@
 # The report renderer: a Dynamic block resolved server-side by resolve-report.
+# Wrapped in layout's page so the report opens inside the app's chrome (sider,
+# menu, profile) like every other page. hide_title is set because the compiled
+# report emits its own Title section — a layout title bar would just repeat a
+# generic "Report" above it. The breadcrumb is the only way back to the list
+# from here, since the report's own title carries no link.
+#
 # The compiled output's block/action/operator types must be declared in
 # properties.types so they ship in the client bundle. The fallback slot covers
 # whole-report failures (missing report, unauthorized user); per-section
 # failures render as Alert cards inside the compiled report.
-id: report
-type: Box
-properties:
-  style:
-    padding: 16px
-blocks:
-  - id: report_dynamic
-    type: Dynamic
-    properties:
-      endpointId:
-        _module.endpointId: resolve-report
-      types:
-        blocks:
-          # Box wraps the filter row (compileReport emits report_filters).
-          - Box
-          - Title
-          - Paragraph
-          - Statistic
-          - EChart
-          - AgGridBalham
-          - Selector
-          - MultipleSelector
-          - DateRangeSelector
-          - Button
-          - Alert
-          - Markdown
-        actions:
-          - CallAPI
-          - SetState
-          - DownloadCsv
-        operators:
-          - _state
-          - _api
-          - _if_none
-          # A table column carrying a `format` descriptor compiles to a
-          # `__function` cell renderer wrapping `___intl.numberFormat` over
-          # `___args` (compileReport numericCellRenderer). Dynamic resolution
-          # collapses each operator's leading underscores to one and rejects any
-          # type not declared here — so an undeclared _intl fails the WHOLE
-          # report to the fallback slot, not just the column. Keep these three
-          # in step with numericCellRenderer.
-          - _function
-          - _intl
-          - _args
-    slots:
-      fallback:
-        blocks:
-          - id: report_missing
-            type: Result
-            properties:
-              status: 404
-              title: Report not found
-              subTitle: >
-                The report does not exist or you do not have access to it.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: report
+    hide_title: true
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Reports
+        pageId:
+          _module.pageId: reports-list
+    blocks:
+      - id: report_dynamic
+        type: Dynamic
+        properties:
+          endpointId:
+            _module.endpointId: resolve-report
+          types:
+            blocks:
+              # Box wraps the filter row (compileReport emits report_filters).
+              - Box
+              - Title
+              - Paragraph
+              - Statistic
+              - EChart
+              - AgGridBalham
+              - Selector
+              - MultipleSelector
+              - DateRangeSelector
+              - Button
+              - Alert
+              - Markdown
+            actions:
+              - CallAPI
+              - SetState
+              - DownloadCsv
+            operators:
+              - _state
+              - _api
+              - _if_none
+              # A table column carrying a `format` descriptor compiles to a
+              # `__function` cell renderer wrapping `___intl.numberFormat` over
+              # `___args` (compileReport numericCellRenderer). Dynamic resolution
+              # collapses each operator's leading underscores to one and rejects any
+              # type not declared here — so an undeclared _intl fails the WHOLE
+              # report to the fallback slot, not just the column. Keep these three
+              # in step with numericCellRenderer.
+              - _function
+              - _intl
+              - _args
+        slots:
+          fallback:
+            blocks:
+              - id: report_missing
+                type: Result
+                properties:
+                  status: 404
+                  title: Report not found
+                  subTitle: >
+                    The report does not exist or you do not have access to it.
