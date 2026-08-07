@@ -38,10 +38,25 @@ properties:
             `${r.title || ''} ${r.description || ''}`.toLowerCase().includes(q)
           )
         : rows;
-      return matched.map((report) => ({
-        ...report,
-        fav_icon: report.is_favourite ? 'AiFillStar' : 'AiOutlineStar',
-      }));
+      const pill = (n, label) => (n > 0 ? `${n} ${label}${n > 1 ? 's' : ''}` : null);
+      return matched.map((report) => {
+        const sc = report.section_counts || {};
+        return {
+          ...report,
+          fav_icon: report.is_favourite ? 'AiFillStar' : 'AiOutlineStar',
+          // Pre-built label array for the Contents tag cell — one entry per
+          // non-zero section type, filter last. section_counts is an object, so
+          // the pills have to be assembled here rather than fed to the cell raw.
+          contents: [
+            pill(sc.kpi, 'KPI'),
+            pill(sc.chart, 'chart'),
+            pill(sc.table, 'table'),
+            pill(sc.markdown, 'note'),
+            pill(sc.download, 'export'),
+            pill(report.filter_count, 'filter'),
+          ].filter(Boolean),
+        };
+      });
   defaultColDef:
     resizable: true
     cellStyle:
@@ -83,23 +98,22 @@ properties:
               <div style="font-weight:600;color:var(--ant-color-link)">{{ title }}</div>{% if description %}<div style="font-size:12px;color:var(--ant-color-text-secondary)">{{ description }}</div>{% endif %}
             on:
               __args: 0.data
-    # Contents — one pill per non-zero section type, filter pill last and lighter.
-    # section_counts is an object and filter_count a separate number, so this is a
-    # rendered pill list, not a tag cell (a tag cell would stringify the object).
+    # Contents — one pill per non-zero section type, filter last. The pill labels
+    # are pre-built into a string array in rowData (contents) because a tag cell
+    # takes an array or scalar, and section_counts is an object. Uniform colour:
+    # colorMap keys on the pill text, and the text carries counts, so there is no
+    # stable token to two-tone the filter pill against — default blue for all.
     - colId: contents
+      field: contents
       headerName: Contents
       minWidth: 220
       flex: 1
       sortable: false
       wrapText: true
       autoHeight: true
-      cellRenderer:
-        _function:
-          __nunjucks:
-            template: >-
-              {% macro pill(n, label, filter=false) %}{% if n %}<span style="display:inline-block;margin:1px 3px 1px 0;padding:1px 7px;border-radius:10px;font-size:11px;{% if filter %}color:var(--ant-color-text-secondary);border:1px solid var(--ant-color-border)">{% else %}color:var(--ant-color-info);background:color-mix(in srgb,var(--ant-color-info) 12%,transparent)">{% endif %}{{ n }} {{ label }}{% if n > 1 %}s{% endif %}</span>{% endif %}{% endmacro %}{{ pill(section_counts.kpi, "KPI") }}{{ pill(section_counts.chart, "chart") }}{{ pill(section_counts.table, "table") }}{{ pill(section_counts.markdown, "note") }}{{ pill(section_counts.download, "export") }}{{ pill(filter_count, "filter", true) }}
-            on:
-              __args: 0.data
+      cell:
+        type: tag
+        default: blue
     # Author — the owner.name snapshot, shown wherever rows can come from other
     # people (Shared, Favourites, All). Hidden only on Mine, where every row is
     # the viewer's own and the column would just repeat their name.
