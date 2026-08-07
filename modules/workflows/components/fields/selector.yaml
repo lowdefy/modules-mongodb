@@ -58,6 +58,10 @@ config:
             _var:
               key: label_inline
               default: false
+          extra:
+            _var:
+              key: extra
+              default: null
         - _build.if:
             test:
               _build.ne:
@@ -85,10 +89,6 @@ config:
                 _var:
                   key: enum
                   default: {}
-    extra:
-      _var:
-        key: extra
-        default: null
   events:
     onChange:
       _var:
