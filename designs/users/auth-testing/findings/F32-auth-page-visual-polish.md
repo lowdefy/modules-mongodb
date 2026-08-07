@@ -28,9 +28,21 @@ page-polish nits go here rather than spawning a finding each.
    - **Enter does not submit** the TOTP confirmation code — the `enrol.confirmation_code`
      input has no submit-on-Enter, so the user must click **Confirm & enable**. (Likely
      applies to the sign-in challenge code input too — check both.)
+   - **Browser password-manager mis-classifies the confirmation-code input.** Chrome /
+     Google Password Manager treats the code field as a **password field**: it prompts to
+     autofill a saved password and offers old stored values. The field should declare
+     `autocomplete="one-time-code"` (and likely `inputMode="numeric"`) so the browser treats
+     it as a one-time code, not a credential. Reported on the enrol page; **likely also
+     affects the Manage modal's code input** (`modal_enroltotp`) and possibly the sign-in
+     challenge code input — check all three.
    - The **`code: true` manual-key Paragraph wraps badly** (the base32 secret / "Can't scan?
      Enter this key" area).
    - General polish pass wanted on the page overall.
+
+4. **Login expired-link notice copy — drop the em-dash.** The retryable magic-link notice
+   ("Link expired / This link has expired or was already used — request a new one below.")
+   uses an em-dash that reads badly and produces an awkward word-break. Replace with a
+   sentence break (period, or a separate line) across the login notice-alert copy.
 
 ## The open question
 
