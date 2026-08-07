@@ -98,9 +98,12 @@ form:
   # view/review/overview; it may reference multiple fields and emit HTML, and
   # falls back to `Item N` when its render is empty. Each nesting level takes
   # its own.
+  # The list `title` accepts HTML — it renders through a DOMPurify-sanitised
+  # Html block above the list while editing (and via the DataDescriptions title
+  # slot on the read-only surfaces). Plain strings still work.
   - key: form.sites
     component: controlled_list
-    title: Deployment sites
+    title: 'Deployment sites <span style="color:#8c8c8c">(one row per site)</span>'
     # label_span pushes the list into the input column (span 24 - 6) so it lines
     # up with the labelled fields above it.
     label_span: 6

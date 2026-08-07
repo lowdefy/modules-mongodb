@@ -700,7 +700,9 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
 | `itemTitle`        | string  | —                  |
 | `blocks`           | array   | `[]`               |
 
-`itemTitle` is a Nunjucks template rendered against each list item on the read-only view, review, and overview surfaces to title the item's collapsible card. The item's fields are the template context, plus `_index` — the item's 0-based position — so a template can reference multiple fields and emit HTML (e.g. `<b>{{ name }}</b> — {{ locations | length }} sites`). It falls back to `Item N` when absent or when the render is empty, and has no effect while editing. HTML is also allowed in the list's own `title` (e.g. `title: "<b>Devices</b>"`).
+`itemTitle` is a Nunjucks template rendered against each list item on the read-only view, review, and overview surfaces to title the item's collapsible card. The item's fields are the template context, plus `_index` — the item's 0-based position — so a template can reference multiple fields and emit HTML (e.g. `<b>{{ name }}</b> — {{ locations | length }} sites`). It falls back to `Item N` when absent or when the render is empty, and has no effect while editing.
+
+The list's own `title` renders HTML on **both** surfaces (e.g. `title: "<b>Devices</b>"`): on the edit form it renders through a DOMPurify-sanitised `Html` block above the list, and on the read-only surfaces through the `DataDescriptions` title slot. Plain strings work unchanged. Because it is an ordinary block property, an operator value (e.g. a `_nunjucks` template reading form state) resolves at render.
 
 ```yaml
 - component: controlled_list
