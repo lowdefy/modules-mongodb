@@ -35,11 +35,11 @@ properties:
         email: "$email"
         email_verified:
           $eq:
-            - "$emailVerified"
+            - "$email_verified"
             - true
         two_factor_enabled:
           $eq:
-            - "$twoFactorEnabled"
+            - "$two_factor_enabled"
             - true
         contact_id: "$profile.contactId"
         name:

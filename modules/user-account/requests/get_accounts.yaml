@@ -2,11 +2,11 @@
 # feeding BOTH the read-only Linked-accounts tile AND the Security tile's
 # credential-presence gate (task 18). Native read over `user-accounts` filtered to
 # the caller (`_user.id`, plain string). A `$facet` splits the same match into:
-#   accounts        — every linked row (providerId + accountId), incl. the
+#   accounts        — every linked row (provider_id + account_id), incl. the
 #                     built-in `credential` (email/password) row, which the tile
 #                     renders as "Email & password" (unlike user-admin, which
 #                     hides it — self-service shows the caller all their methods)
-#   has_credential  — whether a `provider: "credential"` row exists; the per-user
+#   has_credential  — whether a `provider_id: "credential"` row exists; the per-user
 #                     gate for the password-dependent controls (change password,
 #                     2FA), since an OAuth/magic-link-only user has no credential
 #                     and `changePassword` / `twoFactor.*` would 400
@@ -19,17 +19,17 @@ connectionId:
 properties:
   pipeline:
     - $match:
-        userId:
+        user_id:
           _user: id
     - $facet:
         list:
           - $project:
               _id: 0
-              providerId: 1
-              accountId: 1
+              provider_id: 1
+              account_id: 1
         credential:
           - $match:
-              providerId: credential
+              provider_id: credential
           - $limit: 1
     - $project:
         accounts: "$list"
@@ -40,6 +40,6 @@ properties:
         password_updated:
           $dateToString:
             date:
-              $first: "$credential.updatedAt"
+              $first: "$credential.updated_at"
             format: "%Y-%m-%d"
             onNull: ""
