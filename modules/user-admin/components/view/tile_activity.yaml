@@ -1,7 +1,7 @@
 # Activity tile (design Decision 3) — the audit event timeline for this person.
 # Uses the events module's request-backed `events-timeline` component
 # (GetEventsTimeline over log-events), keyed on `user_ids` = the target's user id
-# (the urlQuery userId). Every user-admin audit event stamps `user_ids`
+# (the urlQuery user_id). Every user-admin audit event stamps `user_ids`
 # (update-profile stamps both user_ids and contact_ids, so profile edits appear
 # here too); invitation events are keyed by contact and surface on the invite
 # flow, not this person's timeline.
@@ -17,5 +17,5 @@ _ref:
           vars:
             reference_field: user_ids
             reference_value:
-              _url_query: userId
+              _url_query: user_id
             disable_contact_link: true

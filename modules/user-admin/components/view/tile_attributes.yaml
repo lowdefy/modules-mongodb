@@ -47,7 +47,7 @@ _ref:
                   </span>
                 </div>
               on:
-                # Roles are the member's appRoles, catalog-resolved to
+                # Roles are the member's app_roles, catalog-resolved to
                 # { id, label, description, orphan } by the detail read (design Decision 8).
                 roles:
                   _request: get_user_detail.0.roles

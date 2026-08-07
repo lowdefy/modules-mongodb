@@ -1,5 +1,5 @@
 # Invitations table (design Decision 2 / 7). Reads get_all_invitations
-# (pending rows, Invited/Expired derived on expiresAt, org-scoped, paginated).
+# (pending rows, Invited/Expired derived on expires_at, org-scoped, paginated).
 # Columns: Email · Invited by (avatar) · Roles · Status · Expires · per-action
 # columns. Each action is its own column with a stable colId so the single
 # onCellClick can tell them apart (the repo's AgGrid action-cell pattern):

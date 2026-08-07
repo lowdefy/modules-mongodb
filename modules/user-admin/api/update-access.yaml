@@ -5,9 +5,9 @@
 # removing it takes it away. Rejecting one would fail an admin's whole save over
 # a stale role they never touched.
 #
-# `appRoles` is the member row's native array field. The organization-authority
-# tier (`member.role`) is a different authority with its own endpoint
-# (update-org-role); nothing here touches it.
+# The `appRoles` param sets `app_roles`, the member row's native array field. The
+# organization-authority tier (`member.role`) is a different authority with its
+# own endpoint (update-org-role); nothing here touches it.
 #
 # `organizationId` is named explicitly on both steps: an absent one falls back to
 # the APP's pinned organization, so an instance administering another organization

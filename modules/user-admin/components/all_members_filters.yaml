@@ -4,7 +4,7 @@
 # Consumer `components.filters` blocks append after the built-ins.
 # Every filter change refetches get_all_members via actions/members_refetch.yaml
 # (resets to page 1). The role filter matches EXACT elements of the member's
-# `appRoles` array — see requests/get_all_members.yaml.
+# `app_roles` array — see requests/get_all_members.yaml.
 id: members_filters
 type: Box
 layout:
@@ -49,7 +49,7 @@ blocks:
       # projection to a rich label (name + description subtitle), a filterString
       # covering both lines, and a plain tag for the selected chip — matching the
       # role picker in modal_access.yaml. The selected ids are matched as EXACT
-      # elements of the member's `appRoles` array ($in), ahead of the read's
+      # elements of the member's `app_roles` array ($in), ahead of the read's
       # $lookups — see get_all_members.yaml.
       options:
         _build.array.map:

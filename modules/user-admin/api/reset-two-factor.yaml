@@ -2,7 +2,7 @@
 # (design Decision 3). ResetUserTwoFactor clears the TOTP secret, its backup
 # codes and the trust-device records, returning the user to unenrolled; it does
 # NOT grant a persistent 2FA exemption. Revoking sessions is a separate step
-# because clearing `twoFactorEnabled` does not end a session, and a stolen device
+# because clearing `two_factor_enabled` does not end a session, and a stolen device
 # keeps the session it holds until it is revoked — that is what recovers the
 # account. Sequential, halts on first error, no rollback (the steps are
 # idempotent and re-running converges). Audit event is the final durable step.

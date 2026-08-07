@@ -43,7 +43,7 @@ _ref:
             - get_user_accounts
             - get_user_memberships
             - get_user_passkeys
-        # No member row for this userId in the pinned org → back to the list.
+        # No member row for this user_id in the pinned org → back to the list.
         - id: redirect_if_not_found
           type: Link
           skip:

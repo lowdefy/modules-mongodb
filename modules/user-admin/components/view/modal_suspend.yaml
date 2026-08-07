@@ -30,7 +30,7 @@ properties:
 events:
   onOk:
     _build.array.concat:
-      # Permanent, suite-wide ban (Decision 4). No duration → banExpires unset.
+      # Permanent, suite-wide ban (Decision 4). No duration → ban_expires unset.
       - - id: suspend_user
           type: CallAPI
           messages:

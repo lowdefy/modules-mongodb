@@ -1,5 +1,5 @@
 # suspend — BanUser, PERMANENT (design Decision 4). No ban duration is passed, so
-# `banExpires` is never set (timed bans are out of scope). Ban is user-level, so
+# `ban_expires` is never set (timed bans are out of scope). Ban is user-level, so
 # it blocks sign-in across EVERY app in the suite and revokes sessions.
 #
 # Behind the `suspension` var (default true): when false, the routine is a bare

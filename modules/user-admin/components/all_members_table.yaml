@@ -29,7 +29,7 @@ properties:
             type: avatar
             nameField: name
             srcField: picture
-            idField: userId
+            idField: user_id
         - headerName: Email
           field: email
           flex: 1
@@ -91,5 +91,5 @@ events:
         pageId:
           _module.pageId: view
         urlQuery:
-          userId:
-            _event: row.userId
+          user_id:
+            _event: row.user_id
