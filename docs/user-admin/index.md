@@ -38,7 +38,7 @@ two entries, two `org_slug` values. See
 
 - **Members + Invitations list** (`all` page) — two tabs, one menu entry. Members
   reads `user-members` joined to `users` and `user-contacts`; Invitations shows
-  pending rows split into **Invited** / **Expired** (derived on `expiresAt` — there
+  pending rows split into **Invited** / **Expired** (derived on `expires_at` — there
   is no `expired` status in BetterAuth) with a pending-count badge. Server-side
   filter / sort / pagination; a merged Excel export behind the `download` var.
 - **User detail** (`view` page) — one page with section-scoped edits: **Profile**
@@ -99,7 +99,7 @@ only beside the badge for a method that user actually holds:
 Each control revokes the target's sessions, writes an audit event, and notifies
 the target — same shape as the existing suspend/ban actions, not a new pattern.
 
-**The reach is suite-wide.** `twoFactorEnabled` and passkeys are keyed to the
+**The reach is suite-wide.** `two_factor_enabled` and passkeys are keyed to the
 `user`, not the `member`, so a reset or revoke from one app's admin console
 removes the factor across **every app in the suite**, exactly like ban (see
 [The access lifecycle](#the-access-lifecycle)). The confirm dialog enumerates the
@@ -204,7 +204,7 @@ the catalog is displayed as a flagged "no longer configured" chip and can be
 removed, but never silently stripped.
 
 These are the member's **app roles**, stored as a native `string[]` on
-`member.appRoles`. They are a different fact from `member.role` — the organization's
+`member.app_roles`. They are a different fact from `member.role` — the organization's
 `owner` / `admin` / `member` authority tier — and the module never derives one from
 the other. The [install step below](#2-gate-each-instance-from-the-app-config) says
 what each one buys.

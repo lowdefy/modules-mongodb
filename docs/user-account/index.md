@@ -12,7 +12,7 @@ concepts:
     magic-link,
     passwordless,
     two-factor-required,
-    twoFactorEnrolled,
+    two_factor_enrolled,
   ]
 ---
 

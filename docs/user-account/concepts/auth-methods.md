@@ -11,7 +11,7 @@ concepts:
     two-factor,
     backup-codes,
     two-factor-required,
-    twoFactorEnrolled,
+    two_factor_enrolled,
     magic-link,
     passwordless,
   ]
@@ -253,14 +253,14 @@ Lowdefy endpoint by the enrolment gate, so the page never issues a server-side
 request — it drives `TwoFactorEnable`, `TwoFactorVerify`, and `PasskeyRegister`
 directly against `/api/auth/*`.
 
-### `_user.twoFactorEnrolled`
+### `_user.two_factor_enrolled`
 
 The module reads enrolment status from exactly one field:
-`_user.twoFactorEnrolled`, computed server-side by the engine as
-`twoFactorEnabled || passkeyCount > 0` and exposed identically on client and
+`_user.two_factor_enrolled`, computed server-side by the engine as
+`two_factor_enabled || passkeyCount > 0` and exposed identically on client and
 server. **A passkey counts** — it means "holds a factor that satisfies
 `auth.twoFactor.required`," not "has TOTP configured," so a passkey-only user
-reads `twoFactorEnrolled: true` and the engine's enrolment gate treats them as
+reads `two_factor_enrolled: true` and the engine's enrolment gate treats them as
 compliant. The enrolment page reads this same field to decide when the caller
 is done, so its completion state never disagrees with the gate about who still
 needs a factor.
@@ -282,7 +282,7 @@ session-scoped step-up guarantee that does not exist here.
 
 An admin's two-factor reset or passkey revoke (see
 [`user-admin` → Two-factor and passkey recovery](../../user-admin/index.md#two-factor-and-passkey-recovery))
-clears a factor, which can flip `twoFactorEnrolled` back to `false`. Under
+clears a factor, which can flip `two_factor_enrolled` back to `false`. Under
 `required`, that is enough on its own to route the person back into
 `twoFactorEnrol` on their next request — there is no separate "require
 re-enrolment" feature; it falls out of the same enrolment check running again.
