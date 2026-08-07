@@ -4,6 +4,7 @@
 // component is in this allowlist.
 const STRUCTURAL_COMPONENTS = [
   "controlled_list",
+  "collapsible_list",
   "section",
   "box",
   "label",
@@ -137,13 +138,16 @@ function collectIdsFromNode(node, ids) {
     const source = { component: componentName, key: vars.key ?? '"unnamed"' };
 
     // Primitive library components use { id: { _var: key } }. Structural
-    // components (controlled_list / label) emit a wrapper id derived as
-    // `${key}_label` plus an inner id of `${key}`. Five structural names
-    // share this convention; for the others (section / box / file_upload)
-    // the primary id is just `key`.
+    // components (controlled_list / collapsible_list / label) emit a wrapper id
+    // derived as `${key}_label` plus an inner id of `${key}`. For the others
+    // (section / box / file_upload) the primary id is just `key`.
     if (typeof vars.key === "string") {
       recordId(vars.key, source, ids);
-      if (componentName === "controlled_list" || componentName === "label") {
+      if (
+        componentName === "controlled_list" ||
+        componentName === "collapsible_list" ||
+        componentName === "label"
+      ) {
         recordId(`${vars.key}_label`, source, ids);
       }
     }

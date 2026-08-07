@@ -1,0 +1,81 @@
+/* Global block styles as a CSS Module. :global(...) keeps class names
+   unhashed (mirrors DataDescriptions); Next/Turbopack rejects both a plain
+   global .css import and a bare :global block, so selectors are wrapped
+   per-rule inside an @layer. */
+@layer components {
+  /* The whole list is a tinted, bordered card (darker than the item cards
+     inside it) — the DataDescriptions list-card look. */
+  :global(.collapsible-list-card.ant-card) {
+    background: var(--ant-color-fill-quaternary);
+  }
+
+  :global(.collapsible-list-card > .ant-card-head) {
+    border-bottom: none;
+    background: transparent;
+    padding: 12px 20px 0;
+    min-height: auto;
+  }
+
+  :global(.collapsible-list-card > .ant-card-body) {
+    display: flex;
+    flex-direction: column;
+    padding: 16px 20px 20px;
+  }
+
+  /* Bigger, HTML title. */
+  :global(.collapsible-list-title) {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  /* Collapse is transparent; each panel is a container-coloured card. */
+  :global(.collapsible-list-collapse.ant-collapse) {
+    background: transparent;
+    border: none;
+  }
+
+  :global(.collapsible-list-collapse.ant-collapse > .ant-collapse-item) {
+    background: var(--ant-color-bg-container);
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  :global(
+    .collapsible-list-collapse.ant-collapse
+      > .ant-collapse-item:not(:last-child)
+  ) {
+    margin-bottom: 12px;
+  }
+
+  :global(
+    .collapsible-list-collapse.ant-collapse
+      > .ant-collapse-item
+      > .ant-collapse-header
+  ) {
+    align-items: center;
+    font-weight: 600;
+  }
+
+  /* Bigger, conspicuous (red) remove control. */
+  :global(.collapsible-list-remove) {
+    display: inline-flex;
+    align-items: center;
+    font-size: 18px;
+    color: var(--ant-color-error);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition:
+      color 0.2s,
+      background 0.2s;
+  }
+
+  :global(.collapsible-list-remove:hover) {
+    color: var(--ant-color-error-text-hover);
+    background: var(--ant-color-error-bg);
+  }
+}

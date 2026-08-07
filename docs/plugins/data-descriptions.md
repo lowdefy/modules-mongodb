@@ -69,6 +69,8 @@ Each item in a `form` array is one of:
 
 Array fields nest to any depth: an array item's `form` may itself contain an array field. Each level adds its own `$` to the key (e.g. `devices.$.parts.$.name`), and every `$` is replaced with the index of its enclosing array item.
 
+Both workflow list components produce this array-field shape, so they render identically here: a `controlled_list` and a `collapsible_list` are indistinguishable on the read-only surfaces — the block matches on `key` + `form`, not the component name, and reads the same `itemTitle`.
+
 Fields with `null` or `undefined` values are skipped silently.
 
 ### Renderer hints

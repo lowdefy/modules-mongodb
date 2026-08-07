@@ -68,6 +68,54 @@ test("makeActionsForm: nested controlled_list — author form: renamed to blocks
   ]);
 });
 
+test("makeActionsForm: collapsible_list — structural, form: renamed to blocks:, itemTitle carried", () => {
+  const out = makeActionsForm(null, {
+    form: [
+      {
+        component: "collapsible_list",
+        key: "form.contacts",
+        title: "Contacts",
+        itemTitle: "{{ name }}",
+        form: [
+          {
+            component: "text_input",
+            key: "form.contacts.$.name",
+            title: "Name",
+          },
+        ],
+      },
+    ],
+  });
+
+  expect(out).toHaveLength(1);
+  const outer = out[0];
+  expect(outer._ref.path).toBe(`${FIELDS_DIR}/collapsible_list.yaml`);
+  expect(outer._ref.vars.key).toBe("form.contacts");
+  expect(outer._ref.vars.itemTitle).toBe("{{ name }}");
+  // Structural: `form:` renamed to `blocks:` and recursed.
+  expect(outer._ref.vars.form).toBeUndefined();
+  expect(outer._ref.vars.blocks).toEqual([
+    {
+      _ref: {
+        path: `${FIELDS_DIR}/text_input.yaml`,
+        key: "config",
+        vars: { key: "form.contacts.$.name", title: "Name" },
+      },
+    },
+  ]);
+});
+
+test("makeActionsForm: collapsible_list reserves its ${key}_label wrapper id", () => {
+  expect(() =>
+    makeActionsForm(null, {
+      form: [
+        { component: "collapsible_list", key: "form.contacts", form: [] },
+        { component: "text_input", key: "form.contacts_label" },
+      ],
+    }),
+  ).toThrow(/duplicate block id 'form.contacts_label'/);
+});
+
 test("makeActionsForm: empty / missing form returns []", () => {
   expect(makeActionsForm(null, { form: [] })).toEqual([]);
   expect(makeActionsForm(null, {})).toEqual([]);

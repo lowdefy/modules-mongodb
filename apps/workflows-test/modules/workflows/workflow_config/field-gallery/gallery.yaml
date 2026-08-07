@@ -262,6 +262,30 @@ form:
             component: text_input
             title: Part name
 
+  # ── Collapsible list ──────────────────────────────────────────────────────
+  # Same authoring shape as controlled_list, but each row collapses to a
+  # one-line summary (the `itemTitle` template) with a chevron to expand.
+  # Backed by the CollapsibleList block: collapse state lives in React, so the
+  # row array persists like any other form with no `data` mirror or `editing`
+  # flag. Collapsing a row validates it (name is required) and re-opens it if
+  # invalid. `itemTitle` titles both the collapsed edit summary and the view card.
+  - key: form.contacts
+    component: collapsible_list
+    title: "<b>Emergency contacts</b>"
+    itemTitle: "<b>{{ name }}</b>{% if relationship %} — {{ relationship }}{% endif %}"
+    addButtonTitle: Add contact
+    form:
+      - key: form.contacts.$.name
+        component: text_input
+        title: Name
+        required: true
+      - key: form.contacts.$.relationship
+        component: text_input
+        title: Relationship
+      - key: form.contacts.$.phone
+        component: phone
+        title: Phone
+
 # form_review — a small writable section the review page renders below the
 # read-only main form (proves the form_review surface is wired).
 form_review:
