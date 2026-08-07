@@ -170,6 +170,28 @@ vars:
       and flow through the generic create-deal passthrough. Deals ships no
       domain fields of its own — hosts inject their own here, the same way
       `companies.fields.attributes` works.
+  hooks:
+    type: object
+    description: "Routine-step extension points spliced into built-in APIs: pre_insert, post_insert"
+    properties:
+      pre_insert:
+        default: []
+        description: >-
+          Routine steps run inside `create-deal` before the deal is inserted,
+          for work that must land whether or not it needs the deal id — e.g.
+          back-filling `attributes.size` on the linked company from a value the
+          create form captured. The whole create payload is in scope
+          (`_payload: form.*` and `_payload: attributes.*`, the latter being the
+          host's `fields` blocks); the deal id is not. A step that fails aborts
+          the create, so keep these cheap and idempotent.
+      post_insert:
+        default: []
+        description: >-
+          Routine steps run inside `create-deal` after the insert and before the
+          workflow starts, with the new id at `_step: insert_deal.insertedId` in
+          addition to everything `pre_insert` sees. Placed before the workflow
+          start deliberately: a failing hook then leaves a deal with no workflow
+          (repairable by the host) rather than a workflow with no deal.
 
 exports:
   pages:
