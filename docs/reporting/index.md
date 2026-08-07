@@ -15,7 +15,9 @@ Charts, saved reports, and CSV exports ride the same engine: their queries are p
 
 ## Dependencies
 
-None. `reporting` is self-contained — its pages do not wrap in the `layout` module, and it declares no cross-module dependencies. It does require two plugin packages (pulled in automatically): [`@lowdefy/community-plugin-mongodb`](https://www.npmjs.com/package/@lowdefy/community-plugin-mongodb) and [`@lowdefy/modules-mongodb-plugins`](../plugins/index.md) (the `ReportingData` connection and its `AnalyticsPipeline` request).
+`reporting` depends on the [`layout`](../layout/index.md) module: every reporting page renders through layout's `page` component, so the module sits in the host app's chrome (sider, menu, profile, notifications) like every other module rather than as bare full-screen pages. The build auto-wires it when a module entry with id `layout` exists; remap with a `dependencies:` entry if yours is named differently. The `chat` page renders full-bleed inside that shell (no title bar or breadcrumb, content padding removed) so its three-column workspace keeps the viewport.
+
+It also requires two plugin packages (pulled in automatically): [`@lowdefy/community-plugin-mongodb`](https://www.npmjs.com/package/@lowdefy/community-plugin-mongodb) and [`@lowdefy/modules-mongodb-plugins`](../plugins/index.md) (the `ReportingData` connection and its `AnalyticsPipeline` request).
 
 ## When to use
 
