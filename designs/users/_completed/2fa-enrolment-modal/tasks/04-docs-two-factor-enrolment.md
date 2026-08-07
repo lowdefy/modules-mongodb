@@ -35,7 +35,7 @@ Cover three facts:
 
 Write to what **actually ships**. Do **not** document a way to get fresh backup codes
 without touching the authenticator — that is the `codes_only` branch in
-the [backup-codes-rotation design](../../../backup-codes-rotation/design.md), blocked on an upstream
+the [backup-codes-rotation design](../../backup-codes-rotation/design.md), blocked on an upstream
 action, and that design amends this section when it lands. Until then the only route
 to fresh codes is re-enrolment, and the docs should say so plainly.
 

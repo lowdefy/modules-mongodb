@@ -406,7 +406,7 @@ surfaces above have a contract to build against.
 - **OTP and SMS second factors.** TOTP, backup codes and passkeys only, matching the engine catalog's
   launch scope.
 - **Self-service backup-code rotation and remaining-count surfacing.** Tracked separately as
-  [backup-codes-rotation](../../backup-codes-rotation/upstream-asks.md); it improves the self-service path
+  [backup-codes-rotation](../backup-codes-rotation/upstream-asks.md); it improves the self-service path
   but does not remove the need for admin recovery.
 
 ## Costs

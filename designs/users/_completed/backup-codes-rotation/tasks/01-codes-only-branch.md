@@ -8,7 +8,7 @@
 
 ## Context
 
-The [parent design](../../../users/_completed/2fa-enrolment-modal/design.md) shipped
+The [parent design](../../2fa-enrolment-modal/design.md) shipped
 `modules/user-account/components/view/modal_enroltotp.yaml` as a
 three-phase modal (`password` → `scan` → `codes`) with two intents, `enrol` and
 `replace`, seeded by `tile_security.yaml`'s `twofa_manage_btn`.

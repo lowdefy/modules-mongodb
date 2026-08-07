@@ -70,4 +70,4 @@ clear, the title's `default` branch).
 `modules/user-account/components/view/modal_enroltotp.yaml`;
 `modules/user-account/components/view/tile_security.yaml`;
 `docs/user-account/concepts/auth-methods.md` (the **Two-factor enrolment** subsection);
-[`../../auth-testing/tasks/02-account-workspace.md`](../../auth-testing/tasks/02-account-workspace.md) (Phase 2's 2FA items).
+[`../../auth-testing/tasks/02-account-workspace.md`](../../../auth-testing/tasks/02-account-workspace.md) (Phase 2's 2FA items).

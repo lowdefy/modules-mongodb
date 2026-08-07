@@ -1,6 +1,6 @@
 # 2FA Enrolment Modal — Upstream Asks
 
-Platform-side changes the [2FA enrolment modal design](design.md) depends on. This design's own sequence starts at ask 1; it is not a continuation of the user-account module's ask numbering ([round 1](../../users/_completed/user-account-better-auth/upstream-asks.md), [round 2](../../users/_completed/user-account-better-auth/upstream-asks-2.md)), though it extends the same action catalog that round-1 ask 1 established.
+Platform-side changes the [2FA enrolment modal design](design.md) depends on. This design's own sequence starts at ask 1; it is not a continuation of the user-account module's ask numbering ([round 1](../user-account-better-auth/upstream-asks.md), [round 2](../user-account-better-auth/upstream-asks-2.md)), though it extends the same action catalog that round-1 ask 1 established.
 
 Same shape as user-account's ask 6 (`PasskeySignIn`): the delivered catalog covered part of a feature area, and the missing action only became visible once a module tried to build the flow.
 

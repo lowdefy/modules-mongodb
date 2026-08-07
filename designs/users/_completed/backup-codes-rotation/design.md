@@ -7,7 +7,7 @@ operation alongside it — **"Get new backup codes"**, which leaves the
 authenticator alone — and turns the security tile's **Manage** button into a
 choice between the two rather than a shortcut to the destructive one.
 
-Split out of [`../2fa-enrolment-modal/design.md`](../../users/_completed/2fa-enrolment-modal/design.md),
+Split out of [`../2fa-enrolment-modal/design.md`](../2fa-enrolment-modal/design.md),
 which shipped everything that carries no upstream dependency. That design's D4
 established _why_ the routing is a hazard and removed the lockout half of it (by
 turning 2FA off before re-enrolling); what it could not ship is the second option,
@@ -155,7 +155,7 @@ to `twoFactorEnrolled`.
 
 Build (`pnpm ldf:b`) proves the config compiles; nothing here is provable by build
 alone. On the auth-testing rig, as a credentialed user with 2FA already on — see the
-auth-testing campaign ([`../auth-testing/tasks/02-account-workspace.md`](../auth-testing/tasks/02-account-workspace.md), Phase 2's 2FA items):
+auth-testing campaign ([`../auth-testing/tasks/02-account-workspace.md`](../../auth-testing/tasks/02-account-workspace.md), Phase 2's 2FA items):
 
 1. **The action exists.** Confirm `TwoFactorGenerateBackupCodes` is in the installed
    catalog (`lowdefy_list_types` with `kind: actions`) **before writing any YAML**.

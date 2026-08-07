@@ -91,7 +91,7 @@ button ship **with** it, since neither has anywhere to go without the second opt
 `password`, `scan`, `codes`.** Do not author phase `choose`, the Back button, the
 `codes_only` primary button, or its title/lead-line branches. Do include the `phase` and
 `intent` leaves in every reset exactly as specified below, and the title's `intent: null`
-fallback — the [backup-codes-rotation design](../../../backup-codes-rotation/design.md) adds branches to those, it does not restructure them.
+fallback — the [backup-codes-rotation design](../../backup-codes-rotation/design.md) adds branches to those, it does not restructure them.
 
 ## Task
 
@@ -129,7 +129,7 @@ Drop `okText`, `cancelText`, and the whole `onOk` event — there is no native f
 | _default_ | `Two-factor authentication`        |
 
 The fallback is **load-bearing, not defensive**: `Modal.js` passes `title` straight
-through to antd, so a null title renders an unlabelled header. the [backup-codes-rotation design](../../../backup-codes-rotation/design.md) adds a
+through to antd, so a null title renders an unlabelled header. the [backup-codes-rotation design](../../backup-codes-rotation/design.md) adds a
 `codes_only` branch and relies on this fallback for phase `choose`.
 
 **`onClose`** — nulls **every** leaf, `phase` and `intent` included, so no credential and
@@ -310,7 +310,7 @@ reset — it carries the secret.
 **Phase `codes`** — the body of the deleted `modal_backupcodes.yaml`, gated
 `_eq: [_state: enroltotp.phase, codes]`:
 
-- A **lead line gated on `intent`** (two branches here; the [backup-codes-rotation design](../../../backup-codes-rotation/design.md) adds a third):
+- A **lead line gated on `intent`** (two branches here; the [backup-codes-rotation design](../../backup-codes-rotation/design.md) adds a third):
 
   | `intent`  | Lead line                                                                  |
   | --------- | -------------------------------------------------------------------------- |
@@ -383,7 +383,7 @@ enrolment the flag turns true while the modal is still open on phase `codes`, wh
 would retitle it to the replacement variant while it shows the codes for the enrolment
 that just succeeded. The replace branch moves the flag the other way at Generate, so a
 live read would relabel a replacement as a first-time enrolment halfway through it. The
-leaf holds an **enum, not a boolean**, because the [backup-codes-rotation design](../../../backup-codes-rotation/design.md) adds a third value that a boolean
+leaf holds an **enum, not a boolean**, because the [backup-codes-rotation design](../../backup-codes-rotation/design.md) adds a third value that a boolean
 cannot separate.
 
 Moving `refetch_account` off the phase-`scan` chain and onto Done was the other way to
