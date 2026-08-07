@@ -1,0 +1,2238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!--
+  Archived copy of the "reports from a chat" wireframe deck (published as an
+  Artifact during design). The doctype/head wrapper and the box-sizing reset
+  below are added so the file renders standalone from disk; the deck itself is
+  the published copy. Light/dark follows the OS preference here — the published
+  copy also honours a viewer theme toggle.
+-->
+<style>
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+<title>Reporting UX — reports from a chat</title>
+
+<style>
+  /* ── Tokens ─────────────────────────────────────────────────────────── */
+  :root {
+    --ground: #eef1ef;
+    --surface: #fcfcfb;
+    --surface-2: #f4f7f5;
+    --surface-3: #eaefec;
+    --ink: #151c1a;
+    --ink-2: #3d4a46;
+    --muted: #6b7873;
+    --rule: #d3dad6;
+    --rule-2: #e4e9e6;
+    --accent: #0b7a5c;
+    --accent-ink: #085f48;
+    --accent-soft: #e2efea;
+    --new: #b0722a;
+    --new-soft: #f6ecdd;
+    --warn: #a3591c;
+    --warn-soft: #f8eede;
+    --s1: #0b7a5c;
+    --s2: #8c5bb0;
+    --s3: #b0722a;
+    --grid: rgba(11, 122, 92, 0.09);
+    --shadow: 0 14px 30px -24px rgba(10, 30, 24, 0.55);
+    --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, ui-sans-serif, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #101413;
+      --surface: #191f1d;
+      --surface-2: #202725;
+      --surface-3: #262e2b;
+      --ink: #e7ece9;
+      --ink-2: #bcc7c2;
+      --muted: #8b9994;
+      --rule: #2d3532;
+      --rule-2: #232a28;
+      --accent: #22a57f;
+      --accent-ink: #56c4a2;
+      --accent-soft: #123028;
+      --new: #bc8a34;
+      --new-soft: #2c2315;
+      --warn: #d09a4a;
+      --warn-soft: #2c2315;
+      --s1: #22a57f;
+      --s2: #a374cc;
+      --s3: #bc8a34;
+      --grid: rgba(34, 165, 127, 0.13);
+      --shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.9);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101413;
+    --surface: #191f1d;
+    --surface-2: #202725;
+    --surface-3: #262e2b;
+    --ink: #e7ece9;
+    --ink-2: #bcc7c2;
+    --muted: #8b9994;
+    --rule: #2d3532;
+    --rule-2: #232a28;
+    --accent: #22a57f;
+    --accent-ink: #56c4a2;
+    --accent-soft: #123028;
+    --new: #bc8a34;
+    --new-soft: #2c2315;
+    --warn: #d09a4a;
+    --warn-soft: #2c2315;
+    --s1: #22a57f;
+    --s2: #a374cc;
+    --s3: #bc8a34;
+    --grid: rgba(34, 165, 127, 0.13);
+    --shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.9);
+  }
+
+  :root[data-theme="light"] {
+    --ground: #eef1ef;
+    --surface: #fcfcfb;
+    --surface-2: #f4f7f5;
+    --surface-3: #eaefec;
+    --ink: #151c1a;
+    --ink-2: #3d4a46;
+    --muted: #6b7873;
+    --rule: #d3dad6;
+    --rule-2: #e4e9e6;
+    --accent: #0b7a5c;
+    --accent-ink: #085f48;
+    --accent-soft: #e2efea;
+    --new: #b0722a;
+    --new-soft: #f6ecdd;
+    --warn: #a3591c;
+    --warn-soft: #f8eede;
+    --s1: #0b7a5c;
+    --s2: #8c5bb0;
+    --s3: #b0722a;
+    --grid: rgba(11, 122, 92, 0.09);
+    --shadow: 0 14px 30px -24px rgba(10, 30, 24, 0.55);
+  }
+
+  /* ── Page shell ─────────────────────────────────────────────────────── */
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .deck-head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 20px;
+    padding: 11px 28px;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .deck-head b {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .deck-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 14px;
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .deck-nav a {
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+  }
+  .deck-nav a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  /* ── Opening ────────────────────────────────────────────────────────── */
+  .open {
+    display: grid;
+    gap: 22px;
+    padding: 60px 0 30px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+  .open h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(30px, 4.6vw, 47px);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0;
+    max-width: 22ch;
+  }
+  .lede {
+    max-width: 64ch;
+    font-size: 17px;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .lede em {
+    font-style: normal;
+    color: var(--ink);
+    box-shadow: inset 0 -0.45em 0 var(--accent-soft);
+  }
+
+  .jobs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px;
+    margin-top: 6px;
+  }
+  .job {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 16px 18px;
+    display: grid;
+    gap: 6px;
+    align-content: start;
+  }
+  .job h3 {
+    font-family: var(--display);
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .job p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .job .said {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    border-top: 1px dashed var(--rule);
+    padding-top: 8px;
+    margin-top: 2px;
+  }
+
+  .flowline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .flowline span.step {
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    padding: 4px 11px;
+  }
+  .flowline span.arrow {
+    color: var(--accent);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    align-items: center;
+  }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid var(--rule);
+    background: var(--surface-2);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .tag.is-new {
+    border-color: color-mix(in srgb, var(--new) 45%, transparent);
+    background: var(--new-soft);
+    color: var(--new);
+  }
+  .tag.is-now {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+
+  /* ── Plates ─────────────────────────────────────────────────────────── */
+  .plate {
+    padding: 54px 0 10px;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    gap: 20px;
+  }
+  .plate:last-of-type {
+    border-bottom: none;
+  }
+  .plate-head {
+    display: grid;
+    gap: 7px;
+  }
+  .plate-head .kicker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .plate-head .kicker b {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .plate-head h2 {
+    font-family: var(--display);
+    font-size: clamp(23px, 2.9vw, 30px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .plate-head p {
+    margin: 0;
+    max-width: 68ch;
+    color: var(--ink-2);
+  }
+
+  .scrollx {
+    overflow-x: auto;
+    border-radius: 7px;
+  }
+  .frame {
+    min-width: 940px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .frame.narrow {
+    min-width: 720px;
+  }
+  .frame-chrome {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--surface-3);
+    border-bottom: 1px solid var(--rule);
+  }
+  .frame-chrome .dots {
+    display: flex;
+    gap: 5px;
+  }
+  .frame-chrome .dots i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--rule);
+    display: block;
+  }
+  .frame-chrome .url {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 2px 9px;
+  }
+
+  /* callout chips, keyed to the notes list under each plate */
+  .c {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1;
+    vertical-align: 2px;
+    margin: 0 0 0 5px;
+  }
+  .c.n {
+    background: var(--new);
+  }
+
+  .notes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+    gap: 12px 26px;
+  }
+  .notes li {
+    display: grid;
+    grid-template-columns: 15px 1fr;
+    gap: 10px;
+    align-items: start;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  .notes li > .c {
+    margin: 3px 0 0;
+  }
+  .notes b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .notes code,
+  .impl code,
+  .plate-head code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    padding: 0.5px 4px;
+  }
+
+  /* ── Mock app primitives ────────────────────────────────────────────── */
+  .m-app {
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .m-top {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 0 16px;
+    height: 46px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+  }
+  .m-brand {
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  .m-tabs {
+    display: flex;
+    gap: 18px;
+    font-size: 12.5px;
+    color: var(--muted);
+    align-items: center;
+  }
+  .m-tabs .on {
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: inset 0 -2px 0 var(--accent);
+    padding-bottom: 12px;
+    margin-bottom: -12px;
+  }
+  .m-avatar {
+    margin-left: auto;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-size: 11px;
+    font-weight: 650;
+    display: grid;
+    place-items: center;
+  }
+
+  .m-chat {
+    display: grid;
+    grid-template-columns: 232px minmax(320px, 1fr) 348px;
+    min-height: 560px;
+  }
+  .m-chat > * {
+    min-width: 0;
+  }
+  .m-rail {
+    border-right: 1px solid var(--rule);
+    background: var(--surface-2);
+    padding: 14px 12px;
+    display: grid;
+    gap: 12px;
+    align-content: start;
+  }
+  .m-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 4px;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 12.5px;
+    font-weight: 550;
+    white-space: nowrap;
+  }
+  .m-btn.pri {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .m-btn.ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+  }
+  .m-btn.sm {
+    height: 25px;
+    padding: 0 9px;
+    font-size: 11.5px;
+  }
+  .m-btn.block {
+    width: 100%;
+  }
+  .m-field {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 28px;
+    padding: 0 9px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .m-label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+  }
+  .m-conv {
+    display: grid;
+    gap: 2px;
+  }
+  .m-conv-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 9px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+    color: var(--ink-2);
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+  .m-conv-item .txt {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-conv-item .when {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .m-conv-item.on {
+    background: var(--surface);
+    border-left-color: var(--accent);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: 0 1px 0 var(--rule-2);
+  }
+  .m-conv-item.hov {
+    background: var(--surface);
+  }
+  .m-rail-foot {
+    margin-top: 4px;
+    padding-top: 11px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .m-count {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    background: var(--surface-3);
+    border-radius: 100px;
+    padding: 1px 7px;
+    color: var(--muted);
+  }
+
+  /* transcript */
+  .m-thread {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    background: var(--surface);
+    min-height: 0;
+  }
+  .m-scroll {
+    padding: 22px 26px 8px;
+    display: grid;
+    gap: 16px;
+    align-content: start;
+  }
+  .m-turn {
+    display: grid;
+    gap: 8px;
+    max-width: 62ch;
+  }
+  .m-turn.user {
+    justify-items: end;
+    margin-left: auto;
+  }
+  .m-bubble {
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    border-radius: 12px 12px 3px 12px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .m-role {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .m-say {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+  .m-say strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .m-trace {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 100px;
+    padding: 3px 10px;
+    width: fit-content;
+  }
+  .m-trace .cv {
+    color: var(--accent);
+  }
+  .m-trace.open {
+    border-radius: 5px;
+    display: grid;
+    gap: 6px;
+    padding: 7px 10px;
+    width: 100%;
+  }
+  .m-trace pre {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  /* an inline mermaid sketch — deliberately plainer than a panel chart:
+     mermaid brings its own theme, square marks, no hover layer */
+  .m-mermaid {
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 8px 10px 4px;
+    display: grid;
+    gap: 4px;
+    position: relative;
+  }
+  .mm-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+  }
+  .mm-title {
+    fill: var(--ink-2);
+    font-family: var(--display);
+    font-size: 10px;
+  }
+  .mm-ax {
+    stroke: var(--muted);
+    stroke-width: 1;
+    opacity: 0.5;
+  }
+  .mm-lab {
+    fill: var(--muted);
+    font-family: var(--sans);
+    font-size: 8px;
+  }
+  .fmm {
+    fill: var(--s2);
+    opacity: 0.62;
+  }
+
+  .m-typing {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--accent);
+  }
+  .m-typing i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: block;
+    opacity: 0.45;
+  }
+  .m-typing i:nth-child(2) {
+    opacity: 0.75;
+  }
+  .m-typing i:nth-child(3) {
+    opacity: 1;
+  }
+
+  .m-composer {
+    border-top: 1px solid var(--rule);
+    padding: 12px 26px 16px;
+    display: grid;
+    gap: 9px;
+    background: var(--surface);
+  }
+  .m-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .m-chip {
+    font-size: 11.5px;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    padding: 3px 10px;
+    white-space: nowrap;
+  }
+  .m-chip.lead {
+    border-style: dashed;
+    color: var(--muted);
+    background: transparent;
+  }
+  .m-input {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 9px 11px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 10px;
+    min-height: 54px;
+    box-shadow: 0 1px 0 var(--rule-2);
+  }
+  .m-input .ph {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .m-hint {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* results panel */
+  .m-panel {
+    border-left: 1px solid var(--rule);
+    background: var(--surface-2);
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    min-height: 0;
+  }
+  .m-panel-head {
+    padding: 12px 14px 10px;
+    display: grid;
+    gap: 9px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .m-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .m-panel-title h4 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .m-panel-title .m-btn {
+    margin-left: auto;
+  }
+  .m-seg {
+    display: inline-flex;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--surface);
+    width: fit-content;
+    font-size: 11.5px;
+  }
+  .m-seg span {
+    padding: 3px 10px;
+    color: var(--muted);
+    border-right: 1px solid var(--rule);
+  }
+  .m-seg span:last-child {
+    border-right: none;
+  }
+  .m-seg span.on {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .m-cards {
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+  .m-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 10px 11px;
+    display: grid;
+    gap: 8px;
+  }
+  .m-card.sel {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .m-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .m-check {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+  }
+  .m-check.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-size: 9px;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+  }
+  .m-card-head .t {
+    font-size: 12.5px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-kind {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+  .m-acts {
+    display: flex;
+    gap: 3px;
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .m-acts i {
+    width: 21px;
+    height: 21px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    border: 1px solid transparent;
+    font-style: normal;
+  }
+  .m-card .cap {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .m-panel-foot {
+    border-top: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+  }
+  .m-panel-foot .n {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .m-panel-foot .m-btn {
+    margin-left: auto;
+  }
+
+  /* empty / first-run chat */
+  .m-welcome {
+    display: grid;
+    gap: 26px;
+    justify-items: center;
+    text-align: center;
+    padding: 54px 40px 30px;
+    align-content: start;
+  }
+  .m-welcome h3 {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .m-welcome p {
+    margin: 0;
+    max-width: 52ch;
+    color: var(--ink-2);
+    font-size: 13.5px;
+  }
+  .m-tracks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(210px, 1fr));
+    gap: 12px;
+    text-align: left;
+    width: 100%;
+    max-width: 620px;
+  }
+  .m-track {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface-2);
+    padding: 12px;
+    display: grid;
+    gap: 7px;
+    align-content: start;
+  }
+  .m-track h5 {
+    margin: 0;
+    font-size: 12.5px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .m-track h5 span.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: block;
+  }
+  .m-track h5 span.dot.b {
+    background: var(--s3);
+  }
+  .m-track .sub {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin: 0;
+  }
+  .m-starter {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .m-panel-empty {
+    padding: 26px 18px;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    align-content: start;
+  }
+  .m-panel-empty .box {
+    width: 100%;
+    height: 74px;
+    border: 1px dashed var(--rule);
+    border-radius: 6px;
+    background: repeating-linear-gradient(135deg, transparent 0 7px, var(--grid) 7px 8px);
+  }
+
+  /* list page */
+  .m-page {
+    padding: 22px 26px 30px;
+    display: grid;
+    gap: 16px;
+    background: var(--surface);
+  }
+  .m-page-head {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .m-page-head h3 {
+    font-family: var(--display);
+    font-size: 23px;
+    font-weight: 600;
+    margin: 0 0 2px;
+    letter-spacing: -0.01em;
+  }
+  .m-page-head p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    max-width: 58ch;
+  }
+  .m-page-head .m-btn {
+    margin-left: auto;
+  }
+  .m-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 2px;
+  }
+  .m-toolbar .m-field {
+    min-width: 210px;
+  }
+  .m-toolbar .right {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .m-table {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .m-tr {
+    display: grid;
+    grid-template-columns: 34px minmax(220px, 2.2fr) minmax(150px, 1fr) 108px 132px 34px;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--rule-2);
+  }
+  .m-tr:last-child {
+    border-bottom: none;
+  }
+  .m-tr.head {
+    background: var(--surface-2);
+    border-bottom-color: var(--rule);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 12px;
+  }
+  .m-tr.hov {
+    background: var(--surface-2);
+  }
+  /* filter picker rows in the save sheet */
+  .m-fgrid {
+    display: grid;
+    grid-template-columns: 16px minmax(76px, auto) minmax(112px, auto) 1fr;
+    align-items: center;
+    gap: 7px 10px;
+    font-size: 12px;
+  }
+  .m-fgrid b {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .m-fon,
+  .m-foff {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-align: center;
+  }
+  .m-fon {
+    color: var(--accent);
+  }
+  .m-foff {
+    color: var(--muted);
+  }
+  .m-fctl {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 2px 8px;
+    color: var(--muted);
+    font-size: 11.5px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .m-fctl.on {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  /* any-of / all-of toggle, shown only on array fields */
+  .m-mtoggle {
+    display: inline-flex;
+    border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-left: 6px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+  .m-mtoggle span {
+    padding: 0 4px;
+    color: var(--muted);
+  }
+  .m-mtoggle span.on {
+    background: color-mix(in srgb, var(--accent) 26%, transparent);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .m-fval {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+  }
+  .m-tr.gone .title,
+  .m-tr.gone .m-meta {
+    opacity: 0.66;
+  }
+  .m-star {
+    text-align: center;
+    color: var(--rule);
+    font-size: 14px;
+    line-height: 1;
+  }
+  .m-star.on {
+    color: var(--new);
+  }
+  .m-tr .title {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .m-tr .title b {
+    font-size: 13px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-tr .title span {
+    font-size: 11.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .m-pill {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    padding: 1.5px 6px;
+    white-space: nowrap;
+  }
+  .m-vis {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .m-vis.on {
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .m-when {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .m-who {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--ink-2);
+    min-width: 0;
+  }
+  .m-who i {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    color: var(--muted);
+    font-style: normal;
+    font-size: 9.5px;
+    font-weight: 650;
+    display: grid;
+    place-items: center;
+  }
+  .m-who span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-kebab {
+    text-align: center;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .m-menu {
+    position: relative;
+  }
+  .m-menu-pop {
+    position: absolute;
+    right: 0;
+    top: 6px;
+    z-index: 5;
+    width: 152px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    box-shadow: 0 10px 22px -14px rgba(10, 30, 24, 0.5);
+    padding: 4px;
+    display: grid;
+    gap: 1px;
+    text-align: left;
+    font-size: 12px;
+    letter-spacing: normal;
+  }
+  .m-menu-pop b {
+    font-weight: 400;
+    color: var(--ink-2);
+    padding: 5px 8px;
+    border-radius: 3px;
+    display: flex;
+    gap: 8px;
+  }
+  .m-menu-pop b.hov {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+  .m-menu-pop b.danger {
+    color: #a33a2e;
+  }
+  .m-menu-pop hr {
+    border: none;
+    border-top: 1px solid var(--rule-2);
+    margin: 3px 0;
+  }
+
+  .m-empty {
+    border: 1px dashed var(--rule);
+    border-radius: 6px;
+    padding: 34px 22px;
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    text-align: center;
+    background: var(--surface-2);
+  }
+  .m-empty h5 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .m-empty p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    max-width: 46ch;
+  }
+
+  /* report view */
+  .m-crumb {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .m-filters {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface-2);
+  }
+  .m-tagv {
+    font-size: 10.5px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    white-space: nowrap;
+  }
+  .m-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .m-kpi {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 13px 14px;
+    display: grid;
+    gap: 3px;
+    background: var(--surface);
+  }
+  .m-kpi .lab {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .m-kpi .val {
+    font-family: var(--display);
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .m-kpi .cap {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .m-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 12px;
+  }
+  .m-sec {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 13px 14px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+  .m-sec-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .m-sec-head h5 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .m-sec-head .m-acts {
+    font-size: 11px;
+  }
+  .m-alert {
+    border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+    background: var(--warn-soft);
+    border-radius: 5px;
+    padding: 11px 12px;
+    display: grid;
+    gap: 6px;
+  }
+  .m-alert b {
+    font-size: 12.5px;
+    color: var(--warn);
+  }
+  .m-alert p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .m-dtable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .m-dtable th,
+  .m-dtable td {
+    text-align: left;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--rule-2);
+    white-space: nowrap;
+  }
+  .m-dtable th {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom-color: var(--rule);
+  }
+  .m-dtable td.num,
+  .m-dtable th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .m-legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--ink-2);
+  }
+  .m-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .m-legend i {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: block;
+  }
+  .sw1 {
+    background: var(--s1);
+  }
+  .sw2 {
+    background: var(--s2);
+  }
+
+  /* chart svg helpers */
+  .f1 {
+    fill: var(--s1);
+  }
+  .f2 {
+    fill: var(--s2);
+  }
+  .st1 {
+    stroke: var(--s1);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .gl {
+    stroke: var(--rule);
+    stroke-width: 1;
+  }
+  .axl {
+    fill: var(--muted);
+    font-family: var(--mono);
+    font-size: 8px;
+  }
+  .dl {
+    fill: var(--ink-2);
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 600;
+  }
+  .area1 {
+    fill: var(--s1);
+    opacity: 0.13;
+  }
+  .ring {
+    stroke: var(--surface);
+    stroke-width: 2;
+  }
+  .tip {
+    fill: var(--ink);
+  }
+  .tiptxt {
+    fill: var(--surface);
+    font-family: var(--mono);
+    font-size: 8px;
+  }
+
+  /* ── Implications ───────────────────────────────────────────────────── */
+  .impl {
+    padding: 54px 0 0;
+    display: grid;
+    gap: 18px;
+  }
+  .impl h2 {
+    font-family: var(--display);
+    font-size: clamp(23px, 2.9vw, 30px);
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .impl > p {
+    margin: 0;
+    max-width: 68ch;
+    color: var(--ink-2);
+  }
+  .impl-wrap {
+    overflow-x: auto;
+  }
+  .impl-table {
+    width: 100%;
+    min-width: 700px;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  .impl-table th,
+  .impl-table td {
+    text-align: left;
+    vertical-align: top;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .impl-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface-2);
+  }
+  .impl-table td:first-child {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .impl-table td {
+    color: var(--ink-2);
+  }
+  .deck-foot {
+    padding: 44px 0 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .wrap,
+    .deck-head {
+      padding-left: 18px;
+      padding-right: 18px;
+    }
+    .m-tracks {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+<style>
+  /* ── Supplementary classes for this deck (reuse the base system above) ── */
+
+  /* report-count badge on a conversation row */
+  .m-rep {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    padding: 1px 6px 1px 5px;
+    border-radius: 100px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    white-space: nowrap;
+  }
+  .m-rep::before { content: "▤"; font-size: 8.5px; opacity: 0.8; }
+  .m-conv-item.on .when { margin-left: 8px; }
+  .m-conv-item .when.push { margin-left: 8px; }
+
+  /* "Saved from this chat" section inside the results panel */
+  .m-src {
+    margin: 12px 12px 0;
+    border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+    border-radius: 6px;
+    background: var(--accent-soft);
+    overflow: hidden;
+  }
+  .m-src-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 10px;
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--accent-ink);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .m-src-head .m-count {
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+    color: var(--accent-ink);
+  }
+  .m-src-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule-2);
+  }
+  .m-src-row:last-child { border-bottom: none; }
+  .m-src-row .doc { color: var(--accent); font-size: 12px; flex: 0 0 auto; }
+  .m-src-row .body { display: grid; gap: 1px; min-width: 0; }
+  .m-src-row .t {
+    font-size: 12px; font-weight: 600; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .m-src-row .meta { font-family: var(--mono); font-size: 9.5px; color: var(--muted); }
+  .m-src-row .go { margin-left: auto; color: var(--accent); font-size: 13px; flex: 0 0 auto; }
+  .m-priv {
+    font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+    border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px;
+  }
+
+  /* pinned "made from this chat" banner at the top of the transcript */
+  .m-pin {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 12px; margin: 0 0 4px;
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+    border-radius: 6px;
+    font-size: 12px; color: var(--accent-ink);
+  }
+  .m-pin .go { margin-left: auto; font-weight: 600; white-space: nowrap; }
+
+  /* inline transcript marker: a report was saved here */
+  .m-mark {
+    display: flex; align-items: center; gap: 8px;
+    max-width: 62ch;
+    padding: 6px 11px;
+    border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
+    border-radius: 100px;
+    background: var(--accent-soft);
+    font-size: 11.5px; color: var(--accent-ink);
+    width: fit-content;
+  }
+  .m-mark .doc { font-size: 12px; }
+  .m-mark b { color: var(--accent-ink); font-weight: 650; }
+  .m-mark .go { margin-left: 4px; font-weight: 600; }
+
+  /* two-up rail comparison (Option A variants) */
+  .railcmp {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+    gap: 16px;
+    min-width: 620px;
+    align-items: start;
+  }
+  .railcol {
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    overflow: hidden;
+    background: var(--surface-2);
+    box-shadow: var(--shadow);
+  }
+  .railcol-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 9px 12px;
+    background: var(--surface-3);
+    border-bottom: 1px solid var(--rule);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .railcol-head .verdict { margin-left: auto; }
+  .railcol-head .sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--muted);
+    width: 100%;
+  }
+  .railcol .m-rail { border-right: none; }
+  /* count baked into the label string (degraded A) */
+  .suf { color: var(--accent-ink); font-weight: 600; }
+  /* "blocked / needs upstream work" tag */
+  .tag.is-block {
+    border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+
+  /* comparison grid on the last plate */
+  .cmp { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .cmp th, .cmp td {
+    text-align: left; padding: 11px 14px;
+    border-bottom: 1px solid var(--rule); vertical-align: top;
+  }
+  .cmp thead th {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500;
+    border-bottom: 1px solid var(--rule);
+  }
+  .cmp tbody th { font-weight: 650; color: var(--ink); width: 148px; white-space: nowrap; }
+  .cmp td { color: var(--ink-2); }
+  .cmp .yes { color: var(--accent-ink); font-weight: 600; }
+  .cmp .no { color: var(--muted); }
+  .cmp tr.pick th, .cmp tr.pick td { background: var(--accent-soft); }
+  .cmp-wrap {
+    border: 1px solid var(--rule); border-radius: 7px; overflow: hidden;
+    background: var(--surface);
+  }
+</style>
+
+<header class="deck-head">
+  <b>Reporting · reports from a chat</b>
+  <span class="tag">wireframes v1</span>
+  <nav class="deck-nav">
+    <a href="#ctx">Context</a>
+    <a href="#a">A · Rail badge</a>
+    <a href="#b">B · Panel section</a>
+    <a href="#c">C · Inline marker</a>
+    <a href="#pick">Compare &amp; pick</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section class="open" id="ctx">
+    <p class="eyebrow">modules/reporting · UX wireframes · 6 Aug 2026</p>
+    <h1>When a chat has produced reports, say so — and link to them.</h1>
+    <p class="lede">
+      A saved report already remembers the chat it came from: the report document carries a
+      <em>conversation_id</em>. Today nothing reads it back, so a chat gives no sign that it ever
+      produced anything durable. This deck sketches <em>three places</em> that signal could live —
+      the same underlying question ("which reports point at this conversation?") presented three
+      ways. Pick where it belongs; the plumbing is shared.
+    </p>
+
+    <div class="jobs">
+      <div class="job">
+        <h3>What we have</h3>
+        <p>
+          Every report saved from the chat page stores <code>conversation_id</code>. The link is
+          one-directional: report&nbsp;→&nbsp;chat. A chat holds no list of its reports.
+        </p>
+        <p class="said">report.conversation_id = this chat's id</p>
+      </div>
+      <div class="job">
+        <h3>What's missing</h3>
+        <p>
+          Nothing queries that link from the chat side. So from a conversation you can't tell
+          whether it produced one report, five, or none — or jump to them.
+        </p>
+        <p class="said">"Did I ever save this? Where did it go?"</p>
+      </div>
+      <div class="job">
+        <h3>The one new query</h3>
+        <p>
+          All three options run the same read: <em>reports where conversation_id = this chat,
+          owned by me, not deleted</em>. A count for the rail, a short list for the panel.
+        </p>
+        <p class="said">list-reports-by-conversation</p>
+      </div>
+    </div>
+
+    <p class="flowline">
+      <span class="step">Ask</span><span class="arrow">→</span>
+      <span class="step">Save as report</span><span class="arrow">→</span>
+      <span class="step">Reopen the chat later</span><span class="arrow">→</span>
+      <span class="step">See &amp; open its reports</span>
+    </p>
+
+    <p class="legend">
+      <span><span class="tag is-new">new</span> needs module work — a read plus a little UI.</span>
+      <span><span class="tag is-block">block-gated</span> also needs a change to the external rail block.</span>
+      <span>Zero-state: a chat that produced nothing shows <b>no</b> affordance — never an empty "0".</span>
+      <span>Callout chips <span class="c">1</span> / <span class="c n">2</span> key to the notes under each plate.</span>
+    </p>
+  </section>
+
+  <!-- ── OPTION A · RAIL BADGE ──────────────────────────────────────────── -->
+  <article class="plate" id="a">
+    <div class="plate-head">
+      <p class="kicker"><b>Option A</b> <span>Rail signal — the count is cheap, the pill is not</span> <span class="tag is-block">block-gated</span></p>
+      <h2>A count on the conversation row — two ways to draw it</h2>
+      <p>
+        Getting the number is easy (see <a href="#pick" style="color:var(--accent)">Compare</a>). Drawing
+        it is the catch: the rail is the external <code>AgentConversations</code> block, and its row
+        schema is <code>key / label / group</code> only — <b>no slot for a badge</b>. So the styled,
+        separately-clickable pill (A1) needs upstream block work, while a count folded into the row's
+        <em>label text</em> (A2) ships with no block change at all. Same data, two very different costs.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="railcmp">
+        <!-- A1 — styled pill, blocked -->
+        <div class="railcol">
+          <div class="railcol-head">
+            A1 · Styled pill <span class="tag is-block verdict">needs block fork</span>
+            <span class="sub">a real badge slot the block doesn't have — clickable, opens a filtered list</span>
+          </div>
+          <div class="m-rail">
+            <span class="m-btn pri block">+ New chat</span>
+            <span class="m-field">⌕ <span>Search chats</span></span>
+            <div class="m-conv">
+              <span class="m-label">Today</span>
+              <div class="m-conv-item on"><span class="txt">Q3 revenue by region</span><span class="m-rep">3</span></div>
+              <div class="m-conv-item"><span class="txt">Pending orders over $5k</span><span class="when">1h</span></div>
+              <span class="m-label" style="margin-top:8px">Previous 7 days</span>
+              <div class="m-conv-item"><span class="txt">Channel mix, retail vs online</span><span class="m-rep">1</span></div>
+              <div class="m-conv-item"><span class="txt">Cancelled order rate by category</span><span class="when">Sun</span></div>
+              <span class="m-label" style="margin-top:8px">Older</span>
+              <div class="m-conv-item"><span class="txt">Toys seasonality</span><span class="m-rep">2</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- A2 — count in the label, ships as-is -->
+        <div class="railcol">
+          <div class="railcol-head">
+            A2 · Count in the label <span class="tag is-now verdict">ships as-is</span>
+            <span class="sub">appended to the label string — pure YAML in conversation_items.yaml</span>
+          </div>
+          <div class="m-rail">
+            <span class="m-btn pri block">+ New chat</span>
+            <span class="m-field">⌕ <span>Search chats</span></span>
+            <div class="m-conv">
+              <span class="m-label">Today</span>
+              <div class="m-conv-item on"><span class="txt">Q3 revenue by region <span class="suf">· ▤3</span></span></div>
+              <div class="m-conv-item"><span class="txt">Pending orders over $5k</span></div>
+              <span class="m-label" style="margin-top:8px">Previous 7 days</span>
+              <div class="m-conv-item"><span class="txt">Channel mix, retail vs online <span class="suf">· ▤1</span></span></div>
+              <div class="m-conv-item"><span class="txt">Cancelled order rate by category</span></div>
+              <span class="m-label" style="margin-top:8px">Older</span>
+              <div class="m-conv-item"><span class="txt">Toys seasonality <span class="suf">· ▤2</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>The rail is not ours to restyle.</b> <code>AgentConversations</code> comes from the agent-chat plugin and wraps Ant Design X's <code>Conversations</code>; each row is a <code>label</code> string plus a kebab menu. A1's pill would mean forking that block — real shared-surface work, not "a little UI".</span></li>
+      <li><span class="c">2</span><span><b>A2 needs zero block change.</b> <code>conversation_items.yaml</code> already builds each <code>label</code> in a <code>_function</code>; append <code>· ▤{n}</code> when the count is non-zero. Rows with no reports stay a plain title — the signal is still positive-only.</span></li>
+      <li><span class="c n">3</span><span><b>A2's trade-offs:</b> it's text, not a pill, so it can't be clicked on its own — the row just selects the chat. And because search matches the label, the suffix becomes (harmlessly) searchable.</span></li>
+      <li><span class="c">4</span><span><b>Strength (both):</b> visible across <em>all</em> chats at once, in the surface you scan most. <b>Weakness:</b> a bare count — to see <em>which</em> reports, you go to Option B or the list.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── OPTION B · PANEL SECTION ───────────────────────────────────────── -->
+  <article class="plate" id="b">
+    <div class="plate-head">
+      <p class="kicker"><b>Option B</b> <span>Panel section — in context, with titles &amp; links</span> <span class="tag is-new">new</span></p>
+      <h2>"Saved from this chat", pinned in Results</h2>
+      <p>
+        The results panel is already "what this chat produced". A section at its top lists the
+        <em>saved</em> reports from this conversation — title, when, visibility — each a row that
+        opens the report. It answers the richer question ("which reports, take me there") for the
+        chat you're actually in, and sits exactly where a just-saved report would appear.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/chat</span>
+        </div>
+        <div class="m-app">
+          <div class="m-top">
+            <span class="m-brand">Acme Freight</span>
+            <span class="m-tabs"><span class="on">Ask</span><span>Reports</span><span>Orders</span></span>
+            <span class="m-avatar">JM</span>
+          </div>
+          <div class="m-chat">
+            <div class="m-rail">
+              <span class="m-btn pri block">+ New chat</span>
+              <span class="m-field">⌕ <span>Search chats</span></span>
+              <div class="m-conv">
+                <span class="m-label">Today</span>
+                <div class="m-conv-item on"><span class="txt">Q3 revenue by region</span><span class="when">now</span></div>
+                <div class="m-conv-item"><span class="txt">Pending orders over $5k</span><span class="when">1h</span></div>
+                <span class="m-label" style="margin-top:8px">Previous 7 days</span>
+                <div class="m-conv-item"><span class="txt">Channel mix, retail vs online</span><span class="when">Mon</span></div>
+                <div class="m-conv-item"><span class="txt">Toys seasonality</span><span class="when">Jun</span></div>
+              </div>
+              <div class="m-rail-foot">
+                <span>Reports</span><span class="m-count">12</span>
+                <span class="m-btn ghost sm" style="margin-left:auto">Open →</span>
+              </div>
+            </div>
+
+            <div class="m-thread">
+              <div class="m-scroll">
+                <div class="m-turn user"><span class="m-bubble">Revenue by region for Q3, and how does that compare to Q2?</span></div>
+                <div class="m-turn">
+                  <span class="m-role">Assistant</span>
+                  <p class="m-say" style="margin:0">
+                    Q3 revenue was <strong>$2.41M</strong>, up 8.6% on Q2. Saved two reports from this
+                    thread — they're at the top of <strong>Results</strong> →
+                  </p>
+                </div>
+              </div>
+              <div class="m-composer">
+                <div class="m-input"><span class="ph">Ask a follow-up…</span><span class="m-btn pri sm">Send ↑</span></div>
+              </div>
+            </div>
+
+            <div class="m-panel">
+              <div class="m-panel-head">
+                <div class="m-panel-title"><h4>Results</h4><span class="m-count">4</span></div>
+                <div class="m-seg"><span class="on">All 4</span><span>Charts 2</span><span>Tables 1</span><span>Exports 1</span></div>
+              </div>
+
+              <!-- the new section -->
+              <div class="m-src">
+                <div class="m-src-head">Saved from this chat<span class="m-count">2</span></div>
+                <div class="m-src-row">
+                  <span class="doc">▤</span>
+                  <span class="body">
+                    <span class="t">Q3 Revenue by Region</span>
+                    <span class="meta">saved 2h ago · you</span>
+                  </span>
+                  <span class="m-priv">private</span>
+                  <span class="go">→</span>
+                </div>
+                <div class="m-src-row">
+                  <span class="doc">▤</span>
+                  <span class="body">
+                    <span class="t">Regional Growth vs Q2</span>
+                    <span class="meta">saved yesterday · you</span>
+                  </span>
+                  <span class="m-priv">shared</span>
+                  <span class="go">→</span>
+                </div>
+              </div>
+
+              <div class="m-cards">
+                <span class="m-label" style="padding:2px 1px">Live results<span class="c n">2</span></span>
+                <div class="m-card">
+                  <div class="m-card-head"><span class="m-kind">Chart</span><span class="t">Revenue by region</span></div>
+                  <span class="cap">Q3 vs Q2, all four regions</span>
+                </div>
+              </div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>Titles and a direct link</b>, not just a number — the row opens the report page. This is the only option that shows <em>what</em> the chat produced without leaving the chat.</span></li>
+      <li><span class="c n">2</span><span><b>It sits above the live results</b>, because a saved report is the durable sibling of the ephemeral artefacts below it. The divider keeps "kept" and "current" visually distinct.</span></li>
+      <li><span class="c">3</span><span><b>Appears the moment you save.</b> The save-as-report sheet already runs on this page; on success the new report drops straight into this section — immediate confirmation the save landed.</span></li>
+      <li><span class="c n">4</span><span><b>Strength:</b> in-context, rich, and the natural home. <b>Weakness:</b> only the chat you're in, and it's gone when the panel is collapsed — so it doesn't help you scan history.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── OPTION C · INLINE MARKER ───────────────────────────────────────── -->
+  <article class="plate" id="c">
+    <div class="plate-head">
+      <p class="kicker"><b>Option C</b> <span>Inline marker — provenance in the transcript</span> <span class="tag is-new">new</span></p>
+      <h2>A marker where the report was cut, and a pin to find them</h2>
+      <p>
+        When a report is saved, a marker drops into the transcript at that point — so the record of
+        <em>when, in the exploration,</em> each report came from is preserved in place. A small pinned
+        banner at the top of the thread summarises them and jumps down. This is the richest signal
+        and the most work; it reads as history, not just a link.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/chat</span>
+        </div>
+        <div class="m-app">
+          <div class="m-top">
+            <span class="m-brand">Acme Freight</span>
+            <span class="m-tabs"><span class="on">Ask</span><span>Reports</span><span>Orders</span></span>
+            <span class="m-avatar">JM</span>
+          </div>
+          <div class="m-chat">
+            <div class="m-rail">
+              <span class="m-btn pri block">+ New chat</span>
+              <span class="m-field">⌕ <span>Search chats</span></span>
+              <div class="m-conv">
+                <span class="m-label">Today</span>
+                <div class="m-conv-item on"><span class="txt">Q3 revenue by region</span><span class="when">now</span></div>
+                <div class="m-conv-item"><span class="txt">Pending orders over $5k</span><span class="when">1h</span></div>
+                <span class="m-label" style="margin-top:8px">Previous 7 days</span>
+                <div class="m-conv-item"><span class="txt">Channel mix, retail vs online</span><span class="when">Mon</span></div>
+              </div>
+              <div class="m-rail-foot">
+                <span>Reports</span><span class="m-count">12</span>
+                <span class="m-btn ghost sm" style="margin-left:auto">Open →</span>
+              </div>
+            </div>
+
+            <div class="m-thread">
+              <div class="m-scroll">
+                <div class="m-pin">
+                  <span>▤</span>
+                  <span><b>2 reports</b> made from this chat</span>
+                  <span class="go">Jump to first ↓</span>
+                </div>
+
+                <div class="m-turn user"><span class="m-bubble">Revenue by region for Q3, and how does that compare to Q2?</span></div>
+                <div class="m-turn">
+                  <span class="m-role">Assistant</span>
+                  <p class="m-say" style="margin:0">
+                    Q3 revenue was <strong>$2.41M</strong>, up 8.6% on Q2. <strong>West</strong> drove
+                    the growth; <strong>East</strong> slipped 3% on a drop in Electronics.
+                  </p>
+                </div>
+
+                <div class="m-mark">
+                  <span class="doc">▤</span>
+                  <span>Saved as report <b>Q3 Revenue by Region</b></span>
+                  <span class="go">Open →</span>
+                </div>
+
+                <div class="m-turn user"><span class="m-bubble">Now break East down by month and save that too.</span></div>
+                <div class="m-turn">
+                  <span class="m-role">Assistant</span>
+                  <p class="m-say" style="margin:0">East's monthly trend shows the drop concentrated in June. Done.</p>
+                </div>
+
+                <div class="m-mark">
+                  <span class="doc">▤</span>
+                  <span>Saved as report <b>East, Monthly Trend</b></span>
+                  <span class="go">Open →</span>
+                </div>
+              </div>
+              <div class="m-composer">
+                <div class="m-input"><span class="ph">Ask a follow-up…</span><span class="m-btn pri sm">Send ↑</span></div>
+              </div>
+            </div>
+
+            <div class="m-panel">
+              <div class="m-panel-head">
+                <div class="m-panel-title"><h4>Results</h4><span class="m-count">4</span></div>
+                <div class="m-seg"><span class="on">All 4</span><span>Charts 2</span><span>Tables 1</span><span>Exports 1</span></div>
+              </div>
+              <div class="m-cards">
+                <div class="m-card">
+                  <div class="m-card-head"><span class="m-kind">Chart</span><span class="t">Revenue by region</span></div>
+                  <span class="cap">Q3 vs Q2</span>
+                </div>
+              </div>
+              <div></div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>The marker records the moment of saving</b> in the flow of the conversation, so re-reading the thread later, you see which turn each report crystallised from.</span></li>
+      <li><span class="c n">2</span><span><b>The pin is the summary</b>, since markers scroll away. It counts and jumps — the same count Option A shows in the rail, surfaced inside the open chat instead.</span></li>
+      <li><span class="c n">3</span><span><b>Most work, one wrinkle:</b> markers need a stable anchor in the transcript. Reports saved <em>before</em> this ships have a <code>conversation_id</code> but no saved-here position, so they can only appear in the pin, not inline — a mild inconsistency for old chats.</span></li>
+      <li><span class="c">4</span><span><b>Strength:</b> provenance and narrative — the "how did I get here" answer. <b>Weakness:</b> heaviest to build, and like B it only serves the open chat.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── COMPARE & PICK ─────────────────────────────────────────────────── -->
+  <article class="plate" id="pick">
+    <div class="plate-head">
+      <p class="kicker"><b>Compare</b> <span>what each option answers, and what it really costs</span></p>
+      <h2>The cost reversal: B leads, A ships degraded</h2>
+      <p>
+        Once you account for the rail being an external block, the earlier ranking flips. The
+        <em>data</em> is identical and cheap for all three — one read of "reports where
+        <code>conversation_id</code> = this chat". What differs is the <em>render</em>: the panel (B)
+        and the transcript (C) are drawn with our own Lowdefy blocks, so they carry no blocker; the
+        rail (A) can only show a real pill by forking <code>AgentConversations</code>. So B becomes
+        the lead, A ships in its label-text form (A2) now, and A1's pill and C stay optional later.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="cmp-wrap">
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th>&nbsp;</th>
+              <th>A · Rail badge</th>
+              <th>B · Panel section</th>
+              <th>C · Inline marker</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>Answers</th>
+              <td>Which chats made reports</td>
+              <td>Which reports this chat made</td>
+              <td>When each was saved</td>
+            </tr>
+            <tr>
+              <th>Visible across all chats</th>
+              <td class="yes">Yes — in the rail</td>
+              <td class="no">Open chat only</td>
+              <td class="no">Open chat only</td>
+            </tr>
+            <tr>
+              <th>Shows titles + link</th>
+              <td class="no">Count only</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <th>Survives panel collapse</th>
+              <td class="yes">Yes</td>
+              <td class="no">No</td>
+              <td class="yes">Yes (in transcript)</td>
+            </tr>
+            <tr>
+              <th>The read</th>
+              <td>Count by <code>conversation_id</code></td>
+              <td>List by <code>conversation_id</code></td>
+              <td>List by <code>conversation_id</code></td>
+            </tr>
+            <tr>
+              <th>Needs external block change</th>
+              <td><b>A1 pill: yes</b> · A2 label: <span class="yes">no</span></td>
+              <td class="yes">No</td>
+              <td class="yes">No</td>
+            </tr>
+            <tr>
+              <th>Build cost</th>
+              <td>A1 pill: <span class="no">high</span> · A2 label: <span class="yes">low</span></td>
+              <td class="yes">Low–medium</td>
+              <td class="no">High — transcript anchoring</td>
+            </tr>
+            <tr class="pick">
+              <th>Recommendation</th>
+              <td>Ship A2 now · A1 later</td>
+              <td class="yes">Ship — lead</td>
+              <td>Later, optional</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>One query serves all three.</b> "Reports where <code>conversation_id</code> = this chat, owned by me, not deleted" — a small aggregation on the reports store (same database, keys match as plain strings). A counts, B and C list. No schema change; the link already exists.</span></li>
+      <li><span class="c">2</span><span><b>The read stays off <code>list-conversations</code>.</b> That request has carefully-tuned semantics (200-row window, messages projected out). A separate count request, fetched in parallel on mount and merged client-side, leaves it untouched.</span></li>
+      <li><span class="c n">3</span><span><b>The block is the only real blocker.</b> B and C draw with our own Lowdefy blocks — no upstream dependency. Only A1's pill needs the external <code>AgentConversations</code> block to grow a row slot, which is why it drops to "later".</span></li>
+      <li><span class="c n">4</span><span><b>Cross-user stays owner-scoped</b>, matching how <code>conversation_id</code> is gated on the report page — a shared report never leaks its author's other reports.</span></li>
+      <li><span class="c">5</span><span><b>Not built yet — this is a wireframe.</b> If B + A2 looks right, the next step is a task pair: the count/list read, then B's panel section and A2's label suffix.</span></li>
+    </ol>
+  </article>
+</main>
+</body>
+</html>
