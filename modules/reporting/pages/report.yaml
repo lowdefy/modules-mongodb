@@ -68,5 +68,4 @@ _ref:
                 properties:
                   status: 404
                   title: Report not found
-                  subTitle: >
-                    The report does not exist or you do not have access to it.
+                  subTitle: This report couldn't be loaded
