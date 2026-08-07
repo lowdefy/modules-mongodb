@@ -29,6 +29,7 @@ Every page wraps in `_ref: module: layout, component: page` — the `PageSiderMe
 - `hide_title` — suppress title-block (edit pages use card title instead)
 - `hide_notifications`, `hide_profile` — suppress header features
 - `content_width` — max-width of content area (default `100%`)
+- `content_style` — CSS style object merged over the content area's own style (default `{}`); the block defaults its padding to `0 40px 40px 40px`, so pass `content_style: { padding: 0 }` for a full-bleed page (e.g. an immersive chat surface). Combine with `hide_title` and no `breadcrumbs` to remove all content chrome.
 - `title_block` — override the default title-block entirely
 
 **Content components** — shared layout pieces used inside pages:
