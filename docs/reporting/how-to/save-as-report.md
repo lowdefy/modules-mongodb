@@ -8,6 +8,7 @@ concepts:
     result-selection,
     confirm-sheet,
     conversation-link,
+    saved-from-chat,
     generate-report,
     filters,
     filter-picker,
@@ -27,7 +28,7 @@ This is the module's secondary creation route. The primary route is the agent's 
 3. **Edit the name.** It defaults to the conversation title; change it if you want.
 4. **Reorder or remove sections.** Each ticked result is a row. Move rows with the **↑ / ↓** buttons and drop ones you changed your mind about with **remove**. Sections start grouped by kind — charts first, then tables, then downloads — and you arrange them from there.
 5. **Add filters (optional).** In the **Filters** section, press **add** to author a filter from a field the report can be filtered on: pick the **field**, give it a **label**, pick a **label field** for a looked-up field, and choose **Any / All** for a list field. Add as many as you need, or none. See [Authoring filters](#authoring-filters) for which fields are offered and why.
-6. **Save.** The report is created and opens directly. From it you can [continue in chat](#the-conversation-link) back to the conversation it came from.
+6. **Save.** The report is created and appears immediately in the **[Reports from this chat](#reports-from-this-chat)** section at the top of the results panel — you stay on the conversation rather than being taken away to the report. Open it from that section's row when you want it.
 
 The sheet is a confirm over what the conversation already produced, not a report builder — you tidy the selection, you don't compose sections from scratch.
 
@@ -64,8 +65,14 @@ You never choose which sections a filter scopes. The report binds each filter to
 
 Filters are optional. Add none and the report saves exactly as before — filterless-first, and valid: every section is live-queried each time the report opens, whether or not it carries filters.
 
+## Reports from this chat
+
+The results panel shows a **Reports from this chat** section at the top, listing the reports the open conversation has produced — each row a title, a private/shared tag, when it was saved, and an **Open** button to its report page. It appears **the moment a report is saved** — whether you saved it from the sheet or the assistant built it with `generate_report` — and again whenever you **reopen the conversation** later. A conversation that has produced no reports shows no section (never an empty "0 reports").
+
+This is the chat side of the conversation link below: the section is how a conversation surfaces what it durably produced, so a report you cut from a chat a week ago is one click away when you return to it, instead of something you have to remember and hunt down on the reports list.
+
 ## The conversation link
 
-Reports saved this way **link back to their source chat** — the report records the `conversation_id` of the conversation it was assembled from, and the report page offers a continue-in-chat affordance that returns you there.
+Reports **link back to their source chat** — the report records the `conversation_id` of the conversation it was assembled from, and the report page offers a continue-in-chat affordance that returns you there.
 
-Reports created by the agent's `generate_report` tool **do not** carry this link. That is a limitation of the tool path, not a bug: a tool endpoint runs server-side with only the tool input in hand and never receives the conversation context, so it cannot populate the field. On a report with no `conversation_id` the continue-in-chat affordance is simply absent — not broken. If linking back to the conversation matters, save from the sheet.
+Both creation routes now carry this link. A report saved from the sheet records the conversation directly. A report the agent builds with `generate_report` is tied back at the end of the turn: the tool itself runs server-side with only its input in hand and never sees the conversation, so it creates the report unlinked, and the turn-end hook — which does hold the conversation — populates `conversation_id` a moment later. Either way the report ends up linked, shows up in **Reports from this chat**, and offers continue-in-chat.

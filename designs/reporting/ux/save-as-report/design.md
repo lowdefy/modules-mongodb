@@ -78,6 +78,8 @@ The new `create-report` endpoint **can**, because the sheet is a `Modal` mounted
 
 The field itself is in the [parent's data model](../design.md#data-model); this endpoint is its only populator, and the [report page](../report-page/design.md) is its only consumer.
 
+> **Updated by [reports-from-chat](../reports-from-chat/design.md).** Two things above have since changed. First, the sheet's `onOk` **no longer navigates to the report page** on save — it refreshes the chat's new "Saved from this chat" section and stays on the conversation, so the saved report appears in place (its row is one click from the report). Second, the tool path is no longer link-less: `emit-data-parts` backfills `conversation_id` onto the agent's report at turn end, so `create-report` is the sheet-route populator but not the only one, and the chat panel joins the report page as a consumer.
+
 ## Endpoints
 
 | Endpoint        | Status | Shape                                                                                                                        |
