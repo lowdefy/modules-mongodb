@@ -19,7 +19,7 @@
 id: resend-invitation
 type: Api
 routine:
-  # Stored invitation, read for the appRoles/role/attributes fallback below.
+  # Stored invitation, read for the app_roles/role/attributes fallback below.
   # Mirrors check-invite-email.yaml's find_invitation.
   - id: find_invitation
     type: MongoDBFindOne
@@ -27,7 +27,7 @@ routine:
       _module.connectionId: user-invitations
     properties:
       query:
-        organizationId:
+        organization_id:
           _module.var: org_slug
         status: pending
         $expr:
@@ -40,7 +40,7 @@ routine:
                     - ""
       options:
         projection:
-          appRoles: 1
+          app_roles: 1
           role: 1
           attributes: 1
   - id: resend
@@ -53,7 +53,7 @@ routine:
       appRoles:
         _if_none:
           - _payload: roles
-          - _step: find_invitation.appRoles
+          - _step: find_invitation.app_roles
       orgRole:
         _if_none:
           - _payload: org_role

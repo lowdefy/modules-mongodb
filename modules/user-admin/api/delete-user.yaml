@@ -30,9 +30,9 @@ routine:
     properties:
       pipeline:
         - $match:
-            userId:
+            user_id:
               _payload: user_id
-            organizationId:
+            organization_id:
               $ne:
                 _module.var: org_slug
         - $count: count

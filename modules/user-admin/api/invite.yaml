@@ -5,9 +5,9 @@
 #
 # Stale-expired reconciliation (verified against BetterAuth 1.6.23):
 # createInvitation's re-invite guard (findPendingInvitation) EXCLUDES expired rows
-# (expiresAt > now), and `resend: true` only refreshes a NON-expired row — so a
+# (expires_at > now), and `resend: true` only refreshes a NON-expired row — so a
 # fresh InviteMember over an expired-but-pending row would leave a DUPLICATE
-# pending row. We therefore natively find pending rows with expiresAt < now for
+# pending row. We therefore natively find pending rows with expires_at < now for
 # the (lowercased email, org) and CancelInvitation each (cancel has no
 # expiry/status guard) before inviting. Non-expired pending never reaches submit —
 # check-invite-email routes it to Resend — so this only cancels genuinely-stale
@@ -36,7 +36,7 @@ routine:
     properties:
       pipeline:
         - $match:
-            organizationId:
+            organization_id:
               _module.var: org_slug
             status: pending
             $expr:
@@ -47,7 +47,7 @@ routine:
                       _if_none:
                         - _payload: email
                         - ""
-            expiresAt:
+            expires_at:
               $lt:
                 _date: now
         - $project:
