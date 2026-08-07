@@ -106,15 +106,26 @@ The turn-end hook is the seam that avoids it. `emit-data-parts` (an `onFinish` h
 receives the `conversationId` **and** the turn's `toolResults`, and already emits the panel's live
 parts (`dataParts` → `onDataPart`) and persists them. It gains two things:
 
-1. **Backfill (and fetch).** For each `generate_report` result in `toolResults`, a
-   `FindOneAndUpdate` on the created report (owner-guarded, keyed by its `report_id`) sets
-   `conversation_id` = the payload's `conversationId` and returns the report's
-   `{ title, visibility, created }`. This ties the agent's report to the conversation — so it
-   surfaces on re-visit through the folded read like any other — and yields the row the live part
-   needs in one op, no extra read.
-2. **Live emit.** Build a `data-report-saved` part (`{ _id, title, visibility, created }`) from that
-   returned row and return it among the hook's `dataParts`; a new `onDataPart` branch appends it to
-   `saved_reports` for the instant case.
+1. **Backfill and fetch.** Extract the `report_id`s of the turn's `generate_report` results and,
+   owner-guarded (`{ _id: { $in: ids }, owner.user_id: _user.id }`), `$set` `conversation_id` =
+   the payload's `conversationId` on them, then read back their `{ _id, title, visibility, created }`
+   rows for the live part. This ties each agent report to the conversation — so it surfaces on
+   re-visit through the folded read like any other — and yields the rows the live parts need.
+
+   > **Two ops, not one.** The design first specified a single `FindOneAndUpdate` per id (backfill
+   > and fetch atomically). The MongoDB **connection plugin ships no find-and-modify request**
+   > (`MongoDBFind/FindOne`, `Insert*`, `Update*`, `Delete*`, `Aggregation`, `BulkWrite`,
+   > `ChangeStream` only — no `FindOneAndUpdate`), so this is a `MongoDBUpdateMany` (`$set` over
+   > `{ _id: { $in: ids } }`) followed by a projected `MongoDBFind` over the same owner-guarded
+   > filter. It handles N reports in **two ops total** rather than 2N in a per-id loop, and the
+   > owner-guarded read is itself the skip-not-found: an unmatched id (not owned / not found) simply
+   > does not come back, so no null needs filtering and nothing throws. The two ops are not atomic,
+   > but nothing else touches a just-created report in the sub-second window and the read takes only
+   > fields the `$set` never wrote — so the result is identical to a find-and-modify here.
+
+2. **Live emit.** Build a `data-report-saved` part (`{ _id, title, visibility, created }`) from each
+   returned row and return them among the hook's `dataParts`; a new `onDataPart` branch appends each
+   to `saved_reports` for the instant case.
 
 The backfill leaves a brief window where the report exists with `conversation_id: null` (created by
 the tool, set by the hook milliseconds later at turn end) — harmless: nothing reads that report in
@@ -203,11 +214,11 @@ was saved — the two facts that distinguish otherwise similarly-titled reports.
 
 ## Endpoints
 
-| Endpoint                   | Status    | Change                                                                                                                                                                                                                                                                                      |
-| -------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get-conversation-results` | modified  | Gains a second step — a `MongoDBFind` on `reports-store` for the caller's non-deleted reports for the conversation — and returns them as `saved_reports` (`{ _id, title, visibility, created }`, sorted `created.timestamp: -1`) alongside the existing four fields.                        |
-| `emit-data-parts`          | modified  | For each `generate_report` result in the turn's `toolResults`, ties `conversation_id` onto the report via an owner-guarded `FindOneAndUpdate` (which also returns the row for the live part) and emits a `data-report-saved` part. That part is **emitted, not persisted** to `data_parts`. |
-| `generate-report`          | unchanged | Still creates the report `conversation_id: null` and returns `{ report_id, url }`; the hook consumes `report_id` from `toolResults` and the `FindOneAndUpdate` supplies the live part's row fields.                                                                                         |
+| Endpoint                   | Status    | Change                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get-conversation-results` | modified  | Gains a second step — a `MongoDBFind` on `reports-store` for the caller's non-deleted reports for the conversation — and returns them as `saved_reports` (`{ _id, title, visibility, created }`, sorted `created.timestamp: -1`) alongside the existing four fields.                                                                                                                                          |
+| `emit-data-parts`          | modified  | For the turn's `generate_report` results, ties `conversation_id` onto the reports via an owner-guarded `MongoDBUpdateMany` (`$set` over `{ _id: { $in: ids } }`) and reads their rows back with a projected owner-guarded `MongoDBFind` for the live parts (the plugin has no `FindOneAndUpdate`), then emits a `data-report-saved` part per row. Those parts are **emitted, not persisted** to `data_parts`. |
+| `generate-report`          | unchanged | Still creates the report `conversation_id: null` and returns `{ report_id, url }`; the hook consumes `report_id` from `toolResults` and the `FindOneAndUpdate` supplies the live part's row fields.                                                                                                                                                                                                           |
 
 The `get-conversation-results` step is a `MongoDBFind` on `reports-store`, not an aggregation: no
 computed fields are needed (unlike `list-reports`, which aggregates for `is_favourite` and section
@@ -305,9 +316,9 @@ needs a real model turn. Verify config with `pnpm ldf:b` from `apps/demo`, and i
 ## Risks
 
 - **`emit-data-parts` grows on `generate_report` turns.** The tuned turn-end hook now does an
-  owner-guarded `FindOneAndUpdate` plus builds one extra part when a turn saved a report. Contained: it
-  fires only on turns that called `generate_report`, and both operations are small; it adds nothing
-  to turns that didn't.
+  owner-guarded `UpdateMany` and a projected `Find`, plus builds one extra part, when a turn saved a
+  report. Contained: it is guarded on a non-empty id list, so a turn that called no `generate_report`
+  makes no write and no read; the two ops are small and bounded by the per-turn id cap.
 - **Two populators of `conversation_id` now.** The save sheet and the hook both set it — a second
   writer of a field that had one. Contained: both write the same value shape for the same owner, and
   the parent inventory records both so the invariant doesn't drift silently.
