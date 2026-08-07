@@ -74,28 +74,38 @@ Each entry is a workflow carrying `workflow_type`, `title` and `groups[].actions
 
 | Slot | In scope | On failure |
 | --- | --- | --- |
-| `pre_insert` | the create payload: `_payload: form.*` and `_payload: attributes.*` | aborts the create; nothing has been written |
-| `post_insert` | the above, plus `_step: insert_deal.insertedId` | the deal exists with no workflow |
+| `pre_insert` | the create payload: `_payload: form.*` and `_payload: attributes.*` | no deal is written |
+| `post_insert` | the above, plus `_step: deals_insert_deal.insertedId` | the deal exists with no workflow |
+
+Pick the slot by what the steps need to **do**, not by what they need to see:
+
+- **`pre_insert` is for validation.** It is the only point at which a create can still be stopped — a `:reject: <message>` there surfaces the message on the page and no deal is written.
+- **`post_insert` is for side effects**, including ones that don't need the deal id. There is no transaction around the routine, so a write made from `pre_insert` stays behind if the insert then fails — leaving, say, a company stamped from a deal that never existed. From `post_insert` the deal is already committed, so nothing can strand the write.
+
+"The create aborts" means no *deal* was written. It does not mean the hook's own writes are undone; nothing here rolls back. Past the insert that is doubly true, so keep `post_insert` steps idempotent.
 
 `post_insert` runs **before** the workflow starts, not after. That ordering is deliberate: a failing hook then leaves a deal with no workflow, which a host can detect and repair, rather than a workflow pointing at a deal that was never created, which it cannot. Steps run server-side in the same request as the insert — these are routine steps, not a client action list like the activities module's `hooks.on_created`.
 
-Hooks may reach another module's connection by its scoped id. The demo app does both, in `apps/demo/modules/deals/vars.yaml`: `pre_insert` back-fills the linked company's industry from a field the deal form captured (filtered on the company's industry being unset, so it can never stomp an existing value), and `post_insert` stamps that company with the new deal's id and increments its deal count — which it can only do because the id is in scope there.
+Host steps are spliced into the module's own routine and share its step namespace. **Step ids beginning `deals_` are reserved.** Reusing one does not fail the build; it shadows the module's step at runtime, and `deals_insert_deal` in particular would break the workflow link and the returned deal id.
+
+Hooks may reach another module's connection by its scoped id. The demo app does both slots, in `apps/demo/modules/deals/vars.yaml`: `pre_insert` refuses a deal against a deleted company, and `post_insert` back-fills that company's industry from a field the deal form captured and stamps it with the new deal's id.
 
 ```yaml
 hooks:
   pre_insert:
-    - id: backfill_company_industry
-      type: MongoDBUpdateOne
+    - id: check_company_active
+      type: MongoDBFindOne
       connectionId: companies/companies-collection
       properties:
         filter:
           _id:
             _payload: form.company_id
-          attributes.industry: null
-        update:
-          $set:
-            attributes.industry:
-              _payload: attributes.company_industry
+    - :if:
+        _ne:
+          - _step: check_company_active.deleted
+          - null
+      :then:
+        :reject: That company has been deleted. Pick another company for this deal.
 ```
 
 ## Required indexes

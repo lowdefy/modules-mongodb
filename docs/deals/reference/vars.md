@@ -32,7 +32,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `fields` | array | `[]` |  | Host-supplied domain field blocks appended after the core company/name/description on the create form (rendered as inputs) and rendered read-only on the deal view via SmartDescriptions. Block ids must be prefixed with `attributes.` so they bind to `state.attributes.*` and flow through the generic create-deal passthrough. Deals ships no domain fields of its own — hosts inject their own here, the same way `companies.fields.attributes` works. |
 | `components` | object |  |  | Component slot overrides: topbar_slots, main_slots, info_grid_slots, sidebar_slots, card_slots |
 | `request_stages` | object |  |  | Pipeline overrides: get_deals_list, get_active_deals, get_selected_deal |
-| `hooks` | object |  |  | Routine-step extension points spliced into built-in APIs: pre_insert, post_insert |
+| `hooks` | object |  |  | Routine-step extension points spliced into the create-deal API: pre_insert, post_insert |
 
 ## Nested var details
 
@@ -60,9 +60,9 @@ Pipeline overrides: get_deals_list, get_active_deals, get_selected_deal
 
 ### `hooks`
 
-Routine-step extension points spliced into built-in APIs: pre_insert, post_insert
+Routine-step extension points spliced into the create-deal API: pre_insert, post_insert
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `pre_insert` |  | `[]` |  | Routine steps run inside `create-deal` before the deal is inserted, for work that must land whether or not it needs the deal id — e.g. back-filling `attributes.size` on the linked company from a value the create form captured. The whole create payload is in scope (`_payload: form.*` and `_payload: attributes.*`, the latter being the host's `fields` blocks); the deal id is not. A step that fails aborts the create, so keep these cheap and idempotent. |
-| `post_insert` |  | `[]` |  | Routine steps run inside `create-deal` after the insert and before the workflow starts, with the new id at `_step: insert_deal.insertedId` in addition to everything `pre_insert` sees. Placed before the workflow start deliberately: a failing hook then leaves a deal with no workflow (repairable by the host) rather than a workflow with no deal. |
+| `pre_insert` |  | `[]` |  | Routine steps run inside `create-deal` before the deal is inserted. This is the only slot that can stop a create, which is what it is mainly for: a `:reject: <message>` here aborts with a message on the page and no deal written. The whole create payload is in scope (`_payload: form.*` and `_payload: attributes.*`, the latter being the host's `fields` blocks); the deal id is not, so side-effecting writes generally belong in `post_insert`, where the deal is known to exist. There is no transaction — "the create aborts" means no *deal* was written, not that these steps' own writes are undone. Step ids prefixed `deals_` are reserved by the module. |
+| `post_insert` |  | `[]` |  | Routine steps run inside `create-deal` after the insert and before the workflow starts, with the new id at `_step: deals_insert_deal.insertedId` in addition to everything `pre_insert` sees. This is the right slot for side effects: the deal is committed, so they cannot be left stranded by a failed insert. Placed before the workflow start deliberately — a failing hook then leaves a deal with no workflow (repairable by the host) rather than a workflow with no deal. Nothing rolls back from here, so keep these idempotent. Step ids prefixed `deals_` are reserved by the module. |
