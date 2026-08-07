@@ -1,6 +1,6 @@
 # Resolve held role ids against the app's authored role catalog
 # (`_build.authConfig.roles`) — the single source of truth for role labels
-# and descriptions. Each id in the member's / invitation's `appRoles` array
+# and descriptions. Each id in the member's / invitation's `app_roles` array
 # becomes { id, label, description, orphan }:
 #   id          — the raw held role id, verbatim
 #   label       — the catalog `label` for the id, or the raw id when unmatched
@@ -9,13 +9,13 @@
 #   orphan      — true when the id is held in data but absent from the catalog
 #                 (a role removed from config); rendered flagged "no longer
 #                 configured", never silently stripped.
-# $ifNull because $map errors outright on a row that carries no `appRoles`.
+# $ifNull because $map errors outright on a row that carries no `app_roles`.
 $addFields:
   roles:
     $map:
       input:
         $ifNull:
-          - "$appRoles"
+          - "$app_roles"
           - []
       as: rid
       in:

@@ -6,17 +6,17 @@
 #   $match status: "pending" — excludes accepted / rejected / canceled rows,
 #     which appear in neither the Invitations tab nor the export.
 #   status — there is NO "expired" status in BetterAuth; it is derived from a
-#     pending row's expiresAt: future → Invited, past → Expired (Decision 2).
-#   app roles ride only `appRoles` (unset in close_row) and surface resolved as
+#     pending row's expires_at: future → Invited, past → Expired (Decision 2).
+#   app roles ride only `app_roles` (unset in close_row) and surface resolved as
 #     `roles` where the export needs them.
 #   inviter_name / inviter_id — the "Invited by" column (join `users`).
 - $match:
-    organizationId:
+    organization_id:
       _module.var: org_slug
     status: pending
 - $lookup:
     from: users
-    localField: inviterId
+    localField: inviter_id
     foreignField: _id
     as: inviter
 - $unwind:
@@ -24,8 +24,8 @@
     preserveNullAndEmptyArrays: true
 - $addFields:
     inviter_name: "$inviter.name"
-    inviter_id: "$inviterId"
-    expires_at: "$expiresAt"
+    inviter_id: "$inviter_id"
+    expires_at: "$expires_at"
     # Stored invite-time member attributes (applied to the member at accept) —
     # carried through so Resend can preserve them rather than blank them.
     member_attributes:
@@ -35,7 +35,7 @@
     status:
       $cond:
         - $gt:
-            - "$expiresAt"
+            - "$expires_at"
             - _date: now
         - Invited
         - Expired

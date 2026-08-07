@@ -17,33 +17,33 @@ connectionId:
   _module.connectionId: user-members
 payload:
   user_id:
-    _url_query: userId
+    _url_query: user_id
 properties:
   pipeline:
     - $match:
-        userId:
+        user_id:
           _payload: user_id
-        organizationId:
+        organization_id:
           $ne:
             _module.var: org_slug
     - $lookup:
         from: user-organizations
-        localField: organizationId
+        localField: organization_id
         foreignField: _id
         as: org
     - $unwind:
         path: "$org"
         preserveNullAndEmptyArrays: true
     - $addFields:
-        org_id: "$organizationId"
+        org_id: "$organization_id"
         name:
           $ifNull:
             - "$org.name"
-            - "$organizationId"
+            - "$organization_id"
         app:
           $ifNull:
             - "$org.name"
-            - "$organizationId"
+            - "$organization_id"
         initial:
           $toUpper:
             $substrCP:
@@ -63,7 +63,7 @@ properties:
               $reduce:
                 input:
                   $ifNull:
-                    - "$appRoles"
+                    - "$app_roles"
                     - []
                 initialValue: ""
                 in:

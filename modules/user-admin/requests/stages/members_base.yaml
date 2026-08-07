@@ -6,9 +6,9 @@
 #   name / picture — from the contact profile (fallback to the user display name)
 #   email          — from the auth user row
 #   status         — Active unless user.banned === true → Suspended (Decision 2;
-#                    permanent bans only, so banExpires is never consulted)
+#                    permanent bans only, so ban_expires is never consulted)
 #   created/updated— the contact change-stamp timestamps
-#   signed_up      — member.createdAt (when the person accepted into this app)
+#   signed_up      — member.created_at (when the person accepted into this app)
 #
 # It also normalises the three configurable field bags under exactly the names
 # the `fields.*` vars use, so a `table_columns` `field:` / `download_columns`
@@ -37,14 +37,14 @@
 # blank contact data is a co-location violation, not a wiring bug.
 _build.array.concat:
   - - $match:
-        organizationId:
+        organization_id:
           _module.var: org_slug
   - _var:
       key: pre_join_stages
       default: []
   - - $lookup:
         from: users
-        localField: userId
+        localField: user_id
         foreignField: _id
         as: user
     - $unwind: "$user"
@@ -81,7 +81,7 @@ _build.array.concat:
           $ifNull:
             - "$contact.updated.timestamp"
             - null
-        signed_up: "$createdAt"
+        signed_up: "$created_at"
         profile:
           $ifNull:
             - "$contact.profile"

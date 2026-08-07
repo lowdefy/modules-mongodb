@@ -1,6 +1,6 @@
 # Invitations list read (design Decision 2/7). Native aggregation rooted on the
 # pinned org's pending `user-invitations`, inviter joined, Invited/Expired
-# derived on expiresAt, filtered by the invitations filter, sorted server-side
+# derived on expires_at, filtered by the invitations filter, sorted server-side
 # after the derivation, then paginated with a $facet returning the post-filter
 # total. Each row carries `total_results`; the Invitations pending-count badge
 # and the Pagination block read it (never rows.length).

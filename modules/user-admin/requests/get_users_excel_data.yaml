@@ -30,7 +30,7 @@ properties:
                   $reduce:
                     input:
                       $ifNull:
-                        - "$appRoles"
+                        - "$app_roles"
                         - []
                     initialValue: ""
                     in:
@@ -54,7 +54,7 @@ properties:
                             $reduce:
                               input:
                                 $ifNull:
-                                  - "$appRoles"
+                                  - "$app_roles"
                                   - []
                               initialValue: ""
                               in:
@@ -63,10 +63,10 @@ properties:
                                   - ", "
                                   - "$$this"
                           chars: ", "
-                      created: "$createdAt"
+                      created: "$created_at"
                       updated: null
                       signed_up: null
-                      expires: "$expiresAt"
+                      expires: "$expires_at"
         - $sort:
             status: 1
             email: 1

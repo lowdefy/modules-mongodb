@@ -1,5 +1,5 @@
 # User detail read (design Decision 3). Native aggregation rooted on the target's
-# `user-members` row (matched by the urlQuery userId, scoped to the pinned org),
+# `user-members` row (matched by the urlQuery user_id, scoped to the pinned org),
 # joined to `users` + `user-contacts`. Reuses the shared members base shape
 # (name/email/picture/status/dates plus the three editable bags —
 # profile / user_attributes / member_attributes) and the catalog role-resolve
@@ -19,35 +19,35 @@ connectionId:
   _module.connectionId: user-members
 payload:
   user_id:
-    _url_query: userId
+    _url_query: user_id
 properties:
   pipeline:
     _build.array.concat:
       # Narrow to the target first (indexed), then the shared org-scoped joins.
       - - $match:
-            userId:
+            user_id:
               _payload: user_id
       - _ref: requests/stages/members_base.yaml
       # Roles resolved against the catalog → [{ label, orphan }].
       - _ref: requests/stages/roles_from_catalog.yaml
       # Registered passkeys for the target user (Decision 5 auth-methods badge).
-      # Keyed on `userId`, present on the member root throughout.
+      # Keyed on `user_id`, present on the member root throughout.
       - - $lookup:
             from: user-passkeys
-            localField: userId
-            foreignField: userId
+            localField: user_id
+            foreignField: user_id
             as: passkeys
       - - $addFields:
-            user_id: "$userId"
+            user_id: "$user_id"
             member_id: "$_id"
             contact_id: "$contact._id"
             email_verified:
               $eq:
-                - "$user.emailVerified"
+                - "$user.email_verified"
                 - true
             two_factor_enabled:
               $eq:
-                - "$user.twoFactorEnabled"
+                - "$user.two_factor_enabled"
                 - true
             banned:
               $eq:

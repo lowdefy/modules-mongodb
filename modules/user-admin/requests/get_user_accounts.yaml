@@ -9,16 +9,16 @@ connectionId:
   _module.connectionId: user-accounts
 payload:
   user_id:
-    _url_query: userId
+    _url_query: user_id
 properties:
   pipeline:
     - $match:
-        userId:
+        user_id:
           _payload: user_id
-        providerId:
+        provider_id:
           $nin:
             - credential
             - email
     - $project:
         _id: 0
-        providerId: 1
+        provider_id: 1
