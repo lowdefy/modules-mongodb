@@ -6,14 +6,14 @@
 #
 # The stored User-Agent is a machine string, so it is parsed here into a
 # "Chrome · macOS" label plus a `mobile` flag the row uses to pick its icon, and
-# `expiresAt` becomes relative copy ("in 6 days"). Parsing runs server-side
+# `expires_at` becomes relative copy ("in 6 days"). Parsing runs server-side
 # because the row renders from an html template, which has no operators.
 $replaceWith:
   $let:
     vars:
       ua:
         $ifNull:
-          - $userAgent
+          - $user_agent
           - ""
     in:
       $let:
@@ -129,7 +129,7 @@ $replaceWith:
                   then: $$os
               default: Unknown device
           mobile: $$mobile
-          ip: $ipAddress
+          ip: $ip_address
           # Relative expiry, matching the mock. Clamped at 0 so a session the TTL
           # sweep has not collected yet reads "today" rather than a negative
           # count; an absent expiry renders no expiry segment at all.
@@ -137,7 +137,7 @@ $replaceWith:
             $cond:
               if:
                 $eq:
-                  - $type: $expiresAt
+                  - $type: $expires_at
                   - date
               then:
                 $let:
@@ -147,7 +147,7 @@ $replaceWith:
                         - 0
                         - $dateDiff:
                             startDate: $$NOW
-                            endDate: $expiresAt
+                            endDate: $expires_at
                             unit: day
                   in:
                     $switch:
