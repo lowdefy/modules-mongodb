@@ -225,10 +225,12 @@ spec. `api/generate-report.yaml`:
 
 ## 8. Report render
 
-`pages/report.yaml:12-36` is a single `Dynamic` block resolved by
-`resolve-report`. `properties.types` (L17-36) is a bundling declaration — the
+`pages/report.yaml:12-79` is a single `Dynamic` block resolved by
+`resolve-report`. `properties.types` (L30-69) is a bundling declaration — the
 compiled output's block/action/operator types must be listed so they ship to the
-client.
+client. Among them the `Link` action and the `_url_query` operator, which the
+owner-only chat links and the drop-and-reload recovery need; the `Box` type the
+old pooled filter row required is gone.
 
 `api/resolve-report.yaml`:
 
@@ -246,20 +248,44 @@ client.
   thing (L60-61): resolving select-filter options from a field's enum values. A
   display convenience, explicitly not a gate.
 
-`compileReport.js:239-455` turns spec + rows into blocks:
+`compileReport.js:682-993` turns spec + rows into blocks:
 
-- The sparse `:for` result array is aligned index-for-index with `querySections`
-  (L258-264); a null entry becomes an Alert card (L294-297).
-- `verifySection` (L229-237) checks the declared contract against real rows; a
-  mismatch is caught (L301-306) and rendered as an Alert card with the validator's
-  message — a graceful _rendering_ failure, never a safety one.
-- KPI → `Statistic` (L308-339), with separators resolved at compile time via
-  `Intl.NumberFormat.formatToParts` (`intlSeparators`, L146-160) so the native
+- The header opens with a provenance `Paragraph` (`report_provenance`, L762-788):
+  each fact joined with ` · ` and dropped when its input is absent — `Made by
+  {name} on {date}`, `Last edited {date}` (from the doc's `updated`, never "spec
+  changed"), `Data as of {date time}` (the resolve moment), and, for a shared
+  report, `Shared with everyone by {name}`. Dates are formatted at compile time
+  (`formatTimestamp`, L83-92, en-GB day-first), so no runtime `_dayjs` runs. It is
+  shown to everyone who can open the report, not owner-gated.
+- When the viewer is the owner and the report has a `conversation_id`, a
+  `Continue in chat` `Link` follows in the header (L790-817); a non-owner, or a
+  report with no linked conversation, gets nothing there.
+- The sparse `:for` result array is aligned index-for-index with `querySections`;
+  a null (failed) entry is classified (`classifyFailure`, L557-575): a section
+  whose valid pipeline queries a role-gated collection the viewer can't reach
+  renders a **withheld** Alert (`withheldSectionBlock`, L546-548) that names no
+  collection and no role and carries no recoveries — as against a genuinely
+  **broken** section (`brokenSectionBlocks`, L455-544), an Alert plus, for the
+  owner only, a `Fix in chat` `Link` (when a `conversation_id` exists) and a
+  `Drop this section` control that calls `remove-report-section` then re-navigates
+  to re-resolve the page. A non-owner's broken Alert names who can fix it and
+  offers nothing to click.
+- `verifySection` (L595-607) checks the declared contract against real rows; a
+  mismatch is caught and rendered through the same `brokenSectionBlocks` path — a
+  graceful _rendering_ failure, never a safety one.
+- KPI → `Statistic` (L909), with separators resolved at compile time via
+  `Intl.NumberFormat.formatToParts` (`intlSeparators`, L235) so the native
   Statistic formatting matches the table's runtime `_intl` output.
-- chart → `EChart` (L341-356); table → `AgGridBalham` (L358-370); markdown →
-  `Markdown`; download → `Button` + `CallAPI` + `DownloadCsv` (L414-438).
-- Filters collect into their own full-width row at the top (L443-452) regardless
-  of spec position.
+- chart → `EChart` (L927); table → `AgGridBalham` (L938); markdown → `Markdown`;
+  download → `Button` + `CallAPI` + `DownloadCsv`. Chart and table sections each
+  also get their own `Export CSV` control (`sectionDownload`, L98-127) — a
+  `CallAPI` → `DownloadCsv` pair that re-queries the endpoint for the section's
+  full result set, not the capped on-screen rows. A KPI gets none: a single number
+  is already on screen.
+- Each filter's control is emitted once, immediately above the first section (in
+  spec order) whose `filterBy` names its field (L828-857) — not pooled in a top
+  row. A filter driving more than one section carries a scope label naming the
+  others (`filterControlBlock`, L615-670).
 
 **Filters** are the clever bit. `requeryActions` (L91-114) emits a
 `CallAPI`/`SetState` pair per bound section. The payload's filter values are
