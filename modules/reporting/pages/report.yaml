@@ -46,10 +46,19 @@ _ref:
               - CallAPI
               - SetState
               - DownloadCsv
+              # Owner-only affordances navigate in-app: Continue-in-chat and
+              # Fix-in-chat open the source conversation, Drop re-opens the
+              # report after removing a section (compileReport brokenSectionBlocks
+              # / the header control).
+              - Link
             operators:
               - _state
               - _api
               - _if_none
+              # Drop reads the report id from the page URL (the same value
+              # resolve-report loads the report from) for its remove-report-section
+              # call and the re-navigation that refreshes the page.
+              - _url_query
               # A table column carrying a `format` descriptor compiles to a
               # `__function` cell renderer wrapping `___intl.numberFormat` over
               # `___args` (compileReport numericCellRenderer). Dynamic resolution

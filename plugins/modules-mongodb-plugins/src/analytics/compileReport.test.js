@@ -994,3 +994,100 @@ describe("filter controls", () => {
     expect(allowed.properties.options).toEqual(["alpha", "beta"]);
   });
 });
+
+// Owner-only recovery affordances. All are DISPLAY gates over a server-side one
+// (remove-report-section owner-matches; chat is gated server-side) — a non-owner
+// must never see one, so each is asserted per branch. The two chat links are
+// additionally conditional on the report having a conversation to reopen.
+// Sibling ids share the endpointId's entry prefix (reporting/…), the only scope
+// compileReport has at resolve time.
+describe("owner-only affordances", () => {
+  const owner = { user_id: "u1", name: "Jane Doe" };
+  // s1 (the chart) fails; s0 kpi and s3 table render normally.
+  const brokenResults = [results[0], undefined, results[2]];
+
+  const compile = (extra) =>
+    Object.fromEntries(
+      compileReport({
+        spec,
+        results: brokenResults,
+        catalog: testCatalog,
+        roles,
+        endpointId,
+        owner,
+        ...extra,
+      }).map((b) => [b.id, b]),
+    );
+
+  test("owner + linked report: Continue-in-chat in the header, Fix + Drop on the broken section", () => {
+    const byId = compile({ is_owner: true, conversation_id: "conv-1" });
+
+    const continueBtn = byId.report_continue_in_chat;
+    expect(continueBtn.type).toBe("Button");
+    const [continueLink] = continueBtn.events.onClick;
+    expect(continueLink.type).toBe("Link");
+    expect(continueLink.params.pageId).toBe("reporting/chat");
+    expect(continueLink.params.urlQuery).toEqual({ conversation_id: "conv-1" });
+
+    // The broken chart keeps its Alert; recoveries are flat siblings.
+    expect(byId.s1.type).toBe("Alert");
+
+    const [fixLink] = byId.s1_fix_in_chat.events.onClick;
+    expect(fixLink.type).toBe("Link");
+    expect(fixLink.params.pageId).toBe("reporting/chat");
+    expect(fixLink.params.urlQuery).toEqual({
+      conversation_id: "conv-1",
+      section_id: "s1",
+    });
+
+    const [drop, reload] = byId.s1_drop.events.onClick;
+    expect(drop.type).toBe("CallAPI");
+    expect(drop.params.endpointId).toBe("reporting/remove-report-section");
+    expect(drop.params.payload).toEqual({
+      report_id: { __url_query: "report_id" },
+      section_id: "s1",
+    });
+    // Refresh: re-open the report (the Dynamic block re-resolves on page GET).
+    expect(reload.type).toBe("Link");
+    expect(reload.params.pageId).toBe("reporting/report");
+    expect(reload.params.urlQuery).toEqual({
+      report_id: { __url_query: "report_id" },
+    });
+  });
+
+  test("owner + report with no conversation: no chat links, Drop still shows", () => {
+    const byId = compile({ is_owner: true });
+    expect(byId.report_continue_in_chat).toBeUndefined();
+    expect(byId.s1_fix_in_chat).toBeUndefined();
+    expect(byId.s1_drop).toBeDefined();
+    expect(byId.s1.type).toBe("Alert");
+  });
+
+  test("non-owner: no owner affordances anywhere; the broken section names who can fix it", () => {
+    const blocks = compileReport({
+      spec,
+      results: brokenResults,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      owner,
+      is_owner: false,
+      conversation_id: "conv-1",
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+
+    expect(byId.report_continue_in_chat).toBeUndefined();
+    expect(byId.s1_fix_in_chat).toBeUndefined();
+    expect(byId.s1_drop).toBeUndefined();
+
+    // The Alert stays and names the owner, with no action to take.
+    expect(byId.s1.type).toBe("Alert");
+    expect(byId.s1.properties.description).toContain("Jane Doe");
+
+    // Per-branch guard: nothing owner-only leaked into the config.
+    const json = JSON.stringify(blocks);
+    expect(json).not.toContain("remove-report-section");
+    expect(json).not.toContain('"Link"');
+    expect(json).not.toContain("reporting/chat");
+  });
+});

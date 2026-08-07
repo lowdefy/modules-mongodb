@@ -419,6 +419,9 @@ function sectionHeading(section, rows) {
   };
 }
 
+const SECTION_FAILED_DESCRIPTION =
+  "This section failed to load — its query may reference data no longer available.";
+
 function failedSectionBlock(section, description) {
   return {
     id: section.id,
@@ -428,11 +431,108 @@ function failedSectionBlock(section, description) {
       type: "warning",
       showIcon: true,
       message: section.label,
-      description:
-        description ??
-        "This section failed to load — its query may reference data no longer available.",
+      description: description ?? SECTION_FAILED_DESCRIPTION,
     },
   };
+}
+
+// A broken data section (chart/table/kpi) plus its owner-only recovery
+// affordances. The recoveries are a DISPLAY gate over a server-side one:
+// remove-report-section owner-matches in its own filter and the chat it links to
+// is gated server-side, so hiding them from a non-owner only spares them a dead
+// button — it is not the authorization. A non-owner keeps the Alert, which names
+// the owner who can fix it (when known) and offers nothing to click. Blocks stay
+// flat siblings of the Alert — no wrapping Box — so the page's byId lookups reach
+// them.
+function brokenSectionBlocks(
+  section,
+  description,
+  { isOwner, ownerName, conversationId, chatPageId, reportPageId, removeEndpointId },
+) {
+  if (!isOwner) {
+    const named = ownerName
+      ? `${description ?? SECTION_FAILED_DESCRIPTION} Ask ${ownerName} to fix it.`
+      : description;
+    return [failedSectionBlock(section, named)];
+  }
+
+  const blocks = [failedSectionBlock(section, description)];
+
+  // Fix in chat — reopens the source conversation with the failing section
+  // named. Absent when the report has no conversation to reopen.
+  if (conversationId) {
+    blocks.push({
+      id: `${section.id}_fix_in_chat`,
+      type: "Button",
+      layout: { span: 24 },
+      properties: {
+        title: "Fix in chat",
+        icon: "AiOutlineMessage",
+        type: "link",
+        size: "small",
+      },
+      events: {
+        onClick: [
+          {
+            id: `fix_${section.id}`,
+            type: "Link",
+            params: {
+              pageId: chatPageId,
+              urlQuery: {
+                conversation_id: conversationId,
+                section_id: section.id,
+              },
+            },
+          },
+        ],
+      },
+    });
+  }
+
+  // Drop it — the module's only spec write. Sends a report id + section id, never
+  // the spec; remove-report-section owner-matches, cascades filter bindings, and
+  // refuses when this is the last section (its message surfaces as the CallAPI
+  // error). report_id is read from the page URL — the same value resolve-report
+  // loaded this report from. The re-navigation is the refresh: the report is a
+  // server-resolved Dynamic block with no client refetch, so re-opening the page
+  // re-resolves it without the dropped section.
+  blocks.push({
+    id: `${section.id}_drop`,
+    type: "Button",
+    layout: { span: 24 },
+    properties: {
+      title: "Drop this section",
+      icon: "AiOutlineDelete",
+      type: "link",
+      danger: true,
+      size: "small",
+    },
+    events: {
+      onClick: [
+        {
+          id: `drop_${section.id}`,
+          type: "CallAPI",
+          params: {
+            endpointId: removeEndpointId,
+            payload: {
+              report_id: { __url_query: "report_id" },
+              section_id: section.id,
+            },
+          },
+        },
+        {
+          id: `reload_${section.id}`,
+          type: "Link",
+          params: {
+            pageId: reportPageId,
+            urlQuery: { report_id: { __url_query: "report_id" } },
+          },
+        },
+      ],
+    },
+  });
+
+  return blocks;
 }
 
 // ICU rejects an unknown currency code ("$") or a malformed locale tag with a
@@ -478,10 +578,21 @@ function compileReport({
   owner,
   visibility,
   resolvedAt,
+  is_owner,
+  conversation_id,
 }) {
   if (typeof endpointId !== "string" || endpointId === "") {
     fail("endpointId (the query-data endpoint) is required.");
   }
+  // The owner-only affordances target sibling pages/endpoints in the same module
+  // entry. compileReport runs at resolve time and cannot evaluate _module.pageId
+  // / _module.endpointId (build-time operators), but the scoped endpointId it is
+  // already handed carries the entry id as its first path segment
+  // ({entryId}/{name}), and every sibling shares it.
+  const entryId = endpointId.split("/")[0];
+  const chatPageId = `${entryId}/chat`;
+  const reportPageId = `${entryId}/report`;
+  const removeEndpointId = `${entryId}/remove-report-section`;
   // Inert re-validation only (no catalog): the per-section AnalyticsPipeline is
   // the security gate, so one inaccessible section must not throw here.
   const validated = validateReportSpec({ spec, roles });
@@ -535,7 +646,8 @@ function compileReport({
   // answer to "why can I see this?"; the publisher is the owner (visibility is
   // the module's only sharing path), so `owner.name` fills both roles. Each
   // fact is dropped rather than shown blank when its input is absent.
-  const madeBy = owner?.name;
+  const ownerName = owner?.name;
+  const madeBy = ownerName;
   const provenance = [];
   if (madeBy) {
     provenance.push(
@@ -564,11 +676,49 @@ function compileReport({
     });
   }
 
+  // Continue in chat — reopens the source conversation with the report as
+  // context. Owner-only (it exposes the author's transcript) and absent, not
+  // disabled, when there is no conversation to reopen.
+  if (is_owner && conversation_id) {
+    header.push({
+      id: "report_continue_in_chat",
+      type: "Button",
+      layout: { span: 24 },
+      properties: {
+        title: "Continue in chat",
+        icon: "AiOutlineMessage",
+        type: "link",
+        size: "small",
+      },
+      events: {
+        onClick: [
+          {
+            id: "continue_in_chat",
+            type: "Link",
+            params: {
+              pageId: chatPageId,
+              urlQuery: { conversation_id },
+            },
+          },
+        ],
+      },
+    });
+  }
+
+  const brokenCtx = {
+    isOwner: is_owner,
+    ownerName,
+    conversationId: conversation_id,
+    chatPageId,
+    reportPageId,
+    removeEndpointId,
+  };
+
   for (const section of sections) {
     if (["kpi", "chart", "table"].includes(section.type)) {
       const rows = rowsBySectionId.get(section.id);
       if (rows === null || rows === undefined) {
-        bodyBlocks.push(failedSectionBlock(section));
+        bodyBlocks.push(...brokenSectionBlocks(section, undefined, brokenCtx));
         continue;
       }
       // Contract-vs-rows check: a mismatch renders this section as an Alert
@@ -576,7 +726,9 @@ function compileReport({
       try {
         verifySection(section, rows);
       } catch (error) {
-        bodyBlocks.push(failedSectionBlock(section, error.message));
+        bodyBlocks.push(
+          ...brokenSectionBlocks(section, error.message, brokenCtx),
+        );
         continue;
       }
 
