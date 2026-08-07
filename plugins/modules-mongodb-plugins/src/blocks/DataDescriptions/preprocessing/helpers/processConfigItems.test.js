@@ -48,32 +48,79 @@ test("one-level list: fields resolve per index and get Item N sections", () => {
   expect(devices.items[1].items[0].value).toBe("Switch");
 });
 
-test("itemKey titles each list item from its own data, Item N on miss", () => {
+test("itemTitle renders a multi-field HTML template against each item", () => {
   const data = {
     form: {
-      devices: [{ name: "Router" }, { sku: "no-name" }, { name: "" }],
+      devices: [
+        { name: "Router", parts: [1, 2] },
+        { name: "Switch", parts: [] },
+      ],
     },
   };
   const form = [
     {
       key: "form.devices",
       title: "Devices",
-      itemKey: "name",
+      itemTitle: "<b>{{ name }}</b> — {{ parts | length }} part(s)",
       form: [
         { key: "form.devices.$.name", component: "text_input" },
-        { key: "form.devices.$.sku", component: "text_input" },
+        { key: "form.devices.$.parts", component: "text_input" },
       ],
     },
   ];
 
   const [devices] = sectionsOf(processConfigItems(data, form, 0));
 
-  expect(devices.items[0].title).toBe("Router");
-  expect(devices.items[1].title).toBe("Item 2");
-  expect(devices.items[2].title).toBe("Item 3");
+  expect(devices.items[0].title).toBe("<b>Router</b> — 2 part(s)");
+  expect(devices.items[1].title).toBe("<b>Switch</b> — 0 part(s)");
 });
 
-test("itemKey supports dot notation and applies per nesting level", () => {
+test("itemTitle exposes the 0-based _index to the template", () => {
+  const data = {
+    form: { devices: [{ name: "Router" }, { name: "Switch" }] },
+  };
+  const form = [
+    {
+      key: "form.devices",
+      title: "Devices",
+      itemTitle: "{{ _index }}. {{ name }}",
+      form: [{ key: "form.devices.$.name", component: "text_input" }],
+    },
+  ];
+
+  const [devices] = sectionsOf(processConfigItems(data, form, 0));
+
+  expect(devices.items[0].title).toBe("0. Router");
+  expect(devices.items[1].title).toBe("1. Switch");
+});
+
+test("itemTitle empty/whitespace render falls back to Item N", () => {
+  const data = {
+    form: {
+      // `id` always resolves so each row produces a section; `name` drives the
+      // title. Row 0 renders whitespace (→ fallback), row 1 renders empty.
+      devices: [{ id: 1, name: "  " }, { id: 2 }],
+    },
+  };
+  const form = [
+    {
+      key: "form.devices",
+      title: "Devices",
+      itemTitle: "{{ name }}",
+      form: [
+        { key: "form.devices.$.id", component: "number" },
+        { key: "form.devices.$.name", component: "text_input" },
+      ],
+    },
+  ];
+
+  const [devices] = sectionsOf(processConfigItems(data, form, 0));
+
+  expect(devices.items[0].title).toBe("Item 1");
+  expect(devices.items[1].title).toBe("Item 2");
+});
+
+test("itemTitle supports nested paths and applies per nesting level", () => {
   const data = {
     form: {
       devices: [
@@ -87,12 +134,12 @@ test("itemKey supports dot notation and applies per nesting level", () => {
   const form = [
     {
       key: "form.devices",
-      itemKey: "meta.label",
+      itemTitle: "{{ meta.label }}",
       form: [
         { key: "form.devices.$.meta.label", component: "text_input" },
         {
           key: "form.devices.$.parts",
-          itemKey: "name",
+          itemTitle: "{{ name }}",
           form: [
             { key: "form.devices.$.parts.$.name", component: "text_input" },
             { key: "form.devices.$.parts.$.sku", component: "text_input" },

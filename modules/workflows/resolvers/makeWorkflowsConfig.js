@@ -77,8 +77,9 @@ const METADATA_FIELDS = [
   "validate",
   "enum",
   // Titles each list item's card on the overview card's read-only
-  // DataDescriptions (value pulled from the item, relative dot-notation key).
-  "itemKey",
+  // DataDescriptions. A Nunjucks template rendered against the item; its
+  // fields are the template context and it may emit HTML.
+  "itemTitle",
 ];
 
 function pickMetadata(entry) {

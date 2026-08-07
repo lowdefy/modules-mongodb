@@ -232,11 +232,15 @@ form:
     title: Label value
   - key: form.devices
     component: controlled_list
-    title: Devices
+    # HTML is allowed in a list's own title (rendered via the plugin's
+    # renderHtml, DOMPurify-sanitised).
+    title: "<b>Devices</b>"
     required: true
-    # Relative to each item — view/review/overview title the item's card with
-    # devices[i].name instead of `Item N` (falls back when the value is empty).
-    itemKey: name
+    # `itemTitle` is a Nunjucks template rendered against each item (its fields
+    # are the template context). It may reference multiple fields and emit HTML;
+    # view/review/overview title the item's card with it instead of `Item N`
+    # (falls back when the render is empty).
+    itemTitle: "<b>{{ name }}</b> — {{ parts | length }} part(s)"
     form:
       # Row children use the FULL `{list}.$.{field}` state path as their key (the
       # module's documented convention — see components/fields/README.md, e.g.
@@ -252,7 +256,7 @@ form:
       - key: form.devices.$.parts
         component: controlled_list
         title: Parts
-        itemKey: name
+        itemTitle: "{{ name }}"
         form:
           - key: form.devices.$.parts.$.name
             component: text_input
