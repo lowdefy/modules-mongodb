@@ -23,11 +23,12 @@ Add `reporting` to an app whose users need to explore data conversationally and 
 
 Surfaces exported as pages:
 
-| Page           | Surface                                                              |
-| -------------- | -------------------------------------------------------------------- |
-| `chat`         | Conversational — `AgentChat` with an adjacent charts, tables and downloads panel, and a two-track empty state (ask a question / build a report) taught by the `welcome` var |
-| `reports-list` | Saved reports with open and [soft delete](../shared/soft-delete.md)  |
-| `report`       | Report renderer (`Dynamic` block over `resolve-report`)              |
+| Page              | Surface                                                                                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chat`            | Conversational — `AgentChat` with an adjacent charts, tables and downloads panel, and a two-track empty state (ask a question / build a report) taught by the `welcome` var |
+| `reports-list`    | Saved reports as a scannable grid — Mine / Shared / Favourites / All scopes, search, sort, a contents preview, visibility, per-row actions, a New report shortcut to the chat, and a link to recovery |
+| `reports-deleted` | Recovery — [soft-deleted](../shared/soft-delete.md) reports with their delete stamp and one-click restore to private; reached from the reports-list footer                  |
+| `report`          | Report renderer (`Dynamic` block over `resolve-report`)                                                                                                                     |
 
 Reports are created from the chat surface two ways: the agent's `generate_report` tool persists a spec and returns its URL, or the user ticks result cards and confirms a sheet — see [Save as report](how-to/save-as-report.md).
 

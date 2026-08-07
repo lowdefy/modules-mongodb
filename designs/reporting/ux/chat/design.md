@@ -8,6 +8,12 @@ This sub-design reworks the page so the report path is a thing you can click, th
 
 Result **selection** and the save sheet it feeds live in [save-as-report](../save-as-report/design.md). This sub-design builds the panel that hosts them.
 
+> **Implemented.** This sub-design shipped in the `reporting` module — the
+> always-visible panel, collapsible side panels, rail search/grouping/rename/
+> delete, and tables-as-artefacts are live in `modules/reporting/pages/chat*`.
+> `docs/reporting/` is the source of truth for consumer-observable behaviour;
+> this file records the rationale.
+
 ## Proposed change
 
 1. Rework the welcome into **two tracks of starters** — exploratory prompts and report-shaped prompts — plus a line naming what the assistant can see, written by the module consumer rather than derived from the catalog ([why](#the-empty-states-copy-is-consumer-authored-not-catalog-derived)). Clicking a starter fills the composer rather than sending it. Both halves of this are built _outside_ `AgentChat` and rest on one new block method — see [the one thing the blocks cannot do](#the-one-thing-the-blocks-cannot-do-fill-the-composer).

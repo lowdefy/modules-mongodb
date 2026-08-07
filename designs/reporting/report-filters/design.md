@@ -4,6 +4,12 @@ Saved reports carry `filter` sections that other sections subscribe to via `filt
 
 It follows the [open query engine](../open-query-engine/design.md) design, whose [filter-binding decision](../open-query-engine/design.md#filter-binding-server-built-match-prepended-to-the-pipeline) this extends — the server still builds the `$match` from fixed `{ field, op, value }` triples and still prepends it. No new security boundary is introduced and nothing here widens _what_ the agent may query. One cap does move: `MAX_ARRAY_LITERAL_LENGTH` goes from 100 to 500 so that a full multi-select selection fits inside one `$in` — a quantitative widening of pipeline text, argued and accepted below.
 
+> **Implemented.** This design shipped in the `reporting` module —
+> `multiselect`, `match: any | all`, and query-sourced `optionsQuery` options
+> are live (`plugins/modules-mongodb-plugins/src/analytics/`). `docs/reporting/`
+> is the source of truth for consumer-observable behaviour; this file records
+> the rationale.
+
 ## Proposed change
 
 1. Add **`multiselect`** to `FILTER_CONTROLS`, compiling to the `MultipleSelector` block. Its state value is an array of the chosen option values.

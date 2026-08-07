@@ -1,0 +1,36 @@
+# Delete confirm — "Delete" over a data tool reads as destructive, so the confirm
+# states the truth: the report stops being listed, nothing is queried again, no
+# source data is touched. This is the one place a user meets the soft-delete
+# idiom, so it is the one place worth spelling out. Recoverable from the
+# Recently-deleted page. Not hidden with `visible:` (see row_menu_modal for why).
+id: delete_confirm_modal
+type: Modal
+properties:
+  title: Delete this report?
+  okText: Delete
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    _build.array.concat:
+      - - id: delete_report
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: delete-report
+            payload:
+              report_id:
+                _state: selected_report._id
+      - _ref: pages/reports-list/actions/load_scope.yaml
+blocks:
+  - id: delete_confirm_body
+    type: Paragraph
+    properties:
+      content:
+        _nunjucks:
+          template: >-
+            “{{ t }}” stops being listed. Nothing is queried again and no source
+            data is touched — you can restore it from Recently deleted.
+          on:
+            t:
+              _state: selected_report.title

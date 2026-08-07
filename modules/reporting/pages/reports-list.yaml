@@ -1,114 +1,229 @@
-# Saved reports: open or delete (delete is owner-scoped server-side).
-#
-# `list-reports` takes the scope as a required parameter because the scope match
-# is its authorization boundary, so this page names one: `mine`. It reads the
-# default page of that scope and ignores the total — this is a stacked-card list
-# with no toolbar and no pager.
+# Saved reports — a scannable grid over the scopes list-reports provides. Scope is
+# the one server parameter (it IS the authorization boundary); the whole scope
+# loads and the grid searches, sorts and pages it client-side. Row actions and the
+# ⋯ menu are wired on the table (see components/table_reports.yaml).
 id: reports-list
 type: Box
 properties:
   style:
     padding: 16px
-    maxWidth: 900px
+    maxWidth: 1100px
     margin: 0 auto
 events:
   onMountAsync:
-    - id: load_reports
-      type: CallAPI
-      params:
-        endpointId:
-          _module.endpointId: list-reports
-        payload:
-          scope: mine
-    - id: set_reports
-      type: SetState
-      params:
-        reports:
-          _api:
-            _build.string.concat:
-              - _module.endpointId: list-reports
-              - ".response.reports"
+    # scope seeds the SegmentedSelector below and the load payload; set it before
+    # the first load so list-reports gets a recognised scope, not null.
+    _build.array.concat:
+      - - id: init_scope
+          type: SetState
+          params:
+            scope: mine
+      - _ref: pages/reports-list/actions/load_scope.yaml
 blocks:
-  - id: reports_title
-    type: Title
-    properties:
-      content: Reports
-      level: 3
-  - id: reports_empty
-    type: Paragraph
+  # Title left, primary "New report" right. The title flex-grows so the button is
+  # pushed to the far edge without needing a justify prop. Reports are authored in
+  # the chat, so New report is a plain link there — not a create endpoint.
+  - id: reports_header
+    type: Box
+    layout:
+      align: middle
+      gap: 12
+      wrap: wrap
+    blocks:
+      - id: reports_title
+        type: Title
+        layout:
+          flex: 1 1 auto
+        properties:
+          content: Reports
+          level: 3
+      - id: new_report
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: New report
+          type: primary
+          icon: AiOutlinePlus
+        events:
+          onClick:
+            - id: new_report_to_chat
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: chat
+
+  - id: reports_toolbar
+    type: Box
+    layout:
+      gap: 12
+      align: middle
+      wrap: wrap
+    style:
+      marginBottom: 12px
+    blocks:
+      - id: scope
+        type: SegmentedSelector
+        layout:
+          flex: 0 0 auto
+        properties:
+          # The segments name the scope themselves; the block-id label above them
+          # ("scope :") is noise.
+          label:
+            disabled: true
+          # All is the union of Mine and Shared (see list-reports.yaml) — the
+          # broadest set the viewer may read, and the one place to search across
+          # scopes rather than within one.
+          options:
+            - value: mine
+              label: Mine
+            - value: shared
+              label: Shared
+            - value: favourites
+              label: Favourites
+            - value: all
+              label: All
+        events:
+          # A scope change is a different authorization set, so it refetches
+          # rather than filtering what is already loaded.
+          onChange:
+            _ref: pages/reports-list/actions/load_scope.yaml
+      - id: search
+        type: TextInput
+        layout:
+          flex: 1 1 240px
+        properties:
+          # The placeholder carries the meaning; hide the block-id label. No
+          # onChange — the grid's rowData reads `search` directly, so typing
+          # re-filters the grid with no wiring here. allowClear's × clears it.
+          label:
+            disabled: true
+          placeholder: Search reports
+          allowClear: true
+          prefixIcon: AiOutlineSearch
+
+  # The grid shows whenever the scope has any rows. A search that matches nothing
+  # keeps the grid up and lets its own no-rows overlay carry the message; only a
+  # genuinely empty scope drops to the states below.
+  - id: reports_table_wrap
+    type: Box
     visible:
-      _eq:
+      _gt:
         - _array.length:
             _if_none:
               - _state: reports
               - []
         - 0
-    properties:
-      content: No saved reports yet — ask the assistant for one from the chat page.
-  - id: reports
-    type: List
     blocks:
-      - id: reports.$.report_card
-        type: Card
-        properties:
-          title:
-            _state: reports.$.title
-        blocks:
-          - id: reports.$.report_description
-            type: Paragraph
-            properties:
-              content:
+      - _ref: pages/reports-list/components/table_reports.yaml
+
+  # First run — teach the second job and open the chat, where the report track of
+  # the welcome is waiting. Covers Mine (you have none) and All (there are none
+  # you can see anywhere); both resolve to "create your first from chat". Shared
+  # and Favourites get their own factual copy below. (The chat has no
+  # track-preselect param, so this links plainly rather than inventing one.)
+  - id: empty_create
+    type: Result
+    visible:
+      _and:
+        - _or:
+            - _eq:
+                - _state: scope
+                - mine
+            - _eq:
+                - _state: scope
+                - all
+        - _eq:
+            - _array.length:
                 _if_none:
-                  - _state: reports.$.description
-                  - ""
-          - id: reports.$.open_report
-            type: Button
-            layout:
-              span: 6
-            properties:
-              title: Open
-              icon: AiOutlineFileText
-            events:
-              onClick:
-                - id: open
-                  type: Link
-                  params:
-                    pageId:
-                      _module.pageId: report
-                    urlQuery:
-                      report_id:
-                        _state: reports.$._id
-          - id: reports.$.delete_report
-            type: Button
-            layout:
-              span: 6
-            properties:
-              title: Delete
-              icon: AiOutlineDelete
-              type: default
-              danger: true
-            events:
-              onClick:
-                - id: delete
-                  type: CallAPI
-                  params:
-                    endpointId:
-                      _module.endpointId: delete-report
-                    payload:
-                      report_id:
-                        _state: reports.$._id
-                - id: reload_reports
-                  type: CallAPI
-                  params:
-                    endpointId:
-                      _module.endpointId: list-reports
-                    payload:
-                      scope: mine
-                - id: reset_reports
-                  type: SetState
-                  params:
-                    reports:
-                      _api:
-                        _build.string.concat:
-                          - _module.endpointId: list-reports
-                          - ".response.reports"
+                  - _state: reports
+                  - []
+            - 0
+    properties:
+      icon:
+        name: AiOutlineFileAdd
+        color: "#bfbfbf"
+      title: No reports yet
+      subTitle: Turn an answer into a saved report from the chat.
+    blocks:
+      - id: empty_create_cta
+        type: Button
+        properties:
+          title: Go to chat
+          type: primary
+        events:
+          onClick:
+            - id: to_chat
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: chat
+
+  # Shared, nothing published — a fact about the app, not a prompt to act. Shared
+  # includes the viewer's own published reports, so this means the app's shared
+  # library is empty, not that nobody shared with the viewer.
+  - id: empty_shared
+    type: Result
+    visible:
+      _and:
+        - _eq:
+            - _state: scope
+            - shared
+        - _eq:
+            - _array.length:
+                _if_none:
+                  - _state: reports
+                  - []
+            - 0
+    properties:
+      icon:
+        name: AiOutlineTeam
+        color: "#bfbfbf"
+      title: Nothing shared yet
+      subTitle: No reports have been published to the app.
+
+  # Favourites, none starred.
+  - id: empty_favourites
+    type: Result
+    visible:
+      _and:
+        - _eq:
+            - _state: scope
+            - favourites
+        - _eq:
+            - _array.length:
+                _if_none:
+                  - _state: reports
+                  - []
+            - 0
+    properties:
+      icon:
+        name: AiOutlineStar
+        color: "#bfbfbf"
+      title: No favourites yet
+      subTitle: The ★ on a report keeps it here.
+
+  # Recovery is a quiet page, not a scope tab.
+  - id: recovery_link
+    type: Button
+    layout:
+      flex: 0 0 auto
+    style:
+      marginTop: 12px
+    properties:
+      title: Recently deleted
+      type: link
+      icon: AiOutlineDelete
+    events:
+      onClick:
+        - id: to_recovery
+          type: Link
+          params:
+            pageId:
+              _module.pageId: reports-deleted
+
+  # Row actions. Kept out of the grid so their state survives the grid's renders;
+  # the ⋯ cell seeds selected_report and opens the menu, which fans out to these.
+  - _ref: pages/reports-list/components/row_menu_modal.yaml
+  - _ref: pages/reports-list/components/rename_modal.yaml
+  - _ref: pages/reports-list/components/delete_confirm_modal.yaml

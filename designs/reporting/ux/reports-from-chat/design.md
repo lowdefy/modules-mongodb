@@ -21,6 +21,13 @@ section instead of navigating away, and an agent `generate_report` is tied back 
 by the turn-end hook and streamed straight into the section. No new field and no schema change — but
 it reaches into the save flow and the agent's `onFinish` hook so both save paths land here live.
 
+> **Implemented.** This sub-design shipped in the `reporting` module (PR #170) —
+> the "Reports from this chat" panel section, the folded `get-conversation-results`
+> read, and the both-routes live refresh (save sheet + agent `emit-data-parts`
+> backfill) are all live. The visible label is **"Reports from this chat"** (this
+> doc's older prose says "Saved from this chat"). `docs/reporting/` is the source
+> of truth for consumer-observable behaviour; this file records the rationale.
+
 ## Proposed change
 
 1. **Extend `get-conversation-results`** — the endpoint the panel already calls on conversation

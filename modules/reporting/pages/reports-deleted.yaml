@@ -1,0 +1,232 @@
+# The quiet recovery page: soft-deleted reports, each restorable to private.
+# Reached by a footer link from the reports list, not a scope tab — recovery is
+# not part of anyone's daily loop. Server-side this is `list-reports` with
+# `scope: deleted`, owner-matched, so you never see anyone else's deleted reports
+# (including ones that had been published to you).
+id: reports-deleted
+type: Box
+properties:
+  style:
+    padding: 16px
+    maxWidth: 900px
+    margin: 0 auto
+events:
+  onMountAsync:
+    - id: load_deleted
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: list-reports
+        payload:
+          scope: deleted
+    - id: set_deleted
+      type: SetState
+      params:
+        deleted_reports:
+          _api:
+            _build.string.concat:
+              - _module.endpointId: list-reports
+              - ".response.reports"
+blocks:
+  # The only route back — recovery is reached by a link, not a nav tab, so it
+  # needs its own way home or the user is stranded on the browser back button.
+  - id: back_to_reports
+    type: Button
+    layout:
+      flex: 0 0 auto
+    style:
+      marginBottom: 8px
+    properties:
+      title: Back to reports
+      type: link
+      icon: AiOutlineArrowLeft
+    events:
+      onClick:
+        - id: to_reports
+          type: Link
+          params:
+            pageId:
+              _module.pageId: reports-list
+
+  - id: deleted_title
+    type: Title
+    properties:
+      content: Recently deleted
+      level: 3
+  - id: deleted_intro
+    type: Paragraph
+    properties:
+      content: >-
+        Deleting a report only stops it being listed — nothing is queried again
+        and no data is touched. Restore brings one back as a private report, even
+        if it had been shared.
+      style:
+        color: var(--ant-color-text-secondary)
+
+  # Set on a successful restore and never cleared: the row leaves the list below,
+  # so this banner (with its link) is what confirms the restore and hands the user
+  # the now-private report — restore leaves `updated` untouched, so the report does
+  # not jump to the top of Mine and a return to the list would mean hunting for it.
+  - id: restored_banner
+    type: Box
+    visible:
+      _ne:
+        - _state: restored_report
+        - null
+    layout:
+      gap: 12
+      wrap: nowrap
+      align: middle
+    style:
+      padding: 12px
+      borderRadius: 8px
+      background: var(--ant-color-success-bg)
+      border: 1px solid var(--ant-color-success-border)
+      marginBottom: 16px
+    blocks:
+      - id: restored_message
+        type: Paragraph
+        layout:
+          flex: 1 1 auto
+        properties:
+          content:
+            _nunjucks:
+              template: "Restored “{{ t }}” — it is private now."
+              on:
+                t:
+                  _state: restored_report.title
+          style:
+            marginBottom: 0
+      - id: restored_open
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Open
+          icon: AiOutlineFileText
+          type: default
+          size: small
+        events:
+          onClick:
+            - id: open_restored
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: report
+                urlQuery:
+                  report_id:
+                    _state: restored_report._id
+
+  - id: deleted_empty
+    type: Paragraph
+    visible:
+      _eq:
+        - _array.length:
+            _if_none:
+              - _state: deleted_reports
+              - []
+        - 0
+    properties:
+      content: Nothing deleted — anything you retire will wait here.
+
+  # A List's id IS its state key, so this binds to `deleted_reports`. Rows follow
+  # the "kept report" shape from the chat panel's saved-from-chat band: a bordered
+  # box with the title, who/when it was deleted, and the recovery action.
+  - id: deleted_reports
+    type: List
+    properties:
+      direction: column
+      wrap: nowrap
+      style:
+        gap: 8px
+    blocks:
+      - id: deleted_reports.$.card
+        type: Box
+        layout:
+          gap: 12
+          wrap: nowrap
+          align: middle
+        style:
+          padding: 12px
+          borderRadius: 8px
+          background: var(--ant-color-bg-container)
+          border: 1px solid var(--ant-color-border-secondary)
+        blocks:
+          - id: deleted_reports.$.body
+            type: Box
+            layout:
+              flex: 1 1 auto
+              gap: 4
+            blocks:
+              - id: deleted_reports.$.title
+                type: Title
+                properties:
+                  content:
+                    _state: deleted_reports.$.title
+                  level: 5
+                  style:
+                    marginBottom: 0
+              # The stamp's who/when — a recovery screen that omits it makes the
+              # user guess whether they are looking at their own mistake.
+              - id: deleted_reports.$.deleted_when
+                type: Paragraph
+                properties:
+                  content:
+                    _nunjucks:
+                      template: "deleted {{ d }} by {{ who }}"
+                      on:
+                        d:
+                          _dayjs:
+                            - _state: deleted_reports.$.deleted.timestamp
+                            - format: D MMMM YYYY
+                        who:
+                          _state: deleted_reports.$.deleted.user.name
+                  style:
+                    fontSize: 12px
+                    color: var(--ant-color-text-secondary)
+                    marginBottom: 0
+          - id: deleted_reports.$.restore
+            type: Button
+            layout:
+              flex: 0 0 auto
+              selfAlign: middle
+            properties:
+              title: Restore
+              icon: AiOutlineUndo
+              type: default
+              size: small
+            events:
+              onClick:
+                - id: restore_report
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _module.endpointId: restore-report
+                    payload:
+                      report_id:
+                        _state: deleted_reports.$._id
+                # Capture the restored report before the refetch drops its row, so
+                # the banner above can link to it.
+                - id: set_restored
+                  type: SetState
+                  params:
+                    restored_report:
+                      _id:
+                        _state: deleted_reports.$._id
+                      title:
+                        _state: deleted_reports.$.title
+                - id: reload_deleted
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _module.endpointId: list-reports
+                    payload:
+                      scope: deleted
+                - id: reset_deleted
+                  type: SetState
+                  params:
+                    deleted_reports:
+                      _api:
+                        _build.string.concat:
+                          - _module.endpointId: list-reports
+                          - ".response.reports"

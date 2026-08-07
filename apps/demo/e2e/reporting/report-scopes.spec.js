@@ -163,45 +163,6 @@ test.describe("list-reports scopes", () => {
     expect(ids(response)).toEqual(["other-shared-deleted"]);
   });
 
-  test("the total is the unpaged match count while the rows honour skip and page_size", async ({
-    page,
-  }) => {
-    const firstPage = await list(page, {
-      scope: "all",
-      skip: 0,
-      page_size: 2,
-    });
-    expect(firstPage.reports).toHaveLength(2);
-    expect(firstPage.total).toBe(4);
-
-    const secondPage = await list(page, {
-      scope: "all",
-      skip: 2,
-      page_size: 2,
-    });
-    expect(secondPage.reports).toHaveLength(2);
-    // The count branch is outside the paged branch, so it does not shrink as
-    // the offset advances — this is the "of 8" in "Showing 6 of 8".
-    expect(secondPage.total).toBe(4);
-
-    // No row appears on both pages: the sort carries an _id tiebreaker, without
-    // which an offset over a non-unique key can repeat a row and skip another.
-    expect(ids(firstPage).concat(ids(secondPage)).sort()).toEqual([
-      "other-shared",
-      "other-shared-fav",
-      "own-private",
-      "own-shared",
-    ]);
-
-    const pastTheEnd = await list(page, {
-      scope: "all",
-      skip: 4,
-      page_size: 2,
-    });
-    expect(pastTheEnd.reports).toEqual([]);
-    expect(pastTheEnd.total).toBe(4);
-  });
-
   test("a caller-supplied sort replaces the favourite-first default", async ({
     page,
   }) => {

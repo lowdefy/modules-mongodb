@@ -3,7 +3,15 @@ title: Report ownership, visibility and retirement
 module: reporting
 type: concept
 concepts:
-  [ownership, visibility, share-roles, favourites, soft-delete, duplicate, spec-version]
+  [
+    ownership,
+    visibility,
+    share-roles,
+    favourites,
+    soft-delete,
+    duplicate,
+    spec-version,
+  ]
 ---
 
 # Report ownership, visibility and retirement
@@ -24,12 +32,12 @@ Set the [`share_roles`](../reference/vars.md) var to the roles whose holders may
 
 The two directions are gated differently, and this is deliberate:
 
-| Act           | Requires                                       |
-| ------------- | ---------------------------------------------- |
-| **Publish**   | owner **and** a `share_roles` role             |
-| **Unpublish** | owner **or** a `share_roles` role              |
+| Act           | Requires                           |
+| ------------- | ---------------------------------- |
+| **Publish**   | owner **and** a `share_roles` role |
+| **Unpublish** | owner **or** a `share_roles` role  |
 
-Requiring both in both directions reads tidier and is the version that breaks. It makes a publish reversible only while *both* halves still hold, and three ordinary situations dissolve one of them: a publisher whose role is revoked can no longer retract their own app-wide report; an app that switches publishing off freezes every already-shared report in place; and an author who leaves takes the only retraction path with them. In each case the content stays in front of the whole app and deleting it is the only remaining exit.
+Requiring both in both directions reads tidier and is the version that breaks. It makes a publish reversible only while _both_ halves still hold, and three ordinary situations dissolve one of them: a publisher whose role is revoked can no longer retract their own app-wide report; an app that switches publishing off freezes every already-shared report in place; and an author who leaves takes the only retraction path with them. In each case the content stays in front of the whole app and deleting it is the only remaining exit.
 
 Two consequences worth stating plainly:
 
@@ -48,17 +56,17 @@ In the common case there is nothing to explain: catalog role-gating is opt-in, a
 
 ## The five list scopes
 
-| Scope        | Returns                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------ |
-| `mine`       | Your reports, any visibility. Publishing does not remove a report from Mine.                |
-| `shared`     | Every published report, including your own.                                                 |
-| `favourites` | Reports you starred **that you can still read**.                                            |
-| `all`        | Everything you can read — yours plus everything published. The widest scope.                 |
-| `deleted`    | Your soft-deleted reports. Owner-only, and never anyone else's.                              |
+| Scope        | Returns                                                                      |
+| ------------ | ---------------------------------------------------------------------------- |
+| `mine`       | Your reports, any visibility. Publishing does not remove a report from Mine. |
+| `shared`     | Every published report, including your own.                                  |
+| `favourites` | Reports you starred **that you can still read**.                             |
+| `all`        | Everything you can read — yours plus everything published. The widest scope. |
+| `deleted`    | Your soft-deleted reports. Owner-only, and never anyone else's.              |
 
 `deleted` is the only scope that inverts the soft-delete test, and the only one that is owner-only regardless of visibility: you never see anyone else's deleted reports, including ones that had been published to you.
 
-`all` is not a tab — it exists for the "search all scopes" affordance, for when someone knows they saved something and not which scope it is in. It *is* the readable predicate with nothing added, so it widens nothing the other scopes already allow.
+`all` is a tab alongside Mine, Shared and Favourites — the place to search across scopes at once, for when someone knows they saved something and not which scope it is in. It _is_ the readable predicate with nothing added, so it widens nothing the other scopes already allow.
 
 ## Favourites are per-user
 
@@ -91,7 +99,7 @@ The repo convention is a [change stamp](../../shared/change-stamps.md) on every 
 | Publish / unpublish          | **No**            |
 | Restore                      | **No**            |
 
-A favourite is one user's read-side marker, and stamping it would jump the report to the top of *every* user's list each time anyone starred it. Publishing and restoring change who may see a report, not what it is — and the report page's provenance line states when the **spec** last changed, so stamping a restore would make that line assert an edit that never happened.
+A favourite is one user's read-side marker, and stamping it would jump the report to the top of _every_ user's list each time anyone starred it. Publishing and restoring change who may see a report, not what it is — and the report page's provenance line states when the **spec** last changed, so stamping a restore would make that line assert an edit that never happened.
 
 The visible cost is that a report last edited in March and restored today returns to its March position rather than the top. That is paid for by handing you the restored report directly instead of returning you to a list to find it.
 

@@ -14,6 +14,8 @@ exports:
       description: Saved reports with open and delete
     - id: report
       description: Report renderer (Dynamic block over resolve-report)
+    - id: reports-deleted
+      description: Recover soft-deleted reports (restore to private)
   api:
     - id: query-data
       description: Constrained analytics query (report re-queries + panel downloads)
@@ -248,4 +250,5 @@ agents:
 pages:
   - _ref: pages/chat.yaml
   - _ref: pages/reports-list.yaml
+  - _ref: pages/reports-deleted.yaml
   - _ref: pages/report.yaml
