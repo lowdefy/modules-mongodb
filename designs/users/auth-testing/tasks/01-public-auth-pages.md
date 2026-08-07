@@ -10,17 +10,17 @@
 > the pinned org at signup. Requires a **dev-server restart** to take effect (auth
 > config loads at boot, not on hot reload).
 
-- [ ] Signup (email+password) → **check-your-email** state, no session (`requireEmailVerification`); no `user-sessions` row until login
+- [x] Signup (email+password) → **check-your-email** state, no session (`requireEmailVerification`); no `user-sessions` row until login
 - [ ] Verify in Compass: a `users` row (`emailVerified: false`), a `user-accounts` credential row, and — under `open` — a `user-members` row auto-joined (auto-join mints `role: 'member'`; `_user.roles = []` because roles read `appRoles`, not `role` — see Phase 5). **Note:** no `user-contacts` row exists at signup for the password path — the contact is created at **verify** (`email.verified` merge, Decision 7), not at signup
-- [ ] Verification email lands in Mailpit; the verify link prints via `node scripts/auth-testing/mail-link.mjs` (the `pnpm mail-link` alias is not wired — run the script directly)
-- [ ] Open the link → verify-email **success** landing; `users.emailVerified` now `true`; `profile.contactId` linked on the user (hook); the contact is created with the correct `lowercase_email`/`email` (not `''`/`null`) and no `UpdateUserProfile` server error
+- [x] Verification email lands in Mailpit; the verify link prints via `node scripts/auth-testing/mail-link.mjs` (the `pnpm mail-link` alias is not wired — run the script directly)
+- [x] Open the link → verify-email **success** landing; `users.emailVerified` now `true`; `profile.contactId` linked on the user (hook); the contact is created with the correct `lowercase_email`/`email` (not `''`/`null`) and no `UpdateUserProfile` server error — contact row confirmed: `email`/`lowercase_email` both `admin@demo.test` (not `''`/`null`)
 - [ ] **Verify-email failure landing** — a tampered/expired/already-consumed verify link returns to the verify-email page in its **error** state (`&error=` branch), the email survives onto that state, and no second `users`/`user-contacts` row is written
 - [ ] **Duplicate signup** — signing up with an email that already has a credential account does not mint a second `users`/`user-accounts` row; the user is told the account exists (or routed to login), not shown a raw server error
-- [ ] First login routes to **onboarding**; completing required `fields.profile` sets `profile.profile_created: true` and lands on the workspace
+- [~] First login routes to **onboarding**; completing required `fields.profile` sets `profile.profile_created: true` and lands on the workspace — onboarding save works but the router bounces back to onboarding instead of the workspace (reached app via manual nav). **Bug → [F33](../findings/F33-onboarding-updatesession-stale-redirect.md)** (UpdateSession not fresh before routing)
 
 ### Login
 
-- [ ] Happy path (verified + member) → workspace
+- [x] Happy path (verified + member) → workspace
 - [ ] Wrong password → inline **INVALID_EMAIL_OR_PASSWORD** friendly message
 - [ ] Unverified email → **EMAIL_NOT_VERIFIED** (with resend affordance)
 - [ ] Verified but no membership → **MEMBERSHIP_REQUIRED** "no access" state — _not testable under `signup: open` (everyone auto-joins); flip to `invite-only` + restart to test just this item_
@@ -28,19 +28,21 @@
 
 ### Password reset
 
-- [ ] Forgot-password → send state; reset email in Mailpit (`mail-link` yields the link)
-- [ ] Reset-password page sets a new password; login with the new password succeeds
+- [x] Forgot-password → send state; reset email in Mailpit (`mail-link` yields the link)
+- [x] Reset-password page sets a new password; login with the new password succeeds
 - [ ] **Expired/consumed reset token** — an expired or already-used reset link → the reset page's inline "link expired or already used" notice, the form does not silently set a password, and the old password still works
 
 ### 2FA challenge _(enrol first in Phase 2)_
 
-- [ ] Enrolled user's login routes to the module's **two-factor** page (not an `authPages` role)
-- [ ] Valid TOTP code → workspace
-- [ ] **Wrong TOTP code** → inline error, **no session minted** (Verify in Compass: no new `user-sessions` row); the challenge page stays
-- [ ] A backup code is accepted → workspace
-- [ ] **Wrong backup code** → inline error, no session
-- [ ] **Backup code is single-use** — the code just accepted is **consumed**: re-using it on a later challenge is rejected (Verify in Compass: the code is gone from / marked used on the `user-two-factors` row)
-- [ ] **Trust-device persists** — logging in with **trust-device ticked** skips the 2FA challenge on the **next** login from that browser; a fresh browser (or cleared cookies) is still challenged
+> ⚠️ **Security-critical bug found this run → [F36](../findings/F36-passkey-only-password-login-bypasses-2fa.md):** a user with a **passkey but no TOTP** signs in with email+password and gets **no 2FA challenge** — single-factor login despite `twoFactor.required`. The challenge is gated on `twoFactorEnabled` (TOTP), which a passkey never sets, while the passkey still satisfies the required-enrolment floor.
+
+- [x] Enrolled user's login routes to the module's **two-factor** page (not an `authPages` role)
+- [x] Valid TOTP code → workspace — standard TOTP login works
+- [x] **Wrong TOTP code** → inline error, **no session minted** (Verify in Compass: no new `user-sessions` row); the challenge page stays — invalid TOTP errors as expected _(no-session-minted not separately Compass-checked)_
+- [ ] A backup code is accepted → workspace — **FAILED: backup codes generated from the Manage modal are rejected as invalid at the challenge (tried twice). Challenge wiring is correct + TOTP works → displayed codes ≠ stored/accepted. ⚠️ recovery path broken → [F37](../findings/F37-backup-codes-do-not-verify.md)**
+- [ ] **Wrong backup code** → inline error, no session — _blocked/confounded by F37 (even valid codes are rejected)_
+- [ ] **Backup code is single-use** — the code just accepted is **consumed**: re-using it on a later challenge is rejected (Verify in Compass: the code is gone from / marked used on the `user-two-factors` row) — _blocked by F37 (no backup code is accepted at all)_
+- [x] **Trust-device persists** — logging in with **trust-device ticked** skips the 2FA challenge on the **next** login from that browser; a fresh browser (or cleared cookies) is still challenged — 30-day trust-device works. **Enhancement: make it configurable/disable-able → [F38](../findings/F38-trust-device-configurable.md)**
 
 ### Passkey _(register first in Phase 2; Chrome DevTools → virtual authenticator)_
 

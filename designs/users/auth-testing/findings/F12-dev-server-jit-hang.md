@@ -21,3 +21,14 @@ Not yet root-caused — needs a deliberate repro. Then decide whether it is:
 
 Only promote to a real design if the repro shows a module-side cause; otherwise it closes as
 an upstream tooling report.
+
+## Run update — 2026-08-06
+
+A navigation rework was landed specifically to address this JIT hang. On this run the hang
+**feels worse than before the fix**, not better — a suspected regression from that rework.
+Not yet validated or root-caused; the developer is investigating. Kept at `investigate`
+pending a deliberate repro against the current build. Related:
+[F31](./F31-redirecting-to-signin-interstitial.md) — the "Redirecting to sign-in"
+interstitial may be a surface of this same JIT stall rather than a real auth redirect.
+**Prod re-run (2026-08-06): navigation clean, interstitial did not appear** — supports the
+JIT-symptom read for F31, and reinforces that this stall is dev-server-only.

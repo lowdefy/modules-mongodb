@@ -77,9 +77,9 @@ instance booted).
 
 ## Recording progress
 
-Each phase file is a live checklist. Tick items as they run and **record the evidence
-inline** — the document state you verified in Compass, the exact error copy you saw, the
-session row that survived. An unevidenced `[x]` is worthless; the note is the record.
+Each phase file is a live checklist — tick items as they run. Add an inline note wherever
+it's useful (the state you saw in Compass, the exact error copy, a finding link), but this is
+a manual checklist: note what helps a later reader and skip what doesn't.
 
 **Legend:** `[ ]` to do · `[x]` done · `[~]` pending build / partial · `[-]` skipped or
 N/A this run. **"Verify in Compass"** means check the document state in the rig database.

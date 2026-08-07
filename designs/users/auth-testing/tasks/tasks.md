@@ -25,8 +25,9 @@ this run. **"Verify in Compass"** = check the document state in the rig database
 
 - **Never change data** on any environment without an explicit instruction — not `reset-db`,
   not a seed. Reads (Compass, `lowdefy_run_request`, ad-hoc read scripts) are free.
-- **An unevidenced `[x]` is worthless.** Record the document state, error copy, or session
-  row you actually observed. The note is the record.
+- **Note what's useful inline.** A short note — document state, error copy, session row, or a
+  finding link — helps a later reader. It's a manual checklist, so record what helps; it isn't
+  required on every tick.
 - **Re-run superseded items.** Where a later change (org-authority, the 2FA rework) has
   superseded an earlier `[x]`, the inline note says so — re-verify against the current build
   rather than trusting the old tick.
