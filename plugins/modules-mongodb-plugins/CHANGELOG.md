@@ -1,5 +1,13 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.28.0
+
+### Minor Changes
+
+- [#166](https://github.com/lowdefy/modules-mongodb/pull/166) [`e0aa5d0`](https://github.com/lowdefy/modules-mongodb/commit/e0aa5d0b4e532da730a60dd7876b0becbedc6718) Thanks [@Saiby100](https://github.com/Saiby100)! - `DataDescriptions` now titles array-item cards from an `itemTitle` Nunjucks template rendered against each item (its fields are the template context, plus `_index` — the item's 0-based position), producing the title as HTML — so a title can reference multiple fields and emit markup. The list's own `title` is also rendered as HTML. Falls back to `Item N` when `itemTitle` is absent or renders empty.
+
+  **Breaking:** the previous `itemKey` property (a single dot-notation key) is removed. Replace `itemKey: name` with `itemTitle: "{{ name }}"`.
+
 ## 0.27.0
 
 ## 0.26.0

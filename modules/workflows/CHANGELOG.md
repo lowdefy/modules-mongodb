@@ -1,5 +1,19 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.28.0
+
+### Minor Changes
+
+- [#166](https://github.com/lowdefy/modules-mongodb/pull/166) [`e0aa5d0`](https://github.com/lowdefy/modules-mongodb/commit/e0aa5d0b4e532da730a60dd7876b0becbedc6718) Thanks [@Saiby100](https://github.com/Saiby100)! - `controlled_list` form components now accept `itemTitle` — a Nunjucks template rendered against each list item on the read-only view/review/overview surfaces to title the item's collapsible card. The item's fields are the template context (plus `_index`, the 0-based position), so a title can reference multiple fields and emit HTML. HTML in the list's own `title` is rendered too.
+
+  **Breaking:** the previous `itemKey` property is removed. Replace `itemKey: name` with `itemTitle: "{{ name }}"`.
+
+### Patch Changes
+
+- [#166](https://github.com/lowdefy/modules-mongodb/pull/166) [`7bb6733`](https://github.com/lowdefy/modules-mongodb/commit/7bb673334360d26ba991b7c8006adaf3228d9f8f) Thanks [@Saiby100](https://github.com/Saiby100)! - Fix the shared `check-action-click` handler so clicking a check action in the workflow-progress / actions-on-entity panel on an action page no longer logs `Cannot read properties of undefined (reading 'methods')`. The handler always tried to open the fixed `check_action_modal` block, but that block is only dropped on entity-view pages — on action pages the CallMethod ran against a missing block and threw. The modal open is now gated on being on an entity page (detected via absence of `_url_query.action_id`); check clicks on action pages navigate instead.
+
+- [#166](https://github.com/lowdefy/modules-mongodb/pull/166) [`0373652`](https://github.com/lowdefy/modules-mongodb/commit/0373652c1d95f53447234b13d47ba8d92d1d3939) Thanks [@Saiby100](https://github.com/Saiby100)! - Fix `selector` form component so its `extra` helper text renders. `extra` was being passed as a top-level block property instead of under `label`, where the Selector block reads it — so the helper text never showed. It now nests under `label`, matching every other field component.
+
 ## 0.27.0
 
 ### Minor Changes
