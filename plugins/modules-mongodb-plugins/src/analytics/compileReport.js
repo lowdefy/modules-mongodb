@@ -606,6 +606,79 @@ function verifySection(section, rows) {
   }
 }
 
+// A filter's control block, built once and placed above the first section it
+// drives (its position answers "what does this move"). Construction is identical
+// to any placement: a DateRangeSelector, a Selector/MultipleSelector sourced via
+// filterOptions, or — when no usable options exist — the same Alert a broken
+// section renders. When the filter drives more than one section it sits above
+// only the first, so its title names the others; bound to one, position says it.
+function filterControlBlock({
+  section,
+  boundSections,
+  sections,
+  catalog,
+  roles,
+  rows,
+  endpointId,
+  filterSectionsByField,
+}) {
+  const onChange = requeryActions({
+    boundSections,
+    filterSectionsByField,
+    endpointId,
+  });
+  const withScope = (title) =>
+    boundSections.length > 1
+      ? `${title} (also filters: ${boundSections
+          .slice(1)
+          .map((s) => s.label)
+          .join(", ")})`
+      : title;
+
+  // Span 24: the control owns its own row above the section group, rather than
+  // sitting beside the span-6 KPI that may follow it in the flat block flow.
+  if (section.control === "daterange") {
+    return {
+      id: filterStateKey(section.field),
+      type: "DateRangeSelector",
+      layout: { span: 24 },
+      properties: { title: withScope(section.label) },
+      events: { onChange },
+    };
+  }
+  const sourced = filterOptions({
+    filter: section,
+    sections,
+    catalog,
+    roles,
+    rows,
+  });
+  if (sourced.failure) {
+    // No usable options: the control is replaced by an Alert above the bound
+    // section. Its bound sections still render their resolve-time rows, they
+    // simply never re-query.
+    return failedSectionBlock(section, sourced.failure);
+  }
+  return {
+    id: filterStateKey(section.field),
+    type: section.control === "multiselect" ? "MultipleSelector" : "Selector",
+    layout: { span: 24 },
+    properties: {
+      // Truncation is stated, never silent — the same way sectionHeading says so
+      // for a capped table. The cap comes from whichever source supplied the
+      // list. A scope label, when present, wraps the truncated label.
+      title: withScope(
+        sourced.truncated
+          ? `${section.label} — first ${sourced.cap}`
+          : section.label,
+      ),
+      allowClear: true,
+      options: sourced.options,
+    },
+    events: { onChange },
+  };
+}
+
 function compileReport({
   spec,
   results,
@@ -656,11 +729,10 @@ function compileReport({
     sections.filter((s) => s.type === "filter").map((s) => [s.field, s]),
   );
 
-  // Filter controls collect into a single row at the top of the report,
-  // regardless of where their sections sit in the spec; everything else keeps
+  // A filter's control is emitted once, immediately above the first section it
+  // drives — position is the answer to "what does this move". Everything keeps
   // spec order in the body below.
   const header = [];
-  const filterBlocks = [];
   const bodyBlocks = [];
 
   header.push({
@@ -753,7 +825,37 @@ function compileReport({
     removeEndpointId,
   };
 
+  // Each filter's control, keyed by the id of the FIRST section (spec order)
+  // whose filterBy names its field — the interleave point it renders above.
+  // validateReportSpec has already rejected any filter no section binds, so a
+  // first subscriber always exists.
+  const filtersByFirstSubscriber = new Map();
+  for (const filter of sections.filter((s) => s.type === "filter")) {
+    const boundSections = sections.filter((s) =>
+      (s.filterBy ?? []).includes(filter.field),
+    );
+    const anchor = boundSections[0];
+    const list = filtersByFirstSubscriber.get(anchor.id) ?? [];
+    list.push(
+      filterControlBlock({
+        section: filter,
+        boundSections,
+        sections,
+        catalog,
+        roles,
+        rows: rowsBySectionId.get(filter.id),
+        endpointId,
+        filterSectionsByField,
+      }),
+    );
+    filtersByFirstSubscriber.set(anchor.id, list);
+  }
+
   for (const section of sections) {
+    // A filter sits directly above its first subscribing section.
+    const pending = filtersByFirstSubscriber.get(section.id);
+    if (pending) bodyBlocks.push(...pending);
+
     if (["kpi", "chart", "table"].includes(section.type)) {
       const rows = rowsBySectionId.get(section.id);
       if (rows === null || rows === undefined) {
@@ -846,60 +948,8 @@ function compileReport({
       }
     }
 
-    if (section.type === "filter") {
-      const boundSections = sections.filter((s) =>
-        (s.filterBy ?? []).includes(section.field),
-      );
-      const onChange = requeryActions({
-        boundSections,
-        filterSectionsByField,
-        endpointId,
-      });
-      if (section.control === "daterange") {
-        filterBlocks.push({
-          id: filterStateKey(section.field),
-          type: "DateRangeSelector",
-          layout: { span: 6 },
-          properties: { title: section.label },
-          events: { onChange },
-        });
-      } else {
-        const sourced = filterOptions({
-          filter: section,
-          sections,
-          catalog,
-          roles,
-          rows: rowsBySectionId.get(section.id),
-        });
-        if (sourced.failure) {
-          // No usable options: the control is replaced by an Alert in the
-          // filter row. Its bound sections still render their resolve-time
-          // rows, they simply never re-query.
-          filterBlocks.push(failedSectionBlock(section, sourced.failure));
-        } else {
-          filterBlocks.push({
-            id: filterStateKey(section.field),
-            type:
-              section.control === "multiselect"
-                ? "MultipleSelector"
-                : "Selector",
-            layout: { span: 6 },
-            properties: {
-              // Truncation is stated, never silent — the same way sectionHeading
-              // says so for a capped table. The cap comes from whichever source
-              // supplied the list, so the number in the title is the one that
-              // actually cut it.
-              title: sourced.truncated
-                ? `${section.label} — first ${sourced.cap}`
-                : section.label,
-              allowClear: true,
-              options: sourced.options,
-            },
-            events: { onChange },
-          });
-        }
-      }
-    }
+    // Filter sections emit no block at their own position — their control was
+    // placed above its first subscribing section in the interleave pass above.
 
     if (section.type === "markdown") {
       bodyBlocks.push({
@@ -937,23 +987,7 @@ function compileReport({
     }
   }
 
-  // Filters sit in their own full-width row so they stay together at the top
-  // and don't interleave with KPIs (which share the same span).
-  const filterRow = filterBlocks.length
-    ? [
-        {
-          id: "report_filters",
-          type: "Box",
-          // `gap`, not the deprecated `contentGutter` — @lowdefy/layout still
-          // resolves the old name but logs a deprecation warning on every
-          // report render, and the Dynamic block surfaces it per resolve.
-          layout: { span: 24, gap: 8 },
-          blocks: filterBlocks,
-        },
-      ]
-    : [];
-
-  return [...header, ...filterRow, ...bodyBlocks];
+  return [...header, ...bodyBlocks];
 }
 
 export default compileReport;

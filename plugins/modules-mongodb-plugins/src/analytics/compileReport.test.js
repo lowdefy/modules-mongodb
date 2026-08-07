@@ -194,11 +194,16 @@ test("compiles the full report to blocks", () => {
   });
   expect(JSON.stringify(byId.s3)).not.toContain("nunjucks");
 
-  // Filter control: moved into the top filter row, options from catalog values.
-  const filter = byId.report_filters.blocks.find(
-    (b) => b.id === "filter_status",
-  );
+  // Filter control: rendered inline directly above its one bound section (s3,
+  // the table), options from catalog values. No report_filters Box exists, and
+  // a single-bound filter carries no scope label — its position says it all.
+  expect(byId.report_filters).toBeUndefined();
+  const idx = (id) => blocks.findIndex((b) => b.id === id);
+  expect(idx("filter_status")).toBe(idx("s3_heading") - 1);
+  const filter = byId.filter_status;
   expect(filter.type).toBe("Selector");
+  expect(filter.layout).toEqual({ span: 24 });
+  expect(filter.properties.title).toBe("Status");
   expect(filter.properties.options).toEqual([
     "pending",
     "paid",
@@ -683,6 +688,9 @@ describe("filter controls", () => {
     ],
   });
 
+  // Controls are now flat top-level blocks interleaved above their sections, so
+  // `filters` and `byId` are the same flat map — a control by `filter_<field>`,
+  // an options-failure Alert by the filter section's id.
   const filterRow = (spec, results) => {
     const blocks = compileReport({
       spec,
@@ -691,17 +699,13 @@ describe("filter controls", () => {
       roles,
       endpointId,
     });
-    const row = blocks.find((b) => b.id === "report_filters");
-    return {
-      blocks,
-      byId: Object.fromEntries(blocks.map((b) => [b.id, b])),
-      filters: Object.fromEntries(row.blocks.map((b) => [b.id, b])),
-    };
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    return { blocks, byId, filters: byId };
   };
 
   const tableRows = [{ region: "EU", total: 1 }];
 
-  test("each control emits its own block type, all inside the filter row", () => {
+  test("each control emits its own block type, all inline above their section", () => {
     const { filters } = filterRow(allControlsSpec(), [tableRows]);
     expect(filters.filter_status.type).toBe("Selector");
     expect(filters.filter_region.type).toBe("MultipleSelector");
@@ -835,7 +839,8 @@ describe("filter controls", () => {
     ["the query returned no rows", [], /No options available/],
   ])("a filter whose options %s degrades to an Alert", (_case, rows, match) => {
     const { byId, filters } = filterRow(companySpec(), [rows, tableRows]);
-    // The Alert takes the control's place in the filter row, keyed by section id.
+    // The Alert takes the control's place above the bound section, keyed by the
+    // filter section's id.
     expect(filters.s0.type).toBe("Alert");
     expect(filters.s0.properties.message).toBe("Companies");
     expect(filters.s0.properties.description).toMatch(match);
@@ -923,14 +928,13 @@ describe("filter controls", () => {
         },
       ],
     };
-    const row = compileReport({
+    const control = compileReport({
       spec,
       results: [tableRows],
       catalog,
       roles,
       endpointId,
-    }).find((b) => b.id === "report_filters");
-    const control = row.blocks[0];
+    }).find((b) => b.id === "filter_status");
     expect(control.properties.options).toHaveLength(MAX_FILTER_OPTIONS);
     expect(control.properties.title).toBe(
       `Status — first ${MAX_FILTER_OPTIONS}`,
@@ -975,14 +979,20 @@ describe("filter controls", () => {
       ],
     };
     // The denial arrives as a null results entry — the resolver's :try caught it.
-    const compile = (viewerRoles) =>
-      compileReport({
-        spec,
-        results: [null, tableRows],
-        catalog: gated,
-        roles: viewerRoles,
-        endpointId,
-      }).find((b) => b.id === "report_filters").blocks[0];
+    // Denied → an Alert keyed by the filter section id (s0); allowed → the
+    // Selector keyed by filter_status.
+    const compile = (viewerRoles) => {
+      const byId = Object.fromEntries(
+        compileReport({
+          spec,
+          results: [null, tableRows],
+          catalog: gated,
+          roles: viewerRoles,
+          endpointId,
+        }).map((b) => [b.id, b]),
+      );
+      return byId.filter_status ?? byId.s0;
+    };
 
     const denied = compile(["analyst"]);
     expect(denied.type).toBe("Alert");
@@ -992,6 +1002,117 @@ describe("filter controls", () => {
     const allowed = compile(["admin"]);
     expect(allowed.type).toBe("Selector");
     expect(allowed.properties.options).toEqual(["alpha", "beta"]);
+  });
+});
+
+// A filter's POSITION answers "what does this move": each control renders once,
+// directly above the first section it drives, never pooled into a top row.
+describe("filter placement", () => {
+  const tableRows = [{ region: "EU", total: 1 }];
+  const idxIn = (blocks) => (id) => blocks.findIndex((b) => b.id === id);
+
+  test("two independent filter groups each render above their own group's first section", () => {
+    const spec = {
+      title: "T",
+      sections: [
+        {
+          type: "kpi",
+          label: "Revenue",
+          query: orderTotal,
+          valueKey: "total",
+          filterBy: ["status"],
+        },
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        { type: "filter", control: "select", field: "region", label: "Region" },
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }],
+          filterBy: ["region"],
+        },
+      ],
+    };
+    const blocks = compileReport({
+      spec,
+      results: [[{ total: 5 }], tableRows],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const idx = idxIn(blocks);
+    // status drives the kpi (s0); region drives the table (s3). Each sits
+    // directly above its own group, neither divorced at the top.
+    expect(byId.report_filters).toBeUndefined();
+    expect(idx("filter_status")).toBe(idx("s0") - 1);
+    expect(idx("filter_region")).toBe(idx("s3_heading") - 1);
+    expect(idx("filter_status")).toBeGreaterThan(idx("report_title"));
+    // Single-bound: position carries it, so no scope label.
+    expect(byId.filter_status.properties.title).toBe("Status");
+    expect(byId.filter_region.properties.title).toBe("Region");
+  });
+
+  test("a filter bound to more than one section renders once above the first, labelled with the others", () => {
+    const spec = {
+      title: "T",
+      sections: [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        {
+          type: "kpi",
+          label: "Revenue",
+          query: orderTotal,
+          valueKey: "total",
+          filterBy: ["status"],
+        },
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }],
+          filterBy: ["status"],
+        },
+      ],
+    };
+    const blocks = compileReport({
+      spec,
+      results: [[{ total: 5 }], tableRows],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const idx = idxIn(blocks);
+    // ids: s0 filter, s1 kpi, s2 table. Bound to both — emitted exactly once,
+    // above the first subscriber (the kpi), and labelled with the other (table).
+    expect(blocks.filter((b) => b.id === "filter_status")).toHaveLength(1);
+    expect(idx("filter_status")).toBe(idx("s1") - 1);
+    expect(byId.filter_status.properties.title).toBe(
+      "Status (also filters: Orders)",
+    );
+  });
+
+  // A filter with no first subscriber has no position to occupy. The old top row
+  // could hold one, but the case never actually reaches compilation: the same
+  // validateReportSpec pass compileReport runs up front rejects an unbound filter
+  // loudly. So the degenerate case is handled by refusal, not a silent drop.
+  test("a filter no section subscribes to is rejected before it can be placed", () => {
+    const spec = {
+      title: "T",
+      sections: [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        { type: "kpi", label: "Revenue", query: orderTotal, valueKey: "total" },
+      ],
+    };
+    expect(() =>
+      compileReport({
+        spec,
+        results: [[{ total: 5 }]],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      }),
+    ).toThrow(/not bound by any section/);
   });
 });
 

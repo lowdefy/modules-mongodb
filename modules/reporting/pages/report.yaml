@@ -29,8 +29,6 @@ _ref:
             _module.endpointId: resolve-report
           types:
             blocks:
-              # Box wraps the filter row (compileReport emits report_filters).
-              - Box
               - Title
               - Paragraph
               - Statistic
