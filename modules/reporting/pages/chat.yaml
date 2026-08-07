@@ -15,9 +15,25 @@ _ref:
   vars:
     id: chat
     hide_title: true
+    # The workspace is pinned to 100dvh, so an app footer below it would push the
+    # page past the viewport and reintroduce a scrollbar. This is the one page
+    # whose content is the whole viewport, so it opts out of the footer.
+    hide_footer: true
     content_width: "100%"
     content_style:
       padding: 0
+      # PageSidebarLayout reserves a ~40px band at the top of the content — its
+      # breadcrumb, or (with no crumbs, as here) a spacer div in its place. There
+      # is no prop to drop it, so pull the whole content up over it: the 100dvh
+      # workspace then fills the viewport with no page scroll. 40px is the lg
+      # `py-5` spacer, and the chat only runs at lg+ (its three columns need the
+      # width), so the offset matches in practice.
+      marginTop: -40px
+      # The workspace panels use bg-layout (grey), and the sider layout's own
+      # background is bg-layout too — so on a transparent content area they blend
+      # into it. A container background behind the transparent centre restores the
+      # panel/centre contrast the old full-bleed page got from the white body.
+      background: var(--ant-color-bg-container)
     events:
       onInit:
         - id: init_state
