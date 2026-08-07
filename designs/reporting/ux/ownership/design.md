@@ -8,6 +8,12 @@ Today a saved report is readable only by its author, retirable only by its autho
 
 Conversation documents already carry `owner`, `created` and `updated`; the `deleted` stamp they still need belongs to the rail that needs it — see [chat](../chat/design.md). The report ownership model has nothing to say about conversations.
 
+> **Implemented.** This sub-design shipped in the `reporting` module — the
+> visibility, favourites, soft-delete/restore, duplicate and scope-aware
+> `list-reports` endpoints are all live under `modules/reporting/api/`.
+> `docs/reporting/` is the source of truth for consumer-observable behaviour;
+> this file records the rationale.
+
 ## Proposed change
 
 1. Reports are **private to their author** by default. A `visibility: private | shared` field opens one to the whole app, settable only by a user holding one of the roles listed in a new **`share_roles`** var (a string array — more than one role can carry the privilege). Unset means no publishing at all. What "the whole app" does and does not promise is bounded by the catalog's own role gate — see [below](#what-shared-does-and-does-not-promise).
@@ -249,7 +255,7 @@ What the reads want. Field order follows equality, then sort, then range — a n
 | `remove-report-section` | new     | `{ report_id, section_id }` — owner-only. Server-side read → remove the named section → cascade filter bindings → revalidate **without the catalog** → write; stamps `updated`. Rejects when the section id is not on the report, and when the removal plus its cascade would leave no sections. [Why it is not a `$pull`](#dropping-a-section-is-the-one-spec-write-and-it-has-to-cascade).           |
 | `duplicate-report`      | new     | `{ report_id }` → new doc: `title` / `description` / `spec` / **`spec_version`** copied, `visibility: private`, owner = caller, `favourite_of: []`, **`conversation_id: null`**, its own `created` / `updated`, `deleted: null`. Readable-report check.                                                                                                                                                |
 | `restore-report`        | new     | `{ report_id }` — owner-only; clears `deleted` and sets `visibility: private` in one update.                                                                                                                                                                                                                                                                                                           |
-| `delete-report`         | change  | The soft delete itself was already correct — owner-scoped, stamped, repeat-safe. One line added: `disableNoMatchError: true`, so a non-owner's delete is a zero match rather than an error carrying the filter. [Why every filter-authorized update needs it](#ownership-is-enforced-server-side-on-every-write).                                                                                        |
+| `delete-report`         | change  | The soft delete itself was already correct — owner-scoped, stamped, repeat-safe. One line added: `disableNoMatchError: true`, so a non-owner's delete is a zero match rather than an error carrying the filter. [Why every filter-authorized update needs it](#ownership-is-enforced-server-side-on-every-write).                                                                                      |
 | `resolve-report`        | change  | Read match becomes `_id` + not-deleted + (`owner.user_id` = caller **or** `visibility: "shared"`); returns whether the viewer is the owner so the page can render owner-only actions. The per-section role gate is untouched and still runs against the viewer — see [what `shared` promises](#what-shared-does-and-does-not-promise).                                                                 |
 
 **"Readable-report check"** means the same predicate `resolve-report` uses: not deleted, and owned by the caller or shared. Favourite and duplicate use it because both are read-side acts on something you are already entitled to see.

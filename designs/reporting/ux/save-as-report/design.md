@@ -6,6 +6,12 @@ A sub-design of [`reporting/ux`](../design.md) — plate 3 of [`wireframes.html`
 
 It is small in surface — one modal component, one endpoint — and load-bearing out of proportion to its size, because every other sub-design assumes reports get created. [chat](../chat/design.md) builds the panel that hosts the selection; [ownership](../ownership/design.md) owns the model the insert writes; [reports-list](../reports-list/design.md) and [report-page](../report-page/design.md) consume what this creates.
 
+> **Implemented.** This sub-design shipped in the `reporting` module (PR #167) —
+> result selection, the confirm sheet, and the `create-report` endpoint are live.
+> The filter picker remains a pending sub-design ([`filter-picker`](filter-picker/design.md));
+> the sheet ships filterless as designed. `docs/reporting/` is the source of
+> truth for consumer-observable behaviour; this file records the rationale.
+
 ## Proposed change
 
 1. Add **result selection → "Save as report"** in the results panel. Selection is the panel's only marking affordance.
