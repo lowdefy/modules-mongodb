@@ -532,6 +532,123 @@ describe("unformatted numeric columns", () => {
   });
 });
 
+// Provenance is a read for everyone: who made the report (and when), when it
+// was last edited (`updated`), and the resolve moment its numbers were computed
+// from. A shared report also names the publisher. None of this is gated on
+// ownership.
+describe("provenance line", () => {
+  const provenanceInputs = {
+    created: {
+      timestamp: new Date("2026-01-05T00:00:00Z"),
+      user: { name: "Jane Doe" },
+    },
+    updated: {
+      timestamp: new Date("2026-02-10T00:00:00Z"),
+      user: { name: "Jane Doe" },
+    },
+    owner: { user_id: "u1", name: "Jane Doe" },
+    resolvedAt: new Date("2026-03-15T14:30:00Z"),
+  };
+
+  const kpiOnlySpec = {
+    title: "T",
+    sections: [
+      { type: "kpi", label: "Total", query: orderTotal, valueKey: "total" },
+    ],
+  };
+
+  test("emits a provenance Paragraph naming owner, last-edited and computed times", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      ...provenanceInputs,
+      visibility: "private",
+    });
+    const prov = blocks.find((b) => b.id === "report_provenance");
+    expect(prov.type).toBe("Paragraph");
+    expect(prov.layout).toEqual({ span: 24 });
+    expect(prov.properties.content).toContain("Made by Jane Doe");
+    expect(prov.properties.content).toContain("5 January 2026");
+    expect(prov.properties.content).toContain("Last edited 10 February 2026");
+    expect(prov.properties.content).toContain("Data as of 15 March 2026");
+    // Global constraint: the middle fact is "last edited", never "spec changed".
+    expect(prov.properties.content).not.toContain("spec changed");
+    // Not shared → no publisher clause.
+    expect(prov.properties.content).not.toContain("Shared");
+  });
+
+  test("a shared report names the publisher as the reason it is visible", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      ...provenanceInputs,
+      visibility: "shared",
+    });
+    const prov = blocks.find((b) => b.id === "report_provenance");
+    expect(prov.properties.content).toContain(
+      "Shared with everyone by Jane Doe",
+    );
+  });
+
+  // Absent provenance inputs (an old resolver, a report with no owner) must not
+  // emit a blank line or "Invalid Date".
+  test("no provenance inputs emits no provenance block", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    expect(blocks.find((b) => b.id === "report_provenance")).toBeUndefined();
+  });
+
+  // Chart and table sections are query-backed result sets, so each carries a
+  // CSV export re-querying its own rows; a KPI is a single number and gets none.
+  test("chart and table sections carry a CSV download; kpi does not", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+
+    // s1 chart, s3 table → downloads; s0 kpi → none.
+    expect(byId.s0_download).toBeUndefined();
+    for (const id of ["s1", "s3"]) {
+      const dl = byId[`${id}_download`];
+      expect(dl.type).toBe("Button");
+      const [call, download] = dl.events.onClick;
+      expect(call.type).toBe("CallAPI");
+      expect(call.params.endpointId).toBe(endpointId);
+      expect(call.params.payload).toEqual({ query: ordersByRegion });
+      expect(download.type).toBe("DownloadCsv");
+      expect(download.params.data).toEqual({ __api: `${endpointId}.response` });
+      expect(download.params.filename).toMatch(/\.csv$/);
+    }
+  });
+
+  test("a KPI-only report emits no CSV download at all", () => {
+    const blocks = compileReport({
+      spec: kpiOnlySpec,
+      results: [[{ total: 10 }]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      ...provenanceInputs,
+    });
+    expect(blocks.some((b) => b.id.endsWith("_download"))).toBe(false);
+  });
+});
+
 // Each control emits its own block type and its own filter triples, and a
 // filter whose options come from a query resolves them from the rows the
 // resolver returned for ITS section.

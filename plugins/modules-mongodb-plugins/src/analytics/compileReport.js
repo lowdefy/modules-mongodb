@@ -73,6 +73,58 @@ function safeFilename(label) {
   return `${slug || "export"}.csv`;
 }
 
+// Formats a change-stamp / resolve timestamp for the provenance line. These are
+// compiled into a plain-config block, so a runtime _dayjs never runs — the date
+// is rendered here at compile time. en-GB gives the module's day-first
+// `D MMMM YYYY` order ("5 August 2026"); `withTime` adds the clock for the
+// resolve moment, where freshness is the point. Non-date/unparseable in yields
+// an empty string so the caller drops the fact rather than printing "Invalid Date".
+function formatTimestamp(value, { withTime = false } = {}) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const options = { day: "numeric", month: "long", year: "numeric" };
+  if (withTime) {
+    options.hour = "2-digit";
+    options.minute = "2-digit";
+  }
+  return new Intl.DateTimeFormat("en-GB", options).format(date);
+}
+
+// A per-section CSV export: the same CallAPI → DownloadCsv wiring a download
+// section uses, re-querying `endpointId` for the section's own rows so the file
+// is the full result set, not the (capped) on-screen rows. Only chart/table
+// sections get one — a KPI is a single number with nothing to export.
+function sectionDownload(section, endpointId) {
+  return {
+    id: `${section.id}_download`,
+    type: "Button",
+    layout: { span: 24 },
+    properties: {
+      title: "Export CSV",
+      icon: "AiOutlineDownload",
+      type: "link",
+      size: "small",
+    },
+    events: {
+      onClick: [
+        {
+          id: `query_${section.id}`,
+          type: "CallAPI",
+          params: { endpointId, payload: { query: section.query } },
+        },
+        {
+          id: `download_${section.id}`,
+          type: "DownloadCsv",
+          params: {
+            data: { __api: `${endpointId}.response` },
+            filename: safeFilename(section.label),
+          },
+        },
+      ],
+    },
+  };
+}
+
 // The extra filters a bound section's re-query carries: each bound filter
 // contributes constraints whose values read live page state (deferred __state).
 // AnalyticsPipeline drops null-valued triples, so an untouched control means
@@ -415,7 +467,18 @@ function verifySection(section, rows) {
   }
 }
 
-function compileReport({ spec, results, catalog, roles, endpointId }) {
+function compileReport({
+  spec,
+  results,
+  catalog,
+  roles,
+  endpointId,
+  created,
+  updated,
+  owner,
+  visibility,
+  resolvedAt,
+}) {
   if (typeof endpointId !== "string" || endpointId === "") {
     fail("endpointId (the query-data endpoint) is required.");
   }
@@ -462,6 +525,42 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
       type: "Paragraph",
       layout: { span: 24 },
       properties: { content: validated.description },
+    });
+  }
+
+  // Provenance for everyone who opens the report — a read, NOT gated on
+  // ownership. Three facts in order: who made it (and when), when it was last
+  // edited (`updated` — never "spec changed"), and the resolve moment these
+  // numbers were computed from. A shared report also names the publisher, the
+  // answer to "why can I see this?"; the publisher is the owner (visibility is
+  // the module's only sharing path), so `owner.name` fills both roles. Each
+  // fact is dropped rather than shown blank when its input is absent.
+  const madeBy = owner?.name;
+  const provenance = [];
+  if (madeBy) {
+    provenance.push(
+      created?.timestamp
+        ? `Made by ${madeBy} on ${formatTimestamp(created.timestamp)}`
+        : `Made by ${madeBy}`,
+    );
+  }
+  if (updated?.timestamp) {
+    provenance.push(`Last edited ${formatTimestamp(updated.timestamp)}`);
+  }
+  if (resolvedAt) {
+    provenance.push(
+      `Data as of ${formatTimestamp(resolvedAt, { withTime: true })}`,
+    );
+  }
+  if (visibility === "shared" && madeBy) {
+    provenance.push(`Shared with everyone by ${madeBy}`);
+  }
+  if (provenance.length) {
+    header.push({
+      id: "report_provenance",
+      type: "Paragraph",
+      layout: { span: 24 },
+      properties: { content: provenance.join(" · "), type: "secondary" },
     });
   }
 
@@ -525,6 +624,7 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
         });
         option.dataset.source = dataBinding(section, rows);
         bodyBlocks.push(sectionHeading(section, rows));
+        bodyBlocks.push(sectionDownload(section, endpointId));
         bodyBlocks.push({
           id: section.id,
           type: "EChart",
@@ -535,6 +635,7 @@ function compileReport({ spec, results, catalog, roles, endpointId }) {
 
       if (section.type === "table") {
         bodyBlocks.push(sectionHeading(section, rows));
+        bodyBlocks.push(sectionDownload(section, endpointId));
         bodyBlocks.push({
           id: section.id,
           type: "AgGridBalham",

@@ -31,8 +31,10 @@ const reportPage = loadYaml(
   ),
 );
 
-const declared = reportPage.blocks.find((b) => b.type === "Dynamic").properties
-  .types;
+// report.yaml is a `_ref` into layout's `page` component, so its blocks live
+// under the ref's vars, not at the document root.
+const declared = reportPage._ref.vars.blocks.find((b) => b.type === "Dynamic")
+  .properties.types;
 
 // Dynamic collapses an operator's leading underscores to one before checking
 // membership, so `__state`, `___intl.numberFormat` and `_intl` are all `_intl`-
