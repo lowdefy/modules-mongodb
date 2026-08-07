@@ -518,12 +518,10 @@ blocks:
   # offered a choice that set-report-visibility would then reject; everyone else
   # saves a private report with no control shown. `_user.hasSomeRoles` throws on
   # a non-array, so `_build.if` compiles an app that never set share_roles down
-  # to a literal false and the section never renders. Same construction, same
+  # to a literal false and the control never renders. Same construction, same
   # reason, as set-report-visibility's own gate.
-  - id: visibility_section
-    type: Box
-    layout:
-      gap: 4
+  - id: sheet_visibility
+    type: SegmentedSelector
     visible:
       _build.if:
         test:
@@ -534,26 +532,12 @@ blocks:
           _user.hasSomeRoles:
             _module.var: share_roles
         else: false
-    blocks:
-      - id: visibility_heading
-        type: Paragraph
-        properties:
-          content: Who can see it
-          style:
-            fontSize: 12px
-            textTransform: uppercase
-            letterSpacing: 0.05em
-            color: var(--ant-color-text-secondary)
-            marginBottom: 0
-      - id: sheet_visibility
-        type: SegmentedSelector
-        properties:
-          label:
-            # The heading above names the control; an unset label falls back to
-            # the block id.
-            disabled: true
-          options:
-            - label: Only me
-              value: private
-            - label: Everyone
-              value: shared
+    properties:
+      # A standard input title, so the control's label matches the name and
+      # description fields above rather than standing out as a bespoke heading.
+      title: Who can see it
+      options:
+        - label: Only me
+          value: private
+        - label: Everyone
+          value: shared
