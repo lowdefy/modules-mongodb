@@ -391,7 +391,15 @@ routine:
           company multiselects (match: any and match: all, both with looked-up
           labels) and a CSV download. Copy the section shapes for your own
           reports.
-        conversation_id: null
+        # Point at a seeded conversation (reporting-seed-conversations writes it
+        # with this same deterministic _id) so opening it from the chat rail shows
+        # the "Saved from this chat" section with this report as a navigating row —
+        # the re-visit path end to end. A plain string match, no FK, so it holds
+        # regardless of which seed runs first.
+        conversation_id:
+          _string.concat:
+            - "seed-conversation-today-"
+            - _user: id
         created:
           timestamp:
             _date: now
