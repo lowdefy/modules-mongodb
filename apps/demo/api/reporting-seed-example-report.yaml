@@ -21,10 +21,12 @@
 #   - the document-not-element rule made concrete: each array filter is bound
 #     only to sections that count DOCUMENTS (activities, contacts) rather than
 #     unwinding the filtered array;
-#   - every filter moving at least one PROMINENT section. The filter row
-#     compiles to the top of the report and says nothing about what each control
-#     scopes, so a filter whose only bound section is a table further down reads
-#     as broken when you select it and the visible sections don't move.
+#   - filter co-location: each control compiles inline directly above the first
+#     section it drives (not into a shared top row), and when it drives more than
+#     one section its title carries an "(also filters: …)" scope label. So the
+#     Region and Created controls sit above the orders sections, the two activity
+#     filters above the activities sections, and the contacts filter above the
+#     contacts sections — three visible groups, each next to what it scopes.
 #   - a currency-formatted KPI and table column sourced from the catalog's
 #     demo_orders.total display hint (format: currency USD);
 #   - a pipeline-backed bar chart with an x/y presentation contract;

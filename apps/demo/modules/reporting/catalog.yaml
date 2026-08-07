@@ -282,3 +282,38 @@ demo_contact_companies:
     profile.family_name:
       type: string
       description: Contact surname
+
+# ── Role-gated collection (the demo's only one) ──────────────────────────────
+
+# The single demo entry that carries a non-empty `roles` list, so the report
+# surface exercises catalog role-gating. Every other collection above omits
+# `roles` and is therefore queryable by any authenticated user; this one is
+# reachable ONLY by a viewer whose roles include `report-confidential`.
+#
+# The engine enforces this on every resolve: a section over this collection
+# resolves normally for a role holder, and — for a viewer who lacks the role —
+# fails the per-section AnalyticsPipeline gate and renders as compileReport's
+# WITHHELD alert (no recovery affordances, and naming neither the collection nor
+# the role, so the access model never leaks). That is a different failure from a
+# section whose pipeline references a collection that is not cataloged at all,
+# which renders as the BROKEN alert with owner recoveries.
+#
+# Backed by a read-only view over demo_activities (created by
+# seed-reporting-domain.mjs), so a role holder sees real rows rather than an
+# empty gated collection.
+demo_activities_confidential:
+  description: >
+    Confidential customer activities — the same activity data as
+    demo_activities, but restricted: only holders of the `report-confidential`
+    role may query it. A read-only view over demo_activities.
+  roles:
+    - report-confidential
+  fields:
+    type:
+      type: string
+      description: Activity type
+      values: [call, meeting, email, note]
+    current_stage:
+      type: string
+      description: Current status stage
+      values: [open, done, cancelled]
