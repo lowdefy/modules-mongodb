@@ -130,7 +130,7 @@ events:
                 - _module.endpointId: create-report
                 - ".response.report_id"
           visibility: shared
-    # CallAPI throws on rejection and stops the chain, so close and redirect only
+    # CallAPI throws on rejection and stops the chain, so close and refresh only
     # run once the save has actually persisted.
     - id: close_save_report_modal
       type: CallMethod
@@ -139,21 +139,29 @@ events:
         method: setOpen
         args:
           - open: false
-    # Open the saved report. Navigate by pageId + urlQuery (like the reports
-    # list's Open) rather than the endpoint's `url` string: the Link action
-    # routes a pageId internally, whereas a raw `url` is treated as external and
-    # the browser parses the leading path segment as a host.
-    - id: open_saved_report
-      type: Link
+    # Instant-on-save: stay on the chat and refresh the "Reports from this chat"
+    # section instead of navigating to the report page. Re-read the folded
+    # get-conversation-results — the same read the section uses everywhere — so
+    # the new row carries the canonical shape and reflects the stored visibility
+    # after an optional publish, rather than being optimistically assembled from
+    # create-report's { report_id }. The section's Open button is the way to the
+    # report now.
+    - id: refresh_saved_reports
+      type: CallAPI
       params:
-        pageId:
-          _module.pageId: report
-        urlQuery:
-          report_id:
-            _api:
-              _build.string.concat:
-                - _module.endpointId: create-report
-                - ".response.report_id"
+        endpointId:
+          _module.endpointId: get-conversation-results
+        payload:
+          conversationId:
+            _state: conversationId
+    - id: set_saved_reports_after_save
+      type: SetState
+      params:
+        saved_reports:
+          _api:
+            _build.string.concat:
+              - _module.endpointId: get-conversation-results
+              - ".response.saved_reports"
 blocks:
   - id: sheet_title
     type: TextInput

@@ -9,6 +9,12 @@
 # of the data as of the turn, which each part's `created` date is what dates)
 # plus the validated spec a saved report section is built from; downloads
 # carry a query spec that re-runs live on click.
+#
+# It also returns the conversation's `saved_reports` — the caller's non-deleted
+# reports whose `conversation_id` matches this conversation, read owner-scoped
+# from reports-store. This is the chat -> report link the panel's "Saved from
+# this chat" section renders; folding it here (rather than a second endpoint)
+# means the section tracks the conversation's results wherever they load.
 id: get-conversation-results
 type: Api
 routine:
@@ -25,6 +31,7 @@ routine:
           charts: []
           tables: []
           downloads: []
+          saved_reports: []
   - id: load
     type: MongoDBFindOne
     connectionId:
@@ -39,6 +46,31 @@ routine:
         projection:
           data_parts: 1
           messages: 1
+  # The caller's reports for this conversation, owner-scoped and not-deleted —
+  # the reports-store "mine" predicate (see list-reports.yaml). A plain find,
+  # not an aggregation: no computed fields, so a projection is the whole job.
+  # `created`, not `updated`, is the save time the row shows and sorts on. An
+  # independent read from `load` above — kept a separate step, no cross-store
+  # $lookup.
+  - id: load_reports
+    type: MongoDBFind
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      query:
+        conversation_id:
+          _payload: conversationId
+        owner.user_id:
+          _user: id
+        deleted.timestamp:
+          $exists: false
+      options:
+        sort:
+          created.timestamp: -1
+        projection:
+          title: 1
+          visibility: 1
+          created: 1
   - :return:
       _mql.expr:
         on:
@@ -49,6 +81,10 @@ routine:
           messages:
             _if_none:
               - _step: load.messages
+              - []
+          saved_reports:
+            _if_none:
+              - _step: load_reports
               - []
         expr:
           $let:
@@ -88,3 +124,4 @@ routine:
               charts: $$charts
               tables: $$tables
               downloads: $$downloads
+              saved_reports: $saved_reports

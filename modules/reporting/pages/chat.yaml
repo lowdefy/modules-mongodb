@@ -312,6 +312,9 @@ blocks:
                 tables: []
                 downloads: []
                 messages: []
+                # [] not null, so the section's length test and its List never
+                # see a null between the blank and the fresh read resolving.
+                saved_reports: []
             - id: load_results
               type: CallAPI
               params:
@@ -352,6 +355,13 @@ blocks:
                     _build.string.concat:
                       - _module.endpointId: get-conversation-results
                       - ".response.downloads"
+                # Folded into the same read as the four above, so it inherits this
+                # step's stale-response skip and needs nothing new in onSelect.
+                saved_reports:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: get-conversation-results
+                      - ".response.saved_reports"
       # The rail's kebab menu opens these. Each leaves only an empty placeholder
       # div in the column — antd portals the dialog itself to the document body
       # — so they add no chrome to the rail.
@@ -490,6 +500,25 @@ blocks:
                         - _state: downloads
                         - []
                     - - _event: data
+            # The agent path's instant-on-save: emit-data-parts (task 4) streams a
+            # data-report-saved part carrying the row shape, and it lands here in
+            # the same List as the read-sourced rows, no reload. Not persisted to
+            # data_parts server-side — re-visit surfaces it through the folded
+            # read, so persisting would double it.
+            - id: append_saved_report
+              type: SetState
+              skip:
+                _not:
+                  _eq:
+                    - _event: type
+                    - data-report-saved
+              params:
+                saved_reports:
+                  _array.concat:
+                    - _if_none:
+                        - _state: saved_reports
+                        - []
+                    - - _event: data
           onMessageComplete:
             _ref: pages/chat/actions/refresh_conversations.yaml
           # The agent generates a title on the first turn; persist it, then
@@ -573,6 +602,10 @@ blocks:
                     reporting_panel_collapsed:
                       _not:
                         _global: reporting_panel_collapsed
+      # The reports this conversation has produced, above the scope tabs so a
+      # returning user sees what the chat is durably worth before its live
+      # results. Absent when the conversation produced nothing.
+      - _ref: pages/chat/components/saved_from_chat.yaml
       # Above the content rather than in it, so the panel keeps one stable home
       # for scoping whether or not it has produced anything yet.
       - id: results_scope
@@ -1018,6 +1051,34 @@ blocks:
                 reporting_panel_collapsed:
                   _not:
                     _global: reporting_panel_collapsed
+      # Reports first, mirroring the expanded panel where "Reports from this
+      # chat" sits above the results. Gated on non-empty (the section's absent-
+      # when-empty rule), unlike the always-shown result counts below — a strip
+      # that said "0 reports" on every chat that only charted something would be
+      # noise, where "3 charts" waiting is the whole point of the strip.
+      - id: results_strip_reports
+        type: Paragraph
+        visible:
+          _gt:
+            - _array.length:
+                _if_none:
+                  - _state: saved_reports
+                  - []
+            - 0
+        properties:
+          content:
+            _nunjucks:
+              template: "{{ n }} report{{ 's' if n != 1 }}"
+              on:
+                n:
+                  _array.length:
+                    _if_none:
+                      - _state: saved_reports
+                      - []
+          style:
+            fontSize: 12px
+            color: var(--ant-color-text-secondary)
+            marginBottom: 0
       - id: results_strip_charts
         type: Paragraph
         properties:

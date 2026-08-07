@@ -5,6 +5,14 @@
 # adjacent panel. Tools cannot write to the stream — the parts are written only
 # from onFinish hook responses. No-ops when the payload carries no
 # conversationId — the parts have nowhere to be snapshotted.
+#
+# It also ties the turn's generate_report reports back to the conversation: the
+# tool creates them conversation_id: null (it never sees the id), so this hook
+# backfills conversation_id (owner-guarded) and streams a data-report-saved part
+# for each, so a report the agent saved appears in the panel's "Reports from this
+# chat" section instantly. That part is emitted only, NOT persisted to
+# data_parts — re-visit surfaces the report through get-conversation-results'
+# folded read on the now-populated conversation_id, so persisting would double it.
 id: emit-data-parts
 type: Api
 routine:
@@ -68,6 +76,27 @@ routine:
                           - $$this.toolName
                           - export_data
                   in: $$this.output.spec
+              - 8
+      # The ids of reports the agent saved this turn — generate_report returns
+      # { report_id } (and creates the report conversation_id: null, since a tool
+      # never sees the conversationId). Capped like the others; in practice a turn
+      # saves at most one. Backfilled and streamed below.
+      report_ids:
+        _mql.expr:
+          on:
+            results:
+              _payload: toolResults
+          expr:
+            $slice:
+              - $map:
+                  input:
+                    $filter:
+                      input: $results
+                      cond:
+                        $eq:
+                          - $$this.toolName
+                          - generate_report
+                  in: $$this.output.report_id
               - 8
   - :for: chart
     :in:
@@ -217,10 +246,85 @@ routine:
                 $slice: -50
           options:
             upsert: false
+  # The agent path's report tie-back. generate_report runs as a tool with no
+  # conversationId in scope, so it left conversation_id null; complete the create
+  # here, where the hook holds both the id and the turn's toolResults. Owner-
+  # guarded ($in over the ids, AND owner.user_id) so a caller can never attach a
+  # report they don't own to their conversation. The plugin has no findOneAnd
+  # update, so this is two ops — set on all the turn's ids, then read the rows the
+  # live part needs — rather than one; unmatched ids (not found / not owned)
+  # simply don't come back from the read, which is the skip-not-throw the turn's
+  # other parts need (the turn is over; a throw would lose them). Guarded on a
+  # non-empty id list so a turn that saved no report makes no write and no read.
+  #
+  # No `updated` re-stamp: setting conversation_id completes the create within the
+  # same turn (the tool couldn't), it is not a user edit, and the section's
+  # "saved" time reads `created` — bumping `updated` would misdate it.
+  - :if:
+      _gt:
+        - _array.length:
+            _state: report_ids
+        - 0
+    :then:
+      - id: backfill_report_conversation
+        type: MongoDBUpdateMany
+        connectionId:
+          _module.connectionId: reports-store
+        properties:
+          filter:
+            _id:
+              $in:
+                _state: report_ids
+            owner.user_id:
+              _user: id
+          update:
+            $set:
+              conversation_id:
+                _payload: conversationId
+      - id: saved_report_rows
+        type: MongoDBFind
+        connectionId:
+          _module.connectionId: reports-store
+        properties:
+          query:
+            _id:
+              $in:
+                _state: report_ids
+            owner.user_id:
+              _user: id
+          options:
+            projection:
+              title: 1
+              visibility: 1
+              created: 1
+  # Build the live parts from the read rows: the report row IS the part `data`, so
+  # no fresh id or `created` is minted (unlike chart/table parts) — the report's
+  # own _id keys it and its `created` dates it. Empty when the turn saved nothing.
+  - :set_state:
+      saved_report_parts:
+        _mql.expr:
+          on:
+            docs:
+              _if_none:
+                - _step: saved_report_rows
+                - []
+          expr:
+            $map:
+              input: $docs
+              in:
+                type: data-report-saved
+                data: $$this
   # `dataParts` is the agent framework's key for parts written back to the
   # stream (handleAgentChat reads `responseData.dataParts`), not a field this
   # module names — so it stays camelCase while the persisted field above is
   # snake_case.
+  #
+  # The saved-report parts are streamed here but were NOT added to the
+  # persist_results $push above: re-visit surfaces these reports through
+  # get-conversation-results' folded read (they now carry conversation_id), so
+  # persisting the part too would double them.
   - :return:
       dataParts:
-        _state: data_parts
+        _array.concat:
+          - _state: data_parts
+          - _state: saved_report_parts
