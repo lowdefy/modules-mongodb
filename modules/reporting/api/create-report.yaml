@@ -35,8 +35,9 @@ payloadSchema:
           type: array
           description: >
             Report sections in render order. kpi/chart/table/download carry a
-            query; filter carries { control, field, label }; markdown carries
-            { content }.
+            query; filter carries { control, field, label, labelKey?, match? }
+            (create-report derives its optionsQuery and filterBy before
+            validation); markdown carries { content }.
           items:
             type: object
             required:
@@ -52,13 +53,24 @@ routine:
         - null
     :then:
       - :reject: You must be signed in to save a report.
+  # The sheet posts filters as leaf inputs ({ field, labelKey? }); this pass
+  # builds each looked-up filter's optionsQuery from the catalog and binds every
+  # filter to the sections it scopes, producing the shape validateReportSpec
+  # accepts. The agent route writes complete filters and never runs this.
+  - :set_state:
+      derived:
+        _analytics.deriveReportSpec:
+          spec:
+            _payload: spec
+          catalog:
+            _module.var: catalog
   # Validation throws on an invalid spec — the API call fails with the
   # validator's actionable message. Its OUTPUT is what gets stored.
   - :set_state:
       validated:
         _analytics.validateReportSpec:
           spec:
-            _payload: spec
+            _state: derived
           catalog:
             _module.var: catalog
           roles:

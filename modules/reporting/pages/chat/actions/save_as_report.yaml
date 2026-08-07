@@ -74,6 +74,10 @@
     # prior value so it doesn't carry into the next report (the sheet's state
     # persists — it is never hidden).
     sheet_description: null
+    # Start with no filters each open, for the same reason: the sheet's state
+    # persists, so a prior open's filters would otherwise carry over. The picker
+    # appends rows into this array.
+    sheet_filters: []
 - id: open_save_report_modal
   type: CallMethod
   params:
