@@ -557,7 +557,7 @@ blocks:
           template: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">{{ lead }} Store these one-time codes somewhere safe — each works once if you lose your authenticator.</div>'
           on:
             # A replacing user needs its own lead line: enable recreates the
-            # twoFactor row with a fresh backupCodes array, so their previous
+            # twoFactor row with a fresh backup_codes array, so their previous
             # codes are dead too, and "Two-factor is on" reads as first-time
             # confirmation to someone for whom it already was.
             lead:
