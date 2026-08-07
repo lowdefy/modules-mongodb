@@ -170,6 +170,35 @@ vars:
       and flow through the generic create-deal passthrough. Deals ships no
       domain fields of its own — hosts inject their own here, the same way
       `companies.fields.attributes` works.
+  hooks:
+    type: object
+    description: "Routine-step extension points spliced into the create-deal API: pre_insert, post_insert"
+    properties:
+      pre_insert:
+        default: []
+        description: >-
+          Routine steps run inside `create-deal` before the deal is inserted.
+          This is the only slot that can stop a create, which is what it is
+          mainly for: a `:reject: <message>` here aborts with a message on the
+          page and no deal written. The whole create payload is in scope
+          (`_payload: form.*` and `_payload: attributes.*`, the latter being the
+          host's `fields` blocks); the deal id is not, so side-effecting writes
+          generally belong in `post_insert`, where the deal is known to exist.
+          There is no transaction — "the create aborts" means no *deal* was
+          written, not that these steps' own writes are undone. Step ids
+          prefixed `deals_` are reserved by the module.
+      post_insert:
+        default: []
+        description: >-
+          Routine steps run inside `create-deal` after the insert and before the
+          workflow starts, with the new id at `_step: deals_insert_deal.insertedId`
+          in addition to everything `pre_insert` sees. This is the right slot for
+          side effects: the deal is committed, so they cannot be left stranded by
+          a failed insert. Placed before the workflow start deliberately — a
+          failing hook then leaves a deal with no workflow (repairable by the
+          host) rather than a workflow with no deal. Nothing rolls back from
+          here, so keep these idempotent. Step ids prefixed `deals_` are
+          reserved by the module.
 
 exports:
   pages:

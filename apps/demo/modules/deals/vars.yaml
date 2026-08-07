@@ -145,6 +145,95 @@ fields:
           label: Large
         - value: bulk
           label: Bulk
+  # Captured on the deal, but its real destination is the linked company — see
+  # hooks.post_insert below. Options match the companies module's own
+  # `fields.attributes` industry selector.
+  - id: attributes.company_industry
+    type: Selector
+    properties:
+      title: Company Industry
+      label:
+        extra: Only applied if the linked company has no industry on record yet.
+      placeholder: Select industry (optional)
+      options:
+        - Manufacturing
+        - Services
+        - Retail
+
+# Host steps spliced into the create-deal routine. The split is about what each
+# slot can do, not just what it can see:
+#
+#   pre_insert  — runs before anything is written, so it is the only slot that
+#                 can *stop* a create. Validation lives here.
+#   post_insert — runs once the deal is committed, with its id in scope. Side
+#                 effects live here, because nothing can strand them.
+#
+# Both reach across to the companies module's own connection by its scoped id.
+# Step ids prefixed `deals_` are reserved by the module — they share this
+# routine's namespace, and a collision shadows silently rather than failing the
+# build.
+hooks:
+  pre_insert:
+    # Refuse to open a deal against a company that has been deleted. `:reject:`
+    # surfaces the message on the create page and writes nothing — the one thing
+    # post_insert cannot do, since by then the deal exists.
+    - id: check_company_active
+      type: MongoDBFindOne
+      connectionId: companies/companies-collection
+      properties:
+        filter:
+          _id:
+            _payload: form.company_id
+    - :if:
+        _ne:
+          - _step: check_company_active.deleted
+          - null
+      :then:
+        :reject: That company has been deleted. Pick another company for this deal.
+
+  post_insert:
+    # Back-fill the company's industry from what the deal form captured. This
+    # needs no deal id, but it still belongs here rather than in pre_insert:
+    # there is no transaction, so run from pre_insert it would stamp the company
+    # even when the insert then failed. The `attributes.industry: null` filter
+    # makes it a no-op when the company already has one, so it can never stomp a
+    # value set elsewhere between page render and submit.
+    - :if:
+        _ne:
+          - _payload: attributes.company_industry
+          - null
+      :then:
+        - id: backfill_company_industry
+          type: MongoDBUpdateOne
+          connectionId: companies/companies-collection
+          properties:
+            filter:
+              _id:
+                _payload: form.company_id
+              attributes.industry: null
+            update:
+              $set:
+                attributes.industry:
+                  _payload: attributes.company_industry
+
+    # Needs the new deal's id, so pre_insert could not have run it at all.
+    # `$inc` is the one thing here that is not repeat-safe — fine in this slot,
+    # because the routine does not retry: a resubmit inserts a second deal, so
+    # the count still tracks deals created. A hook that could be re-run against
+    # the same deal would need `$set` off a computed value instead.
+    - id: stamp_company_latest_deal
+      type: MongoDBUpdateOne
+      connectionId: companies/companies-collection
+      properties:
+        filter:
+          _id:
+            _payload: form.company_id
+        update:
+          $set:
+            attributes.latest_deal_id:
+              _step: deals_insert_deal.insertedId
+          $inc:
+            attributes.deal_count: 1
 
 # Value + close date come from the raw fields a workflow stamps onto the deal,
 # formatted here with this app's $ currency.
