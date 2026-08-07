@@ -9,11 +9,11 @@
 # page makes NO Lowdefy request: it is built entirely from the BetterAuth
 # /api/auth/* client actions (TwoFactorEnable → TwoFactorVerify, PasskeyRegister)
 # — the same actions the self-service enrolment modal uses — and completion is
-# read straight off the session fact _user.twoFactorEnrolled after an
+# read straight off the session fact _user.two_factor_enrolled after an
 # UpdateSession, never off a re-fetched request.
 #
 # `enrol.phase` (password | scan) drives the TOTP flow; the done state is gated
-# on _user.twoFactorEnrolled, not a phase, so passkey enrolment (which shows no
+# on _user.two_factor_enrolled, not a phase, so passkey enrolment (which shows no
 # backup codes) and verified TOTP enrolment reach the same "Continue" state.
 #
 # The password field is offered to EVERY caller and is NOT required/validated:
@@ -44,7 +44,7 @@ _ref:
         type: Title
         visible:
           _not:
-            _user: twoFactorEnrolled
+            _user: two_factor_enrolled
         properties:
           content: Add a second factor
           level: 3
@@ -52,7 +52,7 @@ _ref:
         type: Html
         visible:
           _not:
-            _user: twoFactorEnrolled
+            _user: two_factor_enrolled
         properties:
           # Honest copy: `required` is an enrolment floor, not a per-session
           # challenge guarantee, so this says "add a second factor to continue",
@@ -69,7 +69,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: twoFactorEnrolled
+                _user: two_factor_enrolled
             - _eq:
                 - _state: enrol.phase
                 - password
@@ -82,7 +82,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: twoFactorEnrolled
+                _user: two_factor_enrolled
             - _eq:
                 - _state: enrol.phase
                 - password
@@ -98,7 +98,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: twoFactorEnrolled
+                _user: two_factor_enrolled
             - _eq:
                 - _state: enrol.phase
                 - password
@@ -145,7 +145,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: twoFactorEnrolled
+                _user: two_factor_enrolled
             - _eq:
                 - _state: enrol.phase
                 - password
@@ -158,7 +158,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: twoFactorEnrolled
+                _user: two_factor_enrolled
             - _eq:
                 - _state: enrol.phase
                 - password
@@ -195,7 +195,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: twoFactorEnrolled
+                _user: two_factor_enrolled
             - _eq:
                 - _state: enrol.phase
                 - scan
@@ -208,7 +208,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: twoFactorEnrolled
+                _user: two_factor_enrolled
             - _eq:
                 - _state: enrol.phase
                 - scan
@@ -276,7 +276,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: twoFactorEnrolled
+                _user: two_factor_enrolled
             - _eq:
                 - _state: enrol.phase
                 - scan
@@ -292,7 +292,7 @@ _ref:
             # Plain sequence: a wrong code throws inside TwoFactorVerify (its
             # error message shows) and stops the chain before UpdateSession, so
             # the page stays on the scan phase. UpdateSession refreshes _user so
-            # twoFactorEnrolled reads true and the done state takes over.
+            # two_factor_enrolled reads true and the done state takes over.
             - id: validate_enrol_code
               type: Validate
               params:
@@ -310,11 +310,11 @@ _ref:
             - id: refresh_enrol_session
               type: UpdateSession
 
-      # ── Done (gated on _user.twoFactorEnrolled — reached by either route) ──
+      # ── Done (gated on _user.two_factor_enrolled — reached by either route) ──
       - id: enrol_done_msg
         type: Html
         visible:
-          _user: twoFactorEnrolled
+          _user: two_factor_enrolled
         properties:
           html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Two-factor is set up on your account.</div>'
       # Backup codes appear only for the TOTP route (passkey leaves them null).
@@ -322,7 +322,7 @@ _ref:
         type: Html
         visible:
           _and:
-            - _user: twoFactorEnrolled
+            - _user: two_factor_enrolled
             - _boolean:
                 _state: enrol.backup_codes
         layout:
@@ -333,7 +333,7 @@ _ref:
         type: Html
         visible:
           _and:
-            - _user: twoFactorEnrolled
+            - _user: two_factor_enrolled
             - _boolean:
                 _state: enrol.backup_codes
         layout:
@@ -354,7 +354,7 @@ _ref:
         type: Alert
         visible:
           _and:
-            - _user: twoFactorEnrolled
+            - _user: two_factor_enrolled
             - _boolean:
                 _state: enrol.backup_codes
         layout:
@@ -367,7 +367,7 @@ _ref:
         type: Button
         visible:
           _and:
-            - _user: twoFactorEnrolled
+            - _user: two_factor_enrolled
             - _boolean:
                 _state: enrol.backup_codes
         layout:
@@ -395,7 +395,7 @@ _ref:
         type: CheckboxSwitch
         visible:
           _and:
-            - _user: twoFactorEnrolled
+            - _user: two_factor_enrolled
             - _boolean:
                 _state: enrol.backup_codes
         layout:
@@ -407,7 +407,7 @@ _ref:
       - id: enrol_continue
         type: Button
         visible:
-          _user: twoFactorEnrolled
+          _user: two_factor_enrolled
         layout:
           span: 24
         properties:

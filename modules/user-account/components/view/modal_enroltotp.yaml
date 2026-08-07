@@ -21,7 +21,7 @@
 # `intent: replace` turns 2FA off before re-enrolling. BetterAuth's
 # `POST /two-factor/enable` deletes the caller's twoFactor row and writes a new
 # one with a fresh secret, carrying `verified: true` over from a verified row and
-# never touching `user.twoFactorEnabled` — which is what the sign-in hook gates
+# never touching `user.two_factor_enabled` — which is what the sign-in hook gates
 # the second-factor challenge on. Enabling straight over a working authenticator
 # would therefore enforce a second factor against a secret the user has not
 # scanned, and abandoning there locks them out with no admin 2FA reset anywhere
@@ -293,7 +293,7 @@ blocks:
             # The refetch sits between the two calls, not after them: the event
             # runner has no `finally`, so an enable that throws would skip a
             # trailing refetch and leave the tile reading On while 2FA is
-            # genuinely off. Enable does not touch `twoFactorEnabled`, so the
+            # genuinely off. Enable does not touch `two_factor_enabled`, so the
             # tile reads Off from here either way.
             - _ref: actions/refetch_account.yaml
             - - id: enroltotp_replace_enable
@@ -365,7 +365,7 @@ blocks:
               blockIds:
                 - enroltotp.password
           # Rotates recovery codes only — returns the new codes on _actions, and
-          # leaves the secret, `verified` and `twoFactorEnabled` untouched. It
+          # leaves the secret, `verified` and `two_factor_enabled` untouched. It
           # jumps straight to phase `codes`, skipping `scan`: nothing about the
           # authenticator changed, so there is nothing to re-scan. No
           # `refetch_account` — the tile still reads On and nothing it shows moved,
