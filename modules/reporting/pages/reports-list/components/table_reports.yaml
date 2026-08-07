@@ -1,0 +1,193 @@
+# The reports grid. Fed the whole scope via rowData and left to search / sort /
+# page it client-side, the way every other module list here feeds its grid.
+# Only the Report column opens the report — its title is styled as a link. A
+# whole-row open was the first cut, but a buttons cell can't suppress it: AgGrid's
+# native cell listener fires before the button's React stopPropagation, so the ★
+# and ⋯ cells opened the row underneath them. Gating the open on the Report
+# column sidesteps the event-ordering entirely; the ★ and ⋯ fire their own events.
+id: reports_table
+type: AgGridBalham
+properties:
+  height: 70vh
+  # Client-side pagination over the already-loaded scope — not the server paging
+  # this design dropped, just AgGrid rendering the whole scope a page at a time.
+  # It keeps a few-hundred-row grid light, and its footer's "1–25 of N" doubles
+  # as the report count (N tracks the current search, since rowData is filtered).
+  pagination: true
+  paginationPageSize: 25
+  paginationPageSizeSelector:
+    - 25
+    - 50
+    - 100
+  # When a search empties the grid, this overlay is the no-match state — the page
+  # carries no separate empty_search block; the toolbar holds the clear / widen
+  # actions whenever a term is present.
+  overlayNoRowsTemplate: No matching reports
+  # The grid filters its own rowData off the search term. The block's quick filter
+  # is dead in this version (AgGrid.js applies quickFilterValue only behind an
+  # unsatisfiable guard), and doing it here keeps filtering a pure function of
+  # page state — typing re-runs this _js, with no stored filtered list to keep in
+  # sync. The star column resolves its icon per row through iconField, so each row
+  # carries its favourite-state icon — a display map, not a field the endpoint owns.
+  rowData:
+    _js: |
+      const q = (state('search') || '').toLowerCase().trim();
+      const rows = state('reports') || [];
+      const matched = q
+        ? rows.filter((r) =>
+            `${r.title || ''} ${r.description || ''}`.toLowerCase().includes(q)
+          )
+        : rows;
+      return matched.map((report) => ({
+        ...report,
+        fav_icon: report.is_favourite ? 'AiFillStar' : 'AiOutlineStar',
+      }));
+  defaultColDef:
+    resizable: true
+    cellStyle:
+      wordBreak: break-word
+      lineHeight: 1.25
+      paddingBottom: 8px
+      paddingTop: 8px
+  columnDefs:
+    # ★ — filled or outline per row via iconField (fav_icon). Fires onFavouriteClick.
+    - colId: star
+      headerName: ""
+      width: 52
+      sortable: false
+      cellStyle:
+        textAlign: center
+      cell:
+        type: buttons
+        buttons:
+          - eventName: onFavouriteClick
+            iconField: fav_icon
+            hideTitle: true
+            type: text
+    # Report — title over a muted description, the user-admin two-line pattern.
+    # This is the one column that opens the report (see onCellClick), so its
+    # title reads as a link and its cell carries the pointer cursor.
+    - field: title
+      colId: report
+      headerName: Report
+      flex: 1
+      minWidth: 260
+      wrapText: true
+      autoHeight: true
+      cellStyle:
+        cursor: pointer
+      cellRenderer:
+        _function:
+          __nunjucks:
+            template: >-
+              <div style="font-weight:600;color:var(--ant-color-link)">{{ title }}</div>{% if description %}<div style="font-size:12px;color:var(--ant-color-text-secondary)">{{ description }}</div>{% endif %}
+            on:
+              __args: 0.data
+    # Contents — one pill per non-zero section type, filter pill last and lighter.
+    # section_counts is an object and filter_count a separate number, so this is a
+    # rendered pill list, not a tag cell (a tag cell would stringify the object).
+    - colId: contents
+      headerName: Contents
+      minWidth: 220
+      flex: 1
+      sortable: false
+      wrapText: true
+      autoHeight: true
+      cellRenderer:
+        _function:
+          __nunjucks:
+            template: >-
+              {% macro pill(n, label, filter=false) %}{% if n %}<span style="display:inline-block;margin:1px 3px 1px 0;padding:1px 7px;border-radius:10px;font-size:11px;{% if filter %}color:var(--ant-color-text-secondary);border:1px solid var(--ant-color-border)">{% else %}color:var(--ant-color-info);background:color-mix(in srgb,var(--ant-color-info) 12%,transparent)">{% endif %}{{ n }} {{ label }}{% if n > 1 %}s{% endif %}</span>{% endif %}{% endmacro %}{{ pill(section_counts.kpi, "KPI") }}{{ pill(section_counts.chart, "chart") }}{{ pill(section_counts.table, "table") }}{{ pill(section_counts.markdown, "note") }}{{ pill(section_counts.download, "export") }}{{ pill(filter_count, "filter", true) }}
+            on:
+              __args: 0.data
+    # Author — the owner.name snapshot, shown wherever rows can come from other
+    # people (Shared, Favourites, All). Hidden only on Mine, where every row is
+    # the viewer's own and the column would just repeat their name.
+    - field: owner.name
+      headerName: Author
+      width: 160
+      hide:
+        _eq:
+          - _state: scope
+          - mine
+    - field: updated.timestamp
+      headerName: Updated
+      width: 130
+      cell:
+        type: date
+        format: D MMM YYYY
+    - field: visibility
+      headerName: Visibility
+      width: 120
+      cell:
+        type: tag
+        colorMap:
+          shared: blue
+          private: default
+    # ⋯ — opens the row action menu. Fires onMenuClick with the row.
+    - colId: menu
+      headerName: ""
+      width: 52
+      sortable: false
+      cellStyle:
+        textAlign: center
+      cell:
+        type: buttons
+        buttons:
+          - eventName: onMenuClick
+            icon: AiOutlineMore
+            hideTitle: true
+            type: text
+events:
+  # Only the Report column opens — see the header comment for why it is a cell
+  # event gated on colId rather than a whole-row click. Other columns (Author,
+  # Updated, Visibility) are inert; the ★ and ⋯ cells run their own events.
+  onCellClick:
+    - id: open_report
+      type: Link
+      skip:
+        _ne:
+          - _event: colId
+          - report
+      params:
+        pageId:
+          _module.pageId: report
+        urlQuery:
+          report_id:
+            _event: row._id
+  # set-report-favourite takes the desired state, not a toggle, so send the
+  # negation of the row's current one. Refetch so an unstar on the Favourites
+  # scope drops the row and the default favourite-first order re-tiers.
+  onFavouriteClick:
+    _build.array.concat:
+      - - id: toggle_favourite
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: set-report-favourite
+            payload:
+              report_id:
+                _event: row._id
+              favourite:
+                _not:
+                  _event: row.is_favourite
+      - _ref: pages/reports-list/actions/load_scope.yaml
+  # Park the clicked row where the modals can read it — a modal's own onOk fires
+  # with an empty event, so the row cannot be read from the event there. Copy the
+  # title into the rename input's own path so editing it leaves the name the
+  # delete confirm shows alone.
+  onMenuClick:
+    - id: seed_selected_report
+      type: SetState
+      params:
+        selected_report:
+          _event: row
+        rename_title:
+          _event: row.title
+    - id: open_row_menu
+      type: CallMethod
+      params:
+        blockId: row_menu_modal
+        method: setOpen
+        args:
+          - open: true

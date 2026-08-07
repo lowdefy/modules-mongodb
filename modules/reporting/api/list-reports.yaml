@@ -1,5 +1,5 @@
-# Saved reports for the reports-list page — scoped, searched, sorted and paged
-# server-side.
+# Saved reports for the reports-list page — scoped server-side (the required
+# authorization boundary), with optional search and sort.
 #
 # The scope match IS the authorization, so a bug in it is a confidentiality bug
 # rather than a display bug. That is why scope is a server parameter and not a
@@ -13,10 +13,10 @@
 # $slice / $elemMatch / $meta and no expressions, so none of them is expressible
 # there.
 #
-# Paging is by offset. A cursor has to encode the key it pages over, and sort is
-# caller-selectable here, so a correct cursor would need an _id tiebreaker
-# compounded into it for every sort the toolbar offers. An offset needs none of
-# that, and resets on a sort change exactly as a restarted cursor would.
+# The whole scope is returned — no server-side paging. A single scope is low
+# hundreds of reports at most, so the page loads it and the grid searches, sorts
+# and pages over it client-side, the way every other module list here feeds its
+# grid. `total` is kept as the scope's match count for callers that want it.
 id: list-reports
 type: Api
 routine:
@@ -97,8 +97,8 @@ routine:
                           _user: id
                       - visibility: shared
                 # The readable predicate with nothing added, so it widens
-                # nothing mine and shared do not already allow. Reached only
-                # from the no-matches state's "search all scopes".
+                # nothing mine and shared do not already allow. Backs the list's
+                # "All" segment — one place to search across scopes at once.
                 - if:
                     _eq:
                       - _payload: scope
@@ -184,8 +184,7 @@ routine:
               # A caller-supplied sort REPLACES the default rather than nesting
               # under is_favourite — a starred report floating above a title
               # sort would make the sort control look broken. _id breaks ties in
-              # every branch, because offset paging over a non-unique key can
-              # show one report twice and skip another between pages.
+              # every branch so equal sort keys land in a stable order.
               - $sort:
                   _switch:
                     branches:
@@ -295,22 +294,15 @@ routine:
                           $eq:
                             - $$this.type
                             - filter
-              - $skip:
-                  _if_none:
-                    - _payload: skip
-                    - 0
-              - $limit:
-                  _if_none:
-                    - _payload: page_size
-                    - 24
   - :return:
       reports:
         _if_none:
           - _step: list_reports.0.results
           - []
-      # The unpaged match count, from the $facet branch the paging cannot reach
-      # — this is the "of 8" in the list's "Showing 6 of 8". $facet always
-      # returns one document, with an empty count branch when nothing matched.
+      # The scope's match count. With the whole scope returned this equals
+      # reports.length, but it stays its own $facet branch so the shape does not
+      # change for callers that read it. $facet always returns one document,
+      # with an empty count branch when nothing matched.
       total:
         _if_none:
           - _step: list_reports.0.count.0.count

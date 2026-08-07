@@ -1,0 +1,254 @@
+# The row action menu — the interim for a real `menu` cell. Opened from the ⋯
+# buttons-cell once onMenuClick has seeded `selected_report`. Which items show is
+# a display choice off is_owner / visibility / the viewer's roles; the endpoints
+# are what actually authorize, so an item shown in error is a display bug, not a
+# security one.
+#
+# Not hidden with `visible:` — hiding a container drops its children's state on
+# every render, which would clear the seeded row before onOk could read it. A
+# closed antd Modal is already invisible.
+id: row_menu_modal
+type: Modal
+properties:
+  title:
+    _state: selected_report.title
+  width: 360
+  # footer: false removes antd's default OK / Cancel — an empty array does not
+  # (the block only drops the footer when it is exactly false). The actions are
+  # the menu items below; there is nothing for a footer to do.
+  footer: false
+blocks:
+  - id: row_menu_actions
+    type: Box
+    layout:
+      gap: 4
+    blocks:
+      - id: menu_open
+        type: Button
+        properties:
+          title: Open
+          icon: AiOutlineFileText
+          block: true
+          # A menu reads as a list of choices, not a stack of call-to-action
+          # buttons — text type, left-aligned with the icon leading.
+          type: text
+          style:
+            textAlign: left
+            justifyContent: flex-start
+        events:
+          onClick:
+            - id: menu_open_close
+              type: CallMethod
+              params:
+                blockId: row_menu_modal
+                method: setOpen
+                args:
+                  - open: false
+            - id: menu_open_link
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: report
+                urlQuery:
+                  report_id:
+                    _state: selected_report._id
+
+      # Owner-only: one field, so it is a row action rather than opening the report.
+      - id: menu_rename
+        type: Button
+        visible:
+          _state: selected_report.is_owner
+        properties:
+          title: Rename
+          icon: AiOutlineEdit
+          block: true
+          # A menu reads as a list of choices, not a stack of call-to-action
+          # buttons — text type, left-aligned with the icon leading.
+          type: text
+          style:
+            textAlign: left
+            justifyContent: flex-start
+        events:
+          onClick:
+            - id: menu_rename_close
+              type: CallMethod
+              params:
+                blockId: row_menu_modal
+                method: setOpen
+                args:
+                  - open: false
+            - id: menu_rename_open
+              type: CallMethod
+              params:
+                blockId: rename_modal
+                method: setOpen
+                args:
+                  - open: true
+
+      # Publish — owner AND a share_roles role AND currently private. The role
+      # test compiles to a literal false where share_roles is unset (it throws on
+      # a non-array), the same guard set-report-visibility's own control uses.
+      - id: menu_publish
+        type: Button
+        visible:
+          _and:
+            - _state: selected_report.is_owner
+            - _eq:
+                - _state: selected_report.visibility
+                - private
+            - _build.if:
+                test:
+                  _build.ne:
+                    - _module.var: share_roles
+                    - null
+                then:
+                  _user.hasSomeRoles:
+                    _module.var: share_roles
+                else: false
+        properties:
+          title: Publish to the app
+          icon: AiOutlineGlobal
+          block: true
+          # A menu reads as a list of choices, not a stack of call-to-action
+          # buttons — text type, left-aligned with the icon leading.
+          type: text
+          style:
+            textAlign: left
+            justifyContent: flex-start
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: menu_publish_close
+                  type: CallMethod
+                  params:
+                    blockId: row_menu_modal
+                    method: setOpen
+                    args:
+                      - open: false
+                - id: menu_publish_call
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _module.endpointId: set-report-visibility
+                    payload:
+                      report_id:
+                        _state: selected_report._id
+                      visibility: shared
+              - _ref: pages/reports-list/actions/load_scope.yaml
+
+      # Unpublish — shared, and the viewer either owns it or holds a role. This is
+      # the one item whose visibility is a two-input test rather than is_owner
+      # alone: a share_roles holder may retract a report they do not own.
+      - id: menu_unpublish
+        type: Button
+        visible:
+          _and:
+            - _eq:
+                - _state: selected_report.visibility
+                - shared
+            - _or:
+                - _state: selected_report.is_owner
+                - _build.if:
+                    test:
+                      _build.ne:
+                        - _module.var: share_roles
+                        - null
+                    then:
+                      _user.hasSomeRoles:
+                        _module.var: share_roles
+                    else: false
+        properties:
+          title: Unpublish
+          icon: AiOutlineEyeInvisible
+          block: true
+          # A menu reads as a list of choices, not a stack of call-to-action
+          # buttons — text type, left-aligned with the icon leading.
+          type: text
+          style:
+            textAlign: left
+            justifyContent: flex-start
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: menu_unpublish_close
+                  type: CallMethod
+                  params:
+                    blockId: row_menu_modal
+                    method: setOpen
+                    args:
+                      - open: false
+                - id: menu_unpublish_call
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _module.endpointId: set-report-visibility
+                    payload:
+                      report_id:
+                        _state: selected_report._id
+                      visibility: private
+              - _ref: pages/reports-list/actions/load_scope.yaml
+
+      # Any reader's path to a version they control — a private copy they own.
+      - id: menu_duplicate
+        type: Button
+        properties:
+          title: Duplicate
+          icon: AiOutlineCopy
+          block: true
+          # A menu reads as a list of choices, not a stack of call-to-action
+          # buttons — text type, left-aligned with the icon leading.
+          type: text
+          style:
+            textAlign: left
+            justifyContent: flex-start
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: menu_duplicate_close
+                  type: CallMethod
+                  params:
+                    blockId: row_menu_modal
+                    method: setOpen
+                    args:
+                      - open: false
+                - id: menu_duplicate_call
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _module.endpointId: duplicate-report
+                    payload:
+                      report_id:
+                        _state: selected_report._id
+              - _ref: pages/reports-list/actions/load_scope.yaml
+
+      - id: menu_delete
+        type: Button
+        visible:
+          _state: selected_report.is_owner
+        properties:
+          title: Delete
+          icon: AiOutlineDelete
+          danger: true
+          block: true
+          # A menu reads as a list of choices, not a stack of call-to-action
+          # buttons — text type, left-aligned with the icon leading.
+          type: text
+          style:
+            textAlign: left
+            justifyContent: flex-start
+        events:
+          onClick:
+            - id: menu_delete_close
+              type: CallMethod
+              params:
+                blockId: row_menu_modal
+                method: setOpen
+                args:
+                  - open: false
+            - id: menu_delete_open
+              type: CallMethod
+              params:
+                blockId: delete_confirm_modal
+                method: setOpen
+                args:
+                  - open: true
