@@ -1,5 +1,6 @@
 import buildDataParts from "./buildDataParts.js";
 import compileReport from "./compileReport.js";
+import deriveReportSpec from "./deriveReportSpec.js";
 import querySections from "./querySections.js";
 import validateChartSpec from "./validateChartSpec.js";
 import validateExportSpec from "./validateExportSpec.js";
@@ -10,6 +11,7 @@ import validateTableSpec from "./validateTableSpec.js";
  * The _analytics server operator — the reporting module's presentation and
  * validation surface, used inside module endpoint routines:
  *
+ *   _analytics.deriveReportSpec    { spec, catalog } → spec (derive filter optionsQuery + filterBy)
  *   _analytics.validateReportSpec  { spec, catalog?, roles } → normalized spec
  *   _analytics.validateChartSpec   { spec, catalog?, roles } → normalized spec
  *   _analytics.validateTableSpec   { spec, catalog?, roles } → normalized spec
@@ -32,6 +34,7 @@ import validateTableSpec from "./validateTableSpec.js";
 const functions = new Map([
   ["buildDataParts", buildDataParts],
   ["compileReport", compileReport],
+  ["deriveReportSpec", deriveReportSpec],
   ["querySections", querySections],
   ["validateChartSpec", validateChartSpec],
   ["validateExportSpec", validateExportSpec],
@@ -44,12 +47,12 @@ function _analytics({ params, location, methodName }) {
   if (!fn) {
     throw new Error(
       `Operator Error: _analytics.${methodName} is not supported at ${location}. ` +
-        `Supported methods: ${[...functions.keys()].join(", ")}.`
+        `Supported methods: ${[...functions.keys()].join(", ")}.`,
     );
   }
   if (params === null || typeof params !== "object" || Array.isArray(params)) {
     throw new Error(
-      `Operator Error: _analytics.${methodName} takes an object as params at ${location}.`
+      `Operator Error: _analytics.${methodName} takes an object as params at ${location}.`,
     );
   }
   return fn(params);

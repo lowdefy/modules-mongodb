@@ -19,7 +19,7 @@ properties:
   title: Save as report
   okText: Save report
   cancelText: Cancel
-  width: "80%"
+  width: "75%"
   # Nothing to save without a name or a section.
   okButtonProps:
     disabled:
@@ -58,8 +58,54 @@ events:
                 then:
                   _state: sheet_description
                 else: null
+            # The conversation's sections plus the picker's filters. Each filter
+            # row posts only leaf inputs; create-report derives its optionsQuery
+            # and binds it. Control follows catalog type (date → daterange, else
+            # multiselect); labelKey rides only a relationship field, match only
+            # an array field — a stray match on a non-multiselect is rejected by
+            # validateReportSpec.
             sections:
-              _state: sheet_sections
+              _js:
+                args:
+                  sections:
+                    _state: sheet_sections
+                  filters:
+                    _state: sheet_filters
+                  catalog:
+                    _module.var: catalog
+                fn: |
+                  const sections = args.sections || [];
+                  const filters = args.filters || [];
+                  const catalog = args.catalog || {};
+                  const collections = [...new Set(
+                    sections.map((s) => s?.query?.collection).filter(Boolean),
+                  )];
+                  const typeOf = (field) => {
+                    for (const col of collections) {
+                      const t = catalog[col]?.fields?.[field]?.type;
+                      if (t) return t;
+                    }
+                    return undefined;
+                  };
+                  const isRelationship = (field) =>
+                    collections.some((col) =>
+                      (catalog[col]?.relationships || []).some((r) => r.field === field),
+                    );
+                  const filterSections = filters
+                    .filter((f) => f?.field)
+                    .map((f) => {
+                      const type = typeOf(f.field);
+                      const section = {
+                        type: 'filter',
+                        control: type === 'date' ? 'daterange' : 'multiselect',
+                        field: f.field,
+                        label: f.label || f.field,
+                      };
+                      if (isRelationship(f.field) && f.labelKey) section.labelKey = f.labelKey;
+                      if (type === 'array' && f.match) section.match = f.match;
+                      return section;
+                    });
+                  return [...sections, ...filterSections];
           conversation_id:
             _state: conversationId
     # Reports are always created private (the insert fragment's default). When
@@ -216,20 +262,271 @@ blocks:
                     args:
                       - _index: 0
 
-  # Filters region (reserved) — a later sub-design drops a filter picker here.
-  # Left empty so filterless reports save cleanly; no placeholder affordance.
+  # Filters region — an add-only picker. Each row authors a filter from a catalog
+  # field eligible for the report's data-section collections, posting only leaf
+  # inputs ({ field, label, labelKey?, match? }); create-report derives the
+  # optionsQuery and the section binding. No value preview — options resolve at
+  # report open. Only kpi/chart/table collections are considered everywhere here:
+  # those are the sections a filter can bind to (deriveReportSpec's DATA_TYPES),
+  # so a field only a download's collection carries is not a filter this can save.
+  - id: sheet_filters
+    type: ControlledList
+    properties:
+      title: Filters
+      # Built-in add appends an empty row; each row carries its own remove.
+      hideRemoveButton: true
+    blocks:
+      # Row is a vertical stack: the controls on one line, then a muted line
+      # naming the sections the chosen field will scope. Both children take a
+      # full-width flex basis so the wrapping grid puts them on their own rows.
+      - id: sheet_filters.$.row
+        type: Box
+        layout:
+          gap: 4
+        blocks:
+          - id: sheet_filters.$.controls
+            type: Box
+            layout:
+              flex: 1 1 100%
+              gap: 8
+              align: middle
+            blocks:
+              - id: sheet_filters.$.field
+                type: Selector
+                # Fixed, narrow basis so the description can wrap under the field
+                # name rather than stretching the control across the row.
+                layout:
+                  flex: 0 0 300px
+                properties:
+                  title: Field
+                  placeholder: Choose a field
+                  # Only fields the picker can finish are offered: an enum field
+                  # (catalog `values`), a relationship field (looked-up), or a
+                  # date field. Numbers and plain strings/ids/objects are dead
+                  # ends. Each option is a two-line label (field name over its
+                  # catalog description), rendered as HTML by the Selector;
+                  # filterString keeps type-ahead matching name and description
+                  # rather than the markup.
+                  options:
+                    _js:
+                      args:
+                        sections:
+                          _state: sheet_sections
+                        catalog:
+                          _module.var: catalog
+                      fn: |
+                        const catalog = args.catalog || {};
+                        const DATA = ['kpi', 'chart', 'table'];
+                        const collections = [...new Set(
+                          (args.sections || [])
+                            .filter((s) => DATA.includes(s?.type))
+                            .map((s) => s?.query?.collection)
+                            .filter(Boolean),
+                        )];
+                        const out = [];
+                        const seen = new Set();
+                        for (const col of collections) {
+                          const entry = catalog[col];
+                          if (!entry) continue;
+                          const relFields = new Set((entry.relationships || []).map((r) => r.field));
+                          for (const [name, meta] of Object.entries(entry.fields || {})) {
+                            if (seen.has(name)) continue;
+                            const type = meta?.type;
+                            if (type === 'number') continue;
+                            const isEnum = Array.isArray(meta?.values) && meta.values.length > 0;
+                            if (!isEnum && !relFields.has(name) && type !== 'date') continue;
+                            seen.add(name);
+                            const desc = (meta?.description || '')
+                              .replace(/`/g, '')
+                              .replace(/\s+/g, ' ')
+                              .trim();
+                            // antd's option/selection containers set white-space:nowrap;
+                            // override on each line so the description wraps within the
+                            // fixed-width control instead of being ellipsis-truncated.
+                            const label = desc
+                              ? `<div style="line-height:1.35;padding:2px 0;white-space:normal">` +
+                                `<div style="font-weight:500;white-space:normal;word-break:break-word">${name}</div>` +
+                                `<div style="font-size:12px;color:var(--ant-color-text-secondary);white-space:normal;word-break:break-word">${desc}</div>` +
+                                `</div>`
+                              : name;
+                            out.push({ value: name, label, filterString: `${name} ${desc}` });
+                          }
+                        }
+                        return out;
+              - id: sheet_filters.$.label
+                type: TextInput
+                layout:
+                  flex: 1 1 auto
+                properties:
+                  title: Label
+                  # Left blank, the assembled filter falls back to the field name.
+                  placeholder: Filter label
+              - id: sheet_filters.$.labelKey
+                type: Selector
+                layout:
+                  flex: 1 1 auto
+                # Only a relationship (looked-up) field needs a label column; the
+                # catalog supplies the option values, the author picks what to show.
+                visible:
+                  _js:
+                    args:
+                      sections:
+                        _state: sheet_sections
+                      catalog:
+                        _module.var: catalog
+                      field:
+                        _state: sheet_filters.$.field
+                    fn: |
+                      const field = args.field;
+                      if (!field) return false;
+                      const catalog = args.catalog || {};
+                      const DATA = ['kpi', 'chart', 'table'];
+                      const collections = [...new Set(
+                        (args.sections || [])
+                          .filter((s) => DATA.includes(s?.type))
+                          .map((s) => s?.query?.collection)
+                          .filter(Boolean),
+                      )];
+                      return collections.some((col) =>
+                        (catalog[col]?.relationships || []).some((r) => r.field === field),
+                      );
+                properties:
+                  title: Label field
+                  placeholder: Label column
+                  options:
+                    _js:
+                      args:
+                        sections:
+                          _state: sheet_sections
+                        catalog:
+                          _module.var: catalog
+                        field:
+                          _state: sheet_filters.$.field
+                      fn: |
+                        const field = args.field;
+                        if (!field) return [];
+                        const catalog = args.catalog || {};
+                        const DATA = ['kpi', 'chart', 'table'];
+                        const collections = [...new Set(
+                          (args.sections || [])
+                            .filter((s) => DATA.includes(s?.type))
+                            .map((s) => s?.query?.collection)
+                            .filter(Boolean),
+                        )];
+                        for (const col of collections) {
+                          const rel = (catalog[col]?.relationships || []).find((r) => r.field === field);
+                          if (rel) {
+                            return Object.entries(catalog[rel.collection]?.fields || {})
+                              .filter(([, m]) => m?.type === 'string')
+                              .map(([name]) => ({ value: name, label: name }));
+                          }
+                        }
+                        return [];
+              - id: sheet_filters.$.match
+                type: SegmentedSelector
+                layout:
+                  flex: 0 0 auto
+                # Any/all ($in vs $all) only makes sense on an array field.
+                visible:
+                  _js:
+                    args:
+                      sections:
+                        _state: sheet_sections
+                      catalog:
+                        _module.var: catalog
+                      field:
+                        _state: sheet_filters.$.field
+                    fn: |
+                      const field = args.field;
+                      if (!field) return false;
+                      const catalog = args.catalog || {};
+                      const DATA = ['kpi', 'chart', 'table'];
+                      const collections = [...new Set(
+                        (args.sections || [])
+                          .filter((s) => DATA.includes(s?.type))
+                          .map((s) => s?.query?.collection)
+                          .filter(Boolean),
+                      )];
+                      return collections.some(
+                        (col) => catalog[col]?.fields?.[field]?.type === 'array',
+                      );
+                properties:
+                  title: Match
+                  options:
+                    - label: Any
+                      value: any
+                    - label: All
+                      value: all
+              - id: sheet_filters.$.remove
+                type: Button
+                layout:
+                  flex: 0 0 auto
+                properties:
+                  icon: AiOutlineDelete
+                  variant: text
+                  color: danger
+                  shape: circle
+                  size: small
+                events:
+                  onClick:
+                    - id: remove_filter
+                      type: CallMethod
+                      params:
+                        blockId: sheet_filters
+                        method: removeItem
+                        args:
+                          - _index: 0
+          # Which sections the filter will scope, by their labels — the same
+          # binding create-report computes (a section is bound when its collection
+          # declares the field). Shown once a field is picked.
+          - id: sheet_filters.$.applies_to
+            type: Paragraph
+            layout:
+              flex: 1 1 100%
+            visible:
+              _js:
+                args:
+                  field:
+                    _state: sheet_filters.$.field
+                fn: |
+                  return !!args.field;
+            properties:
+              content:
+                _js:
+                  args:
+                    sections:
+                      _state: sheet_sections
+                    catalog:
+                      _module.var: catalog
+                    field:
+                      _state: sheet_filters.$.field
+                  fn: |
+                    const field = args.field;
+                    if (!field) return '';
+                    const catalog = args.catalog || {};
+                    const DATA = ['kpi', 'chart', 'table'];
+                    const labels = (args.sections || [])
+                      .filter((s) => DATA.includes(s?.type) && catalog[s?.query?.collection]?.fields?.[field])
+                      .map((s) => s?.label)
+                      .filter(Boolean);
+                    if (!labels.length) {
+                      return 'Applies to no current section — add a section that uses this field.';
+                    }
+                    return 'Applies to: ' + labels.join(', ');
+              style:
+                fontSize: 12px
+                color: var(--ant-color-text-secondary)
+                marginBottom: 0
 
   # Who can see it. An affordance, not the authorization: it shows only to users
   # who could actually publish — those holding a share_roles role — so nobody is
   # offered a choice that set-report-visibility would then reject; everyone else
   # saves a private report with no control shown. `_user.hasSomeRoles` throws on
   # a non-array, so `_build.if` compiles an app that never set share_roles down
-  # to a literal false and the section never renders. Same construction, same
+  # to a literal false and the control never renders. Same construction, same
   # reason, as set-report-visibility's own gate.
-  - id: visibility_section
-    type: Box
-    layout:
-      gap: 4
+  - id: sheet_visibility
+    type: SegmentedSelector
     visible:
       _build.if:
         test:
@@ -240,26 +537,12 @@ blocks:
           _user.hasSomeRoles:
             _module.var: share_roles
         else: false
-    blocks:
-      - id: visibility_heading
-        type: Paragraph
-        properties:
-          content: Who can see it
-          style:
-            fontSize: 12px
-            textTransform: uppercase
-            letterSpacing: 0.05em
-            color: var(--ant-color-text-secondary)
-            marginBottom: 0
-      - id: sheet_visibility
-        type: SegmentedSelector
-        properties:
-          label:
-            # The heading above names the control; an unset label falls back to
-            # the block id.
-            disabled: true
-          options:
-            - label: Only me
-              value: private
-            - label: Everyone
-              value: shared
+    properties:
+      # A standard input title, so the control's label matches the name and
+      # description fields above rather than standing out as a bespoke heading.
+      title: Who can see it
+      options:
+        - label: Only me
+          value: private
+        - label: Everyone
+          value: shared
