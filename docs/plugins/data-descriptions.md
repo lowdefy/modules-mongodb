@@ -43,18 +43,18 @@ The `data` is the source object. The `formConfig` describes which keys to show, 
 
 ## Properties
 
-| Property               | Type                           | Default        | Description                                                                                                                                         |
-| ---------------------- | ------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data`                 | object                         | —              | The data object to display. Field `key`s in `formConfig` resolve via dot-notation against this object.                                              |
-| `formConfig`           | object \| array                | —              | Layout for the data. The root is a `section` or an array of items. See [Form config](#form-config).                                                 |
-| `bordered`             | boolean                        | `true`         | Render items in the bordered table layout.                                                                                                          |
-| `colon`                | boolean                        | `true`         | Show a colon after each label.                                                                                                                      |
-| `column`               | number \| object               | `2`            | Number of items per row, or breakpoint object `{ xs, sm, md, lg, xl }`.                                                                             |
-| `layout`               | `"horizontal"` \| `"vertical"` | `"horizontal"` | Label position. Horizontal puts the label to the left of the value.                                                                                 |
-| `size`                 | `"default"` \| `"small"`       | `"default"`    | Antd `Descriptions` size.                                                                                                                           |
-| `theme`                | object                         | —              | Antd design token overrides scoped to this block. See [Theme](#theme) and the [Antd docs](https://ant.design/components/descriptions#design-token). |
-| `disableCrmLinks`      | boolean                        | `false`        | Disable hyperlinks on detected `contact` and `company` values.                                                                                      |
-| `s3GetPolicyRequestId` | string                         | —              | Request id resolving to an S3 download-policy URL. Required for `file` and `fileList` field types to render download links.                         |
+| Property               | Type                           | Default        | Description                                                                                                                                                    |
+| ---------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data`                 | object                         | —              | The data object to display. Field `key`s in `formConfig` resolve via dot-notation against this object.                                                         |
+| `formConfig`           | object \| array                | —              | Layout for the data. The root is a `section` or an array of items. See [Form config](#form-config).                                                            |
+| `bordered`             | boolean                        | `true`         | Render items in the bordered table layout.                                                                                                                     |
+| `colon`                | boolean                        | `true`         | Show a colon after each label.                                                                                                                                 |
+| `column`               | number \| object               | `2`            | Number of items per row, or breakpoint object `{ xs, sm, md, lg, xl }`. Array-valued fields and full-width types always take their own row regardless of this. |
+| `layout`               | `"horizontal"` \| `"vertical"` | `"horizontal"` | Label position. Horizontal puts the label to the left of the value.                                                                                            |
+| `size`                 | `"default"` \| `"small"`       | `"default"`    | Antd `Descriptions` size.                                                                                                                                      |
+| `theme`                | object                         | —              | Antd design token overrides scoped to this block. See [Theme](#theme) and the [Antd docs](https://ant.design/components/descriptions#design-token).            |
+| `disableCrmLinks`      | boolean                        | `false`        | Disable hyperlinks on detected `contact` and `company` values.                                                                                                 |
+| `s3GetPolicyRequestId` | string                         | —              | Request id resolving to an S3 download-policy URL. Required for `file` and `fileList` field types to render download links.                                    |
 
 ### Form config
 

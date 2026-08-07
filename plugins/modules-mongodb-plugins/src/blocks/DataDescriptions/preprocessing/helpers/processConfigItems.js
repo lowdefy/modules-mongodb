@@ -108,7 +108,10 @@ function processConfigItems(data, formItems, level, arrayIndices = []) {
         label: customLabel || formatFieldName(expandedKey),
         fieldType: typeInfo.type,
         isArray: typeInfo.isArray,
-        fullWidth: typeInfo.config?.fullWidth ?? false,
+        // Arrays render as wrapping tag clouds / stacked lists — inherently
+        // wide content that must take its own row, else it steals width from a
+        // scalar sibling in a multi-column layout and collapses that cell.
+        fullWidth: (typeInfo.config?.fullWidth ?? false) || typeInfo.isArray,
         // Carried so renderers can show an enum entry's title for a stored slug
         // instead of formatting the raw value. Renamed to keep the reserved word
         // out of the render-arg destructuring.
