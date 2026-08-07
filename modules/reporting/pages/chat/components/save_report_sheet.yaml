@@ -19,7 +19,7 @@ properties:
   title: Save as report
   okText: Save report
   cancelText: Cancel
-  width: "80%"
+  width: "75%"
   # Nothing to save without a name or a section.
   okButtonProps:
     disabled:
@@ -293,8 +293,10 @@ blocks:
             blocks:
               - id: sheet_filters.$.field
                 type: Selector
+                # Fixed, narrow basis so the description can wrap under the field
+                # name rather than stretching the control across the row.
                 layout:
-                  flex: 1 1 auto
+                  flex: 0 0 300px
                 properties:
                   title: Field
                   placeholder: Choose a field
@@ -338,10 +340,13 @@ blocks:
                               .replace(/`/g, '')
                               .replace(/\s+/g, ' ')
                               .trim();
+                            // antd's option/selection containers set white-space:nowrap;
+                            // override on each line so the description wraps within the
+                            // fixed-width control instead of being ellipsis-truncated.
                             const label = desc
-                              ? `<div style="line-height:1.35;padding:2px 0">` +
-                                `<div style="font-weight:500">${name}</div>` +
-                                `<div style="font-size:12px;color:var(--ant-color-text-secondary)">${desc}</div>` +
+                              ? `<div style="line-height:1.35;padding:2px 0;white-space:normal">` +
+                                `<div style="font-weight:500;white-space:normal;word-break:break-word">${name}</div>` +
+                                `<div style="font-size:12px;color:var(--ant-color-text-secondary);white-space:normal;word-break:break-word">${desc}</div>` +
                                 `</div>`
                               : name;
                             out.push({ value: name, label, filterString: `${name} ${desc}` });
