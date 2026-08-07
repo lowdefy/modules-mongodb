@@ -39,8 +39,8 @@ vars:
     description: >-
       Slug of the organization this instance administers. Under the `pinned`
       organizations policy the organization's id IS its slug, so this value feeds
-      every read $match on `organizationId` and every write step's
-      `organizationId`. Two admin surfaces in one app are two module instances
+      every read $match on `organization_id` and every write step's
+      `organizationId` param. Two admin surfaces in one app are two module instances
       with different `org_slug` values.
 
       Deployment ordering: this module does not create the organization. The app

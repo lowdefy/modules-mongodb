@@ -19,15 +19,15 @@ build error.
 | Key                     | Type                | Source                                                   |
 | ----------------------- | ------------------- | -------------------------------------------------------- |
 | `_id`                   | string              | member id                                                |
-| `userId`                | string              | auth user id                                             |
-| `organizationId`        | string              | the organization named by `org_slug`                     |
+| `user_id`               | string              | auth user id                                             |
+| `organization_id`       | string              | the organization named by `org_slug`                     |
 | `name`                  | string              | `contact.profile.name` ?? `user.name`                    |
 | `email`                 | string              | `user.email`                                             |
 | `picture`               | string \| null      | `contact.profile.picture`                                |
-| `roles`                 | `{ id, label, description, orphan }[]` | `appRoles` resolved against the app's role catalog |
+| `roles`                 | `{ id, label, description, orphan }[]` | `app_roles` resolved against the app's role catalog |
 | `status`                | string              | `Active` / `Suspended`                                   |
 | `created` / `updated`   | date \| null        | contact change-stamp timestamps                          |
-| `signed_up`             | date                | member `createdAt`                                       |
+| `signed_up`             | date                | member `created_at`                                      |
 | `total_results`         | number              | list read only (pagination)                              |
 | **`profile`**           | object              | `contact.profile` — the `fields.profile` bag             |
 | **`user_attributes`**   | object              | `user.attributes` — the `fields.user_attributes` bag     |
@@ -64,11 +64,11 @@ components:
 ## The app-role key, and the organization tier
 
 The row publishes the member's **app roles** under a single key, `roles`, fed from
-the stored `member.appRoles` array — a native `string[]` of catalog role ids —
+the stored `member.app_roles` array — a native `string[]` of catalog role ids —
 resolved against the app's authored `auth.roles` catalog into
 `{ id, label, description, orphan }` objects:
 
-- **`id`** — the id as stored in `appRoles`.
+- **`id`** — the id as stored in `app_roles`.
 - **`label`** — the catalog's display label for that id.
 - **`description`** — the catalog's description for that id, or `null` if the
   catalog entry carries none.
@@ -81,7 +81,7 @@ never a shape question.
 `member.role` is a **different fact**: BetterAuth's `owner` / `admin` / `member`
 organization-authority tier, which decides who may administer the organization. It is
 not an app role and not a display column, so **it does not ship on the row** — the
-last stage of every read `$unset`s both `role` and `appRoles`. The **user detail read
+last stage of every read `$unset`s both `role` and `app_roles`. The **user detail read
 alone** publishes the tier under its own name, **`org_role`** (`member` when unset),
 because the detail page's access modal binds it. `org_role` is not on the Members list
 row, not on the Invitations row, and not in the export.
@@ -116,7 +116,7 @@ including the slug→label renderer on the Team column.
 The export merges member and pending-invitation rows into one sheet, so three keys
 differ from the table above:
 
-- **`roles`** is the stored `appRoles` ids joined by `", "`, not the
+- **`roles`** is the stored `app_roles` ids joined by `", "`, not the
   `{ id, label, description, orphan }[]` catalog objects — a spreadsheet cell can't
   hold the array or object shape.
 - **`expires`** is added: the invitation expiry, `null` on member rows.
@@ -134,8 +134,8 @@ contract.
 
 The row is deliberately closed: the raw `$lookup` payloads (`user`, `contact`,
 `passkeys`, `inviter`) are stripped before the row reaches the browser, as are the
-stored fields that already ship under a canonical alias (`appRoles`, `attributes`,
-`createdAt`, `expiresAt`, `profile.picture`) and the one the contract deliberately does
+stored fields that already ship under a canonical alias (`app_roles`, `attributes`,
+`created_at`, `profile.picture`) and the one the contract deliberately does
 not publish (`role`, the organization tier).
 
 For a column the three bags don't cover, use
@@ -147,7 +147,7 @@ still sees the raw joins:
 request_stages:
   get_all_users:
     - $addFields:
-        email_verified: "$user.emailVerified"
+        email_verified: "$user.email_verified"
 components:
   table_columns:
     - headerName: Verified

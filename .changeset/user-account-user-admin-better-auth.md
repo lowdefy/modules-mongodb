@@ -34,13 +34,13 @@ does not create organizations, and until one exists its reads render empty with 
 error and `InviteMember` throws `ORGANIZATION_NOT_FOUND`.
 
 **Breaking: `member.role` no longer ships on the members row.** App roles are now a
-native `string[]` on `member.appRoles`, and `member.role` is left to BetterAuth's
+native `string[]` on `member.app_roles`, and `member.role` is left to BetterAuth's
 `owner` / `admin` / `member` organization-authority tier — an administrative fact about
 an organization, not a display column. `roles_arr` (the ids) and `roles` (resolved
-`{ label, orphan }`) keep their names and their meanings, aliased from `appRoles`, so
+`{ label, orphan }`) keep their names and their meanings, aliased from `app_roles`, so
 only a column bound to `role` breaks: it blanks. The user detail read publishes the
 tier under its own name, `org_role`. Add
-`user-members { organizationId: 1, appRoles: 1 }` to serve the members-list role
+`user-members { organization_id: 1, app_roles: 1 }` to serve the members-list role
 filter — the list works without it, more slowly.
 
 **New: granting organization authority, on by default.** The access modal and the
@@ -89,7 +89,7 @@ manifest has always documented.
 
 In exchange the rows no longer ship the raw `$lookup` payloads. Column paths that
 resolve today and will go blank: anything under `user.*` / `contact.*`,
-`attributes.*`, `createdAt`, `expiresAt`, `profile.picture`, and `picture` in the
+`attributes.*`, `created_at`, `profile.picture`, and `picture` in the
 export. The migration is one `request_stages.get_all_users` `$addFields` lifting the
 value to a top-level key — it still runs before the row is closed. Full detail in
 `docs/user-admin/reference/row-contract.md` and the Column paths section of

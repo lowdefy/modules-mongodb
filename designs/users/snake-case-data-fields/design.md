@@ -59,7 +59,7 @@ a global find-replace.
 | `$lookup` `localField`/`foreignField`   | `localField: userId → user_id`                                                                                                                   | joins on physical columns                                                 |
 | `$project`/`$addFields` **source** refs | `"$user.emailVerified" → "$user.email_verified"`, `"$expiresAt" → "$expires_at"`                                                                 | reads storage                                                             |
 | Pass-through **projection output** keys | `providerId: 1 → provider_id: 1` (`get_accounts`)                                                                                                | `field: 1` projects the physical column; the old key now projects nothing |
-| `close_row.yaml` `$unset` list          | `appRoles → app_roles`, `createdAt → created_at`, `expiresAt → expires_at`                                                                       | strips physical columns                                                   |
+| `close_row.yaml` `$unset` list          | `appRoles → app_roles`, `createdAt → created_at` (the expiry leaves the list — see below)                                                        | strips physical columns                                                   |
 | Client reads of flipped outputs         | `all_members_table` `idField: userId → user_id`, `_event: row.userId → row.user_id`; `tile_linked_accounts` `item.providerId → item.provider_id` | follow the row-contract keys                                              |
 | The one app-facing caller field         | `_user: twoFactorEnrolled → two_factor_enrolled`                                                                                                 | `normalizeCaller` snakes `_user` upstream                                 |
 
@@ -100,7 +100,11 @@ comments describe the current code). Known sites: `all_members_filters.yaml:7,52
 and the shared stages: `members_base.yaml` (`organizationId`, `userId` lookup,
 `$createdAt` for `signed_up` — **not** `user.profile.contactId`),
 `members_filter.yaml`, `invitations_base.yaml` (`organizationId`, `inviterId`,
-`expiresAt`), `roles_from_catalog.yaml` (`appRoles`), `close_row.yaml` (unset list).
+`expiresAt`), `roles_from_catalog.yaml` (`appRoles`), `close_row.yaml` (unset list —
+`expiresAt` **drops out of it** rather than being renamed: once the physical column
+is `expires_at` it is the same key as the alias the Invitations tab binds
+(`all_invitations_table.yaml` `field: expires_at`), so unsetting it blanks the
+Expires column).
 
 The `$addFields: user_id: "$userId"` in `get_user_detail` becomes
 `"$user_id"` — the aliasing collapses to a rename of the source only.
@@ -173,8 +177,8 @@ example deep-links to a page that reads a missing key today. Flip in one pass:
   Index \_provisioning* stays a host-app concern; only the documented requirement changes.
 - `docs/user-admin/reference/row-contract.md` — the `userId`/`organizationId` row
   keys become `user_id`/`organization_id`, and the "stored fields shipped under an
-  alias" list (`appRoles`, `createdAt`, `expiresAt`) updates to the snake source
-  names.
+  alias" list updates to the snake source names (`app_roles`, `created_at`); the
+  expiry leaves the list, because `close_row.yaml` no longer unsets it.
 - `docs/{user-admin,user-account}/reference/vars.md` — regenerated from the
   manifests; the `user-admin` `org_slug` var description references the physical
   `organizationId` match and is reworded to `organization_id`.

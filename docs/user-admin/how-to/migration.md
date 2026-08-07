@@ -60,13 +60,12 @@ The rows every members read returns are now a
 `components.table_columns` `field:` or `components.download_columns` `value:`
 outside that set renders an empty column. Four kinds of path stop resolving:
 
-1. **Raw join paths** — `user.emailVerified`, `contact.updated.by`, and anything
+1. **Raw join paths** — `user.email_verified`, `contact.updated.by`, and anything
    else under `user.*` or `contact.*`. The reads used to ship both whole source
    documents on every row, so these resolved with no configuration at all.
-2. **Alias duplicates** — `attributes.*` (bind `member_attributes.*`), `createdAt`
-   (bind `signed_up`, or `created` on invitation rows), `expiresAt` (bind
-   `expires_at` on the Invitations tab, `expires` in the export), and
-   `profile.picture` (bind the top-level `picture`).
+2. **Alias duplicates** — `attributes.*` (bind `member_attributes.*`), `created_at`
+   (bind `signed_up`, or `created` on invitation rows), and `profile.picture` (bind
+   the top-level `picture`).
 3. **`picture` in the export** — dropped there, kept on the list.
 4. **Contact fields** are now reachable directly: bind `profile.<field>` rather
    than lifting it through a stage.
@@ -79,7 +78,7 @@ closed in every read:
 request_stages:
   get_all_users:
     - $addFields:
-        email_verified: "$user.emailVerified"
+        email_verified: "$user.email_verified"
 ```
 
 Note that `get_all_users` now also runs on the **Excel export**, over member and
@@ -115,10 +114,10 @@ modules (`user-account`).
 - **Search is plain `$match` regex/text** over the joined shape — the Atlas
   `$search` stage and its index requirement are gone. Sized for pinned orgs in the
   low thousands of members.
-- **The role filter matches exact elements of the member's `appRoles` array** — a
+- **The role filter matches exact elements of the member's `app_roles` array** — a
   filter for `admin` does not also match `super-admin`. It matches on the member root
   ahead of the read's `$lookup`s, so a
-  [`{ organizationId: 1, appRoles: 1 }` index](../../user-account/reference/indexes.md#user-members-collection)
+  [`{ organization_id: 1, app_roles: 1 }` index](../../user-account/reference/indexes.md#user-members-collection)
   can serve it; without the index the filter still returns correct rows, it just scans
   the organization's whole membership.
 - **Two revocations, honestly labelled**: **Suspend** (`BanUser`) is permanent,
@@ -128,6 +127,13 @@ modules (`user-account`).
 - **New engine capabilities**: session listing + sign-out-everywhere, and
   read-only auth-method visibility (email-verified, OAuth providers, MFA,
   passkeys).
+- **Auth-collection columns are snake_case.** The adapter stores every auth-owned
+  column under a snake_case name — `user_id`, `organization_id`, `app_roles`,
+  `created_at`, `expires_at`, `email_verified` — and the members row publishes
+  `user_id` / `organization_id` under those names. App config that reads those
+  collections directly, through a `request_stages.*` slot or a hand-provisioned
+  index, names the snake column. Params passed to the engine's admin steps stay
+  camelCase: they are the step's I/O contract, not column names.
 - **All raw writes to auth-owned data are gone** — every auth write goes through a
   sanctioned admin step. The endpoint is gated by the app's own `auth.api.roles`; the
   step then names `org_slug` explicitly and the engine floors it against the caller's
@@ -139,7 +145,7 @@ modules (`user-account`).
 The module used to administer whichever organization the app pinned, keep app roles in
 `member.role`, and rely on a single app-wide administering role. It now administers the
 organization named by a required `org_slug` var, keeps app roles as a native `string[]`
-in `member.appRoles`, and authorizes each write against the caller's own member row in
+in `member.app_roles`, and authorizes each write against the caller's own member row in
 the organization the write names.
 
 ### 1. Set `org_slug` — the one mandatory change
@@ -211,8 +217,8 @@ instead — it is the single roles binding on the row. See
 
 ### 5. Create the members-list role-filter index
 
-The role filter now matches `member.appRoles` on the member root. Add
-[`user-members { organizationId: 1, appRoles: 1 }`](../../user-account/reference/indexes.md#user-members-collection)
+The role filter now matches `member.app_roles` on the member root. Add
+[`user-members { organization_id: 1, app_roles: 1 }`](../../user-account/reference/indexes.md#user-members-collection)
 — multikey compound, not unique. The list works without it, just more slowly: every
 role filter scans the organization's whole membership.
 
