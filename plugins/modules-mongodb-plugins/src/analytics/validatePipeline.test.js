@@ -1,4 +1,4 @@
-import validatePipeline from "./validatePipeline.js";
+import validatePipeline, { touchedCollections } from "./validatePipeline.js";
 import { ALLOWED_STAGES, COLLECTION_SCOPED_STAGES } from "./stageAllowlist.js";
 import { ALLOWED_EXPRESSION_OPERATORS } from "./expressionOperatorAllowlist.js";
 import { ALLOWED_MATCH_OPERATORS } from "./matchOperatorAllowlist.js";
@@ -717,5 +717,128 @@ describe("resource caps", () => {
     const pipeline = [{ $project: { x: { $literal: wide } } }];
     expect(JSON.stringify(pipeline).length).toBeLessThan(MAX_PIPELINE_BYTES);
     expect(() => validate(pipeline)).toThrow(/nodes/);
+  });
+});
+
+// ── touchedCollections: withheld-vs-broken enumeration ───────────────────────
+// A withheld section is a valid pipeline touching a role-denied collection —
+// so a normal validate() throws before the walk finishes. touchedCollections
+// runs the SAME walk with the role gate skipped, so a caller can enumerate the
+// collections a section touches (to classify withheld vs broken) without the
+// gate throwing. It records at the single choke point, so a collection reached
+// only through a nested sub-pipeline is still counted.
+describe("touchedCollections", () => {
+  // t_deep is reachable ONLY through the nested $lookup sub-pipeline, so its
+  // presence proves the nested walk records rather than a base + top-level scan.
+  const catalog = {
+    t_base: { description: "Open base.", fields: { mid_id: { type: "string" } } },
+    t_mid: {
+      roles: ["analyst"],
+      description: "Gated mid.",
+      fields: { _id: { type: "string" }, deep_id: { type: "string" } },
+    },
+    t_deep: {
+      roles: ["analyst"],
+      description: "Gated deep.",
+      fields: { _id: { type: "string" } },
+    },
+  };
+
+  test("records the base collection", () => {
+    expect(
+      touchedCollections({ collection: "t_base", pipeline: [], catalog }),
+    ).toEqual(["t_base"]);
+  });
+
+  test("records every $lookup.from", () => {
+    const found = touchedCollections({
+      collection: "t_base",
+      pipeline: [
+        {
+          $lookup: {
+            from: "t_mid",
+            localField: "mid_id",
+            foreignField: "_id",
+            as: "mid",
+          },
+        },
+      ],
+      catalog,
+    });
+    expect(new Set(found)).toEqual(new Set(["t_base", "t_mid"]));
+  });
+
+  test("records a $lookup nested inside another $lookup's sub-pipeline", () => {
+    const found = touchedCollections({
+      collection: "t_base",
+      pipeline: [
+        {
+          $lookup: {
+            from: "t_mid",
+            as: "mid",
+            pipeline: [
+              {
+                $lookup: {
+                  from: "t_deep",
+                  localField: "deep_id",
+                  foreignField: "_id",
+                  as: "deep",
+                },
+              },
+            ],
+          },
+        },
+      ],
+      catalog,
+    });
+    expect(new Set(found)).toEqual(new Set(["t_base", "t_mid", "t_deep"]));
+  });
+
+  test("enumerates a withheld pipeline the role gate would reject", () => {
+    const args = {
+      collection: "t_base",
+      pipeline: [
+        {
+          $lookup: {
+            from: "t_mid",
+            localField: "mid_id",
+            foreignField: "_id",
+            as: "mid",
+          },
+        },
+      ],
+      catalog,
+    };
+    // The gate is unchanged: validating with unsatisfied roles still throws.
+    expect(() => validatePipeline({ ...args, roles: [] })).toThrow(
+      /not authorized.*t_mid/,
+    );
+    // Collect-only walks past the denied collection and includes it.
+    expect(new Set(touchedCollections(args))).toEqual(
+      new Set(["t_base", "t_mid"]),
+    );
+  });
+
+  test("a collection absent from the catalog still throws (broken, not withheld)", () => {
+    expect(() =>
+      touchedCollections({
+        collection: "t_base",
+        pipeline: [
+          {
+            $lookup: {
+              from: "ghost",
+              localField: "mid_id",
+              foreignField: "_id",
+              as: "g",
+            },
+          },
+        ],
+        catalog,
+      }),
+    ).toThrow(/not in the collections catalog/);
+    // Even a broken base collection throws under collect-only.
+    expect(() =>
+      touchedCollections({ collection: "ghost", pipeline: [], catalog }),
+    ).toThrow(/not in the collections catalog/);
   });
 });
