@@ -15,16 +15,14 @@ _ref:
           content: |
             Explore the modules in this monorepo. Each card opens a working demo of that module.
 
-      # CRM modules
-      - id: crm_divider
-        type: Divider
+      - id: module_cards
+        type: Masonry
         properties:
-          orientation: left
-          title: CRM
-      - id: crm_cards
-        type: Box
-        layout:
-          gap: 16
+          columns:
+            xs: 1
+            sm: 2
+            md: 3
+          gutter: 16
         blocks:
           - _ref:
               path: pages/components/explore_card.yaml.njk
@@ -68,18 +66,6 @@ _ref:
                   _module.pageId:
                     module: activities
                     id: all
-
-      # Platform modules
-      - id: platform_divider
-        type: Divider
-        properties:
-          orientation: left
-          title: Platform
-      - id: platform_cards
-        type: Box
-        layout:
-          gap: 16
-        blocks:
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
