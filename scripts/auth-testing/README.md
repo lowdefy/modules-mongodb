@@ -207,14 +207,16 @@ the first membership. Sign up + verify email through the UI first (that creates 
 auth identity — the script never touches credentials), then:
 
 ```sh
-pnpm bootstrap-admin sam@example.com          # grants role user-admin in the demo org
-pnpm bootstrap-admin sam@example.com admin    # grant a different catalog role
+pnpm bootstrap-admin sam@example.com          # grants app role user-admin in the demo org
+pnpm bootstrap-admin sam@example.com admin    # grant a different catalog app role
 ```
 
-It inserts the `user-members` row (native `ObjectId` ids, CSV `role`) linking the
-user to the `slug: "demo"` org. Idempotent — re-running merges the role rather than
-duplicating the row. Needs the dev server to have started once (so the engine has
-ensured the pinned org).
+It inserts the `user-members` row (UUID-string ids, snake_case columns) linking the
+user to the `slug: "demo"` org. The granted role goes in the **`app_roles` array** —
+the field the console page gate and `UpdateMemberRoles` read — with the org-authority
+`role` tier set to `member` (a separate axis). Idempotent — re-running merges the app
+role rather than duplicating the row. Needs the dev server to have started once (so the
+engine has ensured the pinned org).
 
 ### `reset-db` — clean data slate between runs
 
