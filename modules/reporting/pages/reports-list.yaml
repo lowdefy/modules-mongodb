@@ -138,19 +138,24 @@ _ref:
             color: "#bfbfbf"
           title: No reports yet
           subTitle: Turn an answer into a saved report from the chat.
-        blocks:
-          - id: empty_create_cta
-            type: Button
-            properties:
-              title: Go to chat
-              type: primary
-            events:
-              onClick:
-                - id: to_chat
-                  type: Link
-                  params:
-                    pageId:
-                      _module.pageId: chat
+        # extra, not the default content slot: content renders in Ant's grey
+        # `.ant-result-content` band, which reads as a separate full-width panel
+        # under the centred text. extra sits centred beneath the subTitle.
+        slots:
+          extra:
+            blocks:
+              - id: empty_create_cta
+                type: Button
+                properties:
+                  title: Go to chat
+                  type: primary
+                events:
+                  onClick:
+                    - id: to_chat
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: chat
 
       # Shared, nothing published — a fact about the app, not a prompt to act. Shared
       # includes the viewer's own published reports, so this means the app's shared
