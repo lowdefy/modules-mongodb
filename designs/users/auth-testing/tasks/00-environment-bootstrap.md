@@ -39,7 +39,7 @@ docker exec demo-auth-mongo mongosh mongodb://localhost:27017/demo-auth-test --q
 - [ ] `apps/tenant-demo/.env` points at Atlas `modules-mongodb-demo-tenant-test` + SendGrid (README §8a)
 - [ ] `AUTH_FROM_ADDRESS` is a sender SendGrid will send as — otherwise every auth email fails silently
 - [ ] **Live send confirmed:** one signup delivers a verification email to a real inbox, and the link works
-- [x] Both `user-contacts` partial-unique indexes present (README §8c) — confirmed on the Atlas DB; the 0a `createIndex` command is not used here
-- [x] **Clean slate:** QA DB cleared before the pass (README §8f) — leftover orgs/invitations/sessions make the data-separation checks unreadable — cleared 2026-07-31: 85 documents across 14 collections, both `user-contacts` indexes retained
+- [x] All four module-owned snake*case indexes present (README §8c) — created 2026-08-11 on the Atlas DB: both `user-contacts` partial-uniques (`{organization_id, lowercase_email}`, `{organization_id, user_id}`), `user-members {organization_id, app_roles}`, `user-two-factors {user_id}` unique; the pre-snake `organizationId*\*` indexes dropped
+- [x] **Clean slate:** QA DB cleared before the pass (README §8f) — leftover orgs/invitations/sessions make the data-separation checks unreadable — cleared 2026-08-11: 120 documents across 15 collections (the pre-snake-case rows; the new unique email index could not build over them)
 - [ ] Served from a production build of `apps/tenant-demo` (`pnpm ldf:b && pnpm ldf:s`, port 3003), not `ldf:d` — removes the "building page" artifact a tester reads as an app bug
 - [ ] Roles granted from `/organizations/members` (`bootstrap-admin` is unused under `tenant`; `mail-link` is Mailpit-only)
