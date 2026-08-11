@@ -20,8 +20,9 @@
               module: activities
               menu: default
     # Per-org self-service: every member reaches it, and BetterAuth authorizes
-    # each action against their member role. Distinct from the suite-wide Admin
-    # group below, which is user-admin's pinned-only surface.
+    # each action against their member role. There is no user-admin group here:
+    # a user-admin instance welds a build-time org id, which a tenant
+    # deployment's runtime-created organizations cannot supply.
     - id: organization-group
       type: MenuGroup
       properties:
@@ -31,16 +32,6 @@
         _ref:
           module: organizations
           menu: default
-    - id: admin-group
-      type: MenuGroup
-      properties:
-        title: Admin
-        icon: AiOutlineSetting
-      links:
-        _ref:
-          module: user-admin
-          menu: default
-
 - id: profile
   links:
     - id: profile
@@ -61,15 +52,6 @@
       properties:
         title: Release Notes
         icon: AiOutlineFileText
-    - id: users
-      type: MenuLink
-      pageId:
-        _module.pageId:
-          module: user-admin
-          id: all
-      properties:
-        title: User Admin
-        icon: AiOutlineTeam
     - id: logout-divider
       type: MenuDivider
     - id: logout

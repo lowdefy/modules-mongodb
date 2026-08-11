@@ -4,8 +4,8 @@ fields:
     _ref: modules/shared/profile/fields.yaml
 # OAuth provider display metadata layered over _build.authConfig.providers.
 providers:
-  - id: google
-    label: Google
-    icon: AiOutlineGoogle
+  - id: github
+    label: GitHub
+    icon: AiOutlineGithub
 request_stages:
   write: []

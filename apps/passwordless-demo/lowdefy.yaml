@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260804101357
+lowdefy: 0.0.0-experimental-20260807075508
 name: Passwordless Demo App
 slug: passwordless-demo
 
@@ -64,7 +64,6 @@ auth:
   organizations:
     policy: pinned
     org: passwordless-demo
-  userAdminRole: user-admin
   roles:
     - id: user-admin
       label: User Admin

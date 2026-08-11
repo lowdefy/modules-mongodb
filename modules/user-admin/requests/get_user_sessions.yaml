@@ -10,14 +10,14 @@ connectionId:
   _module.connectionId: user-sessions
 payload:
   user_id:
-    _url_query: userId
+    _url_query: user_id
 properties:
   pipeline:
     - $match:
-        userId:
+        user_id:
           _payload: user_id
     - $sort:
-        updatedAt: -1
+        updated_at: -1
     # Whitelist projection — token is never selected. Shared with the
     # user-account sessions read so both surfaces render the same row shape.
     - _ref: ../shared/sessions/session_fields.yaml

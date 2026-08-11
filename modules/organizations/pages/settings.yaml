@@ -71,13 +71,16 @@ _ref:
                       type: Validate
                       params: organization.name
                     - id: update_organization
-                      type: UpdateOrganization
+                      type: CallAPI
                       messages:
                         loading: Saving…
                         success: Organization renamed.
                       params:
-                        name:
-                          _state: organization.name
+                        endpointId:
+                          _module.endpointId: update-organization
+                        payload:
+                          name:
+                            _state: organization.name
                     - id: refetch_active_organization
                       type: Request
                       params: get_active_organization

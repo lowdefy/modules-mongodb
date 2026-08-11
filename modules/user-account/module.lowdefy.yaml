@@ -115,6 +115,7 @@ pages:
       - _ref: pages/logout.yaml
       - _ref: pages/view.yaml
       - _ref: pages/onboarding.yaml
+      - _ref: pages/two-factor-enrol.yaml
     # Signup is a distinct page only where a password registration form
     # exists (emailAndPassword.enabled). In a passwordless deployment signup ≡
     # login, so the page is not assembled and no /signup route exists.
@@ -162,9 +163,6 @@ auth:
     forgotPassword: forgot-password
     resetPassword: reset-password
     verifyEmail: verify-email
-    # The engine routes a two-factor challenge here (required whenever the app
-    # enables twoFactor); the ln page is this module's challenge surface.
-    twoFactor: ln
     # No dedicated error page — the login page serves the error role,
     # rendering the failure as a login-page state (Decision 2).
     error: login
@@ -177,11 +175,22 @@ auth:
     # plain auth.public entry: the accept page stays public + AcceptInvitation
     # action, but it earns public via THIS role, not auth.public.
     acceptInvitation: accept
+    # The 2FA sign-in challenge. Required whenever twoFactor.enabled is true
+    # (auth-hardening) — the engine deletes the sign-in session and sets a signed
+    # two_factor cookie, then routes here. Registered as an authPages role (not a
+    # plain public page) so Login/PhoneNumberVerify can navigate to it and it is
+    # auto-public without a session to authenticate against.
+    twoFactor: two-factor
+    # Forced-enrolment target for the engine's `required` enforcement. Unlike
+    # every other auth page this one is protected (public: false) — the caller
+    # arrives holding a valid session, only missing a factor — so it is
+    # contributed via THIS role, never an auth.public entry, and the engine
+    # exempts it from its own enrolment gate.
+    twoFactorEnrol: two-factor-enrol
   # Public pages beyond the authPages roles (role pages — including accept via
-  # acceptInvitation — are auto-public): the 2FA challenge runs pre-full-session;
-  # logout must render when signed out.
+  # acceptInvitation and the two-factor challenge — are auto-public): logout must
+  # render when signed out.
   public:
-    - two-factor
     - logout
   # One binding at session.create.after — the provider-agnostic choke point
   # where the active organization is resolved (org-aware-modules upstream
@@ -213,6 +222,8 @@ exports:
       description: Account workspace — profile, security, and session tiles.
     - id: onboarding
       description: First-login profile completion.
+    - id: two-factor-enrol
+      description: Forced two-factor enrolment (TOTP + passkey); the twoFactorEnrol authPages target.
   connections:
     - id: user-contacts-collection
       description: Read-write MongoDB connection for the app-owned contact records (tenant-walled).

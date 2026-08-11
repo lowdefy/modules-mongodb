@@ -13,10 +13,10 @@ connectionId:
 properties:
   pipeline:
     - $match:
-        userId:
+        user_id:
           _user: id
     - $sort:
-        updatedAt: -1
+        updated_at: -1
     # Whitelist projection — token is never selected. Shared with the user-admin
     # sessions read so both surfaces render the same row shape.
     - _ref: ../shared/sessions/session_fields.yaml

@@ -4,7 +4,7 @@
 # precondition applies (see module.lowdefy.yaml).
 #
 # Deliberately shared (see user-members.yaml): the shared invitations stages
-# scope the read on `organizationId: { _user: organizationId }`. Invitations are
+# scope the read on `organization_id: { _user: organization_id }`. Invitations are
 # created and cancelled through the client actions, never written here.
 id: user-invitations
 type: MongoDBCollection

@@ -13,13 +13,16 @@ events:
   onOk:
     _build.array.concat:
       - - id: cancel_invitation
-          type: CancelInvitation
+          type: CallAPI
           messages:
             loading: Cancelling…
             success: Invitation cancelled.
           params:
-            invitationId:
-              _state: selected_invitation._id
+            endpointId:
+              _module.endpointId: cancel-invitation
+            payload:
+              invitation_id:
+                _state: selected_invitation._id
       - _ref: actions/refetch_members.yaml
 blocks:
   - id: cancel_invitation_message

@@ -83,7 +83,7 @@ vars:
       named differently. Tenant wall: under `auth.organizations.policy:
       tenant` the timeline connection is walled and its joins are filtered
       mechanically, so a substituted collection must itself carry the
-      `organizationId` field — without it the join fails closed (empty).
+      `organization_id` field — without it the join fails closed (empty).
       Under `pinned` (the default) no field is required. Enrichment is
       data-driven: the join is inert when events carry no `action_ids`, so
       entities with no workflow actions render as an events-only timeline.
@@ -96,7 +96,7 @@ vars:
       `user-contacts`; avatars fall back to initials when an author has no
       matching contact. Tenant wall: under `auth.organizations.policy: tenant`
       the timeline connection is walled, so a substituted collection must
-      itself carry the `organizationId` field — without it the join fails
+      itself carry the `organization_id` field — without it the join fails
       closed (initials fallback). Under `pinned` (the default) no field is
       required.
 

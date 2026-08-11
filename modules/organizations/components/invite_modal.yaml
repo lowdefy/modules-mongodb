@@ -1,11 +1,5 @@
-# Invite someone into the active organization.
-#
-# Two steps in order, per org-workspace Decision 2b: mint the invitee's contact
-# in this organization, then send the invitation. The mint runs first because it
-# is the idempotent half — it reconciles on duplicate key, so a failure at
-# InviteMember leaves nothing to undo and a retry converges. Doing it at all is
-# what makes the invited person visible in this org's contact lists immediately
-# rather than only once they accept.
+# Invite someone into the active organization, via the invite endpoint (contact
+# mint + InviteMember, both server-side — see api/invite.yaml).
 #
 # BetterAuth sends the invitation email itself (auth.email + the invitation
 # template); this module ships no email wiring.
@@ -20,27 +14,22 @@ events:
     _build.array.concat:
       - - id: validate_invite
           type: Validate
-          params: invite_modal
-        - id: mint_contact
-          type: CallAPI
-          messages:
-            loading: Inviting…
           params:
-            endpointId:
-              _module.endpointId: invite-contact
-            payload:
-              email:
-                _state: invite.email
+            regex:
+              - '^invite\.'
         - id: send_invitation
-          type: InviteMember
+          type: CallAPI
           messages:
             loading: Inviting…
             success: Invitation sent.
           params:
-            email:
-              _state: invite.email
-            role:
-              _state: invite.roles
+            endpointId:
+              _module.endpointId: invite
+            payload:
+              email:
+                _state: invite.email
+              roles:
+                _state: invite.roles
         - id: clear_invite_form
           type: SetState
           params:

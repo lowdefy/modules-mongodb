@@ -1,0 +1,75 @@
+# Two-factor reset confirm modal — ResetUserTwoFactor, admin recovery when a
+# person loses their authenticator (design Decision 4). The factor is keyed to
+# the user, not the member, so the reset reaches every app in the suite the
+# person can sign into; "across the suite" collapses to this-app framing at
+# other-membership count 0, the same switch modal_revoke.yaml uses. The
+# attestation is a client-side gate only — it is never sent to the routine.
+id: modal_reset_2fa
+type: Modal
+properties:
+  title:
+    _nunjucks:
+      template: "Reset two-factor authentication for {{ name }}?"
+      on:
+        name:
+          _request: get_user_detail.0.name
+  width: 480
+  okText: Reset two-factor authentication
+  cancelText: Cancel
+  okButtonProps:
+    danger: true
+    disabled:
+      _not:
+        _state: reset2fa.attested
+events:
+  onClose:
+    - id: reset_reset2fa
+      type: SetState
+      params:
+        reset2fa.attested: false
+  onOk:
+    _build.array.concat:
+      # ResetUserTwoFactor (Decision 4). Only the reset routine's own payload
+      # keys go over the wire — the attestation checkbox is never sent.
+      - - id: reset_two_factor
+          type: CallAPI
+          messages:
+            loading: Resetting…
+            success: Two-factor authentication reset.
+          params:
+            endpointId:
+              _module.endpointId: reset-two-factor
+            payload:
+              user_id:
+                _request: get_user_detail.0.user_id
+              target_name:
+                _request: get_user_detail.0.name
+              target_email:
+                _request: get_user_detail.0.email
+      - _ref: actions/detail_refetch.yaml
+blocks:
+  - id: reset_2fa_message
+    type: Html
+    properties:
+      # "across the suite" collapses to this-app framing at other-membership
+      # count 0 (Decision 4).
+      html:
+        _nunjucks:
+          template: >-
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Clears <b>{{ name }}</b>'s authenticator app and backup codes and signs them out. Two-factor is tied to the person, not this app, so the reset removes it{% if others > 0 %} across every app in the suite{% endif %} and returns them to unenrolled. If two-factor is required here, they'll set it up again the next time they sign in.</div>
+          on:
+            name:
+              _request: get_user_detail.0.name
+            others:
+              _array.length:
+                _if_none:
+                  - _request: get_user_memberships
+                  - []
+  - id: reset2fa.attested
+    type: CheckboxSwitch
+    layout:
+      span: 24
+    properties:
+      description: I have verified this person's identity through a channel other than email.
+      label:
+        disabled: true

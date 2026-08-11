@@ -2,8 +2,8 @@
 # question the page asks of it: may this caller administer the organization?
 #
 # The boolean is derived in the pipeline rather than in config because
-# `member.role` is a CSV string (user-model Decision 5) — splitting and
-# intersecting it here keeps the page free of string surgery.
+# `member.role` is stored as a string that may carry comma-joined tiers —
+# splitting and intersecting it here keeps the page free of string surgery.
 #
 # This gate is convenience, not security: BetterAuth authorizes every per-org
 # action server-side against this same member row, so a forged call from a
@@ -15,10 +15,10 @@ connectionId:
 properties:
   pipeline:
     - $match:
-        userId:
+        user_id:
           _user: id
-        organizationId:
-          _user: organizationId
+        organization_id:
+          _user: organization_id
     - $addFields:
         is_org_admin:
           $gt:

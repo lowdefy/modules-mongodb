@@ -1,7 +1,7 @@
 # Shared resolve-own-contact fragment — one canonical spec, `_ref`'d by relative
 # path from every routine that needs "the caller's own contact row".
 #
-# A contact is linked to an auth user by `userId`, and the link lives on the
+# A contact is linked to an auth user by `user_id`, and the link lives on the
 # CONTACT: a contact row is per-organization while the auth `user` is global, so a
 # person holds one contact per organization and the link belongs on the side that
 # is already per-organization. The contact is also the row these modules own and
@@ -10,7 +10,7 @@
 # module code runs at those points.
 #
 # Resolution is therefore an id match: the contact in the caller's organization
-# whose `userId` is the caller. The organization half comes from the wall.
+# whose `user_id` is the caller. The organization half comes from the wall.
 #
 # The email is the CLAIM key, used once. A contact minted by an invite exists
 # before its person has an auth user, so it is born unlinked; the first time that
@@ -19,7 +19,7 @@
 # again — an email change cannot break the link, because the link is by id.
 #
 # The claim can never take a contact that belongs to someone else: it filters on
-# `userId` being unset, and `{organizationId, lowercase_email}` is unique, so at
+# `user_id` being unset, and `{organization_id, lowercase_email}` is unique, so at
 # most one unlinked row can match.
 #
 # This is a var-free file — every input is an `_ref` var (NEVER `_module.var`).
@@ -44,7 +44,7 @@
     _var: connection_id
   properties:
     query:
-      userId:
+      user_id:
         _user: id
     options:
       projection:
@@ -72,10 +72,10 @@
           # Unlinked means missing OR null — a MongoDB null equality matches both,
           # so a caller that stamped an absent user id as null is still claimable.
           # A row linked to a different user never matches.
-          userId: null
+          user_id: null
         update:
           $set:
-            userId:
+            user_id:
               _user: id
             updated:
               _ref:
@@ -90,7 +90,7 @@
     _var: connection_id
   properties:
     query:
-      userId:
+      user_id:
         _user: id
     options:
       projection:

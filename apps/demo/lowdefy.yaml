@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260804101357
+lowdefy: 0.0.0-experimental-20260807075508
 name: Module Demo App
 slug: demo
 
@@ -57,18 +57,19 @@ auth:
     expiresIn: 1800
   twoFactor:
     enabled: true
+    required: true
   passkey:
     enabled: true
     rpId: localhost
     rpName: Module Demo App
   providers:
-    - id: google
-      type: Google
+    - id: github
+      type: GitHub
       properties:
         clientId:
-          _secret: GOOGLE_CLIENT_ID
+          _secret: GITHUB_CLIENT_ID
         clientSecret:
-          _secret: GOOGLE_CLIENT_SECRET
+          _secret: GITHUB_CLIENT_SECRET
   # Auth emails (verify, reset, magic-link, invite) send through the `auth-smtp`
   # SMTP connection (see connections below): the runtime resolves it by
   # connectionId at send time and the connection owns from/transport/filter. An
@@ -80,11 +81,12 @@ auth:
   # verify-email, …) and public pages (two-factor, logout) via its manifest, so
   # they are NOT repeated in `pages.public` below; app config would win on
   # collision.
-  # Pinned-org policy (design Decision 1): one deployment = one pinned org.
-  # The engine ensures this org by slug at startup, and org-scoped admin steps
-  # default their organizationId to it. Module reads scope on the
-  # policy-portable `_user: organizationId` rather than the pinned-only
-  # `_organization` operator, so the same modules serve `apps/tenant-demo`.
+  # Pinned-org policy: this app's own organization, ensured by slug at startup
+  # with its id set to that slug. A user-admin instance names the organization it
+  # administers through its own `org_slug` var, so the instance administering this
+  # one repeats the value below rather than inheriting it. Other module reads
+  # scope on the policy-portable `_user: organization_id`, so the same modules
+  # serve `apps/tenant-demo`.
   organizations:
     policy: pinned
     org: demo
@@ -94,17 +96,16 @@ auth:
     # secure default (a non-member is rejected with MEMBERSHIP_REQUIRED until an
     # admin invites them); open lets the demo exercise the full signup→verify flow.
     signup: open
-  # The member role that administers users across the suite. Enforced by the
-  # engine as a step-level floor before every auth-owned admin step, and named
-  # by the user-admin module's `admin_roles` var for the endpoint gate below.
-  userAdminRole: user-admin
   # Authored role catalog (role-catalog design) — the single source of truth for
-  # assignable roles, their labels, and help text. Every gate reference and
-  # `userAdminRole` must be declared here.
+  # assignable roles, their labels, and help text. Every gate reference must be
+  # declared here.
   roles:
     - id: user-admin
       label: User Admin
       description: Administers users across the pinned suite (ban, invite, roles, sessions).
+    - id: customer-user-admin
+      label: Customer User Admin
+      description: Administers the users of the customer portal organization.
     - id: admin
       label: Admin
       description: Application administrator.
@@ -118,7 +119,13 @@ auth:
   # Modules contribute their own public pages (user-account: login/signup/…,
   # two-factor, logout; notifications: link, invalid, file-download), so this
   # list is only the app's own public surface — the 404 and router entry pages.
-  # The user-admin pages are role-gated to user-admin.
+  #
+  # One glob per user-admin instance is the read side's whole authorization: the
+  # organization an instance administers is welded into its reads at build time,
+  # so no per-request check remains. `**` is what makes one line enough — it
+  # covers every item the instance ships now and every one added later, while
+  # stopping at the instance boundary (`*` does not cross a slash, `**` does), so
+  # neither surface can reach the other organization's members.
   pages:
     protected: true
     public:
@@ -126,14 +133,21 @@ auth:
       - router
     roles:
       user-admin:
-        - user-admin/*
-  # Defense-in-depth endpoint gate (design Decision 3): the user-admin routine
-  # endpoints require the user-admin role. Other endpoints stay as-is (no global
-  # `protected` flip). Composes on top of the engine's userAdminRole step-floor.
+        - user-admin/**
+      customer-user-admin:
+        - customer-user-admin/**
+  # The endpoint gate is required, not defence in depth. This entity declares
+  # neither `protected` nor `public`, so an endpoint matching no glob resolves
+  # `{ public: true }` and answers with no session at all — an unlisted admin
+  # instance hands its organization's members, emails and export to anyone. The
+  # write steps are floored separately by the engine against the caller's member
+  # row in the organization each step names; reads have no such floor.
   api:
     roles:
       user-admin:
-        - user-admin/*
+        - user-admin/**
+      customer-user-admin:
+        - customer-user-admin/**
 
 modules:
   _ref: modules.yaml

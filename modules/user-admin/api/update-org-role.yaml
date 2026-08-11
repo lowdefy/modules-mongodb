@@ -1,0 +1,88 @@
+# update-org-role — the member's organization-authority tier (`member.role`:
+# owner / admin / member) and nothing else. Holding `admin` in an organization is
+# what lets a person administer it, so this is how a deployment grants and revokes
+# that; the app roles on the same member row answer a different question and are
+# written by update-access.
+#
+# Its own endpoint, not a fourth step on update-access. The two writes take
+# different paths — app roles adapter-direct, the tier through the organization
+# plugin so its creator-protection and last-owner guards run — and the tier is
+# separately authorized and audited. Sharing one routine would also leave the
+# app-role write applied when the tier write failed, with nothing to roll it back.
+#
+# `member` is the revoked value; there is no empty tier to write. Demoting the
+# organization's sole owner, or demoting its creator as anyone but the creator, is
+# refused by the plugin with its own message — the caller surfaces that message
+# rather than replacing it, because those refusals are the point of routing the
+# write through the plugin.
+#
+# `organizationId` is named explicitly: an absent one falls back to the APP's
+# pinned organization, so an instance administering another organization would be
+# authorized against — and write into — the wrong one. Role-gated app-side; the
+# step declares the permission it needs and the engine floors it against the
+# caller's member row in the organization the step names.
+#
+# Behind the `org_authority` var (default true): when false, the routine is a bare
+# reject. Hiding the control alone would leave the tier writable by anyone holding
+# the app's gate role, which is the opposite of what a deployment granting org
+# authority out of band asks for.
+#
+# Payload: { member_id, org_role, user_id?, target_name?, target_email? }
+# The audit event is the FINAL step, so it fires only on full success.
+id: update-org-role
+type: Api
+routine:
+  _build.array.concat:
+    - _build.if:
+        test:
+          _build.not:
+            _module.var: org_authority
+        then:
+          - - :reject: Organization authority is not granted through this app (the "org_authority" var is false).
+        else: []
+    - - id: set_org_role
+        type: UpdateMemberOrgRole
+        properties:
+          memberId:
+            _payload: member_id
+          orgRole:
+            _payload: org_role
+          organizationId:
+            _module.var: org_slug
+      - id: audit
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type: org-role-updated
+            display:
+              _build.object.fromEntries:
+                - - _build.app: slug
+                  - title:
+                      _nunjucks:
+                        template:
+                          _build.if_none:
+                            - _module.var: event_display.org-role-updated
+                            - _ref:
+                                path: defaults/event_display.yaml
+                                key: org-role-updated
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            name:
+                              _payload: target_name
+                            email:
+                              _payload: target_email
+                    description: null
+            references:
+              user_ids:
+                - _payload: user_id
+            metadata:
+              org_role:
+                _payload: org_role
+      - :return:
+          success: true

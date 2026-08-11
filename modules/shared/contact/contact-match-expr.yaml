@@ -3,7 +3,7 @@
 # `_ref`'d by relative path from every such join so the rule cannot drift between
 # them (get_account, members_base, get_users_for_selector).
 #
-# A contact is linked to its auth user by `userId` — that is the identity match.
+# A contact is linked to its auth user by `user_id` — that is the identity match.
 # The address is matched too, because of the claim window: a contact minted by an
 # invite exists before its person has an auth user, so it stays unlinked until that
 # person's first own-contact resolution claims it (see resolve-own-contact). Reads
@@ -12,9 +12,9 @@
 # invite-captured profile appears to have vanished.
 #
 # The address half is therefore a read-side tolerance, not a second identity: once
-# claimed, `userId` matches and the address is irrelevant. Both halves are
-# single-valued within an organization — `userId` by the partial-unique
-# `{organizationId, userId}` index, the address by `{organizationId,
+# claimed, `user_id` matches and the address is irrelevant. Both halves are
+# single-valued within an organization — `user_id` by the partial-unique
+# `{organization_id, user_id}` index, the address by `{organization_id,
 # lowercase_email}`.
 #
 # It evaluates to a MongoDB aggregation expression, so it goes in an `$expr`
@@ -26,7 +26,7 @@
 # Vars — all four are aggregation expressions written in the CALLER's scope, which
 # is what lets one definition serve a join in either direction (`$field` for the
 # looked-up collection, `$$var` for a `let` binding from the outer document):
-#   contact_user_id_expr — the contact's `userId`
+#   contact_user_id_expr — the contact's `user_id`
 #   contact_email_expr   — the contact's `lowercase_email`
 #   person_id_expr       — the auth user's `_id`
 #   person_email_expr    — the auth user's email, LOWERCASED by the caller

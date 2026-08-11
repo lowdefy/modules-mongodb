@@ -11,6 +11,8 @@ concepts:
     onboarding,
     magic-link,
     passwordless,
+    two-factor-required,
+    two_factor_enrolled,
   ]
 ---
 
@@ -71,6 +73,12 @@ operator console). Both run against the same `contact` / `user` / `member` /
 - **Onboarding** (`onboarding` page) — chrome-less first-login profile
   completion; on save it sets `profile.profile_created: true`, the marker the
   app router reads to stop routing the user here.
+- **Two-factor enrolment** (`two-factor-enrol` page) — the module's contributed
+  `authPages.twoFactorEnrol` target. When the deployment sets
+  `auth.twoFactor.required`, a signed-in caller who has not yet enrolled a
+  qualifying factor (TOTP or passkey) is redirected here on their next
+  request. Unlike every other auth page in this module, it is **protected**,
+  not public. See [Auth methods](concepts/auth-methods.md#required-enrolment-authtwofactorrequired).
 - **Logout** (`logout` page) — signs out and offers a sign-in link.
 
 ## Dependencies
@@ -114,18 +122,18 @@ split by what they touch:
 | Roles, attributes                    | `member` / `user`           | **Not self-service** — admin steps via [`user-admin`](../user-admin/index.md)                                              |
 
 Reads stay native — the workspace aggregates over `users`, `user-sessions`,
-`user-accounts`, `user-passkeys`, joined to `user-contacts` on `userId` within the
+`user-accounts`, `user-passkeys`, joined to `user-contacts` on `user_id` within the
 caller's organization, all filtered to the caller. See
 [Write pathways](concepts/write-pathways.md) for the profile → `_user`
 denormalization and the shared fragments.
 
 ## The contact carries the link to its auth user
 
-A contact holds `userId`; the auth user holds no contact id. A contact row is
+A contact holds `user_id`; the auth user holds no contact id. A contact row is
 per-organization while the auth `user` is global, so a person holds one contact per
 organization and the link belongs on the side that is already per-organization —
 and on the row these modules own and can write at any moment. Every flow needing
-the caller's own contact matches `{ organizationId, userId }` through the shared
+the caller's own contact matches `{ organization_id, user_id }` through the shared
 `resolve-own-contact` fragment.
 
 The address is the **claim key**, used once. A contact minted by an invite exists
@@ -143,7 +151,7 @@ The module ships a **merge-on-signup hook** (`ensure-contact-on-signup`) bound a
 verified email in the session's organization, or mints a bare one when none
 matches. So the workspace and onboarding pages never handle a missing contact.
 Match and write run through the shared `ensure-contact` fragment (an upsert on
-`{ organizationId, lowercase_email }`) — the same fragment the invite flows use,
+`{ organization_id, lowercase_email }`) — the same fragment the invite flows use,
 so the two can't mint duplicate contacts for one email in one organization. The
 hook knows the session's user, so a contact minted here is born linked. It fires on
 every login and is idempotent: a login whose contact already exists writes nothing

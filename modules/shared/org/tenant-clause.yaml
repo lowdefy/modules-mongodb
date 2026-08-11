@@ -1,6 +1,6 @@
 # The one policy branch for authored organization clauses. The tenant wall is
 # policy-conditional: it engages only under `auth.organizations.policy:
-# tenant`, and under `pinned` no document carries `organizationId` — so a
+# tenant`, and under `pinned` no document carries `organization_id` — so a
 # hand-authored org clause would filter on an absent field and silently return
 # nothing. Every site that authors its own clause (the stages the wall cannot
 # scope: a pipeline-leading $search, $graphLookup anywhere, $lookup
@@ -28,7 +28,7 @@
 #                            body; merge with `_build.object.assign` so the
 #                            key itself vanishes under pinned. {} under pinned.
 #     member_eq            → $expr comparison list equating a joined document's
-#                            organizationId with `org_expr`; splice into an
+#                            organization_id with `org_expr`; splice into an
 #                            $and with `_build.array.concat`. [] under pinned.
 #     session_org_value    → the signup-session organization id value for the
 #                            contact mint's `organization_id` var; null under
@@ -49,31 +49,31 @@ _build.if:
               - search_filter
           then:
             - equals:
-                path: organizationId
+                path: organization_id
                 value:
-                  _user: organizationId
+                  _user: organization_id
         - if:
             _build.eq:
               - _var: shape
               - match
           then:
-            organizationId:
-              _user: organizationId
+            organization_id:
+              _user: organization_id
         - if:
             _build.eq:
               - _var: shape
               - graphlookup_restrict
           then:
             restrictSearchWithMatch:
-              organizationId:
-                _user: organizationId
+              organization_id:
+                _user: organization_id
         - if:
             _build.eq:
               - _var: shape
               - member_eq
           then:
             - $eq:
-                - "$organizationId"
+                - "$organization_id"
                 - _var: org_expr
         - if:
             _build.eq:

@@ -17,7 +17,7 @@ _ref:
   vars:
     title: Security
     header_buttons:
-      # Verified when user.emailVerified; otherwise a resend control
+      # Verified when user.email_verified; otherwise a resend control
       # (SendVerificationEmail on the caller's email).
       - id: security_verified_badge
         type: Tag
@@ -199,13 +199,27 @@ _ref:
                                 - id: seed_enroltotp
                                   type: SetState
                                   params:
-                                    enroltotp.phase: password
+                                    # An enrolled caller opens on `choose` (intent
+                                    # null — the title's default branch labels that
+                                    # screen); a first-time caller opens straight on
+                                    # `password` to enrol. Keyed to the per-account
+                                    # TOTP flag, not `_user.two_factor_enrolled`: a
+                                    # passkey-only user holds no TOTP secret and no
+                                    # backup codes, so "Get new backup codes" would
+                                    # throw TWO_FACTOR_NOT_ENABLED for them.
+                                    enroltotp.phase:
+                                      _if:
+                                        test:
+                                          _boolean:
+                                            _request: get_account.0.two_factor_enabled
+                                        then: choose
+                                        else: password
                                     enroltotp.intent:
                                       _if:
                                         test:
                                           _boolean:
                                             _request: get_account.0.two_factor_enabled
-                                        then: replace
+                                        then: null
                                         else: enrol
                                     enroltotp.password: null
                                     enroltotp.uri: null

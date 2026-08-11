@@ -9,6 +9,9 @@ concepts:
     build-authConfig,
     error-handling,
     two-factor,
+    backup-codes,
+    two-factor-required,
+    two_factor_enrolled,
     magic-link,
     passwordless,
   ]
@@ -166,12 +169,28 @@ list.
 There is **no dedicated error page** — the login page serves the
 `authPages.error` role and renders the failure as a login-page state.
 
-## Two-factor routing is internal
+## The two-factor challenge page
 
-When a 2FA-enrolled user signs in, the `Login` result signals two-factor-required
-and the page routes to the module's own `two-factor` page (TOTP code or backup
-code, with an optional trust-device option). `authPages` has no 2FA role — this
-routing never leaves the module.
+When a 2FA-enrolled user signs in, the engine deletes the session the sign-in
+just created, sets a signed `two_factor` cookie, and `Login` (and
+`PhoneNumberVerify`) navigate to `auth.authPages.twoFactor`, carrying the inbound
+`?callbackUrl=`. The challenge page collects a TOTP code or a backup code (with an
+optional trust-device switch) and verifies through `TwoFactorVerify`, which
+restores the session; the page then navigates to the `callbackUrl` to complete
+sign-in.
+
+**The module contributes this page under the `authPages.twoFactor` role**
+(`pages/two-factor.yaml`). The engine **requires `authPages.twoFactor` whenever
+`twoFactor.enabled` is true**, and the build fails without it — so a deployment
+using this module gets a valid challenge page for free and need not supply one.
+
+The page is **public**: by the time the user reaches it there is no session to
+authenticate against — protection lives in the signed `two_factor` cookie, which
+BetterAuth validates when `TwoFactorVerify` fires (the same shape as the
+password-reset page). Reached without a valid cookie — visited directly, or the
+cookie has expired — verification fails with `INVALID_TWO_FACTOR_COOKIE`, and the
+page returns the user to sign-in rather than showing a code box that can never
+succeed.
 
 ## Two-factor enrolment
 
@@ -183,8 +202,26 @@ password before it will show a QR code.
 **Backup codes are shown once and cannot be fetched again.** BetterAuth returns
 them alongside the new TOTP secret at enable time, and the flow renders them
 only in its final step — nothing in the module fetches them again afterwards.
-Dismissing that step without saving them discards them for good; the only way
-to get a fresh set is to enrol again.
+Dismissing that step without saving them discards them for good. A fresh set can
+be issued at any time from **Manage → Get new backup codes** (below) without
+enrolling again.
+
+**Manage opens on a choice between two distinct operations.** For an
+already-enrolled user the Security tile's **Manage** button opens a choice
+screen, because the two reasons to open it differ in blast radius and a support
+agent must not conflate them:
+
+- **Get new backup codes** rotates _only_ the recovery codes. It is
+  password-gated and leaves the authenticator secret, the `verified` flag and
+  the account-level two-factor flag untouched — so the existing authenticator
+  keeps working, the tile stays **On**, and only the previous backup codes are
+  invalidated. This is the common case: codes are consumed one per use with no
+  remaining-count surface, so reaching zero is silent.
+- **Replace authenticator** rotates the TOTP secret, invalidating the current
+  authenticator app — see below.
+
+A first-time (not-yet-enrolled) user skips the choice screen: **Set up** opens
+straight on the password step and enrols an authenticator.
 
 **Replacing an authenticator turns two-factor off for the duration of the
 flow.** BetterAuth's enable call deletes the caller's existing authenticator
@@ -197,3 +234,55 @@ replacement therefore leaves the account with two-factor off** until the user
 enrols again: the account stays reachable with the password alone, and the
 Security tile reads **Off** in the meantime — this is expected behaviour, not
 a lockout.
+
+## Required enrolment: `auth.twoFactor.required`
+
+When the deployment sets `auth.twoFactor.required`, the engine enforces that
+every member holds a second factor. An unenrolled caller is redirected to the
+module's contributed **`twoFactorEnrol`** page (`pages/two-factor-enrol.yaml`),
+which offers **both TOTP and passkey enrolment** — either is reachable by every
+caller, including a passwordless one (a caller with no password credential can
+still complete TOTP enrolment; BetterAuth waives the password requirement
+per-user for anyone holding none).
+
+This page is **protected**, unlike every other auth page the module ships —
+the caller reaching it already holds a valid session and is missing a factor,
+not an identity, so there is no sign-in-behind-the-wall paradox. It is also
+**self-sufficient on client actions**: an unenrolled caller is refused at every
+Lowdefy endpoint by the enrolment gate, so the page never issues a server-side
+request — it drives `TwoFactorEnable`, `TwoFactorVerify`, and `PasskeyRegister`
+directly against `/api/auth/*`.
+
+### `_user.two_factor_enrolled`
+
+The module reads enrolment status from exactly one field:
+`_user.two_factor_enrolled`, computed server-side by the engine as
+`two_factor_enabled || passkeyCount > 0` and exposed identically on client and
+server. **A passkey counts** — it means "holds a factor that satisfies
+`auth.twoFactor.required`," not "has TOTP configured," so a passkey-only user
+reads `two_factor_enrolled: true` and the engine's enrolment gate treats them as
+compliant. The enrolment page reads this same field to decide when the caller
+is done, so its completion state never disagrees with the gate about who still
+needs a factor.
+
+### `required` is an enrolment floor, not a per-session challenge guarantee
+
+**This caveat is stated plainly, not softened:** `auth.twoFactor.required`
+guarantees that every member has **enrolled** a qualifying factor — it does
+**not** guarantee that every session **presented** one. A user who holds both a
+passkey and a password can sign in with the password alone and is admitted
+having presented exactly one factor for that session; `required` never
+challenges them for the passkey they hold. Enrolment and per-session challenge
+are two different guarantees, and this module — and the engine underneath it
+— only makes the first one. A deployment that needs "this session presented a
+second factor," not just "this account has one on file," needs a
+session-scoped step-up guarantee that does not exist here.
+
+### Recovery composes with `required` automatically
+
+An admin's two-factor reset or passkey revoke (see
+[`user-admin` → Two-factor and passkey recovery](../../user-admin/index.md#two-factor-and-passkey-recovery))
+clears a factor, which can flip `two_factor_enrolled` back to `false`. Under
+`required`, that is enough on its own to route the person back into
+`twoFactorEnrol` on their next request — there is no separate "require
+re-enrolment" feature; it falls out of the same enrolment check running again.

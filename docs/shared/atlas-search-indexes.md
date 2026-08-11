@@ -2,7 +2,7 @@
 title: Atlas Search Indexes
 module: shared
 type: shared
-concepts: [atlas-search, indexes, organizationId, tenant-wall, storedSource]
+concepts: [atlas-search, indexes, organization_id, tenant-wall, storedSource]
 ---
 
 # Atlas Search Indexes
@@ -47,22 +47,22 @@ Because the stage always runs, its `compound.filter` always carries exactly one
 organization clause, and that clause needs an index mapping:
 
 - Under `auth.organizations.policy: tenant` it is a string `equals` on
-  `organizationId` — the authored tenant clause the wall audits against the
+  `organization_id` — the authored tenant clause the wall audits against the
   caller's organization on every run. String `equals` requires a **`token`**
   mapping specifically; neither `dynamic: true` nor `dynamic: false` creates
-  one, so every definition lists `organizationId` explicitly.
+  one, so every definition lists `organization_id` explicitly.
 - Under `pinned` it is `exists` on `_id` — a match-all that narrows nothing,
   present only because **Atlas refuses a compound whose clause lists are all
   empty**. Being a `filter` rather than a `should`, it cannot affect relevance
   scoring. It needs `_id` to be indexed, which the per-module definitions
   cover.
 
-**Map `organizationId` regardless of the policy the app runs today.** It is
+**Map `organization_id` regardless of the policy the app runs today.** It is
 inert under `pinned`, and an index missing it blanks every list page the moment
 a deployment flips to `tenant` — silently, with nothing in the logs.
 
 On the `returnStoredSource` collections (`user-contacts`, `companies`)
-`organizationId` must also be _stored_, which whole-document
+`organization_id` must also be _stored_, which whole-document
 `"storedSource": true` covers. `activities` and `deals` pass
 `returnStoredSource: false`, so they store nothing.
 
@@ -83,7 +83,7 @@ pipelines, and extending them extends the index:
   collections those paths must be stored, or the new column renders empty.
 
 _Fail-closed symptom table_: blank list page with data present → missing index,
-or a missing `token` mapping on `organizationId` under `tenant`; a single column
+or a missing `token` mapping on `organization_id` under `tenant`; a single column
 empty → missing `storedSource` entry; text search finds nothing while filters
 work → the searched path is unmapped; `"compound" must have at least one
 clause` → the organization clause is missing from `compound.filter`.

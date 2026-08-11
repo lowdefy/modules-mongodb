@@ -1,6 +1,6 @@
 # Invitations list read (design Decision 2/7). Native aggregation rooted on the
 # pinned org's pending `user-invitations`, inviter joined, Invited/Expired
-# derived on expiresAt, filtered by the invitations filter, sorted server-side
+# derived on expires_at, filtered by the invitations filter, sorted server-side
 # after the derivation, then paginated with a $facet returning the post-filter
 # total. Each row carries `total_results`; the Invitations pending-count badge
 # and the Pagination block read it (never rows.length).
@@ -23,7 +23,11 @@ properties:
   pipeline:
     _build.array.concat:
       # Match pending + org, join inviter, derive Invited/Expired + roles.
-      - _ref: ../shared/org/invitations_base.yaml
+      - _ref:
+          path: ../shared/org/invitations_base.yaml
+          vars:
+            org_value:
+              _module.var: org_slug
       # Filter: email search + derived-status segment. The clauses are ANDed as a
       # $and array rather than merged into one object, so no two of them can
       # collide on a top-level key. The leading `{}` keeps the array non-empty

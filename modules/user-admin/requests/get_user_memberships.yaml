@@ -1,9 +1,13 @@
 # Cross-app memberships read (design Decision 4/6) — the target's memberships in
-# OTHER apps of the suite (this pinned org excluded). ONE read powers three
-# things: (a) the Apps-tile badges, (b) the suspend dialog's blast-radius
-# enumeration, and (c) the other-membership COUNT that switches Decision 6
-# degradation (count 0 → hide Apps tile, plain "Suspend", enable Delete, collapse
-# "suite" copy). Joined to `user-organizations` for the org display name.
+# OTHER apps of the suite, the organization this instance administers excluded.
+# ONE read powers three things: (a) the Apps-tile badges, (b) the suspend dialog's
+# blast-radius enumeration, and (c) the other-membership COUNT that switches
+# Decision 6 degradation (count 0 → hide Apps tile, plain "Suspend", enable
+# Delete, collapse "suite" copy). Joined to `user-organizations` for the org
+# display name.
+#
+# The $match is a NEGATION of `org_slug`: invert the polarity and this instance's
+# own membership lands in the "other apps" list, distorting all three consumers.
 #
 # Cross-app visibility rests on the trusted-operator deployment premise
 # (Decision 6); in a single-app deployment this naturally returns empty.
@@ -13,33 +17,33 @@ connectionId:
   _module.connectionId: user-members
 payload:
   user_id:
-    _url_query: userId
+    _url_query: user_id
 properties:
   pipeline:
     - $match:
-        userId:
+        user_id:
           _payload: user_id
-        organizationId:
+        organization_id:
           $ne:
-            _user: organizationId
+            _module.var: org_slug
     - $lookup:
         from: user-organizations
-        localField: organizationId
+        localField: organization_id
         foreignField: _id
         as: org
     - $unwind:
         path: "$org"
         preserveNullAndEmptyArrays: true
     - $addFields:
-        org_id: "$organizationId"
+        org_id: "$organization_id"
         name:
           $ifNull:
             - "$org.name"
-            - "$organizationId"
+            - "$organization_id"
         app:
           $ifNull:
             - "$org.name"
-            - "$organizationId"
+            - "$organization_id"
         initial:
           $toUpper:
             $substrCP:
@@ -48,23 +52,19 @@ properties:
                   - "?"
               - 0
               - 1
+        # The person's APP roles in the other organization, the same fact every
+        # other `roles` surface in the module shows. Not `role` — that is the org
+        # tier, an administrative fact about an organization this instance does
+        # not administer, and reading it here would render `member` / `admin` /
+        # `owner` on a support badge with nothing blank and nothing erroring.
         roles:
           $trim:
             input:
               $reduce:
                 input:
-                  $filter:
-                    input:
-                      $split:
-                        - $ifNull:
-                            - "$role"
-                            - ""
-                        - ","
-                    as: r
-                    cond:
-                      $ne:
-                        - "$$r"
-                        - ""
+                  $ifNull:
+                    - "$app_roles"
+                    - []
                 initialValue: ""
                 in:
                   $concat:

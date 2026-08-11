@@ -24,7 +24,7 @@ properties:
     - $lookup:
         from: users
         let:
-          contact_user_id: "$userId"
+          contact_user_id: "$user_id"
           contact_email: "$lowercase_email"
         pipeline:
           - $match:
@@ -48,11 +48,11 @@ properties:
           linked_user_id: "$linked_user._id"
         pipeline:
           - $match:
-              organizationId:
-                _user: organizationId
+              organization_id:
+                _user: organization_id
               $expr:
                 $eq:
-                  - "$userId"
+                  - "$user_id"
                   - "$$linked_user_id"
           - $project:
               _id: 1

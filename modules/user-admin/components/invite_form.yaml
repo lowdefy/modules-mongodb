@@ -1,8 +1,8 @@
 # LAYER: invitation-details form (state_form) — serves the unknown (blank) AND
 # existing-contact (prefilled) outcomes (design Decision 7). Blank vs prefilled is
 # seeded state (task 17); the form structure is identical, so it is one layer.
-# Submit = ensure the contact → InviteMember (roles + member attributes),
-# via the invite routine (see invite_send_btn).
+# Submit = ensure the contact → InviteMember (app roles + organization tier +
+# member attributes), via the invite routine (see invite_send_btn).
 #
 # Wrapper Box carries the frame id + the visibility condition; the shared card
 # renders the form body. Roles come from the app role catalog (auth.roles,
@@ -47,7 +47,6 @@ blocks:
               # compact (tag.title). See the options block below.
             - - id: roles
                 type: MultipleSelector
-                required: true
                 layout:
                   span: 24
                 properties:
@@ -57,11 +56,6 @@ blocks:
                   # Options from the app role catalog (design Decision 8): value=id,
                   # a rich label (name + description subtitle), filterString for
                   # search, and a compact tag for the selected chip.
-                  #
-                  # NOTE (running-engine gap): _build.authConfig is not yet
-                  # available to module config; design-faithful per the build-red
-                  # directive, resolves once the engine ships the catalog
-                  # projection (upstream ask 7).
                   options:
                     _build.array.map:
                       on:
@@ -71,7 +65,12 @@ blocks:
                           value:
                             __build.args: 0.id
                           filterString:
-                            __build.args: 0.label
+                            __build.string.concat:
+                              - __build.args: 0.label
+                              - " "
+                              - __build.if_none:
+                                  - __build.args: 0.description
+                                  - ""
                           tag:
                             title:
                               __build.args: 0.label
@@ -92,8 +91,42 @@ blocks:
                                       - __build.args: 0.description
                                       - "</div>"
                                   else: ""
-              # Member attributes — group label above the consumer fields.
-              - id: member_attributes_label
+            # Organization authority — behind the `org_authority` var, and a
+            # different authority from the app roles above: an app role decides
+            # which UI the invitee is shown, this decides whether they may
+            # administer the organization. The email resolve seeds it to `member` —
+            # the no-authority value — so a form nobody touches invites app roles
+            # and no authority; the field exists for the invitation that needs the
+            # opposite: organization `admin` and no app roles at all.
+            #
+            # Under the `tenant` organizations policy an organization `admin` or
+            # `owner` can already invite with arbitrary app roles through this
+            # endpoint. That is intended: the invitation lands inside the
+            # organization the caller administers and nowhere else.
+            - _build.if:
+                test:
+                  _module.var: org_authority
+                then:
+                  - id: org_role
+                    type: Selector
+                    required: true
+                    layout:
+                      span: 24
+                    properties:
+                      title: Organization authority
+                      # Labelled in the app's language rather than BetterAuth's,
+                      # where "member" reads as a status rather than an absence of
+                      # authority. There is no empty tier to invite with.
+                      options:
+                        - value: owner
+                          label: Organization owner
+                        - value: admin
+                          label: Organization admin
+                        - value: member
+                          label: No organization authority
+                else: []
+            # Member attributes — group label above the consumer fields.
+            - - id: member_attributes_label
                 type: Html
                 properties:
                   html: >-
@@ -147,15 +180,16 @@ blocks:
                           params:
                             regex:
                               - '^profile\.'
-                              - "^roles$"
+                              - '^roles$'
+                              - '^org_role$'
                               - '^member_attributes\.'
                         # invite routine: reconcile stale-expired → ensure the
                         # contact → persist profile (write-profile) → InviteMember
-                        # (roles + attributes) → audit. The
-                        # email is sent by BetterAuth via auth.email (no module
-                        # dispatch). Roles submit as catalog ids. `profile` is the
-                        # whole state.profile bag; profile.name is derived from
-                        # given/family in write-profile.
+                        # (app roles + org tier + attributes) → audit. The email
+                        # is sent by BetterAuth via auth.email (no module
+                        # dispatch). `profile` is the whole state.profile bag;
+                        # profile.name is derived from given/family in
+                        # write-profile.
                         - id: send_invite
                           type: CallAPI
                           messages:
@@ -169,6 +203,8 @@ blocks:
                                 _state: email
                               roles:
                                 _state: roles
+                              org_role:
+                                _state: org_role
                               member_attributes:
                                 _state: member_attributes
                               profile:

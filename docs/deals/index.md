@@ -77,7 +77,7 @@ An Atlas Search index named **`default`** — `get_deals_list`'s `$search` names
           "keywordAnalyzer": { "type": "string", "analyzer": "lucene.keyword" }
         }
       },
-      "organizationId": { "type": "token" }
+      "organization_id": { "type": "token" }
     }
   }
 }
@@ -85,9 +85,9 @@ An Atlas Search index named **`default`** — `get_deals_list`'s `$search` names
 
 > **This index does not yet exist on the QA cluster.** `listSearchIndexes()` on `deals` returns nothing, which is why the deal search box has never worked under either policy. Because the `$search` stage is now unconditional, the deal list needs this index to load at all — create it before deploying, and see [Search](../shared/search.md) for the `atlas_search: false` alternative if Atlas Search is unavailable.
 
-**`organizationId` serves `compound.filter`, not the text search.** The `$search` is emitted unconditionally (see [Search](../shared/search.md)), so its compound always carries one `filter` clause — and Atlas refuses a compound whose clause lists are all empty. Under `auth.organizations.policy: tenant` that clause is a string `equals` on `organizationId`, the authored tenant clause the wall audits on every run; under `pinned` it is `exists` on `_id`, which the mapping below already covers. `dynamic: false` maps nothing by default and a string `equals` requires a `token` mapping specifically, so `organizationId` is listed explicitly. Keep it regardless of the policy the app runs today — an index missing it blanks the deal list the moment a deployment flips to `tenant`, fail-closed and silent.
+**`organization_id` serves `compound.filter`, not the text search.** The `$search` is emitted unconditionally (see [Search](../shared/search.md)), so its compound always carries one `filter` clause — and Atlas refuses a compound whose clause lists are all empty. Under `auth.organizations.policy: tenant` that clause is a string `equals` on `organization_id`, the authored tenant clause the wall audits on every run; under `pinned` it is `exists` on `_id`, which the mapping below already covers. `dynamic: false` maps nothing by default and a string `equals` requires a `token` mapping specifically, so `organization_id` is listed explicitly. Keep it regardless of the policy the app runs today — an index missing it blanks the deal list the moment a deployment flips to `tenant`, fail-closed and silent.
 
-`name`, `_id` and `organizationId` are the only mapped fields. `_id` holds the deal code (`D-0001`), which `get_deals_list` searches through `path: { value: _id, multi: keywordAnalyzer }` — so the index must declare that `keywordAnalyzer` multi, or the deal-code clause finds nothing. Company name is not searchable at all: it is not stored on the deal document, and the list's `$lookup` fetches it for display only — the company filter matches `company_id`. Nothing else needs mapping either: the stage, company, salesperson and outcome filters are plain `$match` clauses that `mongot` never evaluates.
+`name`, `_id` and `organization_id` are the only mapped fields. `_id` holds the deal code (`D-0001`), which `get_deals_list` searches through `path: { value: _id, multi: keywordAnalyzer }` — so the index must declare that `keywordAnalyzer` multi, or the deal-code clause finds nothing. Company name is not searchable at all: it is not stored on the deal document, and the list's `$lookup` fetches it for display only — the company filter matches `company_id`. Nothing else needs mapping either: the stage, company, salesperson and outcome filters are plain `$match` clauses that `mongot` never evaluates.
 
 | Query site       | Searches                                                      | Stored source |
 | ---------------- | ------------------------------------------------------------- | ------------- |

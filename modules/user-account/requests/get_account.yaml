@@ -1,12 +1,12 @@
 # Account read (design Decision 5) — the caller's own auth user row joined to
 # their contact, the spine of the workspace. Native read over `users` filtered to
 # the caller (`_user.id`, a plain string — this deployment stores ids as strings,
-# no ObjectId coercion), joined to `user-contacts` on {organizationId,
+# no ObjectId coercion), joined to `user-contacts` on {organization_id,
 # lowercase_email} — the contact key. The organization clause is authored here
 # because `users` is an unwalled connection and a `$lookup` is never scoped by the
 # tenant wall, so an unqualified join would read another organization's row. It is
 # policy-conditional (shared fragment): present under `tenant`, absent under
-# `pinned`, where contacts carry no organizationId.
+# `pinned`, where contacts carry no organization_id.
 # Feeds:
 #   profile        — the contact profile subdoc (profile tile display + edit-modal
 #                    seed; display reads the contact directly, Decision 5)
@@ -45,7 +45,7 @@ properties:
                     _ref:
                       path: ../shared/contact/contact-match-expr.yaml
                       vars:
-                        contact_user_id_expr: "$userId"
+                        contact_user_id_expr: "$user_id"
                         contact_email_expr: "$lowercase_email"
                         person_id_expr: "$$caller_id"
                         person_email_expr: "$$caller_email"
@@ -58,11 +58,11 @@ properties:
         email: "$email"
         email_verified:
           $eq:
-            - "$emailVerified"
+            - "$email_verified"
             - true
         two_factor_enabled:
           $eq:
-            - "$twoFactorEnabled"
+            - "$two_factor_enabled"
             - true
         contact_id: "$contact._id"
         name:

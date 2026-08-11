@@ -1,0 +1,28 @@
+# update-member-roles — the app roles on a member row of the caller's ACTIVE
+# organization (`member.app_roles`), and nothing else. The organization-authority
+# tier is a different authority with a different write path (update-org-role);
+# sharing one routine would leave the app-role write applied when a refused tier
+# write failed, with nothing to roll it back.
+#
+# The engine floors the step against the caller's member row in the organization
+# named here — `organizationId` is explicit because under the `tenant` policy
+# there is no pinned organization for the step to default to. Submitted ids are
+# not checked against the catalog: an unrecognised entry grants nothing, and
+# rejecting it would fail an admin's whole save over a stale role they never
+# touched.
+#
+# Payload: { member_id, roles (array of app-role ids) }
+id: update-member-roles
+type: Api
+routine:
+  - id: set_roles
+    type: UpdateMemberRoles
+    properties:
+      memberId:
+        _payload: member_id
+      organizationId:
+        _user: organization_id
+      appRoles:
+        _if_none:
+          - _payload: roles
+          - []

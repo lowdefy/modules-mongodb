@@ -26,7 +26,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `components` | object |  |  | Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, form_attachments, view_attachments |
 | `hooks` | object |  |  | Action-list extension points spliced into built-in flows: on_created |
 | `request_stages` | object |  |  | Pipeline overrides |
-| `lookup_collections` | object |  |  | Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts, companies, and agenda tasks on activity detail/list pages. Override when an app points its connections at differently-named collections. Tenant wall: under `auth.organizations.policy: tenant` the activities connection is walled and these joins are filtered mechanically, so any substituted collection must itself carry the `organizationId` field — a collection without it fails closed (the join returns nothing). Under `pinned` (the default) the wall is inert and no field is required. |
+| `lookup_collections` | object |  |  | Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts, companies, and agenda tasks on activity detail/list pages. Override when an app points its connections at differently-named collections. Tenant wall: under `auth.organizations.policy: tenant` the activities connection is walled and these joins are filtered mechanically, so any substituted collection must itself carry the `organization_id` field — a collection without it fails closed (the join returns nothing). Under `pinned` (the default) the wall is inert and no field is required. |
 
 ## Nested var details
 
@@ -76,7 +76,7 @@ Pipeline overrides
 
 ### `lookup_collections`
 
-Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts, companies, and agenda tasks on activity detail/list pages. Override when an app points its connections at differently-named collections. Tenant wall: under `auth.organizations.policy: tenant` the activities connection is walled and these joins are filtered mechanically, so any substituted collection must itself carry the `organizationId` field — a collection without it fails closed (the join returns nothing). Under `pinned` (the default) the wall is inert and no field is required.
+Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts, companies, and agenda tasks on activity detail/list pages. Override when an app points its connections at differently-named collections. Tenant wall: under `auth.organizations.policy: tenant` the activities connection is walled and these joins are filtered mechanically, so any substituted collection must itself carry the `organization_id` field — a collection without it fails closed (the join returns nothing). Under `pinned` (the default) the wall is inert and no field is required.
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|

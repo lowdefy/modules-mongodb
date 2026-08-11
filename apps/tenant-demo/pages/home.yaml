@@ -103,17 +103,6 @@ _ref:
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
-                id: user_admin
-                icon: AiOutlineTeam
-                title: User Admin
-                description: Invite, list, and manage app users.
-                pageId:
-                  _module.pageId:
-                    module: user-admin
-                    id: all
-          - _ref:
-              path: pages/components/explore_card.yaml.njk
-              vars:
                 id: release_notes
                 icon: AiOutlineFileText
                 title: Release Notes

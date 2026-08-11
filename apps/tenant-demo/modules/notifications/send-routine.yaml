@@ -7,8 +7,8 @@
 # Tenant wall (org-aware-modules Decision 7): both steps opt out with
 # `tenant: none` — $merge is rejected on walled connections, and this routine
 # writes another org axis anyway (notification docs). The opt-out is paired
-# with an EXPLICIT organizationId on every merged doc, read from the source
-# event's wall-stamped organizationId (provenance: the triggering record) —
+# with an EXPLICIT organization_id on every merged doc, read from the source
+# event's wall-stamped organization_id (provenance: the triggering record) —
 # a bare tenant: none with no explicit org is forbidden.
 - id: notify_quote_approved
   type: MongoDBAggregation
@@ -86,7 +86,7 @@
             $literal: false
           contact_id: $recipient_id
           # Explicit org (Decision 7): the source event's wall-stamped org.
-          organizationId: $organizationId
+          organization_id: $organization_id
           title: Quote approved
           description:
             $concat:
@@ -158,7 +158,7 @@
             $literal: false
           contact_id: $recipient_id
           # Explicit org (Decision 7): the source event's wall-stamped org.
-          organizationId: $organizationId
+          organization_id: $organization_id
           title:
             $cond:
               - $eq:

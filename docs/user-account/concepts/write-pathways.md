@@ -30,7 +30,7 @@ contact write and half a dozen session-gated auth calls.
 | Roles, attributes                    | `member` / `user`           | **Not self-service** — admin steps via [`user-admin`](../../user-admin/index.md) |
 
 Reads stay native: the workspace aggregates over `users`, `user-sessions`,
-`user-accounts`, `user-passkeys`, joined to `user-contacts` on `userId` within the
+`user-accounts`, `user-passkeys`, joined to `user-contacts` on `user_id` within the
 caller's organization, all filtered to the caller.
 
 ## Profile writes: contact-first, re-denormalized onto `_user`

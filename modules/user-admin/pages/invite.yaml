@@ -137,8 +137,8 @@ _ref:
                             pageId:
                               _module.pageId: view
                             urlQuery:
-                              userId:
-                                _state: resolved_member.userId
+                              user_id:
+                                _state: resolved_member.user_id
 
           # LAYER: pending invitation — resend / cancel.
           - id: state_pending
@@ -176,10 +176,13 @@ _ref:
                           size: small
                         events:
                           onClick:
-                            # Resend via InviteMember(resend). Re-send the current
-                            # roles + attributes so the refresh preserves them
-                            # rather than blanking them (the invitation stays
-                            # pending, so no re-resolve needed).
+                            # Resend via InviteMember(resend). Re-send the app
+                            # roles, the organization tier and the attributes the
+                            # invitation already carries, so the refresh preserves
+                            # them rather than blanking them (the invitation stays
+                            # pending, so no re-resolve needed). Omitting the tier
+                            # would not leave it alone — the step defaults an
+                            # absent one to `member`, silently revoking it.
                             - id: resend_invitation
                               type: CallAPI
                               messages:
@@ -192,9 +195,9 @@ _ref:
                                   email:
                                     _state: email
                                   roles:
-                                    _js: |
-                                      const csv = state('resolved_invitation.role');
-                                      return (csv || '').split(',').map(s => s.trim()).filter(Boolean);
+                                    _state: resolved_invitation.app_roles
+                                  org_role:
+                                    _state: resolved_invitation.role
                                   member_attributes:
                                     _state: resolved_invitation.attributes
                       - id: pending_cancel_btn

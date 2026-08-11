@@ -1,6 +1,13 @@
 # revoke-sessions — RevokeUserSessions ("sign out everywhere", design Decision 5).
 # Does not suspend or remove; the person can sign back in immediately. Role-gated
-# app-side; step-floored by `auth.userAdminRole`. Audit event is the final step.
+# app-side; the step declares the permission it needs and the engine floors it
+# against the caller's member row in the organization the step names. Audit event is
+# the final step.
+#
+# `organizationId` names the organization the floor authorizes in. Sessions are
+# deployment-wide, so the floor asks whether the caller administers THAT
+# organization and whether the target holds a member row in it; an absent one falls
+# back to the APP's pinned organization, which refuses an administrator of any other.
 #
 # Payload: { user_id, target_name?, target_email? }
 id: revoke-sessions
@@ -11,6 +18,8 @@ routine:
     properties:
       userId:
         _payload: user_id
+      organizationId:
+        _module.var: org_slug
   - id: audit
     type: CallApi
     properties:

@@ -1,0 +1,26 @@
+# update-org-role — the member's organization-authority tier (`member.role`:
+# owner / admin / member) in the caller's ACTIVE organization, and nothing else.
+# Holding `admin` (or `owner`) in an organization is what lets a person
+# administer it — this is how an organization grants and revokes that from its
+# own members page. The app roles on the same member row answer a different
+# question and are written by update-member-roles.
+#
+# The write goes through the organization plugin so its creator-protection and
+# last-owner guards run; their refusals carry their own messages, which the page
+# surfaces rather than replaces. `member` is the revoked value; there is no
+# empty tier to write. `organizationId` is explicit: under the `tenant` policy
+# there is no pinned organization for the step to default to.
+#
+# Payload: { member_id, org_role }
+id: update-org-role
+type: Api
+routine:
+  - id: set_org_role
+    type: UpdateMemberOrgRole
+    properties:
+      memberId:
+        _payload: member_id
+      orgRole:
+        _payload: org_role
+      organizationId:
+        _user: organization_id

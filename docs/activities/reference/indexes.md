@@ -30,14 +30,14 @@ An Atlas Search index named **`default`** — the module's `$search` stage names
         "type": "document",
         "fields": { "text": { "type": "string" } }
       },
-      "organizationId": { "type": "token" },
+      "organization_id": { "type": "token" },
       "_id": { "type": "token" }
     }
   }
 }
 ```
 
-**`organizationId` and `_id` serve `compound.filter`, not the text search.** The `$search` here is emitted unconditionally (see [Search](../../shared/search.md)), so its compound always carries one `filter` clause — and Atlas refuses a compound whose clause lists are all empty. Under `auth.organizations.policy: tenant` that clause is a string `equals` on `organizationId`, the authored tenant clause the wall audits on every run; under `pinned` it is `exists` on `_id`, a match-all that narrows nothing. `dynamic: false` maps neither by default and a string `equals` requires a `token` mapping specifically, so both are listed explicitly. Keep both regardless of the policy the app runs today — an index missing the `organizationId` mapping blanks the list page the moment a deployment flips to `tenant`, fail-closed and silent.
+**`organization_id` and `_id` serve `compound.filter`, not the text search.** The `$search` here is emitted unconditionally (see [Search](../../shared/search.md)), so its compound always carries one `filter` clause — and Atlas refuses a compound whose clause lists are all empty. Under `auth.organizations.policy: tenant` that clause is a string `equals` on `organization_id`, the authored tenant clause the wall audits on every run; under `pinned` it is `exists` on `_id`, a match-all that narrows nothing. `dynamic: false` maps neither by default and a string `equals` requires a `token` mapping specifically, so both are listed explicitly. Keep both regardless of the policy the app runs today — an index missing the `organization_id` mapping blanks the list page the moment a deployment flips to `tenant`, fail-closed and silent.
 
 `title` and `description.text` are the only mapped fields, and both as `string` — they are the text paths the `$search` searches, with a `text` clause for whole-token relevance and a `wildcard: *term*` clause for substring matching. `description` is Tiptap rich text stored as `{ html, text }`, so it is mapped as a document with a `text` string child; the `html` sibling is deliberately unmapped, as searching markup would match tag names and attributes.
 

@@ -39,9 +39,10 @@ A pinned app simply does not add the entry.
 ## What it does
 
 - **Members** (`/organizations/members`) — the organization's people, with the
-  contact record joined in. Invite someone by email with one or more roles;
-  change a member's roles; remove a member; leave the organization yourself.
-  Pending invitations are listed with their expiry and can be cancelled.
+  contact record joined in. Invite someone by email with one or more app roles;
+  change a member's app roles; grant or revoke organization authority; remove a
+  member; leave the organization yourself. Pending invitations are listed with
+  their expiry and can be cancelled.
 - **Organization** (`/organizations/settings`) — rename the organization. A
   tenant organization is born named after its founder, so renaming is usually
   the first thing an owner wants.
@@ -94,11 +95,17 @@ entry, the `header_extra` switcher, and the menu group.
 
 ## Roles
 
-The role picker offers the app's authored `auth.roles` catalog — the single
-source of truth for role ids and labels — plus `admin`, which BetterAuth reads
-to authorize the per-organization endpoints. Declare `admin` in your own
-catalog to give it your label; otherwise it is appended as
-"Admin (organization)".
+A member row carries two unrelated authorities, and the member modal edits them
+as two controls with two submits:
+
+- **App roles** (`member.app_roles`, a native array) — what the app's UI shows
+  this person. The picker offers the app's authored `auth.roles` catalog — the
+  single source of truth for role ids and labels — and writes through the
+  module's `update-member-roles` endpoint.
+- **Organization authority** (`member.role`: `owner` / `admin` / `member`) —
+  who may administer the organization. Its own selector and its own write
+  (`update-org-role`), through the organization plugin so the creator-protection
+  and last-owner guards run; `member` is the revoked value.
 
 `owner` is not assignable here. Ownership transfer is out of scope; the
 engine's last-owner guard is authoritative and refuses any change that would
@@ -106,11 +113,14 @@ leave the organization without one.
 
 ## Invitations
 
-Inviting does two things in order: it mints (or links) the invitee's **contact**
-in this organization, then sends the invitation. The contact mint is why an
-invited person shows up in the organization's contact lists immediately rather
-than only once they accept. The upsert reconciles on duplicate key, so a failure
-partway through leaves nothing to clean up and a retry converges.
+Inviting does two things in order, in one `invite` endpoint: it mints (or
+links) the invitee's **contact** in this organization, then sends the
+invitation carrying the chosen app roles. The contact mint is why an invited
+person shows up in the organization's contact lists immediately rather than
+only once they accept. The upsert reconciles on duplicate key, so a failure at
+the invitation step leaves nothing to clean up and a retry converges.
+Organization authority is not granted on the invitation — the tier is granted
+from the member modal once the person is a member.
 
 The invitation email itself is the engine's — `auth.email` plus the invitation
 template. This module ships no email wiring. Invitees land on `user-account`'s
@@ -130,8 +140,8 @@ deployment shows blank contact data instead of failing loudly.
 | Connection                 | Walled | Access     | Why                                                                          |
 | -------------------------- | ------ | ---------- | ---------------------------------------------------------------------------- |
 | `user-members`             | no     | read-only  | Engine-owned; each read scopes itself on the active org or the caller's rows |
-| `user-organizations`       | no     | read-only  | Engine-owned; renames go through `UpdateOrganization`, never this connection |
-| `user-invitations`         | no     | read-only  | Engine-owned; invitations are written by the client actions                  |
+| `user-organizations`       | no     | read-only  | Engine-owned; renames go through the `update-organization` endpoint          |
+| `user-invitations`         | no     | read-only  | Engine-owned; invitations are written by the module's endpoints              |
 | `user-contacts-collection` | yes    | read/write | App data — the wall stamps and filters the organization mechanically         |
 
 See [organization scoping](../shared/org-scoping.md) for what walled means.

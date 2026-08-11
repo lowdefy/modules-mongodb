@@ -27,7 +27,7 @@ An Atlas Search index named **`default`** — no `$search` stage in the module n
     "fields": {
       "name": { "type": "string" },
       "lowercase_email": { "type": "string" },
-      "organizationId": { "type": "token" },
+      "organization_id": { "type": "token" },
       "_id": { "type": "token" }
     }
   },
@@ -35,7 +35,7 @@ An Atlas Search index named **`default`** — no `$search` stage in the module n
 }
 ```
 
-**`organizationId` and `_id` serve `compound.filter`, not the text search.** Every `$search` here is emitted unconditionally (see [Search](../../shared/search.md)), so its compound always carries one `filter` clause — and Atlas refuses a compound whose clause lists are all empty. Under `auth.organizations.policy: tenant` that clause is a string `equals` on `organizationId`, the authored tenant clause the wall audits on every run; under `pinned` it is `exists` on `_id`, a match-all that narrows nothing. `dynamic: false` maps neither by default and a string `equals` requires a `token` mapping specifically, so both are listed explicitly. Keep both regardless of the policy the app runs today — an index missing the `organizationId` mapping blanks every list page the moment a deployment flips to `tenant`, fail-closed and silent.
+**`organization_id` and `_id` serve `compound.filter`, not the text search.** Every `$search` here is emitted unconditionally (see [Search](../../shared/search.md)), so its compound always carries one `filter` clause — and Atlas refuses a compound whose clause lists are all empty. Under `auth.organizations.policy: tenant` that clause is a string `equals` on `organization_id`, the authored tenant clause the wall audits on every run; under `pinned` it is `exists` on `_id`, a match-all that narrows nothing. `dynamic: false` maps neither by default and a string `equals` requires a `token` mapping specifically, so both are listed explicitly. Keep both regardless of the policy the app runs today — an index missing the `organization_id` mapping blanks every list page the moment a deployment flips to `tenant`, fail-closed and silent.
 
 `name` and `lowercase_email` are the only mapped fields, and both as `string` — they are the text paths both `$search` requests search, with a `text` clause for whole-token relevance and a `wildcard: *term*` clause for substring matching. Nothing else needs mapping: the structural filters (`deleted.timestamp`, and any consumer `request_stages.filter_match` clauses) are plain `$match` clauses, so `mongot` never evaluates them and needs no `token` mappings for them.
 

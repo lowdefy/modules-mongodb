@@ -1,10 +1,15 @@
 # User detail read (design Decision 3). Native aggregation rooted on the target's
-# `user-members` row (matched by the urlQuery userId, scoped to the pinned org),
+# `user-members` row (matched by the urlQuery user_id, scoped to the pinned org),
 # joined to `users` + `user-contacts`. Reuses the shared members base shape
-# (name/email/picture/status/roles_arr/dates plus the three editable bags —
-# profile / user_attributes / member_attributes) and the catalog role-resolve,
-# then adds the fields only the detail page needs:
+# (name/email/picture/status/dates plus the three editable bags —
+# profile / user_attributes / member_attributes) and the catalog role-resolve
+# (`roles` — [{ id, label, description, orphan }]), then adds the fields only the
+# detail page needs:
 #   user_id / member_id / contact_id — the ids the write routines take
+#   orphan_ids — the held role ids the catalog no longer declares; seeds the
+#     access modal's orphan picker options
+#   has_orphan — true when any held role is orphaned; drives the modal's hint
+#   org_role — the member's owner|admin|member organization-authority tier
 #   status_slug — lowercase active|suspended for the title-block status pill
 #   email_verified / two_factor_enabled / banned / passkey_count — Security-tile facts
 # Returns a single-element array; the page binds get_user_detail.0.*.
@@ -14,35 +19,39 @@ connectionId:
   _module.connectionId: user-members
 payload:
   user_id:
-    _url_query: userId
+    _url_query: user_id
 properties:
   pipeline:
     _build.array.concat:
       # Narrow to the target first (indexed), then the shared org-scoped joins.
       - - $match:
-            userId:
+            user_id:
               _payload: user_id
-      - _ref: ../shared/org/members_base.yaml
+      - _ref:
+          path: ../shared/org/members_base.yaml
+          vars:
+            org_value:
+              _module.var: org_slug
       # Roles resolved against the catalog → [{ label, orphan }].
       - _ref: requests/stages/roles_from_catalog.yaml
       # Registered passkeys for the target user (Decision 5 auth-methods badge).
-      # Keyed on `userId`, present on the member root throughout.
+      # Keyed on `user_id`, present on the member root throughout.
       - - $lookup:
             from: user-passkeys
-            localField: userId
-            foreignField: userId
+            localField: user_id
+            foreignField: user_id
             as: passkeys
       - - $addFields:
-            user_id: "$userId"
+            user_id: "$user_id"
             member_id: "$_id"
             contact_id: "$contact._id"
             email_verified:
               $eq:
-                - "$user.emailVerified"
+                - "$user.email_verified"
                 - true
             two_factor_enabled:
               $eq:
-                - "$user.twoFactorEnabled"
+                - "$user.two_factor_enabled"
                 - true
             banned:
               $eq:
@@ -53,19 +62,26 @@ properties:
                 $ifNull:
                   - "$passkeys"
                   - []
-            # Clean current role id list (incl. orphans, empties dropped) — seeds
-            # the access modal's role picker and the update-access payload.
-            role_ids:
-              $filter:
+            # The member's held role ids the catalog no longer declares. Seeds the access
+            # modal's orphan selector options.
+            orphan_ids:
+              $map:
                 input:
-                  $ifNull:
-                    - "$roles_arr"
-                    - []
+                  $filter:
+                    input: "$roles"
+                    as: r
+                    cond: "$$r.orphan"
                 as: r
-                cond:
-                  $ne:
-                    - "$$r"
-                    - ""
+                in: "$$r.id"
+            # The member's organization-authority tier, published under its own
+            # name because it is a different authority from the app roles
+            # `roles` carries — the access modal's organization control
+            # binds it. $ifNull because $addFields omits a field whose source is
+            # missing, and `member` is exactly what an absent tier means.
+            org_role:
+              $ifNull:
+                - "$role"
+                - member
             # True when any held role is orphaned (absent from the catalog) —
             # drives the access modal's orphan hint (Decision 8).
             has_orphan:

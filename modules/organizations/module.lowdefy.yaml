@@ -10,14 +10,15 @@ description: >-
 # ─────────────────────────────────────────────────────────────────────────────
 # Tenant deployments only (org-workspace Decision 6)
 # ─────────────────────────────────────────────────────────────────────────────
-# The per-org client endpoints this module drives are mounted only under
-# `auth.organizations.policy: tenant`; under `pinned` the engine disables them
-# (ORG_CLIENT_PATHS_DISABLED_WHEN_PINNED) and the build REJECTS a wired org
-# client action outright, naming the action and the policy. So a pinned app
-# simply does not add this module entry — the surface is meaningless there (one
-# organization, nothing to switch to, nothing to self-administer). This is not
-# multi-tenant administration: suite-wide powers (suspend, impersonate, password
-# reset) stay in user-admin, which is pinned-only.
+# The per-org client endpoints this module drives (switching, leaving) are
+# mounted only under `auth.organizations.policy: tenant`; under `pinned` the
+# engine disables them (ORG_CLIENT_PATHS_DISABLED_WHEN_PINNED) and the build
+# REJECTS a wired org client action outright, naming the action and the policy.
+# So a pinned app simply does not add this module entry — the surface is
+# meaningless there (one organization, nothing to switch to, nothing to
+# self-administer). This is not suite administration: cross-user powers
+# (suspend, password reset, delete) stay in user-admin, whose instances are
+# welded to one organization each from app config.
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # Same-database co-location precondition
@@ -70,8 +71,18 @@ exports:
     - id: user-contacts-collection
       description: Walled app connection for the user-contacts records — writable, used by the invite-time contact mint
   api:
-    - id: invite-contact
-      description: Mint or link the invitee's contact in the active organization before the invitation is sent
+    - id: invite
+      description: Mint or link the invitee's contact in the active organization, then send the invitation with its app roles
+    - id: update-member-roles
+      description: Set a member's app roles (member.app_roles) in the active organization
+    - id: update-org-role
+      description: Set a member's organization-authority tier (member.role) in the active organization
+    - id: remove-member
+      description: Remove another member from the active organization
+    - id: cancel-invitation
+      description: Withdraw a pending invitation to the active organization
+    - id: update-organization
+      description: Rename the active organization
   menus:
     - id: default
       description: Menu group linking the members and settings pages
@@ -83,7 +94,12 @@ connections:
   - _ref: connections/user-contacts-collection.yaml
 
 api:
-  - _ref: api/invite-contact.yaml
+  - _ref: api/invite.yaml
+  - _ref: api/update-member-roles.yaml
+  - _ref: api/update-org-role.yaml
+  - _ref: api/remove-member.yaml
+  - _ref: api/cancel-invitation.yaml
+  - _ref: api/update-organization.yaml
 
 pages:
   - _ref: pages/members.yaml

@@ -27,6 +27,13 @@
 #                    `avatar_colors` module var)
 #   write_stages   — extra MongoDB update stages appended to the contact write
 #                    (the caller's `request_stages.write`; pass [] if none)
+#   organization_id — OPTIONAL. The organization the `UpdateUserProfile` floor
+#                     authorizes in: the caller must administer it and the target
+#                     must hold a member row there. Absent resolves to null, which
+#                     the engine reads as "default to the app's pinned
+#                     organization" — right for a self-service caller, wrong for an
+#                     admin surface administering a DIFFERENT organization, which
+#                     must name it.
 #
 # It is a YAML sequence of routine steps — splice it into a routine with
 # `_build.array.concat` so the steps flatten inline. Routine steps share one flat
@@ -134,7 +141,7 @@
 # Guarded on `user_id` presence: coalesce to null first, so BOTH the no-match
 # (`undefined`, e.g. the invite flow's find_user with no user row) and the
 # explicit-`null` cases skip. A bare `_ne: [user_id, null]` would pass on
-# `undefined` and fire UpdateUserProfile with no userId.
+# `undefined` and fire UpdateUserProfile with no user_id.
 - :if:
     _ne:
       - _if_none:
@@ -145,8 +152,10 @@
     - id: denorm_user_profile
       type: UpdateUserProfile
       properties:
-        userId:
+        user_id:
           _var: user_id
+        organization_id:
+          _var: organization_id
         profile:
           _step: reread_contact.profile
         name:

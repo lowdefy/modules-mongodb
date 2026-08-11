@@ -1,14 +1,22 @@
-# One member, opened from the members table: change their roles, or remove them
-# from the organization.
+# One member, opened from the members table: change their app roles, grant or
+# revoke organization authority, or remove them from the organization.
 #
-# Removing yourself is a different engine call — RemoveMember acts on someone
+# App roles and the organization-authority tier are two controls with two
+# submits, because they are two authorities: an app role says "show this person
+# the UI", the member row's tier says "this person may actually administer the
+# organization", and nothing keeps the two in agreement. Folding them into one
+# submit would also mean a refused tier write (last-owner, creator protection)
+# leaving the app-role write applied, with nothing to roll it back.
+#
+# Removing yourself is a different engine call — remove-member acts on someone
 # else, LeaveOrganization ends your own membership — so the footer swaps by
 # `is_self` rather than trying to make one action cover both. Either way the
 # engine's last-owner guard is authoritative: it refuses the call and the error
 # surfaces as a message.
 #
 # A role change can alter the caller's own authorization, so UpdateSession runs
-# after it to re-sync the client rather than leaving the page on stale roles.
+# after each write to re-sync the client rather than leaving the page on stale
+# roles.
 id: member_modal
 type: Modal
 properties:
@@ -23,16 +31,19 @@ properties:
 events:
   onOk:
     _build.array.concat:
-      - - id: update_member_role
-          type: UpdateMemberRole
+      - - id: update_member_roles
+          type: CallAPI
           messages:
             loading: Updating roles…
             success: Roles updated.
           params:
-            memberId:
-              _state: selected_member.member_id
-            role:
-              _state: member_roles
+            endpointId:
+              _module.endpointId: update-member-roles
+            payload:
+              member_id:
+                _state: selected_member.member_id
+              roles:
+                _state: member_roles
         # Roles resolve from the member row server-side, so a caller who just
         # changed their own would otherwise keep the old set until reload.
         - id: resync_session
@@ -62,6 +73,63 @@ blocks:
       placeholder: No role
       options:
         _ref: components/role_options.yaml
+  - id: org_role_divider
+    type: Divider
+    properties:
+      margin: 4
+  - id: member_org_role
+    type: Selector
+    required: true
+    properties:
+      title: Organization authority
+      extra: Who may administer this organization — separate from the app roles above, and not implied by them.
+      # `member` is the no-authority value, not an empty one: the write refuses
+      # an empty tier, so revoking authority writes `member`. Labelled in the
+      # app's language rather than BetterAuth's, where "member" reads as a
+      # status instead of an absence of authority.
+      options:
+        - value: owner
+          label: Organization owner
+        - value: admin
+          label: Organization admin
+        - value: member
+          label: No organization authority
+  - id: save_org_role_btn
+    type: Button
+    layout:
+      flex: 0 0 auto
+    properties:
+      title: Update organization role
+      variant: outlined
+    events:
+      onClick:
+        _build.array.concat:
+          - - id: validate_org_role
+              type: Validate
+              params:
+                regex:
+                  - '^member_org_role$'
+            # No `error` message: the write's refusals — demoting the
+            # organization's sole owner, or demoting its creator — are the
+            # reason it runs through the organization plugin at all, and the
+            # caller needs to read them. A static error string here would
+            # replace them with "something went wrong".
+            - id: save_org_role
+              type: CallAPI
+              messages:
+                loading: Updating…
+                success: Organization role updated.
+              params:
+                endpointId:
+                  _module.endpointId: update-org-role
+                payload:
+                  member_id:
+                    _state: selected_member.member_id
+                  org_role:
+                    _state: member_org_role
+            - id: resync_session_after_tier
+              type: UpdateSession
+          - _ref: actions/refetch_members.yaml
   - id: member_danger_zone
     type: Box
     layout:
@@ -81,13 +149,16 @@ blocks:
           onClick:
             _build.array.concat:
               - - id: remove_member
-                  type: RemoveMember
+                  type: CallAPI
                   messages:
                     loading: Removing…
                     success: Member removed.
                   params:
-                    memberIdOrEmail:
-                      _state: selected_member.member_id
+                    endpointId:
+                      _module.endpointId: remove-member
+                    payload:
+                      member_id:
+                        _state: selected_member.member_id
                 - id: close_after_remove
                   type: CallMethod
                   params:

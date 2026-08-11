@@ -1,0 +1,80 @@
+# reset-two-factor — admin recovery when a person loses their authenticator
+# (design Decision 3). ResetUserTwoFactor clears the TOTP secret, its backup
+# codes and the trust-device records, returning the user to unenrolled; it does
+# NOT grant a persistent 2FA exemption. Revoking sessions is a separate step
+# because clearing `two_factor_enabled` does not end a session, and a stolen device
+# keeps the session it holds until it is revoked — that is what recovers the
+# account. Sequential, halts on first error, no rollback (the steps are
+# idempotent and re-running converges). Audit event is the final durable step.
+#
+# `organizationId` names the organization the floor authorizes in. The reset
+# reaches a deployment-wide `user` row, so the floor asks whether the caller
+# administers THAT organization and whether the target holds a member row in it;
+# an absent one falls back to the APP's pinned organization, which refuses an
+# administrator of any other.
+#
+# Payload: { user_id, target_name?, target_email? }
+id: reset-two-factor
+type: Api
+routine:
+  - id: reset
+    type: ResetUserTwoFactor
+    properties:
+      userId:
+        _payload: user_id
+      organizationId:
+        _module.var: org_slug
+  - id: revoke
+    type: RevokeUserSessions
+    properties:
+      userId:
+        _payload: user_id
+      organizationId:
+        _module.var: org_slug
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: two-factor-reset
+        display:
+          _build.object.fromEntries:
+            - - _build.app: slug
+              - title:
+                  _nunjucks:
+                    template:
+                      _build.if_none:
+                        - _module.var: event_display.two-factor-reset
+                        - _ref:
+                            path: defaults/event_display.yaml
+                            key: two-factor-reset
+                    on:
+                      user:
+                        _user: true
+                      target:
+                        name:
+                          _payload: target_name
+                        email:
+                          _payload: target_email
+                description: null
+        references:
+          user_ids:
+            - _payload: user_id
+  # Fire-and-forget after the audit event: a bounced address must never suppress
+  # the audit record or tell the admin the recovery failed. No rollback, no
+  # try/catch (design Decision 8).
+  - id: notify
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: send-notification
+          module: notifications
+      payload:
+        event_ids:
+          - _step: audit.eventId
+  - :return:
+      success: true

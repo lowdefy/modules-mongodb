@@ -19,19 +19,19 @@ import { test, expect } from "../fixtures.js";
 // OTHER organization at the same `_id` on the same page. The only variable is
 // the caller's org, so the blank is the wall, not a broken page.
 //
-// The mock caller carries the org via `ldf.user({ organizationId })`, which
+// The mock caller carries the org via `ldf.user({ organization_id })`, which
 // the engine's injected-caller normalization mirrors onto
-// `context.user.organizationId` — the value the wall stamps and filters with.
+// `context.user.organization_id` — the value the wall stamps and filters with.
 
 const STAMP = {
   timestamp: new Date("2026-07-01T09:00:00.000Z"),
   user: { id: "user-e2e", name: "E2E User" },
 };
 
-function activity({ _id, organizationId, title }) {
+function activity({ _id, organization_id, title }) {
   return {
     _id,
-    organizationId,
+    organization_id,
     title,
     type: "note",
     date: new Date("2026-07-01T09:00:00.000Z"),
@@ -43,8 +43,8 @@ function activity({ _id, organizationId, title }) {
   };
 }
 
-const ORG_A = { organizationId: "org-a", email: "a@example.com" };
-const ORG_B = { organizationId: "org-b", email: "b@example.com" };
+const ORG_A = { organization_id: "org-a", email: "a@example.com" };
+const ORG_B = { organization_id: "org-b", email: "b@example.com" };
 const ACT_A = { _id: "act-org-a", title: "Org A planning note" };
 const ACT_B = { _id: "act-org-b", title: "Org B private note" };
 
@@ -72,8 +72,8 @@ test("the tenant wall isolates activities by organization on the view page", asy
 }) => {
   // One seed call (clears then inserts both) so the two orgs' fixtures coexist.
   await mdb.seed("activities", [
-    activity({ ...ACT_A, organizationId: ORG_A.organizationId }),
-    activity({ ...ACT_B, organizationId: ORG_B.organizationId }),
+    activity({ ...ACT_A, organization_id: ORG_A.organization_id }),
+    activity({ ...ACT_B, organization_id: ORG_B.organization_id }),
   ]);
 
   // Org A sees its own activity...

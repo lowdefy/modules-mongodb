@@ -31,3 +31,8 @@
       _actions: check_invite.response.contact
     profile:
       _actions: check_invite.response.contact.profile
+    # The invitation form's organization-authority default. `member` is the
+    # no-authority value, so an admin who ignores the field invites app roles and
+    # nothing more. Re-seeded on every resolve, so a tier chosen for one email
+    # cannot ride along to the next one checked.
+    org_role: member

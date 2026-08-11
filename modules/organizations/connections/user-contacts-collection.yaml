@@ -2,11 +2,11 @@
 # to mint the invitee's contact before the invitation is sent.
 #
 # Tenant wall: every read and write through this connection is scoped to the
-# caller's organization; organizationId is stamped and filtered mechanically.
+# caller's organization; organization_id is stamped and filtered mechanically.
 # That is why the shared ensure-contact fragment is spliced here WITHOUT an
 # `organization_id` var — the inviter is a logged-in caller with the target org
 # active, so the wall supplies the org and would reject an authored
-# organizationId filter.
+# organization_id filter.
 id: user-contacts-collection
 type: MongoDBCollection
 properties:

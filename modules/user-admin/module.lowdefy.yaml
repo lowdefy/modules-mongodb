@@ -2,9 +2,11 @@ name: User Admin
 version: 0.17.0
 description: >-
   User administration on the BetterAuth engine — the operator console for a
-  person's access lifecycle in one pinned org. Native $lookup reads over the
-  auth collections joined to user-contacts; per-concern write routines driven
-  through the sanctioned admin-step surface.
+  person's access lifecycle in the organization named by the `org_slug` var.
+  Native $lookup reads over the auth collections joined to user-contacts;
+  per-concern write routines driven through the sanctioned admin-step surface.
+  Two admin surfaces in one app are two module instances with different
+  `org_slug` values.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Same-database co-location precondition (design Decision 1)
@@ -25,24 +27,57 @@ dependencies:
     description: Page layout wrapper
   - id: events
     description: Audit event logging and change stamp
+  - id: notifications
+    description: Notification dispatch for recovery notices (send-notification)
 
 vars:
+  # No default: a defaulted slug would silently administer the WRONG organization,
+  # where a missing one fails the build.
+  org_slug:
+    type: string
+    required: true
+    description: >-
+      Slug of the organization this instance administers. Under the `pinned`
+      organizations policy the organization's id IS its slug, so this value feeds
+      every read $match on `organization_id` and every write step's
+      `organizationId` param. Two admin surfaces in one app are two module instances
+      with different `org_slug` values.
+
+      Deployment ordering: this module does not create the organization. The app
+      whose `auth.organizations.org` names this slug creates it at startup, so an
+      instance administering ANOTHER app's organization requires that app to have
+      booted against the same database first. Until it has, reads render EMPTY
+      with no error and `InviteMember` throws ORGANIZATION_NOT_FOUND. The
+      alternative is inserting the organization row alongside the bootstrap
+      invitation.
+
+      Renaming the organization's slug strands every member row, because the
+      engine's startup ensure is by slug — a rename mints a fresh organization
+      rather than renaming one.
   app_title:
     type: string
     default: ""
     description: >-
       Optional display prefix (e.g., Team). When set: "Team User Admin",
       "Invite Team User". When not set: "User Admin", "Invite User".
-  admin_roles:
-    type: array
-    default:
-      - user-admin
+  org_authority:
+    type: boolean
+    default: true
     description: >-
-      Catalog role id(s) that gate every routine endpoint's `auth.api.roles`
-      (design Decision 3). Should name the same administering role as the app's
-      `auth.userAdminRole`, which the engine additionally enforces as a
-      step-level floor before every auth-owned write (defense in depth). Each id
-      must be a declared `auth.roles` catalog id.
+      Gates the organization-authority control on the access modal — promoting a
+      member to `admin` or `owner` in the administered organization, or revoking
+      them back to `member` (the no-authority value; there is no empty tier and
+      the write refuses one) — and the matching `orgRole` field on the invite
+      form. Holding `admin` in an organization is what lets a person administer
+      it, so this control is how a deployment grants that. Set false in a
+      deployment where org authority is granted out of band.
+
+      When false the control does not render AND `update-org-role` rejects, so a
+      deployment granting org authority out of band cannot have the tier written
+      through this module by a caller who reaches the endpoint directly. The
+      endpoint stays registered either way — the rejection is the routine's first
+      step, not an absence. When true the write is floored by the engine against
+      the caller's member row in the administered organization.
   suspension:
     type: boolean
     default: true
@@ -51,13 +86,6 @@ vars:
       permanent, user-level (suite-wide) ban via BanUser. Default true rests on
       the deployment premise that the pinned suite is administered by one trusted
       operator group; set false to limit app-admins to app-scoped RemoveMember.
-  impersonation:
-    type: boolean
-    default: false
-    description: >-
-      Gates the "View as user" (ImpersonateUser) client action on the Security
-      tile (design Decision 5). Off by default; the action only works once the
-      app configures `auth.userAdminRole` and the caller holds that role.
   download:
     type: boolean
     default: false
@@ -228,6 +256,8 @@ exports:
       description: Change-stamped contact write + UpdateUserProfile re-denorm (write-profile fragment)
     - id: update-access
       description: UpdateMemberRoles + UpdateMemberAttributes for this app
+    - id: update-org-role
+      description: UpdateMemberOrgRole — the member's owner/admin/member tier in the administered organization (surfaced behind the `org_authority` var)
     - id: update-user-attributes
       description: UpdateUserAttributes (global/user attributes)
     - id: suspend
@@ -236,6 +266,10 @@ exports:
       description: UnbanUser (behind the `suspension` var)
     - id: revoke-sessions
       description: RevokeUserSessions — sign out everywhere
+    - id: reset-two-factor
+      description: ResetUserTwoFactor → revoke sessions → audit → notify (Decision 3/8)
+    - id: revoke-passkeys
+      description: RevokeUserPasskeys → revoke sessions → audit → notify; optional passkey_id
     - id: remove-member
       description: RemoveMember — delete this app's member row
     - id: delete-user
@@ -261,10 +295,13 @@ api:
   - _ref: api/resend-invitation.yaml
   - _ref: api/update-profile.yaml
   - _ref: api/update-access.yaml
+  - _ref: api/update-org-role.yaml
   - _ref: api/update-user-attributes.yaml
   - _ref: api/suspend.yaml
   - _ref: api/reinstate.yaml
   - _ref: api/revoke-sessions.yaml
+  - _ref: api/reset-two-factor.yaml
+  - _ref: api/revoke-passkeys.yaml
   - _ref: api/remove-member.yaml
   - _ref: api/delete-user.yaml
 

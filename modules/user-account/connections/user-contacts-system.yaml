@@ -4,7 +4,7 @@ type: MongoDBCollection
 # contact mint (ensure-contact-on-signup), which runs from the
 # session.create.after auth hook with no caller, where the tenant wall fails
 # closed by design (org-aware-modules Decision 7). Shared does NOT mean
-# org-less writes: the mint stamps an explicit organizationId read from the
+# org-less writes: the mint stamps an explicit organization_id read from the
 # hook payload's session (Decision 7's explicit-org rule) — see
 # docs/shared/org-scoping.md.
 # Every caller-ful path uses the walled user-contacts-collection instead.

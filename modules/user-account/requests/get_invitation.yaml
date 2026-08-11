@@ -16,18 +16,18 @@ properties:
     - $limit: 1
     - $lookup:
         from: user-organizations
-        localField: organizationId
+        localField: organization_id
         foreignField: _id
         as: org
     - $lookup:
         from: users
-        localField: inviterId
+        localField: inviter_id
         foreignField: _id
         as: inviter
     - $project:
         email: 1
         status: 1
-        expiresAt: 1
+        expires_at: 1
         org_name:
           $first: "$org.name"
         inviter_name:

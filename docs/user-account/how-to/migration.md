@@ -116,6 +116,13 @@ flat `{ event-type: template }` map (no `app_name` key) and its templates receiv
   register / delete, session listing + sign-out-others, and read-only
   linked-provider visibility — none of which the old passwordless module could
   offer.
+- **Auth-collection columns are snake_case.** The adapter stores every auth-owned
+  column under a snake_case name — `user_id`, `provider_id`, `email_verified`,
+  `expires_at`, `backup_codes` — and the resolved caller mirrors them
+  (`_user.two_factor_enrolled`). App config that reads those collections directly,
+  or provisions the [required indexes](../reference/indexes.md), names the snake
+  column. Params passed to BetterAuth's `/api/auth/*` client actions stay camelCase:
+  they are the action's I/O contract, not column names.
 - **Profile freshness is denormalized, not synced.** The contact stays the source
   of truth; the module re-denormalizes `user.profile` (and `name` / `image`) in
   the same routine as the contact write, so `_user.*` resolves without a

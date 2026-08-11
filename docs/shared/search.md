@@ -94,7 +94,7 @@ This is a requirement of the tenant wall, not a performance choice. `$search` mu
 Two consequences worth knowing:
 
 - **The term clauses sit in `compound.must`, not `compound.should`.** `compound.filter` is always populated, and alongside a `filter` clause a `should` carries its default `minimumShouldMatch` of `0` — it would rank without narrowing, returning every row in the organization for any term. `must` requires the match; an inner `should` supplies the OR between the clauses and still scores them, so relevance ordering is unaffected.
-- **`compound.filter` always holds at least one clause**, because Atlas refuses a compound whose clause lists are all empty. Under `tenant` that clause is the audited `organizationId` equality; under `pinned` it is an `exists` on `_id`, a match-all that narrows nothing and, being a `filter`, does not affect scoring.
+- **`compound.filter` always holds at least one clause**, because Atlas refuses a compound whose clause lists are all empty. Under `tenant` that clause is the audited `organization_id` equality; under `pinned` it is an `exists` on `_id`, a match-all that narrows nothing and, being a `filter`, does not affect scoring.
 
 With `atlas_search: false` none of this applies — there is no `$search` stage at all, the pipeline leads with a plain `$match`, and the wall scopes it mechanically with no declaration needed.
 

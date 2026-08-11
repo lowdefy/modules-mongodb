@@ -66,8 +66,3 @@
   source: "file:../../modules/user-account"
   vars:
     _ref: modules/user-account/vars.yaml
-
-- id: user-admin
-  source: "file:../../modules/user-admin"
-  vars:
-    _ref: modules/user-admin/vars.yaml

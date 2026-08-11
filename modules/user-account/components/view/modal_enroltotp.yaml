@@ -1,7 +1,12 @@
-# Two-factor enrolment modal (design Decision 5). One modal, three phases and two
+# Two-factor enrolment modal (design Decision 5). One modal, four phases and three
 # intents, both held as explicit values in state:
-#   state.enroltotp.phase  — password | scan | codes; the only gate on every block
-#   state.enroltotp.intent — enrol | replace; drives the wording and which chain
+#   state.enroltotp.phase  — choose | password | scan | codes; the only gate on every block
+#   state.enroltotp.intent — enrol | replace | codes_only; drives the wording and which chain
+#
+# An enrolled caller opens on `choose` (intent null) and picks a path there;
+# `codes_only` rotates recovery codes without touching the authenticator, so it
+# skips `scan` and jumps from `password` straight to `codes`. A first-time caller
+# opens straight on `password` with intent `enrol`.
 #
 # Both are seeded by the trigger (tile_security.yaml) BEFORE the dialog mounts:
 # `onOpen` fires after the modal has painted, so a seed there would show an empty
@@ -16,7 +21,7 @@
 # `intent: replace` turns 2FA off before re-enrolling. BetterAuth's
 # `POST /two-factor/enable` deletes the caller's twoFactor row and writes a new
 # one with a fresh secret, carrying `verified: true` over from a verified row and
-# never touching `user.twoFactorEnabled` — which is what the sign-in hook gates
+# never touching `user.two_factor_enabled` — which is what the sign-in hook gates
 # the second-factor challenge on. Enabling straight over a working authenticator
 # would therefore enforce a second factor against a secret the user has not
 # scanned, and abandoning there locks them out with no admin 2FA reset anywhere
@@ -42,6 +47,11 @@ properties:
               - _state: enroltotp.intent
               - replace
           then: Replace your authenticator
+        - if:
+            _eq:
+              - _state: enroltotp.intent
+              - codes_only
+          then: New backup codes
       default: Two-factor authentication
   width: 560
   footer: false
@@ -65,6 +75,74 @@ events:
         enroltotp.codes_saved: false
         enroltotp.twofa_off: false
 blocks:
+  # ── Phase `choose` ── An enrolled caller lands here (intent null). No inputs
+  # and no request runs; each button just seeds `phase: password` plus its intent.
+  # The safe, common path (new codes) is primary; replacement is secondary with
+  # its cost stated as a plain hint. The red replacement Alert deliberately does
+  # NOT appear here — next to "Get new backup codes" it would make the harmless
+  # path look dangerous; it lives on phase `password` where the destructive call
+  # is about to fire.
+  - id: enroltotp_choose_intro
+    type: Html
+    visible:
+      _eq:
+        - _state: enroltotp.phase
+        - choose
+    layout:
+      span: 24
+    properties:
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">You can get a fresh set of backup codes without changing your authenticator.</div>'
+  - id: enroltotp_choose_codes_btn
+    type: Button
+    visible:
+      _eq:
+        - _state: enroltotp.phase
+        - choose
+    layout:
+      span: 24
+    properties:
+      title: Get new backup codes
+      block: true
+      color: primary
+      variant: solid
+    events:
+      onClick:
+        - id: choose_codes_only
+          type: SetState
+          params:
+            enroltotp.phase: password
+            enroltotp.intent: codes_only
+  - id: enroltotp_choose_replace
+    type: Box
+    visible:
+      _eq:
+        - _state: enroltotp.phase
+        - choose
+    layout:
+      span: 24
+      gap: 6
+    blocks:
+      - id: enroltotp_choose_replace_btn
+        type: Button
+        layout:
+          span: 24
+        properties:
+          title: Replace authenticator
+          block: true
+          variant: outlined
+        events:
+          onClick:
+            - id: choose_replace
+              type: SetState
+              params:
+                enroltotp.phase: password
+                enroltotp.intent: replace
+      - id: enroltotp_choose_replace_hint
+        type: Html
+        layout:
+          span: 24
+        properties:
+          html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Sets up a new authenticator app. Your current one stops working.</div>'
   # ── Phase `password` ──
   - id: enroltotp_intro_setup
     type: Html
@@ -75,7 +153,18 @@ blocks:
     layout:
       span: 24
     properties:
-      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Enter your account password to generate a new authenticator secret.</div>'
+      # `codes_only` never touches the secret, so the enrol/replace wording
+      # ("generate a new authenticator secret") would misdescribe it. The default
+      # branch keeps enrol and replace exactly as they were.
+      html:
+        _switch:
+          branches:
+            - if:
+                _eq:
+                  - _state: enroltotp.intent
+                  - codes_only
+              then: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Enter your account password to get a new set of backup codes.</div>'
+          default: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Enter your account password to generate a new authenticator secret.</div>'
   - id: enroltotp_replace_warning
     type: Alert
     visible:
@@ -204,7 +293,7 @@ blocks:
             # The refetch sits between the two calls, not after them: the event
             # runner has no `finally`, so an enable that throws would skip a
             # trailing refetch and leave the tile reading On while 2FA is
-            # genuinely off. Enable does not touch `twoFactorEnabled`, so the
+            # genuinely off. Enable does not touch `two_factor_enabled`, so the
             # tile reads Off from here either way.
             - _ref: actions/refetch_account.yaml
             - - id: enroltotp_replace_enable
@@ -250,6 +339,90 @@ blocks:
                 params:
                   status: error
                   content: Couldn't start two-factor setup. Check your password and try again.
+  - id: enroltotp_getcodes
+    type: Button
+    visible:
+      _and:
+        - _eq:
+            - _state: enroltotp.phase
+            - password
+        - _eq:
+            - _state: enroltotp.intent
+            - codes_only
+    layout:
+      span: 24
+    properties:
+      title: Get new codes
+      block: true
+      color: primary
+      variant: solid
+    events:
+      onClick:
+        try:
+          - id: validate_getcodes_password
+            type: Validate
+            params:
+              blockIds:
+                - enroltotp.password
+          # Rotates recovery codes only — returns the new codes on _actions, and
+          # leaves the secret, `verified` and `two_factor_enabled` untouched. It
+          # jumps straight to phase `codes`, skipping `scan`: nothing about the
+          # authenticator changed, so there is nothing to re-scan. No
+          # `refetch_account` — the tile still reads On and nothing it shows moved,
+          # so a refetch would be a request that can only fail.
+          - id: enroltotp_generate_codes
+            type: TwoFactorGenerateBackupCodes
+            messages:
+              error: false
+            params:
+              password:
+                _state: enroltotp.password
+          - id: stash_new_codes
+            type: SetState
+            params:
+              enroltotp.phase: codes
+              enroltotp.backup_codes:
+                _actions: enroltotp_generate_codes.response.backupCodes
+              enroltotp.password: null
+        catch:
+          - id: enroltotp_getcodes_error
+            type: DisplayMessage
+            params:
+              status: error
+              content: Couldn't generate new backup codes. Check your password and try again.
+  # Back returns to `choose`, shown only when the caller arrived through it
+  # (`replace` or `codes_only`). With `footer: false` there is no Cancel, so
+  # without Back a user who reads the replacement warning and reconsiders would
+  # have to dismiss the whole dialog. Nothing is spent yet — this is
+  # reconsideration, not data loss.
+  - id: enroltotp_back_btn
+    type: Button
+    visible:
+      _and:
+        - _eq:
+            - _state: enroltotp.phase
+            - password
+        - _or:
+            - _eq:
+                - _state: enroltotp.intent
+                - replace
+            - _eq:
+                - _state: enroltotp.intent
+                - codes_only
+    layout:
+      span: 24
+    properties:
+      title: Back
+      block: true
+      variant: text
+    events:
+      onClick:
+        - id: back_to_choose
+          type: SetState
+          params:
+            enroltotp.phase: choose
+            enroltotp.intent: null
+            enroltotp.password: null
   # ── Phase `scan` ──
   - id: enroltotp_intro_scan
     type: Html
@@ -384,7 +557,7 @@ blocks:
           template: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">{{ lead }} Store these one-time codes somewhere safe — each works once if you lose your authenticator.</div>'
           on:
             # A replacing user needs its own lead line: enable recreates the
-            # twoFactor row with a fresh backupCodes array, so their previous
+            # twoFactor row with a fresh backup_codes array, so their previous
             # codes are dead too, and "Two-factor is on" reads as first-time
             # confirmation to someone for whom it already was.
             lead:
@@ -400,6 +573,11 @@ blocks:
                         - _state: enroltotp.intent
                         - replace
                     then: Your new authenticator is active. These codes replace your previous set.
+                  - if:
+                      _eq:
+                        - _state: enroltotp.intent
+                        - codes_only
+                    then: These replace your previous backup codes.
                 default: Two-factor is on.
   - id: backupcodes_grid
     type: Html

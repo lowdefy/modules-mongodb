@@ -3,23 +3,28 @@
 # Excel export) and organizations (the per-org members page), so the read
 # shape can't drift between them.
 #
-# Root is `user-invitations`, scoped to the caller's active organization with
-# the policy-portable `_user: organizationId` read. Reads the collection
-# directly (bypassing the org-plugin helpers) so it can do its own
-# status/expiry derivation:
+# Root is `user-invitations`, scoped by the REQUIRED `org_value` ref var — the
+# two consumers scope differently and the value is theirs to supply:
+#   user-admin    — the organization the instance administers, welded in at
+#                   build time: `org_value: { _module.var: org_slug }`.
+#   organizations — the caller's active organization, read at request time:
+#                   `org_value: { _user: organization_id }`.
+# Reads the collection directly (bypassing the org-plugin helpers) so it can do
+# its own status/expiry derivation:
 #   $match status: "pending" — excludes accepted / rejected / canceled rows,
 #     which appear in neither the Invitations tab nor the export.
 #   status — there is NO "expired" status in BetterAuth; it is derived from a
-#     pending row's expiresAt: future → Invited, past → Expired (Decision 2).
-#   roles_arr — invitation.role is the same CSV shape as member.role; $split it.
+#     pending row's expires_at: future → Invited, past → Expired (Decision 2).
+#   app roles ride only `app_roles` (unset in close_row) and surface resolved as
+#     `roles` where the export needs them.
 #   inviter_name / inviter_id — the "Invited by" column (join `users`).
 - $match:
-    organizationId:
-      _user: organizationId
+    organization_id:
+      _var: org_value
     status: pending
 - $lookup:
     from: users
-    localField: inviterId
+    localField: inviter_id
     foreignField: _id
     as: inviter
 - $unwind:
@@ -27,28 +32,8 @@
     preserveNullAndEmptyArrays: true
 - $addFields:
     inviter_name: "$inviter.name"
-    inviter_id: "$inviterId"
-    roles_arr:
-      $split:
-        - $ifNull:
-            - "$role"
-            - ""
-        - ","
-    # Clean id list (empties dropped) — the resend action re-sends these ids.
-    role_ids:
-      $filter:
-        input:
-          $split:
-            - $ifNull:
-                - "$role"
-                - ""
-            - ","
-        as: r
-        cond:
-          $ne:
-            - "$$r"
-            - ""
-    expires_at: "$expiresAt"
+    inviter_id: "$inviter_id"
+    expires_at: "$expires_at"
     # Stored invite-time member attributes (applied to the member at accept) —
     # carried through so Resend can preserve them rather than blank them.
     member_attributes:
@@ -58,7 +43,7 @@
     status:
       $cond:
         - $gt:
-            - "$expiresAt"
+            - "$expires_at"
             - _date: now
         - Invited
         - Expired

@@ -10,7 +10,7 @@
 #     separately via write-profile (both invite flows do exactly this), and
 #     `profile.profile_created` stays unset so a new person still onboards;
 #   - reconcile to the existing row on a duplicate-key error (the partial-unique
-#     `user-contacts.{organizationId,lowercase_email}` index — see
+#     `user-contacts.{organization_id,lowercase_email}` index — see
 #     docs/user-account/reference/indexes.md — is the guard that closes the race
 #     between a first login and an invite).
 #
@@ -19,7 +19,7 @@
 # stamp of a contact that is already there.
 #
 # Nothing is written back onto the auth user. The contact carries the link to its
-# auth user (`userId`), not the reverse: a contact is per-organization while the
+# auth user (`user_id`), not the reverse: a contact is per-organization while the
 # user is global, so a person holds one contact per organization and a single id on
 # the user row could only ever be correct for one of them. See
 # resolve-own-contact for how the link is read and, when absent, claimed.
@@ -43,11 +43,11 @@
 #   organization_id — optional; explicit organization for system-context callers
 #                     writing through a shared connection (Decision 7). When
 #                     set, it joins the upsert filter and read query, so the
-#                     match key is the compound-unique {organizationId,
+#                     match key is the compound-unique {organization_id,
 #                     lowercase_email} tuple and MongoDB carries the equality
 #                     into the inserted document. Callers on a WALLED connection
 #                     must NOT pass it — the wall injects the org and rejects an
-#                     authored organizationId filter.
+#                     authored organization_id filter.
 #
 # YAML sequence of routine steps — splice with `_build.array.concat`. Callers read
 # `_step: read_contact.*`.
@@ -61,8 +61,8 @@
       connectionId:
         _var: connection_id
       properties:
-        # The organizationId clause is merged at build time only when the
-        # caller passes `organization_id` — an authored organizationId filter
+        # The organization_id clause is merged at build time only when the
+        # caller passes `organization_id` — an authored organization_id filter
         # on a walled connection would be rejected by the tenant wall.
         filter:
           _build.object.assign:
@@ -79,7 +79,7 @@
                           default: null
                       - null
                 then:
-                  organizationId:
+                  organization_id:
                     _var: organization_id
                 else: {}
         update:
@@ -107,7 +107,7 @@
                     component: change_stamp
               # The auth-user link, when the caller knows it — merged at build
               # time only when `user_id` is passed. A caller passing a runtime
-              # operator that resolves to nothing writes `userId: null`, which
+              # operator that resolves to nothing writes `user_id: null`, which
               # resolve-own-contact treats as unlinked and claimable, so both
               # shapes are safe.
               - _build.if:
@@ -119,7 +119,7 @@
                             default: null
                         - null
                   then:
-                    userId:
+                    user_id:
                       _var: user_id
                   else: {}
         options:
@@ -149,6 +149,6 @@
                       default: null
                   - null
             then:
-              organizationId:
+              organization_id:
                 _var: organization_id
             else: {}

@@ -97,8 +97,8 @@ with:
 LOWDEFY_SECRET_MONGODB_URI="mongodb://localhost:27017/demo-auth-test"
 LOWDEFY_SECRET_AUTH_SECRET="<random>"           # regenerate: openssl rand -base64 32
 LOWDEFY_SECRET_AUTH_FROM_ADDRESS="no-reply@demo.test"
-LOWDEFY_SECRET_GOOGLE_CLIENT_ID="dummy-..."     # dummy unless testing the Google button
-LOWDEFY_SECRET_GOOGLE_CLIENT_SECRET="dummy-..."
+LOWDEFY_SECRET_GITHUB_CLIENT_ID="dummy-..."     # dummy unless testing the GitHub button
+LOWDEFY_SECRET_GITHUB_CLIENT_SECRET="dummy-..."
 LOWDEFY_SECRET_SMTP_HOST="localhost"            # → Mailpit
 LOWDEFY_SECRET_SMTP_PORT="1025"
 LOWDEFY_SECRET_SMTP_SECURE="false"
@@ -332,13 +332,16 @@ Already created on `modules-mongodb-demo-tenant-test`:
 
 | Collection      | Index                                                                           |
 | --------------- | ------------------------------------------------------------------------------- |
-| `user-contacts` | `{organizationId, lowercase_email}` unique, partial on `lowercase_email` exists |
-| `user-contacts` | `{organizationId, userId}` unique, partial on `userId` exists                   |
+| `user-contacts` | `{organization_id, lowercase_email}` unique, partial on `lowercase_email` exists |
+| `user-contacts` | `{organization_id, user_id}` unique, partial on `user_id` exists                 |
 
 They enforce per-workspace contact uniqueness — the invariant behind the plan's
 §3.4 (no duplicate pending row) and §5.4 (the same email in two workspaces). The
-`createIndex` command in [`CHECKLIST.md`](./CHECKLIST.md) Phase 0a targets the
-local container and is not part of this environment's setup.
+`createIndex` command in the campaign's
+[Phase 0](../../designs/users/auth-testing/tasks/00-environment-bootstrap.md)
+targets the local container and is not part of this environment's setup.
+(Indexes created before the snake_case data-plane flip used the `organizationId`
+/ `userId` spellings — a fresh environment needs the snake_case shapes.)
 
 ### 8d. Reading the data
 

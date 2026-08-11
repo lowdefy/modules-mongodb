@@ -27,7 +27,7 @@ properties:
         type: avatar
         nameField: name
         srcField: picture
-        idField: userId
+        idField: user_id
     - headerName: Email
       field: email
       flex: 2
@@ -61,6 +61,8 @@ events:
           _event: row
         member_roles:
           _event: row.roles_list
+        member_org_role:
+          _event: row.org_role
     - id: open_member_modal
       type: CallMethod
       params:

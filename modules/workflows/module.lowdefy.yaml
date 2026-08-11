@@ -159,7 +159,7 @@ vars:
       module at a custom collection. Tenant wall: under
       `auth.organizations.policy: tenant` the workflow-api connection is
       walled, so a substituted collection must itself carry the
-      `organizationId` field — without it the join fails closed. Under
+      `organization_id` field — without it the join fails closed. Under
       `pinned` (the default) no field is required.
 
 exports:

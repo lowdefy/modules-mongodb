@@ -3,23 +3,29 @@
 # organizations (the per-org members page), so the read shape can't drift
 # between them.
 #
-# Root is `user-members`, scoped to the caller's active organization with the
-# policy-portable `_user: organizationId` read (the same expression resolves
-# the pinned org and the tenant's active org). Joins the auth `user`, then the
-# app `user-contacts` record through the shared contact-match expression, with the
-# organization taken from the member row itself so the join stays inside the row's
-# own organization (a `$lookup` is never scoped by the tenant wall). That org
-# comparison is policy-conditional (shared fragment): present under `tenant`,
-# absent under `pinned`, where contacts carry no organizationId. Flattens the
-# display shape:
+# Root is `user-members`, scoped by the REQUIRED `org_value` ref var — the two
+# consumers scope differently and the value is theirs to supply:
+#   user-admin    — the organization the instance administers, welded in at
+#                   build time: `org_value: { _module.var: org_slug }` (the org
+#                   id IS the slug).
+#   organizations — the caller's active organization, read at request time:
+#                   `org_value: { _user: organization_id }`.
+# (`_module.var` inside the passed value resolves against the CALLING module's
+# entry — plain-path refs inherit the module context — so the weld works even
+# though this file itself is shared config, not a module.)
+#
+# Joins the auth `user`, then the app `user-contacts` record through the shared
+# contact-match expression, with the organization taken from the member row
+# itself so the join stays inside the row's own organization (a `$lookup` is
+# never scoped by the tenant wall). That org comparison is policy-conditional
+# (shared fragment): present under `tenant`, absent under `pinned`, where
+# contacts carry no organization_id. Flattens the display shape:
 #   name / picture — from the contact profile (fallback to the user display name)
 #   email          — from the auth user row
-#   roles_arr      — member.role is a CSV string (user-model Decision 5); $split
-#                    it here (nothing reads a role array from the DB)
 #   status         — Active unless user.banned === true → Suspended (Decision 2;
-#                    permanent bans only, so banExpires is never consulted)
+#                    permanent bans only, so ban_expires is never consulted)
 #   created/updated— the contact change-stamp timestamps
-#   signed_up      — member.createdAt (when the person accepted into this app)
+#   signed_up      — member.created_at (when the person accepted into this app)
 #
 # It also normalises the three configurable field bags under exactly the names
 # the `fields.*` vars use, so a `table_columns` `field:` / `download_columns`
@@ -34,87 +40,94 @@
 # match (reachable — the $unwind below preserves empties). A blank column is then
 # always a data question, never a shape question.
 #
+# `pre_join_stages` is the slot for stages that must run on the MEMBER ROOT —
+# after the org-scope $match, before the $lookups. That window is the only place
+# a clause on a stored member field can use an index, so the members list puts
+# its roles $match here. The slot lives on this file rather than in each consumer
+# because the root match and the joins that flatten the display shape are one
+# unit: three consumers assembling that order themselves is three places to get
+# it wrong. It defaults to [], so the two reads that filter nothing are as they
+# were.
+#
 # Co-location precondition (Decision 1): the user-contacts $lookup returns empty
 # if the read connection and the auth adapter resolve to different databases —
 # blank contact data is a co-location violation, not a wiring bug.
-- $match:
-    organizationId:
-      _user: organizationId
-- $lookup:
-    from: users
-    localField: userId
-    foreignField: _id
-    as: user
-- $unwind: "$user"
-- $lookup:
-    from: user-contacts
-    let:
-      member_user_id: "$user._id"
-      member_email:
-        $toLower: "$user.email"
-      member_org: "$organizationId"
-    pipeline:
-      - $match:
-          $expr:
-            $and:
-              _build.array.concat:
-                - _ref:
-                    path: ../shared/org/tenant-clause.yaml
-                    vars:
-                      shape: member_eq
-                      org_expr: "$$member_org"
-                - - _ref:
-                      path: ../shared/contact/contact-match-expr.yaml
-                      vars:
-                        contact_user_id_expr: "$userId"
-                        contact_email_expr: "$lowercase_email"
-                        person_id_expr: "$$member_user_id"
-                        person_email_expr: "$$member_email"
-    as: contact
-- $unwind:
-    path: "$contact"
-    preserveNullAndEmptyArrays: true
-- $addFields:
-    name:
-      $ifNull:
-        - "$contact.profile.name"
-        - "$user.name"
-    picture:
-      $ifNull:
-        - "$contact.profile.picture"
-        - null
-    email: "$user.email"
-    roles_arr:
-      $split:
-        - $ifNull:
-            - "$role"
-            - ""
-        - ","
-    status:
-      $cond:
-        - $eq:
-            - "$user.banned"
-            - true
-        - Suspended
-        - Active
-    created:
-      $ifNull:
-        - "$contact.created.timestamp"
-        - null
-    updated:
-      $ifNull:
-        - "$contact.updated.timestamp"
-        - null
-    signed_up: "$createdAt"
-    profile:
-      $ifNull:
-        - "$contact.profile"
-        - {}
-    user_attributes:
-      $ifNull:
-        - "$user.attributes"
-        - {}
-    member_attributes:
-      $ifNull:
-        - "$attributes"
-        - {}
+_build.array.concat:
+  - - $match:
+        organization_id:
+          _var: org_value
+  - _var:
+      key: pre_join_stages
+      default: []
+  - - $lookup:
+        from: users
+        localField: user_id
+        foreignField: _id
+        as: user
+    - $unwind: "$user"
+    - $lookup:
+        from: user-contacts
+        let:
+          member_user_id: "$user._id"
+          member_email:
+            $toLower: "$user.email"
+          member_org: "$organization_id"
+        pipeline:
+          - $match:
+              $expr:
+                $and:
+                  _build.array.concat:
+                    - _ref:
+                        path: ../shared/org/tenant-clause.yaml
+                        vars:
+                          shape: member_eq
+                          org_expr: "$$member_org"
+                    - - _ref:
+                          path: ../shared/contact/contact-match-expr.yaml
+                          vars:
+                            contact_user_id_expr: "$user_id"
+                            contact_email_expr: "$lowercase_email"
+                            person_id_expr: "$$member_user_id"
+                            person_email_expr: "$$member_email"
+        as: contact
+    - $unwind:
+        path: "$contact"
+        preserveNullAndEmptyArrays: true
+    - $addFields:
+        name:
+          $ifNull:
+            - "$contact.profile.name"
+            - "$user.name"
+        picture:
+          $ifNull:
+            - "$contact.profile.picture"
+            - null
+        email: "$user.email"
+        status:
+          $cond:
+            - $eq:
+                - "$user.banned"
+                - true
+            - Suspended
+            - Active
+        created:
+          $ifNull:
+            - "$contact.created.timestamp"
+            - null
+        updated:
+          $ifNull:
+            - "$contact.updated.timestamp"
+            - null
+        signed_up: "$created_at"
+        profile:
+          $ifNull:
+            - "$contact.profile"
+            - {}
+        user_attributes:
+          $ifNull:
+            - "$user.attributes"
+            - {}
+        member_attributes:
+          $ifNull:
+            - "$attributes"
+            - {}

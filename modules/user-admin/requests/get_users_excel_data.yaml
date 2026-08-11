@@ -22,23 +22,20 @@ properties:
   pipeline:
     _build.array.concat:
       # Member rows.
-      - _ref: ../shared/org/members_base.yaml
+      - _ref:
+          path: ../shared/org/members_base.yaml
+          vars:
+            org_value:
+              _module.var: org_slug
       - - $addFields:
             roles:
               $trim:
                 input:
                   $reduce:
                     input:
-                      $filter:
-                        input:
-                          $ifNull:
-                            - "$roles_arr"
-                            - []
-                        as: r
-                        cond:
-                          $ne:
-                            - "$$r"
-                            - ""
+                      $ifNull:
+                        - "$app_roles"
+                        - []
                     initialValue: ""
                     in:
                       $concat:
@@ -52,7 +49,11 @@ properties:
             coll: user-invitations
             pipeline:
               _build.array.concat:
-                - _ref: ../shared/org/invitations_base.yaml
+                - _ref:
+                    path: ../shared/org/invitations_base.yaml
+                    vars:
+                      org_value:
+                        _module.var: org_slug
                 - - $addFields:
                       name: null
                       roles:
@@ -60,16 +61,9 @@ properties:
                           input:
                             $reduce:
                               input:
-                                $filter:
-                                  input:
-                                    $ifNull:
-                                      - "$roles_arr"
-                                      - []
-                                  as: r
-                                  cond:
-                                    $ne:
-                                      - "$$r"
-                                      - ""
+                                $ifNull:
+                                  - "$app_roles"
+                                  - []
                               initialValue: ""
                               in:
                                 $concat:
@@ -77,10 +71,10 @@ properties:
                                   - ", "
                                   - "$$this"
                           chars: ", "
-                      created: "$createdAt"
+                      created: "$created_at"
                       updated: null
                       signed_up: null
-                      expires: "$expiresAt"
+                      expires: "$expires_at"
         - $sort:
             status: 1
             email: 1

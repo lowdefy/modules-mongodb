@@ -12,4 +12,4 @@ connectionId:
 properties:
   query:
     _id:
-      _user: organizationId
+      _user: organization_id

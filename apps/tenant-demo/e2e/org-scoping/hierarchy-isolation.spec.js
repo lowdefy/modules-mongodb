@@ -23,11 +23,11 @@ import { test, expect } from "../fixtures.js";
 // directions proven, positive result first (the page and traversal provably
 // work) so the exclusions are meaningful.
 
-const ORG_A = { organizationId: "org-a", email: "a@example.com" };
-const ORG_B = { organizationId: "org-b", email: "b@example.com" };
+const ORG_A = { organization_id: "org-a", email: "a@example.com" };
+const ORG_B = { organization_id: "org-b", email: "b@example.com" };
 
-function company({ _id, organizationId, name, parent_ids = [] }) {
-  return { _id, organizationId, name, parent_ids };
+function company({ _id, organization_id, name, parent_ids = [] }) {
+  return { _id, organization_id, name, parent_ids };
 }
 
 async function editAs(ldf, page, caller, companyId) {
@@ -67,23 +67,23 @@ test("the authored $graphLookup walls the company hierarchy traversal by organiz
   // claiming it as parent — the exact shape that would leak into the
   // traversal without the authored restrict clause.
   await mdb.seed("companies", [
-    company({ _id: "C-A-ROOT", organizationId: "org-a", name: "Acme Root" }),
+    company({ _id: "C-A-ROOT", organization_id: "org-a", name: "Acme Root" }),
     company({
       _id: "C-A-CHILD",
-      organizationId: "org-a",
+      organization_id: "org-a",
       name: "Acme Child",
       parent_ids: ["C-A-ROOT"],
     }),
-    company({ _id: "C-B-ROOT", organizationId: "org-b", name: "Globex Root" }),
+    company({ _id: "C-B-ROOT", organization_id: "org-b", name: "Globex Root" }),
     company({
       _id: "C-B-LEECH",
-      organizationId: "org-b",
+      organization_id: "org-b",
       name: "Globex Leech",
       parent_ids: ["C-A-ROOT"], // claims org A's root as parent
     }),
     company({
       _id: "C-A-LEECH",
-      organizationId: "org-a",
+      organization_id: "org-a",
       name: "Acme Leech",
       parent_ids: ["C-B-ROOT"], // claims org B's root as parent
     }),
