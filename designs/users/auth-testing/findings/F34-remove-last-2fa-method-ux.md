@@ -37,3 +37,17 @@ The enforcement is correct; the **handoff is the open design decision**:
 Whichever is chosen, the raw _"required to call '\<request_id\>'"_ string and the loading hang
 should never reach the user. The "not inside the app" feel of the destination is tracked under
 F32.
+
+## Reproduced again (2026-08-11) — passwordless user, exact request id
+
+Deleting the only passkey (magic-link user, `required: true`) threw the raw gate error with the
+concrete id now captured:
+
+```
+[ActionError] Two-factor enrolment required for request "get_account". at passkeys_ui.0.remove.
+  Source: modules/user-account/actions/refetch_account.yaml:6
+```
+
+So the gated call is the **`get_account`** request inside `refetch_account.yaml` (the tile's
+post-delete re-hydrate, `:6`), tripped by the `passkeys_ui.0.remove` delete chain. Same
+mechanism as above; the first gated endpoint is `refetch_account`'s own read.

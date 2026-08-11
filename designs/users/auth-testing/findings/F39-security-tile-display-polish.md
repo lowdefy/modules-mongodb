@@ -2,9 +2,9 @@
 
 **Status:** `enhancement` · **Area:** user-account / security tile
 
-Presentation nits on the signed-in **Security tile** (account workspace), gathered on the run.
-Distinct from [F32](./F32-auth-page-visual-polish.md), which covers the public **auth-page
-shell**; this is the in-app tile.
+Presentation nits on the signed-in **account-workspace tiles** (Security + Sessions), gathered
+on the run. Distinct from [F32](./F32-auth-page-visual-polish.md), which covers the public
+**auth-page shell**; this is the in-app tiles.
 
 A passkey row currently renders as:
 
@@ -30,6 +30,13 @@ multiDevice · added 2026-08-06
    distinguishing multiple passkeys. If adopted, this replaces the value of showing
    `deviceType` in (1).
 
+4. **Sessions-tile explainer mentions a button that isn't there (single session).** The
+   Sessions card always shows: _"Devices currently signed in to your account. 'Sign out others'
+   ends every session except this one."_ But the **Sign out others** button only renders when
+   there are multiple sessions, so with a single session the copy references a control the user
+   can't see — mildly confusing. Fix: gate the "Sign out others …" sentence on the same
+   multiple-sessions condition as the button, or soften the copy when only one session exists.
+
 ## Open decision
 
 - Drop or humanize `deviceType` in the passkey row.
@@ -37,3 +44,5 @@ multiDevice · added 2026-08-06
   session "expires in …", etc.).
 - Decide whether user-named passkeys are in scope; if yes, add a name input at register time
   and an edit affordance, and render the user name instead of the default "Passkey".
+- Gate the Sessions-card "Sign out others" explainer sentence on the multiple-sessions
+  condition so it doesn't reference a missing button.

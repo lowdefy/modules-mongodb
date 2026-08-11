@@ -1,4 +1,4 @@
-# F36 — Passkey-only user bypasses 2FA on password sign-in (required-2FA defeated)
+# F36 — Passkey-only user bypasses 2FA on non-passkey sign-in — password _and_ magic-link (required-2FA defeated)
 
 **Status:** `needs-design` · **Area:** user-account / 2FA + auth (⚠️ **security-critical**)
 
@@ -33,6 +33,27 @@ password path is completely unprotected, and nothing ever nudges the user to clo
 The deeper issue matches the reporter's phrasing: the system checks that a second factor is
 **enrolled**, never that a second factor was **used in this authentication**. A passkey only
 protects logins that _use the passkey_; the password login route ignores it.
+
+**Not only the password path (2026-08-11).** The same bypass was observed on **magic-link**
+sign-in: a magic-link user with a passkey (no TOTP) is **not challenged on repeated logins** and
+lands straight in. Same root cause — the challenge fires only on `twoFactorRedirect`
+(TOTP-gated), and a magic-link sign-in is itself a passwordless single-factor flow that a passkey
+never gates. So the hole spans **every non-passkey sign-in route** (password _and_ magic-link),
+not just password. Any fix must challenge the enrolled passkey (or otherwise enforce a used
+second factor) on all such routes.
+
+## The other side: the challenge page offers no passkey option (2026-08-11)
+
+The same missing capability shows from the other direction. When the 2FA challenge page _is_
+reached, `two-factor.yaml` renders only two states via `tf_view` — `auth` (TOTP code) and
+`backup` (backup code); there is **no passkey affordance**. So a user who holds a passkey has
+**no way to present it as the second factor** at the challenge — only a TOTP code or a backup
+code. Reported: "if I have a passkey set up, there's no way to use my passkey as 2FA on the
+challenge page."
+
+Both symptoms — the bypass above and this missing option — resolve to one capability: **a
+passkey assertion accepted as a valid second-factor challenge**. That is the "session-scoped
+satisfaction" the design deferred (Decision 4), and it gates on the upstream question below.
 
 ## Impact
 
