@@ -1,6 +1,6 @@
 # F33 — Onboarding save routes on a stale `_user`, so the guard bounces back to onboarding
 
-**Status:** `needs-design` · **Area:** platform (auth shell) / session-freshness
+**Status:** `root-caused` · **Area:** platform (auth shell) / session-freshness · **upstream**
 
 After completing onboarding and hitting **Save & continue**, the page reloads but the user
 **stays on onboarding**. Manually navigating to home afterwards works. Reproduced on the
