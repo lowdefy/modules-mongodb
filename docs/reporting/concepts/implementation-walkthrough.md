@@ -308,8 +308,16 @@ old pooled filter row required is gone.
   number is already on screen.
 - Each filter's control is emitted once, immediately above the first section (in
   spec order) whose `filterBy` names its field (L828-857) — not pooled in a top
-  row. A filter driving more than one section carries a scope label naming the
-  others (`filterControlBlock`, L615-670).
+  row. A filter driving more than one section names the others in its label's
+  `extra` — the muted `.ant-form-item-extra` line **under** the control, not
+  appended to the title (`filterControlBlock`, L615-670). Inline, a filter naming
+  three sections wrapped its title over two lines and pushed its input out of
+  alignment with the control beside it. A filter bound to one section gets no
+  `extra` at all, so nothing renders. The options-truncation note (`— first N`)
+  stays on the **title**: it says what the control offers, where the scope note
+  says what it moves. All three control types spread `properties.label` into
+  their `Label` wrapper, so one shape covers `Selector`, `MultipleSelector` and
+  `DateRangeSelector`.
 - Controls anchored above the **same** section share a row: the span is 24 divided
   by the group size, capped at `FILTERS_PER_ROW` (3, L102) so a fourth wraps at the
   same width instead of stretching alone across the page. The grouping happens

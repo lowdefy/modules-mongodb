@@ -1141,9 +1141,93 @@ describe("filter placement", () => {
     // above the first subscriber (the kpi), and labelled with the other (table).
     expect(blocks.filter((b) => b.id === "filter_status")).toHaveLength(1);
     expect(idx("filter_status")).toBe(idx("s1") - 1);
-    expect(byId.filter_status.properties.title).toBe(
-      "Status (also filters: Orders)",
+    // The scope note is the label's `extra` — under the control — and the title
+    // stays the plain label, so a filter naming several sections cannot wrap its
+    // title and push its input out of line with the control beside it.
+    expect(byId.filter_status.properties.title).toBe("Status");
+    expect(byId.filter_status.properties.label).toEqual({
+      extra: "Also filters: Orders",
+    });
+  });
+
+  // Single-bound: position carries the scope, so no note at all — an empty extra
+  // would still reserve the line under the control.
+  test("a filter bound to one section carries no scope note", () => {
+    const spec = {
+      title: "T",
+      sections: [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        {
+          type: "kpi",
+          label: "Revenue",
+          query: orderTotal,
+          valueKey: "total",
+          filterBy: ["status"],
+        },
+      ],
+    };
+    const blocks = compileReport({
+      spec,
+      results: [[{ total: 5 }]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const control = blocks.find((b) => b.id === "filter_status");
+    expect(control.properties.title).toBe("Status");
+    expect(control.properties.label).toBeUndefined();
+  });
+
+  // The truncation note stays on the title while the scope note sits in extra:
+  // one says what this control offers, the other what it moves.
+  test("a truncated options list and a scope note occupy different places", () => {
+    const rows = Array.from({ length: MAX_QUERY_FILTER_OPTIONS + 1 }, (_, i) => ({
+      _id: `c${i}`,
+      name: `Company ${i}`,
+    }));
+    const spec = {
+      title: "T",
+      sections: [
+        {
+          type: "filter",
+          control: "select",
+          field: "company_id",
+          label: "Companies",
+          optionsQuery: {
+            collection: "demo_companies",
+            pipeline: [{ $project: { _id: 1, name: 1 } }],
+            valueKey: "_id",
+            labelKey: "name",
+          },
+        },
+        {
+          type: "kpi",
+          label: "Revenue",
+          query: orderTotal,
+          valueKey: "total",
+          filterBy: ["company_id"],
+        },
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }],
+          filterBy: ["company_id"],
+        },
+      ],
+    };
+    const blocks = compileReport({
+      spec,
+      results: [rows, [{ total: 5 }], tableRows],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const control = blocks.find((b) => b.id === "filter_company_id");
+    expect(control.properties.title).toBe(
+      `Companies — first ${MAX_QUERY_FILTER_OPTIONS}`,
     );
+    expect(control.properties.label).toEqual({ extra: "Also filters: Orders" });
   });
 
   // A filter with no first subscriber has no position to occupy. The old top row

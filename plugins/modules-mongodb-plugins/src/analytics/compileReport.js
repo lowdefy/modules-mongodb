@@ -677,7 +677,7 @@ function verifySection(section, rows) {
 // to any placement: a DateRangeSelector, a Selector/MultipleSelector sourced via
 // filterOptions, or — when no usable options exist — the same Alert a broken
 // section renders. When the filter drives more than one section it sits above
-// only the first, so its title names the others; bound to one, position says it.
+// only the first, so it names the others; bound to one, position says it.
 function filterControlBlock({
   section,
   boundSections,
@@ -694,13 +694,24 @@ function filterControlBlock({
     filterSectionsByField,
     endpointId,
   });
-  const withScope = (title) =>
+  // The scope note goes in the label's `extra` — rendered under the control, in
+  // the muted `.ant-form-item-extra` line — rather than appended to the title.
+  // Inline, a filter naming three other sections wrapped its title over two
+  // lines and pushed its input out of alignment with the control beside it,
+  // which is worse now that filters share a row. It is also secondary
+  // information: the label answers "what is this", the note "what else does it
+  // move". Undefined when the filter drives one section, and `showExtra` is
+  // false for an absent extra, so nothing renders. All three control types
+  // spread `properties.label` into their Label wrapper, so this reaches the same
+  // place on each.
+  const scopeExtra =
     boundSections.length > 1
-      ? `${title} (also filters: ${boundSections
+      ? `Also filters: ${boundSections
           .slice(1)
           .map((s) => s.label)
-          .join(", ")})`
-      : title;
+          .join(", ")}`
+      : undefined;
+  const label = scopeExtra ? { extra: scopeExtra } : undefined;
 
   // The span is the group's, not 24: controls anchored above the same section
   // share a row. It is never wider than the group needs, so a lone filter still
@@ -711,7 +722,7 @@ function filterControlBlock({
       id: filterStateKey(section.field),
       type: "DateRangeSelector",
       layout: { span },
-      properties: { title: withScope(section.label) },
+      properties: { title: section.label, label },
       events: { onChange },
     };
   }
@@ -737,12 +748,12 @@ function filterControlBlock({
     properties: {
       // Truncation is stated, never silent — the same way sectionHeading says so
       // for a capped table. The cap comes from whichever source supplied the
-      // list. A scope label, when present, wraps the truncated label.
-      title: withScope(
-        sourced.truncated
-          ? `${section.label} — first ${sourced.cap}`
-          : section.label,
-      ),
+      // list. It stays on the title rather than joining the scope note in
+      // `extra`: it describes what this control offers, not what it moves.
+      title: sourced.truncated
+        ? `${section.label} — first ${sourced.cap}`
+        : section.label,
+      label,
       allowClear: true,
       options: sourced.options,
     },
