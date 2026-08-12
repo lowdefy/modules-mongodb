@@ -1,5 +1,5 @@
 name: AI Chat Reporting
-version: 0.20.0
+version: 0.21.0
 description: >
   Chat to your data and generate saved, navigable reports. Ships a reporting
   agent chat surface, a constrained query engine over an app-supplied data
@@ -26,6 +26,8 @@ exports:
   api:
     - id: query-data
       description: Constrained analytics query (report re-queries + panel downloads)
+    - id: chart-data
+      description: Assemble a chart section's ECharts option under live filter values
     - id: generate-report
       description: Validate and persist a report spec (agent tool)
     - id: create-report
@@ -227,6 +229,7 @@ connections:
 
 api:
   - _ref: api/query-data.yaml
+  - _ref: api/chart-data.yaml
   # Deliberately absent from exports.api: it exists for the agent, and a
   # consumer calling it directly would be calling the wrong one of the two.
   - _ref: api/query-data-tool.yaml
