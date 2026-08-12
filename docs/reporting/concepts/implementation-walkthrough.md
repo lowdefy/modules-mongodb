@@ -310,6 +310,18 @@ old pooled filter row required is gone.
   spec order) whose `filterBy` names its field (L828-857) — not pooled in a top
   row. A filter driving more than one section carries a scope label naming the
   others (`filterControlBlock`, L615-670).
+- Controls anchored above the **same** section share a row: the span is 24 divided
+  by the group size, capped at `FILTERS_PER_ROW` (3, L102) so a fourth wraps at the
+  same width instead of stretching alone across the page. The grouping happens
+  before any control is built, since a control's span depends on how many share its
+  anchor. Groups are spanned independently — pulling two anchors' filters onto one
+  row would undo co-location. An options-failure Alert takes the group's span too,
+  or a full-width Alert between two controls strands the survivor. `report.yaml`
+  sets `layout.gap: [12, 0]` on the `Dynamic` block, which is the **content area's**
+  gap rather than the block's own placement: the grid defaults to 0, so without it
+  adjacent controls touch. The y gap stays 0 so vertical rhythm is unchanged, and
+  below the grid's `md` breakpoint every block is span 24 regardless — sharing a row
+  is a wide-viewport behaviour only.
 
 **Filters** are the clever bit. `requeryActions` (L91-114) emits a
 `CallAPI`/`SetState` pair per bound section. The payload's filter values are

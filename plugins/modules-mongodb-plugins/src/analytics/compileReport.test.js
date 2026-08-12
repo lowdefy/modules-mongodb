@@ -1150,6 +1150,136 @@ describe("filter placement", () => {
   // could hold one, but the case never actually reaches compilation: the same
   // validateReportSpec pass compileReport runs up front rejects an unbound filter
   // loudly. So the degenerate case is handled by refusal, not a silent drop.
+  // Filters anchored above the same section share a row: the span is 24 divided
+  // by the group size, so three controls stop costing three rows before the
+  // report's first number. Below the grid's md breakpoint every block is span 24
+  // regardless, so this is a wide-viewport layout only.
+  describe("filters anchored at the same section share a row", () => {
+    const anchoredSpec = (fields) => ({
+      title: "T",
+      sections: [
+        ...fields.map((field) => ({
+          type: "filter",
+          control: "select",
+          field,
+          label: field,
+        })),
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }],
+          filterBy: fields,
+        },
+      ],
+    });
+    const spans = (fields) => {
+      const blocks = compileReport({
+        spec: anchoredSpec(fields),
+        results: [tableRows],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      });
+      return fields.map(
+        (field) =>
+          blocks.find((b) => b.id === `filter_${field}`).layout.span,
+      );
+    };
+
+    test.each([
+      [["status"], [24]],
+      [["status", "region"], [12, 12]],
+      [["status", "region", "category"], [8, 8, 8]],
+      // Past three the grid wraps at the same span rather than stretching the
+      // fourth across the page on its own line.
+      [["status", "region", "category", "channel"], [8, 8, 8, 8]],
+    ])("%j → spans %j", (fields, expected) => {
+      expect(spans(fields)).toEqual(expected);
+    });
+
+    // The span is per anchor group, not per report: co-location is the point, so
+    // filters scoping different sections must not be pulled onto one row.
+    test("each anchor group is spanned on its own size", () => {
+      const spec = {
+        title: "T",
+        sections: [
+          { type: "filter", control: "select", field: "status", label: "S" },
+          { type: "filter", control: "select", field: "region", label: "R" },
+          {
+            type: "kpi",
+            label: "Revenue",
+            query: orderTotal,
+            valueKey: "total",
+            filterBy: ["status", "region"],
+          },
+          { type: "filter", control: "select", field: "channel", label: "C" },
+          {
+            type: "table",
+            label: "Orders",
+            query: ordersByRegion,
+            columns: [{ key: "region" }],
+            filterBy: ["channel"],
+          },
+        ],
+      };
+      const blocks = compileReport({
+        spec,
+        results: [[{ total: 5 }], tableRows],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      });
+      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      expect(byId.filter_status.layout.span).toBe(12);
+      expect(byId.filter_region.layout.span).toBe(12);
+      expect(byId.filter_channel.layout.span).toBe(24);
+    });
+
+    // A filter that loses its options is replaced by an Alert. It takes the
+    // group's span, not the Alert block's own 24 — otherwise a full-width Alert
+    // between two controls strands the survivor half-width on its own line.
+    test("an options-failure Alert keeps its group's span", () => {
+      const spec = {
+        title: "T",
+        sections: [
+          {
+            type: "filter",
+            control: "select",
+            field: "company_id",
+            label: "Companies",
+            optionsQuery: {
+              collection: "demo_companies",
+              pipeline: [{ $project: { _id: 1, name: 1 } }],
+              valueKey: "_id",
+              labelKey: "name",
+            },
+          },
+          { type: "filter", control: "select", field: "status", label: "S" },
+          {
+            type: "table",
+            label: "Orders",
+            query: ordersByRegion,
+            columns: [{ key: "region" }],
+            filterBy: ["company_id", "status"],
+          },
+        ],
+      };
+      const blocks = compileReport({
+        spec,
+        // The options query returned nothing usable; the table still has rows.
+        results: [[], tableRows],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      });
+      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      expect(byId.s0.type).toBe("Alert");
+      expect(byId.s0.layout.span).toBe(12);
+      expect(byId.filter_status.layout.span).toBe(12);
+    });
+  });
+
   test("a filter no section subscribes to is rejected before it can be placed", () => {
     const spec = {
       title: "T",

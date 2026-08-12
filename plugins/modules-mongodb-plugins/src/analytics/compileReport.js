@@ -99,6 +99,20 @@ function filterStateKey(field) {
   return `filter_${field}`;
 }
 
+// Filters anchored above the same section sit side by side rather than each
+// taking a full row — a report with a date range and two selects spent three
+// rows on controls before its first number. Three per row because the 24-col
+// grid divides evenly (24/12/8) and a select much narrower than a third of the
+// column stops showing its selection. Past three the grid wraps at the same
+// span, so a fourth filter starts a second row at a third width instead of
+// stretching alone across the page. Only the group anchored at one section
+// shares a row: co-location is the point, so filters that scope different
+// sections must not be pulled together (see the report-page design).
+const FILTERS_PER_ROW = 3;
+function filterSpan(groupSize) {
+  return 24 / Math.min(groupSize, FILTERS_PER_ROW);
+}
+
 function safeFilename(label) {
   const slug = String(label)
     .toLowerCase()
@@ -673,6 +687,7 @@ function filterControlBlock({
   rows,
   endpointId,
   filterSectionsByField,
+  span,
 }) {
   const onChange = requeryActions({
     boundSections,
@@ -687,13 +702,15 @@ function filterControlBlock({
           .join(", ")})`
       : title;
 
-  // Span 24: the control owns its own row above the section group, rather than
-  // sitting beside the span-6 KPI that may follow it in the flat block flow.
+  // The span is the group's, not 24: controls anchored above the same section
+  // share a row. It is never wider than the group needs, so a lone filter still
+  // owns its row above the section group rather than sitting beside the span-6
+  // KPI that may follow it in the flat block flow.
   if (section.control === "daterange") {
     return {
       id: filterStateKey(section.field),
       type: "DateRangeSelector",
-      layout: { span: 24 },
+      layout: { span },
       properties: { title: withScope(section.label) },
       events: { onChange },
     };
@@ -708,13 +725,15 @@ function filterControlBlock({
   if (sourced.failure) {
     // No usable options: the control is replaced by an Alert above the bound
     // section. Its bound sections still render their resolve-time rows, they
-    // simply never re-query.
-    return failedSectionBlock(section, sourced.failure);
+    // simply never re-query. It takes the group's span rather than the block's
+    // own 24 so the surviving controls keep their row — a full-width Alert
+    // between them would leave a half-width filter stranded on its own line.
+    return { ...failedSectionBlock(section, sourced.failure), layout: { span } };
   }
   return {
     id: filterStateKey(section.field),
     type: section.control === "multiselect" ? "MultipleSelector" : "Selector",
-    layout: { span: 24 },
+    layout: { span },
     properties: {
       // Truncation is stated, never silent — the same way sectionHeading says so
       // for a capped table. The cap comes from whichever source supplied the
@@ -933,6 +952,8 @@ function compileReport({
   // whose filterBy names its field — the interleave point it renders above.
   // validateReportSpec has already rejected any filter no section binds, so a
   // first subscriber always exists.
+  // Grouped before any control is built, because a control's span comes from how
+  // many filters share its anchor.
   const filtersByFirstSubscriber = new Map();
   for (const filter of sections.filter((s) => s.type === "filter")) {
     const boundSections = sections.filter((s) =>
@@ -940,19 +961,27 @@ function compileReport({
     );
     const anchor = boundSections[0];
     const list = filtersByFirstSubscriber.get(anchor.id) ?? [];
-    list.push(
-      filterControlBlock({
-        section: filter,
-        boundSections,
-        sections,
-        catalog,
-        roles,
-        rows: rowsBySectionId.get(filter.id),
-        endpointId,
-        filterSectionsByField,
-      }),
-    );
+    list.push({ filter, boundSections });
     filtersByFirstSubscriber.set(anchor.id, list);
+  }
+  for (const [anchorId, group] of filtersByFirstSubscriber) {
+    const span = filterSpan(group.length);
+    filtersByFirstSubscriber.set(
+      anchorId,
+      group.map(({ filter, boundSections }) =>
+        filterControlBlock({
+          section: filter,
+          boundSections,
+          sections,
+          catalog,
+          roles,
+          rows: rowsBySectionId.get(filter.id),
+          endpointId,
+          filterSectionsByField,
+          span,
+        }),
+      ),
+    );
   }
 
   for (const section of sections) {
