@@ -666,6 +666,27 @@ describe("provenance line", () => {
     expect(ids.indexOf("s3_download")).toBe(ids.indexOf("s3_heading") + 1);
   });
 
+  // Every compiled block is a sibling in one wrapping flex area, so the head
+  // row's two blocks are only "a row" by virtue of their spans — a top margin on
+  // the heading alone would drop its ⤓ out of line with it. They must match.
+  test("both blocks of a head row carry the same top margin", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    for (const id of ["s1", "s3"]) {
+      const gap = byId[`${id}_heading`].style.marginTop;
+      expect(gap).toBeGreaterThan(0);
+      expect(byId[`${id}_download`].style.marginTop).toBe(gap);
+      // The margin rides alongside the right-alignment style, not over it.
+      expect(byId[`${id}_download`].style.marginLeft).toBe("auto");
+    }
+  });
+
   // A table sized to its rows rather than to the block's 500px default, which
   // left a five-row table sitting in 350px of white. The ceiling keeps a table
   // near the pipeline's 1000-row cap scrolling and virtualised.

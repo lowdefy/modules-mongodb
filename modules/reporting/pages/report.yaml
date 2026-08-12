@@ -29,14 +29,15 @@ _ref:
       - id: report_dynamic
         type: Dynamic
         # gap on a block's layout is the CONTENT area's gap, not this block's own
-        # placement — it separates the compiled blocks from each other. Filters
-        # anchored above the same section now share a row, and with the grid's
-        # default gap of 0 those controls would touch. x only: y stays 0 so the
-        # vertical rhythm between sections is exactly what it was. The server
-        # spreads slots.content when it injects the resolved blocks, so this
-        # survives resolution.
+        # placement — it separates the compiled blocks from each other. The grid
+        # defaults to 0, so without an x gap the filters that share a row would
+        # touch. The y gap is the SMALL one: it spaces a heading off the chart or
+        # table it names, while compileReport's SECTION_TOP_GAP adds the larger
+        # distance ahead of each head row — so a heading sits nearer its own
+        # content than the section above it. The server spreads slots.content when
+        # it injects the resolved blocks, so this survives resolution.
         layout:
-          gap: [12, 0]
+          gap: [12, 8]
         properties:
           endpointId:
             _module.endpointId: resolve-report

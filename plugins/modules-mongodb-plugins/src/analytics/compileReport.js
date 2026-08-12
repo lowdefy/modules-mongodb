@@ -77,6 +77,17 @@ const RIGHT_IN_CELL = {
 const FAVOURITE_SPAN = 2;
 const CHAT_LINK_SPAN = 5;
 
+// Vertical separation ahead of a section's head row, on top of the small row gap
+// report.yaml sets on the content area. Two different distances, deliberately: a
+// heading ends up nearer the content it names than the section above it, so it
+// reads as belonging to what follows. A single uniform gap large enough to
+// separate sections leaves the heading equidistant, belonging to neither.
+//
+// Applied to BOTH blocks of the head row. Every compiled block is a sibling in
+// one wrapping flex area — the "rows" are wrap lines, not nested containers — so
+// a margin on the heading alone would shift it out of line with its ⤓.
+const SECTION_TOP_GAP = 16;
+
 // A chart's canvas. Full width inside the page's ~1100px column, so this is the
 // short side: 280 gives axis labels and a legend room without the near-square
 // canvas 400 produced, where a handful of categories became enormously wide bars
@@ -154,7 +165,7 @@ function sectionDownload(section, endpointId) {
     id: `${section.id}_download`,
     type: "Button",
     layout: { span: 4 },
-    style: RIGHT_IN_CELL,
+    style: { ...RIGHT_IN_CELL, marginTop: SECTION_TOP_GAP },
     properties: {
       title: "Export CSV",
       hideTitle: true,
@@ -475,6 +486,7 @@ function sectionHeading(section, rows) {
     id: `${section.id}_heading`,
     type: "Title",
     layout: { span: 20 },
+    style: { marginTop: SECTION_TOP_GAP },
     properties: { content, level: 5 },
   };
 }
