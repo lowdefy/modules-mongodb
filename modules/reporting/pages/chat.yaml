@@ -39,8 +39,15 @@ _ref:
         - id: init_state
           type: SetState
           params:
+            # A Continue-in-chat / Fix-in-chat link from a report opens this page
+            # with the source conversation in the URL; anything else starts a new
+            # one. Seeding it here rather than on mount means the id is right
+            # before AgentChat first renders, so it never binds to a fresh uuid
+            # and then has it swapped underneath.
             conversationId:
-              _uuid: true
+              _if_none:
+                - _url_query: conversation_id
+                - _uuid: true
             charts: []
             tables: []
             downloads: []
@@ -69,18 +76,28 @@ _ref:
                     - _media: width
                     - 1280
       onMountAsync:
-        - id: load_conversations
-          type: CallAPI
-          params:
-            endpointId:
-              _module.endpointId: list-conversations
-        - id: set_conversations
-          type: SetState
-          params:
-            conversations:
-              _api:
-                _build.string.concat:
-                  - _module.endpointId: list-conversations
-                  - ".response"
+        _build.array.concat:
+          - - id: load_conversations
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: list-conversations
+            - id: set_conversations
+              type: SetState
+              params:
+                conversations:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: list-conversations
+                      - ".response"
+          # Restore the deep-linked conversation — the same sequence the rail runs
+          # when a row is clicked, so a link lands on the transcript and results
+          # panel a click would give. Every step skips when the URL names no
+          # conversation, which is the ordinary case.
+          - _ref:
+              path: pages/chat/actions/load_conversation.yaml
+              vars:
+                conversation_key:
+                  _url_query: conversation_id
     blocks:
       - _ref: pages/chat/components/chat_workspace.yaml
