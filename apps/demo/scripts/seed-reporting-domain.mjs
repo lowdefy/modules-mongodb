@@ -149,11 +149,30 @@ const actions = Array.from({ length: 44 }, (_, i) => {
 });
 
 // ── Saved reports (report_layouts) ───────────────────────────────────────────
-// Two reports in the stored shape modules/reporting/defaults/new_report.yaml
+// Reports in the stored shape modules/reporting/defaults/new_report.yaml
 // produces, so the report-page surface is reproducible without driving the chat
-// agent. The one field this sub-design owns is conversation_id: report A carries
-// one (so the report page's continue-in-chat affordance resolves) and report B
-// carries null (so its absence is exercised too).
+// agent. The first two cover the healthy surface and conversation_id presence;
+// the last three cover the report page's failure and filter-layout surfaces:
+//   C  demo-report-broken-section    — a section over a collection that is no
+//                                       longer cataloged, so it fails the resolve
+//                                       gate and renders as the BROKEN alert with
+//                                       owner recoveries (Fix in chat + Drop).
+//   D  demo-report-withheld          — a section over the role-gated
+//                                       demo_activities_confidential collection,
+//                                       which renders as the WITHHELD alert for a
+//                                       viewer without `report-confidential`,
+//                                       shown BESIDE a broken section so the two
+//                                       alert variants are not confused.
+//   E  demo-report-two-filter-groups — two independent filters, each bound only
+//                                       to its own pair of sections, so each
+//                                       control co-locates above its own group
+//                                       (and carries a scope label, since each
+//                                       drives more than one section).
+//
+// The conversation_id field: report A carries one (so the report page's
+// continue-in-chat affordance resolves) and report B carries null (so its
+// absence is exercised too). Reports C and D carry one so the owner's Fix-in-chat
+// affordance renders on their broken sections.
 //
 // The section specs are written as validateReportSpec's OUTPUT, not raw input —
 // each section carries a durable `id` (s0, s1, …) and every query section a
@@ -272,6 +291,227 @@ const reports = [
     created: stamp(7),
     updated: stamp(7),
   },
+  // Report C — a broken section. s0 is a healthy KPI; s1's pipeline reads
+  // `demo_orders_legacy`, a collection that is not in the catalog (a rename that
+  // left the stored spec behind). The whole-spec grammar check passes (it does
+  // not know collections), so the report opens; the per-section resolve gate
+  // rejects s1, and compileReport classifies the failure as BROKEN (not
+  // withheld) because the collection is not role-gated — it is simply gone.
+  // For the owner this renders the alert plus Fix-in-chat (conversation_id is
+  // set) and Drop; a non-owner sees the alert naming the owner to ask.
+  {
+    _id: "demo-report-broken-section",
+    owner: DEMO_OWNER,
+    title: "Orders overview (has a broken section)",
+    description:
+      "A KPI that still resolves, next to a table whose stored query points at " +
+      "a collection that no longer exists in the catalog — so the table renders " +
+      "as the broken-section alert with owner recoveries (Fix in chat, Drop).",
+    spec: {
+      sections: [
+        {
+          id: "s0",
+          type: "kpi",
+          label: "Activities",
+          query: {
+            collection: "demo_activities",
+            pipeline: [{ $group: { _id: null, activities: { $sum: 1 } } }],
+          },
+          valueKey: "activities",
+          filterBy: [],
+        },
+        {
+          id: "s1",
+          type: "table",
+          label: "Orders by region (legacy)",
+          query: {
+            collection: "demo_orders_legacy",
+            pipeline: [
+              { $group: { _id: "$region", orders: { $sum: 1 } } },
+              { $project: { _id: 0, region: "$_id", orders: 1 } },
+              { $sort: { orders: -1 } },
+            ],
+          },
+          columns: [
+            { key: "region", label: "Region" },
+            { key: "orders", label: "Orders" },
+          ],
+          filterBy: [],
+        },
+      ],
+    },
+    spec_version: 1,
+    visibility: "shared",
+    favourite_of: [],
+    conversation_id: "demo-conversation-002",
+    deleted: null,
+    created: stamp(5),
+    updated: stamp(5),
+  },
+  // Report D — a withheld section beside a broken one. s0 is a healthy KPI; s1
+  // reads the role-gated demo_activities_confidential collection, so a viewer
+  // without `report-confidential` gets the WITHHELD alert (no recoveries, naming
+  // neither collection nor role); s2 reads a dropped collection, so it renders
+  // as the BROKEN alert. Seeding both in one report is the point: withheld and
+  // broken are different failures and must read differently.
+  {
+    _id: "demo-report-withheld",
+    owner: DEMO_OWNER,
+    title: "Activities overview (confidential section)",
+    description:
+      "A KPI anyone can see, a confidential chart only holders of the " +
+      "report-confidential role may load (withheld otherwise), and a section " +
+      "over a dropped collection that is broken rather than withheld.",
+    spec: {
+      sections: [
+        {
+          id: "s0",
+          type: "kpi",
+          label: "Activities",
+          query: {
+            collection: "demo_activities",
+            pipeline: [{ $group: { _id: null, activities: { $sum: 1 } } }],
+          },
+          valueKey: "activities",
+          filterBy: [],
+        },
+        {
+          id: "s1",
+          type: "chart",
+          chart: "bar",
+          label: "Confidential activities by type",
+          query: {
+            collection: "demo_activities_confidential",
+            pipeline: [
+              { $group: { _id: "$type", activities: { $sum: 1 } } },
+              { $project: { _id: 0, type: "$_id", activities: 1 } },
+              { $sort: { activities: -1 } },
+            ],
+          },
+          x: "type",
+          y: ["activities"],
+          filterBy: [],
+        },
+        {
+          id: "s2",
+          type: "table",
+          label: "Legacy orders (dropped collection)",
+          query: {
+            collection: "demo_orders_legacy",
+            pipeline: [
+              { $group: { _id: "$region", orders: { $sum: 1 } } },
+              { $project: { _id: 0, region: "$_id", orders: 1 } },
+            ],
+          },
+          columns: [
+            { key: "region", label: "Region" },
+            { key: "orders", label: "Orders" },
+          ],
+          filterBy: [],
+        },
+      ],
+    },
+    spec_version: 1,
+    visibility: "shared",
+    favourite_of: [],
+    conversation_id: "demo-conversation-003",
+    deleted: null,
+    created: stamp(4),
+    updated: stamp(4),
+  },
+  // Report E — two independent filter groups. The `type` select drives s2 (KPI)
+  // and s3 (chart); the `source.channel` select drives s4 (KPI) and s5 (table).
+  // No filter is bound to a section in the other group, so compileReport places
+  // each control above its own group's first section, and each control carries a
+  // scope label ("… (also filters: …)") because it drives more than one section.
+  // Filter options come from the catalog enum `values` for each field — no
+  // inline options or optionsQuery. There is no top-row filter box: the old
+  // top-row layout is gone, so filters need no hand-placed prominent section.
+  {
+    _id: "demo-report-two-filter-groups",
+    owner: DEMO_OWNER,
+    title: "Activities — two filter groups",
+    description:
+      "Two independent filters, each bound only to its own pair of sections, so " +
+      "each control renders inline above its own group rather than in a shared " +
+      "top row.",
+    spec: {
+      sections: [
+        { id: "s0", type: "filter", control: "select", field: "type", label: "Activity type" },
+        {
+          id: "s1",
+          type: "filter",
+          control: "select",
+          field: "source.channel",
+          label: "Capture channel",
+        },
+        {
+          id: "s2",
+          type: "kpi",
+          label: "Activities (by type)",
+          query: {
+            collection: "demo_activities",
+            pipeline: [{ $group: { _id: null, activities: { $sum: 1 } } }],
+          },
+          valueKey: "activities",
+          filterBy: ["type"],
+        },
+        {
+          id: "s3",
+          type: "chart",
+          chart: "bar",
+          label: "Activities by type",
+          query: {
+            collection: "demo_activities",
+            pipeline: [
+              { $group: { _id: "$type", activities: { $sum: 1 } } },
+              { $project: { _id: 0, type: "$_id", activities: 1 } },
+              { $sort: { activities: -1 } },
+            ],
+          },
+          x: "type",
+          y: ["activities"],
+          filterBy: ["type"],
+        },
+        {
+          id: "s4",
+          type: "kpi",
+          label: "Activities (by channel)",
+          query: {
+            collection: "demo_activities",
+            pipeline: [{ $group: { _id: null, activities: { $sum: 1 } } }],
+          },
+          valueKey: "activities",
+          filterBy: ["source.channel"],
+        },
+        {
+          id: "s5",
+          type: "table",
+          label: "Activities by channel",
+          query: {
+            collection: "demo_activities",
+            pipeline: [
+              { $group: { _id: "$source.channel", activities: { $sum: 1 } } },
+              { $project: { _id: 0, channel: "$_id", activities: 1 } },
+              { $sort: { activities: -1 } },
+            ],
+          },
+          columns: [
+            { key: "channel", label: "Channel" },
+            { key: "activities", label: "Activities" },
+          ],
+          filterBy: ["source.channel"],
+        },
+      ],
+    },
+    spec_version: 1,
+    visibility: "shared",
+    favourite_of: [],
+    conversation_id: null,
+    deleted: null,
+    created: stamp(3),
+    updated: stamp(3),
+  },
 ];
 
 // ── Views: viewOn + pipeline. Grain is fixed here, so counts are always exact.
@@ -306,6 +546,14 @@ const VIEWS = {
       { $lookup: { from: "demo_companies", localField: "global_attributes.company_ids", foreignField: "_id", as: "company" } },
       { $unwind: { path: "$company", preserveNullAndEmptyArrays: true } },
     ],
+  },
+  // Grain: one activity, current_stage pre-extracted. Backs the role-gated
+  // catalog entry demo_activities_confidential — same data as demo_activities,
+  // but the catalog restricts it to holders of the `report-confidential` role,
+  // so a viewer without that role gets the WITHHELD alert on any section over it.
+  demo_activities_confidential: {
+    viewOn: "demo_activities",
+    pipeline: [{ $addFields: { current_stage: { $arrayElemAt: ["$status.stage", 0] } } }],
   },
 };
 

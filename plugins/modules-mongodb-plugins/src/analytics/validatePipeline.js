@@ -212,12 +212,20 @@ function checkCollectionAccess(name, ctx) {
     fail("collection must be a non-empty string.");
   }
   checkKey(name);
+  // Record every touched collection at the single choke point, so the
+  // enumeration cannot miss a collection-bearing stage the validator accepts.
+  ctx.touchedCollections.add(name);
   if (!Object.hasOwn(ctx.catalog, name)) {
     fail(
       `collection "${name}" is not in the collections catalog. ` +
         `Available collections: ${Object.keys(ctx.catalog).join(", ")}.`,
     );
   }
+  // Catalog membership above is a grammar/BROKEN fault and always throws.
+  // Only the role gate is suppressed in collect-only mode: enumerating the
+  // touched collections of a withheld pipeline requires walking PAST the
+  // role-denied collection that would otherwise throw here.
+  if (ctx.collectOnly) return;
   const required = ctx.catalog[name]?.roles ?? [];
   if (required.length > 0 && !required.some((r) => ctx.userRoles.includes(r))) {
     fail(`you are not authorized to query collection "${name}".`);
@@ -974,7 +982,13 @@ function validateSubPipeline(stages, ctx, { appendCap }) {
   return out;
 }
 
-function validatePipeline({ collection, pipeline, catalog, roles }) {
+// Shared front half of every walk: input guards, the serialized-size cap, and
+// the ctx. `collectOnly` flips `checkCollectionAccess` from enforcing the role
+// gate to merely recording each collection — the ONLY behavioural difference
+// between validating and enumerating, so both routes run the exact same walk.
+// `touchedCollections` is spread by reference into sub-pipeline ctx (the
+// `$lookup` recursion), so nested walks accumulate into this one Set.
+function buildWalkCtx({ collection, pipeline, catalog, roles, collectOnly }) {
   if (!catalog || typeof catalog !== "object" || Array.isArray(catalog)) {
     fail("no collections catalog is configured.");
   }
@@ -995,7 +1009,7 @@ function validatePipeline({ collection, pipeline, catalog, roles }) {
       `pipeline exceeds the maximum serialized size of ${MAX_PIPELINE_BYTES} bytes.`,
     );
   }
-  const ctx = {
+  return {
     state: { nodes: 0, stages: 0, lookups: 0 },
     catalog,
     userRoles: Array.isArray(roles) ? roles : [],
@@ -1003,12 +1017,33 @@ function validatePipeline({ collection, pipeline, catalog, roles }) {
     depth: 0,
     subDepth: 0,
     collection,
+    touchedCollections: new Set(),
+    collectOnly: collectOnly === true,
   };
+}
+
+function validatePipeline({ collection, pipeline, catalog, roles }) {
+  const ctx = buildWalkCtx({ collection, pipeline, catalog, roles });
   checkCollectionAccess(collection, ctx);
   return {
     collection,
     pipeline: validateSubPipeline(pipeline, ctx, { appendCap: true }),
   };
+}
+
+// Enumerate every collection a pipeline touches — base, each `$lookup.from`,
+// and any collection reached through nested sub-pipelines — WITHOUT the role
+// gate throwing. Distinguishes a withheld section (valid pipeline, role-denied
+// collection) from a broken one (grammar/catalog fault), which the resolver's
+// error-free `:catch` cannot tell apart after the fact. Runs the standard walk
+// with `collectOnly: true`: grammar and catalog-membership faults still throw
+// (a collection absent from the catalog is BROKEN, not withheld); only the
+// role gate is skipped. Roles are irrelevant under collect-only.
+export function touchedCollections({ collection, pipeline, catalog }) {
+  const ctx = buildWalkCtx({ collection, pipeline, catalog, collectOnly: true });
+  checkCollectionAccess(collection, ctx);
+  validateSubPipeline(pipeline, ctx, { appendCap: true });
+  return [...ctx.touchedCollections];
 }
 
 export default validatePipeline;

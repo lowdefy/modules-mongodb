@@ -80,6 +80,8 @@ On someone else's published report you can open it, star it, download a section,
 
 **Duplicate is the escape hatch** that makes read-only comfortable: rather than a request-access dance, copy the report into one you own and change it freely. The copy is always private, owned by you, with favourites reset and **no conversation link inherited** — that last is confidentiality, not tidiness, since the original author's chat transcript is not yours to open. The original is untouched.
 
+Where the copy opens depends on where you duplicated from. From the reports list you stay put and the copy appears in Mine. From the report page it **opens in a new tab**, leaving the original where it is — you are usually duplicating precisely because you want to keep referring to it, and refreshing the page you are on would show you the original again with nothing to indicate a copy was made.
+
 ## Soft delete is the only retirement
 
 There is no archive state and no purge endpoint. **Nothing in this module hard-deletes** — and the delete confirmation says so truthfully, because the module never writes to your source collections at all. Deleting only ever writes a `deleted` stamp on the report document.
@@ -111,6 +113,10 @@ It matters because the stored spec is **re-validated on every read**. A tighteni
 
 ## Editing a report
 
-Deliberately narrow. An owner can rename a report and drop a section from it; there is no add-section, reorder, or edit-a-section path, and no general spec write.
+Deliberately narrow. An owner can edit a report's **title and description** and drop a section from it; there is no add-section, reorder, or edit-a-section path, and no general spec write.
+
+Title and description are document fields rather than spec fields, which is why editing them is a one-field write that never touches the compiled report. Both are reachable from the same **⋯** menu on two surfaces — a row in the reports list, and the report page's own header — and it is one menu: the same ownership gates, the same endpoints, the same copy. What differs is only what happens after a write, since the list refetches in place while the report page re-navigates to re-resolve.
+
+The description is optional and distinguishes _not sent_ from _emptied_: the list's rename modal sends the title alone and leaves any stored description untouched, while clearing the field on the report page clears it for real.
 
 Re-deriving a spec is the assistant's job: ask it to change something and it produces a **new** report. Dropping a section is the one exception, and it cascades — removing a filter unbinds it from the sections that used it, and removing the last section bound to a filter removes that filter too. It refuses exactly one thing: leaving the report with no sections, and it points you at deleting the report instead.

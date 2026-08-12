@@ -225,10 +225,12 @@ spec. `api/generate-report.yaml`:
 
 ## 8. Report render
 
-`pages/report.yaml:12-36` is a single `Dynamic` block resolved by
-`resolve-report`. `properties.types` (L17-36) is a bundling declaration — the
+`pages/report.yaml:12-79` is a single `Dynamic` block resolved by
+`resolve-report`. `properties.types` (L30-69) is a bundling declaration — the
 compiled output's block/action/operator types must be listed so they ship to the
-client.
+client. Among them the `Link` action and the `_url_query` operator, which the
+owner-only chat links and the drop-and-reload recovery need; the `Box` type the
+old pooled filter row required is gone.
 
 `api/resolve-report.yaml`:
 
@@ -246,20 +248,137 @@ client.
   thing (L60-61): resolving select-filter options from a field's enum values. A
   display convenience, explicitly not a gate.
 
-`compileReport.js:239-455` turns spec + rows into blocks:
+`compileReport.js:727-1090` turns spec + rows into blocks:
 
-- The sparse `:for` result array is aligned index-for-index with `querySections`
-  (L258-264); a null entry becomes an Alert card (L294-297).
-- `verifySection` (L229-237) checks the declared contract against real rows; a
-  mismatch is caught (L301-306) and rendered as an Alert card with the validator's
-  message — a graceful _rendering_ failure, never a safety one.
-- KPI → `Statistic` (L308-339), with separators resolved at compile time via
-  `Intl.NumberFormat.formatToParts` (`intlSeparators`, L146-160) so the native
+- The header opens with a **title row**: the report title, then its actions
+  right-aligned beside it on the same 24-column grid row (L789-870). The title's
+  span is whatever the actions leave, so it is decided with them. Blocks on the
+  grid are block-level cells and the layout engine takes alignment on a container
+  rather than an item, which is why each action shrinks to its content and pushes
+  itself over with an auto left margin (`RIGHT_IN_CELL`, L69).
+- A **★** (`report_favourite`, L834) is compiled for **every** viewer, owner or
+  not — favouriting is a read-side act, checked for readability rather than
+  ownership. It calls `set-report-favourite` with the _desired_ state (a literal,
+  since the compiler knows the current one) and then re-navigates to the same
+  report, which is what re-renders the star filled: the report is a
+  server-resolved `Dynamic` block with no client refetch. `is_favourite` comes
+  from the resolver, derived per viewer from `favourite_of` — the raw array is
+  never returned, so a caller cannot learn who else favourited a report.
+- Then a provenance `Paragraph` (`report_provenance`, L908):
+  each fact joined with `·` and dropped when its input is absent — `Made by
+{name} on {date}`, `Last edited {date}` (from the doc's `updated`, never "spec
+  changed"), `Data as of {date time}` (the resolve moment), and, for a shared
+  report, `Shared with everyone by {name}`. Dates are formatted at compile time
+  (`formatTimestamp`, L83-92, en-GB day-first), so no runtime `_dayjs` runs. It is
+  shown to everyone who can open the report, not owner-gated.
+- When the viewer is the owner and the report has a `conversation_id`, a
+  `Continue in chat` `Link` joins the title row beside the ★ (L803); a non-owner,
+  or a report with no linked conversation, gets nothing there — and the title
+  widens to take the space back.
+- The sparse `:for` result array is aligned index-for-index with `querySections`;
+  a null (failed) entry is classified (`classifyFailure`, L557-575): a section
+  whose valid pipeline queries a role-gated collection the viewer can't reach
+  renders a **withheld** Alert (`withheldSectionBlock`, L546-548) that names no
+  collection and no role and carries no recoveries — as against a genuinely
+  **broken** section (`brokenSectionBlocks`, L455-544), an Alert plus, for the
+  owner only, a `Fix in chat` `Link` (when a `conversation_id` exists) and a
+  `Drop this section` control that calls `remove-report-section` then re-navigates
+  to re-resolve the page. A non-owner's broken Alert names who can fix it and
+  offers nothing to click.
+- `verifySection` (L595-607) checks the declared contract against real rows; a
+  mismatch is caught and rendered through the same `brokenSectionBlocks` path — a
+  graceful _rendering_ failure, never a safety one.
+- KPI → `Statistic` (L1005), with separators resolved at compile time via
+  `Intl.NumberFormat.formatToParts` (`intlSeparators`, L277) so the native
   Statistic formatting matches the table's runtime `_intl` output.
-- chart → `EChart` (L341-356); table → `AgGridBalham` (L358-370); markdown →
-  `Markdown`; download → `Button` + `CallAPI` + `DownloadCsv` (L414-438).
-- Filters collect into their own full-width row at the top (L443-452) regardless
-  of spec position.
+- chart → `EChart` (L1023) at a fixed `CHART_HEIGHT` (L84); table →
+  `AgGridBalham` (L1034) sized to its rows rather than to the block's 500px
+  default (`tableHeight`, L92) — 500 becomes a **ceiling**, so a table near the
+  1000-row pipeline cap still scrolls and virtualises; markdown → `Markdown`;
+  download → `Button` + `CallAPI` + `DownloadCsv`. Chart and table sections each
+  also get their own **⤓** (`sectionDownload`, L138) — a `CallAPI` →
+  `DownloadCsv` pair that re-queries the endpoint for the section's full result
+  set, not the capped on-screen rows. It shares the section heading's row rather
+  than taking one of its own (heading span 20, ⤓ span 4) and renders as the icon
+  alone. `hideTitle` is what makes it icon-only and is load-bearing — the `Button`
+  block falls back to rendering its **blockId** as the label when `title` is
+  absent, so the title is set and suppressed rather than omitted. It is suppressed
+  from the accessibility tree too: the block exposes no `aria-label`, so an
+  icon-only control here carries no accessible name. A KPI gets no ⤓: a single
+  number is already on screen.
+- The header's **⋯** opens `report_menu_modal` — the SAME menu the reports list
+  opens from a row, and the one place the ownership gates, the endpoints and the
+  copy live. Only the **button** is compiled; the menu, its rename `Modal` with a
+  `TextInput`/`TextArea`, and the delete confirm are static config on
+  `report.yaml`, siblings of the `Dynamic` block. That split is what keeps the
+  allowlist cost at one action (`CallMethod`) instead of four block types, each
+  of which blanks the whole report if it is ever missed. What makes the reuse
+  work is the seed: the menu reads `selected_report`, which the list fills from
+  the clicked grid row and the compiled button fills from literals — `title`,
+  `is_owner`, `visibility` — plus `_id` from the page URL, since the compiler is
+  never told the report id. `is_owner` and `visibility` fall back to the closed
+  position (`false` / `private`), so a resolver that omits them hides the owner's
+  items rather than offering Publish on an already-shared report. The ⋯ compiles
+  for **every** viewer, like the ★: Duplicate is any reader's path to a copy they
+  control, and the menu hides what a viewer cannot use.
+- Publish and unpublish each `SetState` the new `visibility` onto
+  `selected_report` immediately after their `CallAPI`, so the menu is correct
+  **without** depending on `after_write`'s reload having re-resolved the page.
+  This matters because only `_id` in the compiled seed is live (`__url_query`);
+  `title`, `is_owner` and `visibility` are literals frozen at resolve time, and
+  re-opening ⋯ re-runs that same `SetState`. Without the correction a published
+  report would keep offering Publish and keep hiding Unpublish, leaving no way to
+  retract short of a hard refresh. `CallAPI` throws on rejection and stops the
+  chain, so the correction only runs on a persisted write. The reports list never
+  had the problem — it refetches `list-reports` and seeds from the clicked row.
+- Duplicate takes its own after-action var (`after_duplicate`), separate from the
+  publish/unpublish `after_write`, because the copy is a **different** report:
+  "refresh what you are looking at" re-renders the original and leaves the copy
+  invisible. The list refetches its scope (the copy lands in Mine); the report
+  page opens `duplicate-report`'s returned `url` in a new tab. That url is passed
+  to `Link` as `url` rather than `pageId`/`urlQuery` on purpose — the action fires
+  after an async `CallAPI`, outside the user-gesture window some browsers require
+  for `window.open`, and only the url path degrades to a "popup blocked" message
+  (the pageId path calls `.focus()` on the null handle and throws).
+- Vertical rhythm comes from two distances, not one. `report.yaml`'s
+  `layout.gap` y value is small — it spaces a heading off the chart or table it
+  names — and `SECTION_TOP_GAP` adds the larger distance ahead of each section
+  **group**, so a heading sits nearer its own content than the section above it.
+  One uniform gap wide enough to separate sections leaves the heading equidistant
+  and belonging to neither. The gap is applied by `withTopGap` to the group's
+  leading **wrap line**, not to its first block: every compiled block is a
+  sibling in one wrapping flex area — the "rows" are wrap lines, not nested
+  containers — so a margin on one block alone drops its row-mates out of line
+  with it. A group led by its head row gets it on the heading and its ⤓
+  together; a group led by filter controls gets it on every control sharing that
+  first row, and the head row below them carries none. Anchoring on the group
+  rather than the head row is what keeps a filter attached to the section it
+  drives: stamped on the heading instead, a control sat one small row gap under
+  the _previous_ section and a full `SECTION_TOP_GAP` above its own.
+- Each filter's control is emitted once, immediately above the first section (in
+  spec order) whose `filterBy` names its field (L828-857) — not pooled in a top
+  row. A filter driving more than one section names the others in its label's
+  `extra` — the muted `.ant-form-item-extra` line **under** the control, not
+  appended to the title (`filterControlBlock`, L615-670). Inline, a filter naming
+  three sections wrapped its title over two lines and pushed its input out of
+  alignment with the control beside it. A filter bound to one section gets no
+  `extra` at all, so nothing renders. The options-truncation note (`— first N`)
+  stays on the **title**: it says what the control offers, where the scope note
+  says what it moves. All three control types spread `properties.label` into
+  their `Label` wrapper, so one shape covers `Selector`, `MultipleSelector` and
+  `DateRangeSelector`.
+- Controls anchored above the **same** section share a row: the span is 24 divided
+  by the group size, capped at `FILTERS_PER_ROW` (3, L102) so a fourth wraps at the
+  same width instead of stretching alone across the page. The grouping happens
+  before any control is built, since a control's span depends on how many share its
+  anchor. Groups are spanned independently — pulling two anchors' filters onto one
+  row would undo co-location. An options-failure Alert takes the group's span too,
+  or a full-width Alert between two controls strands the survivor. `report.yaml`
+  sets `layout.gap: [12, 0]` on the `Dynamic` block, which is the **content area's**
+  gap rather than the block's own placement: the grid defaults to 0, so without it
+  adjacent controls touch. The y gap stays 0 so vertical rhythm is unchanged, and
+  below the grid's `md` breakpoint every block is span 24 regardless — sharing a row
+  is a wide-viewport behaviour only.
 
 **Filters** are the clever bit. `requeryActions` (L91-114) emits a
 `CallAPI`/`SetState` pair per bound section. The payload's filter values are

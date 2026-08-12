@@ -194,11 +194,16 @@ test("compiles the full report to blocks", () => {
   });
   expect(JSON.stringify(byId.s3)).not.toContain("nunjucks");
 
-  // Filter control: moved into the top filter row, options from catalog values.
-  const filter = byId.report_filters.blocks.find(
-    (b) => b.id === "filter_status",
-  );
+  // Filter control: rendered inline directly above its one bound section (s3,
+  // the table), options from catalog values. No report_filters Box exists, and
+  // a single-bound filter carries no scope label — its position says it all.
+  expect(byId.report_filters).toBeUndefined();
+  const idx = (id) => blocks.findIndex((b) => b.id === id);
+  expect(idx("filter_status")).toBe(idx("s3_heading") - 1);
+  const filter = byId.filter_status;
   expect(filter.type).toBe("Selector");
+  expect(filter.layout).toEqual({ span: 24 });
+  expect(filter.properties.title).toBe("Status");
   expect(filter.properties.options).toEqual([
     "pending",
     "paid",
@@ -532,6 +537,211 @@ describe("unformatted numeric columns", () => {
   });
 });
 
+// Provenance is a read for everyone: who made the report (and when), when it
+// was last edited (`updated`), and the resolve moment its numbers were computed
+// from. A shared report also names the publisher. None of this is gated on
+// ownership.
+describe("provenance line", () => {
+  const provenanceInputs = {
+    created: {
+      timestamp: new Date("2026-01-05T00:00:00Z"),
+      user: { name: "Jane Doe" },
+    },
+    updated: {
+      timestamp: new Date("2026-02-10T00:00:00Z"),
+      user: { name: "Jane Doe" },
+    },
+    owner: { user_id: "u1", name: "Jane Doe" },
+    resolvedAt: new Date("2026-03-15T14:30:00Z"),
+  };
+
+  const kpiOnlySpec = {
+    title: "T",
+    sections: [
+      { type: "kpi", label: "Total", query: orderTotal, valueKey: "total" },
+    ],
+  };
+
+  test("emits a provenance Paragraph naming owner, last-edited and computed times", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      ...provenanceInputs,
+      visibility: "private",
+    });
+    const prov = blocks.find((b) => b.id === "report_provenance");
+    expect(prov.type).toBe("Paragraph");
+    expect(prov.layout).toEqual({ span: 24 });
+    expect(prov.properties.content).toContain("Made by Jane Doe");
+    expect(prov.properties.content).toContain("5 January 2026");
+    expect(prov.properties.content).toContain("Last edited 10 February 2026");
+    expect(prov.properties.content).toContain("Data as of 15 March 2026");
+    // Global constraint: the middle fact is "last edited", never "spec changed".
+    expect(prov.properties.content).not.toContain("spec changed");
+    // Not shared → no publisher clause.
+    expect(prov.properties.content).not.toContain("Shared");
+  });
+
+  test("a shared report names the publisher as the reason it is visible", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      ...provenanceInputs,
+      visibility: "shared",
+    });
+    const prov = blocks.find((b) => b.id === "report_provenance");
+    expect(prov.properties.content).toContain(
+      "Shared with everyone by Jane Doe",
+    );
+  });
+
+  // Absent provenance inputs (an old resolver, a report with no owner) must not
+  // emit a blank line or "Invalid Date".
+  test("no provenance inputs emits no provenance block", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    expect(blocks.find((b) => b.id === "report_provenance")).toBeUndefined();
+  });
+
+  // Chart and table sections are query-backed result sets, so each carries a
+  // CSV export re-querying its own rows; a KPI is a single number and gets none.
+  test("chart and table sections carry a CSV download; kpi does not", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+
+    // s1 chart, s3 table → downloads; s0 kpi → none.
+    expect(byId.s0_download).toBeUndefined();
+    for (const id of ["s1", "s3"]) {
+      const dl = byId[`${id}_download`];
+      expect(dl.type).toBe("Button");
+      const [call, download] = dl.events.onClick;
+      expect(call.type).toBe("CallAPI");
+      expect(call.params.endpointId).toBe(endpointId);
+      expect(call.params.payload).toEqual({ query: ordersByRegion });
+      expect(download.type).toBe("DownloadCsv");
+      expect(download.params.data).toEqual({ __api: `${endpointId}.response` });
+      expect(download.params.filename).toMatch(/\.csv$/);
+    }
+  });
+
+  // The ⤓ shares the heading's row instead of taking one of its own, and is the
+  // icon alone. `hideTitle` is load-bearing: the Button block renders its blockId
+  // as the label when `title` is absent, so the title stays and is suppressed.
+  test("the download sits on the heading's row as an icon", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+
+    for (const id of ["s1", "s3"]) {
+      expect(byId[`${id}_heading`].layout.span).toBe(20);
+      expect(byId[`${id}_download`].layout.span).toBe(4);
+      expect(byId[`${id}_download`].properties.hideTitle).toBe(true);
+      expect(byId[`${id}_download`].properties.title).toBe("Export CSV");
+      expect(byId[`${id}_download`].style.marginLeft).toBe("auto");
+    }
+    // Adjacent, in that order — the two are one head row.
+    const ids = blocks.map((b) => b.id);
+    expect(ids.indexOf("s3_download")).toBe(ids.indexOf("s3_heading") + 1);
+  });
+
+  // Every compiled block is a sibling in one wrapping flex area, so a "row" is
+  // only a row by virtue of its spans — a top margin on one block alone would
+  // drop its row-mates out of line with it. The gap therefore leads the section
+  // GROUP, a whole wrap line at a time: the head row when nothing precedes it,
+  // the filter controls when they do.
+  test("the top margin leads a section's group, a whole row at a time", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+
+    // s1 has no filter above it, so its own head row leads the group and both
+    // blocks carry the gap.
+    const gap = byId.s1_heading.style.marginTop;
+    expect(gap).toBeGreaterThan(0);
+    expect(byId.s1_download.style.marginTop).toBe(gap);
+    // The margin rides alongside the right-alignment style, not over it.
+    expect(byId.s1_download.style.marginLeft).toBe("auto");
+
+    // s3 is anchored by the status filter, so the CONTROL leads the group and
+    // the head row must not also carry the gap. Stamped on the heading instead,
+    // the filter would sit one small row gap under the previous section and a
+    // full SECTION_TOP_GAP above the section it actually drives — reading as
+    // though it filtered the one before it.
+    expect(byId.filter_status.style.marginTop).toBe(gap);
+    expect(byId.s3_heading.style?.marginTop).toBeUndefined();
+    expect(byId.s3_download.style.marginTop).toBeUndefined();
+    expect(byId.s3_download.style.marginLeft).toBe("auto");
+  });
+
+  // A table sized to its rows rather than to the block's 500px default, which
+  // left a five-row table sitting in 350px of white. The ceiling keeps a table
+  // near the pipeline's 1000-row cap scrolling and virtualised.
+  test("a table's height follows its row count, floored and capped", () => {
+    const tableOnly = {
+      title: "T",
+      sections: [
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region", label: "Region" }],
+        },
+      ],
+    };
+    const height = (rows) =>
+      compileReport({
+        spec: tableOnly,
+        results: [rows],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      }).find((b) => b.type === "AgGridBalham").properties.height;
+
+    expect(height([])).toBe(120);
+    expect(height(Array(5).fill({ region: "EU", total: 1 }))).toBe(174);
+    expect(height(Array(1000).fill({ region: "EU", total: 1 }))).toBe(500);
+  });
+
+  test("a KPI-only report emits no CSV download at all", () => {
+    const blocks = compileReport({
+      spec: kpiOnlySpec,
+      results: [[{ total: 10 }]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      ...provenanceInputs,
+    });
+    expect(blocks.some((b) => b.id.endsWith("_download"))).toBe(false);
+  });
+});
+
 // Each control emits its own block type and its own filter triples, and a
 // filter whose options come from a query resolves them from the rows the
 // resolver returned for ITS section.
@@ -566,6 +776,9 @@ describe("filter controls", () => {
     ],
   });
 
+  // Controls are now flat top-level blocks interleaved above their sections, so
+  // `filters` and `byId` are the same flat map — a control by `filter_<field>`,
+  // an options-failure Alert by the filter section's id.
   const filterRow = (spec, results) => {
     const blocks = compileReport({
       spec,
@@ -574,17 +787,13 @@ describe("filter controls", () => {
       roles,
       endpointId,
     });
-    const row = blocks.find((b) => b.id === "report_filters");
-    return {
-      blocks,
-      byId: Object.fromEntries(blocks.map((b) => [b.id, b])),
-      filters: Object.fromEntries(row.blocks.map((b) => [b.id, b])),
-    };
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    return { blocks, byId, filters: byId };
   };
 
   const tableRows = [{ region: "EU", total: 1 }];
 
-  test("each control emits its own block type, all inside the filter row", () => {
+  test("each control emits its own block type, all inline above their section", () => {
     const { filters } = filterRow(allControlsSpec(), [tableRows]);
     expect(filters.filter_status.type).toBe("Selector");
     expect(filters.filter_region.type).toBe("MultipleSelector");
@@ -718,7 +927,8 @@ describe("filter controls", () => {
     ["the query returned no rows", [], /No options available/],
   ])("a filter whose options %s degrades to an Alert", (_case, rows, match) => {
     const { byId, filters } = filterRow(companySpec(), [rows, tableRows]);
-    // The Alert takes the control's place in the filter row, keyed by section id.
+    // The Alert takes the control's place above the bound section, keyed by the
+    // filter section's id.
     expect(filters.s0.type).toBe("Alert");
     expect(filters.s0.properties.message).toBe("Companies");
     expect(filters.s0.properties.description).toMatch(match);
@@ -806,14 +1016,13 @@ describe("filter controls", () => {
         },
       ],
     };
-    const row = compileReport({
+    const control = compileReport({
       spec,
       results: [tableRows],
       catalog,
       roles,
       endpointId,
-    }).find((b) => b.id === "report_filters");
-    const control = row.blocks[0];
+    }).find((b) => b.id === "filter_status");
     expect(control.properties.options).toHaveLength(MAX_FILTER_OPTIONS);
     expect(control.properties.title).toBe(
       `Status — first ${MAX_FILTER_OPTIONS}`,
@@ -858,14 +1067,20 @@ describe("filter controls", () => {
       ],
     };
     // The denial arrives as a null results entry — the resolver's :try caught it.
-    const compile = (viewerRoles) =>
-      compileReport({
-        spec,
-        results: [null, tableRows],
-        catalog: gated,
-        roles: viewerRoles,
-        endpointId,
-      }).find((b) => b.id === "report_filters").blocks[0];
+    // Denied → an Alert keyed by the filter section id (s0); allowed → the
+    // Selector keyed by filter_status.
+    const compile = (viewerRoles) => {
+      const byId = Object.fromEntries(
+        compileReport({
+          spec,
+          results: [null, tableRows],
+          catalog: gated,
+          roles: viewerRoles,
+          endpointId,
+        }).map((b) => [b.id, b]),
+      );
+      return byId.filter_status ?? byId.s0;
+    };
 
     const denied = compile(["analyst"]);
     expect(denied.type).toBe("Alert");
@@ -875,5 +1090,782 @@ describe("filter controls", () => {
     const allowed = compile(["admin"]);
     expect(allowed.type).toBe("Selector");
     expect(allowed.properties.options).toEqual(["alpha", "beta"]);
+  });
+});
+
+// A filter's POSITION answers "what does this move": each control renders once,
+// directly above the first section it drives, never pooled into a top row.
+describe("filter placement", () => {
+  const tableRows = [{ region: "EU", total: 1 }];
+  const idxIn = (blocks) => (id) => blocks.findIndex((b) => b.id === id);
+
+  test("two independent filter groups each render above their own group's first section", () => {
+    const spec = {
+      title: "T",
+      sections: [
+        {
+          type: "kpi",
+          label: "Revenue",
+          query: orderTotal,
+          valueKey: "total",
+          filterBy: ["status"],
+        },
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        { type: "filter", control: "select", field: "region", label: "Region" },
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }],
+          filterBy: ["region"],
+        },
+      ],
+    };
+    const blocks = compileReport({
+      spec,
+      results: [[{ total: 5 }], tableRows],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const idx = idxIn(blocks);
+    // status drives the kpi (s0); region drives the table (s3). Each sits
+    // directly above its own group, neither divorced at the top.
+    expect(byId.report_filters).toBeUndefined();
+    expect(idx("filter_status")).toBe(idx("s0") - 1);
+    expect(idx("filter_region")).toBe(idx("s3_heading") - 1);
+    expect(idx("filter_status")).toBeGreaterThan(idx("report_title"));
+    // Single-bound: position carries it, so no scope label.
+    expect(byId.filter_status.properties.title).toBe("Status");
+    expect(byId.filter_region.properties.title).toBe("Region");
+  });
+
+  test("a filter bound to more than one section renders once above the first, labelled with the others", () => {
+    const spec = {
+      title: "T",
+      sections: [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        {
+          type: "kpi",
+          label: "Revenue",
+          query: orderTotal,
+          valueKey: "total",
+          filterBy: ["status"],
+        },
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }],
+          filterBy: ["status"],
+        },
+      ],
+    };
+    const blocks = compileReport({
+      spec,
+      results: [[{ total: 5 }], tableRows],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const idx = idxIn(blocks);
+    // ids: s0 filter, s1 kpi, s2 table. Bound to both — emitted exactly once,
+    // above the first subscriber (the kpi), and labelled with the other (table).
+    expect(blocks.filter((b) => b.id === "filter_status")).toHaveLength(1);
+    expect(idx("filter_status")).toBe(idx("s1") - 1);
+    // The scope note is the label's `extra` — under the control — and the title
+    // stays the plain label, so a filter naming several sections cannot wrap its
+    // title and push its input out of line with the control beside it.
+    expect(byId.filter_status.properties.title).toBe("Status");
+    expect(byId.filter_status.properties.label).toEqual({
+      extra: "Also filters: Orders",
+    });
+  });
+
+  // Single-bound: position carries the scope, so no note at all — an empty extra
+  // would still reserve the line under the control.
+  test("a filter bound to one section carries no scope note", () => {
+    const spec = {
+      title: "T",
+      sections: [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        {
+          type: "kpi",
+          label: "Revenue",
+          query: orderTotal,
+          valueKey: "total",
+          filterBy: ["status"],
+        },
+      ],
+    };
+    const blocks = compileReport({
+      spec,
+      results: [[{ total: 5 }]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const control = blocks.find((b) => b.id === "filter_status");
+    expect(control.properties.title).toBe("Status");
+    expect(control.properties.label).toBeUndefined();
+  });
+
+  // The truncation note stays on the title while the scope note sits in extra:
+  // one says what this control offers, the other what it moves.
+  test("a truncated options list and a scope note occupy different places", () => {
+    const rows = Array.from(
+      { length: MAX_QUERY_FILTER_OPTIONS + 1 },
+      (_, i) => ({
+        _id: `c${i}`,
+        name: `Company ${i}`,
+      }),
+    );
+    const spec = {
+      title: "T",
+      sections: [
+        {
+          type: "filter",
+          control: "select",
+          field: "company_id",
+          label: "Companies",
+          optionsQuery: {
+            collection: "demo_companies",
+            pipeline: [{ $project: { _id: 1, name: 1 } }],
+            valueKey: "_id",
+            labelKey: "name",
+          },
+        },
+        {
+          type: "kpi",
+          label: "Revenue",
+          query: orderTotal,
+          valueKey: "total",
+          filterBy: ["company_id"],
+        },
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }],
+          filterBy: ["company_id"],
+        },
+      ],
+    };
+    const blocks = compileReport({
+      spec,
+      results: [rows, [{ total: 5 }], tableRows],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const control = blocks.find((b) => b.id === "filter_company_id");
+    expect(control.properties.title).toBe(
+      `Companies — first ${MAX_QUERY_FILTER_OPTIONS}`,
+    );
+    expect(control.properties.label).toEqual({ extra: "Also filters: Orders" });
+  });
+
+  // A filter with no first subscriber has no position to occupy. The old top row
+  // could hold one, but the case never actually reaches compilation: the same
+  // validateReportSpec pass compileReport runs up front rejects an unbound filter
+  // loudly. So the degenerate case is handled by refusal, not a silent drop.
+  // Filters anchored above the same section share a row: the span is 24 divided
+  // by the group size, so three controls stop costing three rows before the
+  // report's first number. Below the grid's md breakpoint every block is span 24
+  // regardless, so this is a wide-viewport layout only.
+  describe("filters anchored at the same section share a row", () => {
+    const anchoredSpec = (fields) => ({
+      title: "T",
+      sections: [
+        ...fields.map((field) => ({
+          type: "filter",
+          control: "select",
+          field,
+          label: field,
+        })),
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }],
+          filterBy: fields,
+        },
+      ],
+    });
+    const spans = (fields) => {
+      const blocks = compileReport({
+        spec: anchoredSpec(fields),
+        results: [tableRows],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      });
+      return fields.map(
+        (field) => blocks.find((b) => b.id === `filter_${field}`).layout.span,
+      );
+    };
+
+    test.each([
+      [["status"], [24]],
+      [
+        ["status", "region"],
+        [12, 12],
+      ],
+      [
+        ["status", "region", "category"],
+        [8, 8, 8],
+      ],
+      // Past three the grid wraps at the same span rather than stretching the
+      // fourth across the page on its own line.
+      [
+        ["status", "region", "category", "channel"],
+        [8, 8, 8, 8],
+      ],
+    ])("%j → spans %j", (fields, expected) => {
+      expect(spans(fields)).toEqual(expected);
+    });
+
+    // The group's leading wrap line carries the top gap — every control on it,
+    // so a shared row stays level, and nothing past it, so the fourth filter
+    // (which wraps onto a second line) is not pushed away from the first three.
+    test.each([
+      [["status"], 1],
+      [["status", "region"], 2],
+      [["status", "region", "category"], 3],
+      [["status", "region", "category", "channel"], 3],
+    ])("%j → the first %i control(s) carry the gap", (fields, leading) => {
+      const blocks = compileReport({
+        spec: anchoredSpec(fields),
+        results: [tableRows],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      });
+      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      const gaps = fields.map((f) => byId[`filter_${f}`].style?.marginTop);
+      expect(gaps.slice(0, leading).every((g) => g > 0)).toBe(true);
+      expect(new Set(gaps.slice(0, leading)).size).toBe(1);
+      expect(gaps.slice(leading)).toEqual(
+        Array(fields.length - leading).fill(undefined),
+      );
+      // The controls lead the group, so the section's head row does not. The
+      // table follows the filters in spec order, so its id trails their count.
+      expect(
+        byId[`s${fields.length}_heading`].style?.marginTop,
+      ).toBeUndefined();
+    });
+
+    // The span is per anchor group, not per report: co-location is the point, so
+    // filters scoping different sections must not be pulled onto one row.
+    test("each anchor group is spanned on its own size", () => {
+      const spec = {
+        title: "T",
+        sections: [
+          { type: "filter", control: "select", field: "status", label: "S" },
+          { type: "filter", control: "select", field: "region", label: "R" },
+          {
+            type: "kpi",
+            label: "Revenue",
+            query: orderTotal,
+            valueKey: "total",
+            filterBy: ["status", "region"],
+          },
+          { type: "filter", control: "select", field: "channel", label: "C" },
+          {
+            type: "table",
+            label: "Orders",
+            query: ordersByRegion,
+            columns: [{ key: "region" }],
+            filterBy: ["channel"],
+          },
+        ],
+      };
+      const blocks = compileReport({
+        spec,
+        results: [[{ total: 5 }], tableRows],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      });
+      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      expect(byId.filter_status.layout.span).toBe(12);
+      expect(byId.filter_region.layout.span).toBe(12);
+      expect(byId.filter_channel.layout.span).toBe(24);
+    });
+
+    // A filter that loses its options is replaced by an Alert. It takes the
+    // group's span, not the Alert block's own 24 — otherwise a full-width Alert
+    // between two controls strands the survivor half-width on its own line.
+    test("an options-failure Alert keeps its group's span", () => {
+      const spec = {
+        title: "T",
+        sections: [
+          {
+            type: "filter",
+            control: "select",
+            field: "company_id",
+            label: "Companies",
+            optionsQuery: {
+              collection: "demo_companies",
+              pipeline: [{ $project: { _id: 1, name: 1 } }],
+              valueKey: "_id",
+              labelKey: "name",
+            },
+          },
+          { type: "filter", control: "select", field: "status", label: "S" },
+          {
+            type: "table",
+            label: "Orders",
+            query: ordersByRegion,
+            columns: [{ key: "region" }],
+            filterBy: ["company_id", "status"],
+          },
+        ],
+      };
+      const blocks = compileReport({
+        spec,
+        // The options query returned nothing usable; the table still has rows.
+        results: [[], tableRows],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      });
+      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      expect(byId.s0.type).toBe("Alert");
+      expect(byId.s0.layout.span).toBe(12);
+      expect(byId.filter_status.layout.span).toBe(12);
+    });
+  });
+
+  test("a filter no section subscribes to is rejected before it can be placed", () => {
+    const spec = {
+      title: "T",
+      sections: [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        { type: "kpi", label: "Revenue", query: orderTotal, valueKey: "total" },
+      ],
+    };
+    expect(() =>
+      compileReport({
+        spec,
+        results: [[{ total: 5 }]],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      }),
+    ).toThrow(/not bound by any section/);
+  });
+});
+
+// Owner-only recovery affordances. All are DISPLAY gates over a server-side one
+// (remove-report-section owner-matches; chat is gated server-side) — a non-owner
+// must never see one, so each is asserted per branch. The two chat links are
+// additionally conditional on the report having a conversation to reopen.
+// Sibling ids share the endpointId's entry prefix (reporting/…), the only scope
+// compileReport has at resolve time.
+describe("owner-only affordances", () => {
+  const owner = { user_id: "u1", name: "Jane Doe" };
+  // s1 (the chart) fails; s0 kpi and s3 table render normally.
+  const brokenResults = [results[0], undefined, results[2]];
+
+  const compile = (extra) =>
+    Object.fromEntries(
+      compileReport({
+        spec,
+        results: brokenResults,
+        catalog: testCatalog,
+        roles,
+        endpointId,
+        owner,
+        ...extra,
+      }).map((b) => [b.id, b]),
+    );
+
+  test("owner + linked report: Continue-in-chat in the header, Fix + Drop on the broken section", () => {
+    const byId = compile({ is_owner: true, conversation_id: "conv-1" });
+
+    const continueBtn = byId.report_continue_in_chat;
+    expect(continueBtn.type).toBe("Button");
+    const [continueLink] = continueBtn.events.onClick;
+    expect(continueLink.type).toBe("Link");
+    expect(continueLink.params.pageId).toBe("reporting/chat");
+    expect(continueLink.params.urlQuery).toEqual({ conversation_id: "conv-1" });
+
+    // The broken chart keeps its Alert; recoveries are flat siblings.
+    expect(byId.s1.type).toBe("Alert");
+
+    const [fixLink] = byId.s1_fix_in_chat.events.onClick;
+    expect(fixLink.type).toBe("Link");
+    expect(fixLink.params.pageId).toBe("reporting/chat");
+    expect(fixLink.params.urlQuery).toEqual({
+      conversation_id: "conv-1",
+      section_id: "s1",
+    });
+
+    const [drop, reload] = byId.s1_drop.events.onClick;
+    expect(drop.type).toBe("CallAPI");
+    expect(drop.params.endpointId).toBe("reporting/remove-report-section");
+    expect(drop.params.payload).toEqual({
+      report_id: { __url_query: "report_id" },
+      section_id: "s1",
+    });
+    // Refresh: re-open the report (the Dynamic block re-resolves on page GET).
+    expect(reload.type).toBe("Link");
+    expect(reload.params.pageId).toBe("reporting/report");
+    expect(reload.params.urlQuery).toEqual({
+      report_id: { __url_query: "report_id" },
+    });
+  });
+
+  test("owner + report with no conversation: no chat links, Drop still shows", () => {
+    const byId = compile({ is_owner: true });
+    expect(byId.report_continue_in_chat).toBeUndefined();
+    expect(byId.s1_fix_in_chat).toBeUndefined();
+    expect(byId.s1_drop).toBeDefined();
+    expect(byId.s1.type).toBe("Alert");
+  });
+
+  test("non-owner: no owner affordances anywhere; the broken section names who can fix it", () => {
+    const blocks = compileReport({
+      spec,
+      results: brokenResults,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      owner,
+      is_owner: false,
+      conversation_id: "conv-1",
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+
+    expect(byId.report_continue_in_chat).toBeUndefined();
+    expect(byId.s1_fix_in_chat).toBeUndefined();
+    expect(byId.s1_drop).toBeUndefined();
+
+    // The Alert stays and names the owner, with no action to take.
+    expect(byId.s1.type).toBe("Alert");
+    expect(byId.s1.properties.description).toContain("Jane Doe");
+
+    // Per-branch guard: nothing owner-only leaked into the config. Not a blanket
+    // "no Link anywhere" — the ★ a non-owner may legitimately click reloads the
+    // page with one — so the guard names the owner-only targets instead. Anything
+    // owner-only navigates to the chat or calls remove-report-section.
+    const json = JSON.stringify(blocks);
+    expect(json).not.toContain("remove-report-section");
+    expect(json).not.toContain("reporting/chat");
+    const links = blocks
+      .flatMap((block) => block.events?.onClick ?? [])
+      .filter((action) => action.type === "Link");
+    expect(links.map((link) => link.id)).toEqual(["reload_after_favourite"]);
+  });
+
+  // Favouriting is a read-side act (the endpoint checks readability, not
+  // ownership), so the ★ is the one header action a non-owner of a shared report
+  // gets. It sends the DESIRED state, which the compiler already knows.
+  test("the ★ is compiled for every viewer and sends the opposite of the current state", () => {
+    const unstarred = compile({ is_owner: false, is_favourite: false });
+    expect(unstarred.report_favourite.properties.icon).toBe("AiOutlineStar");
+    const [call, reload] = unstarred.report_favourite.events.onClick;
+    expect(call.type).toBe("CallAPI");
+    expect(call.params.endpointId).toBe("reporting/set-report-favourite");
+    expect(call.params.payload).toEqual({
+      report_id: { __url_query: "report_id" },
+      favourite: true,
+    });
+    expect(reload.params.pageId).toBe("reporting/report");
+
+    const starred = compile({ is_owner: true, is_favourite: true });
+    expect(starred.report_favourite.properties.icon).toBe("AiFillStar");
+    expect(
+      starred.report_favourite.events.onClick[0].params.payload.favourite,
+    ).toBe(false);
+  });
+
+  // The title shares its row with the actions, so its span is whatever they
+  // leave — 20 with the ★ and ⋯, 15 once the chat link joins them.
+  test("the title's span makes room for exactly the actions compiled beside it", () => {
+    const alone = compile({ is_owner: false });
+    expect(alone.report_title.layout.span).toBe(20);
+    expect(alone.report_continue_in_chat).toBeUndefined();
+
+    const withChat = compile({ is_owner: true, conversation_id: "conv-1" });
+    expect(withChat.report_title.layout.span).toBe(15);
+    expect(withChat.report_continue_in_chat.layout.span).toBe(5);
+  });
+
+  // The ⋯ is compiled for EVERY viewer, like the ★: the menu it opens holds
+  // Duplicate, which is any reader's path to a copy they control, and hides the
+  // owner-only items from its own is_owner / visibility tests. Compiling only
+  // the button — the menu itself is static page config — is what keeps the
+  // Dynamic allowlist at one new action instead of four new block types.
+  describe("the ⋯ header menu", () => {
+    const seedOf = (byId) => byId.report_menu.events.onClick[0].params;
+
+    test("is compiled for every viewer and opens the shared menu modal", () => {
+      for (const is_owner of [true, false]) {
+        const byId = compile({ is_owner });
+        expect(byId.report_menu.type).toBe("Button");
+        expect(byId.report_menu.properties.hideTitle).toBe(true);
+
+        const [, open] = byId.report_menu.events.onClick;
+        expect(open.type).toBe("CallMethod");
+        expect(open.params).toEqual({
+          blockId: "report_menu_modal",
+          method: "setOpen",
+          args: [{ open: true }],
+        });
+      }
+    });
+
+    // The menu reads `selected_report` — the same shape the list seeds from a
+    // grid row. Everything but the id is a compile-time literal; the id is not
+    // one of compileReport's inputs, so it comes from the page URL, the same
+    // value resolve-report loaded the report from.
+    test("seeds the row shape the list's menu already reads", () => {
+      const seed = seedOf(compile({ is_owner: true, visibility: "shared" }));
+      expect(seed.selected_report).toEqual({
+        _id: { __url_query: "report_id" },
+        title: "Q2 Revenue by Region",
+        is_owner: true,
+        visibility: "shared",
+      });
+    });
+
+    // The gates are what the menu branches on, so they must survive as real
+    // booleans and strings rather than undefined — an undefined is_owner would
+    // hide the owner's own items, and an undefined visibility would show
+    // Publish on a report that is already shared.
+    test("gates fall back to the closed position when the resolver omits them", () => {
+      const seed = seedOf(compile({}));
+      expect(seed.selected_report.is_owner).toBe(false);
+      expect(seed.selected_report.visibility).toBe("private");
+    });
+
+    // Copied to the rename inputs' own paths so editing them leaves the title
+    // the delete confirm shows alone. A report with no description seeds "",
+    // not undefined: the endpoint treats null as leave-alone, so an unseeded
+    // field would silently keep a description the user cannot see.
+    test("seeds the rename fields, with an empty description rather than none", () => {
+      const withProse = seedOf(
+        compile({
+          spec: { ...spec, description: "Revenue and order counts." },
+        }),
+      );
+      expect(withProse.rename_title).toBe("Q2 Revenue by Region");
+      expect(withProse.rename_description).toBe("Revenue and order counts.");
+
+      const bare = { ...spec };
+      delete bare.description;
+      expect(seedOf(compile({ spec: bare })).rename_description).toBe("");
+    });
+  });
+});
+
+// A failed section is either withheld (valid, but role-gated) or broken. Both
+// arrive as an error-free null row; the compiler tells them apart from catalog
+// + viewer roles, the same enumeration the AnalyticsPipeline gate ran. The
+// withheld Alert names no collection and no role and offers no recovery — not
+// even to the owner, since nothing is broken to fix.
+describe("withheld vs broken failed sections", () => {
+  const owner = { user_id: "u1", name: "Jane Doe" };
+
+  // demo_companies is role-gated (analyst/admin); a "viewer" cannot reach it.
+  const gatedSpec = {
+    title: "Companies",
+    sections: [
+      {
+        type: "table",
+        label: "Companies",
+        query: {
+          collection: "demo_companies",
+          pipeline: [{ $project: { _id: 0, name: 1 } }],
+        },
+        columns: [{ key: "name" }],
+      },
+    ],
+  };
+  // demo_orders is ungated: a null row here is genuinely broken.
+  const ungatedSpec = {
+    title: "Orders",
+    sections: [
+      {
+        type: "table",
+        label: "Orders",
+        query: ordersByRegion,
+        columns: [{ key: "region" }],
+      },
+    ],
+  };
+
+  const compile = (spec, extra) =>
+    Object.fromEntries(
+      compileReport({
+        spec,
+        results: [null],
+        catalog: testCatalog,
+        endpointId,
+        owner,
+        ...extra,
+      }).map((b) => [b.id, b]),
+    );
+
+  test("a viewer lacking the role gets the withheld Alert — no recoveries, no collection or role named", () => {
+    const byId = compile(gatedSpec, {
+      roles: ["viewer"],
+      is_owner: true,
+      conversation_id: "conv-1",
+    });
+
+    expect(byId.s0.type).toBe("Alert");
+    expect(byId.s0.properties.message).toBe("Companies");
+    expect(byId.s0.properties.description).toBe(
+      "You don't have access to the data in this section.",
+    );
+    // No recovery affordances — even for the owner: nothing is broken to fix.
+    expect(byId.s0_fix_in_chat).toBeUndefined();
+    expect(byId.s0_drop).toBeUndefined();
+
+    // The withheld copy leaks no gate detail — no collection, no role, no
+    // "ask the owner" from the broken non-owner path.
+    const json = JSON.stringify(byId.s0);
+    expect(json).not.toContain("demo_companies");
+    expect(json).not.toContain("analyst");
+    expect(json).not.toContain("admin");
+    expect(json).not.toContain("Jane Doe");
+  });
+
+  // The gate enforces each touched collection as it is reached — any-of within a
+  // collection, ALL-OF across them. Classifying against the union of their role
+  // lists instead reads "holds one of the roles somewhere" as satisfied, so a
+  // section the gate genuinely withheld gets called broken and its owner is
+  // offered Drop — a destructive spec edit — for an access problem.
+  describe("a pipeline touching two collections gated on different roles", () => {
+    const twoGates = {
+      demo_sales: {
+        roles: ["sales"],
+        description: "Sales",
+        fields: { total: { type: "number" }, cust: { type: "string" } },
+      },
+      demo_finance: {
+        roles: ["finance"],
+        description: "Finance",
+        fields: { _id: { type: "string" } },
+      },
+    };
+    const joinedSpec = {
+      title: "Joined",
+      sections: [
+        {
+          type: "table",
+          label: "Joined",
+          query: {
+            collection: "demo_sales",
+            pipeline: [
+              {
+                $lookup: {
+                  from: "demo_finance",
+                  localField: "cust",
+                  foreignField: "_id",
+                  as: "c",
+                },
+              },
+              { $limit: 10 },
+            ],
+          },
+          columns: [{ key: "total" }],
+        },
+      ],
+    };
+    const classify = (viewerRoles) =>
+      Object.fromEntries(
+        compileReport({
+          spec: joinedSpec,
+          results: [null],
+          catalog: twoGates,
+          roles: viewerRoles,
+          endpointId,
+          owner,
+          is_owner: true,
+          conversation_id: "conv-1",
+        }).map((b) => [b.id, b]),
+      );
+
+    test("holding only one of the two roles is withheld, not broken", () => {
+      const byId = classify(["sales"]);
+      expect(byId.s0.properties.description).toBe(
+        "You don't have access to the data in this section.",
+      );
+      // The spec is fine — there is nothing to fix and nothing to drop.
+      expect(byId.s0_fix_in_chat).toBeUndefined();
+      expect(byId.s0_drop).toBeUndefined();
+    });
+
+    test("holding both roles is broken — the gate would have passed", () => {
+      const byId = classify(["sales", "finance"]);
+      expect(byId.s0.properties.description).toMatch(/failed to load/);
+      expect(byId.s0_drop).toBeDefined();
+    });
+  });
+
+  test("owner viewing their own withheld section gets the withheld variant, not the broken one", () => {
+    const blocks = compileReport({
+      spec: gatedSpec,
+      results: [null],
+      catalog: testCatalog,
+      roles: ["viewer"],
+      endpointId,
+      owner,
+      is_owner: true,
+      conversation_id: "conv-1",
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+
+    expect(byId.s0.properties.description).toBe(
+      "You don't have access to the data in this section.",
+    );
+    // No section recovery affordances (the header's own Continue-in-chat is
+    // unrelated to the section and stays).
+    expect(byId.s0_fix_in_chat).toBeUndefined();
+    expect(byId.s0_drop).toBeUndefined();
+    expect(JSON.stringify(blocks)).not.toContain("remove-report-section");
+  });
+
+  test("a null row over an ungated collection is broken, keeping owner recoveries", () => {
+    const byId = compile(ungatedSpec, {
+      roles: ["viewer"],
+      is_owner: true,
+      conversation_id: "conv-1",
+    });
+
+    expect(byId.s0.type).toBe("Alert");
+    expect(byId.s0.properties.description).toMatch(/failed to load/);
+    expect(byId.s0_fix_in_chat).toBeDefined();
+    expect(byId.s0_drop).toBeDefined();
+  });
+
+  test("a null row over a catalog-absent collection is broken (touchedCollections throws)", () => {
+    const missingSpec = {
+      title: "Missing",
+      sections: [
+        {
+          type: "table",
+          label: "Missing",
+          query: {
+            collection: "demo_missing",
+            pipeline: [{ $project: { _id: 0 } }],
+          },
+          columns: [{ key: "region" }],
+        },
+      ],
+    };
+    const byId = compile(missingSpec, { roles: ["viewer"], is_owner: true });
+
+    expect(byId.s0.type).toBe("Alert");
+    expect(byId.s0.properties.description).toMatch(/failed to load/);
+    expect(byId.s0.properties.description).not.toContain("access to the data");
+    // Broken → owner recoveries present.
+    expect(byId.s0_drop).toBeDefined();
   });
 });

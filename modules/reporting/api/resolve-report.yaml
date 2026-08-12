@@ -47,6 +47,32 @@ routine:
     # Whole-report failure — the Dynamic block renders its fallback slot.
     :then:
       - :reject: Report not found.
+  # controlFor resolves querySections, which runs validateReportSpec over the
+  # whole spec and throws on a grammar failure BEFORE any per-section :try —
+  # uncaught there, it reaches the page as the same fallback a missing report
+  # gets, with nothing logged. A stored spec that fails grammar is a code bug,
+  # not user drift, so pre-run the identical validation (no catalog, same as
+  # querySections, so only grammar failures reach here — not per-section access)
+  # to leave a diagnostic trail; the reject still lands on the static fallback.
+  - :try:
+      - :set_state:
+          revalidate_spec:
+            _analytics.validateReportSpec:
+              spec:
+                title:
+                  _step: load_report.title
+                description:
+                  _step: load_report.description
+                sections:
+                  _step: load_report.spec.sections
+              roles:
+                _user: roles
+    :catch:
+      - :log:
+          msg: A stored report spec failed whole-spec validation on open.
+          report_id:
+            _payload: urlQuery.report_id
+      - :reject: Report spec failed whole-spec validation.
   # No catalog passed here: querySections only extracts the query sections
   # (inert), and the per-section AnalyticsPipeline below is the real gate — so
   # one inaccessible section never throws here and takes down the whole report.
@@ -102,6 +128,22 @@ routine:
         _eq:
           - _step: load_report.owner.user_id
           - _user: id
+      # Provenance for the page: who made it, last edited (the document's
+      # `updated`), and when these numbers were computed (this resolve, not the
+      # document). conversation_id may be absent — passed as-is so a missing
+      # chat link stays missing rather than becoming an empty one.
+      created:
+        _step: load_report.created
+      updated:
+        _step: load_report.updated
+      owner:
+        _step: load_report.owner
+      visibility:
+        _step: load_report.visibility
+      conversation_id:
+        _step: load_report.conversation_id
+      resolvedAt:
+        _date: now
       blocks:
         _analytics.compileReport:
           spec:
@@ -121,3 +163,33 @@ routine:
             _user: roles
           endpointId:
             _module.endpointId: query-data
+          # The compiler renders a provenance line under the title and gates
+          # owner-only chat affordances on these. is_owner repeats the return's
+          # expression because sibling return keys can't reference each other;
+          # conversation_id is passed as-is so its absence reads as no chat.
+          created:
+            _step: load_report.created
+          updated:
+            _step: load_report.updated
+          owner:
+            _step: load_report.owner
+          visibility:
+            _step: load_report.visibility
+          conversation_id:
+            _step: load_report.conversation_id
+          is_owner:
+            _eq:
+              - _step: load_report.owner.user_id
+              - _user: id
+          # Drives the header's ★ fill and the payload its click sends (the
+          # endpoint takes the desired state, not a toggle). Derived per viewer
+          # and never returned as the raw array — a caller must not learn who
+          # else favourited a report. Absent reads as empty.
+          is_favourite:
+            _array.includes:
+              - _if_none:
+                  - _step: load_report.favourite_of
+                  - []
+              - _user: id
+          resolvedAt:
+            _date: now

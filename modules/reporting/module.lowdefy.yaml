@@ -33,7 +33,7 @@ exports:
     - id: set-report-visibility
       description: Publish a saved report to the app, or retract it
     - id: set-report-title
-      description: Rename a saved report (owner only)
+      description: Edit a saved report's title, and optionally its description (owner only)
     - id: restore-report
       description: Bring a soft-deleted report back, as private (owner only)
     - id: set-report-favourite

@@ -249,74 +249,14 @@ blocks:
                 method: setOpen
                 args:
                   - open: true
+          # Shared with the page's mount, which opens the conversation a
+          # Continue-in-chat link names in the URL.
           onSelect:
-            # Switch first (atomic, infallible) and clear the transcript and
-            # panel as the loading state, so a failed fetch can never strand
-            # the user on the previous conversation. Then repopulate — messages
-            # included — from the FRESH get-conversation-results read, never
-            # from the sidebar list snapshot: that snapshot refreshes when the
-            # stream ends client-side, racing the server's onFinish save, so it
-            # can be a turn behind — and continuing a chat restored from it
-            # would overwrite the saved doc with the stale transcript.
-            - id: select_conversation
-              type: SetState
-              params:
-                conversationId:
+            _ref:
+              path: pages/chat/actions/load_conversation.yaml
+              vars:
+                conversation_key:
                   _event: key
-                charts: []
-                tables: []
-                downloads: []
-                messages: []
-                # [] not null, so the section's length test and its List never
-                # see a null between the blank and the fresh read resolving.
-                saved_reports: []
-            - id: load_results
-              type: CallAPI
-              params:
-                endpointId:
-                  _module.endpointId: get-conversation-results
-                payload:
-                  conversationId:
-                    _event: key
-            # Drop a response that is no longer for the selected conversation.
-            # Selecting A then B quickly runs two of these chains concurrently;
-            # if A's response lands after B's SetState, state becomes B's id
-            # with A's transcript. AgentChat syncs external messages, so the
-            # next send would persist A's transcript under B.
-            - id: set_results
-              type: SetState
-              skip:
-                _ne:
-                  - _event: key
-                  - _state: conversationId
-              params:
-                messages:
-                  _api:
-                    _build.string.concat:
-                      - _module.endpointId: get-conversation-results
-                      - ".response.messages"
-                charts:
-                  _api:
-                    _build.string.concat:
-                      - _module.endpointId: get-conversation-results
-                      - ".response.charts"
-                tables:
-                  _api:
-                    _build.string.concat:
-                      - _module.endpointId: get-conversation-results
-                      - ".response.tables"
-                downloads:
-                  _api:
-                    _build.string.concat:
-                      - _module.endpointId: get-conversation-results
-                      - ".response.downloads"
-                # Folded into the same read as the four above, so it inherits this
-                # step's stale-response skip and needs nothing new in onSelect.
-                saved_reports:
-                  _api:
-                    _build.string.concat:
-                      - _module.endpointId: get-conversation-results
-                      - ".response.saved_reports"
       # The rail's kebab menu opens these. Each leaves only an empty placeholder
       # div in the column — antd portals the dialog itself to the document body
       # — so they add no chrome to the rail.

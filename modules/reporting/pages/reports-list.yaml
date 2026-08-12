@@ -138,19 +138,24 @@ _ref:
             color: "#bfbfbf"
           title: No reports yet
           subTitle: Turn an answer into a saved report from the chat.
-        blocks:
-          - id: empty_create_cta
-            type: Button
-            properties:
-              title: Go to chat
-              type: primary
-            events:
-              onClick:
-                - id: to_chat
-                  type: Link
-                  params:
-                    pageId:
-                      _module.pageId: chat
+        # extra, not the default content slot: content renders in Ant's grey
+        # `.ant-result-content` band, which reads as a separate full-width panel
+        # under the centred text. extra sits centred beneath the subTitle.
+        slots:
+          extra:
+            blocks:
+              - id: empty_create_cta
+                type: Button
+                properties:
+                  title: Go to chat
+                  type: primary
+                events:
+                  onClick:
+                    - id: to_chat
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: chat
 
       # Shared, nothing published — a fact about the app, not a prompt to act. Shared
       # includes the viewer's own published reports, so this means the app's shared
@@ -217,6 +222,27 @@ _ref:
 
       # Row actions. Kept out of the grid so their state survives the grid's renders;
       # the ⋯ cell seeds selected_report and opens the menu, which fans out to these.
-      - _ref: pages/reports-list/components/row_menu_modal.yaml
-      - _ref: pages/reports-list/components/rename_modal.yaml
-      - _ref: pages/reports-list/components/delete_confirm_modal.yaml
+      # Shared with the report page's own ⋯ — the modals take the after-action as a
+      # var because that is the only thing the two callers disagree about: here a
+      # write refetches the scope in place, there it re-navigates.
+      - _ref:
+          path: components/report_menu_modal.yaml
+          vars:
+            show_open: true
+            after_write:
+              _ref: pages/reports-list/actions/load_scope.yaml
+            # The copy lands in Mine, so refetching the scope is enough to
+            # surface it — no navigation needed, unlike the report page.
+            after_duplicate:
+              _ref: pages/reports-list/actions/load_scope.yaml
+      - _ref:
+          path: components/report_rename_modal.yaml
+          vars:
+            after_write:
+              _ref: pages/reports-list/actions/load_scope.yaml
+      - _ref:
+          path: components/report_delete_modal.yaml
+          vars:
+            # The list stays put after a delete; the row simply leaves the scope.
+            after_delete:
+              _ref: pages/reports-list/actions/load_scope.yaml
