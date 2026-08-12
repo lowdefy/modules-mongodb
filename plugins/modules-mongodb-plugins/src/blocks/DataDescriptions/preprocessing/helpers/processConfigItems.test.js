@@ -21,6 +21,29 @@ function sectionsOf(items) {
   return items.filter((i) => i.type === "section");
 }
 
+test("array fields are full-width so a tag cloud never squeezes a scalar sibling", () => {
+  const data = {
+    form: { role: "Onboarding API test - Authoriser", functions: ["a", "b"] },
+  };
+  const form = [
+    { key: "form.role", component: "text_input", title: "Role name" },
+    {
+      key: "form.functions",
+      component: "checkbox_selector",
+      title: "Functions",
+    },
+  ];
+
+  const [role, functions] = processConfigItems(data, form, 0).filter(
+    (i) => i.type === "field",
+  );
+
+  expect(role.isArray).toBe(false);
+  expect(role.fullWidth).toBe(false);
+  expect(functions.isArray).toBe(true);
+  expect(functions.fullWidth).toBe(true);
+});
+
 test("one-level list: fields resolve per index and get Item N sections", () => {
   const data = {
     form: { devices: [{ name: "Router" }, { name: "Switch" }] },

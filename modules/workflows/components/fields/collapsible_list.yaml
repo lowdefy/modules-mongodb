@@ -1,0 +1,162 @@
+# A collapsible list of sub-forms. Each row collapses to a one-line summary
+# (the `itemTitle` Nunjucks template) with a chevron to expand it. Backed by the
+# CollapsibleList block (@lowdefy/modules-mongodb-plugins): collapse state lives
+# in React, so nothing extra is written to form state — the row array persists
+# through the normal draft/submit round-trip like any other action form. No
+# per-row `data` mirror, no `editing` flag, no per-row Save button.
+#
+# Validate-on-collapse: the block emits `onCollapse` with the row index; the
+# handler validates just that row and, if it fails, re-opens the panel so the
+# BA sees the inline errors. A valid row stays collapsed. Submit's standard
+# `Validate ^form\.` then only ever meets valid collapsed rows.
+#
+# `itemTitle` titles both the collapsed edit summary here and the read-only
+# item card on the view/review/overview surfaces (makeWorkflowsConfig carries it
+# through form_meta; DataDescriptions renders it).
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  itemTitle:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    default: 0
+  minItems:
+    type: number
+    default: 0
+  hideAddButton:
+    type: boolean
+    default: false
+  hideRemoveButton:
+    type: boolean
+    default: false
+  addButtonTitle:
+    type: string
+    default: Add
+  accordion:
+    type: boolean
+    default: false
+  blocks:
+    type: array
+    default: []
+
+config:
+  id:
+    _string.concat:
+      - _var: key
+      - _label
+  type: Label
+  visible:
+    _var:
+      key: visible
+      default: true
+  layout:
+    span:
+      _subtract:
+        - 24
+        - _var:
+            key: label_span
+            default: 0
+    push:
+      _var:
+        key: label_span
+        default: 0
+  validate:
+    _build.if:
+      test:
+        _build.eq:
+          - _var:
+              key: required
+              default: false
+          - true
+      then:
+        - message: This field is required.
+          status: error
+          pass:
+            _gt:
+              - _array.length:
+                  _state:
+                    _var: key
+              - 0
+      else: []
+  properties:
+    disabled: true
+  blocks:
+    - id:
+        _var: key
+      type: CollapsibleList
+      visible:
+        _var:
+          key: visible
+          default: true
+      properties:
+        title:
+          _var: title
+        itemTitle:
+          _var: itemTitle
+        minItems:
+          _var:
+            key: minItems
+            default: 0
+        hideAddButton:
+          _var:
+            key: hideAddButton
+            default: false
+        hideRemoveButton:
+          _var:
+            key: hideRemoveButton
+            default: false
+        accordion:
+          _var:
+            key: accordion
+            default: false
+        # Defer the close: the block keeps the panel open and fires onCollapse so
+        # we validate the row FIRST, closing it only when it passes (no
+        # collapse-then-reopen flicker).
+        deferCollapse: true
+        addItemButton:
+          title:
+            _var:
+              key: addButtonTitle
+              default: Add
+      blocks:
+        _var:
+          key: blocks
+          default: []
+      events:
+        # Validate-before-collapse. onCollapse fires while the row is still open;
+        # Validate is scoped to that row by its index (from the event payload). If
+        # it passes, collapseItem closes the row; if it throws, the empty catch
+        # swallows the error and the row stays open with its inline errors shown.
+        onCollapse:
+          try:
+            - id: validate_row
+              type: Validate
+              params:
+                regex:
+                  - _string.concat:
+                      - "^"
+                      - _var: key
+                      - '\.'
+                      - _event: index
+                      - '\.'
+            - id: collapse_row
+              type: CallMethod
+              params:
+                blockId:
+                  _var: key
+                method: collapseItem
+                args:
+                  - _event: index
+          catch: []

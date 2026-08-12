@@ -59,6 +59,7 @@ const WORKFLOW_FIELDS = [
 
 const STRUCTURAL_COMPONENTS = [
   "controlled_list",
+  "collapsible_list",
   "section",
   "box",
   "label",

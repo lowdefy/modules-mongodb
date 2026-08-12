@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Heading rendered above the list. HTML is allowed (DOMPurify-sanitised)."
+    },
+    "itemTitle": {
+      "type": "string",
+      "description": "Nunjucks template rendered per row as the collapsed panel header. The row's fields are the template context, plus `_index` (0-based). HTML is allowed. Falls back to `Item N` when absent or when the render is empty."
+    },
+    "size": {
+      "type": "string",
+      "enum": ["small", "middle", "large"],
+      "description": "Collapse and add-button size."
+    },
+    "accordion": {
+      "type": "boolean",
+      "default": false,
+      "description": "Only one panel may be open at a time."
+    },
+    "defaultExpandAll": {
+      "type": "boolean",
+      "default": false,
+      "description": "Expand every row on first render. Otherwise rows start collapsed (newly added rows open automatically)."
+    },
+    "deferCollapse": {
+      "type": "boolean",
+      "default": false,
+      "description": "Don't close a row on the user's click — instead fire `onCollapse` and leave it open, so config can validate first and close it via the `collapseItem` method only when valid. Enables validate-before-collapse without a collapse-then-reopen flicker."
+    },
+    "hideAddButton": {
+      "type": "boolean",
+      "default": false,
+      "description": "Hide the built-in add button."
+    },
+    "addItemButton": {
+      "type": "object",
+      "description": "Ant Design Button props for the add button (e.g. `title`, `icon`, `type`)."
+    },
+    "hideRemoveButton": {
+      "type": "boolean",
+      "default": false,
+      "description": "Hide the per-row remove icon."
+    },
+    "removeItemIcon": {
+      "type": "object",
+      "description": "Icon props for the per-row remove icon (defaults to AiOutlineMinusCircle)."
+    },
+    "minItems": {
+      "type": "number",
+      "default": 0,
+      "description": "Minimum number of rows; the list auto-seeds empty rows up to this count and hides remove below it."
+    }
+  }
+}

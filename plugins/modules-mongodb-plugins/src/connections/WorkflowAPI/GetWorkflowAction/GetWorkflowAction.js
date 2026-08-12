@@ -45,6 +45,7 @@ import {
 // Structural component types that may contain nested form fields.
 const STRUCTURAL_COMPONENTS = new Set([
   "controlled_list",
+  "collapsible_list",
   "section",
   "box",
   "label",

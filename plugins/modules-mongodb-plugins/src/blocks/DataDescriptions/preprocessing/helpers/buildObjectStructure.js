@@ -25,7 +25,10 @@ function buildObjectStructure(obj, level) {
         label: formatFieldName(key),
         fieldType: typeInfo.type,
         isArray: typeInfo.isArray,
-        fullWidth: typeInfo.config?.fullWidth ?? false,
+        // Arrays render as wrapping tag clouds / stacked lists — inherently
+        // wide content that must take its own row, else it steals width from a
+        // scalar sibling in a multi-column layout and collapses that cell.
+        fullWidth: (typeInfo.config?.fullWidth ?? false) || typeInfo.isArray,
       });
     }
   });

@@ -1807,6 +1807,47 @@ test("makeWorkflowsConfig: form_meta carries itemTitle on controlled_list", () =
   expect(out.actions[0].form_meta.form[0].itemTitle).toBe("<b>{{ name }}</b>");
 });
 
+test("makeWorkflowsConfig: collapsible_list is structural — recurses form and carries itemTitle", () => {
+  const withCollapsible = {
+    type: "install",
+    kind: "form",
+    form: [
+      {
+        component: "collapsible_list",
+        key: "form.contacts",
+        title: "Contacts",
+        itemTitle: "{{ name }}",
+        form: [
+          {
+            component: "text_input",
+            key: "form.contacts.$.name",
+            title: "Name",
+          },
+        ],
+      },
+    ],
+  };
+  const wf = workflowWithFormActions(withCollapsible);
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [wf, deviceInstallationStub],
+  });
+  expect(out.actions[0].form_meta.form[0]).toEqual({
+    component: "collapsible_list",
+    key: "form.contacts",
+    required: false,
+    title: "Contacts",
+    itemTitle: "{{ name }}",
+    form: [
+      {
+        component: "text_input",
+        key: "form.contacts.$.name",
+        required: false,
+        title: "Name",
+      },
+    ],
+  });
+});
+
 test("makeWorkflowsConfig: check-kind action has no form_meta", () => {
   const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
   expect("form_meta" in out.actions[0]).toBe(false);

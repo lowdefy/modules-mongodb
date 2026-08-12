@@ -649,7 +649,9 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
 | `itemTitle`        | string  | —                  |
 | `blocks`           | array   | `[]`               |
 
-`itemTitle` is a Nunjucks template rendered against each list item on the read-only view, review, and overview surfaces (DataDescriptions) to title the item's collapsible card. The item's fields are the template context, plus `_index` — the item's 0-based position — so a template can reference multiple fields and emit HTML (e.g. `<b>{{ name }}</b> — {{ locations | length }} sites`). It falls back to `Item N` when absent or when the render is empty, and has no effect while editing. HTML is also allowed in the list's own `title` (e.g. `title: "<b>Devices</b>"`).
+`itemTitle` is a Nunjucks template rendered against each list item on the read-only view, review, and overview surfaces (DataDescriptions) to title the item's collapsible card. The item's fields are the template context, plus `_index` — the item's 0-based position — so a template can reference multiple fields and emit HTML (e.g. `<b>{{ name }}</b> — {{ locations | length }} sites`). It falls back to `Item N` when absent or when the render is empty, and has no effect while editing.
+
+The list's own `title` renders HTML on both surfaces (e.g. `title: "<b>Devices</b>"`): while editing it renders through a DOMPurify-sanitised `Html` block above the list (the core `ControlledList` escapes `properties.title`, so the component routes the title around it), and on the read-only surfaces through the `DataDescriptions` title slot. Plain strings work unchanged, and an operator value (e.g. a `_nunjucks` template) resolves at render since it is an ordinary block property.
 
 ```yaml
 - component: controlled_list
@@ -666,6 +668,47 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
       key: form.devices.$.warranty
       title: Warranty
       required: true
+```
+
+#### `collapsible_list`
+
+Same authoring shape as `controlled_list`, but each row **collapses to a one-line summary** (the `itemTitle` template) with a chevron to expand it. Use it when rows carry several fields and an all-rows-expanded list would be unwieldy. Backed by the `CollapsibleList` block (`@lowdefy/modules-mongodb-plugins`).
+
+It keeps **no per-row `data` mirror and no `editing` flag**: collapse state lives in the block (React), so nothing extra is written to form state and the row array persists through the normal draft/submit round-trip like any other form field. Rows stay mounted while collapsed, so they are still validated and never pruned. There is no per-row Save button. By default, **collapsing a row validates just that row first** and keeps it open with inline errors if a required field is missing (it only folds away once valid); anything still open at submit is caught by the page's submit-time validation.
+
+| Var                | Type    | Required / Default |
+| ------------------ | ------- | ------------------ |
+| `key`              | string  | required           |
+| `title`            | string  | —                  |
+| `itemTitle`        | string  | —                  |
+| `visible`          | boolean | `true`             |
+| `required`         | boolean | `false`            |
+| `label_span`       | number  | `0`                |
+| `minItems`         | number  | `0`                |
+| `hideAddButton`    | boolean | `false`            |
+| `hideRemoveButton` | boolean | `false`            |
+| `addButtonTitle`   | string  | `Add`              |
+| `accordion`        | boolean | `false`            |
+| `blocks`           | array   | `[]`               |
+
+`itemTitle` drives **both** the collapsed summary while editing and the item card header on the read-only view/review/overview surfaces (the same template, both places). It is a Nunjucks template whose context is the row's own fields plus `_index` (0-based), may emit HTML, and falls back to `Item N` when empty. The list's own `title` renders HTML the same way as `controlled_list`. Set `accordion: true` to keep only one row open at a time.
+
+The block owns its Add button so a newly added row opens **expanded**, ready to fill; existing rows load collapsed. Collapse is entirely block state — nothing extra is written to the persisted array.
+
+```yaml
+- component: collapsible_list
+  key: form.contacts
+  title: "<b>Emergency contacts</b>"
+  itemTitle: "<b>{{ name }}</b>{% if relationship %} — {{ relationship }}{% endif %}"
+  addButtonTitle: Add contact
+  blocks:
+    - component: text_input
+      key: form.contacts.$.name
+      title: Name
+      required: true
+    - component: text_input
+      key: form.contacts.$.relationship
+      title: Relationship
 ```
 
 ### Actions
