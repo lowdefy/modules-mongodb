@@ -1,15 +1,15 @@
-# Invitations base stages (design Decision 2/7) — shared by the Invitations list
+# Invitations base stages (design Decision 2/7): shared by the Invitations list
 # read and the Excel export. Root is `user-invitations` for the organization this
 # instance administers, welded in at build time from the `org_slug` var.
 # Reads the collection directly (bypassing the org-plugin helpers) so it can do
 # its own status/expiry derivation:
-#   $match status: "pending" — excludes accepted / rejected / canceled rows,
+#   $match status: "pending", excludes accepted / rejected / canceled rows,
 #     which appear in neither the Invitations tab nor the export.
-#   status — there is NO "expired" status in BetterAuth; it is derived from a
+#   status: there is NO "expired" status in BetterAuth; it is derived from a
 #     pending row's expires_at: future → Invited, past → Expired (Decision 2).
 #   app roles ride only `app_roles` (unset in close_row) and surface resolved as
 #     `roles` where the export needs them.
-#   inviter_name / inviter_id — the "Invited by" column (join `users`).
+#   inviter_name / inviter_id: the "Invited by" column (join `users`).
 - $match:
     organization_id:
       _module.var: org_slug
@@ -26,7 +26,7 @@
     inviter_name: "$inviter.name"
     inviter_id: "$inviter_id"
     expires_at: "$expires_at"
-    # Stored invite-time member attributes (applied to the member at accept) —
+    # Stored invite-time member attributes (applied to the member at accept),
     # carried through so Resend can preserve them rather than blank them.
     member_attributes:
       $ifNull:

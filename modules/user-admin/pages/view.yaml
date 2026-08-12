@@ -1,4 +1,4 @@
-# User detail page (design Decision 3) — the operator console for one person's
+# User detail page (design Decision 3): the operator console for one person's
 # access lifecycle in this app. Two-column console: main (Profile, Attributes,
 # Global attributes) + sidebar (Security, Apps, Activity). Each editable tile
 # opens its own modal (7 total). Native org-scoped reads hydrate the tiles;
@@ -87,7 +87,7 @@ _ref:
                 - - _ref: components/view/tile_profile.yaml
                   - _ref: components/view/tile_attributes.yaml
                   - _ref: components/view/tile_global_attrs.yaml
-                # Consumer extension surface (Decision 8) — extra main-column blocks.
+                # Consumer extension surface (Decision 8): extra main-column blocks.
                 - _module.var: components.main_slots
           - id: detail_side_col
             type: Box
@@ -99,7 +99,7 @@ _ref:
             blocks:
               _build.array.concat:
                 - - _ref: components/view/tile_security.yaml
-                  # Apps tile hidden at other-membership count 0 (Decision 6) —
+                  # Apps tile hidden at other-membership count 0 (Decision 6):
                   # gated here since the shared card has no visible var.
                   - id: apps_tile_wrap
                     type: Box
@@ -115,7 +115,7 @@ _ref:
                     blocks:
                       - _ref: components/view/tile_apps.yaml
                   - _ref: components/view/tile_activity.yaml
-                # Consumer extension surface (Decision 8) — extra sidebar blocks.
+                # Consumer extension surface (Decision 8): extra sidebar blocks.
                 - _module.var: components.sidebar_slots
       # ── Interaction-state layers: 7 tile / security modals (top-level siblings
       #    of the grid, opened via CallMethod toggleOpen from their triggers) ──

@@ -1,4 +1,4 @@
-# revoke-sessions — RevokeUserSessions ("sign out everywhere", design Decision 5).
+# revoke-sessions: RevokeUserSessions ("sign out everywhere", design Decision 5).
 # Does not suspend or remove; the person can sign back in immediately. Role-gated
 # app-side; the step declares the permission it needs and the engine floors it
 # against the caller's member row in the organization the step names. Audit event is

@@ -1,4 +1,4 @@
-# Members table (content phase — AgGridBalham with mock data).
+# Members table (content phase, AgGridBalham with mock data).
 # Columns: Name (avatar) · Email · Roles (tags; orphaned roles flagged) ·
 # Status (Active/Suspended tag) · [consumer table_columns slot] · Created ·
 # Updated · Signed up (design Decision 2). Row click → user detail (view).
@@ -38,7 +38,7 @@ properties:
           field: roles
           minWidth: 200
           # `roles` arrives pre-resolved as { id, label, description, orphan }
-          # items — the read reconciles the member's held ids against the app's
+          # items. The read reconciles the member's held ids against the app's
           # role catalog, so a role held in data but absent from the catalog is
           # flagged "no longer configured" here rather than silently dropped.
           cellRenderer:

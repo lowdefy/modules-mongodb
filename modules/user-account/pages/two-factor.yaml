@@ -1,7 +1,7 @@
 # Two-factor sign-in challenge. Registered as authPages.twoFactor: the engine
 # deletes the sign-in session and sets a signed two_factor cookie, then routes
 # here; Login/PhoneNumberVerify navigate here carrying ?callbackUrl=. There is no
-# session — protection lives in the cookie, which BetterAuth validates when
+# session. Protection lives in the cookie, which BetterAuth validates when
 # TwoFactorVerify fires. Two renders via the `tf_view` state key (auth | backup):
 # the authenticator-code state at rest and the backup-code alternate; the
 # auth<->backup toggle is a pure UI affordance (SetState). Verify dispatches
@@ -45,7 +45,7 @@ _ref:
           marginTop: -8
           fontSize: 13
           color: "var(--ant-color-text-secondary)"
-      # 6-digit TOTP code — data path `code`. No dedicated OTP block exists, so a
+      # 6-digit TOTP code, data path `code`. No dedicated OTP block exists, so a
       # large centered TextInput carries the code.
       - id: code
         type: TextInput
@@ -133,7 +133,7 @@ _ref:
                 params:
                   status: error
                   content: That code is incorrect or has expired. Try again.
-      # "Lost your device? Use a backup code" — UI toggle to the backup state.
+      # "Lost your device? Use a backup code", UI toggle to the backup state.
       - id: tf_use_backup_row
         type: Box
         visible:
@@ -191,7 +191,7 @@ _ref:
           marginTop: -8
           fontSize: 13
           color: "var(--ant-color-text-secondary)"
-      # Backup code — data path `backup_code`.
+      # Backup code, data path `backup_code`.
       - id: backup_code
         type: TextInput
         visible:
@@ -209,7 +209,7 @@ _ref:
         style:
           .element:
             fontFamily: var(--mono)
-      # Verify a backup code — same TwoFactorVerify action (dispatches on the
+      # Verify a backup code, same TwoFactorVerify action (dispatches on the
       # backupCode param), same success navigation.
       - id: tf_backup_verify
         type: Button
@@ -261,7 +261,7 @@ _ref:
                 params:
                   status: error
                   content: That backup code is invalid or has already been used. Try another.
-      # Back to the authenticator state — UI toggle.
+      # Back to the authenticator state, UI toggle.
       - id: tf_back_to_auth_row
         type: Box
         visible:

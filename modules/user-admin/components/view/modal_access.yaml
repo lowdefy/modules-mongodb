@@ -1,4 +1,4 @@
-# Edit attributes modal — the app roles and member attributes this app authorizes
+# Edit attributes modal. The app roles and member attributes this app authorizes
 # on (UpdateMemberRoles + UpdateMemberAttributes), plus, behind the `org_authority`
 # var, the member's organization-authority tier.
 #
@@ -37,8 +37,8 @@ events:
         member_attributes:
           _request: get_user_detail.0.member_attributes
         # Seeded on every open, so reopening the modal shows the stored tier
-        # rather than an abandoned edit. Seeded whether or not the control renders
-        # — one unread state key costs less than a conditional SetState.
+        # rather than an abandoned edit. Seeded whether or not the control renders.
+        # One unread state key costs less than a conditional SetState.
         org_role:
           _request: get_user_detail.0.org_role
   onOk:
@@ -152,7 +152,7 @@ blocks:
                           - __args: 0
                           - " (no longer configured)</div></div>"
     - _module.var: fields.member_attributes
-    # Organization authority — behind the `org_authority` var. Its own selector and
+    # Organization authority. Behind the `org_authority` var. Its own selector and
     # its own button: the tier is a different authority from the app roles above and
     # a different write, so it is not part of "Save attributes".
     - _build.if:
@@ -169,7 +169,7 @@ blocks:
             properties:
               label:
                 title: Organization authority
-                extra: Who may administer this organization — separate from the app roles above, and not implied by them.
+                extra: Who may administer this organization. Separate from the app roles above, and not implied by them.
               # `member` is the no-authority value, not an empty one: the write
               # refuses an empty role, so revoking authority writes `member`.
               # Labelled in the app's language rather than BetterAuth's, where
@@ -196,8 +196,8 @@ blocks:
                       params:
                         regex:
                           - "^org_role$"
-                    # No `error` message: the write's refusals — demoting the
-                    # organization's sole owner, or demoting its creator — are the
+                    # No `error` message: the write's refusals (demoting the
+                    # organization's sole owner, or demoting its creator) are the
                     # reason it runs through the organization plugin at all, and an
                     # admin needs to read them. A static error string here would
                     # replace them with "something went wrong".

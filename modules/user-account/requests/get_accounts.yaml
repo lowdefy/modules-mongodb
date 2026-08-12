@@ -1,16 +1,16 @@
-# Linked accounts + credential-presence read (design Decision 5) — ONE query
+# Linked accounts + credential-presence read (design Decision 5): ONE query
 # feeding BOTH the read-only Linked-accounts tile AND the Security tile's
 # credential-presence gate (task 18). Native read over `user-accounts` filtered to
 # the caller (`_user.id`, plain string). A `$facet` splits the same match into:
-#   accounts        — every linked row (provider_id + account_id), incl. the
+#   accounts        : every linked row (provider_id + account_id), incl. the
 #                     built-in `credential` (email/password) row, which the tile
 #                     renders as "Email & password" (unlike user-admin, which
-#                     hides it — self-service shows the caller all their methods)
-#   has_credential  — whether a `provider_id: "credential"` row exists; the per-user
+#                     hides it: self-service shows the caller all their methods)
+#   has_credential  : whether a `provider_id: "credential"` row exists; the per-user
 #                     gate for the password-dependent controls (change password,
 #                     2FA), since an OAuth/magic-link-only user has no credential
 #                     and `changePassword` / `twoFactor.*` would 400
-#   password_updated— the credential row's last-write date (Security tile subtitle)
+#   password_updated: the credential row's last-write date (Security tile subtitle)
 # Returns a single-element array; the page binds get_accounts.0.*.
 id: get_accounts
 type: MongoDBAggregation

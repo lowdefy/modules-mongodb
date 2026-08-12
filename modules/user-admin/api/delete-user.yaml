@@ -1,9 +1,9 @@
-# delete-user — DeleteUser (design Decision 4). Hard-deletes the login identity
+# delete-user: DeleteUser (design Decision 4). Hard-deletes the login identity
 # (user row + its member/invitation/session/account rows); the contact ALWAYS
 # survives (contact soft-delete stays the contacts-side convention).
 #
 # GUARDED: offered only when the user holds NO OTHER memberships, and the routine
-# RE-CHECKS server-side before deleting — app A's admin must not destroy an
+# RE-CHECKS server-side before deleting. App A's admin must not destroy an
 # identity app B depends on. The check counts member rows in any organization
 # OTHER than the one this instance administers (`org_slug`).
 #

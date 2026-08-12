@@ -1,5 +1,5 @@
-# Active sessions tile (design Decision 5) — the caller's own signed-in devices,
-# from a native read over user-sessions (token projected out — it's a bearer
+# Active sessions tile (design Decision 5): the caller's own signed-in devices,
+# from a native read over user-sessions (token projected out: it's a bearer
 # credential). One action: "Sign out others" (RevokeOtherSessions). Per-session
 # revoke is deferred (token-exposure, Decision 5), so rows are display-only, and
 # there is no "current device" marker (no non-secret current-session id is
@@ -51,4 +51,4 @@ _ref:
           - id: sessions_hint
             type: Html
             properties:
-              html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Devices currently signed in to your account. “Sign out others” ends every session except this one.</div>'
+              html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Devices currently signed in to your account. "Sign out others" ends every session except this one.</div>'

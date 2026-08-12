@@ -1,16 +1,16 @@
-# invite — submit the invite form. Reconcile any genuinely-stale invitation →
+# invite: submit the invite form. Reconcile any genuinely-stale invitation →
 # create-or-link the contact → InviteMember with profile.contactId + roles +
 # member attributes → audit. The invitation email itself is sent by BetterAuth
 # via `auth.email`; this module ships no email endpoint/hook/binding (Decision 7).
 #
 # Stale-expired reconciliation (verified against BetterAuth 1.6.23):
 # createInvitation's re-invite guard (findPendingInvitation) EXCLUDES expired rows
-# (expires_at > now), and `resend: true` only refreshes a NON-expired row — so a
+# (expires_at > now), and `resend: true` only refreshes a NON-expired row, so a
 # fresh InviteMember over an expired-but-pending row would leave a DUPLICATE
 # pending row. We therefore natively find pending rows with expires_at < now for
 # the (lowercased email, org) and CancelInvitation each (cancel has no
-# expiry/status guard) before inviting. Non-expired pending never reaches submit —
-# check-invite-email routes it to Resend — so this only cancels genuinely-stale
+# expiry/status guard) before inviting. Non-expired pending never reaches submit,
+# check-invite-email routes it to Resend, so this only cancels genuinely-stale
 # rows. Cancel-then-invite is idempotent: with nothing stale the loop is a no-op.
 #
 # Partial-failure: the create-or-link → InviteMember chain is safe because
@@ -58,7 +58,7 @@ routine:
   #    Every auth step here names its organization explicitly (the write-profile
   #    splice through its `organization_id` var): an absent one falls back to the
   #    APP's pinned organization, so an instance administering another organization
-  #    would be authorized against — and write into — the wrong one.
+  #    would be authorized against, and write into, the wrong one.
   - :for: stale
     :in:
       _step: find_stale
@@ -75,7 +75,7 @@ routine:
   #    The canonical fragment keys on `user.email` and resolves the row into the
   #    `read_contact` step, so the contactId is `_step: read_contact._id`. We pass
   #    NO `binding_point`: the fragment's write-back branches (inline `:return` /
-  #    `UpdateUserProfile`) are for the signup hook only — here `invite_member`
+  #    `UpdateUserProfile`) are for the signup hook only. Here `invite_member`
   #    below carries `profile.contactId` itself. create-or-link mints the contact
   #    bare; the write-profile splice below persists the captured profile.
   - _ref:
@@ -89,7 +89,7 @@ routine:
 
   # 3b) Resolve the target auth user, if one exists. An invitee has no user row
   #     until they accept, but a contact matched by email may already belong to
-  #     another app — find_user._id is that user's id, or absent (no document) when
+  #     another app. find_user._id is that user's id, or absent (no document) when
   #     none matches. It gates write-profile's re-denorm.
   - id: find_user
     type: MongoDBFindOne
@@ -104,7 +104,7 @@ routine:
           _id: 1
 
   # 3c) Persist the captured profile onto the contact (shared write-profile
-  #     fragment) — the same write seam both update-profile routines use, so the
+  #     fragment). The same write seam both update-profile routines use, so the
   #     invited person's name/phone/job land now, not only at first post-accept
   #     edit. profile.name is derived (given + family). The UpdateUserProfile
   #     re-denorm is guarded on user_id, so it no-ops for a pre-accept invitee
@@ -153,7 +153,7 @@ routine:
           - _payload: member_attributes
           - {}
 
-  # 5) Audit event (FINAL step — fires only on full success).
+  # 5) Audit event (FINAL step, fires only on full success).
   - id: audit
     type: CallApi
     properties:

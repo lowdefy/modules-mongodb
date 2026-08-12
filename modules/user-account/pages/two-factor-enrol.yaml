@@ -1,6 +1,6 @@
 # Forced two-factor enrolment. The engine's `required` enforcement redirects an
 # unenrolled-but-signed-in caller here; the engine marks this page public: false
-# and exempts it from its own enrolment gate, so — unlike every other auth page —
+# and exempts it from its own enrolment gate, so, unlike every other auth page,
 # the caller arrives holding a complete valid session, missing a factor, not an
 # identity. The module contributes it under the twoFactorEnrol role and adds NO
 # auth.public entry.
@@ -8,7 +8,7 @@
 # Because that gate refuses an unenrolled caller at every Lowdefy endpoint, this
 # page makes NO Lowdefy request: it is built entirely from the BetterAuth
 # /api/auth/* client actions (TwoFactorEnable → TwoFactorVerify, PasskeyRegister)
-# — the same actions the self-service enrolment modal uses — and completion is
+# the same actions the self-service enrolment modal uses, and completion is
 # read straight off the session fact _user.two_factor_enrolled after an
 # UpdateSession, never off a re-fetched request.
 #
@@ -20,7 +20,7 @@
 # upstream runs the twoFactor plugin with allowPasswordless, so TwoFactorEnable
 # waives the password per-user for a caller with no password credential and
 # enforces it for a password caller. The page needs no signal to tell them
-# apart — a blank password is legitimate for a passwordless member and a
+# apart. A blank password is legitimate for a passwordless member and a
 # BetterAuth error for a password member, surfaced by the enable catch.
 _ref:
   module: layout
@@ -112,7 +112,7 @@ _ref:
         events:
           onClick:
             try:
-              # Password-gated enable — returns totpURI + backup codes on
+              # Password-gated enable. Returns totpURI + backup codes on
               # _actions, stashed for the QR and the done-state code list.
               # `error: false` suppresses the raw toast; the catch phrases it.
               - id: enrol_enable
@@ -138,7 +138,7 @@ _ref:
                   status: error
                   content: Couldn't start two-factor setup. Check your password and try again.
 
-      # Passkey — offered alongside TOTP as an alternative any caller may prefer,
+      # Passkey. Offered alongside TOTP as an alternative any caller may prefer,
       # not a passwordless-only fallback.
       - id: enrol_passkey_divider
         type: Html
@@ -310,7 +310,7 @@ _ref:
             - id: refresh_enrol_session
               type: UpdateSession
 
-      # ── Done (gated on _user.two_factor_enrolled — reached by either route) ──
+      # ── Done (gated on _user.two_factor_enrolled, reached by either route) ──
       - id: enrol_done_msg
         type: Html
         visible:
@@ -328,7 +328,7 @@ _ref:
         layout:
           span: 24
         properties:
-          html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Store these one-time codes somewhere safe — each works once if you lose your authenticator.</div>'
+          html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Store these one-time codes somewhere safe. Each works once if you lose your authenticator.</div>'
       - id: enrol_codes_grid
         type: Html
         visible:
@@ -389,7 +389,7 @@ _ref:
                     - _state: enrol.backup_codes
                     - "\n"
       # An attention device, not a lock: it makes a caller in dismiss-mode read
-      # one line before continuing. Not gating on a clipboard write — people
+      # one line before continuing. Not gating on a clipboard write. People
       # legitimately save these by screenshot, password manager, or on paper.
       - id: enrol.codes_saved
         type: CheckboxSwitch

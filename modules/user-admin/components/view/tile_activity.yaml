@@ -1,4 +1,4 @@
-# Activity tile (design Decision 3) — the audit event timeline for this person.
+# Activity tile (design Decision 3). The audit event timeline for this person.
 # Uses the events module's request-backed `events-timeline` component
 # (GetEventsTimeline over log-events), keyed on `user_ids` = the target's user id
 # (the urlQuery user_id). Every user-admin audit event stamps `user_ids`

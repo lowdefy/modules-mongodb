@@ -1,4 +1,4 @@
-# update-profile — the shared write-profile fragment (change-stamped `contact`
+# update-profile: the shared write-profile fragment (change-stamped `contact`
 # write + `UpdateUserProfile` re-denorm of the TARGET's user.profile bag), then
 # the audit event (design Decision 3). Role-gated app-side; the re-denorm step
 # declares the permission it needs and the engine floors it against the caller's

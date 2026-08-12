@@ -1,12 +1,12 @@
-# Edit profile modal (design Decision 5) — the caller's own profile edit. Save =
+# Edit profile modal (design Decision 5): the caller's own profile edit. Save =
 # the write-profile routine (change-stamped contact write + UpdateUserProfile
 # re-denorm) via the update-profile API, which derives the contact/user ids from
-# `_user` (self-service — no ids in the payload). On a successful save we fire
+# `_user` (self-service, no ids in the payload). On a successful save we fire
 # UpdateSession so the layout header/avatar/menus pick up the new profile without
-# a reload (Decision 6 — UpdateSession is a CLIENT action and cannot run inside
+# a reload (Decision 6: UpdateSession is a CLIENT action and cannot run inside
 # the server routine, so it fires here in onOk after the API returns), then
 # re-fetch the tiles. Fields bind state.profile.*; email is NOT edited here
-# (verification flow, a v1 non-goal — Decision 6). A validation failure in onOk
+# (verification flow, a v1 non-goal, Decision 6). A validation failure in onOk
 # throws and keeps the modal open.
 id: modal_profile
 type: Modal

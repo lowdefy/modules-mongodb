@@ -1,7 +1,7 @@
-# Onboarding page — task 17. Chrome-less first-login profile completion
-# (Decision 5 — the old `new` page). Protected; renders on the auth-page shell.
+# Onboarding page, task 17. Chrome-less first-login profile completion
+# (Decision 5, the old `new` page). Protected; renders on the auth-page shell.
 # The contact already exists by first login (Decision 7) but may be bare (no
-# name), so onboarding COLLECTS the required name (given_name / family_name — the
+# name), so onboarding COLLECTS the required name (given_name / family_name, the
 # mock's First/Last name) plus the deployment-configured `fields.profile`, and
 # saves through the update-profile API. On a successful save it sets
 # profile.profile_created: true (the onboarding-complete marker the app router
@@ -17,7 +17,7 @@ _ref:
   vars:
     id: onboarding
     title: ""
-    # Wider than the default auth card — form_core lays the honorific and the
+    # Wider than the default auth card. form_core lays the honorific and the
     # two name fields out on a single 24-column row.
     max_width: 560
     events:
@@ -34,7 +34,7 @@ _ref:
           - id: onboarding_title
             type: Title
             properties:
-              content: Welcome — let's set up your profile
+              content: Welcome. Let's set up your profile.
               level: 3
           - id: onboarding_lead
             type: Html
@@ -45,7 +45,7 @@ _ref:
               fontSize: 13
               color: "var(--ant-color-text-secondary)"
           - _ref: ../shared/profile/avatar-picker.yaml
-        # ---- Core profile fields (shared form_core — same capture as the
+        # ---- Core profile fields (shared form_core, same capture as the
         # profile edit modal: honorific + first/last name on one row) ----
         - _ref:
             path: ../shared/profile/form_core.yaml

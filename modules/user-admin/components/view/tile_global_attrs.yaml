@@ -1,4 +1,4 @@
-# Global attributes tile (design Decision 3) — cross-app attributes on the user
+# Global attributes tile (design Decision 3). Cross-app attributes on the user
 # row (fields.user_attributes). Edit opens modal_global (UpdateUserAttributes,
 # wired task 13). These apply to the person across every app in the suite.
 _ref:

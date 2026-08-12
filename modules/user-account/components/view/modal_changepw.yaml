@@ -1,4 +1,4 @@
-# Change password modal (design Decision 5) — ChangePassword client action on the
+# Change password modal (design Decision 5): ChangePassword client action on the
 # caller's session (current + new + revoke-other-sessions option). The trigger is
 # shown only when _build.authConfig.emailAndPassword.enabled AND the caller holds
 # a credential row (gates on the tile). A failed change (wrong current password)

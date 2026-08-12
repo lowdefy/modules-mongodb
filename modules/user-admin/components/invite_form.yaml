@@ -1,4 +1,4 @@
-# LAYER: invitation-details form (state_form) — serves the unknown (blank) AND
+# LAYER: invitation-details form (state_form), serves the unknown (blank) AND
 # existing-contact (prefilled) outcomes (design Decision 7). Blank vs prefilled is
 # seeded state (task 17); the form structure is identical, so it is one layer.
 # Submit = create-or-link contact → InviteMember (app roles + organization tier +
@@ -24,10 +24,10 @@ blocks:
       vars:
         title: Invitation details
         # `fields.member_attributes` resolves to an ARRAY of consumer blocks, so the
-        # built-ins concat around it (flattened) — the same pattern as modal_access.
+        # built-ins concat around it (flattened), the same pattern as modal_access.
         blocks:
           _build.array.concat:
-            # Profile capture — canonical form_core (first/last, both required, +
+            # Profile capture: canonical form_core (first/last, both required, +
             # optional honorific) plus the consumer `fields.profile` blocks,
             # identical to modal_profile. Fields bind state.profile.*; prefilled
             # from the resolved contact for the existing-contact outcome
@@ -41,7 +41,7 @@ blocks:
                   show_honorific:
                     _module.var: fields.show_honorific
             - _module.var: fields.profile
-              # Roles — options/labels/descriptions from the app role catalog
+              # Roles: options/labels/descriptions from the app role catalog
               # (_build.authConfig.roles, Decision 8): the option label renders the
               # role label (primary) + description (subtitle); the selected tag stays
               # compact (tag.title). See the options block below.
@@ -91,11 +91,11 @@ blocks:
                                       - __build.args: 0.description
                                       - "</div>"
                                   else: ""
-            # Organization authority — behind the `org_authority` var, and a
+            # Organization authority: behind the `org_authority` var, and a
             # different authority from the app roles above: an app role decides
             # which UI the invitee is shown, this decides whether they may
-            # administer the organization. The email resolve seeds it to `member` —
-            # the no-authority value — so a form nobody touches invites app roles
+            # administer the organization. The email resolve seeds it to `member`,
+            # the no-authority value, so a form nobody touches invites app roles
             # and no authority; the field exists for the invitation that needs the
             # opposite: organization `admin` and no app roles at all.
             #
@@ -125,7 +125,7 @@ blocks:
                         - value: member
                           label: No organization authority
                 else: []
-            # Member attributes — group label above the consumer fields.
+            # Member attributes: group label above the consumer fields.
             - - id: member_attributes_label
                 type: Html
                 properties:
@@ -141,9 +141,9 @@ blocks:
                 properties:
                   html: >-
                     <div style="font-size:12px; color:var(--ant-color-text-tertiary);">
-                    Captured now — authorization parameters the user must hold from
+                    Captured now: authorization parameters the user must hold from
                     their first session.</div>
-              # Form actions — right-aligned, inside the card body (matches the mock).
+              # Form actions: right-aligned, inside the card body (matches the mock).
               - id: form_actions
                 type: Box
                 layout:
@@ -180,8 +180,8 @@ blocks:
                           params:
                             regex:
                               - '^profile\.'
-                              - '^roles$'
-                              - '^org_role$'
+                              - "^roles$"
+                              - "^org_role$"
                               - '^member_attributes\.'
                         # invite routine: reconcile stale-expired → create-or-link
                         # contact → persist profile (write-profile) → InviteMember

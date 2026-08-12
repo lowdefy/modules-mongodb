@@ -1,4 +1,4 @@
-# Excel export (design Decision 2) — the ONE place members and invitations are
+# Excel export (design Decision 2): the ONE place members and invitations are
 # merged into a single flat "everyone with or pending access" snapshot with a
 # uniform `status` column (Active / Suspended / Invited / Expired). Not paginated
 # and not filtered: it emits the full set. Members are rooted on `user-members`
@@ -7,13 +7,13 @@
 # heterogeneous documents, and DownloadXlsx resolves each column through
 # get(row, column.value), so a key missing on one branch is just an empty cell.
 # Invitation rows therefore carry `member_attributes` but no `profile` and no
-# `user_attributes` — there is no user and no contact yet.
+# `user_attributes`. There is no user and no contact yet.
 #
 # Roles export as their stored ids joined by ", " (a raw data dump) rather than
 # catalog labels, so the export builds without the `_build.authConfig` catalog
 # projection. Consumer `download_columns` add further columns (wired in the
 # export button's DownloadXlsx schema) and bind the same row paths as
-# `table_columns` — see docs/user-admin/reference/row-contract.md.
+# `table_columns`, see docs/user-admin/reference/row-contract.md.
 id: get_users_excel_data
 type: MongoDBAggregation
 connectionId:
@@ -71,12 +71,12 @@ properties:
             status: 1
             email: 1
       # Consumer stages, applied ONCE after the union so they see member and
-      # invitation rows alike — and, because nothing whitelists upstream of here,
+      # invitation rows alike, and, because nothing whitelists upstream of here,
       # they see the raw `user` / `contact` / `inviter` joins exactly as the same
       # slot does in get_all_members. One slot, one input shape.
       - _module.var: request_stages.get_all_users
       # Close the row like every other read, then drop `picture`: a spreadsheet
       # has no use for an ~800-character data-URI SVG and this read fetches every
-      # row at once. The Members list keeps it — the Name column's avatar binds it.
+      # row at once. The Members list keeps it. The Name column's avatar binds it.
       - - _ref: requests/stages/close_row.yaml
         - $unset: picture

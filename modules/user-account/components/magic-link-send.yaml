@@ -5,7 +5,7 @@
 # stored target email) to show that page's "check your email" state. The send
 # carries the two verify-callback targets the module owns as structured targets:
 # `callbackUrl` -> the inbound `?callbackUrl=` or app home, `newUserCallbackUrl`
-# -> the onboarding page. `errorCallbackUrl` is deliberately unset — the engine
+# -> the onboarding page. `errorCallbackUrl` is deliberately unset. The engine
 # defaults it to authPages.error (the login page), so an expired/consumed link
 # lands there with `?error=INVALID_TOKEN`.
 #

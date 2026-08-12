@@ -23,10 +23,10 @@ vars:
     description: Message shown on the verify-email page (post-signup "check your email" state).
   event_display:
     description: >-
-      Event display templates — a flat map of event type to a Nunjucks title
+      Event display templates: a flat map of event type to a Nunjucks title
       template. Templates receive `user` (the acting user). When unset, the
       module's `defaults/event_display.yaml` renders. When set, the override
-      fully replaces the defaults — no merge. The rendered block is written to
+      fully replaces the defaults, no merge. The rendered block is written to
       the event under the app slug, which is where the events module's
       `display_key` reads it back.
   avatar_colors:
@@ -151,9 +151,9 @@ auth:
     signIn: login
     # signUp targets the signup page, which `pages` above builds only when
     # emailAndPassword.enabled. This role value cannot be gated the same way:
-    # _build.authConfig is unavailable inside any auth: block — it would read the
+    # _build.authConfig is unavailable inside any auth: block. It would read the
     # auth-config projection that authPages is itself part of (a self-reference,
-    # rejected as null) — and _module.var is banned in manifest headers. Other
+    # rejected as null), and _module.var is banned in manifest headers. Other
     # build operators resolve here, but neither dynamic input can read
     # emailAndPassword.enabled, so the role stays a static page id. A passwordless
     # deployment (signup page not built) repoints this role at login via an
@@ -162,7 +162,7 @@ auth:
     forgotPassword: forgot-password
     resetPassword: reset-password
     verifyEmail: verify-email
-    # No dedicated error page — the login page serves the error role,
+    # No dedicated error page: the login page serves the error role,
     # rendering the failure as a login-page state (Decision 2).
     error: login
     # The invitation-accept page serves the acceptInvitation role (Decisions 1
@@ -170,24 +170,24 @@ auth:
     # acceptInvitation (getBetterAuthConfig builds the invitation-email accept
     # URL from it); only the build-side schema/role registration is pending,
     # landing in the next experimental release. Until then `ldf:b` errors on
-    # this unknown role — accepted deliberately. Do NOT route around it with a
+    # this unknown role, accepted deliberately. Do NOT route around it with a
     # plain auth.public entry: the accept page stays public + AcceptInvitation
     # action, but it earns public via THIS role, not auth.public.
     acceptInvitation: accept
     # The 2FA sign-in challenge. Required whenever twoFactor.enabled is true
-    # (auth-hardening) — the engine deletes the sign-in session and sets a signed
+    # (auth-hardening). The engine deletes the sign-in session and sets a signed
     # two_factor cookie, then routes here. Registered as an authPages role (not a
     # plain public page) so Login/PhoneNumberVerify can navigate to it and it is
     # auto-public without a session to authenticate against.
     twoFactor: two-factor
     # Forced-enrolment target for the engine's `required` enforcement. Unlike
-    # every other auth page this one is protected (public: false) — the caller
-    # arrives holding a valid session, only missing a factor — so it is
+    # every other auth page this one is protected (public: false). The caller
+    # arrives holding a valid session, only missing a factor, so it is
     # contributed via THIS role, never an auth.public entry, and the engine
     # exempts it from its own enrolment gate.
     twoFactorEnrol: two-factor-enrol
-  # Public pages beyond the authPages roles (role pages — including accept via
-  # acceptInvitation and the two-factor challenge — are auto-public): logout must
+  # Public pages beyond the authPages roles (role pages, including accept via
+  # acceptInvitation and the two-factor challenge, are auto-public): logout must
   # render when signed out.
   public:
     - logout
@@ -216,7 +216,7 @@ exports:
     - id: logout
       description: Sign the user out and offer a sign-in link.
     - id: view
-      description: Account workspace — profile, security, and session tiles.
+      description: Account workspace. Profile, security, and session tiles.
     - id: onboarding
       description: First-login profile completion.
     - id: two-factor-enrol
@@ -238,10 +238,10 @@ exports:
     - id: update-profile
       description: Update the caller's contact profile and re-denormalize onto their session user.
     - id: link-contact-on-signup
-      description: Merge-on-signup hook endpoint — link or create the contact for a new signup.
+      description: Merge-on-signup hook endpoint. Link or create the contact for a new signup.
   components:
     - id: profile-avatar
-      description: Avatar config for the PageHeaderMenu profile — user image with first-letter fallback.
+      description: Avatar config for the PageHeaderMenu profile. User image with first-letter fallback.
     - id: user-selector
       description: Single-select autocomplete for picking one app user.
     - id: user-multi-selector

@@ -6,7 +6,7 @@
 # points at it. We source from `user-contacts` (given_name / family_name /
 # email live there) and $lookup `users` to keep only contacts that have become
 # users. The old fused `apps.{slug}.is_user` guard is retired along with
-# per-app scoping (app_name is gone — one deployment, one org; see the
+# per-app scoping (app_name is gone: one deployment, one org; see the
 # migration guide).
 id: get_users_for_selector
 type: MongoDBAggregation

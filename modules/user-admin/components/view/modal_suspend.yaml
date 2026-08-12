@@ -1,4 +1,4 @@
-# Suspend confirm modal — BanUser (permanent, suite-wide, Decision 4). Enumerates
+# Suspend confirm modal. BanUser (permanent, suite-wide, Decision 4). Enumerates
 # the person's other memberships so the admin sees the blast radius before
 # confirming. Multi-app variant shown here; the single-app variant (no list,
 # plain "Suspend" button, collapsed copy) keys off the other-membership count and
@@ -55,12 +55,12 @@ blocks:
         _nunjucks:
           # Multi-app: enumerate the OTHER apps the ban reaches (blast radius).
           # Single-app (no other memberships): drop the list and the suite framing
-          # (Decision 6) — the ban is still on the person, the copy just stops
+          # (Decision 6). The ban is still on the person, the copy just stops
           # claiming a reach they don't have.
           template: |
             <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">
               {% if memberships.length > 0 %}
-                Suspending signs <b>{{ name }}</b> out everywhere immediately and blocks them from signing in. Because it applies to the person — not just this app — it blocks <b>every app they can reach</b>, including:
+                Suspending signs <b>{{ name }}</b> out everywhere immediately and blocks them from signing in. Because it applies to the person, not just this app, it blocks <b>every app they can reach</b>, including:
                 <div style="margin:12px 0 4px; display:flex; flex-direction:column; gap:8px;">
                 {% for m in memberships %}
                   <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--ant-color-border); border-radius:6px; background:var(--ant-color-fill-quaternary);">

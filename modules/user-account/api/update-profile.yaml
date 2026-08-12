@@ -7,7 +7,7 @@ type: Api
 #
 # NB: the `_user` refresh (UpdateSession) that makes the header/avatar/menus pick
 # up the new profile without a reload is fired by the CONSUMING PAGE after this
-# API returns (onboarding / account workspace) — UpdateSession is a client
+# API returns (onboarding / account workspace). UpdateSession is a client
 # action and cannot run inside a server routine (Decision 6).
 routine:
   _build.array.concat:
@@ -26,7 +26,7 @@ routine:
 
     # Shared write-profile fragment: contact write (change-stamped) + the
     # UpdateUserProfile re-denorm onto the caller's user row. `_ref`'d by
-    # relative path — not a manifest export (Decision 8).
+    # relative path, not a manifest export (Decision 8).
     - _ref:
         path: ../shared/contact/write-profile.yaml
         vars:
@@ -44,7 +44,7 @@ routine:
             _build.array.concat:
               # Consumer-supplied write-stage extensions.
               - _module.var: request_stages.write
-              # Onboarding-completion marker — set only when the caller requests
+              # Onboarding-completion marker: set only when the caller requests
               # it (the onboarding page passes set_profile_created: true on a
               # successful save, Decision 5). Left untouched otherwise.
               - - $set:

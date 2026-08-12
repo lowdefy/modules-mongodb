@@ -1,4 +1,4 @@
-# Edit profile modal — write-profile routine (change-stamped contact write +
+# Edit profile modal. write-profile routine (change-stamped contact write +
 # UpdateUserProfile re-denorm, Decision 3). Fields bind state.profile.*; email is
 # the login identity and is locked. onOk wiring (CallAPI update-profile) is task 13.
 id: modal_profile

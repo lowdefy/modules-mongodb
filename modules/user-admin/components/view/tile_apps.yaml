@@ -1,4 +1,4 @@
-# Apps tile (design Decision 6) — read-only cross-app badges: the other apps in
+# Apps tile (design Decision 6). Read-only cross-app badges: the other apps in
 # the suite this person belongs to. Visibility, not management. The whole tile is
 # hidden when the person has no other memberships (single-app / suite-of-one);
 # that gate keys off the other-membership count and is WIRED in task 13. This

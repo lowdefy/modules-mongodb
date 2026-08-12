@@ -1,5 +1,5 @@
-# update-access — this app's app roles + member attributes: UpdateMemberRoles +
-# UpdateMemberAttributes (both SET, not append — idempotent). Submitted role ids
+# update-access: this app's app roles + member attributes: UpdateMemberRoles +
+# UpdateMemberAttributes (both SET, not append, idempotent). Submitted role ids
 # are NOT validated against the app role catalog: an unrecognised id grants
 # nothing, so an orphan held in data rides through untouched and only an admin
 # removing it takes it away. Rejecting one would fail an admin's whole save over
@@ -11,7 +11,7 @@
 #
 # `organizationId` is named explicitly on both steps: an absent one falls back to
 # the APP's pinned organization, so an instance administering another organization
-# would be authorized against — and write into — the wrong one. Role-gated
+# would be authorized against, and write into, the wrong one. Role-gated
 # app-side; each step declares the permission it needs and the engine floors it
 # against the caller's member row in the organization the step names.
 #

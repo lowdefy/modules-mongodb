@@ -32,7 +32,7 @@ blocks:
     type: SegmentedSelector
     layout:
       flex: 0 1 auto
-    # See all_members_filters.yaml — cancels the inline label column's stacked
+    # See all_members_filters.yaml. Cancels the inline label column's stacked
     # layout bottom margin so the block sits on the toolbar's centre line.
     style:
       marginBottom: -8

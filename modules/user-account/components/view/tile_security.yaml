@@ -1,12 +1,12 @@
-# Security tile (design Decision 5) — self-service sign-in management for the
+# Security tile (design Decision 5): self-service sign-in management for the
 # caller's own account. Three sign-in rows: password (change), two-factor
 # (manage / turn off), passkeys (add / remove). Every control is a self-service
 # BetterAuth client action on the caller's session.
 #
 # Visibility has two gates (Decision 5): a deployment gate
-# (`_build.authConfig.<method>.enabled` — the method must be configured for the
+# (`_build.authConfig.<method>.enabled`: the method must be configured for the
 # app) wraps each row at build time, and a per-user credential gate
-# (get_accounts.has_credential — an OAuth/magic-link-only user has no credential
+# (get_accounts.has_credential: an OAuth/magic-link-only user has no credential
 # and changePassword / twoFactor.* would 400) applies at runtime. The password
 # and two-factor rows require both; passkeys require only the deployment gate.
 #
@@ -47,7 +47,7 @@ _ref:
               type: SendVerificationEmail
               messages:
                 loading: Sending…
-                success: Verification email sent — check your inbox.
+                success: Verification email sent. Check your inbox.
                 error: Couldn't send the verification email. Try again.
               params:
                 email:
@@ -187,7 +187,7 @@ _ref:
                             events:
                               onClick:
                                 # Seed the modal's phase and intent BEFORE it
-                                # mounts — its onOpen fires after the dialog has
+                                # mounts. Its onOpen fires after the dialog has
                                 # painted, and no phase group gates on a null
                                 # phase, so a seed there would flash an empty
                                 # body. `intent` is written once here and is the
@@ -200,7 +200,7 @@ _ref:
                                   type: SetState
                                   params:
                                     # An enrolled caller opens on `choose` (intent
-                                    # null — the title's default branch labels that
+                                    # null: the title's default branch labels that
                                     # screen); a first-time caller opens straight on
                                     # `password` to enrol. Keyed to the per-account
                                     # TOTP flag, not `_user.two_factor_enrolled`: a

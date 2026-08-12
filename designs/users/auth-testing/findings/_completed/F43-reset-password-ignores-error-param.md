@@ -35,7 +35,7 @@ fires **after** a doomed submit against the stale token.
   never appears; the page looks like a live reset form.
 - **FAIL — toast, not persistent.** The only feedback (on submit) is a transient toast that
   auto-dismisses too fast — the same accessibility problem as
-  [F42](./F42-wrong-password-toast-should-be-inline.md).
+  [F42](_completed/F42-wrong-password-toast-should-be-inline.md).
 
 ## The open decision
 
@@ -48,6 +48,6 @@ Mirror the login page's pattern on reset-password:
 - **Move the submit-failure feedback from a toast to a persistent inline alert** (shared
   decision with F42).
 
-Same family as [F40](./F40-verify-email-failure-silent-login-redirect.md) — an auth page that
+Same family as [F40](../F40-verify-email-failure-silent-login-redirect.md) — an auth page that
 receives an `?error=` code but renders no error state — but a distinct page and root cause
 (this one's `onInit` simply doesn't look at the query).

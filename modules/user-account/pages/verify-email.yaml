@@ -1,15 +1,15 @@
-# Verify-email page — task 13. Serves authPages.verifyEmail. One page, three
+# Verify-email page, task 13. Serves authPages.verifyEmail. One page, three
 # renders via `verify_view`:
 #   - check   : post-signup "check your email" prompt (default, no query).
-#   - success : the emailed link verified — BetterAuth's GET /api/auth/verify-email
+#   - success : the emailed link verified. BetterAuth's GET /api/auth/verify-email
 #               redirects to its callbackURL (no error) on success.
-#   - expired : the link failed — the callback redirect carries `?error=<code>`
+#   - expired : the link failed. The callback redirect carries `?error=<code>`
 #               (TOKEN_EXPIRED / INVALID_TOKEN / ...).
 #
 # The verification callbackURL is set to this page with `?verified=1&email=<addr>`
 # (see the resend below and signup.yaml), so the success landing is
-# distinguishable from the resting check prompt, and — because BetterAuth appends
-# `&error=` to the callbackURL on failure — the email survives onto the expired
+# distinguishable from the resting check prompt, and, because BetterAuth appends
+# `&error=` to the callbackURL on failure, the email survives onto the expired
 # landing for the resend.
 _ref:
   module: layout

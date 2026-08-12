@@ -20,10 +20,12 @@
 # password errors return inline on the `Login` call (mapped in the onClick
 # `catch`), OAuth / magic-link failures arrive as a redirect to authPages.error
 # (this page) carrying `?error=` (mapped in `onInit`). Terminal codes
-# (MEMBERSHIP_REQUIRED, EMAIL_NOT_VERIFIED) render the form-hiding noaccess wall;
-# INVALID_EMAIL_OR_PASSWORD toasts inline; a retryable INVALID_TOKEN (expired /
-# consumed magic link) stays on signin and drives a dedicated warning notice so
-# the user can request a new link. A default covers 429 and any unmapped code.
+# (MEMBERSHIP_REQUIRED, EMAIL_NOT_VERIFIED) render the form-hiding noaccess wall.
+# Every retryable code stays on signin and surfaces as a persistent inline notice
+# (login_notice_alert) the user can read at their own pace: INVALID_EMAIL_OR_PASSWORD
+# and any unmapped/rate-limit default show it error-typed (red); a retryable
+# INVALID_TOKEN (expired / consumed magic link) shows it warning-typed (amber) so
+# the user can request a new link.
 _ref:
   module: layout
   component: auth-page
@@ -55,7 +57,7 @@ _ref:
                     then: noaccess
                 default: signin
             # Dedicated retryable notice, set only for INVALID_TOKEN (null for
-            # every other code and on a clean load) — a separate state to the
+            # every other code and on a clean load), a separate state to the
             # noaccess alert, whose title defaults on every load.
             login_notice_title:
               _if:
@@ -71,7 +73,17 @@ _ref:
                   _eq:
                     - _url_query: error
                     - INVALID_TOKEN
-                then: This link has expired or was already used — request a new one below.
+                then: This link has expired or was already used. Request a new one below.
+                else: null
+            # Notice tone: warning (amber) for the retryable expired-link case;
+            # the password catch sets error (red) for a failed sign-in.
+            login_notice_type:
+              _if:
+                test:
+                  _eq:
+                    - _url_query: error
+                    - INVALID_TOKEN
+                then: warning
                 else: null
             login_error_title:
               _switch:
@@ -127,9 +139,12 @@ _ref:
               description:
                 _state: login_error_desc
 
-          # Retryable notice above the form (chiefly an expired magic link).
-          # Driven by the dedicated login_notice_* state, so it stays hidden on
-          # a clean sign-in and leaves the send affordance reachable.
+          # Retryable notice above the form. Carries both the expired-magic-link
+          # warning and a failed password sign-in (INVALID_EMAIL_OR_PASSWORD and
+          # any unmapped/rate-limit code). Driven by the dedicated login_notice_*
+          # state, so it stays hidden on a clean sign-in and leaves the form and
+          # send affordance reachable. Its tone is state-driven (login_notice_type):
+          # warning for the expired link, error for a failed sign-in.
           - id: login_notice_alert
             type: Alert
             visible:
@@ -137,14 +152,15 @@ _ref:
                 - _state: login_notice_title
                 - null
             properties:
-              type: warning
+              type:
+                _state: login_notice_type
               showIcon: true
               message:
                 _state: login_notice_title
               description:
                 _state: login_notice_desc
 
-        # --- Shared email input — the one canonical `id: email` field both the
+        # --- Shared email input. The one canonical `id: email` field both the
         # password submit and the magic-link send read. Hoisted out of the
         # password branch so it renders whenever either method is enabled. ------
         - _build.if:
@@ -170,7 +186,7 @@ _ref:
                   placeholder: you@example.com
             else: []
 
-        # --- Magic-link primary send — when password is off, the send is the
+        # --- Magic-link primary send. When password is off, the send is the
         # primary action directly under the email input. The button, its `Login`
         # dispatch, callback params, and cooldown live in the shared component. -
         - _build.if:
@@ -195,7 +211,7 @@ _ref:
                         - signin
             else: []
 
-        # --- Password form — rendered only when emailAndPassword is enabled ---
+        # --- Password form. Rendered only when emailAndPassword is enabled ---
         - _build.if:
             test:
               _build.authConfig: emailAndPassword.enabled
@@ -248,7 +264,7 @@ _ref:
                   label:
                     disabled: true
 
-              # Primary submit — email/password via the one `Login` action.
+              # Primary submit. Email/password via the one `Login` action.
               # On session success `Login` navigates to the callbackUrl itself
               # (from the `?callbackUrl=` set by the unauthenticated-page
               # redirect); a 2FA-enrolled user gets no session but a
@@ -331,30 +347,65 @@ _ref:
                                       - MEMBERSHIP_REQUIRED
                                   then: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
                               default: Something went wrong while signing you in. Please try again.
-                      - id: toast_login_error
-                        type: DisplayMessage
-                        skip:
-                          _or:
-                            - _eq:
-                                - _actions: login_do.error.cause.code
-                                - MEMBERSHIP_REQUIRED
-                            - _eq:
-                                - _actions: login_do.error.cause.code
-                                - EMAIL_NOT_VERIFIED
-                        params:
-                          status: error
-                          content:
+                          # Retryable errors stay on the signin view and surface as
+                          # a persistent inline notice (error-typed, red) so the user
+                          # can read it at their own pace. Nulled for the terminal
+                          # (noaccess) codes so the notice can't linger over the wall.
+                          login_notice_title:
                             _switch:
                               branches:
                                 - if:
                                     _eq:
                                       - _actions: login_do.error.cause.code
+                                      - MEMBERSHIP_REQUIRED
+                                  then: null
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - EMAIL_NOT_VERIFIED
+                                  then: null
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
                                       - INVALID_EMAIL_OR_PASSWORD
-                                  then: Incorrect email or password. Please try again.
+                                  then: Incorrect email or password
+                              default: Sign-in failed
+                          login_notice_desc:
+                            _switch:
+                              branches:
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - MEMBERSHIP_REQUIRED
+                                  then: null
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - EMAIL_NOT_VERIFIED
+                                  then: null
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - INVALID_EMAIL_OR_PASSWORD
+                                  then: Please check your details and try again.
                               default: Something went wrong while signing you in. Please try again.
+                          login_notice_type:
+                            _switch:
+                              branches:
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - MEMBERSHIP_REQUIRED
+                                  then: null
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - EMAIL_NOT_VERIFIED
+                                  then: null
+                              default: error
             else: []
 
-        # --- Magic-link alternative-method button — when password holds the
+        # --- Magic-link alternative-method button. When password holds the
         # primary slot, the send demotes to a peer of the OAuth / passkey buttons
         # below the "or" divider, placed first among them (closest to the email).
         # Same shared component as the primary send, restyled via vars. ---------
@@ -391,7 +442,7 @@ _ref:
                         - signin
             else: []
 
-        # --- OAuth "or" divider — owned here unless the magic-link
+        # --- OAuth "or" divider. Owned here unless the magic-link
         # alternative-method block above already renders one (mixed password +
         # magic-link deployment), so the two never double up. -------------------
         - _build.if:
@@ -417,7 +468,7 @@ _ref:
                   plain: true
             else: []
 
-        # --- OAuth (signin state) — one button per configured provider that
+        # --- OAuth (signin state). One button per configured provider that
         # also has display metadata in the `providers` var (label/icon). --------
         - _build.if:
             test:
@@ -479,7 +530,7 @@ _ref:
                                   __build.args: "0.id"
             else: []
 
-        # --- Passkey (signin state) — rendered only when passkey is enabled ---
+        # --- Passkey (signin state). Rendered only when passkey is enabled ---
         # PasskeySignIn runs the WebAuthn assertion ceremony in the browser and
         # navigates to the callbackUrl on success.
         - _build.if:
@@ -504,7 +555,7 @@ _ref:
                       type: PasskeySignIn
             else: []
 
-        # --- Link-sent result (magic-link) — the send returns { status: true }
+        # --- Link-sent result (magic-link). The send returns { status: true }
         # with no session, so it cannot navigate; it flips login_view to
         # link-sent and shows this "check your email" render. Resend re-fires the
         # same shared send (cooldown-guarded); the link button returns to signin.
@@ -526,7 +577,7 @@ _ref:
                   title: Check your email
                   subTitle:
                     _nunjucks:
-                      template: We've emailed a sign-in link to <b>{{ email }}</b>. Open it on this device to continue — the link expires in a few minutes.
+                      template: We've emailed a sign-in link to <b>{{ email }}</b>. Open it on this device to continue. The link expires in a few minutes.
                       on:
                         email:
                           _state: magic_link_sent_email

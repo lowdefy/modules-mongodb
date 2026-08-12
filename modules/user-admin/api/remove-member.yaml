@@ -1,9 +1,9 @@
-# remove-member — RemoveMember (design Decision 4). Deletes THIS app's member row
+# remove-member: RemoveMember (design Decision 4). Deletes THIS app's member row
 # only; the person keeps other apps and their contact survives. Restore is a
-# re-invite (roles/attributes are not retained — membership is the row's
+# re-invite (roles/attributes are not retained: membership is the row's
 # existence). `organizationId` is named explicitly: an absent one falls back to the
 # APP's pinned organization, so an instance administering another organization would
-# be authorized against — and delete a member row in — the wrong one. Role-gated
+# be authorized against, and delete a member row in, the wrong one. Role-gated
 # app-side; the step declares the permission it needs and the engine floors it
 # against the caller's member row in the organization the step names. Audit event
 # is the final step.

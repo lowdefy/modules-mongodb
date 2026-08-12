@@ -1,15 +1,15 @@
-# check-invite-email — four-state email resolve (design Decision 7). A READ
+# check-invite-email: four-state email resolve (design Decision 7). A READ
 # routine: given an email, it discriminates the address into exactly one of four
 # outcomes the email-first invite form branches on:
-#   member   — the email already has a member row in THIS org (join user-members →
+#   member   : the email already has a member row in THIS org (join user-members →
 #              users on the contact matched below).
-#   pending  — a still-live pending invitation exists for this org (status
+#   pending  : a still-live pending invitation exists for this org (status
 #              "pending" AND a future expires_at). Routes the UI to Resend, never
 #              to a fresh invite (which is why invite.yaml only ever reconciles
 #              genuinely-stale expired rows).
-#   contact  — a contact exists on lowercase_email but has no member row here →
+#   contact  : a contact exists on lowercase_email but has no member row here →
 #              the UI prefills the form from `contact.profile`.
-#   unknown  — nothing found → blank form.
+#   unknown  : nothing found → blank form.
 #
 # Reads user-invitations directly (bypassing the org-plugin helpers) so it can do
 # its own status/expiry filtering, preserving the one-contact-per-email invariant.
@@ -40,7 +40,7 @@ routine:
   # 2) Is this email already a member of the organization this instance administers?
   #    Join member rows to their user, then match on the contactId resolved above.
   #    The "__none__" sentinel ensures a missing contact (no _id) never matches
-  #    members that also lack a contactId — no contact means no possible member match.
+  #    members that also lack a contactId. No contact means no possible member match.
   - id: find_member
     type: MongoDBAggregation
     connectionId:
@@ -64,7 +64,7 @@ routine:
         - $limit: 1
         # An explicit whitelist, so a field the UI needs has to be named here or
         # it arrives undefined with nothing erroring. `app_roles` is the app roles
-        # array; `role` is BetterAuth's owner/admin/member org tier — two
+        # array; `role` is BetterAuth's owner/admin/member org tier, two
         # unrelated facts that both ride this row.
         - $project:
             _id: 1
@@ -113,7 +113,7 @@ routine:
           inviter_id: 1
           expires_at: 1
           status: 1
-          # Invite-time member attributes — returned so the pending panel's
+          # Invite-time member attributes, returned so the pending panel's
           # Resend can preserve them rather than blank them.
           attributes: 1
 

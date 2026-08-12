@@ -1,5 +1,5 @@
 # Active sessions read (design Decision 5). Native read over `user-sessions` for
-# the target user. The `token` (and any bearer/secret) is $project-ed OUT — this
+# the target user. The `token` (and any bearer/secret) is $project-ed OUT. This
 # shows an admin ANOTHER user's sessions, so returning the token would hand over a
 # replayable credential (matches user-account Decision 5). There is no "current"
 # session here: the admin's own session is never in this list, so sessions render
@@ -18,6 +18,6 @@ properties:
           _payload: user_id
     - $sort:
         updated_at: -1
-    # Whitelist projection — token is never selected. Shared with the
+    # Whitelist projection. Token is never selected. Shared with the
     # user-account sessions read so both surfaces render the same row shape.
     - _ref: ../shared/sessions/session_fields.yaml

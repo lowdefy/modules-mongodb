@@ -27,7 +27,7 @@ properties:
       # Filter: email search + derived-status segment. The clauses are ANDed as a
       # $and array rather than merged into one object, so no two of them can
       # collide on a top-level key. The leading `{}` keeps the array non-empty
-      # with nothing set — MongoDB rejects `$and: []` but accepts the match-all
+      # with nothing set. MongoDB rejects `$and: []` but accepts the match-all
       # `$and: [{}]`. The search clause comes from the shared regex_clause.yaml,
       # which owns escaping the term (an unescaped `(` makes MongoDB reject the
       # regex, and a raw `.*` would match every invitation).

@@ -1,4 +1,4 @@
-# Logout page — task 16 (UI pipeline only; wiring deferred).
+# Logout page, task 16 (UI pipeline only; wiring deferred).
 # Public signed-out confirmation. The Logout action (fired on load per the mock)
 # and its ordering are the wire task; the confirmation render is built here.
 _ref:

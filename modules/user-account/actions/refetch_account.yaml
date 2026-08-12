@@ -1,7 +1,7 @@
 # Re-hydrate the workspace after a section edit (design Decision 5). `_ref`'d by
 # the page onMount and by every modal / tile action chain, so a profile save,
 # password change, 2FA enrol/disable, passkey add/delete, or session revoke
-# re-fetches every read. Passkeys are also mirrored into `passkeys_ui` state — the
+# re-fetches every read. Passkeys are also mirrored into `passkeys_ui` state. The
 # List block that renders per-passkey delete binds to a state array, not a request.
 - id: refetch_account
   type: Request

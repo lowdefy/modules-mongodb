@@ -1,4 +1,4 @@
-# Passkeys read (design Decision 5) — the caller's OWN registered passkeys.
+# Passkeys read (design Decision 5): the caller's OWN registered passkeys.
 # Native read over `user-passkeys` filtered to the caller (`_user.id`, plain
 # string). Powers the Security tile's passkey list + per-passkey delete
 # (PasskeyDelete takes `passkey_id`, the passkey row id). Registration is the

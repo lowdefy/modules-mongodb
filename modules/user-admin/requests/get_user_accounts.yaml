@@ -1,4 +1,4 @@
-# Linked auth providers read (design Decision 5) — read-only. Native read over
+# Linked auth providers read (design Decision 5), read-only. Native read over
 # `user-accounts` for the target, one row per linked account. The built-in
 # email/password credential provider is excluded (it is not an OAuth "method" to
 # display); OAuth providers (google, …) and passkey-provider rows remain. Answers

@@ -1,17 +1,17 @@
 # User detail read (design Decision 3). Native aggregation rooted on the target's
 # `user-members` row (matched by the urlQuery user_id, scoped to the pinned org),
 # joined to `users` + `user-contacts`. Reuses the shared members base shape
-# (name/email/picture/status/dates plus the three editable bags —
+# (name/email/picture/status/dates plus the three editable bags:
 # profile / user_attributes / member_attributes) and the catalog role-resolve
-# (`roles` — [{ id, label, description, orphan }]), then adds the fields only the
+# (`roles`: [{ id, label, description, orphan }]), then adds the fields only the
 # detail page needs:
-#   user_id / member_id / contact_id — the ids the write routines take
-#   orphan_ids — the held role ids the catalog no longer declares; seeds the
+#   user_id / member_id / contact_id: the ids the write routines take
+#   orphan_ids: the held role ids the catalog no longer declares; seeds the
 #     access modal's orphan picker options
-#   has_orphan — true when any held role is orphaned; drives the modal's hint
-#   org_role — the member's owner|admin|member organization-authority tier
-#   status_slug — lowercase active|suspended for the title-block status pill
-#   email_verified / two_factor_enabled / banned / passkey_count — Security-tile facts
+#   has_orphan: true when any held role is orphaned; drives the modal's hint
+#   org_role: the member's owner|admin|member organization-authority tier
+#   status_slug: lowercase active|suspended for the title-block status pill
+#   email_verified / two_factor_enabled / banned / passkey_count: Security-tile facts
 # Returns a single-element array; the page binds get_user_detail.0.*.
 id: get_user_detail
 type: MongoDBAggregation
@@ -71,15 +71,15 @@ properties:
                 in: "$$r.id"
             # The member's organization-authority tier, published under its own
             # name because it is a different authority from the app roles
-            # `roles` carries — the access modal's organization control
+            # `roles` carries. The access modal's organization control
             # binds it. $ifNull because $addFields omits a field whose source is
             # missing, and `member` is exactly what an absent tier means.
             org_role:
               $ifNull:
                 - "$role"
                 - member
-            # True when any held role is orphaned (absent from the catalog) —
-            # drives the access modal's orphan hint (Decision 8).
+            # True when any held role is orphaned (absent from the catalog).
+            # Drives the access modal's orphan hint (Decision 8).
             has_orphan:
               $anyElementTrue:
                 $map:
@@ -93,7 +93,7 @@ properties:
                     - true
                 - suspended
                 - active
-        # Close the row last — everything above still reads the raw joins
+        # Close the row last. Everything above still reads the raw joins
         # (contact._id, $passkeys, user.*); nothing below them does.
         - _ref: requests/stages/close_row.yaml
         - $limit: 1

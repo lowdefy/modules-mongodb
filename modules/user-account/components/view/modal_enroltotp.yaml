@@ -1,7 +1,7 @@
 # Two-factor enrolment modal (design Decision 5). One modal, four phases and three
 # intents, both held as explicit values in state:
-#   state.enroltotp.phase  — choose | password | scan | codes; the only gate on every block
-#   state.enroltotp.intent — enrol | replace | codes_only; drives the wording and which chain
+#   state.enroltotp.phase: choose | password | scan | codes; the only gate on every block
+#   state.enroltotp.intent: enrol | replace | codes_only; drives the wording and which chain
 #
 # An enrolled caller opens on `choose` (intent null) and picks a path there;
 # `codes_only` rotates recovery codes without touching the authenticator, so it
@@ -10,7 +10,7 @@
 #
 # Both are seeded by the trigger (tile_security.yaml) BEFORE the dialog mounts:
 # `onOpen` fires after the modal has painted, so a seed there would show an empty
-# body — no group gates on a null phase — on the first open of a session.
+# body (no group gates on a null phase) on the first open of a session.
 #
 # There is no native footer. The footer Ok auto-closes on success, which is wrong
 # for a multi-step dialog: the password phase must not close and the scan phase
@@ -21,7 +21,7 @@
 # `intent: replace` turns 2FA off before re-enrolling. BetterAuth's
 # `POST /two-factor/enable` deletes the caller's twoFactor row and writes a new
 # one with a fresh secret, carrying `verified: true` over from a verified row and
-# never touching `user.two_factor_enabled` — which is what the sign-in hook gates
+# never touching `user.two_factor_enabled`, which is what the sign-in hook gates
 # the second-factor challenge on. Enabling straight over a working authenticator
 # would therefore enforce a second factor against a secret the user has not
 # scanned, and abandoning there locks them out with no admin 2FA reset anywhere
@@ -59,7 +59,7 @@ properties:
   maskClosable: false
 events:
   # Every close path (the X, Esc, a mask click) routes here. Each leaf is nulled
-  # by name — an `enroltotp: {}` write leaves the leaves undefined, and an input
+  # by name. An `enroltotp: {}` write leaves the leaves undefined, and an input
   # that was invisible in the previous eval cycle then restores its remembered
   # value instead of clearing. Booleans reset to false, their boolean zero.
   onClose:
@@ -79,7 +79,7 @@ blocks:
   # and no request runs; each button just seeds `phase: password` plus its intent.
   # The safe, common path (new codes) is primary; replacement is secondary with
   # its cost stated as a plain hint. The red replacement Alert deliberately does
-  # NOT appear here — next to "Get new backup codes" it would make the harmless
+  # NOT appear here. Next to "Get new backup codes" it would make the harmless
   # path look dangerous; it lives on phase `password` where the destructive call
   # is about to fire.
   - id: enroltotp_choose_intro
@@ -226,7 +226,7 @@ blocks:
             params:
               blockIds:
                 - enroltotp.password
-          # Password-gated enable — returns the totpURI + backup codes on
+          # Password-gated enable: returns the totpURI + backup codes on
           # _actions, stashed in state for the QR and phase `codes`.
           - id: enroltotp_enable
             type: TwoFactorEnable
@@ -316,7 +316,7 @@ blocks:
           # `twofa_off` is an explicit flag, not an inference from the _actions
           # response shape: a failed action records {error, action, index} and a
           # successful one {type, response, index}, so `_not: <disable>.error` is
-          # also true when the Validate failed and the disable never ran — the
+          # also true when the Validate failed and the disable never ran, the
           # most common way into this catch.
           - :if:
               _state: enroltotp.twofa_off
@@ -364,11 +364,11 @@ blocks:
             params:
               blockIds:
                 - enroltotp.password
-          # Rotates recovery codes only — returns the new codes on _actions, and
+          # Rotates recovery codes only. Returns the new codes on _actions, and
           # leaves the secret, `verified` and `two_factor_enabled` untouched. It
           # jumps straight to phase `codes`, skipping `scan`: nothing about the
           # authenticator changed, so there is nothing to re-scan. No
-          # `refetch_account` — the tile still reads On and nothing it shows moved,
+          # `refetch_account`: the tile still reads On and nothing it shows moved,
           # so a refetch would be a request that can only fail.
           - id: enroltotp_generate_codes
             type: TwoFactorGenerateBackupCodes
@@ -393,7 +393,7 @@ blocks:
   # Back returns to `choose`, shown only when the caller arrived through it
   # (`replace` or `codes_only`). With `footer: false` there is no Cancel, so
   # without Back a user who reads the replacement warning and reconsiders would
-  # have to dismiss the whole dialog. Nothing is spent yet — this is
+  # have to dismiss the whole dialog. Nothing is spent yet. This is
   # reconsideration, not data loss.
   - id: enroltotp_back_btn
     type: Button
@@ -554,7 +554,7 @@ blocks:
     properties:
       html:
         _nunjucks:
-          template: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">{{ lead }} Store these one-time codes somewhere safe — each works once if you lose your authenticator.</div>'
+          template: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">{{ lead }} Store these one-time codes somewhere safe. Each works once if you lose your authenticator.</div>'
           on:
             # A replacing user needs its own lead line: enable recreates the
             # twoFactor row with a fresh backup_codes array, so their previous
@@ -635,7 +635,7 @@ blocks:
               _array.join:
                 - _state: enroltotp.backup_codes
                 - "\n"
-  # An attention device, not a lock — Esc cannot be blocked, so its only job is
+  # An attention device, not a lock: Esc cannot be blocked, so its only job is
   # to make someone in dismiss-the-dialog mode read one sentence first. Gating
   # Done on the Copy click instead would mandate a clipboard write for a
   # one-time secret and still not evidence saving; people legitimately save

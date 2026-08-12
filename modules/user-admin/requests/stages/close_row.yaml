@@ -1,9 +1,9 @@
-# Closes the wire row — the shared last stage of every members / invitations read
+# Closes the wire row: the shared last stage of every members / invitations read
 # (list, detail, export, invitations list). It exists so the row a consumer binds
 # a column to is the documented contract in
 # `docs/user-admin/reference/row-contract.md` and nothing else.
 #
-# THE RULE, not just the list — a future $lookup or alias has to extend this:
+# THE RULE, not just the list. A future $lookup or alias has to extend this:
 #   1. Every raw $lookup payload, so a whole source document never rides to the
 #      browser: user, contact, passkeys, inviter.
 #   2. Every stored field that already ships under a canonical alias, so the row
@@ -12,7 +12,7 @@
 #        app_roles     → roles
 #        created_at    → signed_up (members) / created (invitations)
 #        profile.picture → top-level picture
-#      `expires_at` is deliberately not in that set — the Invitations tab binds the
+#      `expires_at` is deliberately not in that set. The Invitations tab binds the
 #      stored column directly, so unsetting it blanks the Expires column.
 #   3. Every stored field the contract deliberately does not publish here: `role`
 #      is BetterAuth's owner/admin/member tier, unrelated to the app roles `roles`
@@ -22,7 +22,7 @@
 #
 # `profile.picture` earns its place beyond tidiness: it holds an ~800-character
 # data:image/svg+xml gradient avatar, so leaving both paths ships the blob twice
-# per row. Safe for the write path — the profile modal posts the whole `profile`
+# per row. Safe for the write path. The profile modal posts the whole `profile`
 # subtree back, but write-profile merges it with $mergeObjects against the stored
 # bag, so a payload without `picture` leaves the stored value intact.
 #

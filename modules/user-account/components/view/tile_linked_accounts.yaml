@@ -1,7 +1,7 @@
-# Linked accounts tile (design Decision 5) — read-only visibility of the sign-in
+# Linked accounts tile (design Decision 5): read-only visibility of the sign-in
 # methods linked to the caller's account, from a native read over user-accounts
 # (the same read that feeds the Security tile's credential-presence gate). This is
-# visibility, not management — link/unlink flows are a v1 non-goal.
+# visibility, not management. Link/unlink flows are a v1 non-goal.
 _ref:
   module: layout
   component: card
@@ -20,7 +20,7 @@ _ref:
             properties:
               html:
                 _nunjucks:
-                  # The caller's linked accounts (get_accounts.accounts — one row
+                  # The caller's linked accounts (get_accounts.accounts: one row
                   # per user-accounts doc, incl. the built-in `credential` row
                   # rendered as "Email & password"). Read-only visibility, not
                   # management (Decision 5). provider_id → friendly label / detail.

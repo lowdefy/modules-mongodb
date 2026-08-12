@@ -1,9 +1,9 @@
-# Security tile (design Decision 5) — "Access & sign-in". Suspend/reinstate
+# Security tile (design Decision 5). "Access & sign-in". Suspend/reinstate
 # (behind the suspension var, Decision 4), Remove from app, Sign out everywhere,
 # and Delete identity. Active sessions (token projected out) and read-only auth
 # methods.
 #
-# Multi-app vs single-app degradation (Decision 6 — blast-radius copy, Delete
+# Multi-app vs single-app degradation (Decision 6: blast-radius copy, Delete
 # enablement, "suite"/"every app" phrasing) keys off the person's other-
 # membership count and is WIRED in task 13. This renders the multi-app variant.
 _ref:
@@ -28,7 +28,7 @@ _ref:
               gap: 8
             blocks:
               _build.array.concat:
-                # Suspend — behind the suspension var (Decision 4). Permanent,
+                # Suspend. Behind the suspension var (Decision 4). Permanent,
                 # suite-wide ban; opens the blast-radius confirm (modal_suspend).
                 - _build.if:
                     test:
@@ -78,7 +78,7 @@ _ref:
                           params:
                             blockId: modal_revoke
                             method: toggleOpen
-                  # Delete identity — only when the person holds no other
+                  # Delete identity, only when the person holds no other
                   # memberships (Decision 4). Disabled in the multi-app variant;
                   # task 13 flips `disabled` off the membership count.
                   - id: delete_btn
@@ -177,7 +177,7 @@ _ref:
                       _request: get_user_detail.0.passkey_count
                     providers:
                       _request: get_user_accounts
-          # Recovery controls (Decision 4) — sit beneath the Auth-methods badges,
+          # Recovery controls (Decision 4). Sit beneath the Auth-methods badges,
           # not among them (the badges are one read-only _nunjucks block). Each
           # control is BUILT only when its factor is possible in the deployment
           # (_build.authConfig), and per-user VISIBLE only when the badge's own

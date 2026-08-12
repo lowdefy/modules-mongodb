@@ -4,7 +4,7 @@
 # Consumer `components.filters` blocks append after the built-ins.
 # Every filter change refetches get_all_members via actions/members_refetch.yaml
 # (resets to page 1). The role filter matches EXACT elements of the member's
-# `app_roles` array — see requests/get_all_members.yaml.
+# `app_roles` array, see requests/get_all_members.yaml.
 id: members_filters
 type: Box
 layout:
@@ -44,13 +44,13 @@ blocks:
       label:
         disabled: true
       # Options + labels come from the app's authored auth.roles catalog
-      # (design Decision 8), NOT a module var — the single source of truth for
+      # (design Decision 8), NOT a module var: the single source of truth for
       # the assignable role set. Mapped from the `_build.authConfig: roles`
       # projection to a rich label (name + description subtitle), a filterString
-      # covering both lines, and a plain tag for the selected chip — matching the
+      # covering both lines, and a plain tag for the selected chip, matching the
       # role picker in modal_access.yaml. The selected ids are matched as EXACT
       # elements of the member's `app_roles` array ($in), ahead of the read's
-      # $lookups — see get_all_members.yaml.
+      # $lookups, see get_all_members.yaml.
       options:
         _build.array.map:
           on:
@@ -95,7 +95,7 @@ blocks:
       flex: 0 1 auto
     # An inline label column still carries the 8px bottom margin meant for the
     # stacked layout, so the block measures 8px taller than the other controls
-    # and the row's centre line lifts it. Cancel it here — the label column
+    # and the row's centre line lifts it. Cancel it here. The label column
     # itself has no style hook.
     style:
       marginBottom: -8
@@ -127,7 +127,7 @@ blocks:
       onClick:
         _build.array.concat:
           # Clear only the Members filter keys (leave the Invitations tab and
-          # the sort untouched — independent per-tab state, Decision 2).
+          # the sort untouched, independent per-tab state, Decision 2).
           - - id: clear_members_filters
               type: SetState
               params:

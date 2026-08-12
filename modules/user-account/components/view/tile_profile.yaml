@@ -1,9 +1,9 @@
-# Profile tile (design Decision 5) — the caller's own contact fields
+# Profile tile (design Decision 5): the caller's own contact fields
 # (fields.profile), read-only in SmartDescriptions. Edit opens modal_profile
 # (write-profile routine via the update-profile API, wired in the wire task).
-# Display reads the contact directly. Fields = email (display only — email is a
+# Display reads the contact directly. Fields = email (display only: email is a
 # v1 non-goal to edit, Decision 6) + consumer fields.profile, matching the
-# user-admin view. The name is not a field here — it is the page title.
+# user-admin view. The name is not a field here. It is the page title.
 _ref:
   module: layout
   component: card
@@ -39,7 +39,7 @@ _ref:
             _request: get_account.0
           fields:
             _build.array.concat:
-              # No `type` — let SmartDescriptions auto-detect the email value and
+              # No `type`. Let SmartDescriptions auto-detect the email value and
               # render it as an email (a forced TextInput/string renderer
               # title-cases the first letter, which is wrong for an address).
               - - id: email

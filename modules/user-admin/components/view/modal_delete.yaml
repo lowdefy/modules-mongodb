@@ -1,4 +1,4 @@
-# Delete-login-identity confirm modal — DeleteUser (Decision 4). Only reachable
+# Delete-login-identity confirm modal. DeleteUser (Decision 4). Only reachable
 # when the person holds no other memberships (the trigger button is disabled
 # otherwise); the routine re-checks. The contact record always survives. onOk
 # (CallAPI delete-user) is wired in task 13.
@@ -50,7 +50,7 @@ blocks:
       html:
         _nunjucks:
           template: >-
-            {% if others > 0 %}<div style="margin-top:12px; padding:8px 12px; border:1px solid var(--ant-color-warning-border); border-radius:6px; background:var(--ant-color-warning-bg); font-size:13px; color:var(--ant-color-warning-text);">⚑ This person still belongs to {{ others }} other app{{ 's' if others > 1 }} — remove those first.</div>{% else %}<div style="margin-top:12px; padding:8px 12px; border:1px solid var(--ant-color-success-border); border-radius:6px; background:var(--ant-color-success-bg); font-size:13px; color:var(--ant-color-success-text);">✓ No other memberships — safe to delete.</div>{% endif %}
+            {% if others > 0 %}<div style="margin-top:12px; padding:8px 12px; border:1px solid var(--ant-color-warning-border); border-radius:6px; background:var(--ant-color-warning-bg); font-size:13px; color:var(--ant-color-warning-text);">⚑ This person still belongs to {{ others }} other app{{ 's' if others > 1 }}. Remove those first.</div>{% else %}<div style="margin-top:12px; padding:8px 12px; border:1px solid var(--ant-color-success-border); border-radius:6px; background:var(--ant-color-success-bg); font-size:13px; color:var(--ant-color-success-text);">✓ No other memberships, safe to delete.</div>{% endif %}
           on:
             others:
               _array.length:

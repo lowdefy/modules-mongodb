@@ -1,9 +1,9 @@
-# Accept-invitation page — task 15. Serves authPages.acceptInvitation. Public,
+# Accept-invitation page, task 15. Serves authPages.acceptInvitation. Public,
 # thin, engine-trusting (Decision 4): its job is session-ensuring + one client
 # call. Four renders via `accept_view` (nosession | signedin | member | expired).
 #
 # The invitation is read natively (get_invitation) by the invitationId query
-# parameter — display only (org / inviter / invited email / status). Render
+# parameter, display only (org / inviter / invited email / status). Render
 # selection: no invitation -> expired; no session -> nosession; status accepted
 # -> member; status not pending or email mismatch -> expired; else signedin.
 # BetterAuth's AcceptInvitation enforces the session-email <-> invitation-email
@@ -69,7 +69,7 @@ _ref:
                         then: expired
                     default: signedin
     blocks:
-      # ---- No session — offer login / signup ----
+      # ---- No session, offer login / signup ----
       - id: accept_title_nosession
         type: Title
         visible:
@@ -161,7 +161,7 @@ _ref:
               params:
                 # signup exists only where a password registration form does
                 # (emailAndPassword.enabled); passwordless collapses signup into
-                # login, so target login there — the invitee's email → link
+                # login, so target login there. The invitee's email → link
                 # creates the account at verify time.
                 pageId:
                   _build.if:
@@ -282,7 +282,7 @@ _ref:
                 type: DisplayMessage
                 params:
                   status: error
-                  content: We couldn't accept this invitation. It may have expired or been sent to a different email address — ask for a fresh invitation.
+                  content: We couldn't accept this invitation. It may have expired or been sent to a different email address. Ask for a fresh invitation.
       - id: accept_not_you
         type: Html
         visible:
@@ -336,7 +336,7 @@ _ref:
         properties:
           status: error
           title: This link is missing its invitation
-          subTitle: Open the invitation link from your email — it carries the reference this page needs.
+          subTitle: Open the invitation link from your email. It carries the reference this page needs.
 
       # ---- Expired / mismatch ----
       - id: accept_expired

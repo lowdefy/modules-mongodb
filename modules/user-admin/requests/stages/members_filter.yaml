@@ -1,14 +1,14 @@
-# Members filter $match — the clauses that CANNOT run before members_base's
+# Members filter $match: the clauses that CANNOT run before members_base's
 # $lookups, because each reads a field the joins put on the row:
-#   search — case-insensitive regex over the flattened name / email, built by the
+#   search : case-insensitive regex over the flattened name / email, built by the
 #            shared regex_clause.yaml, which owns escaping the term (an
 #            unescaped `(` makes MongoDB reject the regex, and a raw `.*` would
 #            match every member)
-#   status — the derived Active / Suspended value
+#   status : the derived Active / Suspended value
 #
 # The roles clause is deliberately NOT here. `app_roles` is on the member root, so
 # it filters ahead of the joins through members_base's `pre_join_stages` slot,
-# where the { organization_id, app_roles } index can serve it — see
+# where the { organization_id, app_roles } index can serve it, see
 # get_all_members.yaml. Putting it back in this $match would leave the module's
 # most expensive read waiting on the optimizer to push it there, which it may or
 # may not do.
@@ -16,7 +16,7 @@
 # Each clause drops out when its filter is unset, and the set clauses are ANDed
 # as a $and array rather than merged into one object, so no two of them can
 # collide on a top-level key. The leading `{}` keeps the array non-empty with
-# nothing set — MongoDB rejects `$and: []` but accepts the match-all `$and: [{}]`.
+# nothing set. MongoDB rejects `$and: []` but accepts the match-all `$and: [{}]`.
 $match:
   $and:
     _array.concat:

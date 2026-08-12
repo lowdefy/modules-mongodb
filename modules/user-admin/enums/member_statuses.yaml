@@ -2,7 +2,7 @@
 # On the user detail page a member row is either Active (user.banned not true)
 # or Suspended (user.banned true). Invited / Expired are invitation states and
 # never appear here. Three-colour pill contract: { color, borderColor,
-# titleColor, title } — matches the mock's ok / err pills.
+# titleColor, title }, matches the mock's ok / err pills.
 active:
   color: "#f6ffed"
   borderColor: "#b7eb8f"

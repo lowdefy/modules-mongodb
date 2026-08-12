@@ -1,4 +1,4 @@
-# Email entry card ("Who are you inviting?") — the check-then-invite entry point
+# Email entry card ("Who are you inviting?"): the check-then-invite entry point
 # (design Decision 7). Two layers keyed off invite_state:
 #   entry    → email input + Check (invite_state resting|checking, input open)
 #   resolved → email locked + "Use a different email" (any resolved outcome)
@@ -10,7 +10,7 @@ _ref:
   vars:
     title: Who are you inviting?
     blocks:
-      # LAYER: entry — email + Check, shown before an outcome is resolved.
+      # LAYER: entry, email + Check, shown before an outcome is resolved.
       - id: email_entry
         type: Box
         visible:
@@ -80,7 +80,7 @@ _ref:
                 <span>We'll check if this person already has access before you fill
                 anything in.</span></div>
 
-      # LAYER: resolved — email locked once the check resolves to an outcome.
+      # LAYER: resolved, email locked once the check resolves to an outcome.
       - id: email_resolved
         type: Box
         visible:

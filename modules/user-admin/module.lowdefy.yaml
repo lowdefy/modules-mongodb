@@ -1,7 +1,7 @@
 name: User Admin
 version: 0.17.0
 description: >-
-  User administration on the BetterAuth engine — the operator console for a
+  User administration on the BetterAuth engine: the operator console for a
   person's access lifecycle in the organization named by the `org_slug` var.
   Native $lookup reads over the auth collections joined to user-contacts;
   per-concern write routines driven through the sanctioned admin-step surface.
@@ -15,7 +15,7 @@ description: >-
 # collections to `user-contacts`, and MongoDB's $lookup cannot cross databases.
 # So the BetterAuth adapter's database (app `auth.database`), the `user-contacts`
 # connection, and every read-only connection below MUST all resolve to ONE
-# MongoDB database — the natural shape being a single shared `_secret`
+# MongoDB database, the natural shape being a single shared `_secret`
 # (e.g. MONGODB_URI). The failure mode is SILENT: a cross-database $lookup treats
 # the missing collection as empty rather than erroring, so a divergent deployment
 # shows blank contact data everywhere instead of failing loudly. There is no
@@ -52,7 +52,7 @@ vars:
       invitation.
 
       Renaming the organization's slug strands every member row, because the
-      engine's startup ensure is by slug — a rename mints a fresh organization
+      engine's startup ensure is by slug. A rename mints a fresh organization
       rather than renaming one.
   app_title:
     type: string
@@ -64,10 +64,10 @@ vars:
     type: boolean
     default: true
     description: >-
-      Gates the organization-authority control on the access modal — promoting a
+      Gates the organization-authority control on the access modal, promoting a
       member to `admin` or `owner` in the administered organization, or revoking
       them back to `member` (the no-authority value; there is no empty tier and
-      the write refuses one) — and the matching `orgRole` field on the invite
+      the write refuses one), and the matching `orgRole` field on the invite
       form. Holding `admin` in an organization is what lets a person administer
       it, so this control is how a deployment grants that. Set false in a
       deployment where org authority is granted out of band.
@@ -75,7 +75,7 @@ vars:
       When false the control does not render AND `update-org-role` rejects, so a
       deployment granting org authority out of band cannot have the tier written
       through this module by a caller who reaches the endpoint directly. The
-      endpoint stays registered either way — the rejection is the routine's first
+      endpoint stays registered either way. The rejection is the routine's first
       step, not an absence. When true the write is floored by the engine against
       the caller's member row in the administered organization.
   suspension:
@@ -98,7 +98,7 @@ vars:
       Event display templates mapping event type -> Nunjucks title template.
       Templates receive `user` (acting admin) and `target` (edited/invited
       user). When unset the module defaults render (defaults/event_display.yaml);
-      when set, the override fully replaces the defaults — no merge.
+      when set, the override fully replaces the defaults, no merge.
   fields:
     type: object
     description: >-
@@ -146,7 +146,7 @@ vars:
         default: []
         description: >-
           Extra AgGrid column definitions appended to the Members list table. A
-          column's `field:` binds a key on the shared members row — the three
+          column's `field:` binds a key on the shared members row. The three
           configurable bags ride under the same names as the `fields.*` vars, so
           `field: profile.department` is the same path as the form block id that
           collects it. See the row contract reference for the full bindable key
@@ -157,7 +157,7 @@ vars:
         description: >-
           Extra columns appended to the Excel export (merged members +
           invitations). A column's `value:` binds the same row paths as
-          `table_columns` `field:` — the export closes its row the same way — with
+          `table_columns` `field:`, the export closes its row the same way, with
           three divergences: `roles` is a joined string, `expires` is added, and
           `picture` is dropped. Invitation rows carry `member_attributes` but no
           `profile` or `user_attributes`, so a profile-bound column is blank for
@@ -181,13 +181,13 @@ vars:
     description: >-
       MongoDB pipeline stage overrides for reads (list pipeline, filter match,
       export) and for the contact write. The auth-side write seam is routine
-      steps, not pipeline stages — no slot re-creates one.
+      steps, not pipeline stages. No slot re-creates one.
     properties:
       filter_match:
         type: array
         default: []
         description: >-
-          Plain $match clauses appended to the Members list filter (Decision 2 —
+          Plain $match clauses appended to the Members list filter (Decision 2:
           Atlas $search is gone from this module; this extends the post-$lookup
           regex filter, it is NOT a path to reintroduce $search). Runs before the
           row is closed, so it can still match raw `user.*` / `contact.*` paths.
@@ -199,7 +199,7 @@ vars:
           Pipeline stages appended after filtering on the `all` list read and
           after the union on the Excel export. In both it runs before the row is
           closed, so it sees the raw `user` / `contact` / `inviter` join payloads
-          and anything it adds survives onto the row — the escape hatch for a
+          and anything it adds survives onto the row, the escape hatch for a
           column the three field bags don't cover. On the export it runs over
           member AND invitation rows.
       write:
@@ -221,14 +221,14 @@ vars:
 exports:
   pages:
     - id: all
-      description: Members + Invitations tabs — filter, sort, paginate; Excel export behind the `download` var
+      description: Members + Invitations tabs. Filter, sort, paginate; Excel export behind the `download` var
     - id: view
-      description: User detail — Profile, Attributes, Global attributes, Security, Apps, Activity tiles
+      description: User detail. Profile, Attributes, Global attributes, Security, Apps, Activity tiles
     - id: invite
       description: Email-first invite flow (check-then-invite)
   connections:
     - id: user-contacts-collection
-      description: App connection for the user-contacts (contact) records — writable
+      description: App connection for the user-contacts (contact) records, writable
     - id: users
       description: Read-only connection for the auth `users` collection
     - id: user-members
@@ -257,23 +257,23 @@ exports:
     - id: update-access
       description: UpdateMemberRoles + UpdateMemberAttributes for this app
     - id: update-org-role
-      description: UpdateMemberOrgRole — the member's owner/admin/member tier in the administered organization (surfaced behind the `org_authority` var)
+      description: UpdateMemberOrgRole, the member's owner/admin/member tier in the administered organization (surfaced behind the `org_authority` var)
     - id: update-user-attributes
       description: UpdateUserAttributes (global/user attributes)
     - id: suspend
-      description: BanUser — permanent, suite-wide (behind the `suspension` var)
+      description: BanUser, permanent, suite-wide (behind the `suspension` var)
     - id: reinstate
       description: UnbanUser (behind the `suspension` var)
     - id: revoke-sessions
-      description: RevokeUserSessions — sign out everywhere
+      description: RevokeUserSessions, sign out everywhere
     - id: reset-two-factor
       description: ResetUserTwoFactor → revoke sessions → audit → notify (Decision 3/8)
     - id: revoke-passkeys
       description: RevokeUserPasskeys → revoke sessions → audit → notify; optional passkey_id
     - id: remove-member
-      description: RemoveMember — delete this app's member row
+      description: RemoveMember, delete this app's member row
     - id: delete-user
-      description: DeleteUser — hard-delete the login identity (guarded on no other memberships)
+      description: DeleteUser, hard-delete the login identity (guarded on no other memberships)
   menus:
     - id: default
       description: User admin navigation link
@@ -321,10 +321,10 @@ secrets:
 
 plugins:
   # The built-in @lowdefy/connection-mongodb (the vendored adapter, supportsJSON
-  # for native-BSON attributes — mongodb Decision 5) provides MongoDBCollection,
+  # for native-BSON attributes, mongodb Decision 5) provides MongoDBCollection,
   # MongoDBAuthAdapter, and every MongoDB* request type (including
   # MongoDBInsertConsecutiveId), so no @lowdefy/community-plugin-mongodb pin is
-  # needed — the built-in is auto-included. The module's read connections and
+  # needed. The built-in is auto-included. The module's read connections and
   # the app's auth.database adapter both resolve from it.
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"

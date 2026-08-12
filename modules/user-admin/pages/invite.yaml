@@ -1,4 +1,4 @@
-# `invite` page — email-first check-then-invite flow (design Decision 7).
+# `invite` page: email-first check-then-invite flow (design Decision 7).
 # Pipeline: frame (mockups/frames/invite.html) → layout → content (this file) →
 # wire (task 17). The admin enters an email; Check resolves it (in-page) to one of
 # four outcomes before the invitation form opens.
@@ -13,7 +13,7 @@
 #
 # Why unknown + existing share one form layer: the form embeds the consumer's
 # `fields.member_attributes` blocks (fixed ids from `_module.var`) and the profile
-# fields — those cannot appear twice on one page. Design Decision 7 describes one
+# fields. Those cannot appear twice on one page. Design Decision 7 describes one
 # form (blank or prefilled), so the two outcomes collapse to `state_form`; prefill
 # is seeded state, wired in task 17.
 #
@@ -55,14 +55,14 @@ _ref:
       # ── Area 1: email entry card ("Who are you inviting?") ──
       - _ref: components/invite_email.yaml
 
-      # ── Area 2: resolution slot — one layer shown at a time, keyed off
-      #    invite_state (visibility, not tabs/modal — the outcomes are in-flow). ──
+      # ── Area 2: resolution slot, one layer shown at a time, keyed off
+      #    invite_state (visibility, not tabs/modal: the outcomes are in-flow). ──
       - id: invite_result
         type: Box
         layout:
           gap: 16
         blocks:
-          # LAYER: resting — light inline hint, no card chrome.
+          # LAYER: resting, light inline hint, no card chrome.
           - id: state_resting
             type: Html
             visible:
@@ -76,7 +76,7 @@ _ref:
                 <span>Choose <b>Check</b> above. We resolve access status to one of
                 four outcomes before opening the form.</span></div>
 
-          # LAYER: checking — async resolve in flight.
+          # LAYER: checking, async resolve in flight.
           - id: state_checking
             type: Alert
             visible:
@@ -94,10 +94,10 @@ _ref:
                     email:
                       _state: email
 
-          # LAYER: form — invitation details (serves unknown + existing outcomes).
+          # LAYER: form, invitation details (serves unknown + existing outcomes).
           - _ref: components/invite_form.yaml
 
-          # LAYER: already a member — link to the user detail page.
+          # LAYER: already a member, link to the user detail page.
           - id: state_member
             type: Alert
             visible:
@@ -140,7 +140,7 @@ _ref:
                               user_id:
                                 _state: resolved_member.user_id
 
-          # LAYER: pending invitation — resend / cancel.
+          # LAYER: pending invitation, resend / cancel.
           - id: state_pending
             type: Alert
             visible:
@@ -181,7 +181,7 @@ _ref:
                             # invitation already carries, so the refresh preserves
                             # them rather than blanking them (the invitation stays
                             # pending, so no re-resolve needed). Omitting the tier
-                            # would not leave it alone — the step defaults an
+                            # would not leave it alone. The step defaults an
                             # absent one to `member`, silently revoking it.
                             - id: resend_invitation
                               type: CallAPI

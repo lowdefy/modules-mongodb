@@ -1,4 +1,4 @@
-# Signup page — task 10. Serves authPages.signUp. Ships unconditionally;
+# Signup page, task 10. Serves authPages.signUp. Ships unconditionally;
 # admission is engine policy (this page renders the outcome, it does not
 # re-implement it). Two renders driven by `signup_view` (form | check).
 #
@@ -25,7 +25,7 @@ _ref:
             signup_view: form
     blocks:
       _build.array.concat:
-        # ---- Email/password form — only when emailAndPassword is enabled ----
+        # ---- Email/password form. Only when emailAndPassword is enabled ----
         - _build.if:
             test:
               _build.authConfig: emailAndPassword.enabled
@@ -100,11 +100,11 @@ _ref:
                           # BetterAuth's signup body requires `name`, but the
                           # canonical profile is captured in onboarding (which
                           # re-denorms `users.name` from the contact), so the
-                          # account is created bare — same as BetterAuth's own
+                          # account is created bare, same as BetterAuth's own
                           # magic-link first sign-in.
                           name: ""
                           # Where the emailed verification link lands after
-                          # verifying — the verify-email success render.
+                          # verifying, the verify-email success render.
                           callbackUrl:
                             _string.concat:
                               - "/"
@@ -157,11 +157,11 @@ _ref:
                   plain: true
             else: []
 
-        # ---- Magic-link alternative-method send — one email → link action,
+        # ---- Magic-link alternative-method send. One email → link action,
         # same on both pages. The signup page only ever builds when password is
         # on, so the password form always holds the primary slot and magic-link
         # sits below the "or" divider as a peer of the OAuth buttons (placed
-        # first, closest to the form) — exactly as it demotes on the mixed login
+        # first, closest to the form), exactly as it demotes on the mixed login
         # page. The shared component's on-success flip is supplied via `on_sent`
         # so it drives signup's own `signup_view: link-sent` render. ----
         - _build.if:
@@ -186,7 +186,7 @@ _ref:
                         - form
             else: []
 
-        # ---- OAuth "signup" — social sign-in creates the account on first use,
+        # ---- OAuth "signup". Social sign-in creates the account on first use,
         # so these dispatch through `Login`. One button per configured provider;
         # label/icon from the `providers` var. ----
         - _build.if:
@@ -305,7 +305,7 @@ _ref:
               fontSize: 12
               color: "var(--ant-color-text-secondary)"
 
-        # ---- Link-sent result (magic-link) — the send returns { status: true }
+        # ---- Link-sent result (magic-link). The send returns { status: true }
         # with no session, so it flips signup_view to link-sent and shows this
         # "check your email" render. Resend re-fires the same shared send
         # (cooldown-guarded, re-supplying signup's on_sent); the link button
@@ -328,7 +328,7 @@ _ref:
                   title: Check your email
                   subTitle:
                     _nunjucks:
-                      template: We've emailed a sign-in link to <b>{{ email }}</b>. Open it on this device to continue — the link expires in a few minutes.
+                      template: We've emailed a sign-in link to <b>{{ email }}</b>. Open it on this device to continue. The link expires in a few minutes.
                       on:
                         email:
                           _state: magic_link_sent_email

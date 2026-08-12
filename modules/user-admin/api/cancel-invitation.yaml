@@ -1,4 +1,4 @@
-# cancel-invitation — CancelInvitation (design Decision 7). Cancels a pending
+# cancel-invitation: CancelInvitation (design Decision 7). Cancels a pending
 # invitation by id. `organizationId` is named explicitly: an absent one falls back
 # to the APP's pinned organization, so an instance administering another
 # organization would be authorized against the wrong one. Role-gated app-side; the

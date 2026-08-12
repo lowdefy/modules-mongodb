@@ -1,10 +1,10 @@
-# revoke-passkeys — admin recovery when a security key is lost or stolen
-# (design Decision 3). RevokeUserPasskeys clears registered passkeys — all of
+# revoke-passkeys: admin recovery when a security key is lost or stolen
+# (design Decision 3). RevokeUserPasskeys clears registered passkeys, all of
 # them, or one when `passkeyId` is given (an absent `passkey_id` payload revokes
 # all). A passkey independently satisfies a required-2FA policy, so a stolen one
 # both authenticates and meets the requirement until it is revoked. Revoking
 # sessions is a separate step because deleting a passkey does not end a session,
-# and a thief keeps the session they hold until it is revoked — that is what
+# and a thief keeps the session they hold until it is revoked. That is what
 # recovers the account. Sequential, halts on first error, no rollback (the steps
 # are idempotent and re-running converges). Audit event is the final durable step.
 #

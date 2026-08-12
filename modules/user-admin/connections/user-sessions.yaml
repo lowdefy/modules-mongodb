@@ -1,7 +1,7 @@
 # Read-only connection for the auth `user-sessions` collection.
 # Adapter-fixed collection name (mongodb Decision 2). Same-database co-location
 # precondition applies (see module.lowdefy.yaml). Reads MUST $project out
-# `token` (the bearer credential) — see the Security tile, design Decision 5.
+# `token` (the bearer credential), see the Security tile, design Decision 5.
 id: user-sessions
 type: MongoDBCollection
 properties:

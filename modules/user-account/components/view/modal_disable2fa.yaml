@@ -1,4 +1,4 @@
-# Turn off 2FA modal (design Decision 5) — TwoFactorDisable is PASSWORD-GATED
+# Turn off 2FA modal (design Decision 5): TwoFactorDisable is PASSWORD-GATED
 # (BetterAuth requires the account password), so the tile's "Turn off" opens this
 # confirm rather than disabling inline. On success the 2FA state flips to Off and
 # the tile re-fetches. A wrong password or a validation miss throws, keeping the

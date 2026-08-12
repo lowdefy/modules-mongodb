@@ -1,4 +1,4 @@
-# Read-only lookup of a single invitation for the accept page — display only
+# Read-only lookup of a single invitation for the accept page: display only
 # (org name, inviter, invited email, status, expiry), keyed on the invitationId
 # query parameter. $lookup joins user-organizations and users for their names.
 id: get_invitation

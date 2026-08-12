@@ -1,6 +1,6 @@
 # Cancel-invitation confirm modal (design Decision 7). Opened via CallMethod
 # toggleOpen from the pending panel's "Cancel invitation" button. Withdraws the
-# pending invitation (CancelInvitation) — the CallAPI onOk is the WIRE task (17).
+# pending invitation (CancelInvitation). The CallAPI onOk is the WIRE task (17).
 id: modal_cancel
 type: Modal
 properties:
@@ -26,7 +26,7 @@ events:
                 _state: resolved_invitation._id
               email:
                 _state: email
-      # Re-resolve the (now-cancelled) email — the outcome falls through to the
+      # Re-resolve the (now-cancelled) email. The outcome falls through to the
       # blank/prefilled form so the admin can send a fresh invitation.
       - _ref: actions/resolve_email.yaml
 blocks:

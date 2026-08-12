@@ -1,4 +1,4 @@
-# Cross-app memberships read (design Decision 4/6) — the target's memberships in
+# Cross-app memberships read (design Decision 4/6): the target's memberships in
 # OTHER apps of the suite, the organization this instance administers excluded.
 # ONE read powers three things: (a) the Apps-tile badges, (b) the suspend dialog's
 # blast-radius enumeration, and (c) the other-membership COUNT that switches
@@ -53,7 +53,7 @@ properties:
               - 0
               - 1
         # The person's APP roles in the other organization, the same fact every
-        # other `roles` surface in the module shows. Not `role` — that is the org
+        # other `roles` surface in the module shows. Not `role`. That is the org
         # tier, an administrative fact about an organization this instance does
         # not administer, and reading it here would render `member` / `admin` /
         # `owner` on a support badge with nothing blank and nothing erroring.

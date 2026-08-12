@@ -1,29 +1,29 @@
-# Members base stages — shared by the members list, the detail read and the
+# Members base stages: shared by the members list, the detail read and the
 # Excel export. Root is `user-members` for the organization this instance
-# administers, welded in at build time from the `org_slug` var — the id IS the
+# administers, welded in at build time from the `org_slug` var. The id IS the
 # slug under the pinned policy. Joins the auth `user` and the app
 # `user-contacts` record, then flattens the display shape:
-#   name / picture — from the contact profile (fallback to the user display name)
-#   email          — from the auth user row
-#   status         — Active unless user.banned === true → Suspended (Decision 2;
+#   name / picture : from the contact profile (fallback to the user display name)
+#   email          : from the auth user row
+#   status         : Active unless user.banned === true → Suspended (Decision 2;
 #                    permanent bans only, so ban_expires is never consulted)
-#   created/updated— the contact change-stamp timestamps
-#   signed_up      — member.created_at (when the person accepted into this app)
+#   created/updated: the contact change-stamp timestamps
+#   signed_up      : member.created_at (when the person accepted into this app)
 #
 # It also normalises the three configurable field bags under exactly the names
 # the `fields.*` vars use, so a `table_columns` `field:` / `download_columns`
 # `value:` is the same path string as the form block id that collects the field:
-#   profile           — fields.profile           (contact.profile)
-#   user_attributes   — fields.user_attributes   (user.attributes)
-#   member_attributes — fields.member_attributes (member.attributes)
+#   profile           : fields.profile           (contact.profile)
+#   user_attributes   : fields.user_attributes   (user.attributes)
+#   member_attributes : fields.member_attributes (member.attributes)
 #
 # `picture`, `created` and `updated` are wrapped in $ifNull so the keys exist
 # even when their source doesn't: $addFields OMITS a field whose source path is
 # missing, and `created`/`updated` both vanish when the contact $lookup finds no
-# match (reachable — the $unwind below preserves empties). A blank column is then
+# match (reachable: the $unwind below preserves empties). A blank column is then
 # always a data question, never a shape question.
 #
-# `pre_join_stages` is the slot for stages that must run on the MEMBER ROOT —
+# `pre_join_stages` is the slot for stages that must run on the MEMBER ROOT,
 # after the org-scope $match, before the $lookups. That window is the only place
 # a clause on a stored member field can use an index, so the members list puts
 # its roles $match here. The slot lives on this file rather than in each consumer
@@ -33,8 +33,8 @@
 # were.
 #
 # Co-location precondition (Decision 1): the user-contacts $lookup returns empty
-# if the read connection and the auth adapter resolve to different databases —
-# blank contact data is a co-location violation, not a wiring bug.
+# if the read connection and the auth adapter resolve to different databases.
+# Blank contact data is a co-location violation, not a wiring bug.
 _build.array.concat:
   - - $match:
         organization_id:

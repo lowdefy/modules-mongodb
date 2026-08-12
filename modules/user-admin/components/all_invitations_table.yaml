@@ -3,10 +3,10 @@
 # Columns: Email · Invited by (avatar) · Roles · Status · Expires · per-action
 # columns. Each action is its own column with a stable colId so the single
 # onCellClick can tell them apart (the repo's AgGrid action-cell pattern):
-#   Resend / Cancel  — shown on Invited rows
-#   Re-invite        — shown on Expired rows; routes to the invite flow, whose
+#   Resend / Cancel, shown on Invited rows
+#   Re-invite, shown on Expired rows; routes to the invite flow, whose
 #                      routine self-reconciles the stale pending row
-#                      (cancel-then-invite, no duplicate — Decision 7)
+#                      (cancel-then-invite, no duplicate, Decision 7)
 id: invitations_table
 type: AgGridBalham
 loading:
@@ -110,7 +110,7 @@ properties:
     _request: get_all_invitations
 events:
   onCellClick:
-    # Resend — InviteMember(resend) on a still-pending Invited row (Decision 7).
+    # Resend: InviteMember(resend) on a still-pending Invited row (Decision 7).
     - id: resend_invitation
       type: CallAPI
       skip:
@@ -133,8 +133,8 @@ events:
           # email is all this button needs to send.
           email:
             _event: row.email
-    # Cancel — CancelInvitation (reversible; re-invitable later, so no confirm
-    # modal on the list — the invite page's pending panel keeps the confirm).
+    # Cancel: CancelInvitation (reversible; re-invitable later, so no confirm
+    # modal on the list: the invite page's pending panel keeps the confirm).
     - id: cancel_invitation
       type: CallAPI
       skip:
@@ -152,7 +152,7 @@ events:
             _event: row._id
           email:
             _event: row.email
-    # Re-invite (Expired) — route to the invite flow with the email prefilled.
+    # Re-invite (Expired): route to the invite flow with the email prefilled.
     # The invite routine cancels the stale pending row before creating a fresh
     # one (cancel-then-invite), so no duplicate is created.
     - id: reinvite_expired

@@ -1,4 +1,4 @@
-# `all` page — Users list: Members + Invitations tabs (design Decision 2).
+# `all` page, Users list: Members + Invitations tabs (design Decision 2).
 # Pipeline: frame (mockups/frames/all.html) → layout (this file) → content → wire.
 # Layout phase: shared page/title-block/sort-filters/pagination reused; leaves are
 # sized Html placeholder slots carrying the frame ids. No requests yet.
@@ -22,7 +22,7 @@ _ref:
               - _module.var: app_title
               - " Users"
     # Native reads (design Decision 1/2). The Excel export pipeline is included
-    # only when the `download` var is on (Decision 2) — button + pipeline both
+    # only when the `download` var is on (Decision 2). Button + pipeline both
     # excluded otherwise.
     requests:
       _build.array.concat:
@@ -72,7 +72,7 @@ _ref:
           type: Request
           params: get_all_invitations
     page_actions:
-      # Download Excel — present only when the `download` var is true (Decision 2).
+      # Download Excel: present only when the `download` var is true (Decision 2).
       # The merged members+invitations export pipeline is wired in task 9.
       - id: download_excel_btn
         type: Button
@@ -90,7 +90,7 @@ _ref:
         events:
           # Fetch the full merged members+invitations snapshot (get_users_excel_data)
           # then hand it to the xlsx plugin. One sheet, one status column
-          # (Active/Suspended/Invited/Expired) — the union lives only here.
+          # (Active/Suspended/Invited/Expired). The union lives only here.
           onClick:
             - id: fetch_excel_data
               type: FetchRequest
@@ -161,7 +161,7 @@ _ref:
                 pageId:
                   _module.pageId: invite
     blocks:
-      # Filters, table and pagination live in one contained card (F25f) — the
+      # Filters, table and pagination live in one contained card (F25f). The
       # tab strip reads as the card header, matching the tile cards elsewhere.
       - _ref:
           module: layout
@@ -169,7 +169,7 @@ _ref:
           vars:
             hide_title: true
             blocks:
-              # Tabs — one strip, two panels. Each slot owns its own filter / table /
+              # Tabs: one strip, two panels. Each slot owns its own filter / table /
               # pagination blocks (independent state; wired in task 9).
               - id: users_tabs
                 type: Tabs
@@ -179,7 +179,7 @@ _ref:
                       title: Members
                       icon: AiOutlineTeam
                     - key: invitations_panel
-                      # Pending-count badge (Decision 2) — the total from the invitations
+                      # Pending-count badge (Decision 2): the total from the invitations
                       # $facet (not rows.length); hidden when zero.
                       title:
                         _nunjucks:
@@ -204,7 +204,7 @@ _ref:
                           selfAlign: middle
                         blocks:
                           - _ref: components/all_members_filters.yaml
-                          # Members sort (shared sort-filters) — owns the default sort/search
+                          # Members sort (shared sort-filters): owns the default sort/search
                           # state keys; refetches get_all_members on change (Decision 2).
                           - _ref:
                               path: ../shared/layout/sort-filters.yaml
@@ -228,7 +228,7 @@ _ref:
                           path: ../shared/layout/pagination.yaml
                           vars:
                             request_id: get_all_members
-                  # Invitations tab — fully independent state (Decision 2): its sort and
+                  # Invitations tab, fully independent state (Decision 2): its sort and
                   # pagination bind under `inv_sort` / `inv_pagination` (inline here,
                   # rather than the shared fragments which own the Members keys), so
                   # neither tab disturbs the other.

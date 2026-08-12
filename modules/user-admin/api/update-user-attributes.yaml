@@ -1,4 +1,4 @@
-# update-user-attributes — global/user attributes on the `user` row via
+# update-user-attributes: global/user attributes on the `user` row via
 # UpdateUserAttributes (applied across every app, design Decision 3). Role-gated
 # app-side; the step declares the permission it needs and the engine floors it
 # against the caller's member row in the organization the step names. Audit event is

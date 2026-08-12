@@ -1,4 +1,4 @@
-# Edit global attributes modal — UpdateUserAttributes (Decision 3). Cross-app
+# Edit global attributes modal. UpdateUserAttributes (Decision 3). Cross-app
 # attributes on the user row; bind state.user_attributes.*. onOk wiring (CallAPI
 # update-user-attributes) is task 13.
 id: modal_global
@@ -21,7 +21,7 @@ events:
           type: Validate
           params:
             regex: '^user_attributes\.'
-        # UpdateUserAttributes — cross-app attributes on the user row (Decision 3).
+        # UpdateUserAttributes. Cross-app attributes on the user row (Decision 3).
         - id: save_global
           type: CallAPI
           messages:
