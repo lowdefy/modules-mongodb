@@ -34,6 +34,13 @@ Verified behaviour of the pinned `magic-link@1.6.23` plugin, which shapes every 
 
 ### 1. Config-driven, not a passwordless mode
 
+> **Superseded (mixed case only):** the "Composition when both methods are on" rule below —
+> password form always primary, magic-link/OAuth/passkey always-visible demoted peers — was
+> reworked into method-first progressive disclosure by
+> [mixed-login-method-first](../../../mixed-login-method-first/design.md) (finding F10). The
+> config-driven stance, the hoisted shared `email` field, and the password-only/passwordless
+> renders described here are unchanged.
+
 The login page renders whichever methods `_build.authConfig` reports enabled — this is the parent's Decision 2, extended to actually build the magic-link branch. Passwordless-primary falls out for free: a deployment with `emailAndPassword.enabled: false` and `magicLink.enabled: true` gets an email-only page because the password `_build.if` produces nothing and the magic-link branch produces the send affordance. There is no separate "passwordless" flag or page variant to maintain — one page, driven by config, is the "one correct way". OAuth and passkey buttons still render when their config is on, uniformly, so a passwordless deployment that also enables Google gets both.
 
 **Composition when both methods are on (mixed deployment).** Magic-link is the only _alternative_ method that also needs the email address, so two things follow. First, the `email` input is **hoisted** into the always-present zone (gated on `emailAndPassword.enabled OR magicLink.enabled`) and is the single canonical field both the password submit and the magic-link send read — it is not owned by either method's branch, so a mixed deployment never renders two email fields (the shipped password form owns `id: email` today; a second magic-link email input would collide on that auto-bound state path). Second, magic-link takes the **primary** submit slot only when no password submit occupies it: in a passwordless deployment it is the primary action directly under the email input, and in a mixed deployment the password "Sign in" is primary while magic-link **demotes to an alternative-method button** — a peer of the OAuth and passkey buttons, below the "or" divider (placed first among them, being the closest to the password form's email). This keeps every method's rendering uniform and mirrors the parent's password-primary stance. See the login mocks — `mockups/screens/login-passwordless.html` (email-only) and `mockups/screens/login-mixed.html` (password + magic-link) — for the two config renders, each with its `signin` / `link-sent` / `expired-link` states; the password-only render is the parent's shipped `../../mockups/screens/login.html`.

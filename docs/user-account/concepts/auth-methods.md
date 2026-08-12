@@ -83,13 +83,18 @@ link** button, and a "Use a different email" link back to the form. Resend is
 guarded by a **short cooldown** (the button disables for ~30s after each send) so a
 user can't tap through the send rate limit.
 
-Placement follows the primary method:
+Placement follows how many methods are enabled — the login `signin` view adapts:
 
-- **Password on (mixed deployment):** the send is an alternative-method button
-  below the "or" divider, alongside the OAuth / passkey buttons (placed first,
-  closest to the email).
+- **Password only:** the password form shows directly — one method, no chooser.
 - **Password off (passwordless deployment):** the send is the primary action
   directly under the email — see [Passwordless-primary](#passwordless-primary-sign-up-collapses-into-sign-in).
+- **Password plus at least one alternative (mixed deployment):** the view is a
+  **method chooser** — the email input leads, then a **Use password** button and
+  the alternative-method buttons (the magic-link send, then any OAuth / passkey
+  below a single "or" divider). Choosing **Use password** reveals the password
+  field, its submit and **Forgot password?**, and hides the other methods; an
+  **← Other options** link returns to the chooser. The email input is shared by
+  both layouts, so a typed address survives switching between them.
 
 ### Where the emailed link lands
 
@@ -126,8 +131,9 @@ consequences:
   not catch this.
 
 A **mixed** deployment (password _and_ magic-link) is the other case: `/signup`
-**is** built, and it offers the magic-link send as an alternative-method button
-below its "or" divider, exactly as `/login` does.
+**is** built, and its form view is the same **method chooser** as `/login` — a
+**Use a password** button plus the magic-link send (and any OAuth below the "or"
+divider), with the password registration field revealed on demand.
 
 > Passwordless is the migration path for a formerly-passwordless (v0.x
 > email-link) deployment. See

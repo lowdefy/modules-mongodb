@@ -10,7 +10,14 @@
 # Method enablement is read from the app auth config via `_build.authConfig`
 # (Decision 2): the email/password form renders only when emailAndPassword is
 # enabled, an OAuth button per configured provider (label/icon from the
-# `providers` var).
+# `providers` var). When password AND at least one alternative (magic-link /
+# OAuth) are enabled, the form view is a method chooser: heading + email, then a
+# "Use a password" button and the alternative-method buttons. Choosing "Use a
+# password" reveals the registration password field (the `signup_show_password`
+# sub-state) and hides the other methods; "Other options" returns to the chooser.
+# With password as the only method the form shows directly (no chooser). The
+# `email` input is hoisted out of the password branch so the chooser's magic-link
+# send reads the same canonical `id: email`.
 _ref:
   module: layout
   component: auth-page
@@ -23,12 +30,32 @@ _ref:
           type: SetState
           params:
             signup_view: form
+            # Reveal sub-state for the form method chooser. Seeded open only when
+            # password is the sole method (no chooser); otherwise the chooser leads
+            # and "Use a password" opens the field. Baked at build time.
+            signup_show_password:
+              _build.if:
+                test:
+                  _build.and:
+                    - _build.authConfig: emailAndPassword.enabled
+                    - _build.not:
+                        _build.or:
+                          - _build.authConfig: magicLink.enabled
+                          - _build.gt:
+                              - _build.array.length:
+                                  _build.authConfig: providers
+                              - 0
+                then: true
+                else: false
     blocks:
       _build.array.concat:
-        # ---- Email/password form. Only when emailAndPassword is enabled ----
+        # ---- Heading + shared email input. Hoisted out of the password branch so
+        # the chooser's magic-link send reads the same canonical `id: email`. -----
         - _build.if:
             test:
-              _build.authConfig: emailAndPassword.enabled
+              _build.or:
+                - _build.authConfig: emailAndPassword.enabled
+                - _build.authConfig: magicLink.enabled
             then:
               - id: signup_title
                 type: Title
@@ -54,12 +81,60 @@ _ref:
                     title: Email
                     colon: false
                     span: 24
+            else: []
+
+        # ---- "Use a password" chooser button. Only when password AND at least one
+        # alternative (magic-link / OAuth) are enabled; reveals the registration
+        # password field. Hidden once the field is open. -------------------------
+        - _build.if:
+            test:
+              _build.and:
+                - _build.authConfig: emailAndPassword.enabled
+                - _build.or:
+                    - _build.authConfig: magicLink.enabled
+                    - _build.gt:
+                        - _build.array.length:
+                            _build.authConfig: providers
+                        - 0
+            then:
+              - id: signup_use_password
+                type: Button
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _not:
+                        _state: signup_show_password
+                properties:
+                  title: Use a password
+                  block: true
+                  size: large
+                  color: primary
+                  variant: solid
+                events:
+                  onClick:
+                    - id: show_signup_password
+                      type: SetState
+                      params:
+                        signup_show_password: true
+            else: []
+
+        # ---- Registration password + submit. Shown when signup_show_password is
+        # set (always, when password is the only method; on demand via "Use a
+        # password" in the chooser). ---------------------------------------------
+        - _build.if:
+            test:
+              _build.authConfig: emailAndPassword.enabled
+            then:
               - id: password
                 type: PasswordInput
                 visible:
-                  _eq:
-                    - _state: signup_view
-                    - form
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _state: signup_show_password
                 required: true
                 properties:
                   size: large
@@ -74,9 +149,11 @@ _ref:
               - id: signup_submit
                 type: Button
                 visible:
-                  _eq:
-                    - _state: signup_view
-                    - form
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _state: signup_show_password
                 properties:
                   title: Create account
                   block: true
@@ -146,24 +223,48 @@ _ref:
                                       - MEMBERSHIP_REQUIRED
                                   then: Sign-ups for this app are by invitation only. Ask an administrator for an invitation.
                               default: We couldn't create your account. Check your details and try again.
-              - id: signup_oauth_divider
-                type: Divider
-                visible:
-                  _eq:
-                    - _state: signup_view
-                    - form
-                properties:
-                  title: or
-                  plain: true
             else: []
 
-        # ---- Magic-link alternative-method send. One email → link action,
-        # same on both pages. The signup page only ever builds when password is
-        # on, so the password form always holds the primary slot and magic-link
-        # sits below the "or" divider as a peer of the OAuth buttons (placed
-        # first, closest to the form), exactly as it demotes on the mixed login
-        # page. The shared component's on-success flip is supplied via `on_sent`
-        # so it drives signup's own `signup_view: link-sent` render. ----
+        # ---- "Other options" back link. Returns from the revealed password field
+        # to the method chooser. Built alongside the "Use a password" button. -----
+        - _build.if:
+            test:
+              _build.and:
+                - _build.authConfig: emailAndPassword.enabled
+                - _build.or:
+                    - _build.authConfig: magicLink.enabled
+                    - _build.gt:
+                        - _build.array.length:
+                            _build.authConfig: providers
+                        - 0
+            then:
+              - id: signup_back_to_methods
+                type: Button
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _state: signup_show_password
+                properties:
+                  title: Other options
+                  icon: AiOutlineArrowLeft
+                  block: true
+                  variant: link
+                  color: primary
+                events:
+                  onClick:
+                    - id: hide_signup_password
+                      type: SetState
+                      params:
+                        signup_show_password: false
+            else: []
+
+        # ---- Magic-link method button (chooser). One email → link action, same
+        # shared component on both pages. A peer of the OAuth buttons in the method
+        # chooser; hidden while the password field is open. The component's
+        # on-success flip is supplied via `on_sent` so it drives signup's own
+        # `signup_view: link-sent` render. ---------------------------------------
         - _build.if:
             test:
               _build.authConfig: magicLink.enabled
@@ -181,14 +282,42 @@ _ref:
                       magic_link_sent_email:
                         _state: email
                     visible:
-                      _eq:
+                      _and:
+                        - _eq:
+                            - _state: signup_view
+                            - form
+                        - _not:
+                            _state: signup_show_password
+            else: []
+
+        # ---- Single "or" divider. Separates the email-credential group (Use a
+        # password / magic-link) from the OAuth group; renders only when OAuth
+        # providers exist. Hidden while the password field is open. --------------
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _build.authConfig: providers
+                - 0
+            then:
+              - id: signup_method_divider
+                type: Divider
+                visible:
+                  _and:
+                    - _eq:
                         - _state: signup_view
                         - form
+                    - _not:
+                        _state: signup_show_password
+                properties:
+                  title: or
+                  plain: true
             else: []
 
         # ---- OAuth "signup". Social sign-in creates the account on first use,
         # so these dispatch through `Login`. One button per configured provider;
-        # label/icon from the `providers` var. ----
+        # label/icon from the `providers` var. Hidden while the password field is
+        # open. ----
         - _build.if:
             test:
               _build.gt:
@@ -199,9 +328,12 @@ _ref:
               - id: signup_oauth_buttons
                 type: Box
                 visible:
-                  _eq:
-                    - _state: signup_view
-                    - form
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _not:
+                        _state: signup_show_password
                 layout:
                   gap: 12
                 blocks:
