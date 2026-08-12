@@ -1628,6 +1628,7 @@ describe("owner-only affordances", () => {
       expect(seed.selected_report).toEqual({
         _id: { __url_query: "report_id" },
         title: "Q2 Revenue by Region",
+        description: "Revenue and order counts, filterable by status.",
         is_owner: true,
         visibility: "shared",
       });
@@ -1643,22 +1644,33 @@ describe("owner-only affordances", () => {
       expect(seed.selected_report.visibility).toBe("private");
     });
 
-    // Copied to the rename inputs' own paths so editing them leaves the title
-    // the delete confirm shows alone. A report with no description seeds "",
-    // not undefined: the endpoint treats null as leave-alone, so an unseeded
-    // field would silently keep a description the user cannot see.
-    test("seeds the rename fields, with an empty description rather than none", () => {
+    // "" rather than undefined for a report with no description: the endpoint
+    // treats null as leave-alone, so a field the edit form opened as undefined
+    // would silently keep a description the user cannot see they still have.
+    test("carries the description, empty rather than absent", () => {
       const withProse = seedOf(
         compile({
           spec: { ...spec, description: "Revenue and order counts." },
         }),
       );
-      expect(withProse.rename_title).toBe("Q2 Revenue by Region");
-      expect(withProse.rename_description).toBe("Revenue and order counts.");
+      expect(withProse.selected_report.description).toBe(
+        "Revenue and order counts.",
+      );
 
       const bare = { ...spec };
       delete bare.description;
-      expect(seedOf(compile({ spec: bare })).rename_description).toBe("");
+      expect(seedOf(compile({ spec: bare })).selected_report.description).toBe(
+        "",
+      );
+    });
+
+    // selected_report is the menu's SINGLE source. The edit form's own paths are
+    // filled from it when the form opens (menu_rename_seed in
+    // report_menu_modal.yaml), never seeded here — this SetState re-runs on
+    // every ⋯ click, so a compiled literal would overwrite a rename saved a
+    // moment ago the next time the menu was opened.
+    test("seeds nothing but selected_report", () => {
+      expect(Object.keys(seedOf(compile({})))).toEqual(["selected_report"]);
     });
   });
 });

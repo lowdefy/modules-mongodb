@@ -315,22 +315,31 @@ old pooled filter row required is gone.
   of which blanks the whole report if it is ever missed. What makes the reuse
   work is the seed: the menu reads `selected_report`, which the list fills from
   the clicked grid row and the compiled button fills from literals — `title`,
-  `is_owner`, `visibility` — plus `_id` from the page URL, since the compiler is
-  never told the report id. `is_owner` and `visibility` fall back to the closed
-  position (`false` / `private`), so a resolver that omits them hides the owner's
-  items rather than offering Publish on an already-shared report. The ⋯ compiles
-  for **every** viewer, like the ★: Duplicate is any reader's path to a copy they
-  control, and the menu hides what a viewer cannot use.
-- Publish and unpublish each `SetState` the new `visibility` onto
-  `selected_report` immediately after their `CallAPI`, so the menu is correct
-  **without** depending on `after_write`'s reload having re-resolved the page.
-  This matters because only `_id` in the compiled seed is live (`__url_query`);
-  `title`, `is_owner` and `visibility` are literals frozen at resolve time, and
-  re-opening ⋯ re-runs that same `SetState`. Without the correction a published
-  report would keep offering Publish and keep hiding Unpublish, leaving no way to
-  retract short of a hard refresh. `CallAPI` throws on rejection and stops the
-  chain, so the correction only runs on a persisted write. The reports list never
-  had the problem — it refetches `list-reports` and seeds from the clicked row.
+  `description`, `is_owner`, `visibility` — plus `_id` from the page URL, since
+  the compiler is never told the report id. `is_owner` and `visibility` fall back
+  to the closed position (`false` / `private`), so a resolver that omits them
+  hides the owner's items rather than offering Publish on an already-shared
+  report. The ⋯ compiles for **every** viewer, like the ★: Duplicate is any
+  reader's path to a copy they control, and the menu hides what a viewer cannot
+  use.
+- `selected_report` is that menu's **single source**, and the reason is staleness.
+  Only `_id` is live (`__url_query`); everything else is a literal frozen at
+  resolve, and the seeding `SetState` re-runs on every ⋯ click — so anything
+  seeded there is restored to its resolve-time value each time the menu opens.
+  The edit form's `rename_title` / `rename_description` are therefore filled
+  **from** `selected_report` when the form opens (`menu_rename_seed`), not seeded
+  by each caller, and they stay separate state paths so typing in the form does
+  not change the name the delete confirm shows. Every write then corrects
+  `selected_report` itself the moment it succeeds — rename writes back the saved
+  title and description, publish and unpublish their new `visibility` — so the
+  menu is right whether or not `after_write`'s reload re-resolved the page.
+  `CallAPI` throws on rejection and stops the chain, so a correction only runs on
+  a persisted write.
+  Without those corrections a published report would keep offering Publish and
+  keep hiding Unpublish — leaving no way to retract short of a hard refresh — and
+  a renamed one would show its old title in both the ⋯ header and the edit form.
+  The reports list never had the problem: it refetches `list-reports` and re-seeds
+  from the clicked row.
 - Duplicate takes its own after-action var (`after_duplicate`), separate from the
   publish/unpublish `after_write`, because the copy is a **different** report:
   "refresh what you are looking at" re-renders the original and leaves the copy

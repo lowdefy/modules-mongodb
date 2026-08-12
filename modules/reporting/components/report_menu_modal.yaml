@@ -104,6 +104,24 @@ blocks:
                 method: setOpen
                 args:
                   - open: false
+            # Fill the edit form from selected_report at OPEN time, rather than
+            # having each caller seed these paths alongside it. They are separate
+            # state paths on purpose — typing in the form must not change the
+            # name the delete confirm shows — but they have to START from the
+            # current values, and the only version that is current is the one the
+            # menu itself is reading. Seeded by the caller instead, the report
+            # page's compiled literal is frozen at resolve, so a rename saved a
+            # moment ago comes back stale the next time ⋯ is opened.
+            - id: menu_rename_seed
+              type: SetState
+              params:
+                rename_title:
+                  _state: selected_report.title
+                # Absent description reads as null; the TextArea wants "".
+                rename_description:
+                  _if_none:
+                    - _state: selected_report.description
+                    - ""
             - id: menu_rename_open
               type: CallMethod
               params:

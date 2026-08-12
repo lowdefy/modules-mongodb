@@ -187,24 +187,19 @@ events:
                   _event: row.is_favourite
       - _ref: pages/reports-list/actions/load_scope.yaml
   # Park the clicked row where the modals can read it — a modal's own onOk fires
-  # with an empty event, so the row cannot be read from the event there. Copy the
-  # title and description into the rename inputs' own paths so editing them
-  # leaves the name the delete confirm shows alone.
+  # with an empty event, so the row cannot be read from the event there. The row
+  # is the whole seed: the menu reads title/is_owner/visibility from it, and the
+  # edit form fills its own paths from it when it opens (menu_rename_seed), so
+  # typing in that form still leaves the name the delete confirm shows alone.
+  # list-reports projects description, so the form opens with what is stored
+  # rather than blank — a blank field would look like "no description" and clear
+  # it on save.
   onMenuClick:
     - id: seed_selected_report
       type: SetState
       params:
         selected_report:
           _event: row
-        rename_title:
-          _event: row.title
-        # list-reports projects description, so the rename modal opens with what
-        # is stored rather than blank — a blank field would look like "no
-        # description" and clear it on save.
-        rename_description:
-          _if_none:
-            - _event: row.description
-            - ""
     - id: open_row_menu
       type: CallMethod
       params:
