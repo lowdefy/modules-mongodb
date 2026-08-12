@@ -641,6 +641,60 @@ describe("provenance line", () => {
     }
   });
 
+  // The ⤓ shares the heading's row instead of taking one of its own, and is the
+  // icon alone. `hideTitle` is load-bearing: the Button block renders its blockId
+  // as the label when `title` is absent, so the title stays and is suppressed.
+  test("the download sits on the heading's row as an icon", () => {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+
+    for (const id of ["s1", "s3"]) {
+      expect(byId[`${id}_heading`].layout.span).toBe(20);
+      expect(byId[`${id}_download`].layout.span).toBe(4);
+      expect(byId[`${id}_download`].properties.hideTitle).toBe(true);
+      expect(byId[`${id}_download`].properties.title).toBe("Export CSV");
+      expect(byId[`${id}_download`].style.marginLeft).toBe("auto");
+    }
+    // Adjacent, in that order — the two are one head row.
+    const ids = blocks.map((b) => b.id);
+    expect(ids.indexOf("s3_download")).toBe(ids.indexOf("s3_heading") + 1);
+  });
+
+  // A table sized to its rows rather than to the block's 500px default, which
+  // left a five-row table sitting in 350px of white. The ceiling keeps a table
+  // near the pipeline's 1000-row cap scrolling and virtualised.
+  test("a table's height follows its row count, floored and capped", () => {
+    const tableOnly = {
+      title: "T",
+      sections: [
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region", label: "Region" }],
+        },
+      ],
+    };
+    const height = (rows) =>
+      compileReport({
+        spec: tableOnly,
+        results: [rows],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      }).find((b) => b.type === "AgGridBalham").properties.height;
+
+    expect(height([])).toBe(120);
+    expect(height(Array(5).fill({ region: "EU", total: 1 }))).toBe(174);
+    expect(height(Array(1000).fill({ region: "EU", total: 1 }))).toBe(500);
+  });
+
   test("a KPI-only report emits no CSV download at all", () => {
     const blocks = compileReport({
       spec: kpiOnlySpec,
@@ -1205,11 +1259,51 @@ describe("owner-only affordances", () => {
     expect(byId.s1.type).toBe("Alert");
     expect(byId.s1.properties.description).toContain("Jane Doe");
 
-    // Per-branch guard: nothing owner-only leaked into the config.
+    // Per-branch guard: nothing owner-only leaked into the config. Not a blanket
+    // "no Link anywhere" — the ★ a non-owner may legitimately click reloads the
+    // page with one — so the guard names the owner-only targets instead. Anything
+    // owner-only navigates to the chat or calls remove-report-section.
     const json = JSON.stringify(blocks);
     expect(json).not.toContain("remove-report-section");
-    expect(json).not.toContain('"Link"');
     expect(json).not.toContain("reporting/chat");
+    const links = blocks
+      .flatMap((block) => block.events?.onClick ?? [])
+      .filter((action) => action.type === "Link");
+    expect(links.map((link) => link.id)).toEqual(["reload_after_favourite"]);
+  });
+
+  // Favouriting is a read-side act (the endpoint checks readability, not
+  // ownership), so the ★ is the one header action a non-owner of a shared report
+  // gets. It sends the DESIRED state, which the compiler already knows.
+  test("the ★ is compiled for every viewer and sends the opposite of the current state", () => {
+    const unstarred = compile({ is_owner: false, is_favourite: false });
+    expect(unstarred.report_favourite.properties.icon).toBe("AiOutlineStar");
+    const [call, reload] = unstarred.report_favourite.events.onClick;
+    expect(call.type).toBe("CallAPI");
+    expect(call.params.endpointId).toBe("reporting/set-report-favourite");
+    expect(call.params.payload).toEqual({
+      report_id: { __url_query: "report_id" },
+      favourite: true,
+    });
+    expect(reload.params.pageId).toBe("reporting/report");
+
+    const starred = compile({ is_owner: true, is_favourite: true });
+    expect(starred.report_favourite.properties.icon).toBe("AiFillStar");
+    expect(
+      starred.report_favourite.events.onClick[0].params.payload.favourite,
+    ).toBe(false);
+  });
+
+  // The title shares its row with the actions, so its span is whatever they
+  // leave — 22 with only the ★, 17 once the chat link joins it.
+  test("the title's span makes room for exactly the actions compiled beside it", () => {
+    const alone = compile({ is_owner: false });
+    expect(alone.report_title.layout.span).toBe(22);
+    expect(alone.report_continue_in_chat).toBeUndefined();
+
+    const withChat = compile({ is_owner: true, conversation_id: "conv-1" });
+    expect(withChat.report_title.layout.span).toBe(17);
+    expect(withChat.report_continue_in_chat.layout.span).toBe(5);
   });
 });
 

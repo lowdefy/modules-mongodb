@@ -15,6 +15,10 @@ _ref:
   vars:
     id: report
     hide_title: true
+    # The same 1100px column the reports list uses. Uncapped, the provenance and
+    # description lines ran the full viewport width, and a chart's categories
+    # spread across it — measure is what makes a report read as a document.
+    content_width: 1100
     breadcrumbs:
       - home: true
         icon: AiOutlineHome

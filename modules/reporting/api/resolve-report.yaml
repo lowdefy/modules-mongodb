@@ -181,5 +181,15 @@ routine:
             _eq:
               - _step: load_report.owner.user_id
               - _user: id
+          # Drives the header's ★ fill and the payload its click sends (the
+          # endpoint takes the desired state, not a toggle). Derived per viewer
+          # and never returned as the raw array — a caller must not learn who
+          # else favourited a report. Absent reads as empty.
+          is_favourite:
+            _array.includes:
+              - _if_none:
+                  - _step: load_report.favourite_of
+                  - []
+              - _user: id
           resolvedAt:
             _date: now

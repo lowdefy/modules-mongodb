@@ -248,18 +248,33 @@ old pooled filter row required is gone.
   thing (L60-61): resolving select-filter options from a field's enum values. A
   display convenience, explicitly not a gate.
 
-`compileReport.js:682-993` turns spec + rows into blocks:
+`compileReport.js:727-1090` turns spec + rows into blocks:
 
-- The header opens with a provenance `Paragraph` (`report_provenance`, L762-788):
-  each fact joined with ` · ` and dropped when its input is absent — `Made by
-  {name} on {date}`, `Last edited {date}` (from the doc's `updated`, never "spec
+- The header opens with a **title row**: the report title, then its actions
+  right-aligned beside it on the same 24-column grid row (L789-870). The title's
+  span is whatever the actions leave, so it is decided with them. Blocks on the
+  grid are block-level cells and the layout engine takes alignment on a container
+  rather than an item, which is why each action shrinks to its content and pushes
+  itself over with an auto left margin (`RIGHT_IN_CELL`, L69).
+- A **★** (`report_favourite`, L834) is compiled for **every** viewer, owner or
+  not — favouriting is a read-side act, checked for readability rather than
+  ownership. It calls `set-report-favourite` with the _desired_ state (a literal,
+  since the compiler knows the current one) and then re-navigates to the same
+  report, which is what re-renders the star filled: the report is a
+  server-resolved `Dynamic` block with no client refetch. `is_favourite` comes
+  from the resolver, derived per viewer from `favourite_of` — the raw array is
+  never returned, so a caller cannot learn who else favourited a report.
+- Then a provenance `Paragraph` (`report_provenance`, L908):
+  each fact joined with `·` and dropped when its input is absent — `Made by
+{name} on {date}`, `Last edited {date}` (from the doc's `updated`, never "spec
   changed"), `Data as of {date time}` (the resolve moment), and, for a shared
   report, `Shared with everyone by {name}`. Dates are formatted at compile time
   (`formatTimestamp`, L83-92, en-GB day-first), so no runtime `_dayjs` runs. It is
   shown to everyone who can open the report, not owner-gated.
 - When the viewer is the owner and the report has a `conversation_id`, a
-  `Continue in chat` `Link` follows in the header (L790-817); a non-owner, or a
-  report with no linked conversation, gets nothing there.
+  `Continue in chat` `Link` joins the title row beside the ★ (L803); a non-owner,
+  or a report with no linked conversation, gets nothing there — and the title
+  widens to take the space back.
 - The sparse `:for` result array is aligned index-for-index with `querySections`;
   a null (failed) entry is classified (`classifyFailure`, L557-575): a section
   whose valid pipeline queries a role-gated collection the viewer can't reach
@@ -273,15 +288,24 @@ old pooled filter row required is gone.
 - `verifySection` (L595-607) checks the declared contract against real rows; a
   mismatch is caught and rendered through the same `brokenSectionBlocks` path — a
   graceful _rendering_ failure, never a safety one.
-- KPI → `Statistic` (L909), with separators resolved at compile time via
-  `Intl.NumberFormat.formatToParts` (`intlSeparators`, L235) so the native
+- KPI → `Statistic` (L1005), with separators resolved at compile time via
+  `Intl.NumberFormat.formatToParts` (`intlSeparators`, L277) so the native
   Statistic formatting matches the table's runtime `_intl` output.
-- chart → `EChart` (L927); table → `AgGridBalham` (L938); markdown → `Markdown`;
+- chart → `EChart` (L1023) at a fixed `CHART_HEIGHT` (L84); table →
+  `AgGridBalham` (L1034) sized to its rows rather than to the block's 500px
+  default (`tableHeight`, L92) — 500 becomes a **ceiling**, so a table near the
+  1000-row pipeline cap still scrolls and virtualises; markdown → `Markdown`;
   download → `Button` + `CallAPI` + `DownloadCsv`. Chart and table sections each
-  also get their own `Export CSV` control (`sectionDownload`, L98-127) — a
-  `CallAPI` → `DownloadCsv` pair that re-queries the endpoint for the section's
-  full result set, not the capped on-screen rows. A KPI gets none: a single number
-  is already on screen.
+  also get their own **⤓** (`sectionDownload`, L138) — a `CallAPI` →
+  `DownloadCsv` pair that re-queries the endpoint for the section's full result
+  set, not the capped on-screen rows. It shares the section heading's row rather
+  than taking one of its own (heading span 20, ⤓ span 4) and renders as the icon
+  alone. `hideTitle` is what makes it icon-only and is load-bearing — the `Button`
+  block falls back to rendering its **blockId** as the label when `title` is
+  absent, so the title is set and suppressed rather than omitted. It is suppressed
+  from the accessibility tree too: the block exposes no `aria-label`, so an
+  icon-only control here carries no accessible name. A KPI gets no ⤓: a single
+  number is already on screen.
 - Each filter's control is emitted once, immediately above the first section (in
   spec order) whose `filterBy` names its field (L828-857) — not pooled in a top
   row. A filter driving more than one section carries a scope label naming the

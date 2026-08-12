@@ -61,6 +61,39 @@ function fail(message) {
   throw new Error(`compileReport: ${message}`);
 }
 
+// Blocks laid out on the 24-column grid are block-level cells, and the layout
+// engine takes alignment on a container rather than on an item — so an action
+// that must sit at the right of its own cell shrinks to its content and pushes
+// itself over with an auto left margin. Used by the header actions and by each
+// section's ⤓.
+const RIGHT_IN_CELL = {
+  display: "block",
+  width: "fit-content",
+  marginLeft: "auto",
+};
+
+// Header action widths, on the same 24-column grid. ★ is an icon alone; the chat
+// link carries its label, so it needs the wider cell.
+const FAVOURITE_SPAN = 2;
+const CHAT_LINK_SPAN = 5;
+
+// A chart's canvas. Full width inside the page's ~1100px column, so this is the
+// short side: 280 gives axis labels and a legend room without the near-square
+// canvas 400 produced, where a handful of categories became enormously wide bars
+// floating in whitespace.
+const CHART_HEIGHT = 280;
+
+// The AgGridBalham wrapper is a fixed-height div (500 by default), so a five-row
+// table sat in a 500px box with 350px of white under it. Size to the rows
+// instead — balham's 28px row and 32px header, plus a couple of pixels of border
+// — and keep the 500 as a CEILING, not a default: past that the grid scrolls and
+// virtualises, which is what a table near the 1000-row pipeline cap needs. The
+// floor leaves the no-rows overlay somewhere to render.
+function tableHeight(rows) {
+  const count = Array.isArray(rows) ? rows.length : 0;
+  return Math.min(500, Math.max(120, 34 + count * 28));
+}
+
 // Filter control block ids double as their page-state keys.
 function filterStateKey(field) {
   return `filter_${field}`;
@@ -95,13 +128,22 @@ function formatTimestamp(value, { withTime = false } = {}) {
 // section uses, re-querying `endpointId` for the section's own rows so the file
 // is the full result set, not the (capped) on-screen rows. Only chart/table
 // sections get one — a KPI is a single number with nothing to export.
+// The section's ⤓, sharing a row with its heading (span 4 against the heading's
+// 20) rather than taking a full row of its own — on a four-section report those
+// were four wasted rows, each a labelled link competing with the heading above
+// it. `hideTitle` is what makes it icon-only: the Button block falls back to
+// rendering its blockId when `title` is absent, so dropping the title is not
+// enough. Pushed to the right of its cell with an auto left margin, which needs
+// the block to be block-level and shrink to its content.
 function sectionDownload(section, endpointId) {
   return {
     id: `${section.id}_download`,
     type: "Button",
-    layout: { span: 24 },
+    layout: { span: 4 },
+    style: RIGHT_IN_CELL,
     properties: {
       title: "Export CSV",
+      hideTitle: true,
       icon: "AiOutlineDownload",
       type: "link",
       size: "small",
@@ -412,10 +454,13 @@ function sectionHeading(section, rows) {
   const content = capped
     ? `${section.label} — first ${PIPELINE_RESULT_CAP} rows`
     : section.label;
+  // span 20, leaving 4 for the ⤓ that follows it — the two make one head row.
+  // Every caller pairs them; a failed or withheld section renders an Alert
+  // carrying its own label instead of a heading, so nothing emits this alone.
   return {
     id: `${section.id}_heading`,
     type: "Title",
-    layout: { span: 24 },
+    layout: { span: 20 },
     properties: { content, level: 5 },
   };
 }
@@ -455,7 +500,14 @@ function failedSectionBlock(section, description) {
 function brokenSectionBlocks(
   section,
   description,
-  { isOwner, ownerName, conversationId, chatPageId, reportPageId, removeEndpointId },
+  {
+    isOwner,
+    ownerName,
+    conversationId,
+    chatPageId,
+    reportPageId,
+    removeEndpointId,
+  },
 ) {
   if (!isOwner) {
     const named = ownerName
@@ -691,6 +743,7 @@ function compileReport({
   visibility,
   resolvedAt,
   is_owner,
+  is_favourite,
   conversation_id,
 }) {
   if (typeof endpointId !== "string" || endpointId === "") {
@@ -705,6 +758,7 @@ function compileReport({
   const chatPageId = `${entryId}/chat`;
   const reportPageId = `${entryId}/report`;
   const removeEndpointId = `${entryId}/remove-report-section`;
+  const favouriteEndpointId = `${entryId}/set-report-favourite`;
   // Inert re-validation only (no catalog): the per-section AnalyticsPipeline is
   // the security gate, so one inaccessible section must not throw here.
   const validated = validateReportSpec({ spec, roles });
@@ -735,11 +789,90 @@ function compileReport({
   const header = [];
   const bodyBlocks = [];
 
+  // The title row: the title, then its actions right-aligned beside it rather
+  // than stacked underneath. ★ is always there — favouriting is a read-side act,
+  // so a non-owner may star a shared report — and Continue-in-chat only where
+  // there is a conversation to reopen and the viewer owns it. The spans are
+  // decided here, together, because the title takes whatever the actions leave;
+  // that is also why the buttons are pushed immediately after it.
+  const showContinueInChat = Boolean(is_owner && conversation_id);
+  const actionsSpan =
+    FAVOURITE_SPAN + (showContinueInChat ? CHAT_LINK_SPAN : 0);
+
   header.push({
     id: "report_title",
     type: "Title",
-    layout: { span: 24 },
+    layout: { span: 24 - actionsSpan },
     properties: { content: validated.title, level: 3 },
+  });
+
+  if (showContinueInChat) {
+    header.push({
+      id: "report_continue_in_chat",
+      type: "Button",
+      layout: { span: CHAT_LINK_SPAN },
+      style: RIGHT_IN_CELL,
+      properties: {
+        title: "Continue in chat",
+        icon: "AiOutlineMessage",
+        type: "link",
+        size: "small",
+      },
+      events: {
+        onClick: [
+          {
+            id: "continue_in_chat",
+            type: "Link",
+            params: {
+              pageId: chatPageId,
+              urlQuery: { conversation_id },
+            },
+          },
+        ],
+      },
+    });
+  }
+
+  // set-report-favourite takes the desired state, not a toggle — and the current
+  // state is known at compile time, so the payload is a literal rather than a
+  // client-side negation. The re-navigation is the refresh, the same mechanism
+  // Drop-a-section uses: the report is a server-resolved Dynamic block with no
+  // client refetch, so re-opening the page is what re-renders the ★ filled.
+  header.push({
+    id: "report_favourite",
+    type: "Button",
+    layout: { span: FAVOURITE_SPAN },
+    style: RIGHT_IN_CELL,
+    properties: {
+      title: is_favourite ? "Remove from favourites" : "Add to favourites",
+      hideTitle: true,
+      icon: is_favourite ? "AiFillStar" : "AiOutlineStar",
+      type: "text",
+      size: "small",
+    },
+    events: {
+      onClick: [
+        {
+          id: "toggle_favourite",
+          type: "CallAPI",
+          params: {
+            endpointId: favouriteEndpointId,
+            payload: {
+              report_id: { __url_query: "report_id" },
+              favourite: !is_favourite,
+            },
+          },
+        },
+        {
+          id: "reload_after_favourite",
+          type: "Link",
+          params: {
+            pageId: reportPageId,
+            urlQuery: { report_id: { __url_query: "report_id" } },
+          },
+        },
+      ],
+    },
   });
   if (validated.description) {
     header.push({
@@ -784,35 +917,6 @@ function compileReport({
       type: "Paragraph",
       layout: { span: 24 },
       properties: { content: provenance.join(" · "), type: "secondary" },
-    });
-  }
-
-  // Continue in chat — reopens the source conversation with the report as
-  // context. Owner-only (it exposes the author's transcript) and absent, not
-  // disabled, when there is no conversation to reopen.
-  if (is_owner && conversation_id) {
-    header.push({
-      id: "report_continue_in_chat",
-      type: "Button",
-      layout: { span: 24 },
-      properties: {
-        title: "Continue in chat",
-        icon: "AiOutlineMessage",
-        type: "link",
-        size: "small",
-      },
-      events: {
-        onClick: [
-          {
-            id: "continue_in_chat",
-            type: "Link",
-            params: {
-              pageId: chatPageId,
-              urlQuery: { conversation_id },
-            },
-          },
-        ],
-      },
     });
   }
 
@@ -862,7 +966,9 @@ function compileReport({
         if (classifyFailure(section, catalog, roles) === "withheld") {
           bodyBlocks.push(withheldSectionBlock(section));
         } else {
-          bodyBlocks.push(...brokenSectionBlocks(section, undefined, brokenCtx));
+          bodyBlocks.push(
+            ...brokenSectionBlocks(section, undefined, brokenCtx),
+          );
         }
         continue;
       }
@@ -926,7 +1032,7 @@ function compileReport({
           id: section.id,
           type: "EChart",
           layout: { span: 24 },
-          properties: { height: 400, option },
+          properties: { height: CHART_HEIGHT, option },
         });
       }
 
@@ -938,6 +1044,7 @@ function compileReport({
           type: "AgGridBalham",
           layout: { span: 24 },
           properties: {
+            height: tableHeight(rows),
             rowData: dataBinding(section, rows),
             columnDefs: section.columns.map((column) =>
               tableColumnDef(column, rows),
