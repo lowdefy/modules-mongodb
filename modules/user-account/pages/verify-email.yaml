@@ -73,11 +73,12 @@ _ref:
                 email:
                   _state: verify_email
                 callbackUrl:
-                  _string.concat:
-                    - "/"
-                    - _module.pageId: verify-email
-                    - "?verified=1&email="
-                    - _state: verify_email
+                  pageId:
+                    _module.pageId: verify-email
+                  urlQuery:
+                    verified: "1"
+                    email:
+                      _state: verify_email
 
       # ---- Verified (callback success) ----
       - id: verify_success
@@ -144,8 +145,9 @@ _ref:
                 email:
                   _state: verify_email
                 callbackUrl:
-                  _string.concat:
-                    - "/"
-                    - _module.pageId: verify-email
-                    - "?verified=1&email="
-                    - _state: verify_email
+                  pageId:
+                    _module.pageId: verify-email
+                  urlQuery:
+                    verified: "1"
+                    email:
+                      _state: verify_email

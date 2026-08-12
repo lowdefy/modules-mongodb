@@ -114,10 +114,6 @@ _ref:
                         - MEMBERSHIP_REQUIRED
                     then: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
                 default: Something went wrong while signing you in. Try again, or contact an administrator.
-            # The bare error code behind the noaccess wall, so the resend affordance
-            # keys off EMAIL_NOT_VERIFIED alone (MEMBERSHIP_REQUIRED shares the wall).
-            login_error_code:
-              _url_query: error
             # Reveal sub-state for the signin method chooser. Seeded open only when
             # password is the sole method (no chooser to show); otherwise the chooser
             # leads and "Use password" opens the form. Baked at build time.
@@ -168,13 +164,13 @@ _ref:
                 _state: login_error_desc
 
           # Resend affordance for the unverified-email wall: a returning user who
-          # lost the verification email has no other route back to a resend. Routes
-          # to verify-email carrying the typed address, where the existing resend
-          # control (enumeration-safe) takes over. EMAIL_NOT_VERIFIED only, not the
-          # MEMBERSHIP_REQUIRED wall that shares login_view: noaccess. Gated on a
-          # present email: the code only reaches noaccess via the password catch,
-          # which always has the typed address; the onInit ?error= path carries no
-          # email, so without this the button would route to verify-email?email=null.
+          # lost the verification email has no other route back to a resend. Sends
+          # the verification email (enumeration-safe) for the captured address, then
+          # lands on verify-email's "check your email" screen — truthful because the
+          # send just ran — which carries its own resend fallback. Driven by
+          # login_resend_email, which the password catch sets only for
+          # EMAIL_NOT_VERIFIED — so the button shows for that wall alone (not the
+          # MEMBERSHIP_REQUIRED one it shares) and never without an address to send to.
           - id: login_resend_verification
             type: Button
             visible:
@@ -182,11 +178,8 @@ _ref:
                 - _eq:
                     - _state: login_view
                     - noaccess
-                - _eq:
-                    - _state: login_error_code
-                    - EMAIL_NOT_VERIFIED
                 - _ne:
-                    - _state: email
+                    - _state: login_resend_email
                     - null
             properties:
               title: Resend verification email
@@ -194,6 +187,18 @@ _ref:
               size: large
             events:
               onClick:
+                - id: resend_verification
+                  type: SendVerificationEmail
+                  params:
+                    email:
+                      _state: login_resend_email
+                    callbackUrl:
+                      pageId:
+                        _module.pageId: verify-email
+                      urlQuery:
+                        verified: "1"
+                        email:
+                          _state: login_resend_email
                 - id: go_verify_email
                   type: Link
                   params:
@@ -201,7 +206,7 @@ _ref:
                       _module.pageId: verify-email
                     urlQuery:
                       email:
-                        _state: email
+                        _state: login_resend_email
 
           # Retryable notice above the form. Carries both the expired-magic-link
           # warning and a failed password sign-in (INVALID_EMAIL_OR_PASSWORD and
@@ -457,10 +462,23 @@ _ref:
                                       - MEMBERSHIP_REQUIRED
                                   then: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
                               default: Something went wrong while signing you in. Try again.
-                          # The bare error code behind the noaccess wall (see the
-                          # onInit seed), driving the resend affordance's visibility.
-                          login_error_code:
-                            _actions: login_do.error.cause.code
+                          # The typed address, captured for the resend affordance
+                          # before the noaccess flip hides the email input (an
+                          # invisible input's value is dropped from state). Set only
+                          # for EMAIL_NOT_VERIFIED, so its presence both gates the
+                          # button's visibility and carries the address to
+                          # verify-email; null for every other code so a prior
+                          # attempt can't leave it stale.
+                          login_resend_email:
+                            _switch:
+                              branches:
+                                - if:
+                                    _eq:
+                                      - _actions: login_do.error.cause.code
+                                      - EMAIL_NOT_VERIFIED
+                                  then:
+                                    _state: email
+                              default: null
                           # Retryable errors stay on the signin view and surface as
                           # a persistent inline notice (error-typed, red) so the user
                           # can read it at their own pace. Nulled for the terminal
