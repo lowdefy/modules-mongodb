@@ -987,15 +987,20 @@ function compileReport({
         {
           id: "seed_report_menu",
           type: "SetState",
+          // The ONLY thing seeded — `selected_report` is the menu's single
+          // source, and the edit modal fills its inputs from it when it opens.
+          // Seeding those inputs here instead would freeze them at resolve time:
+          // this SetState re-runs on every ⋯ click, so a rename saved a moment
+          // ago would be overwritten by the stale compiled literal the next time
+          // the menu was opened. The list seeds the same shape from its row.
           params: {
             selected_report: {
               _id: { __url_query: "report_id" },
               title: validated.title,
+              description: validated.description ?? "",
               is_owner: Boolean(is_owner),
               visibility: visibility ?? "private",
             },
-            rename_title: validated.title,
-            rename_description: validated.description ?? "",
           },
         },
         {

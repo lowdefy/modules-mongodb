@@ -1,10 +1,11 @@
 # Edit a report's prose — title and description, the two document fields that
-# live outside the spec. Opened from report_menu_modal once selected_report,
-# rename_title and rename_description are seeded (the list's onMenuClick seeds
-# them from the grid row, the report page from compiled literals). Persist then
-# run `after_write`, which is how the caller re-reads what was saved: the list
-# refetches its scope, the report page re-navigates. Not hidden with `visible:`
-# (see report_menu_modal for why).
+# live outside the spec. Opened from report_menu_modal, which fills these two
+# inputs from `selected_report` on the way (menu_rename_seed) — that object is
+# the menu's single source, seeded by the list from the grid row and by the
+# report page from compiled literals. Persist, write the saved values back onto
+# `selected_report`, then run `after_write`, which is how the caller re-reads
+# from the server: the list refetches its scope, the report page re-navigates.
+# Not hidden with `visible:` (see report_menu_modal for why).
 #
 # `description` is always sent, including as "" — set-report-title treats a
 # string as a write and only an absent key as leave-alone, so clearing the field
@@ -42,6 +43,22 @@ events:
                 _if_none:
                   - _state: rename_description
                   - ""
+        # Write what was saved back onto selected_report, the menu's single
+        # source — the same reason publish/unpublish correct their own
+        # visibility. On the report page the seed is a compile-time literal, so
+        # without this the ⋯ header and the next open of this form would both
+        # show the old title until the page genuinely re-resolved. CallAPI throws
+        # on rejection and stops the chain, so this only runs on a persisted
+        # write.
+        - id: rename_seed_back
+          type: SetState
+          params:
+            selected_report.title:
+              _state: rename_title
+            selected_report.description:
+              _if_none:
+                - _state: rename_description
+                - ""
       - _var: after_write
 blocks:
   - id: rename_title
