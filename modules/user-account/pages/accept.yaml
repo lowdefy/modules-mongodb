@@ -149,7 +149,7 @@ _ref:
             - _state: accept_view
             - nosession
         properties:
-          title: Create account & accept
+          title: Create account and accept
           block: true
           size: large
           color: primary
@@ -185,7 +185,7 @@ _ref:
             - _state: accept_view
             - nosession
         properties:
-          title: Sign in & accept
+          title: Sign in and accept
           block: true
           size: large
           variant: outlined
@@ -258,7 +258,7 @@ _ref:
             - _state: accept_view
             - signedin
         properties:
-          title: Accept & continue
+          title: Accept and continue
           block: true
           size: large
           color: primary
@@ -282,7 +282,7 @@ _ref:
                 type: DisplayMessage
                 params:
                   status: error
-                  content: We couldn't accept this invitation. It may have expired or been sent to a different email address. Ask for a fresh invitation.
+                  content: This invitation couldn't be accepted. It may have expired or been sent to a different email address. Ask for a new one.
       - id: accept_not_you
         type: Html
         visible:
@@ -351,4 +351,4 @@ _ref:
             color: "var(--ant-color-warning)"
           status: warning
           title: This invitation can't be used
-          subTitle: It may have expired, already been used, or been sent to a different email address. Ask the person who invited you to send a fresh invitation, then open the new link.
+          subTitle: This invitation may have expired, already been used, or been sent to a different email address. Ask whoever invited you for a new one.

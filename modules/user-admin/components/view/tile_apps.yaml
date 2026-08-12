@@ -32,4 +32,4 @@ _ref:
       - id: apps_hint
         type: Html
         properties:
-          html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Other apps this person belongs to. Manage their access from each app''s own admin.</div>'
+          html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Other apps this user belongs to. Manage access from each app''s own admin.</div>'

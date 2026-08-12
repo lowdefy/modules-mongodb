@@ -73,7 +73,7 @@ _ref:
                   _eq:
                     - _url_query: error
                     - INVALID_TOKEN
-                then: This link has expired or was already used. Request a new one below.
+                then: This link has expired or was already used. Request a new one.
                 else: null
             # Notice tone: warning (amber) for the retryable expired-link case;
             # the password catch sets error (red) for a failed sign-in.
@@ -107,7 +107,7 @@ _ref:
                         - _url_query: error
                         - MEMBERSHIP_REQUIRED
                     then: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
-                default: Something went wrong while signing you in. Please try again, or contact an administrator.
+                default: Something went wrong while signing you in. Try again, or contact an administrator.
     blocks:
       _build.array.concat:
         # --- Always present: lead + no-access alert --------------------------
@@ -242,7 +242,7 @@ _ref:
                     layout:
                       flex: 0 1 auto
                     properties:
-                      title: Forgot?
+                      title: Forgot password?
                       variant: link
                       color: primary
                       size: small
@@ -346,7 +346,7 @@ _ref:
                                       - _actions: login_do.error.cause.code
                                       - MEMBERSHIP_REQUIRED
                                   then: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
-                              default: Something went wrong while signing you in. Please try again.
+                              default: Something went wrong while signing you in. Try again.
                           # Retryable errors stay on the signin view and surface as
                           # a persistent inline notice (error-typed, red) so the user
                           # can read it at their own pace. Nulled for the terminal
@@ -387,8 +387,8 @@ _ref:
                                     _eq:
                                       - _actions: login_do.error.cause.code
                                       - INVALID_EMAIL_OR_PASSWORD
-                                  then: Please check your details and try again.
-                              default: Something went wrong while signing you in. Please try again.
+                                  then: Check your details and try again.
+                              default: Something went wrong while signing you in. Try again.
                           login_notice_type:
                             _switch:
                               branches:
@@ -626,5 +626,5 @@ _ref:
           - id: login_footer
             type: Html
             properties:
-              html: New here? <a href="signup">Create an account</a>
+              html: Need an account? <a href="signup">Create one</a>
         else: []

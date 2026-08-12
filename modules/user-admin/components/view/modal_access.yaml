@@ -168,25 +168,25 @@ blocks:
             required: true
             properties:
               label:
-                title: Organization authority
-                extra: Who may administer this organization. Separate from the app roles above, and not implied by them.
+                title: Organisation role
+                extra: Who may administer this organisation, separate from the app roles above.
               # `member` is the no-authority value, not an empty one: the write
               # refuses an empty role, so revoking authority writes `member`.
               # Labelled in the app's language rather than BetterAuth's, where
               # "member" reads as a status instead of an absence of authority.
               options:
                 - value: owner
-                  label: Organization owner
+                  label: Organisation owner
                 - value: admin
-                  label: Organization admin
+                  label: Organisation admin
                 - value: member
-                  label: No organization authority
+                  label: No organisation role
           - id: save_org_role_btn
             type: Button
             layout:
               flex: 0 0 auto
             properties:
-              title: Update organization role
+              title: Update organisation role
               variant: outlined
             events:
               onClick:
@@ -205,7 +205,7 @@ blocks:
                       type: CallAPI
                       messages:
                         loading: Updating…
-                        success: Organization role updated.
+                        success: Organisation role updated.
                       params:
                         endpointId:
                           _module.endpointId: update-org-role

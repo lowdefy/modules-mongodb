@@ -53,8 +53,8 @@ _ref:
                                         - _request: get_user_memberships
                                         - []
                                   - 0
-                              then: Blocks this person from every app in the suite and signs them out.
-                              else: Blocks this person from signing in and signs them out.
+                              then: Blocks this user from every app and signs them out.
+                              else: Blocks this user from signing in and signs them out.
                         blocks:
                           - id: suspend_btn
                             type: Button
@@ -108,7 +108,7 @@ _ref:
                     layout:
                       flex: 0 0 auto
                     properties:
-                      title: Signs this person out of all their active sessions. They can sign back in right away.
+                      title: Signs this user out of all their active sessions. They can sign back in right away.
                     blocks:
                       - id: revoke_btn
                         type: Button
@@ -149,7 +149,7 @@ _ref:
                         layout:
                           flex: 0 0 auto
                         properties:
-                          title: Delete identity
+                          title: Delete login
                           danger: true
                           variant: outlined
                           # Enabled only at other-membership count 0 (Decision 4/6);
@@ -212,7 +212,7 @@ _ref:
                       <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">Passkey</span>
                     {% endif %}
                     {% if mfa %}
-                      <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">MFA · TOTP</span>
+                      <span style="padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-success-bg); border:1px solid var(--ant-color-success-border); color:var(--ant-color-success-text);">Two-factor</span>
                     {% endif %}
                     </div>
                   on:
@@ -245,7 +245,7 @@ _ref:
                         layout:
                           flex: 0 0 auto
                         properties:
-                          title: Reset two-factor authentication
+                          title: Reset two-factor
                           danger: true
                           variant: outlined
                         visible:

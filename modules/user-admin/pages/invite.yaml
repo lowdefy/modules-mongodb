@@ -73,8 +73,8 @@ _ref:
               html: >-
                 <div style="display:flex; gap:8px; align-items:baseline;
                 font-size:13px; color:var(--ant-color-text-tertiary); padding:0 2px;">
-                <span>Choose <b>Check</b> above. We resolve access status to one of
-                four outcomes before opening the form.</span></div>
+                <span>Choose <b>Check</b> above. We'll look up their current access
+                before opening the form.</span></div>
 
           # LAYER: checking, async resolve in flight.
           - id: state_checking
@@ -115,7 +115,7 @@ _ref:
                     name:
                       _if_none:
                         - _state: resolved_member.user.name
-                        - This person
+                        - This user
             slots:
               action:
                 blocks:

@@ -40,7 +40,7 @@
                 then: 9
                 else: 12
           properties:
-            title: First Name
+            title: First name
         - id: profile.family_name
           type: TextInput
           required: true
@@ -52,4 +52,4 @@
                 then: 9
                 else: 12
           properties:
-            title: Last Name
+            title: Last name

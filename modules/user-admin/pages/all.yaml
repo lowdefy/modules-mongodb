@@ -111,36 +111,36 @@ _ref:
                   _actions: fetch_excel_data.response
                 schema:
                   _build.array.concat:
-                    - - column: name
+                    - - column: Name
                         value: name
                         type: String
                         width: 25
-                      - column: email
+                      - column: Email
                         value: email
                         type: String
                         width: 28
-                      - column: roles
+                      - column: Roles
                         value: roles
                         type: String
                         width: 22
-                      - column: status
+                      - column: Status
                         value: status
                         type: String
                         width: 14
                     - _module.var: components.download_columns
-                    - - column: created
+                    - - column: Created
                         value: created
                         type: Date
                         width: 14
-                      - column: updated
+                      - column: Updated
                         value: updated
                         type: Date
                         width: 14
-                      - column: signed_up
+                      - column: Signed up
                         value: signed_up
                         type: Date
                         width: 14
-                      - column: expires
+                      - column: Expires
                         value: expires
                         type: Date
                         width: 14
@@ -217,9 +217,9 @@ _ref:
                                     value: name
                                   - label: Email
                                     value: email
-                                  - label: Date Created
+                                  - label: Created
                                     value: created
-                                  - label: Date Updated
+                                  - label: Updated
                                     value: updated
                                   - label: Signed up
                                     value: signed_up

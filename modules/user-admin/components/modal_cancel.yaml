@@ -37,8 +37,8 @@ blocks:
         _nunjucks:
           template: >-
             <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">
-            The invitation to <b>{{ email }}</b> will be withdrawn. The link already
-            sent will stop working. You can invite them again later.</div>
+            The invitation to <b>{{ email }}</b> will be withdrawn and its link will
+            stop working. You can invite them again later.</div>
           on:
             email:
               _state: email

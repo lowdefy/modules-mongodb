@@ -186,7 +186,7 @@ _ref:
             - _state: tf_view
             - backup
         properties:
-          html: Enter one of the single-use codes you saved when you set up two-factor authentication.
+          html: Enter one of the backup codes you saved when you set up two-factor authentication.
         style:
           marginTop: -8
           fontSize: 13

@@ -145,7 +145,7 @@ _ref:
                                       - _actions: signup_do.error.cause.code
                                       - MEMBERSHIP_REQUIRED
                                   then: Sign-ups for this app are by invitation only. Ask an administrator for an invitation.
-                              default: We couldn't create your account. Please check your details and try again.
+                              default: We couldn't create your account. Check your details and try again.
               - id: signup_oauth_divider
                 type: Divider
                 visible:
@@ -299,7 +299,7 @@ _ref:
                 - _state: signup_view
                 - check
             properties:
-              html: Wrong address? <a href="signup">Start over</a>
+              html: Wrong email? <a href="signup">Use a different email</a>
             style:
               textAlign: center
               fontSize: 12

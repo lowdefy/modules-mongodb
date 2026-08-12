@@ -60,7 +60,7 @@ blocks:
           template: |
             <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">
               {% if memberships.length > 0 %}
-                Suspending signs <b>{{ name }}</b> out everywhere immediately and blocks them from signing in. Because it applies to the person, not just this app, it blocks <b>every app they can reach</b>, including:
+                Suspending signs <b>{{ name }}</b> out and blocks them from signing in. It applies to their whole account, not just this app, so it blocks <b>every app they can access</b>, including:
                 <div style="margin:12px 0 4px; display:flex; flex-direction:column; gap:8px;">
                 {% for m in memberships %}
                   <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--ant-color-border); border-radius:6px; background:var(--ant-color-fill-quaternary);">

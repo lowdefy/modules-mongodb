@@ -26,7 +26,7 @@ _ref:
       - id: logout_message
         type: Html
         properties:
-          html: <div class="text-lg font-semibold">You're signed out</div><div class="text-sm mt-1 opacity-70">Thanks for stopping by. Your session on this device has ended.</div>
+          html: <div class="text-lg font-semibold">You're signed out</div><div class="text-sm mt-1 opacity-70">Your session on this device has ended.</div>
         style:
           textAlign: center
           padding: "12px 0 4px"

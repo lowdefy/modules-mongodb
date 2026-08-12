@@ -57,7 +57,7 @@ _ref:
           # Honest copy: `required` is an enrolment floor, not a per-session
           # challenge guarantee, so this says "add a second factor to continue",
           # never "every sign-in will ask for it".
-          html: Your account needs a second sign-in factor before you can continue. Set up an authenticator app or add a passkey below.
+          html: Your account needs a second step at sign-in before you can continue. Set up an authenticator app or add a passkey below.
         style:
           marginTop: -8
           fontSize: 13
@@ -283,7 +283,7 @@ _ref:
         layout:
           span: 24
         properties:
-          title: Confirm & enable
+          title: Confirm and enable
           block: true
           color: primary
           variant: solid
@@ -328,7 +328,7 @@ _ref:
         layout:
           span: 24
         properties:
-          html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Store these one-time codes somewhere safe. Each works once if you lose your authenticator.</div>'
+          html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Store these backup codes somewhere safe. Each works once if you lose your authenticator.</div>'
       - id: enrol_codes_grid
         type: Html
         visible:

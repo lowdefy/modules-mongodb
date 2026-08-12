@@ -113,17 +113,17 @@ blocks:
                     layout:
                       span: 24
                     properties:
-                      title: Organization authority
+                      title: Organisation role
                       # Labelled in the app's language rather than BetterAuth's,
                       # where "member" reads as a status rather than an absence of
                       # authority. There is no empty tier to invite with.
                       options:
                         - value: owner
-                          label: Organization owner
+                          label: Organisation owner
                         - value: admin
-                          label: Organization admin
+                          label: Organisation admin
                         - value: member
-                          label: No organization authority
+                          label: No organisation role
                 else: []
             # Member attributes: group label above the consumer fields.
             - - id: member_attributes_label
@@ -141,8 +141,7 @@ blocks:
                 properties:
                   html: >-
                     <div style="font-size:12px; color:var(--ant-color-text-tertiary);">
-                    Captured now: authorization parameters the user must hold from
-                    their first session.</div>
+                    Applied from the user's first session.</div>
               # Form actions: right-aligned, inside the card body (matches the mock).
               - id: form_actions
                 type: Box

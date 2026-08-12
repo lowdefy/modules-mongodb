@@ -10,7 +10,7 @@ access-updated:
   icon: AiOutlineSafety
 org-role-updated:
   color: "#722ed1"
-  title: Organization Role Changed
+  title: Organisation Role Changed
   icon: AiOutlineKey
 user-attributes-updated:
   color: "#1890ff"

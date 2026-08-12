@@ -12,7 +12,7 @@ properties:
         name:
           _request: get_user_detail.0.name
   width: 480
-  okText: Sign out all sessions
+  okText: Sign out everywhere
   cancelText: Cancel
 events:
   onOk:
@@ -23,7 +23,7 @@ events:
           type: CallAPI
           messages:
             loading: Signing out…
-            success: Signed out of all sessions.
+            success: Signed out everywhere.
           params:
             endpointId:
               _module.endpointId: revoke-sessions
@@ -44,7 +44,7 @@ blocks:
       html:
         _nunjucks:
           template: >-
-            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Signs this person out of all their active sessions{% if others > 0 %} across the suite{% endif %}. They can sign back in right away. This does not suspend or remove their access.</div>
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Signs this user out of all their active sessions{% if others > 0 %} across all apps{% endif %}. They can sign back in right away. This does not suspend or remove their access.</div>
           on:
             others:
               _array.length:

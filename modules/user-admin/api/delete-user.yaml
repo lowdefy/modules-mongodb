@@ -43,7 +43,7 @@ routine:
             - 0
         - 0
     :then:
-      - :reject: This user belongs to other apps in the suite; their login identity cannot be deleted from here. Remove them from this app instead.
+      - :reject: This user belongs to other apps; their login can't be deleted from here. Remove them from this app instead.
   - id: delete
     type: DeleteUser
     properties:

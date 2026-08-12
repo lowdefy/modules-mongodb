@@ -45,7 +45,7 @@ blocks:
     properties:
       type: warning
       showIcon: true
-      message: This removes the second step at sign-in. You can set it up again anytime.
+      message: This removes the second step at sign-in. You can set it up again at any time.
   - id: disable2fa.password
     type: PasswordInput
     required: true

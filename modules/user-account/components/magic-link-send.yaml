@@ -90,4 +90,4 @@ events:
         type: DisplayMessage
         params:
           status: error
-          content: We couldn't send your sign-in link right now. Please wait a moment and try again.
+          content: We couldn't send your sign-in link. Wait a moment and try again.

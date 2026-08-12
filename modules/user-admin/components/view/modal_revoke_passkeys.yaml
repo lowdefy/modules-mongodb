@@ -65,7 +65,7 @@ blocks:
       html:
         _nunjucks:
           template: >-
-            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">{% if count == 1 %}Revokes the one passkey <b>{{ name }}</b> has registered{% else %}Revokes <b>{{ name }}</b>'s registered passkeys (pick one below, or revoke all of them){% endif %}. Passkeys are tied to the person, not this app, so this removes them{% if others > 0 %} across every app in the suite{% endif %}. They can register a new passkey the next time they sign in.</div>
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">{% if count == 1 %}Revokes the one passkey <b>{{ name }}</b> has registered{% else %}Revokes <b>{{ name }}</b>'s registered passkeys (pick one below, or revoke all of them){% endif %}. Passkeys are tied to the user's account, not this app, so this removes them{% if others > 0 %} across all apps{% endif %}. They can register a new passkey next sign-in.</div>
           on:
             name:
               _request: get_user_detail.0.name

@@ -23,7 +23,7 @@ _ref:
                   - []
             - 1
         properties:
-          title: Sign out others
+          title: Sign out other sessions
           size: small
           color: danger
           variant: outlined
@@ -36,7 +36,7 @@ _ref:
                   type: RevokeOtherSessions
                   messages:
                     loading: Signing out other sessions…
-                    success: Signed out of your other sessions.
+                    success: Signed out your other sessions.
               - _ref: actions/refetch_account.yaml
     blocks:
       - id: sessions_body
@@ -51,4 +51,4 @@ _ref:
           - id: sessions_hint
             type: Html
             properties:
-              html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Devices currently signed in to your account. "Sign out others" ends every session except this one.</div>'
+              html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Devices currently signed in to your account. "Sign out other sessions" ends every session except this one.</div>'

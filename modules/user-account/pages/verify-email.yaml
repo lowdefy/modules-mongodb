@@ -89,7 +89,7 @@ _ref:
         properties:
           status: success
           title: Email verified
-          subTitle: You're all set. Your email address has been confirmed.
+          subTitle: Your email address is confirmed.
       - id: verify_continue
         type: Button
         visible:
@@ -123,7 +123,7 @@ _ref:
             color: "var(--ant-color-warning)"
           status: warning
           title: This link has expired
-          subTitle: Verification links are valid for a short time. Request a fresh one to continue.
+          subTitle: Verification links expire after a short time. Request a new one.
       - id: verify_resend_expired
         type: Button
         visible:

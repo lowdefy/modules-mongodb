@@ -56,7 +56,7 @@ blocks:
       html:
         _nunjucks:
           template: >-
-            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Clears <b>{{ name }}</b>'s authenticator app and backup codes and signs them out. Two-factor is tied to the person, not this app, so the reset removes it{% if others > 0 %} across every app in the suite{% endif %} and returns them to unenrolled. If two-factor is required here, they'll set it up again the next time they sign in.</div>
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Clears <b>{{ name }}</b>'s authenticator app and backup codes and signs them out. Two-factor is tied to the user's account, not this app, so this removes it{% if others > 0 %} across all apps{% endif %}. If two-factor is required here, they'll set it up again next sign-in.</div>
           on:
             name:
               _request: get_user_detail.0.name

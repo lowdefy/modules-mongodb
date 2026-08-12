@@ -42,7 +42,7 @@ properties:
         _function:
           __nunjucks:
             template: >
-              <span style="display:inline-flex; gap:4px; flex-wrap:wrap; align-items:center">{% for r in roles %}{% if r.orphan %}<span title="Role no longer in the app's role catalog" style="display:inline-flex; align-items:center; gap:4px; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-gold-3); background:var(--ant-gold-1); color:var(--ant-gold-7)">⚑ {{ r.label }}</span>{% else %}<span style="display:inline-flex; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-color-border); background:var(--ant-color-fill-quaternary); color:var(--ant-color-text-secondary)">{{ r.label }}</span>{% endif %}{% endfor %}</span>
+              <span style="display:inline-flex; gap:4px; flex-wrap:wrap; align-items:center">{% for r in roles %}{% if r.orphan %}<span title="Role no longer in the app's role catalogue" style="display:inline-flex; align-items:center; gap:4px; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-gold-3); background:var(--ant-gold-1); color:var(--ant-gold-7)">⚑ {{ r.label }}</span>{% else %}<span style="display:inline-flex; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-color-border); background:var(--ant-color-fill-quaternary); color:var(--ant-color-text-secondary)">{{ r.label }}</span>{% endif %}{% endfor %}</span>
             on:
               roles:
                 __args: 0.data.roles

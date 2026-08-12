@@ -91,7 +91,7 @@ blocks:
     layout:
       span: 24
     properties:
-      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">You can get a fresh set of backup codes without changing your authenticator.</div>'
+      html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Get a new set of backup codes without changing your authenticator.</div>'
   - id: enroltotp_choose_codes_btn
     type: Button
     visible:
@@ -181,7 +181,7 @@ blocks:
       type: warning
       showIcon: true
       message: Your current authenticator stops working now.
-      description: Two-factor is switched off while you set up the new one, and comes back on when you enter a code from it. If you stop partway, two-factor stays off and you can set it up again from here.
+      description: Two-factor turns off while you set up the new authenticator, and back on once you enter a code from it. If you stop partway, it stays off and you can start again here.
   - id: enroltotp.password
     type: PasswordInput
     visible:
@@ -511,7 +511,7 @@ blocks:
     layout:
       span: 24
     properties:
-      title: Confirm & enable
+      title: Confirm and enable
       block: true
       color: primary
       variant: solid
@@ -554,7 +554,7 @@ blocks:
     properties:
       html:
         _nunjucks:
-          template: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">{{ lead }} Store these one-time codes somewhere safe. Each works once if you lose your authenticator.</div>'
+          template: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">{{ lead }} Store these backup codes somewhere safe. Each works once if you lose your authenticator.</div>'
           on:
             # A replacing user needs its own lead line: enable recreates the
             # twoFactor row with a fresh backup_codes array, so their previous
@@ -572,12 +572,12 @@ blocks:
                       _eq:
                         - _state: enroltotp.intent
                         - replace
-                    then: Your new authenticator is active. These codes replace your previous set.
+                    then: Your new authenticator is active. These backup codes replace your previous set.
                   - if:
                       _eq:
                         - _state: enroltotp.intent
                         - codes_only
-                    then: These replace your previous backup codes.
+                    then: These backup codes replace your previous set.
                 default: Two-factor is on.
   - id: backupcodes_grid
     type: Html

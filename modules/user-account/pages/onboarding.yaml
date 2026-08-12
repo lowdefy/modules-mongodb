@@ -34,7 +34,7 @@ _ref:
           - id: onboarding_title
             type: Title
             properties:
-              content: Welcome. Let's set up your profile.
+              content: Set up your profile
               level: 3
           - id: onboarding_lead
             type: Html
@@ -61,7 +61,7 @@ _ref:
           - id: onboarding_submit
             type: Button
             properties:
-              title: Save & continue
+              title: Save and continue
               block: true
               size: large
               color: primary
@@ -95,4 +95,4 @@ _ref:
                         - null
                     params:
                       status: error
-                      content: We couldn't save your profile. Please check your details and try again.
+                      content: We couldn't save your profile. Check your details and try again.

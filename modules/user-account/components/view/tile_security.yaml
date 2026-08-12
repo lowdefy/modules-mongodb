@@ -336,7 +336,7 @@ _ref:
                                 _nunjucks:
                                   template: |
                                     <div style="font-size:13px; color:var(--ant-color-text);">{{ name }}</div>
-                                    {% if device %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">{{ device }}{% if created %} · added {{ created }}{% endif %}</div>{% elif created %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">added {{ created }}</div>{% endif %}
+                                    {% if device %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">{{ device }}{% if created %} · Added {{ created }}{% endif %}</div>{% elif created %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Added {{ created }}</div>{% endif %}
                                   on:
                                     name:
                                       _state: passkeys_ui.$.name

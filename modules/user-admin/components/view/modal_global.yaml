@@ -46,4 +46,4 @@ blocks:
     - - id: global_attrs_hint
         type: Html
         properties:
-          html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">These apply to this person across every app in the suite.</div>'
+          html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">These apply to the user across all apps.</div>'
