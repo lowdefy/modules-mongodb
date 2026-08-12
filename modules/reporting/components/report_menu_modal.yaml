@@ -11,9 +11,14 @@
 #
 # Vars:
 #   show_open   — the list offers Open; the report page is already there.
-#   after_write — actions run after publish/unpublish/duplicate. The list
-#                 refetches its scope, the report page re-navigates to re-resolve
-#                 its Dynamic block. Delete's is separate (see the delete modal).
+#   after_write — actions run after publish/unpublish. The list refetches its
+#                 scope, the report page re-navigates to re-resolve its Dynamic
+#                 block. Delete's is separate (see the delete modal).
+#   after_duplicate — separate from after_write because the copy is a DIFFERENT
+#                 report, so "refresh what you are looking at" is the wrong
+#                 answer on the report page: it re-renders the original and the
+#                 copy is invisible. The list can stay put (the new row appears
+#                 in scope); the report page opens the copy in a new tab.
 #
 # Not hidden with `visible:` — hiding a container drops its children's state on
 # every render, which would clear the seeded row before onOk could read it. A
@@ -156,6 +161,17 @@ blocks:
                       report_id:
                         _state: selected_report._id
                       visibility: shared
+                # Keep the seed honest without depending on after_write. On the
+                # report page the seed is a compile-time literal frozen at
+                # resolve, and re-opening ⋯ re-runs it — so unless that reload
+                # genuinely re-resolves the page, a published report would still
+                # offer Publish and hide Unpublish, leaving no way to retract
+                # short of a hard refresh. CallAPI throws on rejection and stops
+                # the chain, so this only runs on a persisted write.
+                - id: menu_publish_seed
+                  type: SetState
+                  params:
+                    selected_report.visibility: shared
               - _var: after_write
 
       # Unpublish — shared, and the viewer either owns it or holds a role. This is
@@ -208,6 +224,11 @@ blocks:
                       report_id:
                         _state: selected_report._id
                       visibility: private
+                # The mirror of menu_publish_seed — see the note there.
+                - id: menu_unpublish_seed
+                  type: SetState
+                  params:
+                    selected_report.visibility: private
               - _var: after_write
 
       # Any reader's path to a version they control — a private copy they own.
@@ -241,7 +262,7 @@ blocks:
                     payload:
                       report_id:
                         _state: selected_report._id
-              - _var: after_write
+              - _var: after_duplicate
 
       - id: menu_delete
         type: Button

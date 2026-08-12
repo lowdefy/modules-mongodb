@@ -233,7 +233,12 @@ test("a non-owner duplicates a shared report into one they own", async ({
 
   expect(response).toMatchObject({ ok: true });
   expect(response.report_id).toBeTruthy();
-  expect(response.url).toContain(response.report_id);
+  // The report page's ⋯ Duplicate opens this url in a new tab verbatim, so its
+  // shape is a contract now, not a convenience field: the entry-scoped page path
+  // plus the copy's id. A wrong path is a blank tab the user has to diagnose.
+  expect(response.url).toBe(
+    `/reporting/report?report_id=${response.report_id}`,
+  );
 
   const copy = await readReport(mdb, response.report_id);
   expect(copy.owner).toEqual({ user_id: USER_B.id, name: USER_B.name });

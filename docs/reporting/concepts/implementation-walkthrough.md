@@ -321,6 +321,25 @@ old pooled filter row required is gone.
   items rather than offering Publish on an already-shared report. The ⋯ compiles
   for **every** viewer, like the ★: Duplicate is any reader's path to a copy they
   control, and the menu hides what a viewer cannot use.
+- Publish and unpublish each `SetState` the new `visibility` onto
+  `selected_report` immediately after their `CallAPI`, so the menu is correct
+  **without** depending on `after_write`'s reload having re-resolved the page.
+  This matters because only `_id` in the compiled seed is live (`__url_query`);
+  `title`, `is_owner` and `visibility` are literals frozen at resolve time, and
+  re-opening ⋯ re-runs that same `SetState`. Without the correction a published
+  report would keep offering Publish and keep hiding Unpublish, leaving no way to
+  retract short of a hard refresh. `CallAPI` throws on rejection and stops the
+  chain, so the correction only runs on a persisted write. The reports list never
+  had the problem — it refetches `list-reports` and seeds from the clicked row.
+- Duplicate takes its own after-action var (`after_duplicate`), separate from the
+  publish/unpublish `after_write`, because the copy is a **different** report:
+  "refresh what you are looking at" re-renders the original and leaves the copy
+  invisible. The list refetches its scope (the copy lands in Mine); the report
+  page opens `duplicate-report`'s returned `url` in a new tab. That url is passed
+  to `Link` as `url` rather than `pageId`/`urlQuery` on purpose — the action fires
+  after an async `CallAPI`, outside the user-gesture window some browsers require
+  for `window.open`, and only the url path degrades to a "popup blocked" message
+  (the pageId path calls `.focus()` on the null handle and throws).
 - Vertical rhythm comes from two distances, not one. `report.yaml`'s
   `layout.gap` y value is small — it spaces a heading off the chart or table it
   names — and `SECTION_TOP_GAP` adds the larger distance ahead of each section

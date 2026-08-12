@@ -80,6 +80,8 @@ On someone else's published report you can open it, star it, download a section,
 
 **Duplicate is the escape hatch** that makes read-only comfortable: rather than a request-access dance, copy the report into one you own and change it freely. The copy is always private, owned by you, with favourites reset and **no conversation link inherited** — that last is confidentiality, not tidiness, since the original author's chat transcript is not yours to open. The original is untouched.
 
+Where the copy opens depends on where you duplicated from. From the reports list you stay put and the copy appears in Mine. From the report page it **opens in a new tab**, leaving the original where it is — you are usually duplicating precisely because you want to keep referring to it, and refreshing the page you are on would show you the original again with nothing to indicate a copy was made.
+
 ## Soft delete is the only retirement
 
 There is no archive state and no purge endpoint. **Nothing in this module hard-deletes** — and the delete confirmation says so truthfully, because the module never writes to your source collections at all. Deleting only ever writes a `deleted` stamp on the report document.

@@ -231,6 +231,10 @@ _ref:
             show_open: true
             after_write:
               _ref: pages/reports-list/actions/load_scope.yaml
+            # The copy lands in Mine, so refetching the scope is enough to
+            # surface it — no navigation needed, unlike the report page.
+            after_duplicate:
+              _ref: pages/reports-list/actions/load_scope.yaml
       - _ref:
           path: components/report_rename_modal.yaml
           vars:
