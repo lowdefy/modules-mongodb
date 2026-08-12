@@ -14,7 +14,7 @@
 # falls back to the APP's pinned organization, which refuses an administrator of
 # any other.
 #
-# Payload: { user_id, ban_reason?, target_name?, target_email? }
+# Payload: { user_id, target_name?, target_email? }
 # The audit event is the FINAL step, so it fires only on full success.
 id: suspend
 type: Api
@@ -34,8 +34,6 @@ routine:
             _payload: user_id
           organizationId:
             _module.var: org_slug
-          banReason:
-            _payload: ban_reason
       - id: audit
         type: CallApi
         properties:
@@ -68,8 +66,5 @@ routine:
             references:
               user_ids:
                 - _payload: user_id
-            metadata:
-              ban_reason:
-                _payload: ban_reason
       - :return:
           success: true

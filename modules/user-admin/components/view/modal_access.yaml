@@ -47,7 +47,7 @@ events:
           type: Validate
           params:
             regex:
-              - '^roles$'
+              - "^roles$"
               - '^member_attributes\.'
         # UpdateMemberRoles + UpdateMemberAttributes. The selected ids submit
         # as-is: an orphan among them is accepted and grants nothing, so an admin
@@ -85,7 +85,9 @@ blocks:
             extra:
               _if:
                 test:
-                  _request: get_user_detail.0.has_orphan
+                  _eq:
+                    - _request: get_user_detail.0.has_orphan
+                    - true
                 then: A role shown here that is no longer in this app can be removed, but not added back.
                 else: null
           # Options are the app role catalog concatenated with one option per held
@@ -193,7 +195,7 @@ blocks:
                       type: Validate
                       params:
                         regex:
-                          - '^org_role$'
+                          - "^org_role$"
                     # No `error` message: the write's refusals — demoting the
                     # organization's sole owner, or demoting its creator — are the
                     # reason it runs through the organization plugin at all, and an
