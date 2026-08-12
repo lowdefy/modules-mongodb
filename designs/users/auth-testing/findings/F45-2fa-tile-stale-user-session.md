@@ -6,7 +6,7 @@ A grouped finding for the small **session-freshness** defects on the account Sec
 a 2FA mutation writes the database correctly, but the in-session `_user` object is **not
 refreshed**, so tiles/headers/guards read stale factor state until a manual page reload. The
 suspected common fix is an `UpdateSession` on each mutation chain (same family as
-[F33](./F33-onboarding-updatesession-stale-redirect.md); a redirect variant is
+[F33](_upstream/F33-onboarding-updatesession-stale-redirect.md); a redirect variant is
 [F44](_upstream/F44-modal-totp-enrol-redirects-home-codes-lost.md)).
 
 New related small items get appended here rather than spawning one finding each.

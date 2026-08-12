@@ -31,7 +31,7 @@ a different route.
 - **Suspected shared cause with F33.** The confirm chain runs `TwoFactorVerify` then
   `refetch_account` (which re-fetches `get_account` etc.); enabling 2FA changes the session's
   factor state. If the account page's session-freshness guard reacts to that change the same
-  way [F33](../F33-onboarding-updatesession-stale-redirect.md) describes — routing on a
+  way [F33](F33-onboarding-updatesession-stale-redirect.md) describes — routing on a
   session mutation before/without a settled `UpdateSession` — it would bounce the user off the
   account page mid-modal. `refetch_account` itself contains no navigation (verified:
   `modules/user-account/actions/refetch_account.yaml` is Request + SetState only), so the
