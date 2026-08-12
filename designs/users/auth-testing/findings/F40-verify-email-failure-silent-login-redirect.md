@@ -1,6 +1,6 @@
 # F40 — Invalid verify-email link (logged out) silently lands on bare login; designed expired view not reached
 
-**Status:** `investigate` · **Area:** user-account / auth-flow (verify-email)
+**Status:** `root-caused` · **Area:** user-account / auth-flow (verify-email)
 
 A **tampered** email-verification link, opened while **logged out**, redirected straight to
 `http://localhost:3000/user-account/login` — a **bare login page with no `?error=` query
@@ -23,30 +23,73 @@ on a bad link is the **verify-email page in its expired state**, not login.
   `email_verified: false`, and **no** `user-contacts` row was written. The invalid token
   changed nothing in the database — only the landing is wrong.
 
-## Mechanism (leading hypothesis)
+## Root cause (verified from source — the leading hypothesis was wrong)
 
-The verify link carried `callbackURL=%2F` (`/`), and the verify-email page's expired view
-depends on BetterAuth redirecting the failure **back to the verify-email page with `&error=`**.
-On a **bad-signature** token BetterAuth cannot trust/parse the token, so instead of honouring
-a success-style callback it falls back to the configured **error page** (`authPages.error` →
-login) — and does so **without** an `error=` code on the URL. The result is the bare login
-page the page-level expired view never sees.
+The original hypothesis — "BetterAuth falls back to `authPages.error` on a bad-signature
+token" — is **false**. BetterAuth's verify-email handler routes **every** failure through one
+`redirectOnError` (`better-auth@1.6.23` `.../api/routes/email-verification.mjs:165-171`): it
+redirects to `callbackURL?error=<code>` **whenever a callbackURL is present**
+(`TOKEN_EXPIRED` for a past-`exp` JWT, `INVALID_TOKEN` for a bad signature/malformed,
+`USER_NOT_FOUND`, `INVALID_USER`). The `onAPIError.errorURL` (→ login) fallback only fires
+when there is **no** callbackURL. So the error page was never the mechanism.
 
-## Open question
+The real cause is one layer lower: **the callbackURL never points at the verify-email page —
+it is always `/`.** This is an incomplete upgrade migration on the `auth-upgrade` branch.
 
-The campaign item lumps three cases — **tampered** (bad signature), **expired** (valid
-signature, past `exp`), and **already-consumed** (valid signature, token spent). Only the
-tampered case was exercised, and it fails. Before deciding the fix, isolate which cases reach
-the designed expired view:
+- `signup.yaml` (SignUp, line ~185) and the three resend buttons (`signup.yaml` ~421,
+  `verify-email.yaml` ~75 and ~146) pass `callbackUrl` as a **string** built with
+  `_string.concat` → `/user-account/verify-email?verified=1&email=<addr>`.
+- On this branch `@lowdefy/actions-core@…0807` changed the `SignUp` /
+  `SendVerificationEmail` `callbackUrl` param from a string to a **structured object**
+  `{ home?, pageId?, url?, urlQuery? }`. The client's `resolveCallbackURL`
+  (`@lowdefy/client@…0807` `.../auth/createAuthMethods.js:46-48`) returns `undefined` for a
+  non-object, so a **bare string silently falls through the ladder** — no `?callbackUrl=`
+  query on signup → `home:true` → resolves to `/`. The code comment names this exact trap:
+  _"a bare string (the spelling the schemas wrongly declared before this change, still common
+  in apps) falls through the ladder rather than failing the sign-in."_
+- Result: the emailed link carries `callbackURL=%2F` — **matching the rig's observation.**
+  `magic-link-send.yaml:58` was already ported to the structured form; signup + verify-email
+  were not. (`accept.yaml` / `login.yaml` are fine — those are `Link` `urlQuery` blocks that
+  build the `?callbackUrl=` **query string**, a legitimately-string surface, not the action
+  param.)
 
-- **Does a validly-signed but expired/consumed token reach the verify-email expired view**
-  (`&error=`), while only a signature-corrupted token dumps to bare login? If so the design
-  works for the realistic cases and the gap is narrowly "malformed token → no feedback".
-- Or does **every** verify failure land on bare login, meaning the expired view is
-  effectively dead and the `&error=` contract in the page comment never holds?
+### Open question — resolved
 
-**Decision needed:** where a failed verification should land and what it must tell the user —
-route all failures to the verify-email expired view (with resend, per the page's design), or
-at minimum carry an `error=` code onto login so _some_ message renders. Related to
-[F2](./F2-login-resend-verification.md) (no resend affordance for a locked-out unverified
-user) — both are about a verify/login dead-end with no way forward.
+**Every** verify failure for an emailed link lands on bare login, and the verify-email page's
+`success` and `expired` renders are **both dead for the emailed link** — not just the
+tampered case:
+
+- **Tampered** → `INVALID_TOKEN` → `redirectOnError` appends `&error=` to `/` → `/?error=…`
+  → protected root bounces a logged-out user to login, **dropping the query**. (observed)
+- **Expired** → `TOKEN_EXPIRED` → identical path → bare login. Not a narrow "malformed only"
+  gap.
+- **Already-consumed** (valid sig, unexpired, user already verified) → handler redirects to
+  `callbackURL` with **no** error (`email-verification.mjs:272-273`) → `/` → login.
+- **Success** → redirect to `/` (never `?verified=1`), so the "Email verified" render is
+  unreachable via the link too.
+
+The `&error=` contract in the page comment is real in BetterAuth — it just gets appended to
+`/`, not to the verify-email page, because the callbackURL is wrong.
+
+## Decision / fix
+
+Repoint the four `callbackUrl` params from the string form to the structured target the new
+schema requires, keeping the same destination:
+
+```yaml
+callbackUrl:
+  pageId:
+    _module.pageId: verify-email
+  urlQuery:
+    verified: "1"
+    email:
+      _state: email # verify_email in verify-email.yaml; signup_email in signup_resend
+```
+
+This fixes success **and** all failures at once with no page-logic change: the emailed link's
+callbackURL becomes `/user-account/verify-email?verified=1&email=<addr>`; BetterAuth appends
+`&error=<code>` on failure, and the page's existing `onInit` seeds `expired` (email survives
+for the resend) or `success` accordingly — exactly the design the header comment describes.
+No app-level change is needed (the module is the source; all consumers inherit the fix).
+Related to [F2](_completed/F2-login-resend-verification.md) (resend affordance) — same
+verify/login dead-end family.
