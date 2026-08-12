@@ -222,6 +222,23 @@ _ref:
 
       # Row actions. Kept out of the grid so their state survives the grid's renders;
       # the ⋯ cell seeds selected_report and opens the menu, which fans out to these.
-      - _ref: pages/reports-list/components/row_menu_modal.yaml
-      - _ref: pages/reports-list/components/rename_modal.yaml
-      - _ref: pages/reports-list/components/delete_confirm_modal.yaml
+      # Shared with the report page's own ⋯ — the modals take the after-action as a
+      # var because that is the only thing the two callers disagree about: here a
+      # write refetches the scope in place, there it re-navigates.
+      - _ref:
+          path: components/report_menu_modal.yaml
+          vars:
+            show_open: true
+            after_write:
+              _ref: pages/reports-list/actions/load_scope.yaml
+      - _ref:
+          path: components/report_rename_modal.yaml
+          vars:
+            after_write:
+              _ref: pages/reports-list/actions/load_scope.yaml
+      - _ref:
+          path: components/report_delete_modal.yaml
+          vars:
+            # The list stays put after a delete; the row simply leaves the scope.
+            after_delete:
+              _ref: pages/reports-list/actions/load_scope.yaml

@@ -1530,15 +1530,80 @@ describe("owner-only affordances", () => {
   });
 
   // The title shares its row with the actions, so its span is whatever they
-  // leave — 22 with only the ★, 17 once the chat link joins it.
+  // leave — 20 with the ★ and ⋯, 15 once the chat link joins them.
   test("the title's span makes room for exactly the actions compiled beside it", () => {
     const alone = compile({ is_owner: false });
-    expect(alone.report_title.layout.span).toBe(22);
+    expect(alone.report_title.layout.span).toBe(20);
     expect(alone.report_continue_in_chat).toBeUndefined();
 
     const withChat = compile({ is_owner: true, conversation_id: "conv-1" });
-    expect(withChat.report_title.layout.span).toBe(17);
+    expect(withChat.report_title.layout.span).toBe(15);
     expect(withChat.report_continue_in_chat.layout.span).toBe(5);
+  });
+
+  // The ⋯ is compiled for EVERY viewer, like the ★: the menu it opens holds
+  // Duplicate, which is any reader's path to a copy they control, and hides the
+  // owner-only items from its own is_owner / visibility tests. Compiling only
+  // the button — the menu itself is static page config — is what keeps the
+  // Dynamic allowlist at one new action instead of four new block types.
+  describe("the ⋯ header menu", () => {
+    const seedOf = (byId) => byId.report_menu.events.onClick[0].params;
+
+    test("is compiled for every viewer and opens the shared menu modal", () => {
+      for (const is_owner of [true, false]) {
+        const byId = compile({ is_owner });
+        expect(byId.report_menu.type).toBe("Button");
+        expect(byId.report_menu.properties.hideTitle).toBe(true);
+
+        const [, open] = byId.report_menu.events.onClick;
+        expect(open.type).toBe("CallMethod");
+        expect(open.params).toEqual({
+          blockId: "report_menu_modal",
+          method: "setOpen",
+          args: [{ open: true }],
+        });
+      }
+    });
+
+    // The menu reads `selected_report` — the same shape the list seeds from a
+    // grid row. Everything but the id is a compile-time literal; the id is not
+    // one of compileReport's inputs, so it comes from the page URL, the same
+    // value resolve-report loaded the report from.
+    test("seeds the row shape the list's menu already reads", () => {
+      const seed = seedOf(compile({ is_owner: true, visibility: "shared" }));
+      expect(seed.selected_report).toEqual({
+        _id: { __url_query: "report_id" },
+        title: "Q2 Revenue by Region",
+        is_owner: true,
+        visibility: "shared",
+      });
+    });
+
+    // The gates are what the menu branches on, so they must survive as real
+    // booleans and strings rather than undefined — an undefined is_owner would
+    // hide the owner's own items, and an undefined visibility would show
+    // Publish on a report that is already shared.
+    test("gates fall back to the closed position when the resolver omits them", () => {
+      const seed = seedOf(compile({}));
+      expect(seed.selected_report.is_owner).toBe(false);
+      expect(seed.selected_report.visibility).toBe("private");
+    });
+
+    // Copied to the rename inputs' own paths so editing them leaves the title
+    // the delete confirm shows alone. A report with no description seeds "",
+    // not undefined: the endpoint treats null as leave-alone, so an unseeded
+    // field would silently keep a description the user cannot see.
+    test("seeds the rename fields, with an empty description rather than none", () => {
+      const withProse = seedOf(
+        compile({ spec: { ...spec, description: "Revenue and order counts." } }),
+      );
+      expect(withProse.rename_title).toBe("Q2 Revenue by Region");
+      expect(withProse.rename_description).toBe("Revenue and order counts.");
+
+      const bare = { ...spec };
+      delete bare.description;
+      expect(seedOf(compile({ spec: bare })).rename_description).toBe("");
+    });
   });
 });
 

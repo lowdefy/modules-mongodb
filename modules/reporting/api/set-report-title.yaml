@@ -1,7 +1,21 @@
-# Rename a saved report. Owner-only, matched in the update filter.
+# Rewrite a saved report's user-editable prose — title, and optionally
+# description. Owner-only, matched in the update filter.
 #
-# `title` is a document field, not a spec field, so this writes one field and
-# never touches the spec — which is the whole reason title lives outside `spec`.
+# `title` and `description` are document fields, not spec fields, so this never
+# touches the spec — which is the whole reason they live outside it.
+#
+# The id still says "title" because that was the only field when the endpoint
+# shipped, and the report page's edit modal wanted the two written together: one
+# round trip, one `updated` stamp, one owner check. Renaming it would ripple
+# through the ownership design's endpoint inventory, the reports-list task notes
+# and the e2e suite for no behavioural gain — so the name is narrower than the
+# endpoint. Read it as "the report's prose", not "the title alone".
+#
+# `description` is OPTIONAL and distinguishes absent from cleared: a payload
+# without it (the list's rename modal sends title only) leaves the stored
+# description alone, while an empty string clears it. Absent reads as null —
+# `_payload` resolves a missing key to null rather than undefined — so null is
+# the "don't touch" signal and every string, including "", is a write.
 #
 # The length cap is MAX_LABEL_LENGTH from the analytics constants, spelled here
 # as a literal because YAML cannot import it. The two must agree: a title this
@@ -27,6 +41,15 @@ routine:
         return typeof title !== 'string' || title === '' || title.length > 200;
     :then:
       - :reject: A report title is required and may be at most 200 characters.
+  # Only a non-null description is validated: null is "leave it alone", not a
+  # value. validateReportSpec accepts any string here and caps no length, so
+  # this rejects only what would fail the validator on the next spec write.
+  - :if:
+      _js: |
+        const description = payload('description');
+        return description !== null && typeof description !== 'string';
+    :then:
+      - :reject: A report description must be text.
   - id: set_title
     type: MongoDBUpdateOne
     connectionId:
@@ -49,15 +72,31 @@ routine:
       # the filter, this file path and a stack trace. A zero modifiedCount
       # discloses nothing.
       disableNoMatchError: true
+      # Two static branches rather than one $set with a computed key: an absent
+      # description must not reach the document at all, and building the key
+      # conditionally would be harder to read than spelling both writes out.
       update:
         $set:
-          title:
-            _payload: title
-          # Stamped, unlike visibility / favourite / restore: a rename changes
-          # what the report is, so it belongs at the top of the list and on the
-          # report page's provenance line.
-          updated:
-            _ref: defaults/change_stamp.yaml
+          _if:
+            test:
+              _eq:
+                - _payload: description
+                - null
+            then:
+              title:
+                _payload: title
+              # Stamped, unlike visibility / favourite / restore: a rename
+              # changes what the report is, so it belongs at the top of the list
+              # and on the report page's provenance line.
+              updated:
+                _ref: defaults/change_stamp.yaml
+            else:
+              title:
+                _payload: title
+              description:
+                _payload: description
+              updated:
+                _ref: defaults/change_stamp.yaml
   - :return:
       ok: true
       modifiedCount:

@@ -1,14 +1,32 @@
-# The row action menu — the interim for a real `menu` cell. Opened from the ⋯
-# buttons-cell once onMenuClick has seeded `selected_report`. Which items show is
-# a display choice off is_owner / visibility / the viewer's roles; the endpoints
-# are what actually authorize, so an item shown in error is a display bug, not a
-# security one.
+# The report action menu — the interim for a real `menu` cell. Shared by the two
+# surfaces that act on a report: the list's ⋯ cell and the report page's own ⋯.
+# Both seed the same `selected_report` shape ({ _id, title, is_owner,
+# visibility }) before opening it — the list from the clicked grid row, the
+# report page from literals compileReport baked into the button — so every item
+# below reads one place and neither caller needs its own copy of this menu.
+#
+# Which items show is a display choice off is_owner / visibility / the viewer's
+# roles; the endpoints are what actually authorize, so an item shown in error is
+# a display bug, not a security one.
+#
+# Vars:
+#   show_open   — the list offers Open; the report page is already there.
+#   after_write — actions run after publish/unpublish/duplicate. The list
+#                 refetches its scope, the report page re-navigates to re-resolve
+#                 its Dynamic block. Delete's is separate (see the delete modal).
 #
 # Not hidden with `visible:` — hiding a container drops its children's state on
 # every render, which would clear the seeded row before onOk could read it. A
 # closed antd Modal is already invisible.
-id: row_menu_modal
+id: report_menu_modal
 type: Modal
+# `selected_report` is seeded at runtime by whichever surface opened this — the
+# list's onMenuClick, or the report header's compiled SetState, which the build
+# cannot see inside the Dynamic block's server-resolved content. There is no
+# input block with that id on either page, so the state-refs check has nothing
+# to match and would warn on every build.
+~ignoreBuildChecks:
+  - state-refs
 properties:
   title:
     _state: selected_report.title
@@ -25,6 +43,8 @@ blocks:
     blocks:
       - id: menu_open
         type: Button
+        visible:
+          _var: show_open
         properties:
           title: Open
           icon: AiOutlineFileText
@@ -40,7 +60,7 @@ blocks:
             - id: menu_open_close
               type: CallMethod
               params:
-                blockId: row_menu_modal
+                blockId: report_menu_modal
                 method: setOpen
                 args:
                   - open: false
@@ -53,7 +73,9 @@ blocks:
                   report_id:
                     _state: selected_report._id
 
-      # Owner-only: one field, so it is a row action rather than opening the report.
+      # Owner-only. Title and description together: both are document fields
+      # outside the spec, and one modal writing both is one round trip and one
+      # `updated` stamp.
       - id: menu_rename
         type: Button
         visible:
@@ -73,7 +95,7 @@ blocks:
             - id: menu_rename_close
               type: CallMethod
               params:
-                blockId: row_menu_modal
+                blockId: report_menu_modal
                 method: setOpen
                 args:
                   - open: false
@@ -121,7 +143,7 @@ blocks:
               - - id: menu_publish_close
                   type: CallMethod
                   params:
-                    blockId: row_menu_modal
+                    blockId: report_menu_modal
                     method: setOpen
                     args:
                       - open: false
@@ -134,7 +156,7 @@ blocks:
                       report_id:
                         _state: selected_report._id
                       visibility: shared
-              - _ref: pages/reports-list/actions/load_scope.yaml
+              - _var: after_write
 
       # Unpublish — shared, and the viewer either owns it or holds a role. This is
       # the one item whose visibility is a two-input test rather than is_owner
@@ -173,7 +195,7 @@ blocks:
               - - id: menu_unpublish_close
                   type: CallMethod
                   params:
-                    blockId: row_menu_modal
+                    blockId: report_menu_modal
                     method: setOpen
                     args:
                       - open: false
@@ -186,7 +208,7 @@ blocks:
                       report_id:
                         _state: selected_report._id
                       visibility: private
-              - _ref: pages/reports-list/actions/load_scope.yaml
+              - _var: after_write
 
       # Any reader's path to a version they control — a private copy they own.
       - id: menu_duplicate
@@ -207,7 +229,7 @@ blocks:
               - - id: menu_duplicate_close
                   type: CallMethod
                   params:
-                    blockId: row_menu_modal
+                    blockId: report_menu_modal
                     method: setOpen
                     args:
                       - open: false
@@ -219,7 +241,7 @@ blocks:
                     payload:
                       report_id:
                         _state: selected_report._id
-              - _ref: pages/reports-list/actions/load_scope.yaml
+              - _var: after_write
 
       - id: menu_delete
         type: Button
@@ -241,7 +263,7 @@ blocks:
             - id: menu_delete_close
               type: CallMethod
               params:
-                blockId: row_menu_modal
+                blockId: report_menu_modal
                 method: setOpen
                 args:
                   - open: false

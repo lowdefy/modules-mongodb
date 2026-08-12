@@ -72,9 +72,10 @@ const RIGHT_IN_CELL = {
   marginLeft: "auto",
 };
 
-// Header action widths, on the same 24-column grid. ★ is an icon alone; the chat
-// link carries its label, so it needs the wider cell.
+// Header action widths, on the same 24-column grid. ★ and ⋯ are icons alone; the
+// chat link carries its label, so it needs the wider cell.
 const FAVOURITE_SPAN = 2;
+const MENU_SPAN = 2;
 const CHAT_LINK_SPAN = 5;
 
 // Vertical separation ahead of a section's head row, on top of the small row gap
@@ -839,7 +840,7 @@ function compileReport({
   // that is also why the buttons are pushed immediately after it.
   const showContinueInChat = Boolean(is_owner && conversation_id);
   const actionsSpan =
-    FAVOURITE_SPAN + (showContinueInChat ? CHAT_LINK_SPAN : 0);
+    FAVOURITE_SPAN + MENU_SPAN + (showContinueInChat ? CHAT_LINK_SPAN : 0);
 
   header.push({
     id: "report_title",
@@ -916,6 +917,68 @@ function compileReport({
       ],
     },
   });
+  // ⋯ opens report_menu_modal — the SAME menu the reports list opens from a row,
+  // living in the page's static config rather than compiled here. That split is
+  // deliberate: a Modal, its TextInput/TextArea and a ConfirmModal emitted from
+  // the compiler would each have to join report.yaml's `types` allowlist, where
+  // one undeclared type blanks the WHOLE report to the fallback slot. Compiling
+  // only the button keeps the new allowlist surface at a single action
+  // (CallMethod) and gives both surfaces one implementation of the menu, its
+  // ownership gates and its endpoints.
+  //
+  // The seed is what makes that reuse work: the menu reads `selected_report`,
+  // which the list fills from the clicked grid row and this fills from literals
+  // the compiler already holds. `_id` is the exception — the compiler is not
+  // told the report id, so it comes from the page URL, the same value
+  // resolve-report loaded the report from. rename_title / rename_description are
+  // copied to their own paths so editing them leaves the title the delete
+  // confirm shows alone.
+  //
+  // Shown to every viewer, not just the owner: Duplicate is a reader's path to a
+  // copy they control, and the menu hides the items a viewer cannot use from the
+  // same is_owner / visibility / roles tests the list uses. The endpoints
+  // authorize regardless.
+  header.push({
+    id: "report_menu",
+    type: "Button",
+    layout: { span: MENU_SPAN },
+    style: RIGHT_IN_CELL,
+    properties: {
+      title: "Report actions",
+      hideTitle: true,
+      icon: "AiOutlineEllipsis",
+      type: "text",
+      size: "small",
+    },
+    events: {
+      onClick: [
+        {
+          id: "seed_report_menu",
+          type: "SetState",
+          params: {
+            selected_report: {
+              _id: { __url_query: "report_id" },
+              title: validated.title,
+              is_owner: Boolean(is_owner),
+              visibility: visibility ?? "private",
+            },
+            rename_title: validated.title,
+            rename_description: validated.description ?? "",
+          },
+        },
+        {
+          id: "open_report_menu",
+          type: "CallMethod",
+          params: {
+            blockId: "report_menu_modal",
+            method: "setOpen",
+            args: [{ open: true }],
+          },
+        },
+      ],
+    },
+  });
+
   if (validated.description) {
     header.push({
       id: "report_description",

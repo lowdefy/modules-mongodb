@@ -63,6 +63,13 @@ _ref:
               # report after removing a section (compileReport brokenSectionBlocks
               # / the header control).
               - Link
+              # The header's ⋯ opens report_menu_modal, which is STATIC config on
+              # this page rather than compiled output. That is why this list gains
+              # one action and no blocks: emitting the menu, its rename Modal with
+              # a TextInput/TextArea and the delete ConfirmModal from the compiler
+              # would put four more block types in the allowlist, each of which
+              # blanks the whole report if it is ever missed.
+              - CallMethod
             operators:
               - _state
               - _api
@@ -90,3 +97,54 @@ _ref:
                   status: 404
                   title: Report not found
                   subTitle: This report couldn't be loaded
+
+      # The same action menu the reports list opens from a row — one
+      # implementation of the ownership gates, the endpoints and the copy. The
+      # header's compiled ⋯ seeds `selected_report` from literals it already holds
+      # and opens this; every item below then reads page state exactly as it does
+      # on the list. Siblings of the Dynamic block, not inside it, so their state
+      # survives a re-resolve and so none of their block types has to join the
+      # allowlist above.
+      #
+      # `after_write` re-navigates rather than refetching: the report is a
+      # server-resolved Dynamic block with no client refetch, so re-opening the
+      # page is what re-renders a new title or visibility. The same mechanism the
+      # ★ and Drop-a-section use.
+      - _ref:
+          path: components/report_menu_modal.yaml
+          vars:
+            # Already here — Open would link to the page it is on.
+            show_open: false
+            after_write:
+              - id: reload_after_menu_action
+                type: Link
+                params:
+                  pageId:
+                    _module.pageId: report
+                  urlQuery:
+                    report_id:
+                      _url_query: report_id
+      - _ref:
+          path: components/report_rename_modal.yaml
+          vars:
+            after_write:
+              - id: reload_after_rename
+                type: Link
+                params:
+                  pageId:
+                    _module.pageId: report
+                  urlQuery:
+                    report_id:
+                      _url_query: report_id
+      - _ref:
+          path: components/report_delete_modal.yaml
+          vars:
+            # Unlike the list, this page cannot stay: it is rendering a report
+            # that no longer resolves, and re-navigating would land on the
+            # not-found fallback.
+            after_delete:
+              - id: to_list_after_delete
+                type: Link
+                params:
+                  pageId:
+                    _module.pageId: reports-list

@@ -306,6 +306,21 @@ old pooled filter row required is gone.
   from the accessibility tree too: the block exposes no `aria-label`, so an
   icon-only control here carries no accessible name. A KPI gets no ⤓: a single
   number is already on screen.
+- The header's **⋯** opens `report_menu_modal` — the SAME menu the reports list
+  opens from a row, and the one place the ownership gates, the endpoints and the
+  copy live. Only the **button** is compiled; the menu, its rename `Modal` with a
+  `TextInput`/`TextArea`, and the delete confirm are static config on
+  `report.yaml`, siblings of the `Dynamic` block. That split is what keeps the
+  allowlist cost at one action (`CallMethod`) instead of four block types, each
+  of which blanks the whole report if it is ever missed. What makes the reuse
+  work is the seed: the menu reads `selected_report`, which the list fills from
+  the clicked grid row and the compiled button fills from literals — `title`,
+  `is_owner`, `visibility` — plus `_id` from the page URL, since the compiler is
+  never told the report id. `is_owner` and `visibility` fall back to the closed
+  position (`false` / `private`), so a resolver that omits them hides the owner's
+  items rather than offering Publish on an already-shared report. The ⋯ compiles
+  for **every** viewer, like the ★: Duplicate is any reader's path to a copy they
+  control, and the menu hides what a viewer cannot use.
 - Vertical rhythm comes from two distances, not one. `report.yaml`'s
   `layout.gap` y value is small — it spaces a heading off the chart or table it
   names — and `SECTION_TOP_GAP` (L86) adds the larger distance ahead of each head

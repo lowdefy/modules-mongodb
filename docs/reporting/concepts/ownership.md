@@ -111,6 +111,10 @@ It matters because the stored spec is **re-validated on every read**. A tighteni
 
 ## Editing a report
 
-Deliberately narrow. An owner can rename a report and drop a section from it; there is no add-section, reorder, or edit-a-section path, and no general spec write.
+Deliberately narrow. An owner can edit a report's **title and description** and drop a section from it; there is no add-section, reorder, or edit-a-section path, and no general spec write.
+
+Title and description are document fields rather than spec fields, which is why editing them is a one-field write that never touches the compiled report. Both are reachable from the same **⋯** menu on two surfaces — a row in the reports list, and the report page's own header — and it is one menu: the same ownership gates, the same endpoints, the same copy. What differs is only what happens after a write, since the list refetches in place while the report page re-navigates to re-resolve.
+
+The description is optional and distinguishes _not sent_ from _emptied_: the list's rename modal sends the title alone and leaves any stored description untouched, while clearing the field on the report page clears it for real.
 
 Re-deriving a spec is the assistant's job: ask it to change something and it produces a **new** report. Dropping a section is the one exception, and it cascades — removing a filter unbinds it from the sections that used it, and removing the last section bound to a filter removes that filter too. It refuses exactly one thing: leaving the report with no sections, and it points you at deleting the report instead.

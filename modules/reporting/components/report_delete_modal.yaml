@@ -2,9 +2,22 @@
 # states the truth: the report stops being listed, nothing is queried again, no
 # source data is touched. This is the one place a user meets the soft-delete
 # idiom, so it is the one place worth spelling out. Recoverable from the
-# Recently-deleted page. Not hidden with `visible:` (see row_menu_modal for why).
+# Recently-deleted page. Not hidden with `visible:` (see report_menu_modal for
+# why).
+#
+# `after_delete` is separate from the other modals' `after_write` because the two
+# callers diverge here rather than merely differing in how they refresh: the list
+# refetches and stays put, while the report page is now displaying a report that
+# no longer exists and has to leave.
 id: delete_confirm_modal
 type: Modal
+# `selected_report` is seeded at runtime by whichever surface opened this — the
+# list's onMenuClick, or the report header's compiled SetState, which the build
+# cannot see inside the Dynamic block's server-resolved content. There is no
+# input block with that id on either page, so the state-refs check has nothing
+# to match and would warn on every build.
+~ignoreBuildChecks:
+  - state-refs
 properties:
   title: Delete this report?
   okText: Delete
@@ -21,7 +34,7 @@ events:
             payload:
               report_id:
                 _state: selected_report._id
-      - _ref: pages/reports-list/actions/load_scope.yaml
+      - _var: after_delete
 blocks:
   - id: delete_confirm_body
     type: Paragraph

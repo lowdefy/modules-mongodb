@@ -1,0 +1,59 @@
+# Edit a report's prose — title and description, the two document fields that
+# live outside the spec. Opened from report_menu_modal once selected_report,
+# rename_title and rename_description are seeded (the list's onMenuClick seeds
+# them from the grid row, the report page from compiled literals). Persist then
+# run `after_write`, which is how the caller re-reads what was saved: the list
+# refetches its scope, the report page re-navigates. Not hidden with `visible:`
+# (see report_menu_modal for why).
+#
+# `description` is always sent, including as "" — set-report-title treats a
+# string as a write and only an absent key as leave-alone, so clearing the field
+# here clears the stored description rather than silently keeping it.
+id: rename_modal
+type: Modal
+# `selected_report` is seeded at runtime by whichever surface opened this — the
+# list's onMenuClick, or the report header's compiled SetState, which the build
+# cannot see inside the Dynamic block's server-resolved content. There is no
+# input block with that id on either page, so the state-refs check has nothing
+# to match and would warn on every build.
+~ignoreBuildChecks:
+  - state-refs
+properties:
+  title: Edit report
+  okText: Save
+events:
+  onOk:
+    _build.array.concat:
+      - - id: rename_report
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: set-report-title
+            payload:
+              report_id:
+                _state: selected_report._id
+              title:
+                _state: rename_title
+              # _if_none, not a bare _state: an untouched TextArea leaves the
+              # path null, and null is the endpoint's leave-alone signal — so
+              # opening the modal and saving without touching the description
+              # would keep a description the user could not see they still had.
+              description:
+                _if_none:
+                  - _state: rename_description
+                  - ""
+      - _var: after_write
+blocks:
+  - id: rename_title
+    type: TextInput
+    properties:
+      title: Title
+      placeholder: Report title
+  - id: rename_description
+    type: TextArea
+    properties:
+      title: Description
+      placeholder: What this report answers
+      autoSize:
+        minRows: 2
+        maxRows: 6
