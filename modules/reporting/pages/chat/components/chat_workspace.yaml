@@ -686,10 +686,16 @@ blocks:
                           level: 5
                           style:
                             marginBottom: 0
+                  # The canvas height is sized server-side with the option, so it
+                  # travels on the part. Parts written before the part gained
+                  # `height` fall back to the fixed height they were drawn at.
                   - id: charts.$.chart
                     type: EChart
                     properties:
-                      height: 300
+                      height:
+                        _if_none:
+                          - _state: charts.$.height
+                          - 300
                       option:
                         _state: charts.$.option
                   # The option is a snapshot of the turn that produced it — a

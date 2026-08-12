@@ -1,5 +1,5 @@
 import { MAX_DATA_PART_ROWS, MAX_DATA_PARTS_SPECS } from "./constants.js";
-import buildEChartsOption from "./buildEChartsOption.js";
+import buildFlintOption from "./buildFlintOption.js";
 import validateChartSpec from "./validateChartSpec.js";
 import validateExportSpec from "./validateExportSpec.js";
 import validateTableSpec from "./validateTableSpec.js";
@@ -97,11 +97,16 @@ function buildDataParts({
     try {
       const { chart, title, query, x, y } = validateChartSpec({ spec, roles });
       verifyChartContract({ x, y, rows });
+      // The canvas height travels with the option because it is derived from
+      // the same layout pass — the axis furniture the compiler sized for these
+      // labels only fits at the height it returned.
+      const { option, height } = buildFlintOption({ chart, x, y, rows });
       parts.push({
         type: "data-report-chart",
         data: {
           title,
-          option: buildEChartsOption({ chart, x, y, rows }),
+          option,
+          height,
           spec: { chart, query, x, y },
         },
       });
@@ -118,10 +123,10 @@ function buildDataParts({
     try {
       const { title, query, columns } = validateTableSpec({ spec, roles });
       verifyTableContract({ columns, rows });
-      // Narrowed to the declared columns for the same reason a chart's
-      // dataset.source is: the part is persisted, so an unprojected row array
-      // makes it as wide as everything the pipeline emitted rather than as wide
-      // as what the card displays.
+      // Narrowed to the declared columns for the same reason a chart's option
+      // carries only its contract's: the part is persisted, so an unprojected
+      // row array makes it as wide as everything the pipeline emitted rather
+      // than as wide as what the card displays.
       const keys = columns.map((column) => column.key);
       const projected = rows.map((row) =>
         Object.fromEntries(keys.map((key) => [key, row[key]])),

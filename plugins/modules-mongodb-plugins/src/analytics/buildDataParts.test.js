@@ -44,11 +44,11 @@ test("builds chart and download parts", () => {
   expect(parts).toHaveLength(2);
   expect(parts[0].type).toBe("data-report-chart");
   expect(parts[0].data.title).toBe("Orders by Status");
-  expect(parts[0].data.option.dataset.source).toEqual([
-    { status: "paid", count: 5 },
-    { status: "pending", count: 2 },
+  expect(parts[0].data.option.series[0].data).toEqual([
+    { name: "paid", value: 5 },
+    { name: "pending", value: 2 },
   ]);
-  expect(parts[0].data.option.series[0].encode).toEqual({ itemName: "status", value: "count" });
+  expect(parts[0].data.option.series[0].type).toBe("pie");
   expect(parts[1]).toEqual({
     type: "data-report-download",
     data: { label: "Orders export", description: "", query: exportSpec.query },
@@ -230,7 +230,7 @@ test("a chart whose declared column is missing from its rows is skipped", () => 
     roles,
   });
   expect(parts).toHaveLength(1);
-  expect(parts[0].data.option.dataset.source).toEqual([{ status: "paid", count: 1 }]);
+  expect(parts[0].data.option.series[0].data).toEqual([{ name: "paid", value: 1 }]);
 });
 
 test("a chart with a non-numeric y column is skipped", () => {
@@ -257,7 +257,7 @@ test("a skipped spec does not spend the per-turn budget", () => {
 test("zero rows and null value cells build a chart without a verification failure", () => {
   const empty = buildDataParts({ charts: [chartSpec], results: [[]], roles });
   expect(empty).toHaveLength(1);
-  expect(empty[0].data.option.dataset.source).toEqual([]);
+  expect(empty[0].data.option.series[0].data).toEqual([]);
 
   const withNulls = buildDataParts({
     charts: [chartSpec],
@@ -267,14 +267,29 @@ test("zero rows and null value cells build a chart without a verification failur
   expect(withNulls).toHaveLength(1);
 });
 
-test("a chart part's source carries only the contract's columns, not a fat extra field", () => {
+test("a chart part's option carries only the contract's columns, not a fat extra field", () => {
   const parts = buildDataParts({
     charts: [chartSpec],
     results: [[{ status: "paid", count: 5, meta: { region: "west", tags: ["a", "b"] } }]],
     roles,
   });
   expect(parts).toHaveLength(1);
-  expect(Object.keys(parts[0].data.option.dataset.source[0])).toEqual(["status", "count"]);
+  expect(parts[0].data.option.series[0].data).toEqual([{ name: "paid", value: 5 }]);
+});
+
+// The part is persisted and travels through JSON on the way to the panel, so a
+// private `_`-key or a formatter function would either break the round trip or
+// be frozen into every stored conversation.
+test("a chart part carries a numeric height and a JSON-safe option", () => {
+  const parts = buildDataParts({
+    charts: [chartSpec],
+    results: [[{ status: "paid", count: 5 }]],
+    roles,
+  });
+  expect(typeof parts[0].data.height).toBe("number");
+  expect(parts[0].data.option.dataset).toBeUndefined();
+  expect(Object.keys(parts[0].data.option).filter((key) => key.startsWith("_"))).toEqual([]);
+  expect(parts[0].data.option).toEqual(JSON.parse(JSON.stringify(parts[0].data.option)));
 });
 
 test("a contract-shaped export payload is skipped, not thrown", () => {
