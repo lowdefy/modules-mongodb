@@ -27,6 +27,18 @@ Each query-backed section carries `query: { collection, pipeline }` plus its con
 
 **Numeric table columns right-align.** A column carrying a `format` always does. A column without one is right-aligned when every non-empty value in the result is a number — so counts line up with formatted money instead of sitting flush-left beside it. Empty cells are ignored when deciding; a single non-numeric value, or a result with no rows to judge from, leaves the column aligned as text. Alignment never changes the value: an unformatted column still renders raw, since inventing a format would impose decimals and grouping the agent did not ask for.
 
+### Chart appearance is compiled, not authored
+
+The chart contract names columns; it never describes the picture. Axis names, label rotation, grid padding, series colours and pie labels are compiled server-side by the `flint-chart` compiler, from the declared `chart` / `x` / `y` and the actual result rows. The authoring contract is unchanged — the same three keys, with the same meanings, and still no chart-styling vocabulary to learn — but four things about the rendered chart follow from the rows rather than from the spec.
+
+**Ordering is derived, not taken from the pipeline.** A bar chart over plain category labels renders sorted by **value descending**, whatever the pipeline's `$sort` said. Where the x column reads as temporal or otherwise ordered — dates, `2026-01`-style month strings — the rows keep the order they arrived in. A `$sort` in a chart section's pipeline still decides _which_ rows make the chart when a `$limit` follows it; it does not decide the left-to-right order of the bars.
+
+**Height follows content.** A chart's canvas is a constant plot area plus the axis furniture its own labels need, so two charts in one report are rarely the same height, and moving a filter can resize the section it re-queries. The plot itself is never squeezed to fit a frame — a chart of long category names grows instead of cramming.
+
+**Multiple `y` columns render as sibling series** — grouped bars, or one line per column — named by the column names, so the legend reads the measures an author declared. The shared y-axis reads `Value`: two differently-named measures share one axis, and either name would be wrong for the other.
+
+**Tooltips are the ECharts defaults.** A compiled chart reaches the browser as JSON, and JSON carries no functions, so the compiler's own tooltip formatter cannot make the trip. Hovering shows the series name and the raw value.
+
 ### The `format` descriptor
 
 KPI sections and table columns may declare a number format:
