@@ -666,10 +666,12 @@ describe("provenance line", () => {
     expect(ids.indexOf("s3_download")).toBe(ids.indexOf("s3_heading") + 1);
   });
 
-  // Every compiled block is a sibling in one wrapping flex area, so the head
-  // row's two blocks are only "a row" by virtue of their spans — a top margin on
-  // the heading alone would drop its ⤓ out of line with it. They must match.
-  test("both blocks of a head row carry the same top margin", () => {
+  // Every compiled block is a sibling in one wrapping flex area, so a "row" is
+  // only a row by virtue of its spans — a top margin on one block alone would
+  // drop its row-mates out of line with it. The gap therefore leads the section
+  // GROUP, a whole wrap line at a time: the head row when nothing precedes it,
+  // the filter controls when they do.
+  test("the top margin leads a section's group, a whole row at a time", () => {
     const blocks = compileReport({
       spec,
       results,
@@ -678,13 +680,24 @@ describe("provenance line", () => {
       endpointId,
     });
     const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
-    for (const id of ["s1", "s3"]) {
-      const gap = byId[`${id}_heading`].style.marginTop;
-      expect(gap).toBeGreaterThan(0);
-      expect(byId[`${id}_download`].style.marginTop).toBe(gap);
-      // The margin rides alongside the right-alignment style, not over it.
-      expect(byId[`${id}_download`].style.marginLeft).toBe("auto");
-    }
+
+    // s1 has no filter above it, so its own head row leads the group and both
+    // blocks carry the gap.
+    const gap = byId.s1_heading.style.marginTop;
+    expect(gap).toBeGreaterThan(0);
+    expect(byId.s1_download.style.marginTop).toBe(gap);
+    // The margin rides alongside the right-alignment style, not over it.
+    expect(byId.s1_download.style.marginLeft).toBe("auto");
+
+    // s3 is anchored by the status filter, so the CONTROL leads the group and
+    // the head row must not also carry the gap. Stamped on the heading instead,
+    // the filter would sit one small row gap under the previous section and a
+    // full SECTION_TOP_GAP above the section it actually drives — reading as
+    // though it filtered the one before it.
+    expect(byId.filter_status.style.marginTop).toBe(gap);
+    expect(byId.s3_heading.style?.marginTop).toBeUndefined();
+    expect(byId.s3_download.style.marginTop).toBeUndefined();
+    expect(byId.s3_download.style.marginLeft).toBe("auto");
   });
 
   // A table sized to its rows rather than to the block's 500px default, which
@@ -1202,10 +1215,13 @@ describe("filter placement", () => {
   // The truncation note stays on the title while the scope note sits in extra:
   // one says what this control offers, the other what it moves.
   test("a truncated options list and a scope note occupy different places", () => {
-    const rows = Array.from({ length: MAX_QUERY_FILTER_OPTIONS + 1 }, (_, i) => ({
-      _id: `c${i}`,
-      name: `Company ${i}`,
-    }));
+    const rows = Array.from(
+      { length: MAX_QUERY_FILTER_OPTIONS + 1 },
+      (_, i) => ({
+        _id: `c${i}`,
+        name: `Company ${i}`,
+      }),
+    );
     const spec = {
       title: "T",
       sections: [
@@ -1287,20 +1303,58 @@ describe("filter placement", () => {
         endpointId,
       });
       return fields.map(
-        (field) =>
-          blocks.find((b) => b.id === `filter_${field}`).layout.span,
+        (field) => blocks.find((b) => b.id === `filter_${field}`).layout.span,
       );
     };
 
     test.each([
       [["status"], [24]],
-      [["status", "region"], [12, 12]],
-      [["status", "region", "category"], [8, 8, 8]],
+      [
+        ["status", "region"],
+        [12, 12],
+      ],
+      [
+        ["status", "region", "category"],
+        [8, 8, 8],
+      ],
       // Past three the grid wraps at the same span rather than stretching the
       // fourth across the page on its own line.
-      [["status", "region", "category", "channel"], [8, 8, 8, 8]],
+      [
+        ["status", "region", "category", "channel"],
+        [8, 8, 8, 8],
+      ],
     ])("%j → spans %j", (fields, expected) => {
       expect(spans(fields)).toEqual(expected);
+    });
+
+    // The group's leading wrap line carries the top gap — every control on it,
+    // so a shared row stays level, and nothing past it, so the fourth filter
+    // (which wraps onto a second line) is not pushed away from the first three.
+    test.each([
+      [["status"], 1],
+      [["status", "region"], 2],
+      [["status", "region", "category"], 3],
+      [["status", "region", "category", "channel"], 3],
+    ])("%j → the first %i control(s) carry the gap", (fields, leading) => {
+      const blocks = compileReport({
+        spec: anchoredSpec(fields),
+        results: [tableRows],
+        catalog: testCatalog,
+        roles,
+        endpointId,
+      });
+      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      const gaps = fields.map((f) => byId[`filter_${f}`].style?.marginTop);
+      expect(gaps.slice(0, leading).every((g) => g > 0)).toBe(true);
+      expect(new Set(gaps.slice(0, leading)).size).toBe(1);
+      expect(gaps.slice(leading)).toEqual(
+        Array(fields.length - leading).fill(undefined),
+      );
+      // The controls lead the group, so the section's head row does not. The
+      // table follows the filters in spec order, so its id trails their count.
+      expect(
+        byId[`s${fields.length}_heading`].style?.marginTop,
+      ).toBeUndefined();
     });
 
     // The span is per anchor group, not per report: co-location is the point, so
@@ -1595,7 +1649,9 @@ describe("owner-only affordances", () => {
     // field would silently keep a description the user cannot see.
     test("seeds the rename fields, with an empty description rather than none", () => {
       const withProse = seedOf(
-        compile({ spec: { ...spec, description: "Revenue and order counts." } }),
+        compile({
+          spec: { ...spec, description: "Revenue and order counts." },
+        }),
       );
       expect(withProse.rename_title).toBe("Q2 Revenue by Region");
       expect(withProse.rename_description).toBe("Revenue and order counts.");
@@ -1678,6 +1734,79 @@ describe("withheld vs broken failed sections", () => {
     expect(json).not.toContain("analyst");
     expect(json).not.toContain("admin");
     expect(json).not.toContain("Jane Doe");
+  });
+
+  // The gate enforces each touched collection as it is reached — any-of within a
+  // collection, ALL-OF across them. Classifying against the union of their role
+  // lists instead reads "holds one of the roles somewhere" as satisfied, so a
+  // section the gate genuinely withheld gets called broken and its owner is
+  // offered Drop — a destructive spec edit — for an access problem.
+  describe("a pipeline touching two collections gated on different roles", () => {
+    const twoGates = {
+      demo_sales: {
+        roles: ["sales"],
+        description: "Sales",
+        fields: { total: { type: "number" }, cust: { type: "string" } },
+      },
+      demo_finance: {
+        roles: ["finance"],
+        description: "Finance",
+        fields: { _id: { type: "string" } },
+      },
+    };
+    const joinedSpec = {
+      title: "Joined",
+      sections: [
+        {
+          type: "table",
+          label: "Joined",
+          query: {
+            collection: "demo_sales",
+            pipeline: [
+              {
+                $lookup: {
+                  from: "demo_finance",
+                  localField: "cust",
+                  foreignField: "_id",
+                  as: "c",
+                },
+              },
+              { $limit: 10 },
+            ],
+          },
+          columns: [{ key: "total" }],
+        },
+      ],
+    };
+    const classify = (viewerRoles) =>
+      Object.fromEntries(
+        compileReport({
+          spec: joinedSpec,
+          results: [null],
+          catalog: twoGates,
+          roles: viewerRoles,
+          endpointId,
+          owner,
+          is_owner: true,
+          conversation_id: "conv-1",
+        }).map((b) => [b.id, b]),
+      );
+
+    test("holding only one of the two roles is withheld, not broken", () => {
+      const byId = classify(["sales"]);
+      expect(byId.s0.properties.description).toBe(
+        "You don't have access to the data in this section.",
+      );
+      // The spec is fine — there is nothing to fix and nothing to drop.
+      expect(byId.s0_fix_in_chat).toBeUndefined();
+      expect(byId.s0_drop).toBeUndefined();
+    });
+
+    test("holding both roles is broken — the gate would have passed", () => {
+      const byId = classify(["sales", "finance"]);
+      expect(byId.s0.properties.description).toMatch(/failed to load/);
+      expect(byId.s0_drop).toBeDefined();
+    });
   });
 
   test("owner viewing their own withheld section gets the withheld variant, not the broken one", () => {

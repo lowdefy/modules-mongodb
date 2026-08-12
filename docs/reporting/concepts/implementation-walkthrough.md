@@ -323,13 +323,19 @@ old pooled filter row required is gone.
   control, and the menu hides what a viewer cannot use.
 - Vertical rhythm comes from two distances, not one. `report.yaml`'s
   `layout.gap` y value is small — it spaces a heading off the chart or table it
-  names — and `SECTION_TOP_GAP` (L86) adds the larger distance ahead of each head
-  row, so a heading sits nearer its own content than the section above it. One
-  uniform gap wide enough to separate sections leaves the heading equidistant and
-  belonging to neither. The gap is set on **both** blocks of the head row: every
-  compiled block is a sibling in one wrapping flex area — the "rows" are wrap
-  lines, not nested containers — so a margin on the heading alone drops its ⤓ out
-  of line with it.
+  names — and `SECTION_TOP_GAP` adds the larger distance ahead of each section
+  **group**, so a heading sits nearer its own content than the section above it.
+  One uniform gap wide enough to separate sections leaves the heading equidistant
+  and belonging to neither. The gap is applied by `withTopGap` to the group's
+  leading **wrap line**, not to its first block: every compiled block is a
+  sibling in one wrapping flex area — the "rows" are wrap lines, not nested
+  containers — so a margin on one block alone drops its row-mates out of line
+  with it. A group led by its head row gets it on the heading and its ⤓
+  together; a group led by filter controls gets it on every control sharing that
+  first row, and the head row below them carries none. Anchoring on the group
+  rather than the head row is what keeps a filter attached to the section it
+  drives: stamped on the heading instead, a control sat one small row gap under
+  the _previous_ section and a full `SECTION_TOP_GAP` above its own.
 - Each filter's control is emitted once, immediately above the first section (in
   spec order) whose `filterBy` names its field (L828-857) — not pooled in a top
   row. A filter driving more than one section names the others in its label's

@@ -78,16 +78,38 @@ const FAVOURITE_SPAN = 2;
 const MENU_SPAN = 2;
 const CHAT_LINK_SPAN = 5;
 
-// Vertical separation ahead of a section's head row, on top of the small row gap
+// The layout engine's column count. A block with no declared span fills the row.
+const GRID_COLUMNS = 24;
+
+// Vertical separation ahead of each section GROUP, on top of the small row gap
 // report.yaml sets on the content area. Two different distances, deliberately: a
 // heading ends up nearer the content it names than the section above it, so it
 // reads as belonging to what follows. A single uniform gap large enough to
 // separate sections leaves the heading equidistant, belonging to neither.
-//
-// Applied to BOTH blocks of the head row. Every compiled block is a sibling in
-// one wrapping flex area — the "rows" are wrap lines, not nested containers — so
-// a margin on the heading alone would shift it out of line with its ⤓.
 const SECTION_TOP_GAP = 16;
+
+// Stamp the gap on the group's FIRST WRAP LINE, not on its first block. Every
+// compiled block is a sibling in one wrapping flex area — the "rows" are wrap
+// lines, not nested containers — so a margin on one block alone drops its
+// row-mates out of line with it: a heading would part from its ⤓, and the first
+// filter of a shared row from the filters beside it.
+//
+// The group is whatever leads the section: its pending filter controls when it
+// has any, otherwise its head row or its Alert. Anchoring on the group rather
+// than the head row is what keeps a filter attached to the section it drives —
+// stamped on the heading instead, the control sat 8px under the PREVIOUS
+// section and 24px above its own, reading as though it filtered the wrong one.
+function withTopGap(blocks) {
+  let filled = 0;
+  return blocks.map((block) => {
+    if (filled >= GRID_COLUMNS) return block;
+    filled += block.layout?.span ?? GRID_COLUMNS;
+    return {
+      ...block,
+      style: { ...block.style, marginTop: SECTION_TOP_GAP },
+    };
+  });
+}
 
 // A chart's canvas. Full width inside the page's ~1100px column, so this is the
 // short side: 280 gives axis labels and a legend room without the near-square
@@ -122,7 +144,7 @@ function filterStateKey(field) {
 // sections must not be pulled together (see the report-page design).
 const FILTERS_PER_ROW = 3;
 function filterSpan(groupSize) {
-  return 24 / Math.min(groupSize, FILTERS_PER_ROW);
+  return GRID_COLUMNS / Math.min(groupSize, FILTERS_PER_ROW);
 }
 
 function safeFilename(label) {
@@ -166,7 +188,7 @@ function sectionDownload(section, endpointId) {
     id: `${section.id}_download`,
     type: "Button",
     layout: { span: 4 },
-    style: { ...RIGHT_IN_CELL, marginTop: SECTION_TOP_GAP },
+    style: { ...RIGHT_IN_CELL },
     properties: {
       title: "Export CSV",
       hideTitle: true,
@@ -487,7 +509,6 @@ function sectionHeading(section, rows) {
     id: `${section.id}_heading`,
     type: "Title",
     layout: { span: 20 },
-    style: { marginTop: SECTION_TOP_GAP },
     properties: { content, level: 5 },
   };
 }
@@ -644,12 +665,20 @@ function classifyFailure(section, catalog, roles) {
   } catch {
     return "broken";
   }
-  const requiredRoles = [
-    ...new Set(touched.flatMap((c) => catalog[c]?.roles ?? [])),
-  ];
-  const withheld =
-    requiredRoles.length > 0 &&
-    !requiredRoles.some((r) => (roles ?? []).includes(r));
+  // Per collection, never over their union. checkCollectionAccess enforces each
+  // touched collection as it is reached, so the rule is "satisfy EVERY non-empty
+  // roles list" — any-of within a collection, all-of across them. Flattening the
+  // lists first tests all-of within, any-of across: a pipeline joining a
+  // `sales` collection to a `finance` one reads as satisfied for a viewer
+  // holding only `sales`, so a section the gate genuinely withheld is called
+  // broken — offering its owner Fix-in-chat and Drop for a spec that is fine.
+  const viewerRoles = roles ?? [];
+  const withheld = touched.some((c) => {
+    const required = catalog[c]?.roles ?? [];
+    return (
+      required.length > 0 && !required.some((r) => viewerRoles.includes(r))
+    );
+  });
   return withheld ? "withheld" : "broken";
 }
 
@@ -752,7 +781,10 @@ function filterControlBlock({
     // simply never re-query. It takes the group's span rather than the block's
     // own 24 so the surviving controls keep their row — a full-width Alert
     // between them would leave a half-width filter stranded on its own line.
-    return { ...failedSectionBlock(section, sourced.failure), layout: { span } };
+    return {
+      ...failedSectionBlock(section, sourced.failure),
+      layout: { span },
+    };
   }
   return {
     id: filterStateKey(section.field),
@@ -1070,32 +1102,27 @@ function compileReport({
     );
   }
 
-  for (const section of sections) {
-    // A filter sits directly above its first subscribing section.
-    const pending = filtersByFirstSubscriber.get(section.id);
-    if (pending) bodyBlocks.push(...pending);
-
+  // One section's own blocks, returned rather than pushed so the caller can
+  // treat the section and the filter controls that lead it as a single group.
+  const sectionBlocks = (section) => {
+    const out = [];
     if (["kpi", "chart", "table"].includes(section.type)) {
       const rows = rowsBySectionId.get(section.id);
       if (rows === null || rows === undefined) {
         if (classifyFailure(section, catalog, roles) === "withheld") {
-          bodyBlocks.push(withheldSectionBlock(section));
+          out.push(withheldSectionBlock(section));
         } else {
-          bodyBlocks.push(
-            ...brokenSectionBlocks(section, undefined, brokenCtx),
-          );
+          out.push(...brokenSectionBlocks(section, undefined, brokenCtx));
         }
-        continue;
+        return out;
       }
       // Contract-vs-rows check: a mismatch renders this section as an Alert
       // card while the rest of the report renders normally.
       try {
         verifySection(section, rows);
       } catch (error) {
-        bodyBlocks.push(
-          ...brokenSectionBlocks(section, error.message, brokenCtx),
-        );
-        continue;
+        out.push(...brokenSectionBlocks(section, error.message, brokenCtx));
+        return out;
       }
 
       if (section.type === "kpi") {
@@ -1125,7 +1152,7 @@ function compileReport({
         if (display.style === "currency") {
           properties.prefix = `${seps.symbol} `;
         }
-        bodyBlocks.push({
+        out.push({
           id: section.id,
           type: "Statistic",
           layout: { span: 6 },
@@ -1141,9 +1168,9 @@ function compileReport({
           rows: [],
         });
         option.dataset.source = dataBinding(section, rows);
-        bodyBlocks.push(sectionHeading(section, rows));
-        bodyBlocks.push(sectionDownload(section, endpointId));
-        bodyBlocks.push({
+        out.push(sectionHeading(section, rows));
+        out.push(sectionDownload(section, endpointId));
+        out.push({
           id: section.id,
           type: "EChart",
           layout: { span: 24 },
@@ -1152,9 +1179,9 @@ function compileReport({
       }
 
       if (section.type === "table") {
-        bodyBlocks.push(sectionHeading(section, rows));
-        bodyBlocks.push(sectionDownload(section, endpointId));
-        bodyBlocks.push({
+        out.push(sectionHeading(section, rows));
+        out.push(sectionDownload(section, endpointId));
+        out.push({
           id: section.id,
           type: "AgGridBalham",
           layout: { span: 24 },
@@ -1174,7 +1201,7 @@ function compileReport({
     // placed above its first subscribing section in the interleave pass above.
 
     if (section.type === "markdown") {
-      bodyBlocks.push({
+      out.push({
         id: section.id,
         type: "Markdown",
         layout: { span: 24 },
@@ -1183,7 +1210,7 @@ function compileReport({
     }
 
     if (section.type === "download") {
-      bodyBlocks.push({
+      out.push({
         id: section.id,
         type: "Button",
         layout: { span: 6 },
@@ -1207,6 +1234,18 @@ function compileReport({
         },
       });
     }
+    return out;
+  };
+
+  for (const section of sections) {
+    // A filter renders directly above its first subscribing section, and leads
+    // that section's group — so the two are separated by the small row gap and
+    // the whole group is pushed off what precedes it.
+    const group = [
+      ...(filtersByFirstSubscriber.get(section.id) ?? []),
+      ...sectionBlocks(section),
+    ];
+    if (group.length > 0) bodyBlocks.push(...withTopGap(group));
   }
 
   return [...header, ...bodyBlocks];
