@@ -160,9 +160,11 @@ onFinish hook (`agents/reporting-assistant.yaml:167-170`):
    the declared `x`/`y` against the _actual_ rows: keys present, y-columns
    numeric. This is the check that cannot be static, since an arbitrary
    pipeline's output shape is unknown.
-4. `buildEChartsOption.js:11-41` shapes the option using the ECharts `dataset` +
-   explicit `encode` form. The AI contributes a kind, a query and two column
-   names; every other line of chart config is server-authored.
+4. `buildFlintOption.js:46-104` shapes the option by handing the rows to Flint's
+   ECharts compiler, which derives label rotation, grid padding, axis types and
+   colours from the data, and reports the canvas height its layout needs. The AI
+   contributes a kind, a query and two column names; every other line of chart
+   config is server-authored.
 5. L91-118 — pushes the parts onto the conversation doc as `data_parts` (`upsert:
 false` — the prior hook owns doc creation), then L119-125 returns them as
    `dataParts` — the framework's own stream key, not a field this module names.
@@ -291,7 +293,7 @@ old pooled filter row required is gone.
 - KPI → `Statistic` (L1005), with separators resolved at compile time via
   `Intl.NumberFormat.formatToParts` (`intlSeparators`, L277) so the native
   Statistic formatting matches the table's runtime `_intl` output.
-- chart → `EChart` (L1023) at a fixed `CHART_HEIGHT` (L84); table →
+- chart → `EChart` at the canvas height Flint sized for its labels; table →
   `AgGridBalham` (L1034) sized to its rows rather than to the block's 500px
   default (`tableHeight`, L92) — 500 becomes a **ceiling**, so a table near the
   1000-row pipeline cap still scrolls and virtualises; markdown → `Markdown`;
@@ -393,9 +395,12 @@ old pooled filter row required is gone.
 `CallAPI`/`SetState` pair per bound section. The payload's filter values are
 `{ __state: ... }` — deferred client operators (double underscore; the Dynamic
 block's server resolution leaves them alone and the client unescapes them,
-L41-44). `dataBinding` (L118-123) makes a filtered section read
+L41-44). `dataBinding` makes a filtered kpi/table section read
 `__if_none: [__state rows, inlined resolve-time rows]` — so it shows server rows
-until a filter fires, then live ones. The triples land back at
+until a filter fires, then live ones. A filtered **chart** section instead pairs
+with `chart-data`, and binds `option` and `height` the same deferred way: Flint
+inlines the rows into the option and sizes the canvas to the labels, so a
+re-query returns a re-assembled option rather than rows. The triples land back at
 `AnalyticsPipeline.js:51-67`, which builds the `$match` itself and revalidates the
 combined pipeline.
 

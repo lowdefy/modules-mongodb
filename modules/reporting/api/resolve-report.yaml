@@ -163,6 +163,10 @@ routine:
             _user: roles
           endpointId:
             _module.endpointId: query-data
+          # A filtered chart section re-queries here instead: Flint inlines the
+          # rows into the option, so the server returns a re-assembled option.
+          chartEndpointId:
+            _module.endpointId: chart-data
           # The compiler renders a provenance line under the title and gates
           # owner-only chat affordances on these. is_owner repeats the return's
           # expression because sibling return keys can't reference each other;

@@ -6,7 +6,7 @@ import {
   REPORT_DECIMALS,
   REPORT_LOCALE,
 } from "./constants.js";
-import buildEChartsOption from "./buildEChartsOption.js";
+import buildFlintOption from "./buildFlintOption.js";
 import { orderedQueries } from "./querySections.js";
 import validateReportSpec, {
   catalogFieldValues,
@@ -41,8 +41,14 @@ import {
  *                catalog (see below), and roles only take effect alongside
  *                one. Kept so the pair travels together — querySections does
  *                pass both.
- *   endpointId — the scoped query-data endpoint id CallAPI targets for filter
- *                re-queries and downloads (the module passes _module.endpointId).
+ *   endpointId — the scoped query-data endpoint id CallAPI targets for the row
+ *                re-queries of filtered kpi/table sections, and for every CSV
+ *                download (the module passes _module.endpointId).
+ *   chartEndpointId
+ *              — the scoped chart-data endpoint id a filtered CHART section
+ *                re-queries instead: its rows are inlined into an assembled
+ *                ECharts option, so the server re-assembles and returns the
+ *                option and its canvas height rather than rows.
  *
  * The contract is verified against the actual rows per section: a missing
  * column key or a non-numeric y/KPI value renders that one section as an Alert
@@ -110,12 +116,6 @@ function withTopGap(blocks) {
     };
   });
 }
-
-// A chart's canvas. Full width inside the page's ~1100px column, so this is the
-// short side: 280 gives axis labels and a legend room without the near-square
-// canvas 400 produced, where a handful of categories became enormously wide bars
-// floating in whitespace.
-const CHART_HEIGHT = 280;
 
 // The AgGridBalham wrapper is a fixed-height div (500 by default), so a five-row
 // table sat in a 500px box with 350px of white under it. Size to the rows
@@ -251,11 +251,55 @@ function boundFilters(section, filterSectionsByField) {
 
 // One CallAPI + SetState pair per section bound to a filter. Action lists run
 // sequentially, so each SetState reads its own CallAPI's response before the
-// next call replaces it (_api is keyed by endpointId). The server builds the
-// $match from the triples and prepends it to the section's pipeline.
-function requeryActions({ boundSections, filterSectionsByField, endpointId }) {
+// next call replaces it (_api is keyed by endpointId) — which holds across the
+// two endpoints the pairs span, since each SetState immediately follows its own
+// call and reads that call's endpoint id. The server builds the $match from the
+// triples and prepends it to the section's pipeline.
+//
+// A chart section re-queries chart-data rather than query-data: its rows are
+// inlined into an assembled option in type-dependent shapes and its layout is
+// derived from the labels, so the whole option and the canvas height it needs
+// come back re-assembled instead of rows.
+function requeryActions({
+  boundSections,
+  filterSectionsByField,
+  endpointId,
+  chartEndpointId,
+}) {
   const actions = [];
   for (const section of boundSections) {
+    if (section.type === "chart") {
+      actions.push({
+        id: `query_${section.id}`,
+        type: "CallAPI",
+        params: {
+          endpointId: chartEndpointId,
+          payload: {
+            chart: section.chart,
+            // chart-data revalidates the spec, which requires a title; a chart
+            // section's label is required, so it is always there to supply one.
+            title: section.label,
+            x: section.x,
+            y: section.y,
+            query: section.query,
+            filters: boundFilters(section, filterSectionsByField),
+          },
+        },
+      });
+      actions.push({
+        id: `set_${section.id}`,
+        type: "SetState",
+        params: {
+          [`sections.${section.id}.option`]: {
+            __api: `${chartEndpointId}.response.option`,
+          },
+          [`sections.${section.id}.height`]: {
+            __api: `${chartEndpointId}.response.height`,
+          },
+        },
+      });
+      continue;
+    }
     actions.push({
       id: `query_${section.id}`,
       type: "CallAPI",
@@ -728,6 +772,7 @@ function filterControlBlock({
   roles,
   rows,
   endpointId,
+  chartEndpointId,
   filterSectionsByField,
   span,
 }) {
@@ -735,6 +780,7 @@ function filterControlBlock({
     boundSections,
     filterSectionsByField,
     endpointId,
+    chartEndpointId,
   });
   // The scope note goes in the label's `extra` — rendered under the control, in
   // the muted `.ant-form-item-extra` line — rather than appended to the title.
@@ -812,6 +858,7 @@ function compileReport({
   catalog,
   roles,
   endpointId,
+  chartEndpointId,
   created,
   updated,
   owner,
@@ -823,6 +870,9 @@ function compileReport({
 }) {
   if (typeof endpointId !== "string" || endpointId === "") {
     fail("endpointId (the query-data endpoint) is required.");
+  }
+  if (typeof chartEndpointId !== "string" || chartEndpointId === "") {
+    fail("chartEndpointId (the chart-data endpoint) is required.");
   }
   // The owner-only affordances target sibling pages/endpoints in the same module
   // entry. compileReport runs at resolve time and cannot evaluate _module.pageId
@@ -1100,6 +1150,7 @@ function compileReport({
           roles,
           rows: rowsBySectionId.get(filter.id),
           endpointId,
+          chartEndpointId,
           filterSectionsByField,
           span,
         }),
@@ -1166,20 +1217,49 @@ function compileReport({
       }
 
       if (section.type === "chart") {
-        const option = buildEChartsOption({
-          chart: section.chart,
-          x: section.x,
-          y: section.y,
-          rows: [],
-        });
-        option.dataset.source = dataBinding(section, rows);
+        // Assembly reads the rows: it inlines them and sizes the canvas to the
+        // labels it lays out, and it rejects a spec it cannot render — so a
+        // throw here degrades this one section rather than the report, the way
+        // a contract mismatch does.
+        let assembled;
+        try {
+          assembled = buildFlintOption({
+            chart: section.chart,
+            x: section.x,
+            y: section.y,
+            rows,
+          });
+        } catch (error) {
+          out.push(...brokenSectionBlocks(section, error.message, brokenCtx));
+          return out;
+        }
         out.push(sectionHeading(section, rows));
         out.push(sectionDownload(section, endpointId));
+        // Both keys move together: the re-assembled option's height belongs to
+        // the labels in it, so binding one without the other would draw new
+        // data at the old canvas size.
+        const properties =
+          (section.filterBy ?? []).length === 0
+            ? { height: assembled.height, option: assembled.option }
+            : {
+                option: {
+                  __if_none: [
+                    { __state: `sections.${section.id}.option` },
+                    assembled.option,
+                  ],
+                },
+                height: {
+                  __if_none: [
+                    { __state: `sections.${section.id}.height` },
+                    assembled.height,
+                  ],
+                },
+              };
         out.push({
           id: section.id,
           type: "EChart",
           layout: { span: 24 },
-          properties: { height: CHART_HEIGHT, option },
+          properties,
         });
       }
 
