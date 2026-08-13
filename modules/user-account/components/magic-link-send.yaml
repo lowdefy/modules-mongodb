@@ -43,6 +43,13 @@ properties:
 events:
   onClick:
     try:
+      # Block a blank/omitted email before dispatch. Without this, an empty
+      # email reaches the Login action, whose single-provider auto-fill selects
+      # the sole configured OAuth provider and redirects off-app instead of
+      # sending a link. `email` is the canonical id the login/signup pages own.
+      - id: validate_email
+        type: Validate
+        params: email
       - id: begin_cooldown
         type: SetState
         params:
