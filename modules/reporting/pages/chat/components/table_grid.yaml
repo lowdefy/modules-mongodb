@@ -1,0 +1,102 @@
+# The one AgGrid for a chat table result, shared by the inline card and the
+# expand modal so the columnDefs mapping (which mirrors
+# compileReport.tableColumnDef — a column must format identically here and in a
+# saved report) lives once. The consumer names the state paths at build time:
+#
+#   grid_id      — the block id (also the grid's state key)
+#   rows_path    — state path holding the frozen row snapshot
+#   columns_path — state path holding the part spec's column list
+#   height       — canvas height in px
+id:
+  _var: grid_id
+type: AgGridBalham
+properties:
+  height:
+    _var: height
+  rowData:
+    _state:
+      _var: rows_path
+  # Matches saved reports: compileReport's minimal defaultColDef.
+  defaultColDef:
+    sortable: true
+    resizable: true
+  # Built at runtime from the one column copy on the part's spec, in declared
+  # order: a `format` column right-aligns and renders through Intl.NumberFormat
+  # (the same call `_intl.numberFormat` makes in a saved report); a
+  # formatless-but-numeric column is right-aligned but left raw; text is left
+  # alone. `label` falls back to the key. `_js` over operators here because the
+  # transform is a per-column map with a live cell renderer — no operator
+  # expresses that.
+  columnDefs:
+    _js:
+      args:
+        columns:
+          _state:
+            _var: columns_path
+        rows:
+          _state:
+            _var: rows_path
+      fn: |
+        const columns = args.columns || [];
+        const rows = args.rows || [];
+        const REPORT_LOCALE = 'en-US';
+        const REPORT_CURRENCY = 'USD';
+        const REPORT_DECIMALS = 2;
+        const numberDisplay = (format) => {
+          const locale = (format && format.locale) || REPORT_LOCALE;
+          const decimals = Number.isInteger(format && format.decimals)
+            ? format.decimals
+            : REPORT_DECIMALS;
+          if (format && format.style === 'currency') {
+            return {
+              style: 'currency',
+              decimals,
+              currency: format.currency || REPORT_CURRENCY,
+              locale,
+            };
+          }
+          return { style: 'decimal', decimals, locale };
+        };
+        const numberFormatOptions = (d) => {
+          const base = {
+            minimumFractionDigits: d.decimals,
+            maximumFractionDigits: d.decimals,
+          };
+          return d.style === 'currency'
+            ? { style: 'currency', currency: d.currency, ...base }
+            : { style: 'decimal', ...base };
+        };
+        // Conservative, like the report: one non-numeric cell disqualifies
+        // the column, and no rows or all-empty cells yields no evidence.
+        const isNumericColumn = (key) => {
+          if (!Array.isArray(rows) || rows.length === 0) return false;
+          let sawNumber = false;
+          for (const row of rows) {
+            const value = row ? row[key] : undefined;
+            if (value === null || value === undefined) continue;
+            if (typeof value !== 'number') return false;
+            sawNumber = true;
+          }
+          return sawNumber;
+        };
+        return columns.map((column) => {
+          const def = {
+            field: column.key,
+            headerName:
+              column.label === undefined || column.label === null
+                ? column.key
+                : column.label,
+          };
+          if (column.format) {
+            const display = numberDisplay(column.format);
+            const options = numberFormatOptions(display);
+            def.cell = { align: 'right' };
+            def.cellRenderer = (params) =>
+              new Intl.NumberFormat(display.locale, options).format(
+                params.value,
+              );
+          } else if (isNumericColumn(column.key)) {
+            def.cell = { align: 'right' };
+          }
+          return def;
+        });

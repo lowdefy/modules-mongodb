@@ -686,6 +686,48 @@ blocks:
                           level: 5
                           style:
                             marginBottom: 0
+                      # Opens this card's snapshot bigger in the panel-level
+                      # modal. A modal's own events see none of this row, so
+                      # the card is seeded into `expanded_chart` first — the
+                      # rail's kebab → rename/delete pattern. Explicit fields,
+                      # not the bare item: mid-path `$` reads are the
+                      # established pattern; a trailing-`$` read is not.
+                      - id: charts.$.expand
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                          selfAlign: top
+                        properties:
+                          icon:
+                            name: AiOutlineExpandAlt
+                            title: Expand chart
+                          hideTitle: true
+                          type: text
+                        events:
+                          onClick:
+                            - id: seed_expanded_chart
+                              type: SetState
+                              params:
+                                expanded_chart:
+                                  title:
+                                    _state: charts.$.title
+                                  option:
+                                    _state: charts.$.option
+                                  height:
+                                    _if_none:
+                                      - _state: charts.$.height
+                                      - null
+                                  created:
+                                    _if_none:
+                                      - _state: charts.$.created
+                                      - null
+                            - id: open_expand_chart_modal
+                              type: CallMethod
+                              params:
+                                blockId: expand_chart_modal
+                                method: setOpen
+                                args:
+                                  - open: true
                   # The canvas height is sized server-side with the option, so it
                   # travels on the part. Parts written before the part gained
                   # `height` fall back to the fixed height they were drawn at.
@@ -916,6 +958,10 @@ blocks:
       # conversation modals, it leaves only an empty placeholder here — antd
       # portals the dialog to the document body — so it adds no panel chrome.
       - _ref: pages/chat/components/save_report_sheet.yaml
+      # Each card's ⤢ seeds one of these and opens it; like the sheet above,
+      # only an empty placeholder lands in the panel.
+      - _ref: pages/chat/components/expand_chart_modal.yaml
+      - _ref: pages/chat/components/expand_table_modal.yaml
   # The panel's collapsed form. Counts, not just an icon: the point of the strip
   # is that three charts waiting is visible without paying the expand to find
   # out. Compared against `true` so the strip and the panel are exact
