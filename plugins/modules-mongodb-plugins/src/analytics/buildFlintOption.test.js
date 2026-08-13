@@ -118,10 +118,25 @@ test("multi-y bar series are grouped, not stacked, and named by column", () => {
   });
   expect(option.series).toHaveLength(2);
   expect(option.series.map((series) => series.name).sort()).toEqual([
-    "cost",
-    "revenue",
+    "Cost",
+    "Revenue",
   ]);
   option.series.forEach((series) => expect(series.stack).toBeUndefined());
+});
+
+test("column names reach axes and legends humanized; category values are untouched", () => {
+  const { option } = buildFlintOption({
+    chart: "bar",
+    x: "company_name",
+    y: ["contactCount"],
+    rows: [
+      { company_name: "Northwind Traders", contactCount: 4 },
+      { company_name: "Contoso Ltd", contactCount: 2 },
+    ],
+  });
+  expect(option.xAxis.name).toBe("Company Name");
+  expect(option.yAxis.name).toBe("Contact Count");
+  expect(option.xAxis.data).toEqual(["Northwind Traders", "Contoso Ltd"]);
 });
 
 test("height is the canvas Flint sized, larger than the pinned plot", () => {
@@ -132,7 +147,7 @@ test("height is the canvas Flint sized, larger than the pinned plot", () => {
     rows: regionRows,
   });
   expect(typeof height).toBe("number");
-  expect(height).toBeGreaterThan(220);
+  expect(height).toBeGreaterThan(180);
 });
 
 test("empty and missing rows assemble without throwing", () => {

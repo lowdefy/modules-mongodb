@@ -2,7 +2,7 @@
 
 exports[`multi-y bar folds into grouped series 1`] = `
 {
-  "height": 317,
+  "height": 277,
   "option": {
     "color": [
       "#5470c6",
@@ -26,8 +26,8 @@ exports[`multi-y bar folds into grouped series 1`] = `
       "align": "left",
       "bottom": undefined,
       "data": [
-        "revenue",
-        "cost",
+        "Revenue",
+        "Cost",
       ],
       "orient": "vertical",
       "right": 10,
@@ -47,7 +47,7 @@ exports[`multi-y bar folds into grouped series 1`] = `
         "itemStyle": {
           "color": "#5470c6",
         },
-        "name": "revenue",
+        "name": "Revenue",
         "type": "bar",
       },
       {
@@ -61,7 +61,7 @@ exports[`multi-y bar folds into grouped series 1`] = `
         "itemStyle": {
           "color": "#91cc75",
         },
-        "name": "cost",
+        "name": "Cost",
         "type": "bar",
       },
     ],
@@ -73,7 +73,7 @@ exports[`multi-y bar folds into grouped series 1`] = `
     },
     "xAxis": {
       "axisLabel": {
-        "fontSize": 12,
+        "fontSize": 10,
         "rotate": 0,
       },
       "axisLine": {
@@ -88,23 +88,23 @@ exports[`multi-y bar folds into grouped series 1`] = `
         "East",
         "South",
       ],
-      "name": "region",
+      "name": "Region",
       "nameGap": 25,
       "nameLocation": "middle",
       "nameTextStyle": {
-        "fontSize": 12,
+        "fontSize": 10,
       },
       "type": "category",
     },
     "yAxis": {
       "axisLabel": {
-        "fontSize": 12,
+        "fontSize": 10,
       },
       "name": "Value",
       "nameGap": 45,
       "nameLocation": "middle",
       "nameTextStyle": {
-        "fontSize": 12,
+        "fontSize": 10,
       },
       "scale": false,
       "type": "value",
@@ -115,7 +115,7 @@ exports[`multi-y bar folds into grouped series 1`] = `
 
 exports[`multi-y line folds onto a colour channel 1`] = `
 {
-  "height": 481,
+  "height": 421,
   "option": {
     "color": [
       "#5470c6",
@@ -138,10 +138,10 @@ exports[`multi-y line folds onto a colour channel 1`] = `
     "legend": {
       "align": "left",
       "data": [
-        "revenue",
-        "cost",
+        "Revenue",
+        "Cost",
       ],
-      "left": 822,
+      "left": 753,
       "orient": "vertical",
       "textStyle": {
         "fontSize": 11,
@@ -167,7 +167,7 @@ exports[`multi-y line folds onto a colour channel 1`] = `
         "itemStyle": {
           "color": "#5470c6",
         },
-        "name": "revenue",
+        "name": "Revenue",
         "showSymbol": false,
         "symbol": "none",
         "type": "line",
@@ -190,7 +190,7 @@ exports[`multi-y line folds onto a colour channel 1`] = `
         "itemStyle": {
           "color": "#91cc75",
         },
-        "name": "cost",
+        "name": "Cost",
         "showSymbol": false,
         "symbol": "none",
         "type": "line",
@@ -209,7 +209,7 @@ exports[`multi-y line folds onto a colour channel 1`] = `
         "alignWithLabel": true,
         "show": true,
       },
-      "name": "month",
+      "name": "Month",
       "nameGap": 120,
       "nameLocation": "middle",
       "nameTextStyle": {
@@ -318,7 +318,7 @@ exports[`pie encodes the category on colour and the measure on size 1`] = `
 
 exports[`single-y bar over a categorical x 1`] = `
 {
-  "height": 317,
+  "height": 277,
   "option": {
     "color": [
       "#5470c6",
@@ -361,7 +361,7 @@ exports[`single-y bar over a categorical x 1`] = `
     },
     "xAxis": {
       "axisLabel": {
-        "fontSize": 12,
+        "fontSize": 10,
         "rotate": 0,
       },
       "axisLine": {
@@ -376,23 +376,23 @@ exports[`single-y bar over a categorical x 1`] = `
         "East",
         "South",
       ],
-      "name": "region",
+      "name": "Region",
       "nameGap": 25,
       "nameLocation": "middle",
       "nameTextStyle": {
-        "fontSize": 12,
+        "fontSize": 10,
       },
       "type": "category",
     },
     "yAxis": {
       "axisLabel": {
-        "fontSize": 12,
+        "fontSize": 10,
       },
-      "name": "revenue",
+      "name": "Revenue",
       "nameGap": 45,
       "nameLocation": "middle",
       "nameTextStyle": {
-        "fontSize": 12,
+        "fontSize": 10,
       },
       "scale": false,
       "type": "value",
@@ -403,7 +403,7 @@ exports[`single-y bar over a categorical x 1`] = `
 
 exports[`single-y line over a temporal x 1`] = `
 {
-  "height": 481,
+  "height": 421,
   "option": {
     "color": [
       "#5470c6",
@@ -460,7 +460,7 @@ exports[`single-y line over a temporal x 1`] = `
         "alignWithLabel": true,
         "show": true,
       },
-      "name": "month",
+      "name": "Month",
       "nameGap": 120,
       "nameLocation": "middle",
       "nameTextStyle": {
@@ -478,7 +478,7 @@ exports[`single-y line over a temporal x 1`] = `
       },
       "max": 657.5,
       "min": 492.5,
-      "name": "revenue",
+      "name": "Revenue",
       "nameGap": 40,
       "nameLocation": "middle",
       "nameTextStyle": {

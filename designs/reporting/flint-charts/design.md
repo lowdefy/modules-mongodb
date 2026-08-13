@@ -50,7 +50,7 @@ and `0.5.0` (byte-identical probe output). See [findings.md](findings.md), repro
 4. **The plot is pinned; the canvas varies.** `baseSize.height` is Flint's plot height and
    `_height = plot + grid.top + grid.bottom`, exactly
    ([finding 6](findings.md#finding-6--basesizeheight-pins-the-plot-_height-is-plot--furniture-exactly)).
-   The builder passes a constant `baseSize` (~`{ width: 1100, height: 220 }` — width is layout-inert,
+   The builder passes a constant `baseSize` (`{ width: 1100, height: 180 }` — width is layout-inert,
    [finding 7](findings.md#finding-7--width-is-layout-inert-pie-honours-the-pin-partial-basesize-breaks))
    and **every surface binds the block's `height` to the returned value**: the chat panel from the
    data part (fallback `300` for persisted parts), a report section from the compiled literal or,
@@ -268,9 +268,12 @@ the current builder draws, which would make the whole change a regression exactl
 supposed to help.
 
 So every surface adopts Flint's answer. The builder pins the plot at a constant
-(`baseSize: { width: 1100, height: 220 }` — 220 keeps a short-label chart's total canvas near
-today's, and width is layout-inert so one constant serves both surfaces) and returns `_height` as
-`height`; blocks bind it. Charts on one page get identical plot areas and differ only by the axis
+(`baseSize: { width: 1100, height: 180 }` — width is layout-inert so one constant serves both
+surfaces) and returns `_height` as `height`; blocks bind it. The plot constant started at 220 to
+keep a short-label chart's canvas near today's 280/300; the first visual check (a chat-panel bar
+chart with rotated labels) read as too tall and it was cut to 180 — a short-label canvas of 277,
+a rotated-label one of 421. One observed exception: the pie template ignores the pin below its own
+floor — a 180 plot still yields the same 280 canvas a 220 plot did, so pies simply stay 280. Charts on one page get identical plot areas and differ only by the axis
 furniture their own labels need — which is the visually consistent outcome, more so than equal
 canvases hiding unequal plots.
 
@@ -299,6 +302,13 @@ the template that matches the current builder's semantics: `Grouped Bar Chart` w
 `color: Measure` for line. Verified output: one named series per `y` column with the real column
 names on the legend, `stack: none`, y-axis named `Value`, nothing `__flint_*` anywhere. The earlier
 draft's "if this cannot be made to work, the change does not ship" clause is resolved: it works.
+
+Column names are humanized before assembly — the rows are re-keyed and the encodings point at
+Title Case display names (`contact_count` → `Contact Count`), because Flint puts the encoded
+column names verbatim on axis titles, legends and tooltips, and pipeline columns are snake_case
+or camelCase. Data values are never touched, and single-series rows are narrowed to the encoded
+columns in the same pass (the fold already was). Added after the first visual check, where a
+chart shipped with a `contact_count` y-axis.
 
 One naming consequence: a multi-`y` chart's y-axis reads `Value` rather than a column name. The
 single-`y` case keeps the real column name, and multi-series charts never had a single honest

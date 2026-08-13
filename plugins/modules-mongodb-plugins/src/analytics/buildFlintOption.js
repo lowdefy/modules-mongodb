@@ -14,7 +14,7 @@ import { assembleECharts } from "flint-chart/echarts";
 // plot area and axis furniture is added on top of it, so the returned `height`
 // varies with the labels. Width feeds no layout decision, but a `baseSize`
 // missing either field yields `_width: NaN`, so both are always present.
-const BASE_SIZE = { width: 1100, height: 220 };
+const BASE_SIZE = { width: 1100, height: 180 };
 
 // Column names for the wide → long fold that renders multiple `y` columns as
 // sibling series. Flint's own multi-`y` route (an array `y`, or
@@ -23,6 +23,20 @@ const BASE_SIZE = { width: 1100, height: 220 };
 // under names a reader can see without harm.
 const SERIES_KEY = "Measure";
 const SERIES_VALUE = "Value";
+
+// Column names land verbatim on axis titles, legends and tooltips, and pipeline
+// columns are snake_case or camelCase — so the rows are re-keyed to Title Case
+// before assembly and the encodings point at the display names. Data values
+// (the categories themselves) are never touched.
+function humanize(name) {
+  return String(name)
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 // Assembled options carry private metadata (`_width`, `_height`, `_pivot`, …)
 // that would otherwise be persisted forever into report specs and data parts,
@@ -46,17 +60,21 @@ function strip(node) {
 function buildFlintOption({ chart, x, y, rows }) {
   const values = rows ?? [];
   const multi = y.length > 1;
+  const xName = humanize(x);
+  const yName = humanize(y[0]);
   // The fold key column is the series identity, so folded rows carry only
   // `x` — the other `y` columns of a row become that row's sibling entries.
+  // Single-series rows are re-keyed the same way, narrowed to the encoded
+  // columns.
   const folded = multi
     ? values.flatMap((row) =>
         y.map((column) => ({
-          [x]: row[x],
-          [SERIES_KEY]: column,
+          [xName]: row[x],
+          [SERIES_KEY]: humanize(column),
           [SERIES_VALUE]: row[column],
         })),
       )
-    : values;
+    : values.map((row) => ({ [xName]: row[x], [yName]: row[y[0]] }));
 
   let chartType;
   let encodings;
@@ -64,27 +82,27 @@ function buildFlintOption({ chart, x, y, rows }) {
     // Pie's channels are size/color — it has no `y`, and an unrecognised
     // channel is dropped silently, leaving every slice equal to 1.
     chartType = "Pie Chart";
-    encodings = { color: { field: x }, size: { field: y[0] } };
+    encodings = { color: { field: xName }, size: { field: yName } };
   } else if (chart === "bar") {
     // Folded series through a plain "Bar Chart" come back stacked; only
     // "Grouped Bar Chart" (whose channels include `group`) dodges them.
     chartType = multi ? "Grouped Bar Chart" : "Bar Chart";
     encodings = multi
       ? {
-          x: { field: x },
+          x: { field: xName },
           y: { field: SERIES_VALUE },
           group: { field: SERIES_KEY },
         }
-      : { x: { field: x }, y: { field: y[0] } };
+      : { x: { field: xName }, y: { field: yName } };
   } else {
     chartType = "Line Chart";
     encodings = multi
       ? {
-          x: { field: x },
+          x: { field: xName },
           y: { field: SERIES_VALUE },
           color: { field: SERIES_KEY },
         }
-      : { x: { field: x }, y: { field: y[0] } };
+      : { x: { field: xName }, y: { field: yName } };
   }
 
   const option = assembleECharts({

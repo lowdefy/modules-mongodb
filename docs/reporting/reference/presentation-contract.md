@@ -29,7 +29,7 @@ Each query-backed section carries `query: { collection, pipeline }` plus its con
 
 ### Chart appearance is compiled, not authored
 
-The chart contract names columns; it never describes the picture. Axis names, label rotation, grid padding, series colours and pie labels are compiled server-side by the `flint-chart` compiler, from the declared `chart` / `x` / `y` and the actual result rows. The authoring contract is unchanged — the same three keys, with the same meanings, and still no chart-styling vocabulary to learn — but four things about the rendered chart follow from the rows rather than from the spec.
+The chart contract names columns; it never describes the picture. Axis names, label rotation, grid padding, series colours and pie labels are compiled server-side by the `flint-chart` compiler, from the declared `chart` / `x` / `y` and the actual result rows. Column names are shown humanized — `contact_count` labels its axis `Contact Count`, and legend entries and tooltips read the same way; data values are never altered. The authoring contract is unchanged — the same three keys, with the same meanings, and still no chart-styling vocabulary to learn — but four things about the rendered chart follow from the rows rather than from the spec.
 
 **Ordering is derived, not taken from the pipeline.** A bar chart over plain category labels renders sorted by **value descending**, whatever the pipeline's `$sort` said. Where the x column reads as temporal or otherwise ordered — dates, `2026-01`-style month strings — the rows keep the order they arrived in. A `$sort` in a chart section's pipeline still decides _which_ rows make the chart when a `$limit` follows it; it does not decide the left-to-right order of the bars.
 
