@@ -35,6 +35,7 @@ through `_build.authConfig`:
 | `magicLink.enabled`            | Magic-link send (email → "send me a link"); passwordless when password is off |
 | `passkey.enabled`              | Passkey button (login) and passkey management (workspace)                     |
 | `twoFactor.enabled`            | 2FA enrolment in the Security tile                                            |
+| `twoFactor.trustDevice`        | The "trust this device 30 days" switch on the 2FA challenge (off ⇒ hidden)    |
 | `providers` (`[{ id, type }]`) | One OAuth button per configured provider                                      |
 
 There are **no `methods` / `two_factor` / `passkeys` module vars**. Restating an
@@ -292,3 +293,22 @@ clears a factor, which can flip `two_factor_enrolled` back to `false`. Under
 `required`, that is enough on its own to route the person back into
 `twoFactorEnrol` on their next request — there is no separate "require
 re-enrolment" feature; it falls out of the same enrolment check running again.
+
+## Trust-device: `auth.twoFactor.trustDevice`
+
+The 2FA challenge page offers a **"Trust this device for 30 days"** switch. When a
+caller leaves it on, the engine remembers the device and skips the challenge on
+that device for the window. This is on by default.
+
+Set `auth.twoFactor.trustDevice: false` to **require a second factor on every
+login**: the switch is hidden on the challenge page and no device is trusted
+server-side. The guarantee is server-authoritative — the engine passes
+`trustDeviceMaxAge: 0` to BetterAuth, so no durable trust cookie is minted and a
+forged `trustDevice: true` from the client cannot bypass the challenge.
+
+**Migration caveat:** flipping `trustDevice` from on to off does not rewrite trust
+cookies already issued. A device that was trusted while the flag was on bypasses
+its **next** login one last time (the zero-max-age flushes the stale cookie on
+that login); every login after that is challenged. There is no immediate
+revocation of already-trusted devices — only the guarantee that no new trust is
+granted and existing trust expires on first use.

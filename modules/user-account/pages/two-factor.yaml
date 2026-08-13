@@ -16,12 +16,14 @@ _ref:
     title: ""
     events:
       onInit:
-        # authenticator state at rest; trust-device pre-checked (mock default).
+        # authenticator state at rest; trust-device seed follows the auth config
+        # (twoFactor.trustDevice) — pre-checked when on, false when disabled.
         - id: seed_tf_view
           type: SetState
           params:
             tf_view: auth
-            trust_device: true
+            trust_device:
+              _build.authConfig: twoFactor.trustDevice
     blocks:
       # ---- Authenticator-code state ----
       - id: tf_title
@@ -71,10 +73,15 @@ _ref:
             _ref: actions/verify_totp.yaml
       - id: trust_device
         type: CheckboxSwitch
+        # Hidden when the deployment disables trust-device (twoFactor.trustDevice:
+        # false) — the server ignores trustDevice then, so the switch would do
+        # nothing; a second factor is required on every login.
         visible:
-          _eq:
-            - _state: tf_view
-            - auth
+          _and:
+            - _build.authConfig: twoFactor.trustDevice
+            - _eq:
+                - _state: tf_view
+                - auth
         properties:
           # `label.disabled` suppresses the form-item label, which would
           # otherwise fall back to rendering the block id.

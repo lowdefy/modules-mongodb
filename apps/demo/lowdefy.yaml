@@ -58,6 +58,9 @@ auth:
   twoFactor:
     enabled: true
     required: true
+    # Strict posture: a second factor on every login. Disabling trust-device
+    # hides the "trust this device 30 days" switch and trusts no device server-side.
+    trustDevice: false
   passkey:
     enabled: true
     rpId: localhost
