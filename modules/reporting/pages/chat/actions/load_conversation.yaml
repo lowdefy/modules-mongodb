@@ -24,16 +24,15 @@
     _eq:
       - _var: conversation_key
       - null
+  # The blanked keys come from `blank_results.yaml`, shared with
+  # `new_conversation` so the two switch paths cannot blank different sets.
+  # `_var` resolves during ref resolution, before build operators run, so what
+  # `_build.object.assign` merges here is already the caller's own operator.
   params:
-    conversationId:
-      _var: conversation_key
-    charts: []
-    tables: []
-    downloads: []
-    messages: []
-    # [] not null, so the section's length test and its List never see a null
-    # between the blank and the fresh read resolving.
-    saved_reports: []
+    _build.object.assign:
+      - _ref: pages/chat/actions/blank_results.yaml
+      - conversationId:
+          _var: conversation_key
 - id: load_results
   type: CallAPI
   skip:

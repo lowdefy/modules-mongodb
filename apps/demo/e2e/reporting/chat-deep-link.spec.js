@@ -60,6 +60,38 @@ test("a conversation_id in the URL opens that conversation", async ({
   await expect(page.getByText("Saved from the linked chat")).toBeVisible();
 });
 
+test("New chat clears the reports of the conversation you came from", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  // The band is state, not a rendering of the current conversation id, so it
+  // only empties where something empties it. Both New chat buttons share one
+  // action, and it blanks the transcript and the three result kinds — a key it
+  // misses leaves the previous conversation's output above a fresh, empty chat,
+  // which is what happened to `saved_reports`. The deep link is the shortest way
+  // to reach a conversation that has a report to leave behind.
+  await mdb.seed(CONVERSATIONS, [conversationDoc({ id: "e2e-chat-switch" })]);
+  await mdb.seed(REPORTS, [
+    reportDoc({
+      id: "e2e-chat-switch-report",
+      title: "Saved before the switch",
+      owner: USER_A,
+      conversationId: "e2e-chat-switch",
+    }),
+  ]);
+
+  await ldf.user(USER_A);
+  await ldf.goto("/reporting/chat?conversation_id=e2e-chat-switch");
+  await expect(page.getByText("Saved before the switch")).toBeVisible();
+
+  await page.getByRole("button", { name: "New chat" }).click();
+
+  // The whole band unmounts on an empty list, so the heading goes with the row.
+  await expect(page.getByText("Saved before the switch")).toBeHidden();
+  await expect(page.getByText("Reports from this chat")).toBeHidden();
+});
+
 test("the chat opens a new conversation when the URL names none", async ({
   ldf,
   page,
