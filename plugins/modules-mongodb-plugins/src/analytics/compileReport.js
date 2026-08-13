@@ -135,16 +135,35 @@ function filterStateKey(field) {
 
 // Filters anchored above the same section sit side by side rather than each
 // taking a full row — a report with a date range and two selects spent three
-// rows on controls before its first number. Three per row because the 24-col
-// grid divides evenly (24/12/8) and a select much narrower than a third of the
-// column stops showing its selection. Past three the grid wraps at the same
-// span, so a fourth filter starts a second row at a third width instead of
-// stretching alone across the page. Only the group anchored at one section
-// shares a row: co-location is the point, so filters that scope different
-// sections must not be pulled together (see the report-page design).
+// rows on controls before its first number. At most three per row because the
+// 24-col grid divides evenly (24/12/8) and a select much narrower than a third
+// of the column stops showing its selection. Only the group anchored at one
+// section shares a row: co-location is the point, so filters that scope
+// different sections must not be pulled together (see the report-page design).
 const FILTERS_PER_ROW = 3;
-function filterSpan(groupSize) {
-  return GRID_COLUMNS / Math.min(groupSize, FILTERS_PER_ROW);
+
+// One span per filter in the group, distributed so EVERY wrap line the group
+// occupies is exactly full. A ragged trailing line is not cosmetic here: all
+// compiled blocks are siblings in one wrapping flex area, so the 16 columns left
+// over after a fourth filter are columns the following section flows into — a
+// report with four filters and four KPIs put the last filter and the first two
+// numbers on one line and split the KPIs across two. Filling each line is what
+// keeps the controls and the numbers on lines of their own.
+//
+// Rows are balanced rather than greedy — four filters are 2+2, not 3+1 — so no
+// filter stretches alone across the page while its neighbours sit at a third of
+// it. Balancing also holds every row to three or fewer, which is what keeps
+// 24/size a whole number of columns.
+function filterSpans(groupSize) {
+  const rows = Math.ceil(groupSize / FILTERS_PER_ROW);
+  const base = Math.floor(groupSize / rows);
+  const longRows = groupSize % rows;
+  const spans = [];
+  for (let row = 0; row < rows; row += 1) {
+    const size = base + (row < longRows ? 1 : 0);
+    for (let i = 0; i < size; i += 1) spans.push(GRID_COLUMNS / size);
+  }
+  return spans;
 }
 
 function safeFilename(label) {
@@ -1139,10 +1158,10 @@ function compileReport({
     filtersByFirstSubscriber.set(anchor.id, list);
   }
   for (const [anchorId, group] of filtersByFirstSubscriber) {
-    const span = filterSpan(group.length);
+    const spans = filterSpans(group.length);
     filtersByFirstSubscriber.set(
       anchorId,
-      group.map(({ filter, boundSections }) =>
+      group.map(({ filter, boundSections }, index) =>
         filterControlBlock({
           section: filter,
           boundSections,
@@ -1153,7 +1172,7 @@ function compileReport({
           endpointId,
           chartEndpointId,
           filterSectionsByField,
-          span,
+          span: spans[index],
         }),
       ),
     );

@@ -1524,24 +1524,61 @@ describe("filter placement", () => {
         ["status", "region", "category"],
         [8, 8, 8],
       ],
-      // Past three the grid wraps at the same span rather than stretching the
-      // fourth across the page on its own line.
+      // Past three, rows are balanced rather than greedy: four controls are two
+      // rows of two, not three and a lone fourth. Every wrap line then fills
+      // exactly — which is what stops the following section sharing a line with
+      // the controls — and no control stretches alone across the page.
       [
         ["status", "region", "category", "channel"],
-        [8, 8, 8, 8],
+        [12, 12, 12, 12],
+      ],
+      [
+        ["status", "region", "category", "channel", "product"],
+        [8, 8, 8, 12, 12],
       ],
     ])("%j → spans %j", (fields, expected) => {
       expect(spans(fields)).toEqual(expected);
     });
 
+    // The property those numbers exist for, asserted directly: every wrap line a
+    // filter group occupies is exactly full, at any group size. A ragged line
+    // leaves columns the next section flows into, which is how a report with
+    // four filters and four KPIs came to render the last filter beside the first
+    // two numbers, with the KPIs split across two lines.
+    test.each([[1], [2], [3], [4], [5], [6], [7], [8], [10]])(
+      "%i filters fill every wrap line they occupy",
+      (count) => {
+        const fields = [
+          "status",
+          "region",
+          "category",
+          "channel",
+          "product",
+          "customer",
+          "currency",
+          "country",
+          "city",
+          "rep",
+        ].slice(0, count);
+        let line = 0;
+        for (const span of spans(fields)) {
+          line += span;
+          expect(line).toBeLessThanOrEqual(24);
+          if (line === 24) line = 0;
+        }
+        expect(line).toBe(0);
+      },
+    );
+
     // The group's leading wrap line carries the top gap — every control on it,
-    // so a shared row stays level, and nothing past it, so the fourth filter
-    // (which wraps onto a second line) is not pushed away from the first three.
+    // so a shared row stays level, and nothing past it, so controls that wrap
+    // onto a second line are not pushed away from the first. With four controls
+    // the leading line is two of them, since the group balances 2+2.
     test.each([
       [["status"], 1],
       [["status", "region"], 2],
       [["status", "region", "category"], 3],
-      [["status", "region", "category", "channel"], 3],
+      [["status", "region", "category", "channel"], 2],
     ])("%j → the first %i control(s) carry the gap", (fields, leading) => {
       const blocks = compileReport({
         spec: anchoredSpec(fields),
