@@ -162,21 +162,24 @@ slots:
     - header:
         blocks:
           _module.var: header_extra.blocks
-      footer:
-        _build.if:
-          test:
-            _build.not:
-              _var:
-                key: hide_footer
-                default: false
-          then:
+    # A hidden footer drops the slot key entirely — a slot must be a block
+    # object, so an empty placeholder value would draw a ConfigWarning (and an
+    # empty footer bar) rather than nothing.
+    - _build.if:
+        test:
+          _build.not:
+            _var:
+              key: hide_footer
+              default: false
+        then:
+          footer:
             style:
               textAlign: center
               fontSize: 12
               color: "var(--ant-color-text-secondary)"
             blocks:
               _module.var: footer
-          else: []
+        else: {}
     - _build.if:
         test:
           _build.eq:

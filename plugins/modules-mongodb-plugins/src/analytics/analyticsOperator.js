@@ -1,4 +1,5 @@
 import buildDataParts from "./buildDataParts.js";
+import buildFlintOption from "./buildFlintOption.js";
 import compileReport from "./compileReport.js";
 import deriveReportSpec from "./deriveReportSpec.js";
 import querySections from "./querySections.js";
@@ -19,6 +20,7 @@ import validateTableSpec from "./validateTableSpec.js";
  *   _analytics.querySections       { spec, catalog?, roles } → resolve-time queries
  *   _analytics.compileReport       { spec, results, catalog?, roles, endpointId } → blocks
  *   _analytics.buildDataParts      { charts, results, downloads, roles } → dataParts
+ *   _analytics.buildFlintOption    { chart, x, y, rows } → { option, height }
  *
  * `catalog` is optional and only supplied for validate-before-persist
  * (generate_report / render_chart), where it runs the pipeline through
@@ -33,6 +35,7 @@ import validateTableSpec from "./validateTableSpec.js";
 // object indexing precisely so no caller has to re-derive that each time.
 const functions = new Map([
   ["buildDataParts", buildDataParts],
+  ["buildFlintOption", buildFlintOption],
   ["compileReport", compileReport],
   ["deriveReportSpec", deriveReportSpec],
   ["querySections", querySections],

@@ -1,4 +1,5 @@
 import { CHART_TYPES, MAX_LABEL_LENGTH } from "./constants.js";
+import { humanize, SERIES_KEY, SERIES_VALUE } from "./buildFlintOption.js";
 import validatePipeline from "./validatePipeline.js";
 
 /**
@@ -46,13 +47,16 @@ export function validateQuery(query, { catalog, roles, fail }) {
 /**
  * Validates a chart spec (the render_chart tool's input, and the chart section
  * shape inside report specs):
- *   { chart: bar|line|pie, title, query: { collection, pipeline }, x, y: [column] }
+ *   { chart: bar|line|pie, title, query: { collection, pipeline }, x, y: [column],
+ *     stacked? }
  *
  * The presentation contract (`x`, `y`) is inert data — length-capped strings,
  * no query grammar, zero security surface. It cannot be checked against the
  * pipeline statically (an arbitrary pipeline's output shape is unknown); it is
  * verified against the actual rows at render points (buildDataParts /
- * compileReport). Returns { chart, title, query, x, y }.
+ * compileReport). Returns { chart, title, query, x, y, stacked? } — `stacked`
+ * appears only when true, so persisted specs of unstacked charts don't grow a
+ * key.
  */
 function validateChartSpec({ spec, catalog, roles }) {
   const fail = (m) => {
@@ -92,7 +96,62 @@ function validateChartSpec({ spec, catalog, roles }) {
     }
   }
 
-  return { chart: spec.chart, title: spec.title, query, x: spec.x, y: spec.y };
+  // Display-name collisions are static — knowable from the column names alone —
+  // so they fail here, where a render_chart / generate_report call is still in
+  // the agent's turn and the message is actionable. buildFlintOption re-checks
+  // as a backstop for specs persisted before the rule existed. Distinct columns
+  // can humanize to one name (total_sales / totalSales), and a multi-series x
+  // column named "value" or "measure" lands on the fold columns themselves;
+  // either way the folded rows are object literals, so a collision would
+  // silently overwrite a key and draw a wrong chart.
+  const xName = humanize(spec.x);
+  if (spec.y.length > 1) {
+    if (xName === SERIES_KEY || xName === SERIES_VALUE) {
+      fail(
+        `x column "${spec.x}" displays as "${xName}", which the multi-series fold reserves — $project the column to another name.`,
+      );
+    }
+    const seen = new Map();
+    for (const col of spec.y) {
+      const name = humanize(col);
+      if (seen.has(name)) {
+        fail(
+          `y columns "${seen.get(name)}" and "${col}" both display as "${name}" — $project one to another name.`,
+        );
+      }
+      seen.set(name, col);
+    }
+  } else if (xName === humanize(spec.y[0])) {
+    fail(
+      `x column "${spec.x}" and y column "${spec.y[0]}" both display as "${xName}" — $project one to another name.`,
+    );
+  }
+
+  // A `_payload` read of an absent key arrives as null, so null reads as
+  // absent, not as a bad value. `stacked: false` is accepted and dropped —
+  // grouped is the default, so false and absent are the same spec.
+  if (spec.stacked !== null && spec.stacked !== undefined) {
+    if (typeof spec.stacked !== "boolean") {
+      fail("stacked must be a boolean.");
+    }
+    if (spec.stacked && spec.chart !== "bar") {
+      fail(
+        `stacked only applies to bar charts — remove it or use chart: bar (got chart: ${spec.chart}).`,
+      );
+    }
+  }
+
+  const out = {
+    chart: spec.chart,
+    title: spec.title,
+    query,
+    x: spec.x,
+    y: spec.y,
+  };
+  if (spec.stacked === true) {
+    out.stacked = true;
+  }
+  return out;
 }
 
 export default validateChartSpec;

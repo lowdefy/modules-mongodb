@@ -1,0 +1,602 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`multi-y bar folds into grouped series 1`] = `
+{
+  "height": 277,
+  "option": {
+    "color": [
+      "#5470c6",
+      "#91cc75",
+      "#fac858",
+      "#ee6666",
+      "#73c0de",
+      "#3ba272",
+      "#fc8452",
+      "#9a60b4",
+      "#ea7ccc",
+      "#d48265",
+    ],
+    "grid": {
+      "bottom": 61,
+      "left": 86,
+      "right": 107,
+      "top": 36,
+    },
+    "legend": {
+      "align": "left",
+      "bottom": undefined,
+      "data": [
+        "Revenue",
+        "Cost",
+      ],
+      "orient": "vertical",
+      "right": 10,
+      "top": 20,
+      "type": "plain",
+    },
+    "series": [
+      {
+        "barCategoryGap": "10%",
+        "barGap": "0%",
+        "data": [
+          1200,
+          1100,
+          900,
+        ],
+        "itemStyle": {
+          "color": "#5470c6",
+        },
+        "name": "Revenue",
+        "type": "bar",
+      },
+      {
+        "barGap": "0%",
+        "data": [
+          800,
+          400,
+          700,
+        ],
+        "itemStyle": {
+          "color": "#91cc75",
+        },
+        "name": "Cost",
+        "type": "bar",
+      },
+    ],
+    "tooltip": {
+      "axisPointer": {
+        "type": "shadow",
+      },
+      "trigger": "axis",
+    },
+    "xAxis": {
+      "axisLabel": {
+        "fontSize": 10,
+        "rotate": 0,
+      },
+      "axisLine": {
+        "show": true,
+      },
+      "axisTick": {
+        "alignWithLabel": true,
+        "show": true,
+      },
+      "data": [
+        "North",
+        "East",
+        "South",
+      ],
+      "name": "Region",
+      "nameGap": 25,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 10,
+      },
+      "type": "category",
+    },
+    "yAxis": {
+      "axisLabel": {
+        "fontSize": 10,
+      },
+      "name": "Value",
+      "nameGap": 45,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 10,
+      },
+      "scale": false,
+      "type": "value",
+    },
+  },
+}
+`;
+
+exports[`multi-y line folds onto a colour channel 1`] = `
+{
+  "height": 421,
+  "option": {
+    "color": [
+      "#5470c6",
+      "#91cc75",
+      "#fac858",
+      "#ee6666",
+      "#73c0de",
+      "#3ba272",
+      "#fc8452",
+      "#9a60b4",
+      "#ea7ccc",
+      "#d48265",
+    ],
+    "grid": {
+      "bottom": 151,
+      "left": 86,
+      "right": 126,
+      "top": 36,
+    },
+    "legend": {
+      "align": "left",
+      "data": [
+        "Revenue",
+        "Cost",
+      ],
+      "orient": "vertical",
+      "right": 10,
+      "textStyle": {
+        "fontSize": 11,
+      },
+      "top": 20,
+    },
+    "series": [
+      {
+        "data": [
+          [
+            "2026-01",
+            500,
+          ],
+          [
+            "2026-02",
+            650,
+          ],
+          [
+            "2026-03",
+            610,
+          ],
+        ],
+        "itemStyle": {
+          "color": "#5470c6",
+        },
+        "name": "Revenue",
+        "showSymbol": false,
+        "symbol": "none",
+        "type": "line",
+      },
+      {
+        "data": [
+          [
+            "2026-01",
+            300,
+          ],
+          [
+            "2026-02",
+            320,
+          ],
+          [
+            "2026-03",
+            410,
+          ],
+        ],
+        "itemStyle": {
+          "color": "#91cc75",
+        },
+        "name": "Cost",
+        "showSymbol": false,
+        "symbol": "none",
+        "type": "line",
+      },
+    ],
+    "tooltip": {
+      "trigger": "axis",
+    },
+    "xAxis": {
+      "axisLabel": {
+        "fontSize": 12,
+        "formatter": "{MMM}",
+        "rotate": 90,
+      },
+      "axisTick": {
+        "alignWithLabel": true,
+        "show": true,
+      },
+      "name": "Month",
+      "nameGap": 120,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 12,
+      },
+      "type": "time",
+    },
+    "yAxis": {
+      "axisLabel": {
+        "fontSize": 12,
+        "rotate": 0,
+      },
+      "axisTick": {
+        "show": true,
+      },
+      "max": 667.5,
+      "min": 282.5,
+      "name": "Value",
+      "nameGap": 40,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 12,
+      },
+      "scale": true,
+      "type": "value",
+    },
+  },
+}
+`;
+
+exports[`pie encodes the category on colour and the measure on size 1`] = `
+{
+  "height": 280,
+  "option": {
+    "color": [
+      "#5470c6",
+      "#91cc75",
+      "#fac858",
+      "#ee6666",
+      "#73c0de",
+      "#3ba272",
+      "#fc8452",
+      "#9a60b4",
+      "#ea7ccc",
+      "#d48265",
+    ],
+    "series": [
+      {
+        "avoidLabelOverlap": true,
+        "center": [
+          "50%",
+          "50%",
+        ],
+        "data": [
+          {
+            "name": "North",
+            "value": 1200,
+          },
+          {
+            "name": "East",
+            "value": 1100,
+          },
+          {
+            "name": "South",
+            "value": 900,
+          },
+        ],
+        "emphasis": {
+          "itemStyle": {
+            "shadowBlur": 10,
+            "shadowColor": "rgba(0, 0, 0, 0.5)",
+            "shadowOffsetX": 0,
+          },
+        },
+        "itemStyle": {
+          "borderRadius": 0,
+        },
+        "label": {
+          "fontSize": 13,
+          "formatter": "{b}: {d}%",
+          "overflow": "break",
+          "show": true,
+          "width": 40,
+        },
+        "labelLayout": {
+          "hideOverlap": true,
+        },
+        "labelLine": {
+          "length": 14,
+          "length2": 14,
+          "show": true,
+        },
+        "radius": [
+          "0%",
+          "60px",
+        ],
+        "type": "pie",
+      },
+    ],
+    "tooltip": {
+      "trigger": "item",
+    },
+  },
+}
+`;
+
+exports[`single-y bar over a categorical x 1`] = `
+{
+  "height": 277,
+  "option": {
+    "color": [
+      "#5470c6",
+      "#91cc75",
+      "#fac858",
+      "#ee6666",
+      "#73c0de",
+      "#3ba272",
+      "#fc8452",
+      "#9a60b4",
+      "#ea7ccc",
+      "#d48265",
+    ],
+    "grid": {
+      "bottom": 61,
+      "left": 86,
+      "right": 38,
+      "top": 36,
+    },
+    "series": [
+      {
+        "barCategoryGap": "10%",
+        "data": [
+          1200,
+          1100,
+          900,
+        ],
+        "itemStyle": {
+          "borderRadius": 0,
+          "color": "#5470c6",
+        },
+        "type": "bar",
+      },
+    ],
+    "tooltip": {
+      "axisPointer": {
+        "type": "shadow",
+      },
+      "trigger": "axis",
+    },
+    "xAxis": {
+      "axisLabel": {
+        "fontSize": 10,
+        "rotate": 0,
+      },
+      "axisLine": {
+        "show": true,
+      },
+      "axisTick": {
+        "alignWithLabel": true,
+        "show": true,
+      },
+      "data": [
+        "North",
+        "East",
+        "South",
+      ],
+      "name": "Region",
+      "nameGap": 25,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 10,
+      },
+      "type": "category",
+    },
+    "yAxis": {
+      "axisLabel": {
+        "fontSize": 10,
+      },
+      "name": "Revenue",
+      "nameGap": 45,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 10,
+      },
+      "scale": false,
+      "type": "value",
+    },
+  },
+}
+`;
+
+exports[`single-y line over a temporal x 1`] = `
+{
+  "height": 421,
+  "option": {
+    "color": [
+      "#5470c6",
+      "#91cc75",
+      "#fac858",
+      "#ee6666",
+      "#73c0de",
+      "#3ba272",
+      "#fc8452",
+      "#9a60b4",
+      "#ea7ccc",
+      "#d48265",
+    ],
+    "grid": {
+      "bottom": 151,
+      "left": 86,
+      "right": 38,
+      "top": 36,
+    },
+    "series": [
+      {
+        "data": [
+          [
+            "2026-01",
+            500,
+          ],
+          [
+            "2026-02",
+            650,
+          ],
+          [
+            "2026-03",
+            610,
+          ],
+        ],
+        "itemStyle": {
+          "color": "#5470c6",
+        },
+        "showSymbol": false,
+        "symbol": "none",
+        "type": "line",
+      },
+    ],
+    "tooltip": {
+      "trigger": "axis",
+    },
+    "xAxis": {
+      "axisLabel": {
+        "fontSize": 12,
+        "formatter": "{MMM}",
+        "rotate": 90,
+      },
+      "axisTick": {
+        "alignWithLabel": true,
+        "show": true,
+      },
+      "name": "Month",
+      "nameGap": 120,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 12,
+      },
+      "type": "time",
+    },
+    "yAxis": {
+      "axisLabel": {
+        "fontSize": 12,
+        "rotate": 0,
+      },
+      "axisTick": {
+        "show": true,
+      },
+      "max": 657.5,
+      "min": 492.5,
+      "name": "Revenue",
+      "nameGap": 40,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 12,
+      },
+      "scale": true,
+      "type": "value",
+    },
+  },
+}
+`;
+
+exports[`stacked multi-y bar folds into stacked series 1`] = `
+{
+  "height": 277,
+  "option": {
+    "color": [
+      "#5470c6",
+      "#91cc75",
+      "#fac858",
+      "#ee6666",
+      "#73c0de",
+      "#3ba272",
+      "#fc8452",
+      "#9a60b4",
+      "#ea7ccc",
+      "#d48265",
+    ],
+    "grid": {
+      "bottom": 61,
+      "left": 86,
+      "right": 107,
+      "top": 36,
+    },
+    "legend": {
+      "align": "left",
+      "bottom": undefined,
+      "data": [
+        "Revenue",
+        "Cost",
+      ],
+      "orient": "vertical",
+      "right": 10,
+      "top": 20,
+      "type": "plain",
+    },
+    "series": [
+      {
+        "barCategoryGap": "10%",
+        "data": [
+          1200,
+          1100,
+          900,
+        ],
+        "itemStyle": {
+          "color": "#5470c6",
+        },
+        "name": "Revenue",
+        "stack": "total",
+        "type": "bar",
+      },
+      {
+        "barCategoryGap": "10%",
+        "data": [
+          800,
+          400,
+          700,
+        ],
+        "itemStyle": {
+          "color": "#91cc75",
+        },
+        "name": "Cost",
+        "stack": "total",
+        "type": "bar",
+      },
+    ],
+    "tooltip": {
+      "axisPointer": {
+        "type": "shadow",
+      },
+      "trigger": "axis",
+    },
+    "xAxis": {
+      "axisLabel": {
+        "fontSize": 10,
+        "rotate": 0,
+      },
+      "axisLine": {
+        "show": true,
+      },
+      "axisTick": {
+        "alignWithLabel": true,
+        "show": true,
+      },
+      "data": [
+        "North",
+        "East",
+        "South",
+      ],
+      "name": "Region",
+      "nameGap": 25,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 10,
+      },
+      "type": "category",
+    },
+    "yAxis": {
+      "axisLabel": {
+        "fontSize": 10,
+      },
+      "name": "Value",
+      "nameGap": 45,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 10,
+      },
+      "scale": false,
+      "type": "value",
+    },
+  },
+}
+`;

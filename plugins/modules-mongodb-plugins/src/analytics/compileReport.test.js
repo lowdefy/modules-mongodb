@@ -9,6 +9,7 @@ import {
 
 const roles = ["analyst"];
 const endpointId = "reporting/query-data";
+const chartEndpointId = "reporting/chart-data";
 
 const orderTotal = {
   collection: "demo_orders",
@@ -127,6 +128,7 @@ test("a filter's optionsQuery entry interleaved between data sections keeps each
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s0.properties.value).toEqual({
@@ -142,6 +144,7 @@ test("compiles the full report to blocks", () => {
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
 
@@ -154,16 +157,20 @@ test("compiles the full report to blocks", () => {
   expect(byId.s0.properties.precision).toBe(2);
   expect(byId.s0.properties.prefix).toMatch(/^R/);
 
-  // Chart: explicit x/y encode from the contract; rows inlined into the source.
+  // Chart: unfiltered, so the assembled option and the canvas height Flint sized
+  // for it are both literals. The rows are inlined into the series and the
+  // category axis rather than carried as a swappable dataset, and nothing
+  // private survives to be persisted or re-read as an operator.
   expect(byId.s1.type).toBe("EChart");
   expect(byId.s1.properties.title).toBeUndefined();
   expect(byId.s1_heading.properties.content).toBe("Revenue by Region");
-  expect(byId.s1.properties.option.dataset.source).toEqual(results[1]);
-  expect(byId.s1.properties.option.series[0]).toEqual({
-    type: "bar",
-    name: "total",
-    encode: { x: "region", y: "total" },
-  });
+  expect(typeof byId.s1.properties.height).toBe("number");
+  expect(byId.s1.properties.option.dataset).toBeUndefined();
+  expect(byId.s1.properties.option.xAxis.data).toEqual(["EU", "US"]);
+  expect(byId.s1.properties.option.series[0].data).toEqual([2500, 1700]);
+  expect(
+    Object.keys(byId.s1.properties.option).filter((key) => key.startsWith("_")),
+  ).toEqual([]);
 
   // Table bound to the status filter: deferred __if_none of __state and snapshot.
   expect(byId.s3.type).toBe("AgGridBalham");
@@ -240,6 +247,7 @@ test("failed sections render as Alert cards while the rest render", () => {
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s1.type).toBe("Alert");
@@ -256,6 +264,7 @@ test("a contract mismatch (missing column) renders that section as an Alert card
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s0.type).toBe("Alert");
@@ -277,6 +286,7 @@ test("a non-numeric chart y column renders that section as an Alert card", () =>
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s1.type).toBe("Alert");
@@ -295,6 +305,7 @@ test("zero rows and null value cells render normally (no verification failure)",
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s0.type).toBe("Statistic");
@@ -310,6 +321,7 @@ test("normalizes object-shaped (sparse step) results", () => {
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s0.type).toBe("Statistic");
@@ -323,6 +335,7 @@ test("compiled output never contains _secret", () => {
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   expect(JSON.stringify(blocks)).not.toContain("_secret");
 });
@@ -330,7 +343,13 @@ test("compiled output never contains _secret", () => {
 test("requires the query-data endpointId", () => {
   expect(() =>
     compileReport({ spec, results, catalog: testCatalog, roles }),
-  ).toThrow(/endpointId .* required/);
+  ).toThrow(/endpointId \(the query-data endpoint\) is required/);
+});
+
+test("requires the chart-data endpointId", () => {
+  expect(() =>
+    compileReport({ spec, results, catalog: testCatalog, roles, endpointId }),
+  ).toThrow(/chartEndpointId \(the chart-data endpoint\) is required/);
 });
 
 test("kpi bound to a filter defers its value through state", () => {
@@ -353,11 +372,178 @@ test("kpi bound to a filter defers its value through state", () => {
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   const kpi = blocks.find((b) => b.id === "s1");
   expect(kpi.properties.value).toEqual({
     __if_none: [{ __state: "sections.s1.rows.0.total" }, 10],
   });
+});
+
+// A chart's rows are inlined into its option and its canvas is sized to the
+// labels, so a filtered chart cannot have data swapped into it client-side: it
+// binds the whole re-assembled option and its height, and re-queries chart-data
+// for them. A table on the SAME filter is unaffected — it still takes rows from
+// query-data.
+describe("a filter driving a chart and a table", () => {
+  const chartAndTableSpec = {
+    title: "T",
+    sections: [
+      { type: "filter", control: "select", field: "status", label: "Status" },
+      {
+        type: "chart",
+        chart: "bar",
+        label: "Revenue by Region",
+        query: ordersByRegion,
+        x: "region",
+        y: ["total"],
+        filterBy: ["status"],
+      },
+      {
+        type: "table",
+        label: "Orders",
+        query: ordersByRegion,
+        columns: [{ key: "region" }, { key: "total" }],
+        filterBy: ["status"],
+      },
+    ],
+  };
+  const chartRows = [
+    { region: "EU", total: 2500 },
+    { region: "US", total: 1700 },
+  ];
+  const tableRows = [{ region: "EU", total: 2500 }];
+  const blocks = compileReport({
+    spec: chartAndTableSpec,
+    results: [chartRows, tableRows],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+  });
+  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const onChange = byId.filter_status.events.onChange;
+
+  test("the chart binds option and height, each falling back to the resolve-time value", () => {
+    const chart = byId.s1;
+    expect(chart.type).toBe("EChart");
+    expect(chart.properties.option.__if_none[0]).toEqual({
+      __state: "sections.s1.option",
+    });
+    expect(chart.properties.option.__if_none[1].series[0].data).toEqual([
+      2500, 1700,
+    ]);
+    expect(chart.properties.height.__if_none[0]).toEqual({
+      __state: "sections.s1.height",
+    });
+    expect(typeof chart.properties.height.__if_none[1]).toBe("number");
+  });
+
+  test("the chart re-queries chart-data with its whole presentation contract", () => {
+    const [call, set] = onChange;
+    expect(call.params.endpointId).toBe(chartEndpointId);
+    expect(call.params.payload).toEqual({
+      chart: "bar",
+      title: "Revenue by Region",
+      x: "region",
+      y: ["total"],
+      query: ordersByRegion,
+      filters: [
+        { field: "status", op: "eq", value: { __state: "filter_status" } },
+      ],
+    });
+    expect(set.params).toEqual({
+      "sections.s1.option": { __api: `${chartEndpointId}.response.option` },
+      "sections.s1.height": { __api: `${chartEndpointId}.response.height` },
+    });
+  });
+
+  test("a stacked chart section assembles stacked and carries stacked into its re-query", () => {
+    const stackedBlocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          chartAndTableSpec.sections[0],
+          {
+            ...chartAndTableSpec.sections[1],
+            y: ["total", "tax"],
+            stacked: true,
+          },
+        ],
+      },
+      results: [
+        [
+          { region: "EU", total: 2500, tax: 500 },
+          { region: "US", total: 1700, tax: 300 },
+        ],
+      ],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    const stackedById = Object.fromEntries(stackedBlocks.map((b) => [b.id, b]));
+    const option = stackedById.s1.properties.option.__if_none[1];
+    const stacks = new Set(option.series.map((series) => series.stack));
+    expect(stacks.size).toBe(1);
+    expect([...stacks][0]).toBeTruthy();
+    const [call] = stackedById.filter_status.events.onChange;
+    expect(call.params.payload.stacked).toBe(true);
+  });
+
+  test("the table on the same filter still re-queries query-data for rows", () => {
+    const [call, set] = onChange.slice(2);
+    expect(call.params.endpointId).toBe(endpointId);
+    expect(call.params.payload).toEqual({
+      query: ordersByRegion,
+      filters: [
+        { field: "status", op: "eq", value: { __state: "filter_status" } },
+      ],
+    });
+    expect(set.params).toEqual({
+      "sections.s2.rows": { __api: `${endpointId}.response` },
+    });
+    expect(byId.s2.properties.rowData).toEqual({
+      __if_none: [{ __state: "sections.s2.rows" }, tableRows],
+    });
+  });
+});
+
+// Assembling a chart reads the rows, and unlike a pure mapping it can reject
+// what it is given. That must degrade the one section, not the report — the
+// resolver calls compileReport with no :try around it.
+test("a chart whose assembly throws renders an Alert while its siblings compile", () => {
+  jest.resetModules();
+  // Only the assembler itself is faked — validateChartSpec imports the
+  // module's named exports (humanize and the fold names), and those must stay
+  // real for validation to reach the assembly step at all.
+  jest.doMock("./buildFlintOption.js", () => ({
+    __esModule: true,
+    ...jest.requireActual("./buildFlintOption.js"),
+    default: () => {
+      throw new Error("Flint rejected this chart.");
+    },
+  }));
+  // require, not import: the mock is registered at call time, so the module
+  // under test must be loaded after it.
+  const compileWithFailingAssembly = require("./compileReport.js").default;
+  const blocks = compileWithFailingAssembly({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+  });
+  jest.dontMock("./buildFlintOption.js");
+  jest.resetModules();
+
+  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  expect(byId.s1.type).toBe("Alert");
+  expect(byId.s1.properties.message).toBe("Revenue by Region");
+  expect(byId.s1.properties.description).toMatch(/Flint rejected this chart/);
+  expect(byId.s0.type).toBe("Statistic");
+  expect(byId.s3.type).toBe("AgGridBalham");
 });
 
 // format.currency / format.locale are AI-supplied and validateReportSpec only
@@ -392,6 +578,7 @@ test("an unusable KPI currency degrades that section to an Alert, not the report
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
   expect(byId.s0.type).toBe("Alert");
@@ -425,6 +612,7 @@ test("an unusable locale on a table column degrades that section to an Alert", (
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   const section = blocks.find((b) => b.id === "s0");
   expect(section.type).toBe("Alert");
@@ -457,6 +645,7 @@ test("a section landing on the row cap says so in its heading", () => {
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   expect(blocks.find((b) => b.id === "s0_heading").properties.content).toBe(
     `Orders — first ${PIPELINE_RESULT_CAP} rows`,
@@ -469,6 +658,7 @@ test("a section landing on the row cap says so in its heading", () => {
     catalog: testCatalog,
     roles,
     endpointId,
+    chartEndpointId,
   });
   expect(short.find((b) => b.id === "s0_heading").properties.content).toBe(
     "Orders",
@@ -493,6 +683,7 @@ describe("unformatted numeric columns", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
     });
     return Object.fromEntries(
       blocks
@@ -569,6 +760,7 @@ describe("provenance line", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
       ...provenanceInputs,
       visibility: "private",
     });
@@ -592,6 +784,7 @@ describe("provenance line", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
       ...provenanceInputs,
       visibility: "shared",
     });
@@ -610,6 +803,7 @@ describe("provenance line", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
     });
     expect(blocks.find((b) => b.id === "report_provenance")).toBeUndefined();
   });
@@ -623,6 +817,7 @@ describe("provenance line", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
     });
     const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
 
@@ -651,6 +846,7 @@ describe("provenance line", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
     });
     const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
 
@@ -678,6 +874,7 @@ describe("provenance line", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
     });
     const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
 
@@ -722,6 +919,7 @@ describe("provenance line", () => {
         catalog: testCatalog,
         roles,
         endpointId,
+        chartEndpointId,
       }).find((b) => b.type === "AgGridBalham").properties.height;
 
     expect(height([])).toBe(120);
@@ -736,6 +934,7 @@ describe("provenance line", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
       ...provenanceInputs,
     });
     expect(blocks.some((b) => b.id.endsWith("_download"))).toBe(false);
@@ -786,6 +985,7 @@ describe("filter controls", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
     });
     const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
     return { blocks, byId, filters: byId };
@@ -1022,6 +1222,7 @@ describe("filter controls", () => {
       catalog,
       roles,
       endpointId,
+      chartEndpointId,
     }).find((b) => b.id === "filter_status");
     expect(control.properties.options).toHaveLength(MAX_FILTER_OPTIONS);
     expect(control.properties.title).toBe(
@@ -1077,6 +1278,7 @@ describe("filter controls", () => {
           catalog: gated,
           roles: viewerRoles,
           endpointId,
+          chartEndpointId,
         }).map((b) => [b.id, b]),
       );
       return byId.filter_status ?? byId.s0;
@@ -1127,6 +1329,7 @@ describe("filter placement", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
     });
     const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
     const idx = idxIn(blocks);
@@ -1168,6 +1371,7 @@ describe("filter placement", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
     });
     const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
     const idx = idxIn(blocks);
@@ -1206,6 +1410,7 @@ describe("filter placement", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
     });
     const control = blocks.find((b) => b.id === "filter_status");
     expect(control.properties.title).toBe("Status");
@@ -1259,6 +1464,7 @@ describe("filter placement", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
     });
     const control = blocks.find((b) => b.id === "filter_company_id");
     expect(control.properties.title).toBe(
@@ -1301,6 +1507,7 @@ describe("filter placement", () => {
         catalog: testCatalog,
         roles,
         endpointId,
+        chartEndpointId,
       });
       return fields.map(
         (field) => blocks.find((b) => b.id === `filter_${field}`).layout.span,
@@ -1342,6 +1549,7 @@ describe("filter placement", () => {
         catalog: testCatalog,
         roles,
         endpointId,
+        chartEndpointId,
       });
       const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
       const gaps = fields.map((f) => byId[`filter_${f}`].style?.marginTop);
@@ -1388,6 +1596,7 @@ describe("filter placement", () => {
         catalog: testCatalog,
         roles,
         endpointId,
+        chartEndpointId,
       });
       const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
       expect(byId.filter_status.layout.span).toBe(12);
@@ -1431,6 +1640,7 @@ describe("filter placement", () => {
         catalog: testCatalog,
         roles,
         endpointId,
+        chartEndpointId,
       });
       const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
       expect(byId.s0.type).toBe("Alert");
@@ -1454,6 +1664,7 @@ describe("filter placement", () => {
         catalog: testCatalog,
         roles,
         endpointId,
+        chartEndpointId,
       }),
     ).toThrow(/not bound by any section/);
   });
@@ -1478,6 +1689,7 @@ describe("owner-only affordances", () => {
         catalog: testCatalog,
         roles,
         endpointId,
+        chartEndpointId,
         owner,
         ...extra,
       }).map((b) => [b.id, b]),
@@ -1534,6 +1746,7 @@ describe("owner-only affordances", () => {
       catalog: testCatalog,
       roles,
       endpointId,
+      chartEndpointId,
       owner,
       is_owner: false,
       conversation_id: "conv-1",
@@ -1718,6 +1931,7 @@ describe("withheld vs broken failed sections", () => {
         results: [null],
         catalog: testCatalog,
         endpointId,
+        chartEndpointId,
         owner,
         ...extra,
       }).map((b) => [b.id, b]),
@@ -1798,6 +2012,7 @@ describe("withheld vs broken failed sections", () => {
           catalog: twoGates,
           roles: viewerRoles,
           endpointId,
+          chartEndpointId,
           owner,
           is_owner: true,
           conversation_id: "conv-1",
@@ -1828,6 +2043,7 @@ describe("withheld vs broken failed sections", () => {
       catalog: testCatalog,
       roles: ["viewer"],
       endpointId,
+      chartEndpointId,
       owner,
       is_owner: true,
       conversation_id: "conv-1",

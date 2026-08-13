@@ -200,6 +200,7 @@ test("every type compileReport emits is declared on the report page's Dynamic bl
     catalog: testCatalog,
     roles: ["analyst"],
     endpointId: "reporting/query-data",
+    chartEndpointId: "reporting/chart-data",
   });
   const used = collect(blocks);
 
@@ -245,6 +246,7 @@ test("the failed-section Alert path emits only declared types", () => {
     catalog: testCatalog,
     roles: ["analyst"],
     endpointId: "reporting/query-data",
+    chartEndpointId: "reporting/chart-data",
   });
   const used = collect(blocks);
   expect(used.blocks.has("Alert")).toBe(true);
