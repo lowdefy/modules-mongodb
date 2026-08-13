@@ -65,6 +65,10 @@ _ref:
             textAlign: center
             letterSpacing: 8
             fontFamily: var(--mono)
+        events:
+          # Enter runs the same chain as the Verify button below.
+          onPressEnter:
+            _ref: actions/verify_totp.yaml
       - id: trust_device
         type: CheckboxSwitch
         visible:
@@ -77,9 +81,6 @@ _ref:
           description: Trust this device for 30 days
           label:
             disabled: true
-      # Verify the TOTP code. TwoFactorVerify sets the session cookie itself but
-      # does not navigate, so on success we navigate to the callbackUrl carried
-      # from login (?callbackUrl=), completing sign-in.
       - id: tf_verify
         type: Button
         visible:
@@ -94,45 +95,7 @@ _ref:
           variant: solid
         events:
           onClick:
-            try:
-              - id: tf_verify_totp
-                type: TwoFactorVerify
-                messages:
-                  error: false
-                params:
-                  code:
-                    _state: code
-                  trustDevice:
-                    _state: trust_device
-              - id: tf_totp_continue
-                type: Link
-                params:
-                  url:
-                    _if_none:
-                      - _url_query: callbackUrl
-                      - "/"
-            catch:
-              # No valid two_factor cookie (page visited directly, or the cookie
-              # expired): the code box can never succeed, so return to sign-in
-              # rather than show a wrong-code error.
-              - id: tf_totp_no_cookie
-                type: Link
-                skip:
-                  _ne:
-                    - _actions: tf_verify_totp.error.cause.code
-                    - INVALID_TWO_FACTOR_COOKIE
-                params:
-                  pageId:
-                    _module.pageId: login
-              - id: tf_totp_error
-                type: DisplayMessage
-                skip:
-                  _eq:
-                    - _actions: tf_verify_totp.error.cause.code
-                    - INVALID_TWO_FACTOR_COOKIE
-                params:
-                  status: error
-                  content: That code is incorrect or has expired. Try again.
+            _ref: actions/verify_totp.yaml
       # "Lost your device? Use a backup code", UI toggle to the backup state.
       - id: tf_use_backup_row
         type: Box
@@ -209,8 +172,10 @@ _ref:
         style:
           .element:
             fontFamily: var(--mono)
-      # Verify a backup code, same TwoFactorVerify action (dispatches on the
-      # backupCode param), same success navigation.
+        events:
+          # Enter runs the same chain as the Verify button below.
+          onPressEnter:
+            _ref: actions/verify_backup.yaml
       - id: tf_backup_verify
         type: Button
         visible:
@@ -225,42 +190,7 @@ _ref:
           variant: solid
         events:
           onClick:
-            try:
-              - id: tf_verify_backup
-                type: TwoFactorVerify
-                messages:
-                  error: false
-                params:
-                  backupCode:
-                    _state: backup_code
-                  trustDevice:
-                    _state: trust_device
-              - id: tf_backup_continue
-                type: Link
-                params:
-                  url:
-                    _if_none:
-                      - _url_query: callbackUrl
-                      - "/"
-            catch:
-              - id: tf_backup_no_cookie
-                type: Link
-                skip:
-                  _ne:
-                    - _actions: tf_verify_backup.error.cause.code
-                    - INVALID_TWO_FACTOR_COOKIE
-                params:
-                  pageId:
-                    _module.pageId: login
-              - id: tf_backup_error
-                type: DisplayMessage
-                skip:
-                  _eq:
-                    - _actions: tf_verify_backup.error.cause.code
-                    - INVALID_TWO_FACTOR_COOKIE
-                params:
-                  status: error
-                  content: That backup code is invalid or has already been used. Try another.
+            _ref: actions/verify_backup.yaml
       # Back to the authenticator state, UI toggle.
       - id: tf_back_to_auth_row
         type: Box

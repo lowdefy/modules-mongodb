@@ -1,0 +1,44 @@
+# The TOTP verify chain, `_ref`'d by both the Verify button's onClick and the
+# code field's onPressEnter so click and Enter run the identical sequence.
+# TwoFactorVerify sets the session cookie itself but does not navigate, so on
+# success we navigate to the callbackUrl carried from login (?callbackUrl=),
+# completing sign-in.
+try:
+  - id: tf_verify_totp
+    type: TwoFactorVerify
+    messages:
+      error: false
+    params:
+      code:
+        _state: code
+      trustDevice:
+        _state: trust_device
+  - id: tf_totp_continue
+    type: Link
+    params:
+      url:
+        _if_none:
+          - _url_query: callbackUrl
+          - "/"
+catch:
+  # No valid two_factor cookie (page visited directly, or the cookie expired):
+  # the code box can never succeed, so return to sign-in rather than show a
+  # wrong-code error.
+  - id: tf_totp_no_cookie
+    type: Link
+    skip:
+      _ne:
+        - _actions: tf_verify_totp.error.cause.code
+        - INVALID_TWO_FACTOR_COOKIE
+    params:
+      pageId:
+        _module.pageId: login
+  - id: tf_totp_error
+    type: DisplayMessage
+    skip:
+      _eq:
+        - _actions: tf_verify_totp.error.cause.code
+        - INVALID_TWO_FACTOR_COOKIE
+    params:
+      status: error
+      content: That code is incorrect or has expired. Try again.
