@@ -27,7 +27,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `sider` | object | `{}` |  | Sider properties forwarded to the page block: { width, initialCollapsed, collapsible, hideToggleButton, collapsedWidth }. `collapsible` applies to PageSidebarLayout only. Ignored for page_type 'header-menu' (PageHeaderMenu has no sider). |
 | `logo` | object |  |  | Logo config for the auth page and header logo style override. The page header logo follows the Lowdefy public-folder convention — drop `logo-light-theme.png` / `logo-dark-theme.png` (and the `logo-square-*-theme.png` variants for mobile) into the app's `public/` folder and the page block auto-swaps between light/dark variants based on dark mode. |
 | `header_extra` | object |  |  | Header customization: { blocks, requests } |
-| `auth_page` | object |  |  | Auth page overrides: { cover_background, card_style, max_width, logo_max_width, brand_panel_background } |
+| `auth_page` | object |  |  | Auth page overrides: { cover_background, card_style, max_width, logo_max_width } |
 
 ## Nested var details
 
@@ -64,12 +64,12 @@ Header customization: { blocks, requests }
 
 ### `auth_page`
 
-Auth page overrides: { cover_background, card_style, max_width, logo_max_width, brand_panel_background }
+Auth page overrides: { cover_background, card_style, max_width, logo_max_width }
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `max_width` |  | `360` |  | Max width of the auth card container in pixels. |
+| `max_width` |  | `420` |  | Max width of the auth card container in pixels. |
 | `card_style` |  | `{}` |  | Inline style object applied to the auth card (e.g. shadows, borders, radius overrides). |
 | `cover_background` |  | _(see manifest)_ |  | CSS `background` for the auth card cover area. Defaults to a colorPrimary gradient that auto-adapts to dark mode. |
 | `logo_max_width` |  | `160` |  | Max width of the logo in the cover area in pixels. |
-| `brand_panel_background` |  | `linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)` |  | CSS `background` for the auth-page brand panel (alternate auth layout). Defaults to a colorPrimary gradient. |
+| `logo_style` | string | `band` |  | Brand treatment applied to every auth page. `band` renders the logo in the gradient cover band (default). `minimal` renders a small logo centred above a bandless card — for logos that read poorly reversed-out on the cover gradient, or a lighter look. Enum: `band`, `minimal` |

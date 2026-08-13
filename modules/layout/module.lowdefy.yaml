@@ -115,10 +115,10 @@ vars:
       register a menu with this id in its menus list.
   auth_page:
     type: object
-    description: "Auth page overrides: { cover_background, card_style, max_width, logo_max_width, brand_panel_background }"
+    description: "Auth page overrides: { cover_background, card_style, max_width, logo_max_width }"
     properties:
       max_width:
-        default: 360
+        default: 420
         description: Max width of the auth card container in pixels.
       card_style:
         default: {}
@@ -138,11 +138,15 @@ vars:
       logo_max_width:
         default: 160
         description: Max width of the logo in the cover area in pixels.
-      brand_panel_background:
-        default: "linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)"
+      logo_style:
+        type: string
+        default: band
+        enum: [band, minimal]
         description: >-
-          CSS `background` for the auth-page brand panel (alternate auth
-          layout). Defaults to a colorPrimary gradient.
+          Brand treatment applied to every auth page. `band` renders the logo in the
+          gradient cover band (default). `minimal` renders a small logo centred above
+          a bandless card — for logos that read poorly reversed-out on the cover
+          gradient, or a lighter look.
 
 exports:
   components:
