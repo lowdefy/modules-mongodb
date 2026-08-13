@@ -171,9 +171,9 @@ routine:
                 content: >
                   ## Orders overview
 
-                  KPI, chart and table over the seeded `demo_orders` collection,
-                  activity counts over `demo_activities`, and contact counts over
-                  `demo_contacts`.
+                  KPI, two charts and a table over the seeded `demo_orders`
+                  collection, activity counts over `demo_activities`, and contact
+                  counts over `demo_contacts`.
 
                   Each filter scopes only the sections that subscribe to it via
                   `filterBy` — nothing else on the report moves. **Region** and

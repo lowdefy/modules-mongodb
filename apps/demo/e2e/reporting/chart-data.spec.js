@@ -67,13 +67,24 @@ test("stacked on a non-bar chart is rejected by spec validation", async ({
   await mdb.seed("demo_orders", ORDERS);
   await ldf.user(USER_A);
 
-  const result = await callEndpoint(page, "chart-data", {
+  const lineSpec = {
     chart: "line",
     title: "Revenue by region",
     x: "region",
     y: ["revenue"],
     query: ordersByRegionTwoMeasures,
+  };
+  // Control: the same spec without stacked succeeds, so the failure below is
+  // pinned to stacked rather than to auth or a broken endpoint.
+  const control = await callEndpoint(page, "chart-data", lineSpec);
+  expect(control.body?.success).toBe(true);
+
+  const result = await callEndpoint(page, "chart-data", {
+    ...lineSpec,
     stacked: true,
   });
+  // The validator throws (routine error), it doesn't :reject: — same shape the
+  // query-data validation-gate specs assert.
+  expect(result.errored).toBe(true);
   expect(result.body?.success).not.toBe(true);
 });
