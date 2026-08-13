@@ -28,9 +28,6 @@ _ref:
   vars:
     id: two-factor-enrol
     title: ""
-    # Wider than the default auth card so the scan row (QR beside the manual key
-    # + confirmation code) sits on one line.
-    max_width: 560
     events:
       onInit:
         - id: seed_enrol
@@ -203,7 +200,10 @@ _ref:
           span: 24
         properties:
           html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Scan this with your authenticator app, then enter the 6-digit code to confirm.</div>'
-      - id: enrol_scan_row
+      # Single column at the standard 420 card width: QR primary on top, the
+      # 6-digit code directly below, the long manual key tucked behind a
+      # default-collapsed disclosure.
+      - id: enrol_qr_wrap
         type: Box
         visible:
           _and:
@@ -213,64 +213,37 @@ _ref:
                 - _state: enrol.phase
                 - scan
         layout:
-          direction: row
-          gap: 16
-          align: top
-          selfAlign: top
+          span: 24
+          justify: center
         blocks:
           - id: enrol_qr
             type: QRCode
-            layout:
-              span: 8
-              sm:
-                span: 24
             properties:
               value:
                 _state: enrol.uri
-              size: 132
+              size: 160
               errorLevel: M
-          - id: enrol_scancol
-            type: Box
-            layout:
-              span: 16
-              sm:
-                span: 24
-              gap: 16
-            blocks:
-              - id: enrol_manual_key_label
-                type: Label
-                layout:
-                  span: 24
-                properties:
-                  title: Can't scan? Enter this key
-                  span: 24
-                  colon: false
-                blocks:
-                  # A copyable Paragraph, not a disabled TextInput: browsers do
-                  # not allow selecting text inside a disabled input. `code: true`
-                  # keeps 1/l and 0/O distinguishable when hand-transcribed.
-                  - id: enrol_manual_key
-                    type: Paragraph
-                    properties:
-                      code: true
-                      copyable: true
-                      # Authenticators want the base32 secret in their manual
-                      # field; the full otpauth:// URI generally fails there.
-                      content:
-                        _js: |
-                          const uri = state('enrol.uri');
-                          if (!uri) return null;
-                          return new URLSearchParams(uri.split('?')[1] || '').get('secret');
-              - id: enrol.confirmation_code
-                type: TextInput
-                required: true
-                layout:
-                  span: 24
-                properties:
-                  placeholder: 6-digit code
-                  label:
-                    title: Confirmation code
-                    span: 24
+      - id: enrol.confirmation_code
+        type: TextInput
+        required: true
+        visible:
+          _and:
+            - _not:
+                _user: two_factor_enrolled
+            - _eq:
+                - _state: enrol.phase
+                - scan
+        layout:
+          span: 24
+        properties:
+          placeholder: 6-digit code
+          label:
+            title: Confirmation code
+            span: 24
+        events:
+          # Enter runs the same chain as the Confirm button below.
+          onPressEnter:
+            _ref: actions/confirm_enrol_totp.yaml
       - id: enrol_confirm
         type: Button
         visible:
@@ -289,33 +262,58 @@ _ref:
           variant: solid
         events:
           onClick:
-            # Plain sequence: a wrong code throws inside TwoFactorVerify (its
-            # error message shows) and stops the chain before UpdateSession, so
-            # the page stays on the scan phase. UpdateSession refreshes _user so
-            # two_factor_enrolled reads true and the done state takes over.
-            - id: validate_enrol_code
-              type: Validate
-              params:
-                blockIds:
-                  - enrol.confirmation_code
-            - id: verify_enrol_totp
-              type: TwoFactorVerify
-              messages:
-                loading: Confirming…
-                success: Two-factor authentication is on.
-                error: That code is incorrect or has expired. Try again.
-              params:
-                code:
-                  _state: enrol.confirmation_code
-                # Without this, a successful verify navigates to its default
-                # home callbackUrl the instant it resolves, racing ahead of the
-                # UpdateSession below so the done/codes state never paints and
-                # the one-time backup codes are lost. `false` suppresses
-                # navigation; enrol_continue's explicit Link handles routing
-                # once the user ticks "I've saved my backup codes".
-                callbackUrl: false
-            - id: refresh_enrol_session
-              type: UpdateSession
+            _ref: actions/confirm_enrol_totp.yaml
+      - id: enrol_manual_disclosure
+        type: Collapse
+        visible:
+          _and:
+            - _not:
+                _user: two_factor_enrolled
+            - _eq:
+                - _state: enrol.phase
+                - scan
+        layout:
+          span: 24
+        properties:
+          bordered: false
+          panels:
+            - key: manual
+              title: Can't scan? Enter this key instead
+        slots:
+          manual:
+            blocks:
+              - id: enrol_manual_key_label
+                type: Label
+                layout:
+                  span: 24
+                properties:
+                  title: Type this into your authenticator app's "enter key manually" option.
+                  span: 24
+                  colon: false
+                blocks:
+                  # A copyable Paragraph, not a disabled TextInput: browsers do
+                  # not allow selecting text inside a disabled input. Shown as
+                  # 4-char pills so the 52-char base32 secret wraps and stays
+                  # readable; `copyable.text` copies the raw unspaced secret,
+                  # which is what an authenticator's manual field wants (the full
+                  # otpauth:// URI generally fails there).
+                  - id: enrol_manual_key
+                    type: Paragraph
+                    properties:
+                      content:
+                        _js: |
+                          const uri = state('enrol.uri');
+                          if (!uri) return null;
+                          const secret = new URLSearchParams(uri.split('?')[1] || '').get('secret');
+                          if (!secret) return null;
+                          const style = 'display:inline-block; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:14px; letter-spacing:0.08em; padding:4px 9px; margin:0 6px 6px 0; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border-secondary); border-radius:6px;';
+                          return secret.match(/.{1,4}/g).map((c) => `<span style="${style}">${c}</span>`).join('');
+                      copyable:
+                        text:
+                          _js: |
+                            const uri = state('enrol.uri');
+                            if (!uri) return null;
+                            return new URLSearchParams(uri.split('?')[1] || '').get('secret');
 
       # ── Done (gated on _user.two_factor_enrolled, reached by either route) ──
       - id: enrol_done_msg

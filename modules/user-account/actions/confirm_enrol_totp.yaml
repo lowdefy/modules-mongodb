@@ -1,0 +1,28 @@
+# The scan-step confirm chain, `_ref`'d by both the Confirm button's onClick and
+# the code field's onPressEnter so click and Enter run the identical sequence.
+# Plain sequence, not try/catch: a wrong code throws inside TwoFactorVerify (its
+# error message shows) and stops the chain before UpdateSession, so the page stays
+# on the scan phase. UpdateSession refreshes _user so two_factor_enrolled reads
+# true and the done state takes over.
+- id: validate_enrol_code
+  type: Validate
+  params:
+    blockIds:
+      - enrol.confirmation_code
+- id: verify_enrol_totp
+  type: TwoFactorVerify
+  messages:
+    loading: Confirming…
+    success: Two-factor authentication is on.
+    error: That code is incorrect or has expired. Try again.
+  params:
+    code:
+      _state: enrol.confirmation_code
+    # Without this, a successful verify navigates to its default home
+    # callbackUrl the instant it resolves, racing ahead of the UpdateSession
+    # below so the done/codes state never paints and the one-time backup codes
+    # are lost. `false` suppresses navigation; enrol_continue's explicit Link
+    # handles routing once the user ticks "I've saved my backup codes".
+    callbackUrl: false
+- id: refresh_enrol_session
+  type: UpdateSession
