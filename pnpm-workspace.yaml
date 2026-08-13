@@ -21,7 +21,18 @@ overrides:
 # controlled composer with a `setInput` method (so starters can fill it); and it
 # lets the `welcome` config render two tracks in-flow inside the message scroll
 # area (so the empty state scrolls up with the transcript instead of vanishing).
+#
+# ai-utils passes generateMessageId when it builds the agent's UI message stream.
+# The AI SDK only ids the assistant message it hands the stream-level onFinish
+# when the caller supplies a generator — without it every assistant message an
+# onFinish hook persists carries id: "", so a saved transcript has them all
+# sharing one id, and AgentChat (which keys its bubbles by message id) renders
+# the last reply in every assistant bubble on reload.
+#
+# Both keys are deliberately version-less: a pinned version is silently dropped
+# by a version bump, where an unmatched patch fails the install loudly.
 patchedDependencies:
+  "@lowdefy/ai-utils": patches/@lowdefy__ai-utils.patch
   "@lowdefy/blocks-antd-x": patches/@lowdefy__blocks-antd-x.patch
 
 # These keys live here, not under a "pnpm" key in package.json: pnpm 10+ no
