@@ -1,10 +1,10 @@
 # F47 — Security tile hides 2FA enrolment from magic-link / OAuth-only users
 
-**Status:** `needs-design` · **Area:** user-account / security tile + 2FA enrolment
+**Status:** `promoted` → [passwordless-2fa-management](./design.md) · **Area:** user-account / security tile + 2FA enrolment
 
 A magic-link-only user (no credential) has **no way to add 2FA** on the account Security tile —
 the whole two-factor row is hidden. This contradicts the
-[two-factor-lifecycle](../../../../../lowdefy-design/designs/auth-upgrade/_completed/two-factor-lifecycle/design.md)
+[two-factor-lifecycle](../../../../lowdefy-design/designs/auth-upgrade/_completed/two-factor-lifecycle/design.md)
 design, which sets **`allowPasswordless: true`** on the twoFactor plugin _specifically so OAuth
 and magic-link users can enrol TOTP_ (design lines 36–38), and calls the always-on waiver a
 guard against a **permanent lockout** for passwordless users under `required`.

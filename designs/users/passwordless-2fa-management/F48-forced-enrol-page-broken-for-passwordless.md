@@ -1,10 +1,10 @@
 # F48 — Forced two-factor-enrol page is broken for a passwordless user under `required`
 
-**Status:** `needs-design` · **Area:** user-account / 2FA enrolment (forced-enrol page)
+**Status:** `promoted` → [passwordless-2fa-management](./design.md) · **Area:** user-account / 2FA enrolment (forced-enrol page)
 
 With `twoFactor.required: true` and a **magic-link / passwordless** user, login force-routes to
 `two-factor-enrol.yaml`. Two defects there make TOTP enrolment unreachable — the permanent
-lockout the [two-factor-lifecycle](../../../../../lowdefy-design/designs/auth-upgrade/_completed/two-factor-lifecycle/design.md)
+lockout the [two-factor-lifecycle](../../../../lowdefy-design/designs/auth-upgrade/_completed/two-factor-lifecycle/design.md)
 design's `allowPasswordless` was meant to prevent (design lines 36–38). Passkey is left as the
 only working enrol route. Grouped; both live on the same page.
 
