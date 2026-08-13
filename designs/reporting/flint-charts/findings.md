@@ -223,6 +223,15 @@ you pin the plot, it tells you the canvas — and `_height` is the canvas it nee
 - **Pass both `baseSize` fields or neither.** `baseSize: { height: 220 }` alone returned
   `_width: NaN` (and a furniture-only default height) rather than throwing.
 
+> **Addendum (2026-08-13, from dev-test).** Two corrections the probe missed. (1) "Width changes
+> no layout decision" held for grid and rotation but not for everything: the Grouped Bar Chart
+> template emits an absolute `series[].barWidth` and the folded Line Chart an absolute numeric
+> `legend.left`, both computed from `baseSize.width` — at real canvas widths narrower than the
+> constant, grouped bars overlapped and the line legend sat off-canvas. Both are removed by the
+> builder's normalization pass; see the design's "Strip what must not ship" section. (2) The pie
+> pin has a floor: at `height: 180` the pie still returned `_height: 280`, identical to the 220
+> pin — the 220 probe happened to sit at/above the template's minimum.
+
 ## Finding 8 — `ecApplyLayoutToSpec` is an internal assembly step, not a resize API
 
 Its type is `ecApplyLayoutToSpec(option, context: InstantiateContext, warnings: ChartWarning[]): void` —

@@ -373,6 +373,17 @@ It is series-key labeling for the legend, the legend already carries the real co
 single-series charts have no such element — so keeping it would paint an arbitrary constant on
 every multi-series chart and nothing on the rest. Stripped.
 
+**Width-derived absolutes.** Finding 7's "width is layout-inert" held for grid and rotation but
+not everywhere: the Grouped Bar Chart template emits an absolute `series[].barWidth` computed
+from `baseSize.width`, and the folded Line Chart places its legend at an absolute `legend.left`
+offset the same way. The block renders the canvas at the panel's real CSS width — far narrower
+than the constant 1100 in the chat panel — so the fixed bars overflowed their category slots and
+drew on top of each other, and the line legend sat off-canvas. Found in the first dev-test of a
+grouped chart. The pass deletes every `series[].barWidth` (ECharts then sizes bars into the slots
+it actually has; the percentage `barGap`/`barCategoryGap` that keep the grouping survive) and
+replaces a numeric `legend.left` with the `right: 10` the bar templates already use. Pie is
+unaffected (percentage `center`, small fixed `radius`).
+
 ### Pin exactly, and snapshot the output
 
 `flint-chart` is at `0.5.0` — eleven releases, pre-1.0 and moving. Its whole value is that it makes

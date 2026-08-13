@@ -124,6 +124,26 @@ test("multi-y bar series are grouped, not stacked, and named by column", () => {
   option.series.forEach((series) => expect(series.stack).toBeUndefined());
 });
 
+// baseSize.width is a constant the real canvas never matches, so nothing
+// width-absolute may survive assembly: fixed-width bars overflow their slots
+// on a narrower canvas and overlap, and a left-offset legend leaves it.
+test("no series carries an absolute bar width, and legends never sit at a pixel left offset", () => {
+  for (const [chart, x, y, rows] of specs) {
+    const { option } = buildFlintOption({ chart, x, y, rows });
+    for (const series of option.series) {
+      expect(series.barWidth).toBeUndefined();
+    }
+    expect(typeof option.legend?.left).not.toBe("number");
+  }
+  const { option } = buildFlintOption({
+    chart: "line",
+    x: "month",
+    y: ["revenue", "cost"],
+    rows: monthRows,
+  });
+  expect(option.legend.right).toBe(10);
+});
+
 test("column names reach axes and legends humanized; category values are untouched", () => {
   const { option } = buildFlintOption({
     chart: "bar",

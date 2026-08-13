@@ -38,7 +38,6 @@ exports[`multi-y bar folds into grouped series 1`] = `
       {
         "barCategoryGap": "10%",
         "barGap": "0%",
-        "barWidth": 109,
         "data": [
           1200,
           1100,
@@ -52,7 +51,6 @@ exports[`multi-y bar folds into grouped series 1`] = `
       },
       {
         "barGap": "0%",
-        "barWidth": 109,
         "data": [
           800,
           400,
@@ -141,8 +139,8 @@ exports[`multi-y line folds onto a colour channel 1`] = `
         "Revenue",
         "Cost",
       ],
-      "left": 753,
       "orient": "vertical",
+      "right": 10,
       "textStyle": {
         "fontSize": 11,
       },

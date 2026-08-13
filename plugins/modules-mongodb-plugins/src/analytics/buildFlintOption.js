@@ -117,6 +117,23 @@ function buildFlintOption({ chart, x, y, rows }) {
   // A text element painting the fold key column's name over the top-right of
   // the canvas — series labelling the legend already carries.
   delete option.graphic;
+  // The grouped-bar template computes an absolute pixel bar width from
+  // baseSize.width, but the block renders at the panel's real CSS width — on
+  // any narrower canvas the fixed bars overflow their category slots and draw
+  // on top of each other. Dropped so ECharts sizes bars to the slots it
+  // actually has; the percentage gaps that keep the grouping survive.
+  if (Array.isArray(option.series)) {
+    for (const series of option.series) {
+      delete series.barWidth;
+    }
+  }
+  // Same defect on the folded line template: its legend sits at an absolute
+  // left offset derived from baseSize.width, off-canvas on a narrow panel.
+  // Pin it to the right edge the way the bar templates already do.
+  if (option.legend && typeof option.legend.left === "number") {
+    delete option.legend.left;
+    option.legend.right = 10;
+  }
 
   return { option, height };
 }
