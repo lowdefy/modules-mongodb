@@ -419,17 +419,63 @@ _ref:
                                   shape: circle
                                 events:
                                   onClick:
-                                    _build.array.concat:
-                                      - - id: passkey_delete
-                                          type: PasskeyDelete
-                                          messages:
-                                            loading: Removing…
-                                            success: Passkey removed.
-                                            error: Couldn't remove the passkey. Try again.
-                                          params:
-                                            passkeyId:
-                                              _state: passkeys_ui.$.passkey_id
-                                      - _ref: actions/refetch_account.yaml
+                                    _build.if:
+                                      test:
+                                        _build.authConfig: twoFactor.required
+                                      then:
+                                        _build.array.concat:
+                                          - - id: passkey_remove_blocked_msg
+                                              type: DisplayMessage
+                                              # Removing the only passkey while TOTP is off
+                                              # would strand the account at zero factors.
+                                              skip:
+                                                _not:
+                                                  _and:
+                                                    - _eq:
+                                                        - _request: get_account.0.two_factor_enabled
+                                                        - false
+                                                    - _eq:
+                                                        - _array.length:
+                                                            _if_none:
+                                                              - _state: passkeys_ui
+                                                              - []
+                                                        - 1
+                                              params:
+                                                status: info
+                                                content: "This is your only second factor. Add another passkey before removing this one."
+                                            - id: passkey_delete
+                                              type: PasskeyDelete
+                                              skip:
+                                                _and:
+                                                  - _eq:
+                                                      - _request: get_account.0.two_factor_enabled
+                                                      - false
+                                                  - _eq:
+                                                      - _array.length:
+                                                          _if_none:
+                                                            - _state: passkeys_ui
+                                                            - []
+                                                      - 1
+                                              messages:
+                                                loading: Removing…
+                                                success: Passkey removed.
+                                                error: Couldn't remove the passkey. Try again.
+                                              params:
+                                                passkeyId:
+                                                  _state: passkeys_ui.$.passkey_id
+                                          - _ref: actions/refetch_account.yaml
+                                      else:
+                                        _build.array.concat:
+                                          - - id: passkey_delete
+                                              type: PasskeyDelete
+                                              messages:
+                                                loading: Removing…
+                                                success: Passkey removed.
+                                                error: Couldn't remove the passkey. Try again.
+                                              params:
+                                                passkeyId:
+                                                  _state: passkeys_ui.$.passkey_id
+                                          - _ref: actions/refetch_account.yaml
                   - id: passkeys_empty_hint
                     type: Html
                     visible:

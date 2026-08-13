@@ -290,12 +290,19 @@ blocks:
                 type: SetState
                 params:
                   enroltotp.twofa_off: true
-            # The refetch sits between the two calls, not after them: the event
-            # runner has no `finally`, so an enable that throws would skip a
-            # trailing refetch and leave the tile reading On while 2FA is
-            # genuinely off. Enable does not touch `two_factor_enabled`, so the
-            # tile reads Off from here either way.
-            - _ref: actions/refetch_account.yaml
+            # Keeps the tile honest if the enable below throws: the event runner
+            # has no `finally`, so without a refetch here a thrown enable would
+            # leave the tile reading On while 2FA is genuinely off. Omitted under
+            # `required`, where this Lowdefy request is itself gated on enrolment
+            # and would throw mid-rotation — the caller is transiently unenrolled
+            # between disable and enable — aborting the chain before the re-enable;
+            # there the post-verify refetch restores the tile once enrolment completes.
+            - _build.if:
+                test:
+                  _build.authConfig: twoFactor.required
+                then: []
+                else:
+                  _ref: actions/refetch_account.yaml
             - - id: enroltotp_replace_enable
                 type: TwoFactorEnable
                 messages:
