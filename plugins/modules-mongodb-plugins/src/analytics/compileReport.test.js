@@ -514,8 +514,12 @@ describe("a filter driving a chart and a table", () => {
 // resolver calls compileReport with no :try around it.
 test("a chart whose assembly throws renders an Alert while its siblings compile", () => {
   jest.resetModules();
+  // Only the assembler itself is faked — validateChartSpec imports the
+  // module's named exports (humanize and the fold names), and those must stay
+  // real for validation to reach the assembly step at all.
   jest.doMock("./buildFlintOption.js", () => ({
     __esModule: true,
+    ...jest.requireActual("./buildFlintOption.js"),
     default: () => {
       throw new Error("Flint rejected this chart.");
     },

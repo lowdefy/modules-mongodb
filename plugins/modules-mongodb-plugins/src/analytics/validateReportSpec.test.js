@@ -193,6 +193,42 @@ test("rejects stacked on a non-bar chart section", () => {
   ).toThrow(/stacked only applies to bar charts/);
 });
 
+// Display-name collisions fail at validation — the one place the authoring
+// agent still gets the message — rather than only at assembly, where the chat
+// path skips the part silently and a persisted report renders an Alert forever.
+test("rejects chart columns that collide after humanizing, at validation time", () => {
+  const chartSection = (overrides) => ({
+    spec: {
+      title: "T",
+      sections: [
+        {
+          type: "chart",
+          chart: "bar",
+          label: "C",
+          query: ordersByRegion,
+          ...overrides,
+        },
+      ],
+    },
+    catalog: testCatalog,
+    roles,
+  });
+  // Multi-series x landing on a fold column.
+  expect(() =>
+    validateReportSpec(chartSection({ x: "value", y: ["total", "tax"] })),
+  ).toThrow(/which the multi-series fold reserves/);
+  // Two y columns humanizing to one display name.
+  expect(() =>
+    validateReportSpec(
+      chartSection({ x: "region", y: ["total_sales", "totalSales"] }),
+    ),
+  ).toThrow(/both display as "Total Sales"/);
+  // Single-series x/y collision.
+  expect(() =>
+    validateReportSpec(chartSection({ x: "total_sales", y: ["totalSales"] })),
+  ).toThrow(/both display as "Total Sales"/);
+});
+
 test("rejects a kpi section missing valueKey", () => {
   expect(() =>
     validateReportSpec({

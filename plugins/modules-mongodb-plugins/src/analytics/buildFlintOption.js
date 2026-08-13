@@ -20,15 +20,16 @@ const BASE_SIZE = { width: 1100, height: 180 };
 // sibling series. Flint's own multi-`y` route (an array `y`, or
 // `normalizeStaticSeries`) folds onto `__flint_series_key`/`__flint_series_value`
 // and leaks those literals onto the y-axis and the canvas, so we fold ourselves
-// under names a reader can see without harm.
-const SERIES_KEY = "Measure";
-const SERIES_VALUE = "Value";
+// under names a reader can see without harm. Exported (with humanize) so
+// validateChartSpec can reject display-name collisions by the same rules.
+export const SERIES_KEY = "Measure";
+export const SERIES_VALUE = "Value";
 
 // Column names land verbatim on axis titles, legends and tooltips, and pipeline
 // columns are snake_case or camelCase — so the rows are re-keyed to Title Case
 // before assembly and the encodings point at the display names. Data values
 // (the categories themselves) are never touched.
-function humanize(name) {
+export function humanize(name) {
   return String(name)
     .replace(/[_-]+/g, " ")
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
@@ -66,7 +67,10 @@ function buildFlintOption({ chart, x, y, rows, stacked }) {
   // name (total_sales / totalSales), and an x column named "value" or "measure"
   // maps onto the fold columns below. The folded rows are object literals, so a
   // collision silently overwrites a key and draws a garbage chart — reject it
-  // with the rename that fixes it instead.
+  // with the rename that fixes it instead. validateChartSpec runs the same
+  // checks where the agent can still act on them; this copy is the backstop
+  // for specs persisted before the rule existed, which reach assembly without
+  // revalidation.
   if (multi) {
     if (xName === SERIES_KEY || xName === SERIES_VALUE) {
       throw new Error(

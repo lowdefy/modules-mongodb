@@ -1,4 +1,5 @@
 import { CHART_TYPES, MAX_LABEL_LENGTH } from "./constants.js";
+import { humanize, SERIES_KEY, SERIES_VALUE } from "./buildFlintOption.js";
 import validatePipeline from "./validatePipeline.js";
 
 /**
@@ -93,6 +94,37 @@ function validateChartSpec({ spec, catalog, roles }) {
     if (col.length > MAX_LABEL_LENGTH) {
       fail(`y column "${col}" exceeds ${MAX_LABEL_LENGTH} characters.`);
     }
+  }
+
+  // Display-name collisions are static — knowable from the column names alone —
+  // so they fail here, where a render_chart / generate_report call is still in
+  // the agent's turn and the message is actionable. buildFlintOption re-checks
+  // as a backstop for specs persisted before the rule existed. Distinct columns
+  // can humanize to one name (total_sales / totalSales), and a multi-series x
+  // column named "value" or "measure" lands on the fold columns themselves;
+  // either way the folded rows are object literals, so a collision would
+  // silently overwrite a key and draw a wrong chart.
+  const xName = humanize(spec.x);
+  if (spec.y.length > 1) {
+    if (xName === SERIES_KEY || xName === SERIES_VALUE) {
+      fail(
+        `x column "${spec.x}" displays as "${xName}", which the multi-series fold reserves — $project the column to another name.`,
+      );
+    }
+    const seen = new Map();
+    for (const col of spec.y) {
+      const name = humanize(col);
+      if (seen.has(name)) {
+        fail(
+          `y columns "${seen.get(name)}" and "${col}" both display as "${name}" — $project one to another name.`,
+        );
+      }
+      seen.set(name, col);
+    }
+  } else if (xName === humanize(spec.y[0])) {
+    fail(
+      `x column "${spec.x}" and y column "${spec.y[0]}" both display as "${xName}" — $project one to another name.`,
+    );
   }
 
   // A `_payload` read of an absent key arrives as null, so null reads as
