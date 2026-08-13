@@ -37,7 +37,7 @@ _ref:
   component: auth-page
   vars:
     id: login
-    title: Sign in
+    title: ""
     events:
       onInit:
         # Seed the render. If the page was reached as the authPages.error
@@ -134,8 +134,14 @@ _ref:
                 else: false
     blocks:
       _build.array.concat:
-        # --- Always present: lead + no-access alert --------------------------
-        - - id: login_lead
+        # --- Always present: resting title + lead + no-access alert ----------
+        - - id: login_title
+            type: Title
+            properties:
+              content: Sign in
+              level: 3
+
+          - id: login_lead
             type: Html
             visible:
               _eq:
