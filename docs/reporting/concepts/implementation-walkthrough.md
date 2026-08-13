@@ -378,11 +378,15 @@ old pooled filter row required is gone.
   says what it moves. All three control types spread `properties.label` into
   their `Label` wrapper, so one shape covers `Selector`, `MultipleSelector` and
   `DateRangeSelector`.
-- Controls anchored above the **same** section share a row: the span is 24 divided
-  by the group size, capped at `FILTERS_PER_ROW` (3, L102) so a fourth wraps at the
-  same width instead of stretching alone across the page. The grouping happens
-  before any control is built, since a control's span depends on how many share its
-  anchor. Groups are spanned independently — pulling two anchors' filters onto one
+- Controls anchored above the **same** section share a row, at most
+  `FILTERS_PER_ROW` (3) of them, and `filterSpans` distributes the group so every
+  wrap line it occupies is exactly full — four controls are two rows of two, not
+  three and a lone fourth. That matters beyond tidiness: every compiled block is a
+  sibling in one wrapping flex area, so columns left over on a ragged trailing line
+  are columns the next section flows into, which put a fourth filter on the same
+  line as the first two KPIs. Balancing the rows also means no control stretches
+  alone across the page. The grouping happens before any control is built, since a
+  control's span depends on how many share its anchor. Groups are spanned independently — pulling two anchors' filters onto one
   row would undo co-location. An options-failure Alert takes the group's span too,
   or a full-width Alert between two controls strands the survivor. `report.yaml`
   sets `layout.gap: [12, 0]` on the `Dynamic` block, which is the **content area's**

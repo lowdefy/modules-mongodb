@@ -182,6 +182,28 @@ test("no series carries an absolute bar width, and legends never sit at a pixel 
   expect(option.legend.right).toBe(10);
 });
 
+// Flint draws a pie at an absolute outer radius derived from baseSize (60px), so
+// the slices stayed 120px across whatever canvas the block was given — a dot in
+// an 1100px column. Same class as the bar width above: relative, or it is wrong
+// everywhere except the base size. The canvas is ours for a pie (no tick labels
+// to lay out), so it is asserted alongside — the two together are the size.
+test("a pie's radius is relative and its canvas is the pie's own", () => {
+  const { option, height } = buildFlintOption({
+    chart: "pie",
+    x: "region",
+    y: ["revenue"],
+    rows: regionRows,
+  });
+  for (const series of option.series) {
+    expect(series.type).toBe("pie");
+    const [inner, outer] = series.radius;
+    // Inner stays 0 — a donut is a different chart.
+    expect(inner).toBe("0%");
+    expect(String(outer)).toMatch(/%$/);
+  }
+  expect(height).toBe(400);
+});
+
 test("column names reach axes and legends humanized; category values are untouched", () => {
   const { option } = buildFlintOption({
     chart: "bar",

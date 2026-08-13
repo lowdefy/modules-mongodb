@@ -53,6 +53,49 @@
             level: 5
             style:
               marginBottom: 0
+        # Opens this card's snapshot bigger in the panel-level modal. A modal's
+        # own events see none of this row, so the card is seeded into
+        # `expanded_table` first — the rail's kebab → rename/delete pattern.
+        # Explicit fields, not the bare item: mid-path `$` reads are the
+        # established pattern; a trailing-`$` read is not.
+        - id: tables.$.expand
+          type: Button
+          layout:
+            flex: 0 0 auto
+            selfAlign: top
+          properties:
+            icon:
+              name: AiOutlineExpandAlt
+              title: Expand table
+            hideTitle: true
+            type: text
+          events:
+            onClick:
+              - id: seed_expanded_table
+                type: SetState
+                params:
+                  expanded_table:
+                    title:
+                      _state: tables.$.title
+                    rows:
+                      _state: tables.$.rows
+                    spec:
+                      _state: tables.$.spec
+                    row_count:
+                      _if_none:
+                        - _state: tables.$.row_count
+                        - null
+                    created:
+                      _if_none:
+                        - _state: tables.$.created
+                        - null
+              - id: open_expand_table_modal
+                type: CallMethod
+                params:
+                  blockId: expand_table_modal
+                  method: setOpen
+                  args:
+                    - open: true
     # The truncation line, shown only when the card holds fewer rows than the
     # query returned. `row_count` predates some parts, so `_if_none` falls back
     # to the retained count — an absent total then equals it and the line stays
@@ -95,95 +138,15 @@
           fontSize: 12px
           color: var(--ant-color-text-secondary)
           marginBottom: 0
-    - id: tables.$.grid
-      type: AgGridBalham
-      properties:
-        height: 300
-        rowData:
-          _state: tables.$.rows
-        # Matches saved reports: compileReport's minimal defaultColDef.
-        defaultColDef:
-          sortable: true
-          resizable: true
-        # Built at runtime from the one column copy on the part's spec, in
-        # declared order. Mirrors compileReport.tableColumnDef so a column
-        # formats identically here and in a saved report: a `format` column
-        # right-aligns and renders through Intl.NumberFormat (the same call
-        # `_intl.numberFormat` makes there); a formatless-but-numeric column is
-        # right-aligned but left raw; text is left alone. `label` falls back to
-        # the key. `_js` over operators here because the transform is a
-        # per-column map with a live cell renderer — no operator expresses that.
-        columnDefs:
-          _js:
-            args:
-              columns:
-                _state: tables.$.spec.columns
-              rows:
-                _state: tables.$.rows
-            fn: |
-              const columns = args.columns || [];
-              const rows = args.rows || [];
-              const REPORT_LOCALE = 'en-US';
-              const REPORT_CURRENCY = 'USD';
-              const REPORT_DECIMALS = 2;
-              const numberDisplay = (format) => {
-                const locale = (format && format.locale) || REPORT_LOCALE;
-                const decimals = Number.isInteger(format && format.decimals)
-                  ? format.decimals
-                  : REPORT_DECIMALS;
-                if (format && format.style === 'currency') {
-                  return {
-                    style: 'currency',
-                    decimals,
-                    currency: format.currency || REPORT_CURRENCY,
-                    locale,
-                  };
-                }
-                return { style: 'decimal', decimals, locale };
-              };
-              const numberFormatOptions = (d) => {
-                const base = {
-                  minimumFractionDigits: d.decimals,
-                  maximumFractionDigits: d.decimals,
-                };
-                return d.style === 'currency'
-                  ? { style: 'currency', currency: d.currency, ...base }
-                  : { style: 'decimal', ...base };
-              };
-              // Conservative, like the report: one non-numeric cell disqualifies
-              // the column, and no rows or all-empty cells yields no evidence.
-              const isNumericColumn = (key) => {
-                if (!Array.isArray(rows) || rows.length === 0) return false;
-                let sawNumber = false;
-                for (const row of rows) {
-                  const value = row ? row[key] : undefined;
-                  if (value === null || value === undefined) continue;
-                  if (typeof value !== 'number') return false;
-                  sawNumber = true;
-                }
-                return sawNumber;
-              };
-              return columns.map((column) => {
-                const def = {
-                  field: column.key,
-                  headerName:
-                    column.label === undefined || column.label === null
-                      ? column.key
-                      : column.label,
-                };
-                if (column.format) {
-                  const display = numberDisplay(column.format);
-                  const options = numberFormatOptions(display);
-                  def.cell = { align: 'right' };
-                  def.cellRenderer = (params) =>
-                    new Intl.NumberFormat(display.locale, options).format(
-                      params.value,
-                    );
-                } else if (isNumericColumn(column.key)) {
-                  def.cell = { align: 'right' };
-                }
-                return def;
-              });
+    # The grid itself lives in table_grid.yaml, shared with the expand modal so
+    # the columnDefs mapping exists once (see that file for what it preserves).
+    - _ref:
+        path: pages/chat/components/table_grid.yaml
+        vars:
+          grid_id: tables.$.grid
+          rows_path: tables.$.rows
+          columns_path: tables.$.spec.columns
+          height: 300
     # Dates the snapshot, for the same reason the chart card does. A leaf, so
     # `visible:` is safe; read through `_if_none` so a part predating `created`
     # renders with no line rather than a blank one.

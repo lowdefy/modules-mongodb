@@ -89,6 +89,51 @@ routine:
         expr:
           $let:
             vars:
+              # Backfill a message id wherever the saved transcript has none.
+              # The AI SDK ids the assistant reply it hands the onFinish hook
+              # with "" unless the caller passes generateMessageId, so every
+              # assistant message save-conversation persisted before that fix
+              # shares the empty id — and AgentChat keys its bubbles by message
+              # id and looks each bubble's parts up in an id -> parts map, so a
+              # shared id collapses them: the earlier bubble renders the LAST
+              # message's content, and a reloaded conversation shows its final
+              # answer in every assistant bubble.
+              #
+              # Healing here rather than at write time repairs the conversations
+              # already saved that way, and the index is a stable key to do it
+              # with: messages only ever append, so the same message keeps the
+              # same synthesized id across reads. Continuing the conversation
+              # sends these back and save-conversation persists them, so a
+              # document heals for good the next time it is written to.
+              messages:
+                $map:
+                  input:
+                    $range:
+                      - 0
+                      - $size: $messages
+                  as: idx
+                  in:
+                    $let:
+                      vars:
+                        msg:
+                          $arrayElemAt:
+                            - $messages
+                            - $$idx
+                      in:
+                        $mergeObjects:
+                          - $$msg
+                          - id:
+                              $cond:
+                                - $gt:
+                                    - $strLenCP:
+                                        $ifNull:
+                                          - $$msg.id
+                                          - ""
+                                    - 0
+                                - $$msg.id
+                                - $concat:
+                                    - restored-
+                                    - $toString: $$idx
               charts:
                 $map:
                   input:
@@ -120,7 +165,7 @@ routine:
                           - data-report-download
                   in: $$this.data
             in:
-              messages: $messages
+              messages: $$messages
               charts: $$charts
               tables: $$tables
               downloads: $$downloads

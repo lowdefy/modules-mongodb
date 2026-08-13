@@ -521,6 +521,103 @@ blocks:
               value: tables
             - label: Exports
               value: exports
+      # Bulk-marks whatever the scope tab shows: All ticks every card, a
+      # narrowed tab only its own kind — selecting cards the tab is hiding
+      # would put unseen sections in the report. The box reflects the last
+      # bulk action, not a live aggregate: unticking one card afterwards
+      # leaves it checked, and clicking it again re-applies to everything in
+      # scope. An input block, so `visible:` is safe here — inputs republish
+      # their value when they come back.
+      - id: select_all
+        type: CheckboxSwitch
+        visible:
+          _gt:
+            - _array.length:
+                _array.concat:
+                  - _if_none:
+                      - _state: charts
+                      - []
+                  - _if_none:
+                      - _state: tables
+                      - []
+                  - _if_none:
+                      - _state: downloads
+                      - []
+            - 0
+        properties:
+          label:
+            disabled: true
+          # Inline checkbox text, not a field label — the block renders
+          # `description` beside the box.
+          description: Select all
+        events:
+          onChange:
+            - id: select_all_charts
+              type: SetState
+              skip:
+                _not:
+                  _or:
+                    - _eq:
+                        - _state: results_scope
+                        - all
+                    - _eq:
+                        - _state: results_scope
+                        - charts
+              params:
+                charts:
+                  _array.map:
+                    - _if_none:
+                        - _state: charts
+                        - []
+                    - _function:
+                        __object.assign:
+                          - __args: 0
+                          - selected:
+                              _event: value
+            - id: select_all_tables
+              type: SetState
+              skip:
+                _not:
+                  _or:
+                    - _eq:
+                        - _state: results_scope
+                        - all
+                    - _eq:
+                        - _state: results_scope
+                        - tables
+              params:
+                tables:
+                  _array.map:
+                    - _if_none:
+                        - _state: tables
+                        - []
+                    - _function:
+                        __object.assign:
+                          - __args: 0
+                          - selected:
+                              _event: value
+            - id: select_all_downloads
+              type: SetState
+              skip:
+                _not:
+                  _or:
+                    - _eq:
+                        - _state: results_scope
+                        - all
+                    - _eq:
+                        - _state: results_scope
+                        - exports
+              params:
+                downloads:
+                  _array.map:
+                    - _if_none:
+                        - _state: downloads
+                        - []
+                    - _function:
+                        __object.assign:
+                          - __args: 0
+                          - selected:
+                              _event: value
       # Assembles the ticked cards into report sections and opens the confirm
       # sheet. Disabled until at least one card across the three arrays is
       # ticked — with nothing selected the assembly would produce no sections,
@@ -686,6 +783,48 @@ blocks:
                           level: 5
                           style:
                             marginBottom: 0
+                      # Opens this card's snapshot bigger in the panel-level
+                      # modal. A modal's own events see none of this row, so
+                      # the card is seeded into `expanded_chart` first — the
+                      # rail's kebab → rename/delete pattern. Explicit fields,
+                      # not the bare item: mid-path `$` reads are the
+                      # established pattern; a trailing-`$` read is not.
+                      - id: charts.$.expand
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                          selfAlign: top
+                        properties:
+                          icon:
+                            name: AiOutlineExpandAlt
+                            title: Expand chart
+                          hideTitle: true
+                          type: text
+                        events:
+                          onClick:
+                            - id: seed_expanded_chart
+                              type: SetState
+                              params:
+                                expanded_chart:
+                                  title:
+                                    _state: charts.$.title
+                                  option:
+                                    _state: charts.$.option
+                                  height:
+                                    _if_none:
+                                      - _state: charts.$.height
+                                      - null
+                                  created:
+                                    _if_none:
+                                      - _state: charts.$.created
+                                      - null
+                            - id: open_expand_chart_modal
+                              type: CallMethod
+                              params:
+                                blockId: expand_chart_modal
+                                method: setOpen
+                                args:
+                                  - open: true
                   # The canvas height is sized server-side with the option, so it
                   # travels on the part. Parts written before the part gained
                   # `height` fall back to the fixed height they were drawn at.
@@ -916,6 +1055,10 @@ blocks:
       # conversation modals, it leaves only an empty placeholder here — antd
       # portals the dialog to the document body — so it adds no panel chrome.
       - _ref: pages/chat/components/save_report_sheet.yaml
+      # Each card's ⤢ seeds one of these and opens it; like the sheet above,
+      # only an empty placeholder lands in the panel.
+      - _ref: pages/chat/components/expand_chart_modal.yaml
+      - _ref: pages/chat/components/expand_table_modal.yaml
   # The panel's collapsed form. Counts, not just an icon: the point of the strip
   # is that three charts waiting is visible without paying the expand to find
   # out. Compared against `true` so the strip and the panel are exact

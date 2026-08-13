@@ -1,0 +1,42 @@
+diff --git a/dist/handleAgentChat.js b/dist/handleAgentChat.js
+index 6b8169788449fcf0c9483d27e49fdf2c2ce43ed5..4bd99e4fcecbee64f5787903560b124d79637a36 100644
+--- a/dist/handleAgentChat.js
++++ b/dist/handleAgentChat.js
+@@ -12,7 +12,7 @@
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-*/ import { convertToModelMessages, createAgentUIStream, createUIMessageStream, createUIMessageStreamResponse, generateText, pruneMessages, validateUIMessages } from 'ai';
++*/ import { convertToModelMessages, createAgentUIStream, createUIMessageStream, createUIMessageStreamResponse, generateId, generateText, pruneMessages, validateUIMessages } from 'ai';
+ import { serializer } from '@lowdefy/helpers';
+ import createToolLoopAgent from './createToolLoopAgent.js';
+ import createUsageAccumulator from './createUsageAccumulator.js';
+@@ -140,6 +140,9 @@ async function handleAgentChat({ connection, properties, context }) {
+                 });
+                 agentStream = result.toUIMessageStream({
+                     originalMessages: validatedMessages,
++                    // Without this the assistant message reaches onFinish with
++                    // id: "" — see the createAgentUIStream call below.
++                    generateMessageId: generateId,
+                     onFinish: captureMessages
+                 });
+             } else {
+@@ -150,6 +153,18 @@ async function handleAgentChat({ connection, properties, context }) {
+                     agent: agentInstance,
+                     uiMessages: messages,
+                     ...timeoutConfig,
++                    // The AI SDK only ids the assistant message it builds when
++                    // the caller supplies a generator: toUIMessageStream derives
++                    // responseMessageId only if generateMessageId != null, and
++                    // handleUIMessageStreamFinish then seeds the streaming state
++                    // with `messageId ?? ""`, with no messageId on the start
++                    // chunk to override it. Without this every assistant message
++                    // an onFinish hook persists carries id: "", so a reloaded
++                    // transcript has them all sharing one id — and UI that keys
++                    // bubbles by message id (AgentChat) renders the LAST reply in
++                    // every assistant bubble. The client generates its own id
++                    // while streaming, so the damage only shows after a reload.
++                    generateMessageId: generateId,
+                     onStepFinish: collectStep,
+                     onFinish: captureMessages
+                 });
