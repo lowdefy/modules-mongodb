@@ -32,6 +32,9 @@
               query: c.spec.query,
               x: c.spec.x,
               y: c.spec.y,
+              // Present only when true, matching the validated spec's shape —
+              // dropping it here would silently save a stacked chart as grouped.
+              ...(c.spec.stacked ? { stacked: true } : {}),
             }));
           const tableSections = tables
             .filter((t) => t.selected === true)
