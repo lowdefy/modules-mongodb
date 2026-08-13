@@ -16,6 +16,25 @@ import { assembleECharts } from "flint-chart/echarts";
 // missing either field yields `_width: NaN`, so both are always present.
 const BASE_SIZE = { width: 1100, height: 180 };
 
+// A pie is sized differently from an axis chart, on both counts. Flint gives it
+// the same label-driven canvas (280px for the base height above) and then draws
+// the slices at an ABSOLUTE outer radius derived from baseSize — 60px, so the
+// pie stayed 120px across in an 1100px-wide column and read as a dot with four
+// leader lines. That is the same baseSize-absolute defect as `series.barWidth`
+// and `legend.left` below, and it gets the same treatment: a percentage radius,
+// which ECharts resolves against min(canvas width, height) and so fills whatever
+// canvas the block is given — the report's full-width column or the chat panel's
+// 420px one.
+//
+// The canvas is set here rather than taken from Flint because a pie has no tick
+// labels to lay out: nothing about 280px belongs to its content, where an axis
+// chart's height genuinely does. 400 x 70% draws a 280px pie — a little over
+// twice the old one, which is what it takes to read the slices and their labels
+// at this column width — and leaves room above and below for the labels ECharts
+// places outside the circle.
+const PIE_HEIGHT = 400;
+const PIE_RADIUS = "70%";
+
 // Column names for the wide → long fold that renders multiple `y` columns as
 // sibling series. Flint's own multi-`y` route (an array `y`, or
 // `normalizeStaticSeries`) folds onto `__flint_series_key`/`__flint_series_value`
@@ -149,7 +168,7 @@ function buildFlintOption({ chart, x, y, rows, stacked }) {
 
   // Read before the strip walk removes it: this is the canvas Flint sized for
   // the labels it laid out, and the only place that number exists.
-  const height = option._height;
+  const height = chart === "pie" ? PIE_HEIGHT : option._height;
   strip(option);
   // A text element painting the fold key column's name over the top-right of
   // the canvas — series labelling the legend already carries.
@@ -162,6 +181,9 @@ function buildFlintOption({ chart, x, y, rows, stacked }) {
   if (Array.isArray(option.series)) {
     for (const series of option.series) {
       delete series.barWidth;
+      // Flint's radius is [inner, outer]; only the outer is baseSize-absolute,
+      // and the inner ("0%") is what keeps this a pie rather than a donut.
+      if (series.type === "pie") series.radius = ["0%", PIE_RADIUS];
     }
   }
   // Same defect on the folded line template: its legend sits at an absolute

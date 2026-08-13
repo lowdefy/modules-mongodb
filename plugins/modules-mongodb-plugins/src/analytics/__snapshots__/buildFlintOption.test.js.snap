@@ -240,7 +240,7 @@ exports[`multi-y line folds onto a colour channel 1`] = `
 
 exports[`pie encodes the category on colour and the measure on size 1`] = `
 {
-  "height": 280,
+  "height": 400,
   "option": {
     "color": [
       "#5470c6",
@@ -302,7 +302,7 @@ exports[`pie encodes the category on colour and the measure on size 1`] = `
         },
         "radius": [
           "0%",
-          "60px",
+          "70%",
         ],
         "type": "pie",
       },
