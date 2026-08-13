@@ -75,9 +75,9 @@ payloadSchema:
 routine:
   # Catalog entries with no `roles` are readable by any AUTHENTICATED user, so
   # the engine's role gate assumes there is a user. Lowdefy endpoints are
-  # public unless the app protects them, and this is the only endpoint that
-  # reads app data — without this guard an unprotected app exposes every
-  # role-less cataloged collection to anonymous callers.
+  # public unless the app protects them, so every endpoint that reads app data
+  # (this one and query-data) carries this guard — without it an unprotected
+  # app exposes every role-less cataloged collection to anonymous callers.
   - :if:
       _eq:
         - _user: id
