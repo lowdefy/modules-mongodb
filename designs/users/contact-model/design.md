@@ -16,15 +16,18 @@ field.
    and **wire the live `deleted` soft-delete filter** into the contact list and selectors, which
    currently guard the two dead flags and miss the real one (soft-deleted contacts leak into lists).
 3. **Promote the contact link to a first-class `user.contact_id` field**, out of the `user.profile`
-   bag, so `_user.contact_id` is a clean typed key rather than `_user.profile.contact_id` riding inside
+   bag, so `_user.contact_id` is a clean typed key rather than `_user.profile.contactId` riding inside
    the display bag. This is an **upstream ask** on `lowdefy-design` (platform additionalField +
    `resolveAuthentication` projection + `UpdateUserProfile` write param).
 4. **Keep `profile_created` in `profile`** and leave it on the existing denormalization path — it is
    genuinely profile-completeness data, not a relationship, so it belongs in the opaque bag and is
    _not_ promoted to a first-class field the way `contact_id` is.
-5. **Sweep the stale `_user: global_attributes.*` reads** in `search_contacts` to `_user.attributes`
-   (the auth upgrade renamed the caller's authorization bag; this data-scoping filter silently
-   no-ops today).
+5. **Restore the caller company-scoping filter in `search_contacts`**, which silently no-ops today.
+   The `contact` / `user` split dropped the denormalization that fed it: the filter needs the caller's
+   `company_ids`, but unlike `profile`, the contact's `global_attributes.company_ids` is never copied
+   onto the `user`, so `_user` carries no `company_ids` at any path. The fix reads the scope **live
+   from the caller's own contact** (via the caller's contact link — the `members_base` join pattern),
+   not a stale `_user` path: one source of truth, nothing to keep in sync.
 
 ## Guiding principle: separate by _kind of thing_
 
@@ -46,11 +49,11 @@ single scalar.
 
 One person is three records (auth-upgrade [user-model](../../../../lowdefy-design/designs/auth-upgrade/concepts/user-model/design.md) Decision 4):
 
-| Record                                           | Owner             | Holds                                                                                      | Link                                     |
-| ------------------------------------------------ | ----------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- |
-| `user-contacts` (physical) / `contact` (logical) | **App / Lowdefy** | The person: `email`, `profile` bag (display fields), CRM data, `deleted` soft-delete stamp | parent                                   |
-| `users`                                          | BetterAuth        | Login identity + `attributes`; denormalized `name` / `image` / `profile` copies            | `users.profile.contact_id → contact._id` |
-| `user-members`                                   | org plugin        | Per-(user, org) `appRoles` + `attributes`                                                  | `member.userId → user._id`               |
+| Record                                           | Owner             | Holds                                                                                      | Link                                    |
+| ------------------------------------------------ | ----------------- | ------------------------------------------------------------------------------------------ | --------------------------------------- |
+| `user-contacts` (physical) / `contact` (logical) | **App / Lowdefy** | The person: `email`, `profile` bag (display fields), CRM data, `deleted` soft-delete stamp | parent                                  |
+| `users`                                          | BetterAuth        | Login identity + `attributes`; denormalized `name` / `image` / `profile` copies            | `users.profile.contactId → contact._id` |
+| `user-members`                                   | org plugin        | Per-(user, org) `appRoles` + `attributes`                                                  | `member.userId → user._id`              |
 
 `resolveAuthentication` builds `_user` from the `users` row alone (it never joins the contact — the
 platform is deliberately contact-agnostic, since not every app has contacts). It projects a fixed
@@ -79,17 +82,23 @@ must live inside it (which is why `contact_id` and `profile_created` ended up th
   (`users`, `user-sessions`, `user-accounts`, `user-members`, …). The `user-` prefix reads as "the
   auth system manages this," which is false — it is app data on an app connection, and the module is
   already literally named `contacts` with its connection already called `contacts-collection`.
-- **`contact_id` is a foreign key inside a display bag.** `_user.profile.contact_id` sits alongside
+- **`contactId` is a foreign key inside a display bag.** `_user.profile.contactId` sits alongside
   `name` / `picture`, so a consumer treating `profile` as a display object must reason about a
   non-display key riding in it. The [table-row-contract](../_completed/table-row-contract/design.md)
-  design shows the cost concretely: it had to explicitly classify `profile.contact_id` as a
+  design shows the cost concretely: it had to explicitly classify `profile.contactId` as a
   "housekeeping key riding along" and consciously decide _not_ to guard it — a foreign key that every
   `profile` consumer has to notice and wave through is the tell it is in the wrong place.
-- **A stale authorization-scope read.** `search_contacts` filters contacts by
-  `_user: global_attributes.company_ids` — the pre-upgrade name for the caller's authorization bag,
-  now `_user.attributes`. The path no longer exists on `_user`, so the data-scoping filter silently
-  no-ops. (Unrelated to the contacts module's own `contact.global_attributes.*` field bag, which is
-  live — a confusing but real name collision.)
+- **The caller company-scoping filter lost its data source in the split.** `search_contacts` scopes
+  the contact typeahead to the caller's companies: it matches a candidate `contact.global_attributes.company_ids`
+  against the **caller's own** `company_ids`, read from `_user`. In the pre-split model this worked
+  because `user` _was_ the contact, so the caller's record carried `global_attributes.company_ids`
+  directly. The split kept `profile`'s contact→user denormalization but dropped this one — nothing
+  copies the contact's `global_attributes` onto the `user`, so `_user` now carries no `company_ids` at
+  any path: neither the pre-upgrade `global_attributes` (gone) nor `attributes` (never populated with
+  it). So the filter has nothing to scope on and returns everything. A path rename alone cannot fix it;
+  the scope has to be read from where it still lives — the caller's own contact. (Distinct from the
+  contacts module's own `contact.global_attributes.*` field bag, which is the live source of truth
+  here — a confusing but real name collision.)
 
 ## Decisions
 
@@ -115,12 +124,28 @@ depends on it, so the rename is mechanical and zero-risk. It touches the two con
 `id:` fields, both `module.lowdefy.yaml` `_ref` paths and connection-export entries, and all seven
 `_module.connectionId: user-contacts-collection` call sites (see Changes).
 
+**The canonical default `contacts` propagates to every consumer of the physical collection, including
+a plugin version bump.** The contacts module is not the only reader of the person collection. `events`,
+`workflows` and `activities` each resolve it through a module var (`contacts_collection` /
+`lookup_collections.contacts`), and the `WorkflowAPI` and `EventsTimeline` plugin connections through a
+`contactsCollection` schema field — **all of which currently default to the string `user-contacts`**, as
+does the demo's `apps/demo/modules/events/vars.yaml`. These defaults drive the `$lookup from` that
+resolves an event author's / workflow contact's avatar; left at `user-contacts` after the rename they
+join against a collection that no longer exists, so the join returns empty, avatars silently fall back to
+initials, and nothing errors. So `contacts` becomes the canonical default in **all** of them — not just
+the contacts module's own connection — on the "one correct name / no default that points at a dead
+collection" grounds that motivate the rename in the first place. The three module var defaults are config
+edits; the two plugin defaults are hard-coded in published JS (`?? "user-contacts"` fallbacks + schema
+`default` + doc strings), so this half is a **plugin version bump**, not a config edit — the one part of
+Decision 1 that is neither mechanical nor confined to the people-model surface. All eight sites plus the
+demo vars are enumerated in Changes.
+
 **Trade-off accepted:** this is a suite-wide change. The physical collection is shared across every
 app in a multi-app suite, so the rename is a coordinated DB migration plus connection/`$lookup`/doc
-updates across apps (see Migration and Changes). It also **contradicts a documented platform
-convention** — `lowdefy-design`'s mongodb Decision 2 recommends `user-contacts` — so that design's
-recommendation should be updated to `contacts` to match (a doc change, since the name was never
-adapter-enforced). Captured as upstream note 2.
+updates across apps and a plugin version bump (see Migration and Changes). It also **contradicts a
+documented platform convention** — `lowdefy-design`'s mongodb Decision 2 recommends `user-contacts` — so
+that design's recommendation should be updated to `contacts` to match (a doc change, since the name was
+never adapter-enforced). Captured as upstream note 2.
 
 ### 2. Retire `hidden` / `disabled`; honor `deleted`
 
@@ -153,10 +178,14 @@ removes the "which shape does this module use?" question the convention exists t
 
 ### 3. `contact_id` → first-class `user.contact_id` (upstream ask 1)
 
-Promote the link out of `profile`. After this, `_user.contact_id` is a clean typed key; the join and
-write sites read against it (`members_base`, `get_account`, `deals/get_selected_deal`,
-`create-or-link-contact`, `write-profile`); and the module-owned partial-unique index moves from
-`users.{ 'profile.contact_id': 1 }` to `users.{ contact_id: 1 }`.
+Promote the link out of `profile`. The current field is stored and indexed as `profile.contactId`
+(camelCase); the promotion is therefore also a **camelCase → snake_case normalization** to
+`contact_id`, matching the snake_case `_user` projection convention (`email_verified`), not a
+straight relocation of an already-snake key. After this, `_user.contact_id` is a clean typed key; the
+join/read sites read against it (`members_base`, `get_account`, `deals/get_selected_deal`,
+`get_users_for_selector`, and the link reads in `invite` / `update-profile`), the sole write site
+(`create-or-link-contact`) sets it, and the module-owned partial-unique index moves from
+`users.{ 'profile.contactId': 1 }` to `users.{ contact_id: 1 }`.
 
 **This is a platform change, not a module one.** `_user` carries only what `resolveAuthentication`
 projects, and the platform deliberately exposes no app-facing user-field knob
@@ -168,7 +197,7 @@ Decision 2**, which moved `contact_id` _into_ `profile` specifically to avoid a 
 
 Why re-open it: that decision optimized for "zero new platform fields" and accepted a muddled display
 bag as the cost — a cost every `profile` consumer keeps paying (table-row-contract had to classify and
-wave through `profile.contact_id` as a non-display key). The correction is
+wave through `profile.contactId` as a non-display key). The correction is
 small and consistent: one **optional, opaque, platform-ignored scalar**, in the same category as the
 existing internal `attributes` field, `undefined` for apps with no contacts (inert, exactly as
 `image` is absent for a strategy caller). It is not the app-facing `additionalFields` knob
@@ -198,12 +227,49 @@ that makes that fragment safe, that `user.profile` is a faithful denormalized co
 flag denormalizes onto both copies like every other profile key; it is simply only _meaningful_ on the
 user.
 
+### 5. Restore caller company-scoping by reading the caller's own contact
+
+`search_contacts` scopes the contact-selector typeahead to the caller's companies, and that filter is
+dead today (previous bullet): the split dropped the contact→user denormalization that put the caller's
+`company_ids` on `_user`, and it was never rebuilt. Three ways to feed the scope back to the filter
+were considered:
+
+1. **Denormalize the caller's contact `company_ids` onto `user.attributes`** (rebuild the dropped
+   copy). Rejected: a contact's `company_ids` changes through company management (`update-company`)
+   and contact edits, not just profile saves, so the copy would have to be re-synced from every one of
+   those write paths — a standing drift risk for a value that already has a canonical home on the
+   contact.
+2. **Make company-scope an admin-set `user_attribute`** decoupled from the contact. Rejected: it
+   changes the semantics (scope would no longer follow the caller's own company memberships), needs
+   admins to re-enter data that already exists on contacts, and folds an authorization input into a bag
+   that is otherwise free-form module data.
+3. **Read the scope live from the caller's own contact — chosen.** The caller's contact id is already
+   on `_user` (`profile.contactId` today, `contact_id` after Decision 3), and joining a user's contact
+   by that id is the established `members_base` pattern. `search_contacts` fetches the caller's own
+   contact at query time and reads its `global_attributes.company_ids` directly — the contact stays the
+   single source of truth and nothing is copied or synced.
+
+**Mechanics.** Prepend a `$lookup` to `search_contacts`' pipeline that fetches the caller's own contact
+by the `_user` contact link (injected as a build-time literal, exactly as the dead `_user:` reads were)
+and projects its `global_attributes.company_ids`; then match a candidate contact whose
+`global_attributes.company_ids` intersects that scope. The existing **empty-scope ⇒ unfiltered**
+behaviour is preserved — a caller with no contact or no company tags (e.g. an internal admin) is
+unscoped and sees everything — expressed with `$expr` / `$setIntersection` since the scope is now a
+pipeline value rather than a build-time array. The candidate field being matched
+(`contact.global_attributes.company_ids`, the request's line 57) is unchanged; only the caller-side
+value and the match operator change. **No data migration** — the fix reads the live contact, so there
+is nothing to backfill.
+
+**Dependency.** It uses the caller's contact link on `_user`, so it rides the same link Decision 3
+promotes: `_user.profile.contactId` today, `_user.contact_id` once ask 1 lands. It does **not** require
+ask 1 — only the link's current path — so it ships module-side with Decisions 1, 2, 4.
+
 ## Upstream asks (feedback into the auth-upgrade / `lowdefy-design` designs)
 
 1. **First-class `user.contact_id`** (hard dependency for Decision 3) — **outstanding**. Re-opens
    [user-profile](../../../../lowdefy-design/designs/auth-upgrade/_completed/user-profile/design.md)
    Decision 2 (and supersedes user-account-better-auth's delivered ask 3, "`contact_id` on the session
-   user", whose superseded shape was `_user.profile.contact_id`). The platform provides:
+   user", whose superseded shape was `_user.profile.contactId`). The platform provides:
    - a new **internal additionalField** `contact_id` on `user` (`{ type: 'string', required: false,
 input: false }`), opaque and platform-ignored — never validated, indexed, or read-into by the
      platform, same contract as `profile`;
@@ -214,7 +280,7 @@ input: false }`), opaque and platform-ignored — never validated, indexed, or r
      into the `profile` write), so the merge/invite/link flows set it as a first-class field.
 
    The module-owned partial-unique index moves to `users.{ contact_id: 1 }`. Fallback if the ask is
-   not delivered: keep `_user.profile.contact_id` (status quo) — the module-side cleanups (Decisions 1,
+   not delivered: keep `_user.profile.contactId` (status quo) — the module-side cleanups (Decisions 1,
    2, 4) do not depend on it.
 
 2. **Update the `user-contacts` naming convention to `contacts`** (Decision 1) — **outstanding, doc
@@ -224,22 +290,24 @@ input: false }`), opaque and platform-ignored — never validated, indexed, or r
 
 ## Changes (module side)
 
-| File(s)                                                                                                                                                                                                                                                      | Change                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modules/{contacts,user-admin,user-account}/connections/*contacts-collection.yaml`                                                                                                                                                                           | `collection: user-contacts` → `contacts` (3 connections). **Also rename the connection id** `user-contacts-collection` → `contacts-collection` in `user-admin` + `user-account`: rename `connections/user-contacts-collection.yaml` → `contacts-collection.yaml`, its `id:` field, and each `module.lowdefy.yaml` `_ref` path + `connections:` export id. (`contacts` already uses `contacts-collection`.) |
-| `_module.connectionId: user-contacts-collection` call sites (7): `user-account/api/{link-contact-on-signup,update-profile}.yaml`, `user-account/requests/get_users_for_selector.yaml`, `user-admin/api/{check-invite-email,invite (×2),update-profile}.yaml` | Retarget to `contacts-collection` (part of the connection-id rename above)                                                                                                                                                                                                                                                                                                                                 |
-| `modules/user-admin/requests/stages/members_base.yaml`, `modules/user-account/requests/get_account.yaml`, `modules/deals/requests/get_selected_deal.yaml`                                                                                                    | `$lookup { from: user-contacts }` → `contacts`; and the `localField` for the contact join → `user.contact_id` / `contact_id` once ask 1 lands                                                                                                                                                                                                                                                              |
-| `modules/contacts/requests/{get_all_contacts,search_contacts,get_contacts_for_selector,get_role_contacts_for_selector,get_contact_excel_data}.yaml`                                                                                                          | Replace `hidden`/`disabled` guards with `deleted.timestamp: { $exists: false }` (five list-shaped reads); `get_contact` is excluded — drop its `hidden` guard only, keep it able to fetch soft-deleted contacts (see [deleted-contact-view](../../deleted-contact-view/design.md))                                                                                                                         |
-| `modules/contacts/api/create-contact.yaml`, `modules/shared/contact/create-or-link-contact.yaml`                                                                                                                                                             | Drop `hidden: false` / `disabled: false` from the insert; add `deleted: null` (on-convention live shape)                                                                                                                                                                                                                                                                                                   |
-| `modules/contacts/requests/search_contacts.yaml`                                                                                                                                                                                                             | `_user: global_attributes.company_ids` → `_user: attributes.company_ids` on **lines 53 and 59 only** (the two `_user:` caller reads). **Line 57 stays** — it is the contact document's own `global_attributes.company_ids` field key being `$in`-matched, not a caller read (see the name-collision note under "What's actually wrong").                                                                   |
-| `modules/shared/contact/write-profile.yaml`                                                                                                                                                                                                                  | Write `contact_id` as a first-class field via `UpdateUserProfile` (ask 1). (`profile_created` is unchanged — it keeps flowing contact→user on the existing whole-bag denormalization, Decision 4.)                                                                                                                                                                                                         |
-| `modules/shared/contact/create-or-link-contact.yaml`                                                                                                                                                                                                         | Set `user.contact_id` (top-level) at link, inline `:return` and `UpdateUserProfile` branches (ask 1)                                                                                                                                                                                                                                                                                                       |
-| `modules/user-account/api/update-profile.yaml`, `modules/user-admin/api/invite.yaml`, `check-invite-email.yaml`, `get_users_for_selector.yaml`                                                                                                               | Read/write the contact link as `_user.contact_id` / `user.contact_id` (ask 1)                                                                                                                                                                                                                                                                                                                              |
-| `docs/**`                                                                                                                                                                                                                                                    | Update `user-contacts` → `contacts` across consumer docs (`contacts/index.md`, `user-{admin,account}/index.md`, `*/reference/indexes.md`, `co-location.md`, `write-pathways.md`, `search.md`, both `migration.md`); regenerate `llms.txt` and `vars.md` via `pnpm docs:gen`                                                                                                                                |
-| `apps/demo/**`                                                                                                                                                                                                                                               | Rebuild/point demo connections at `contacts`; verify with `pnpm ldf:b`                                                                                                                                                                                                                                                                                                                                     |
+| File(s)                                                                                                                                                                                                                                                      | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modules/{contacts,user-admin,user-account}/connections/*contacts-collection.yaml`                                                                                                                                                                           | `collection: user-contacts` → `contacts` (3 connections). **Also rename the connection id** `user-contacts-collection` → `contacts-collection` in `user-admin` + `user-account`: rename `connections/user-contacts-collection.yaml` → `contacts-collection.yaml`, its `id:` field, and each `module.lowdefy.yaml` `_ref` path + `connections:` export id. (`contacts` already uses `contacts-collection`.)                                                          |
+| `_module.connectionId: user-contacts-collection` call sites (7): `user-account/api/{link-contact-on-signup,update-profile}.yaml`, `user-account/requests/get_users_for_selector.yaml`, `user-admin/api/{check-invite-email,invite (×2),update-profile}.yaml` | Retarget to `contacts-collection` (part of the connection-id rename above)                                                                                                                                                                                                                                                                                                                                                                                          |
+| `modules/user-admin/requests/stages/members_base.yaml`, `modules/user-account/requests/get_account.yaml`, `modules/deals/requests/get_selected_deal.yaml`                                                                                                    | `$lookup { from: user-contacts }` → `contacts`; and the `localField` for the contact join → `user.contact_id` / `contact_id` once ask 1 lands                                                                                                                                                                                                                                                                                                                       |
+| `modules/events/module.lowdefy.yaml:83`, `modules/workflows/module.lowdefy.yaml:152`, `modules/activities/module.lowdefy.yaml:193`                                                                                                                           | Change the person-collection var **default** `user-contacts` → `contacts` (`events.contacts_collection`, `workflows.contacts_collection`, `activities.lookup_collections.contacts`) and the surrounding doc-string mentions; regenerate `vars.md`. These defaults drive the avatar `$lookup from`, so a stale default silently joins a dead collection (empty join → initials fallback, no error).                                                                  |
+| `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js:177,181`, `WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js:40`, `WorkflowAPI/GetWorkflowAction/GetWorkflowAction.js:130`, `EventsTimeline/schema.js:36,41`                         | **Plugin version bump** (not a config edit — hard-coded in published JS). Change the `contactsCollection` schema `default: "user-contacts"` → `"contacts"`, the `?? "user-contacts"` runtime fallbacks → `?? "contacts"`, and the doc strings. Bump + publish the plugin package and update the app's pinned plugin version.                                                                                                                                        |
+| `apps/demo/modules/events/vars.yaml:3`                                                                                                                                                                                                                       | `contacts_collection: user-contacts` → `contacts` (the demo sets it explicitly; verify the avatar join with `pnpm ldf:b` + generated-artifact inspection)                                                                                                                                                                                                                                                                                                           |
+| `modules/contacts/requests/{get_all_contacts,search_contacts,get_contacts_for_selector,get_role_contacts_for_selector,get_contact_excel_data}.yaml`                                                                                                          | Replace `hidden`/`disabled` guards with `deleted.timestamp: { $exists: false }` (five list-shaped reads); `get_contact` is excluded — drop its `hidden` guard only, keep it able to fetch soft-deleted contacts (see [deleted-contact-view](../../deleted-contact-view/design.md))                                                                                                                                                                                  |
+| `modules/contacts/api/create-contact.yaml`, `modules/shared/contact/create-or-link-contact.yaml`                                                                                                                                                             | Drop `hidden: false` / `disabled: false` from the insert; add `deleted: null` (on-convention live shape)                                                                                                                                                                                                                                                                                                                                                            |
+| `modules/contacts/requests/search_contacts.yaml`                                                                                                                                                                                                             | `_user: global_attributes.company_ids` → `_user: attributes.company_ids` on **lines 53 and 59 only** (the two `_user:` caller reads). **Line 57 stays** — it is the contact document's own `global_attributes.company_ids` field key being `$in`-matched, not a caller read (see the name-collision note under "What's actually wrong").                                                                                                                            |
+| `modules/shared/contact/create-or-link-contact.yaml`                                                                                                                                                                                                         | Set `user.contact_id` (top-level) at link, inline `:return` and `UpdateUserProfile` branches (ask 1). **Sole link-write site.** (`write-profile.yaml` is _not_ touched: its `contact_id` var is the target contact's own `_id`, and its `UpdateUserProfile` re-denorm passes only `profile`/`name`/`image`; the link was never in the contact's profile bag, so `write-profile` neither writes nor needs to write it — the link does not change on a profile edit.) |
+| `modules/user-account/api/update-profile.yaml`, `modules/user-admin/api/invite.yaml`, `check-invite-email.yaml`, `get_users_for_selector.yaml`                                                                                                               | Read/write the contact link as `_user.contact_id` / `user.contact_id` (ask 1)                                                                                                                                                                                                                                                                                                                                                                                       |
+| `docs/**`                                                                                                                                                                                                                                                    | Update `user-contacts` → `contacts` across consumer docs (`contacts/index.md`, `user-{admin,account}/index.md`, `*/reference/indexes.md`, `co-location.md`, `write-pathways.md`, `search.md`, both `migration.md`); regenerate `llms.txt` and `vars.md` via `pnpm docs:gen`                                                                                                                                                                                         |
+| `apps/demo/**`                                                                                                                                                                                                                                               | Rebuild/point demo connections at `contacts`; verify with `pnpm ldf:b`                                                                                                                                                                                                                                                                                                                                                                                              |
 
 Decisions 1, 2, 4, and the `global_attributes` sweep are module-side and ship independently of ask 1.
-Decision 3's code changes land only once ask 1 is delivered (fallback: unchanged `_user.profile.contact_id`).
+Decision 3's code changes land only once ask 1 is delivered (fallback: unchanged `_user.profile.contactId`).
 
 ## Migration (data writes — proposed, not run here)
 
@@ -251,8 +319,9 @@ Per repo policy these are proposed as a reviewed migration, not executed:
    `docs/contacts/reference/indexes.md`.
 2. **`$unset` the dead flags** `hidden` and `disabled` from all contact documents (optional; the read
    filters no longer reference them, so this is hygiene, not correctness).
-3. **Move `contact_id` to top-level** on `users` (once ask 1 lands): copy `profile.contact_id` →
-   `contact_id`, drop `profile.contact_id`, and rebuild the partial-unique index as `{ contact_id: 1 }`.
+3. **Move `contact_id` to top-level** on `users` (once ask 1 lands): copy `profile.contactId` →
+   `contact_id` (a camelCase → snake_case normalization, not a same-name relocation), drop
+   `profile.contactId`, and rebuild the partial-unique index as `{ contact_id: 1 }`.
 
 ## Non-goals
 
