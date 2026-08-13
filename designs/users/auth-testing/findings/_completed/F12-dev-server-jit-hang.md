@@ -82,7 +82,7 @@ the fix below removes the user-visible hang regardless of which pages trigger th
 
 ## Not the same finding as F31
 
-F12 is `BuildingPage` (this fetch-gating stall). [F31](./F31-redirecting-to-signin-interstitial.md)
+F12 is `BuildingPage` (this fetch-gating stall). [F31](../_upstream/F31-redirecting-to-signin-interstitial.md)
 is `RedirectingPage` (the wrong-copy 403 enrol redirect). Different components, different
 triggers; F31's redirect merely _leads into_ a cold navigation that can stall here. Kept
 separate. Also not a `navVersion` churn loop (a loop would show a burst of `/api/page` requests

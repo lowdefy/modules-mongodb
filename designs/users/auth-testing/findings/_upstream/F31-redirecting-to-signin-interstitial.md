@@ -49,7 +49,7 @@ interstitial. The dev client is the only one that paints a screen for the redire
 
 ## Not the same finding as F12
 
-Previously hypothesised as a surface of the [F12](./F12-dev-server-jit-hang.md) JIT hang;
+Previously hypothesised as a surface of the [F12](../_completed/F12-dev-server-jit-hang.md) JIT hang;
 **that grouping is wrong.** F31 is `RedirectingPage` (the "Redirecting to sign-in" screen),
 rendered **deterministically on every 401/403** in dev. F12 is `BuildingPage` (the "Building
 page…" screen), a transient JIT-build stall. Different components, different triggers. They

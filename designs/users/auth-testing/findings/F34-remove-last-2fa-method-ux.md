@@ -12,7 +12,7 @@ next Lowdefy endpoint call, and the user experiences:
 2. The page **hangs in a loading state**.
 3. An **abrupt redirect** to the forced two-factor enrolment page
    (`two-factor-enrol.yaml`), which **doesn't feel "inside the app"** (it renders on the
-   chrome-less auth-page shell — see [F32](../../auth-page-polish/F32-auth-page-visual-polish.md)).
+   chrome-less auth-page shell — see [F32](../../_completed/auth-page-polish/F32-auth-page-visual-polish.md)).
 
 ## Root cause — verified
 

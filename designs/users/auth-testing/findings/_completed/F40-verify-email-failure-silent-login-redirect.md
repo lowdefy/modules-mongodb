@@ -1,6 +1,6 @@
 # F40 — Invalid verify-email link (logged out) silently lands on bare login; designed expired view not reached
 
-**Status:** `root-caused` · **Area:** user-account / auth-flow (verify-email)
+**Status:** `fixed` · **Area:** user-account / auth-flow (verify-email)
 
 A **tampered** email-verification link, opened while **logged out**, redirected straight to
 `http://localhost:3000/user-account/login` — a **bare login page with no `?error=` query
