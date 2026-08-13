@@ -476,13 +476,13 @@ blocks:
             blocks:
               # A copyable Paragraph, not a disabled TextInput: browsers do not
               # allow text selection inside a disabled input, and TextInput has
-              # no read-only-but-selectable option. `code: true` keeps 1/l and
-              # 0/O distinguishable when hand-transcribed.
+              # no read-only-but-selectable option. The 52-char secret is rendered
+              # as 4-char monospace pills that wrap within the modal, so it reads
+              # and hand-transcribes cleanly; `copyable.text` copies the raw
+              # ungrouped secret for an authenticator's manual-entry field.
               - id: enroltotp_manual_key
                 type: Paragraph
                 properties:
-                  code: true
-                  copyable: true
                   # An authenticator's manual-entry field wants the base32
                   # secret; the full otpauth:// URI generally fails there. The
                   # operator form of this needs nested _string.split plus array
@@ -491,7 +491,16 @@ blocks:
                     _js: |
                       const uri = state('enroltotp.uri');
                       if (!uri) return null;
-                      return new URLSearchParams(uri.split('?')[1] || '').get('secret');
+                      const secret = new URLSearchParams(uri.split('?')[1] || '').get('secret');
+                      if (!secret) return null;
+                      const style = 'display:inline-block; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:14px; letter-spacing:0.08em; padding:4px 9px; margin:0 6px 6px 0; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border-secondary); border-radius:6px;';
+                      return secret.match(/.{1,4}/g).map((c) => `<span style="${style}">${c}</span>`).join('');
+                  copyable:
+                    text:
+                      _js: |
+                        const uri = state('enroltotp.uri');
+                        if (!uri) return null;
+                        return new URLSearchParams(uri.split('?')[1] || '').get('secret');
           - id: enroltotp.confirmation_code
             type: TextInput
             required: true
@@ -502,6 +511,10 @@ blocks:
               label:
                 title: Confirmation code
                 span: 24
+            events:
+              # Enter runs the identical chain as the Confirm button.
+              onPressEnter:
+                _ref: actions/confirm_enroltotp_modal.yaml
   - id: enroltotp_confirm
     type: Button
     visible:
@@ -517,36 +530,7 @@ blocks:
       variant: solid
     events:
       onClick:
-        _build.array.concat:
-          - - id: validate_confirmation_code
-              type: Validate
-              params:
-                blockIds:
-                  - enroltotp.confirmation_code
-            # A wrong code throws, stopping the chain and keeping the modal on
-            # this phase with the friendly toast.
-            - id: verify_totp
-              type: TwoFactorVerify
-              messages:
-                loading: Confirming…
-                success: Two-factor authentication is on.
-                error: That code is incorrect or has expired. Try again.
-              params:
-                code:
-                  _state: enroltotp.confirmation_code
-                # Without this, a successful verify navigates to its default
-                # home callbackUrl, unmounting the modal before the one-time
-                # backup codes on the next phase can be read. `false` suppresses
-                # navigation so the modal holds on phase `codes`.
-                callbackUrl: false
-            - id: advance_to_codes
-              type: SetState
-              params:
-                enroltotp.phase: codes
-          # The tile flips to On behind the modal. It rides this chain rather
-          # than the Done button so the tile is never stale while the user reads
-          # their codes, and so a failed refetch is not silent on a close.
-          - _ref: actions/refetch_account.yaml
+        _ref: actions/confirm_enroltotp_modal.yaml
   # ── Phase `codes` ── Shown once; the codes are never fetched again.
   - id: backupcodes_message
     type: Html
