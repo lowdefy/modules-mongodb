@@ -4,9 +4,9 @@
 
 The `user-admin` API endpoints are **mixed-plane** files: most pass camelCase params to
 better-auth actions (the API contract, which stays camelCase), but a few also run a **native
-aggregation half** directly against the auth collections (which must move to snake_case). The
+aggregation half** directly against the auth collections (which must move to snake*case). The
 trap is that both planes can appear in the same file (`invite.yaml` has a native `$match`
-_and_ an `InviteMember` action call), so this is an audit, not a find-replace.
+\_and* an `InviteMember` action call), so this is an audit, not a find-replace.
 
 Rule: flip a ref **only** if it is a native `$match`/`$set`/`$lookup`/`$project` on a physical
 column. Leave every better-auth **action param** (`memberId`, `organizationId`, `appRoles`,
