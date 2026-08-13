@@ -51,6 +51,12 @@ payloadSchema:
       description: The output column(s) holding the numeric value series.
       items:
         type: string
+    stacked:
+      type: boolean
+      description: >
+        Bar charts only. With multiple y columns, stack the series into one bar
+        per category instead of side-by-side bars — use when the series are
+        parts of a whole (a breakdown), not unrelated measures.
 routine:
   # Validation throws on an invalid spec (bad pipeline or malformed contract) —
   # the tool call fails with the validator's actionable message. Passing the
@@ -69,22 +75,18 @@ routine:
               _payload: x
             y:
               _payload: y
+            stacked:
+              _payload: stacked
           catalog:
             _module.var: catalog
           roles:
             _user: roles
+  # The validated spec, not a payload echo: validateChartSpec normalizes
+  # `stacked` (present only when true), and this spec is what emit-data-parts
+  # reads back from toolResults and the save-as-report surface persists.
   - :return:
       ok: true
       title:
         _payload: title
       spec:
-        chart:
-          _payload: chart
-        title:
-          _payload: title
-        query:
-          _payload: query
-        x:
-          _payload: x
-        y:
-          _payload: y
+        _state: validated

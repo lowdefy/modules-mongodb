@@ -316,6 +316,38 @@ y-axis name anyway — the legend carries the column names. The fold's other nam
 corner annotation painting the fold key column's name (`Measure`) onto the canvas — is stripped;
 see [the strip decision](#strip-what-must-not-ship-_-keys-functions-and-the-series-annotation).
 
+### `stacked` is an opt-in flag on `bar`; grouped stays the default
+
+_Added 2026-08-13, after dev-test: a user asked the assistant to stack a channel breakdown and the
+assistant correctly answered that it had no way to say so._
+
+Multi-`y` bars render grouped by deliberate choice (above): in the general case the `y` columns are
+unrelated measures — revenue next to cost — and stacking them draws a meaningless total. But the
+breakdown case (channels of one measure per region) is real, stacking is its natural reading, and
+the contract had no vocabulary for it. So chart specs take one optional key:
+
+- `stacked: true` — valid only on `chart: bar`; with multiple `y` columns the builder picks Flint's
+  `Stacked Bar Chart` template (channels `x`/`y`/`color` — the fold key moves from `group` to
+  `color`, exactly the transition Flint itself defines between the two templates). Probed output is
+  clean: `stack: "total"` on every series, no `barWidth`, legend already at `right: 10`.
+- `stacked: true` with a single `y` renders the plain `Bar Chart` unchanged — one series stacks with
+  nothing, so it is allowed uniformly rather than special-cased away.
+- `stacked: true` on `line` or `pie` is a validation error, not silently ignored — the same posture
+  as an options source on a `daterange` filter: erroring is what lets the agent self-correct instead
+  of shipping a plausible unstacked chart.
+
+A flag, not a fourth chart kind, because stacked-vs-grouped is a rendering of the _same_ contract —
+same `x`, same `y` array, same fold — while the three kinds differ in what their contracts mean
+(pie has no axis). It also keeps the vocabulary decision above intact: the spec still says `bar`.
+
+The flag travels everywhere the chart spec does: `render-chart.yaml`'s payload schema and returned
+spec, `validateChartSpec` (normalized so it appears in a validated spec only when `true` — persisted
+parts and report sections stay byte-identical for unstacked charts, and a `_payload` read of an
+absent key arrives as `null`, which must read as absent), `buildDataParts`' part spec,
+`validateReportSpec`'s chart sections, `compileReport`'s resolve-time assembly and its requery
+CallAPI payload, `chart-data.yaml`'s payload schema, the assistant prompt, and the
+presentation-contract doc.
+
 ### Flint's ordering wins by default
 
 Flint re-sorts categorical bars by value descending, overriding the pipeline's own order

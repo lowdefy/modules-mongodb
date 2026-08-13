@@ -7,7 +7,10 @@ const chartSpec = {
   title: "Orders by Status",
   query: {
     collection: "demo_orders",
-    pipeline: [{ $group: { _id: "$status", count: { $sum: 1 } } }, { $project: { _id: 0, status: "$_id", count: 1 } }],
+    pipeline: [
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+      { $project: { _id: 0, status: "$_id", count: 1 } },
+    ],
   },
   x: "status",
   y: ["count"],
@@ -29,6 +32,41 @@ const exportSpec = {
     pipeline: [{ $group: { _id: "$region", total: { $sum: "$total" } } }],
   },
 };
+
+test("a stacked chart spec assembles stacked and keeps stacked in the part's spec", () => {
+  const stackedSpec = {
+    chart: "bar",
+    title: "Sales by Region and Channel",
+    query: chartSpec.query,
+    x: "region",
+    y: ["online", "retail"],
+    stacked: true,
+  };
+  const rows = [
+    { region: "west", online: 5, retail: 3 },
+    { region: "east", online: 2, retail: 4 },
+  ];
+  const parts = buildDataParts({
+    charts: [stackedSpec],
+    results: [rows],
+    roles,
+  });
+  expect(parts).toHaveLength(1);
+  const { option, spec } = parts[0].data;
+  const stacks = new Set(option.series.map((series) => series.stack));
+  expect(stacks.size).toBe(1);
+  expect([...stacks][0]).toBeTruthy();
+  expect(spec.stacked).toBe(true);
+});
+
+test("an unstacked chart part's spec carries no stacked key", () => {
+  const parts = buildDataParts({
+    charts: [chartSpec],
+    results: [[{ status: "paid", count: 5 }]],
+    roles,
+  });
+  expect("stacked" in parts[0].data.spec).toBe(false);
+});
 
 test("builds chart and download parts", () => {
   const rows = [
@@ -103,8 +141,15 @@ test("builds a table part carrying its rows, its total and its spec", () => {
 });
 
 test("retains at most 200 rows, with row_count holding the true total", () => {
-  const rows = Array.from({ length: 964 }, (_, index) => ({ status: "paid", total: index }));
-  const parts = buildDataParts({ tables: [tableSpec], tableResults: [rows], roles });
+  const rows = Array.from({ length: 964 }, (_, index) => ({
+    status: "paid",
+    total: index,
+  }));
+  const parts = buildDataParts({
+    tables: [tableSpec],
+    tableResults: [rows],
+    roles,
+  });
   expect(parts[0].data.rows).toHaveLength(200);
   expect(parts[0].data.rows[199]).toEqual({ status: "paid", total: 199 });
   // The number a card needs to say "first 200 of 964" rather than imply it is
@@ -115,7 +160,15 @@ test("retains at most 200 rows, with row_count holding the true total", () => {
 test("a table part's rows carry only the declared columns, not a fat extra field", () => {
   const parts = buildDataParts({
     tables: [tableSpec],
-    tableResults: [[{ status: "paid", total: 10, meta: { region: "west", tags: ["a", "b"] } }]],
+    tableResults: [
+      [
+        {
+          status: "paid",
+          total: 10,
+          meta: { region: "west", tags: ["a", "b"] },
+        },
+      ],
+    ],
     roles,
   });
   expect(parts[0].data.rows).toEqual([{ status: "paid", total: 10 }]);
@@ -176,7 +229,11 @@ test("carries the export description through to the download part", () => {
   expect(parts).toEqual([
     {
       type: "data-report-download",
-      data: { label: "Orders export", description: "Revenue by region", query: exportSpec.query },
+      data: {
+        label: "Orders export",
+        description: "Revenue by region",
+        query: exportSpec.query,
+      },
     },
   ]);
 });
@@ -212,25 +269,39 @@ test("an invalid chart spec is skipped, not thrown", () => {
   const rows = [{ status: "paid", count: 1 }];
   const parts = buildDataParts({
     charts: [
-      { chart: "scatter3d", title: "X", query: chartSpec.query, x: "status", y: ["count"] },
+      {
+        chart: "scatter3d",
+        title: "X",
+        query: chartSpec.query,
+        x: "status",
+        y: ["count"],
+      },
       chartSpec,
     ],
     results: [[], rows],
     downloads: [exportSpec],
     roles,
   });
-  expect(parts.map((p) => p.type)).toEqual(["data-report-chart", "data-report-download"]);
+  expect(parts.map((p) => p.type)).toEqual([
+    "data-report-chart",
+    "data-report-download",
+  ]);
   expect(parts[0].data.title).toBe("Orders by Status");
 });
 
 test("a chart whose declared column is missing from its rows is skipped", () => {
   const parts = buildDataParts({
     charts: [chartSpec, chartSpec],
-    results: [[{ status: "paid", wrongKey: 5 }], [{ status: "paid", count: 1 }]],
+    results: [
+      [{ status: "paid", wrongKey: 5 }],
+      [{ status: "paid", count: 1 }],
+    ],
     roles,
   });
   expect(parts).toHaveLength(1);
-  expect(parts[0].data.option.series[0].data).toEqual([{ name: "paid", value: 1 }]);
+  expect(parts[0].data.option.series[0].data).toEqual([
+    { name: "paid", value: 1 },
+  ]);
 });
 
 test("a chart with a non-numeric y column is skipped", () => {
@@ -270,11 +341,21 @@ test("zero rows and null value cells build a chart without a verification failur
 test("a chart part's option carries only the contract's columns, not a fat extra field", () => {
   const parts = buildDataParts({
     charts: [chartSpec],
-    results: [[{ status: "paid", count: 5, meta: { region: "west", tags: ["a", "b"] } }]],
+    results: [
+      [
+        {
+          status: "paid",
+          count: 5,
+          meta: { region: "west", tags: ["a", "b"] },
+        },
+      ],
+    ],
     roles,
   });
   expect(parts).toHaveLength(1);
-  expect(parts[0].data.option.series[0].data).toEqual([{ name: "paid", value: 5 }]);
+  expect(parts[0].data.option.series[0].data).toEqual([
+    { name: "paid", value: 5 },
+  ]);
 });
 
 // The part is persisted and travels through JSON on the way to the panel, so a
@@ -288,8 +369,12 @@ test("a chart part carries a numeric height and a JSON-safe option", () => {
   });
   expect(typeof parts[0].data.height).toBe("number");
   expect(parts[0].data.option.dataset).toBeUndefined();
-  expect(Object.keys(parts[0].data.option).filter((key) => key.startsWith("_"))).toEqual([]);
-  expect(parts[0].data.option).toEqual(JSON.parse(JSON.stringify(parts[0].data.option)));
+  expect(
+    Object.keys(parts[0].data.option).filter((key) => key.startsWith("_")),
+  ).toEqual([]);
+  expect(parts[0].data.option).toEqual(
+    JSON.parse(JSON.stringify(parts[0].data.option)),
+  );
 });
 
 test("a contract-shaped export payload is skipped, not thrown", () => {

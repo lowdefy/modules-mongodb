@@ -18,7 +18,7 @@ Each query-backed section carries `query: { collection, pipeline }` plus its con
 
 | Section    | Contract                                                                          |
 | ---------- | --------------------------------------------------------------------------------- |
-| `chart`    | `chart: bar\|line\|pie`, `x: column`, `y: [column, …]` (one or more value series) |
+| `chart`    | `chart: bar\|line\|pie`, `x: column`, `y: [column, …]` (one or more value series), optional `stacked: true` (bar only) |
 | `kpi`      | `valueKey: column` (read from row 0), optional `format`                           |
 | `table`    | `columns: [{ key, label?, format? }]`                                             |
 | `download` | none — CSV headers are the row keys                                               |
@@ -36,6 +36,8 @@ The chart contract names columns; it never describes the picture. Axis names, la
 **Height follows content.** A chart's canvas is a constant plot area plus the axis furniture its own labels need, so two charts in one report are rarely the same height, and moving a filter can resize the section it re-queries. The plot itself is never squeezed to fit a frame — a chart of long category names grows instead of cramming.
 
 **Multiple `y` columns render as sibling series** — grouped bars, or one line per column — named by the column names, so the legend reads the measures an author declared. The shared y-axis reads `Value`: two differently-named measures share one axis, and either name would be wrong for the other.
+
+**`stacked: true` stacks a bar chart's series instead.** Grouped is the default because arbitrary `y` columns are unrelated measures whose stacked total means nothing; declare `stacked: true` when the series are parts of a whole — a breakdown such as sales by channel within each region. Bar charts only: on `line` or `pie` it is a validation error, not silently ignored. With a single `y` column it changes nothing (one series stacks with nothing).
 
 **Tooltips are the ECharts defaults.** A compiled chart reaches the browser as JSON, and JSON carries no functions, so the compiler's own tooltip formatter cannot make the trip. Hovering shows the series name and the raw value.
 

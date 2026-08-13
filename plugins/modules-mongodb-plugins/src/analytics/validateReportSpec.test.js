@@ -139,6 +139,60 @@ test("rejects a chart section missing x/y", () => {
   ).toThrow(/x must be a non-empty column name/);
 });
 
+test("a stacked bar section keeps stacked; unstacked sections don't grow the key", () => {
+  const { sections } = validateReportSpec({
+    spec: {
+      title: "T",
+      sections: [
+        {
+          type: "chart",
+          chart: "bar",
+          label: "Stacked",
+          query: ordersByRegion,
+          x: "region",
+          y: ["total"],
+          stacked: true,
+        },
+        {
+          type: "chart",
+          chart: "bar",
+          label: "Grouped",
+          query: ordersByRegion,
+          x: "region",
+          y: ["total"],
+        },
+      ],
+    },
+    catalog: testCatalog,
+    roles,
+  });
+  expect(sections[0].stacked).toBe(true);
+  expect("stacked" in sections[1]).toBe(false);
+});
+
+test("rejects stacked on a non-bar chart section", () => {
+  expect(() =>
+    validateReportSpec({
+      spec: {
+        title: "T",
+        sections: [
+          {
+            type: "chart",
+            chart: "line",
+            label: "C",
+            query: ordersByRegion,
+            x: "region",
+            y: ["total"],
+            stacked: true,
+          },
+        ],
+      },
+      catalog: testCatalog,
+      roles,
+    }),
+  ).toThrow(/stacked only applies to bar charts/);
+});
+
 test("rejects a kpi section missing valueKey", () => {
   expect(() =>
     validateReportSpec({

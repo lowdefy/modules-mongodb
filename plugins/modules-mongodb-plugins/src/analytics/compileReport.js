@@ -281,6 +281,7 @@ function requeryActions({
             title: section.label,
             x: section.x,
             y: section.y,
+            ...(section.stacked ? { stacked: true } : {}),
             query: section.query,
             filters: boundFilters(section, filterSectionsByField),
           },
@@ -1228,6 +1229,7 @@ function compileReport({
             x: section.x,
             y: section.y,
             rows,
+            stacked: section.stacked,
           });
         } catch (error) {
           out.push(...brokenSectionBlocks(section, error.message, brokenCtx));

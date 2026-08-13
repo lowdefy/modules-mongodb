@@ -95,19 +95,30 @@ function buildDataParts({
     const rows = resultsArray[index];
     if (rows === null || rows === undefined) return;
     try {
-      const { chart, title, query, x, y } = validateChartSpec({ spec, roles });
+      const { chart, title, query, x, y, stacked } = validateChartSpec({
+        spec,
+        roles,
+      });
       verifyChartContract({ x, y, rows });
       // The canvas height travels with the option because it is derived from
       // the same layout pass — the axis furniture the compiler sized for these
       // labels only fits at the height it returned.
-      const { option, height } = buildFlintOption({ chart, x, y, rows });
+      const { option, height } = buildFlintOption({
+        chart,
+        x,
+        y,
+        rows,
+        stacked,
+      });
       parts.push({
         type: "data-report-chart",
         data: {
           title,
           option,
           height,
-          spec: { chart, query, x, y },
+          // stacked is part of the contract the save-as-report surface carries
+          // into a section; validateChartSpec only returns it when true.
+          spec: { chart, query, x, y, ...(stacked ? { stacked } : {}) },
         },
       });
       chartBudget -= 1;
@@ -154,7 +165,10 @@ function buildDataParts({
     if (downloadBudget <= 0) return;
     try {
       const { label, description, query } = validateExportSpec({ spec, roles });
-      parts.push({ type: "data-report-download", data: { label, description, query } });
+      parts.push({
+        type: "data-report-download",
+        data: { label, description, query },
+      });
       downloadBudget -= 1;
     } catch {
       // Skip this download; the turn's other parts still reach the panel.

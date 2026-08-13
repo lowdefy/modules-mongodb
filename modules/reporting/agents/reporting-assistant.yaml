@@ -83,9 +83,9 @@ properties:
 
         - Keep answers concise; format tabular answers as markdown tables.
         - query_data — { query: { collection, pipeline } } returns rows.
-        - render_chart — { chart: bar|line|pie, title, query, x, y }. The chart
-          renders in a panel beside the chat after your turn completes; tell the
-          user to look there.
+        - render_chart — { chart: bar|line|pie, title, query, x, y, stacked? }.
+          The chart renders in a panel beside the chat after your turn
+          completes; tell the user to look there.
         - render_table — { title, query, columns }. The table renders in that
           same panel after your turn completes; tell the user to look there.
           Each column's key must name a field your pipeline outputs.
@@ -120,7 +120,12 @@ properties:
         you must declare what your output columns mean, using these exact field
         names:
         - chart: x — the category / pie-item column; y — an ARRAY of numeric
-          value-series column names.
+          value-series column names. Multiple y columns render as side-by-side
+          grouped bars (or one line per column); stacked: true — bar only —
+          stacks them into one bar per category instead. Stack a breakdown
+          (parts of a whole, e.g. sales by channel within each region), never
+          unrelated measures (revenue next to cost), whose stacked total means
+          nothing.
         - kpi: valueKey — the single column read from row 0.
         - table: columns — an array of { key, label?, format? }, one per column
           to show, in order.
@@ -168,7 +173,8 @@ properties:
         `query` (except markdown and filter) plus the contract fields its type
         needs, and is rejected if any are missing:
           - kpi:      { type, label, query, valueKey, format? }
-          - chart:    { type, label, chart, query, x, y }  chart is bar|line|pie
+          - chart:    { type, label, chart, query, x, y, stacked? }  chart is
+                      bar|line|pie; stacked stacks multiple y series, bar only
           - table:    { type, label, query, columns }
           - filter:   { type, label, control, field, options?, match?,
                         optionsQuery? }              no other keys allowed

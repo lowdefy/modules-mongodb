@@ -59,6 +59,18 @@ test("multi-y line folds onto a colour channel", () => {
   ).toMatchSnapshot();
 });
 
+test("stacked multi-y bar folds into stacked series", () => {
+  expect(
+    buildFlintOption({
+      chart: "bar",
+      x: "region",
+      y: ["revenue", "cost"],
+      rows: regionRows,
+      stacked: true,
+    }),
+  ).toMatchSnapshot();
+});
+
 test("pie encodes the category on colour and the measure on size", () => {
   expect(
     buildFlintOption({
@@ -87,17 +99,18 @@ function findKeys(node, predicate, path = "", found = []) {
 }
 
 const specs = [
-  ["bar", "region", ["revenue"], regionRows],
-  ["bar", "region", ["revenue", "cost"], regionRows],
-  ["line", "month", ["revenue"], monthRows],
-  ["line", "month", ["revenue", "cost"], monthRows],
-  ["pie", "region", ["revenue"], regionRows],
+  ["bar", "region", ["revenue"], regionRows, false],
+  ["bar", "region", ["revenue", "cost"], regionRows, false],
+  ["bar", "region", ["revenue", "cost"], regionRows, true],
+  ["line", "month", ["revenue"], monthRows, false],
+  ["line", "month", ["revenue", "cost"], monthRows, false],
+  ["pie", "region", ["revenue"], regionRows, false],
 ];
 
 test.each(specs)(
-  "%s option of %s by %p carries no private or unserializable keys",
-  (chart, x, y, rows) => {
-    const { option } = buildFlintOption({ chart, x, y, rows });
+  "%s option of %s by %p (stacked: %s) carries no private or unserializable keys",
+  (chart, x, y, rows, stacked) => {
+    const { option } = buildFlintOption({ chart, x, y, rows, stacked });
     expect(findKeys(option, (key) => key.startsWith("_"))).toEqual([]);
     expect(findKeys(option, (_, value) => typeof value === "function")).toEqual(
       [],
@@ -124,12 +137,37 @@ test("multi-y bar series are grouped, not stacked, and named by column", () => {
   option.series.forEach((series) => expect(series.stack).toBeUndefined());
 });
 
+test("stacked multi-y bar series share one stack and keep their column names", () => {
+  const { option } = buildFlintOption({
+    chart: "bar",
+    x: "region",
+    y: ["revenue", "cost"],
+    rows: regionRows,
+    stacked: true,
+  });
+  expect(option.series).toHaveLength(2);
+  expect(option.series.map((series) => series.name).sort()).toEqual([
+    "Cost",
+    "Revenue",
+  ]);
+  const stacks = new Set(option.series.map((series) => series.stack));
+  expect(stacks.size).toBe(1);
+  expect([...stacks][0]).toBeTruthy();
+});
+
+test("stacked with a single y renders the same plain bar as unstacked", () => {
+  const spec = { chart: "bar", x: "region", y: ["revenue"], rows: regionRows };
+  expect(buildFlintOption({ ...spec, stacked: true })).toEqual(
+    buildFlintOption(spec),
+  );
+});
+
 // baseSize.width is a constant the real canvas never matches, so nothing
 // width-absolute may survive assembly: fixed-width bars overflow their slots
 // on a narrower canvas and overlap, and a left-offset legend leaves it.
 test("no series carries an absolute bar width, and legends never sit at a pixel left offset", () => {
-  for (const [chart, x, y, rows] of specs) {
-    const { option } = buildFlintOption({ chart, x, y, rows });
+  for (const [chart, x, y, rows, stacked] of specs) {
+    const { option } = buildFlintOption({ chart, x, y, rows, stacked });
     for (const series of option.series) {
       expect(series.barWidth).toBeUndefined();
     }

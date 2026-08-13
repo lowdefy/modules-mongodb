@@ -36,6 +36,9 @@ payloadSchema:
       description: The output column(s) holding the numeric value series.
       items:
         type: string
+    stacked:
+      type: boolean
+      description: Bar charts only — stack the value series instead of grouping them.
     query:
       type: object
       description: The collection and pipeline to run.
@@ -96,6 +99,8 @@ routine:
               _payload: x
             y:
               _payload: y
+            stacked:
+              _payload: stacked
             query:
               _payload: query
           roles:
@@ -119,5 +124,7 @@ routine:
           _state: spec.x
         y:
           _state: spec.y
+        stacked:
+          _state: spec.stacked
         rows:
           _step: run_query

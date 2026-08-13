@@ -458,6 +458,39 @@ describe("a filter driving a chart and a table", () => {
     });
   });
 
+  test("a stacked chart section assembles stacked and carries stacked into its re-query", () => {
+    const stackedBlocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          chartAndTableSpec.sections[0],
+          {
+            ...chartAndTableSpec.sections[1],
+            y: ["total", "tax"],
+            stacked: true,
+          },
+        ],
+      },
+      results: [
+        [
+          { region: "EU", total: 2500, tax: 500 },
+          { region: "US", total: 1700, tax: 300 },
+        ],
+      ],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    const stackedById = Object.fromEntries(stackedBlocks.map((b) => [b.id, b]));
+    const option = stackedById.s1.properties.option.__if_none[1];
+    const stacks = new Set(option.series.map((series) => series.stack));
+    expect(stacks.size).toBe(1);
+    expect([...stacks][0]).toBeTruthy();
+    const [call] = stackedById.filter_status.events.onChange;
+    expect(call.params.payload.stacked).toBe(true);
+  });
+
   test("the table on the same filter still re-queries query-data for rows", () => {
     const [call, set] = onChange.slice(2);
     expect(call.params.endpointId).toBe(endpointId);

@@ -46,13 +46,16 @@ export function validateQuery(query, { catalog, roles, fail }) {
 /**
  * Validates a chart spec (the render_chart tool's input, and the chart section
  * shape inside report specs):
- *   { chart: bar|line|pie, title, query: { collection, pipeline }, x, y: [column] }
+ *   { chart: bar|line|pie, title, query: { collection, pipeline }, x, y: [column],
+ *     stacked? }
  *
  * The presentation contract (`x`, `y`) is inert data — length-capped strings,
  * no query grammar, zero security surface. It cannot be checked against the
  * pipeline statically (an arbitrary pipeline's output shape is unknown); it is
  * verified against the actual rows at render points (buildDataParts /
- * compileReport). Returns { chart, title, query, x, y }.
+ * compileReport). Returns { chart, title, query, x, y, stacked? } — `stacked`
+ * appears only when true, so persisted specs of unstacked charts don't grow a
+ * key.
  */
 function validateChartSpec({ spec, catalog, roles }) {
   const fail = (m) => {
@@ -92,7 +95,31 @@ function validateChartSpec({ spec, catalog, roles }) {
     }
   }
 
-  return { chart: spec.chart, title: spec.title, query, x: spec.x, y: spec.y };
+  // A `_payload` read of an absent key arrives as null, so null reads as
+  // absent, not as a bad value. `stacked: false` is accepted and dropped —
+  // grouped is the default, so false and absent are the same spec.
+  if (spec.stacked !== null && spec.stacked !== undefined) {
+    if (typeof spec.stacked !== "boolean") {
+      fail("stacked must be a boolean.");
+    }
+    if (spec.stacked && spec.chart !== "bar") {
+      fail(
+        `stacked only applies to bar charts — remove it or use chart: bar (got chart: ${spec.chart}).`,
+      );
+    }
+  }
+
+  const out = {
+    chart: spec.chart,
+    title: spec.title,
+    query,
+    x: spec.x,
+    y: spec.y,
+  };
+  if (spec.stacked === true) {
+    out.stacked = true;
+  }
+  return out;
 }
 
 export default validateChartSpec;

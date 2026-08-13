@@ -488,3 +488,115 @@ exports[`single-y line over a temporal x 1`] = `
   },
 }
 `;
+
+exports[`stacked multi-y bar folds into stacked series 1`] = `
+{
+  "height": 277,
+  "option": {
+    "color": [
+      "#5470c6",
+      "#91cc75",
+      "#fac858",
+      "#ee6666",
+      "#73c0de",
+      "#3ba272",
+      "#fc8452",
+      "#9a60b4",
+      "#ea7ccc",
+      "#d48265",
+    ],
+    "grid": {
+      "bottom": 61,
+      "left": 86,
+      "right": 107,
+      "top": 36,
+    },
+    "legend": {
+      "align": "left",
+      "bottom": undefined,
+      "data": [
+        "Revenue",
+        "Cost",
+      ],
+      "orient": "vertical",
+      "right": 10,
+      "top": 20,
+      "type": "plain",
+    },
+    "series": [
+      {
+        "barCategoryGap": "10%",
+        "data": [
+          1200,
+          1100,
+          900,
+        ],
+        "itemStyle": {
+          "color": "#5470c6",
+        },
+        "name": "Revenue",
+        "stack": "total",
+        "type": "bar",
+      },
+      {
+        "barCategoryGap": "10%",
+        "data": [
+          800,
+          400,
+          700,
+        ],
+        "itemStyle": {
+          "color": "#91cc75",
+        },
+        "name": "Cost",
+        "stack": "total",
+        "type": "bar",
+      },
+    ],
+    "tooltip": {
+      "axisPointer": {
+        "type": "shadow",
+      },
+      "trigger": "axis",
+    },
+    "xAxis": {
+      "axisLabel": {
+        "fontSize": 10,
+        "rotate": 0,
+      },
+      "axisLine": {
+        "show": true,
+      },
+      "axisTick": {
+        "alignWithLabel": true,
+        "show": true,
+      },
+      "data": [
+        "North",
+        "East",
+        "South",
+      ],
+      "name": "Region",
+      "nameGap": 25,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 10,
+      },
+      "type": "category",
+    },
+    "yAxis": {
+      "axisLabel": {
+        "fontSize": 10,
+      },
+      "name": "Value",
+      "nameGap": 45,
+      "nameLocation": "middle",
+      "nameTextStyle": {
+        "fontSize": 10,
+      },
+      "scale": false,
+      "type": "value",
+    },
+  },
+}
+`;

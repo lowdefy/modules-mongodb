@@ -17,7 +17,7 @@ import validateTableSpec, { validateFormat } from "./validateTableSpec.js";
  * On the open engine sections carry raw `{ collection, pipeline }` queries plus
  * a declared presentation contract (the output columns each renderer reads):
  *   { type: kpi,      label, query, valueKey, format?, filterBy? }
- *   { type: chart,    chart, label, query, x, y, filterBy? }
+ *   { type: chart,    chart, label, query, x, y, stacked?, filterBy? }
  *   { type: table,    label, query, columns: [{ key, label?, format? }], filterBy? }
  *   { type: filter,   control: select|multiselect|daterange, field, label, options?, match?, optionsQuery? }
  *   { type: markdown, content }
@@ -207,13 +207,14 @@ function validateReportSpec({ spec, catalog, roles }) {
 
     if (section.type === "chart") {
       const label = validateLabel(section, index);
-      const { chart, query, x, y } = validateChartSpec({
+      const { chart, query, x, y, stacked } = validateChartSpec({
         spec: {
           chart: section.chart,
           title: label,
           query: section.query,
           x: section.x,
           y: section.y,
+          stacked: section.stacked,
         },
         catalog,
         roles,
@@ -226,6 +227,9 @@ function validateReportSpec({ spec, catalog, roles }) {
         query,
         x,
         y,
+        // Only ever true — validateChartSpec drops false/absent, so unstacked
+        // sections persist without the key.
+        ...(stacked ? { stacked } : {}),
         filterBy: section.filterBy ?? [],
       };
     }

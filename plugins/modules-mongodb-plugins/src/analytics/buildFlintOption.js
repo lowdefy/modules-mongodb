@@ -57,7 +57,7 @@ function strip(node) {
   }
 }
 
-function buildFlintOption({ chart, x, y, rows }) {
+function buildFlintOption({ chart, x, y, rows, stacked }) {
   const values = rows ?? [];
   const multi = y.length > 1;
   const xName = humanize(x);
@@ -84,16 +84,23 @@ function buildFlintOption({ chart, x, y, rows }) {
     chartType = "Pie Chart";
     encodings = { color: { field: xName }, size: { field: yName } };
   } else if (chart === "bar") {
-    // Folded series through a plain "Bar Chart" come back stacked; only
-    // "Grouped Bar Chart" (whose channels include `group`) dodges them.
-    chartType = multi ? "Grouped Bar Chart" : "Bar Chart";
-    encodings = multi
-      ? {
-          x: { field: xName },
-          y: { field: SERIES_VALUE },
-          group: { field: SERIES_KEY },
-        }
-      : { x: { field: xName }, y: { field: yName } };
+    // Grouped is the default for folded series because arbitrary `y` columns
+    // are unrelated measures whose stacked total means nothing; `stacked` opts
+    // a breakdown into "Stacked Bar Chart", whose fold-key channel is `color`
+    // where the grouped template's is `group`. A plain "Bar Chart" is never
+    // given folded series — it stacks them regardless — and a single series
+    // stacks with nothing, so `stacked` changes nothing there.
+    if (multi) {
+      chartType = stacked ? "Stacked Bar Chart" : "Grouped Bar Chart";
+      encodings = {
+        x: { field: xName },
+        y: { field: SERIES_VALUE },
+        [stacked ? "color" : "group"]: { field: SERIES_KEY },
+      };
+    } else {
+      chartType = "Bar Chart";
+      encodings = { x: { field: xName }, y: { field: yName } };
+    }
   } else {
     chartType = "Line Chart";
     encodings = multi

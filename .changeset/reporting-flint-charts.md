@@ -35,3 +35,8 @@ Plugin: new `_analytics.buildFlintOption` (`{ chart, x, y, rows }` →
 `{ option, height }`, JSON-safe); `buildEChartsOption` is removed, and
 `compileReport` now requires a `chartEndpointId` alongside the existing
 endpoint ids.
+
+Chart specs take one new optional key: `stacked: true` (bar charts only) stacks
+multiple `y` series into one bar per category instead of the default
+side-by-side grouping — for breakdowns (parts of a whole), not unrelated
+measures. On `line` or `pie` it is a validation error.
