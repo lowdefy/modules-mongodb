@@ -11,8 +11,12 @@ try:
     params:
       code:
         _state: code
+      # Coerce to boolean so TwoFactorVerify never sees a non-boolean
+      # trustDevice (the param is type-checked before the request fires).
       trustDevice:
-        _state: trust_device
+        _if_none:
+          - _state: trust_device
+          - false
   - id: tf_totp_continue
     type: Link
     params:

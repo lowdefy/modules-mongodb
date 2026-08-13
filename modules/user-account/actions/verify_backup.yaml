@@ -10,8 +10,13 @@ try:
     params:
       backupCode:
         _state: backup_code
+      # Coerce to boolean: the trust-device switch is hidden on the backup view,
+      # so its state key is undefined here, and TwoFactorVerify rejects a
+      # non-boolean trustDevice before the request fires.
       trustDevice:
-        _state: trust_device
+        _if_none:
+          - _state: trust_device
+          - false
   - id: tf_backup_continue
     type: Link
     params:

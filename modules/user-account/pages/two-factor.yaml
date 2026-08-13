@@ -164,7 +164,7 @@ _ref:
         required: true
         properties:
           size: large
-          placeholder: xxxx-xxxx
+          placeholder: xxxxx-xxxxx
           label:
             title: Backup code
             colon: false
