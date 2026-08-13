@@ -1,6 +1,6 @@
 # F44 — TOTP enrolment redirects to home after verify; backup codes lost (modal + forced-enrol)
 
-**Status:** `root-caused` · **Area:** user-account / 2FA enrolment
+**Status:** `fixed` · **Area:** user-account / 2FA enrolment
 
 TOTP enrolment completes, then the platform `TwoFactorVerify` action **navigates the page to
 home** before the backup codes can be read or saved. BetterAuth returns plaintext backup codes
@@ -111,40 +111,33 @@ itself but **does not navigate**, so on success we navigate to the callbackUrl".
 "modal works" observation predated the bump, so its scope-narrowing was correct _at the time_
 and is simply overtaken by the platform change.
 
-## Fix direction — upstream
+## Fix — in-repo, `callbackUrl: false` on the two enrolment verifies
 
-**No module change fixes this properly; the fix belongs in the platform client
-(`@lowdefy/client` `twoFactorVerify`).** The root defect is that a successful verify
-**navigates by default** — with no `callbackUrl` given, `resolveCallbackURL` walks to the home
-default and `navigateToTarget` fires on the returned token. A verify action that navigates to a
-destination the caller never named is a footgun: it is what silently discards the one-time
-backup codes here, and it is what double-navigates the sign-in page (home, _then_ its explicit
-`Link` to `?callbackUrl=`).
+**Decided: fix in this repo, not upstream.** Flipping the platform default (make post-verify
+navigation opt-in) would change `twoFactorVerify` behaviour for every consumer, and the
+standard case — a sign-in challenge that _wants_ to land on `callbackUrl` after verify — relies
+on the navigating default. The two enrolment surfaces here are the non-standard case: they
+verify a second factor mid-enrolment and must stay on the page to show the one-time backup
+codes. It is correct for the non-standard callers to opt out explicitly rather than to invert
+the default under everyone else.
 
-**Make post-verify navigation opt-in, not opt-out:** absent an explicit `callbackUrl`,
-`twoFactorVerify` should **not** navigate — it should set the session cookie and return, leaving
-routing to the caller. Navigation happens only when a caller passes a real `callbackUrl`.
-(`callbackUrl: false` already returns `undefined` from `resolveCallbackURL`; this change makes
-_absent_ behave the same as _false_, so the safe behaviour is the default.)
+Both enrolment verifies now pass **`callbackUrl: false`**, which returns `undefined` from
+`resolveCallbackURL` so `navigateToTarget` never fires:
 
-This one platform change resolves all three consumers of the action **with no module edits**:
+- **Manage modal** (`modal_enroltotp.yaml`, `verify_totp`) — no navigation → the modal holds on
+  phase `codes`. Fixed.
+- **Forced-enrol page** (`two-factor-enrol.yaml`, `verify_enrol_totp`) — no navigation → the
+  `UpdateSession` refreshes `_user` and the done/codes state takes over; the existing
+  `enrol_continue` → `Link { home: true }` still navigates deliberately once the user ticks
+  "I've saved my backup codes". Fixed.
 
-- **Manage modal** (`modal_enroltotp.yaml`, `verify_totp`) — passes no `callbackUrl` → no
-  navigation → the modal holds on phase `codes`. Fixed.
-- **Forced-enrol page** (`two-factor-enrol.yaml`, `verify_enrol_totp`) — passes no `callbackUrl`
-  → no navigation → the done/codes state takes over; the existing `enrol_continue` →
-  `Link { home: true }` still navigates deliberately once the user ticks "I've saved my backup
-  codes". Fixed.
-- **Sign-in challenge page** (`two-factor.yaml`) — passes no `callbackUrl` → no auto-navigation,
-  so its explicit `tf_totp_continue` / backup-code `Link` to `?callbackUrl=` becomes the single
-  navigation. The current double-nav (home, then callbackUrl) disappears. Fixed.
+**Sign-in challenge page (`two-factor.yaml`) is deliberately left alone.** It passes no
+`callbackUrl` and keeps the navigating default; its explicit `Link` to `?callbackUrl=` is a
+second navigation on top of the default home nav. That double-nav is cosmetic (the user still
+lands on the intended target) and is out of scope for this data-loss finding — not a case worth
+inverting the platform default to tidy.
 
-The module was written against exactly this _no-navigate_ `TwoFactorVerify` contract and still
-documents it (`two-factor.yaml:80`: "TwoFactorVerify sets the session cookie itself but **does
-not navigate**, so on success we navigate to the callbackUrl"). The upstream change restores
-that contract rather than papering over it per-call.
-
-**Owner action:** raise this against `@lowdefy/client` (same area as the already-landed F11
-`callback-url-default` change). Until it lands, the module carries no fix — this is a data-loss
-bug, so if a stopgap is needed before the release, `callbackUrl: false` on the two enrolment
-verifies is a legal interim opt-out, to be reverted once the default flips upstream.
+The sign-in page comment (`two-factor.yaml:80`: "TwoFactorVerify sets the session cookie itself
+but **does not navigate**") predates the auth-upgrade platform bump and no longer describes the
+bumped client, which does navigate by default. That comment is stale but harmless; leave it for
+a separate pass rather than reopening it here.

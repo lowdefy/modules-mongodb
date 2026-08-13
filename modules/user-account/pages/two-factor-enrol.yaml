@@ -307,6 +307,13 @@ _ref:
               params:
                 code:
                   _state: enrol.confirmation_code
+                # Without this, a successful verify navigates to its default
+                # home callbackUrl the instant it resolves, racing ahead of the
+                # UpdateSession below so the done/codes state never paints and
+                # the one-time backup codes are lost. `false` suppresses
+                # navigation; enrol_continue's explicit Link handles routing
+                # once the user ticks "I've saved my backup codes".
+                callbackUrl: false
             - id: refresh_enrol_session
               type: UpdateSession
 

@@ -534,6 +534,11 @@ blocks:
               params:
                 code:
                   _state: enroltotp.confirmation_code
+                # Without this, a successful verify navigates to its default
+                # home callbackUrl, unmounting the modal before the one-time
+                # backup codes on the next phase can be read. `false` suppresses
+                # navigation so the modal holds on phase `codes`.
+                callbackUrl: false
             - id: advance_to_codes
               type: SetState
               params:
