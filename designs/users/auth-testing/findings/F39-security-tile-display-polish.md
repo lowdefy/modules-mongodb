@@ -3,7 +3,7 @@
 **Status:** `enhancement` · **Area:** user-account / security tile
 
 Presentation nits on the signed-in **account-workspace tiles** (Security + Sessions), gathered
-on the run. Distinct from [F32](./F32-auth-page-visual-polish.md), which covers the public
+on the run. Distinct from [F32](../../auth-page-polish/F32-auth-page-visual-polish.md), which covers the public
 **auth-page shell**; this is the in-app tiles.
 
 A passkey row currently renders as:

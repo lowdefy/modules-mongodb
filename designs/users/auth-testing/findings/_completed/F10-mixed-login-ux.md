@@ -1,7 +1,7 @@
 # F10 — Mixed-deployment login UX: password form + magic-link button together is confusing
 
 **Status:** `promoted` · **Area:** user-account / login · **Owned by:**
-[mixed-login-method-first](../../../mixed-login-method-first/design.md) (method-first chosen)
+[mixed-login-method-first](../../../_completed/mixed-login-method-first/design.md) (method-first chosen)
 
 In the mixed config (`emailAndPassword` + `magicLink` both on), the login page shows the
 full password form _and_ a magic-link button below the "or" divider — the shipped

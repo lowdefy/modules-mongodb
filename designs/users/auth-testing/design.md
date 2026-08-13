@@ -98,7 +98,6 @@ item (see below).
 
 The `findings/` folder is a **staging area for issues that carry an open design decision** —
 a contract, schema, or intended-behaviour question that needs a call before it can be built.
-It is **not a bug tracker.**
 
 - **A bug** — wrong output, a crash, a render error, a stale read — is fixed directly and
   recorded as inline evidence on its checklist item. It never gets a findings file. Bugs are
@@ -108,10 +107,7 @@ It is **not a bug tracker.**
   and the open decision. IDs are **stable and never renumbered** (they are cited across other
   designs); new findings continue from **F31**.
 
-A finding travels: **noticed** (a checklist item fails in a way that needs a decision) →
-**triaged** (root-caused, options written, a status in the index) → **promoted** (a design
-now owns it — move the file to `findings/_promoted/` and record the owning design in the
-index) → **closed** (shipped and verified; the index row records where).
+A finding is moved to `_completed` folder once it has been addressed.
 
 Statuses used in the index: `needs-design`, `investigate` (not yet root-caused),
 `enhancement`, `promoted`, `closed`.
@@ -144,4 +140,3 @@ superseded going forward: each carries a banner pointing here, and new findings 
   surface changes materially, not a per-PR gate. The per-PR gate is `pnpm ldf:b` plus CI.
 - **Not automated.** Automating these flows (Playwright against the rig) is a possible future
   design; it is out of scope here.
-- **Not a home for bugs.** Bugs are fixed and evidenced inline, never filed as findings.

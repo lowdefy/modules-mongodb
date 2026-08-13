@@ -23,8 +23,7 @@ codes the server will accept.** The recovery path is effectively non-functional.
 ## Leading hypotheses (not yet root-caused)
 
 - **Displayed ≠ stored** — `TwoFactorGenerateBackupCodes` returns a plaintext set for display
-  but the persisted (hashed/encrypted) set is different, stale, or not updated — same class as
-  [F35](./F35-totp-enrol-backup-codes-not-shown.md) (backup-codes display/storage divergence).
+  but the persisted (hashed/encrypted) set is different, stale, or not updated.
 - **Normalization mismatch** — the challenge input (`backup_code`, placeholder `xxxx-xxxx`)
   passes the code verbatim; if BetterAuth stores/expects a different format (dashes, case,
   whitespace) than what was displayed, verify fails.
@@ -40,7 +39,8 @@ Root-cause the display-vs-accepted divergence:
   the displayed format matches the stored/expected format.
 - Confirm regenerate actually **persists** the displayed set (not a stale or separate set).
 
-**Combined with F35, the entire backup-code recovery mechanism is unreliable** — codes aren't
-shown on the forced-enrol page (F35), and codes that _are_ shown (Manage modal) don't work
-(this). A user who loses their authenticator has no working self-service recovery. High
+**Combined with [F44](_upstream/F44-modal-totp-enrol-redirects-home-codes-lost.md), the entire
+backup-code recovery mechanism is unreliable** — enrolment codes are lost to a home redirect on
+both the modal and the forced-enrol page (F44), and regenerated codes that _are_ shown don't
+work (this). A user who loses their authenticator has no working self-service recovery. High
 priority to root-cause both together.

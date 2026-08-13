@@ -1,7 +1,7 @@
 # Method-first login for mixed deployments
 
-A follow-up to the [magic-link sign-in](../_completed/user-account-better-auth/_completed/magic-link/design.md)
-sub-design, promoting finding [F10](../auth-testing/findings/_completed/F10-mixed-login-ux.md).
+A follow-up to the [magic-link sign-in](../user-account-better-auth/_completed/magic-link/design.md)
+sub-design, promoting finding [F10](../../auth-testing/findings/_completed/F10-mixed-login-ux.md).
 That design shipped a **mixed** login page (password + magic-link, and often OAuth/passkey)
 where the password form is always primary and every alternative method sits below an "or"
 divider as a peer button. Manual testing found the result cluttered and ambiguous — two
@@ -12,7 +12,7 @@ a short list of method buttons, and reveal the password field only when the user
 ## Relationship to the parent design
 
 This **supersedes the "Composition when both methods are on (mixed deployment)" paragraph of
-the parent magic-link [Decision 1](../_completed/user-account-better-auth/_completed/magic-link/design.md)**
+the parent magic-link [Decision 1](../user-account-better-auth/_completed/magic-link/design.md)**
 — specifically its rule that the password "Sign in" is the always-visible primary and
 magic-link/OAuth/passkey are always-visible demoted peers. Everything else in Decision 1 is
 retained and is in fact the backbone of this design:
@@ -112,7 +112,7 @@ show_password`.
   there is an email-credential group above _and_ an OAuth/passkey group below, which also
   removes a latent double-divider in the password + OAuth (no magic-link) config.
 
-The `noaccess` wall (including the [F2](../auth-testing/findings/_completed/F2-login-resend-verification.md)
+The `noaccess` wall (including the [F2](../../auth-testing/findings/_completed/F2-login-resend-verification.md)
 "Resend verification email" affordance), the `link-sent` "check your email" result, and the
 `nav` footer are outside the chooser and are untouched.
 
@@ -140,18 +140,18 @@ email field to read. Registration `Validate` still covers the hoisted email.
 
 ## Out of scope
 
-- **[F41](../auth-testing/findings/F41-magic-link-empty-email-no-validation-github-redirect.md)**
+- **[F41](../../auth-testing/findings/F41-magic-link-empty-email-no-validation-github-redirect.md)**
   — the magic-link send has no email validation (empty send → GitHub 404). Method-first makes
   the magic-link button more prominent but does not fix F41; a `Validate` scoped to `email`
   before the send belongs there. Recommended to fold in, but tracked separately.
-- **[F32](../auth-testing/findings/F32-auth-page-visual-polish.md)** — auth-page shell polish
+- **[F32](../../auth-page-polish/F32-auth-page-visual-polish.md)** — auth-page shell polish
   (Enter-to-submit, card width, logo).
 - Moving focus into the password field on reveal — a nice-to-have; a Lowdefy `Button` onClick
   cannot cleanly focus another input, so it is not attempted here.
 
 ## Related
 
-- [magic-link sign-in](../_completed/user-account-better-auth/_completed/magic-link/design.md) —
+- [magic-link sign-in](../user-account-better-auth/_completed/magic-link/design.md) —
   the parent; Decision 1 is revised here for the mixed case only.
-- [user-account-better-auth](../_completed/user-account-better-auth/design.md) — the grandparent
+- [user-account-better-auth](../user-account-better-auth/design.md) — the grandparent
   redesign (Decision 2, method-driven login off `_build.authConfig`).
