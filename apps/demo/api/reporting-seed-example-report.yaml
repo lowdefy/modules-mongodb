@@ -30,6 +30,9 @@
 #   - a currency-formatted KPI and table column sourced from the catalog's
 #     demo_orders.total display hint (format: currency USD);
 #   - a pipeline-backed bar chart with an x/y presentation contract;
+#   - a stacked multi-series bar chart (`stacked: true`) — channel revenue
+#     pivoted into one y column per channel, so each region's bar stacks to its
+#     total revenue and a filter re-query exercises the stacked chart-data path;
 #   - a CSV download section (pipeline only, no contract).
 # It reads demo_orders (seed it first with the "Seed demo orders" button) and
 # demo_activities / demo_contacts / demo_companies (seed with
@@ -87,14 +90,14 @@ routine:
             sections:
               # A multiselect filter; its options come from demo_orders.region's
               # enum `values` in the catalog (no options, no optionsQuery — the
-              # scalar multi-select case). Bound to the three demo_orders
+              # scalar multi-select case). Bound to the four demo_orders
               # sections below.
               - type: filter
                 label: Region
                 control: multiselect
                 field: region
               # A daterange filter on the catalogued demo_orders date field.
-              # Bound to the same three demo_orders sections as Region, so the
+              # Bound to the same four demo_orders sections as Region, so the
               # report shows a range and a multi-select side by side.
               - type: filter
                 label: Created
@@ -174,7 +177,7 @@ routine:
 
                   Each filter scopes only the sections that subscribe to it via
                   `filterBy` — nothing else on the report moves. **Region** and
-                  **Created** scope the three orders sections. **Activity type**
+                  **Created** scope the four orders sections. **Activity type**
                   (a single select, `$eq`) and **Activity companies (any of)** (a
                   multiselect, `$in`) both scope the Activities KPI and chart, so
                   the two control types can be compared over the same data.
@@ -227,6 +230,62 @@ routine:
                 x: category
                 y:
                   - revenue
+                filterBy:
+                  - region
+                  - order_date
+              # Stacked multi-series bar chart: channel revenue pivoted into one
+              # y column per channel, so the series are parts of a whole — each
+              # region's bar stacks to its total revenue. This is the stacked:
+              # true case (unrelated measures would stay grouped), and its
+              # filterBy makes a filter change re-query through chart-data with
+              # stacked intact.
+              - type: chart
+                label: Revenue by region and channel
+                chart: bar
+                query:
+                  collection: demo_orders
+                  pipeline:
+                    - $group:
+                        _id: $region
+                        online:
+                          $sum:
+                            $cond:
+                              if:
+                                $eq:
+                                  - $channel
+                                  - online
+                              then: $total
+                              else: 0
+                        retail:
+                          $sum:
+                            $cond:
+                              if:
+                                $eq:
+                                  - $channel
+                                  - retail
+                              then: $total
+                              else: 0
+                        partner:
+                          $sum:
+                            $cond:
+                              if:
+                                $eq:
+                                  - $channel
+                                  - partner
+                              then: $total
+                              else: 0
+                    - $project:
+                        _id: 0
+                        region: $_id
+                        online: 1
+                        retail: 1
+                        partner: 1
+                x: region
+                y:
+                  - online
+                  - retail
+                  - partner
+                stacked: true
                 filterBy:
                   - region
                   - order_date
@@ -388,11 +447,11 @@ routine:
         title: Orders overview (seeded example)
         description: >
           A worked example over the seeded demo_orders, demo_activities and
-          demo_contacts collections — three KPIs, two bar charts, two tables, a
-          region multiselect, a created daterange, an activity type select, two
-          company multiselects (match: any and match: all, both with looked-up
-          labels) and a CSV download. Copy the section shapes for your own
-          reports.
+          demo_contacts collections — three KPIs, three bar charts (one a
+          stacked multi-series breakdown), two tables, a region multiselect, a
+          created daterange, an activity type select, two company multiselects
+          (match: any and match: all, both with looked-up labels) and a CSV
+          download. Copy the section shapes for your own reports.
         # Point at a seeded conversation (reporting-seed-conversations writes it
         # with this same deterministic _id) so opening it from the chat rail shows
         # the "Saved from this chat" section with this report as a navigating row —
