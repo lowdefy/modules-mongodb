@@ -1,0 +1,137 @@
+<!-- Auth-page logo treatment — a CONSUMER CHOICE via the shell var `auth_page.logo_style`,
+     applied uniformly to EVERY auth page in a deployment (not a per-page split).
+       band    = gradient cover band + logo (default; today's look)
+       minimal = small logo centred above a bandless card
+     Same "Sign in" page is drawn in both variants so the only difference is the treatment.
+     The shell is the layout module `auth-page` component, tagged below. -->
+<style>
+  :root {
+    --primary: #7c3aed;
+    --primary-deep: #4a1f8c;
+    --radius: 12px;
+    --card-w: 420px;
+    --bg-layout: #f5f5f5;
+    --surface: #ffffff;
+    --border: #f0f0f0;
+    --text: rgba(0, 0, 0, 0.88);
+    --text-secondary: rgba(0, 0, 0, 0.45);
+    --text-tertiary: rgba(0, 0, 0, 0.25);
+    --control-h: 40px;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 1440px; background: #e9e9ec; color: var(--text); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; }
+  .compare_col { border-right: 1px dashed #cfcfd6; }
+  .compare_col:last-child { border-right: none; }
+  .compare_label {
+    text-align: center; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-secondary); padding: 16px 0 4px; font-weight: 600;
+  }
+  .compare_sub { text-align: center; font-size: 12px; color: var(--text-tertiary); padding-bottom: 12px; font-family: ui-monospace, Menlo, monospace; }
+
+  /* ---- auth page shell (layout module `auth-page`) ---- */
+  .auth_page {
+    min-height: 560px; display: flex; flex-direction: column; justify-content: center;
+    align-items: center; background: var(--bg-layout); padding: 40px 20px;
+  }
+  .auth_container { width: 100%; max-width: var(--card-w); }
+
+  /* minimal: small logo above the card */
+  .auth_logo_top { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px; }
+  .auth_logo_top .mark {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: linear-gradient(160deg, var(--primary-deep), var(--primary));
+    display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px;
+  }
+  .auth_logo_top .wordmark { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+
+  .auth_card {
+    background: var(--surface); border-radius: var(--radius);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 24px rgba(20,10,40,0.06); overflow: hidden;
+  }
+
+  /* band: gradient cover band */
+  .auth_cover {
+    background: linear-gradient(160deg, var(--primary-deep) 0%, var(--primary) 100%);
+    padding: 30px 32px 26px; display: flex; justify-content: center; align-items: center; gap: 10px;
+  }
+  .auth_cover .mark {
+    width: 34px; height: 34px; border-radius: 9px; background: rgba(255,255,255,0.16);
+    display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 18px;
+  }
+  .auth_cover .wordmark { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+
+  .auth_body { padding: 28px 32px; display: flex; flex-direction: column; gap: 16px; }
+  .auth_title { font-size: 22px; font-weight: 600; line-height: 1.3; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; color: var(--text); }
+  .input {
+    height: var(--control-h); border: 1px solid #d9d9d9; border-radius: 8px; padding: 0 12px;
+    display: flex; align-items: center; font-size: 14px; color: var(--text-tertiary); background: #fff;
+  }
+  .btn { height: var(--control-h); border-radius: 8px; display: grid; place-items: center; font-size: 14px; font-weight: 500; }
+  .btn.primary { background: var(--primary); color: #fff; }
+  .btn.ghost { background: #fff; border: 1px solid #d9d9d9; color: var(--text); }
+  .divider {
+    text-align: center; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-tertiary); display: flex; align-items: center; gap: 12px;
+  }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .auth_nav { text-align: center; font-size: 12px; color: var(--text-secondary); margin-top: 18px; }
+  .auth_nav a { color: var(--primary); text-decoration: none; }
+</style>
+
+<div class="compare">
+  <!-- ============ VARIANT: band (default) ============ -->
+  <div class="compare_col">
+    <div class="compare_label">Variant 1 — gradient band</div>
+    <div class="compare_sub">auth_page.logo_style: band</div>
+    <div class="auth_page" data-ldf-component="auth-page">
+      <div class="auth_container">
+        <div class="auth_card">
+          <div class="auth_cover">
+            <div class="mark">L</div>
+            <div class="wordmark">Lowdefy</div>
+          </div>
+          <div class="auth_body">
+            <div class="auth_title">Sign in</div>
+            <div class="field"><label>Email</label><div class="input">you@company.com</div></div>
+            <div class="field"><label>Password</label><div class="input">••••••••</div></div>
+            <div class="btn primary">Sign in</div>
+            <div class="divider">or</div>
+            <div class="btn ghost">Sign in with a passkey</div>
+          </div>
+        </div>
+        <div class="auth_nav">New here? <a>Create an account</a></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ VARIANT: minimal ============ -->
+  <div class="compare_col">
+    <div class="compare_label">Variant 2 — minimal logo</div>
+    <div class="compare_sub">auth_page.logo_style: minimal</div>
+    <div class="auth_page" data-ldf-component="auth-page">
+      <div class="auth_container">
+        <div class="auth_logo_top">
+          <div class="mark">L</div>
+          <div class="wordmark">Lowdefy</div>
+        </div>
+        <div class="auth_card">
+          <div class="auth_body">
+            <div class="auth_title">Sign in</div>
+            <div class="field"><label>Email</label><div class="input">you@company.com</div></div>
+            <div class="field"><label>Password</label><div class="input">••••••••</div></div>
+            <div class="btn primary">Sign in</div>
+            <div class="divider">or</div>
+            <div class="btn ghost">Sign in with a passkey</div>
+          </div>
+        </div>
+        <div class="auth_nav">New here? <a>Create an account</a></div>
+      </div>
+    </div>
+  </div>
+</div>
