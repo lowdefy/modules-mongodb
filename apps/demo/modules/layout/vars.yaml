@@ -1,4 +1,6 @@
 page_type: sidebar
+auth_page:
+  logo_style: minimal
 footer:
   - id: footer-text
     type: Html
