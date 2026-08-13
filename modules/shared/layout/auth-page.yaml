@@ -49,6 +49,28 @@ blocks:
                 _module.var: auth_page.max_width
         blocks:
           _build.array.concat:
+            # Small centred logo above a bandless card is the `minimal` brand treatment only.
+            - _build.if:
+                test:
+                  _build.eq:
+                    - _module.var: auth_page.logo_style
+                    - minimal
+                then:
+                  - id: auth-logo-minimal-wrap
+                    type: Box
+                    layout:
+                      justify: center
+                    style:
+                      textAlign: center
+                      marginBottom: 20
+                    blocks:
+                      - id: auth-logo-minimal
+                        type: Img
+                        properties:
+                          src:
+                            _module.var: logo.primary
+                          height: 30
+                else: []
             - - id: auth-card
                 type: Card
                 layout:
@@ -62,28 +84,36 @@ blocks:
                     borderRadiusLG: 12
                     bodyPadding: "28px 32px 28px 32px"
                 slots:
+                  # Gradient cover band is the `band` brand treatment only; `minimal` is bandless.
                   cover:
                     blocks:
-                      - id: auth-cover
-                        type: Box
-                        layout:
-                          justify: center
-                          selfAlign: middle
-                        style:
-                          padding: "32px 32px 24px 32px"
-                          background:
-                            _module.var: auth_page.cover_background
-                          borderRadius: "12px 12px 0 0"
-                        blocks:
-                          - id: auth-logo
-                            type: Img
+                      _build.if:
+                        test:
+                          _build.eq:
+                            - _module.var: auth_page.logo_style
+                            - band
+                        then:
+                          - id: auth-cover
+                            type: Box
+                            layout:
+                              justify: center
+                              selfAlign: middle
                             style:
-                              maxWidth:
-                                _module.var: auth_page.logo_max_width
-                            properties:
-                              src:
-                                _module.var: logo.primary_dark
-                              width: 100%
+                              padding: "32px 32px 24px 32px"
+                              background:
+                                _module.var: auth_page.cover_background
+                              borderRadius: "12px 12px 0 0"
+                            blocks:
+                              - id: auth-logo
+                                type: Img
+                                style:
+                                  maxWidth:
+                                    _module.var: auth_page.logo_max_width
+                                properties:
+                                  src:
+                                    _module.var: logo.primary_dark
+                                  width: 100%
+                        else: []
                 blocks:
                   _build.array.concat:
                     - _build.if:
