@@ -94,9 +94,9 @@
                 "type": "string",
                 "description": "Component hint for type detection (e.g., 'selector', 'date_selector', 'contact_selector_number_required'). Helps DataView determine the correct rendering type."
               },
-              "itemKey": {
+              "itemTitle": {
                 "type": "string",
-                "description": "For array fields with a nested form: dot-notation key, relative to each array item, whose value titles the item's collapsible card (e.g. 'name'). Falls back to 'Item N' when absent or empty."
+                "description": "For array fields with a nested form: a Nunjucks template rendered against each array item (its fields are the template context, plus `_index` — the item's 0-based position), producing the item's collapsible card title as HTML (e.g. '<b>{{ name }}</b> — {{ locations | length }} sites'). Falls back to 'Item N' when absent or when the render is empty."
               },
               "enum": {
                 "type": "object",

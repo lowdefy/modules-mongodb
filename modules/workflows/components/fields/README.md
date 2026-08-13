@@ -110,15 +110,18 @@ Numeric input. Renders a `NumberInput`.
 
 Single date picker. Renders a `DateSelector` with `format: DD MMMM YYYY`.
 
-| Var            | Type    | Required / Default |
-| -------------- | ------- | ------------------ |
-| `key`          | string  | required           |
-| `title`        | string  | —                  |
-| `extra`        | string  | —                  |
-| `visible`      | boolean | `true`             |
-| `required`     | boolean | `false`            |
-| `label_inline` | boolean | `false`            |
-| `label_span`   | number  | —                  |
+| Var              | Type    | Required / Default |
+| ---------------- | ------- | ------------------ |
+| `key`            | string  | required           |
+| `title`          | string  | —                  |
+| `extra`          | string  | —                  |
+| `visible`        | boolean | `true`             |
+| `required`       | boolean | `false`            |
+| `label_inline`   | boolean | `false`            |
+| `label_span`     | number  | —                  |
+| `disabled_dates` | object  | —                  |
+
+`disabled_dates` passes straight through to the block's `disabledDates` property (supports `min`, `max`, `dates`, `ranges`).
 
 ```yaml
 - component: date_selector
@@ -639,13 +642,14 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
 | `title`            | string  | —                  |
 | `visible`          | boolean | `true`             |
 | `required`         | boolean | `false`            |
+| `label_span`       | number  | `0`                |
 | `hideAddButton`    | boolean | `false`            |
 | `hideRemoveButton` | boolean | `false`            |
 | `minItems`         | number  | `0`                |
-| `itemKey`          | string  | —                  |
+| `itemTitle`        | string  | —                  |
 | `blocks`           | array   | `[]`               |
 
-`itemKey` is a dot-notation key relative to each list item (e.g. `name`). On the read-only view, review, and overview surfaces (DataDescriptions) it titles each item's collapsible card with the item's own value; items without the value fall back to `Item N`. It has no effect while editing.
+`itemTitle` is a Nunjucks template rendered against each list item on the read-only view, review, and overview surfaces (DataDescriptions) to title the item's collapsible card. The item's fields are the template context, plus `_index` — the item's 0-based position — so a template can reference multiple fields and emit HTML (e.g. `<b>{{ name }}</b> — {{ locations | length }} sites`). It falls back to `Item N` when absent or when the render is empty, and has no effect while editing. HTML is also allowed in the list's own `title` (e.g. `title: "<b>Devices</b>"`).
 
 ```yaml
 - component: controlled_list
@@ -653,7 +657,7 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
   title: Devices
   required: true
   hideAddButton: true
-  itemKey: _id
+  itemTitle: "<b>{{ _id }}</b>"
   blocks:
     - component: label_value
       key: form.devices.$._id

@@ -1,5 +1,39 @@
 # @lowdefy/modules-mongodb-workflows
 
+## 0.29.0
+
+## 0.28.0
+
+### Minor Changes
+
+- [#166](https://github.com/lowdefy/modules-mongodb/pull/166) [`e0aa5d0`](https://github.com/lowdefy/modules-mongodb/commit/e0aa5d0b4e532da730a60dd7876b0becbedc6718) Thanks [@Saiby100](https://github.com/Saiby100)! - `controlled_list` form components now accept `itemTitle` — a Nunjucks template rendered against each list item on the read-only view/review/overview surfaces to title the item's collapsible card. The item's fields are the template context (plus `_index`, the 0-based position), so a title can reference multiple fields and emit HTML. HTML in the list's own `title` is rendered too.
+
+  **Breaking:** the previous `itemKey` property is removed. Replace `itemKey: name` with `itemTitle: "{{ name }}"`.
+
+### Patch Changes
+
+- [#166](https://github.com/lowdefy/modules-mongodb/pull/166) [`7bb6733`](https://github.com/lowdefy/modules-mongodb/commit/7bb673334360d26ba991b7c8006adaf3228d9f8f) Thanks [@Saiby100](https://github.com/Saiby100)! - Fix the shared `check-action-click` handler so clicking a check action in the workflow-progress / actions-on-entity panel on an action page no longer logs `Cannot read properties of undefined (reading 'methods')`. The handler always tried to open the fixed `check_action_modal` block, but that block is only dropped on entity-view pages — on action pages the CallMethod ran against a missing block and threw. The modal open is now gated on being on an entity page (detected via absence of `_url_query.action_id`); check clicks on action pages navigate instead.
+
+- [#166](https://github.com/lowdefy/modules-mongodb/pull/166) [`0373652`](https://github.com/lowdefy/modules-mongodb/commit/0373652c1d95f53447234b13d47ba8d92d1d3939) Thanks [@Saiby100](https://github.com/Saiby100)! - Fix `selector` form component so its `extra` helper text renders. `extra` was being passed as a top-level block property instead of under `label`, where the Selector block reads it — so the helper text never showed. It now nests under `label`, matching every other field component.
+
+## 0.27.0
+
+### Minor Changes
+
+- [#164](https://github.com/lowdefy/modules-mongodb/pull/164) [`786e198`](https://github.com/lowdefy/modules-mongodb/commit/786e198e5e3eb77342e90999b195fc515e9ae83d) Thanks [@Saiby100](https://github.com/Saiby100)! - The `multiple_selector` form component takes a `disabled` var (boolean, default `false`), wired to the block's `disabled` property. With the var unset, behaviour is unchanged.
+
+- [#164](https://github.com/lowdefy/modules-mongodb/pull/164) [`786e198`](https://github.com/lowdefy/modules-mongodb/commit/786e198e5e3eb77342e90999b195fc515e9ae83d) Thanks [@Saiby100](https://github.com/Saiby100)! - The `selector` form component takes a `disabled` var (boolean, default `false`), wired to the block's `disabled` property. With the var unset, behaviour is unchanged.
+
+## 0.26.0
+
+### Minor Changes
+
+- [#161](https://github.com/lowdefy/modules-mongodb/pull/161) [`506a8a4`](https://github.com/lowdefy/modules-mongodb/commit/506a8a42ae37d1e427997080d22771239da887cc) Thanks [@Saiby100](https://github.com/Saiby100)! - The `button_selector` form component takes a `validate` var (array, default `[]`), wired to the block's top-level `validate` config. It mirrors the existing `text_input` pattern, so a button selector can carry field-level validation rules like every other input field. With the var unset, behaviour is unchanged.
+
+- [#161](https://github.com/lowdefy/modules-mongodb/pull/161) [`506a8a4`](https://github.com/lowdefy/modules-mongodb/commit/506a8a42ae37d1e427997080d22771239da887cc) Thanks [@Saiby100](https://github.com/Saiby100)! - The `controlled_list` form component takes a `label_span` var (number, default `0`), following the existing `button` / `alert` convention. The outer `Label` wrapper gets layout `span: 24 - label_span` with `push: label_span`, so the whole field shifts into the input column and lines up with the labelled fields above it. With the var unset (`0`), rendering is unchanged.
+
+- [#161](https://github.com/lowdefy/modules-mongodb/pull/161) [`506a8a4`](https://github.com/lowdefy/modules-mongodb/commit/506a8a42ae37d1e427997080d22771239da887cc) Thanks [@Saiby100](https://github.com/Saiby100)! - The `date_selector` form component takes a `disabled_dates` var (object, optional), passed straight through to the block's `disabledDates` property (`min` / `max` / `dates` / `ranges`) so a field can block ranges like past dates. It is wrapped in `_build.if`, so `disabledDates` is only emitted when the var is set and existing callers are unchanged. This also applies to `date_range_selector`.
+
 ## 0.25.1
 
 ## 0.25.0

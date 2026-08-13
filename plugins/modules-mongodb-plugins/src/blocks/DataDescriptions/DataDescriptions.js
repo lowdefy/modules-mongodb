@@ -73,7 +73,7 @@ const DataDescriptions = ({
           type="inner"
           title={
             <span className="dataview-list-title">
-              {title}
+              {renderHtml({ html: title, methods })}
               <span className="dataview-list-count">
                 {group.children.length}
               </span>
@@ -90,7 +90,10 @@ const DataDescriptions = ({
             defaultActiveKey={group.children.map((_, i) => i)}
             items={group.children.map((item, i) => ({
               key: i,
-              label: item.title || `Item ${i + 1}`,
+              label: renderHtml({
+                html: item.title || `Item ${i + 1}`,
+                methods,
+              }),
               children: (
                 <div className="dataview-list-panel">
                   {item.fields?.length > 0 && renderDescriptions(item, null)}

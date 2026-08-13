@@ -1,4 +1,5 @@
 import { get, type, applyArrayIndices } from "@lowdefy/helpers";
+import { nunjucksString } from "@lowdefy/nunjucks";
 import createSection from "./createSection.js";
 import formatFieldName from "../../utils/formatFieldName.js";
 import detectFieldType from "./detectFieldType.js";
@@ -54,18 +55,24 @@ function processConfigItems(data, formItems, level, arrayIndices = []) {
             ...arrayIndices,
             index,
           ]);
-          // Add section for array item. `itemKey` (relative to the item,
-          // dot notation supported) titles the card from the item's own
-          // data; fall back to `Item N` when absent or empty.
+          // Add section for array item. `itemTitle` is a Nunjucks template
+          // rendered against the item (its fields are the template context),
+          // producing the card title as HTML; fall back to `Item N` when
+          // absent or when the render is empty. `_index` (0-based) is added to
+          // the context so a template can reference the item's position.
           if (itemStructure.length > 0) {
-            const itemTitle = item.itemKey
-              ? get(itemValue, item.itemKey)
-              : undefined;
+            let itemTitle;
+            if (item.itemTitle) {
+              const context = type.isObject(itemValue)
+                ? { ...itemValue, _index: index }
+                : { value: itemValue, _index: index };
+              const rendered = nunjucksString(item.itemTitle, context);
+              if (type.isString(rendered) && rendered.trim() !== "") {
+                itemTitle = rendered;
+              }
+            }
             const sectionTitle =
-              (type.isString(itemTitle) && itemTitle !== "") ||
-              type.isNumber(itemTitle)
-                ? String(itemTitle)
-                : `Item ${index + 1}`;
+              itemTitle !== undefined ? itemTitle : `Item ${index + 1}`;
             items.push(
               createSection(sectionTitle, level + 1, itemStructure, {
                 isListItem: true,

@@ -210,6 +210,7 @@ Single-select dropdown. Renders a `Selector`.
 | `extra`        | string  | `null`             |
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
+| `disabled`     | boolean | `false`            |
 | `on_change`    | array   | `[]`               |
 
 ```yaml
@@ -238,6 +239,7 @@ Multi-select dropdown. Renders a `MultipleSelector`. When `required: true`, requ
 | `label_inline` | boolean | `false`            |
 | `label_span`   | number  | —                  |
 | `renderTags`   | boolean | `false`            |
+| `disabled`     | boolean | `false`            |
 | `on_change`    | array   | `[]`               |
 
 ```yaml
@@ -695,10 +697,10 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
 | `hideAddButton`    | boolean | `false`            |
 | `hideRemoveButton` | boolean | `false`            |
 | `minItems`         | number  | `0`                |
-| `itemKey`          | string  | —                  |
+| `itemTitle`        | string  | —                  |
 | `blocks`           | array   | `[]`               |
 
-`itemKey` is a dot-notation key relative to each list item (e.g. `name`). On the read-only view, review, and overview surfaces it titles each item's collapsible card with the item's own value; items without the value fall back to `Item N`. It has no effect while editing.
+`itemTitle` is a Nunjucks template rendered against each list item on the read-only view, review, and overview surfaces to title the item's collapsible card. The item's fields are the template context, plus `_index` — the item's 0-based position — so a template can reference multiple fields and emit HTML (e.g. `<b>{{ name }}</b> — {{ locations | length }} sites`). It falls back to `Item N` when absent or when the render is empty, and has no effect while editing. HTML is also allowed in the list's own `title` (e.g. `title: "<b>Devices</b>"`).
 
 ```yaml
 - component: controlled_list
@@ -706,7 +708,7 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
   title: Devices
   required: true
   hideAddButton: true
-  itemKey: _id
+  itemTitle: "<b>{{ profile.name }}</b>"
   blocks:
     - component: label_value
       key: form.devices.$._id

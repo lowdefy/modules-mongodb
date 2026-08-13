@@ -34,6 +34,9 @@ vars:
   renderTags:
     type: boolean
     default: false
+  disabled:
+    type: boolean
+    default: false
   on_change:
     type: array
     default: []
@@ -73,6 +76,10 @@ config:
       key: required
       default: false
   properties:
+    disabled:
+      _var:
+        key: disabled
+        default: false
     renderTags:
       _var:
         key: renderTags
