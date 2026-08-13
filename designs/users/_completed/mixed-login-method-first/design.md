@@ -140,7 +140,7 @@ email field to read. Registration `Validate` still covers the hoisted email.
 
 ## Out of scope
 
-- **[F41](../../auth-testing/findings/F41-magic-link-empty-email-no-validation-github-redirect.md)**
+- **[F41](../../auth-testing/findings/_completed/F41-magic-link-empty-email-no-validation-github-redirect.md)**
   — the magic-link send has no email validation (empty send → GitHub 404). Method-first makes
   the magic-link button more prominent but does not fix F41; a `Validate` scoped to `email`
   before the send belongs there. Recommended to fold in, but tracked separately.
