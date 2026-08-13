@@ -208,6 +208,54 @@ test("height is the canvas Flint sized, larger than the pinned plot", () => {
   expect(height).toBeGreaterThan(180);
 });
 
+// Folded rows are object literals, so a display-name collision would silently
+// overwrite a key and draw a garbage chart (an x column named "value" put the
+// y values on the category axis). Rejection surfaces as a skipped part in chat
+// and a broken-section Alert in a report, both carrying the rename that fixes it.
+test("an x column that humanizes onto a fold column is rejected", () => {
+  for (const x of ["value", "measure", "Value"]) {
+    expect(() =>
+      buildFlintOption({
+        chart: "bar",
+        x,
+        y: ["revenue", "cost"],
+        rows: [],
+      }),
+    ).toThrow(/Chart columns collide/);
+  }
+  // "some_measure" humanizes to "Some Measure" — not a fold column.
+  expect(() =>
+    buildFlintOption({
+      chart: "bar",
+      x: "some_measure",
+      y: ["revenue", "cost"],
+      rows: [],
+    }),
+  ).not.toThrow();
+});
+
+test("two y columns that humanize to the same name are rejected", () => {
+  expect(() =>
+    buildFlintOption({
+      chart: "bar",
+      x: "region",
+      y: ["total_sales", "totalSales"],
+      rows: [],
+    }),
+  ).toThrow(/Chart columns collide/);
+});
+
+test("an x and y column that humanize to the same name are rejected on a single-series chart", () => {
+  expect(() =>
+    buildFlintOption({
+      chart: "pie",
+      x: "total_sales",
+      y: ["totalSales"],
+      rows: [],
+    }),
+  ).toThrow(/Chart columns collide/);
+});
+
 test("empty and missing rows assemble without throwing", () => {
   expect(() =>
     buildFlintOption({ chart: "bar", x: "region", y: ["revenue"], rows: [] }),

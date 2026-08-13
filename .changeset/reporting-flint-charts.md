@@ -40,3 +40,8 @@ Chart specs take one new optional key: `stacked: true` (bar charts only) stacks
 multiple `y` series into one bar per category instead of the default
 side-by-side grouping — for breakdowns (parts of a whole), not unrelated
 measures. On `line` or `pie` it is a validation error.
+
+Because column names are humanized for display, two columns that humanize to
+the same name (`total_sales` beside `totalSales`) — or an `x` column whose
+display name lands on `Measure` or `Value`, the multi-series fold columns —
+are rejected with the rename that fixes it, rather than silently drawn wrong.

@@ -37,6 +37,8 @@ The chart contract names columns; it never describes the picture. Axis names, la
 
 **Multiple `y` columns render as sibling series** — grouped bars, or one line per column — named by the column names, so the legend reads the measures an author declared. The shared y-axis reads `Value`: two differently-named measures share one axis, and either name would be wrong for the other.
 
+**Display names must not collide.** Two columns that humanize to the same name (`total_sales` beside `totalSales`), or an `x` column whose display name is `Measure` or `Value` on a multi-series chart, are rejected with a message naming the rename that fixes it — `$project` the column to another name. Rejecting beats drawing: a collision would silently produce a wrong chart, not an ugly one.
+
 **`stacked: true` stacks a bar chart's series instead.** Grouped is the default because arbitrary `y` columns are unrelated measures whose stacked total means nothing; declare `stacked: true` when the series are parts of a whole — a breakdown such as sales by channel within each region. Bar charts only: on `line` or `pie` it is a validation error, not silently ignored. With a single `y` column it changes nothing (one series stacks with nothing).
 
 **Tooltips are the ECharts defaults.** A compiled chart reaches the browser as JSON, and JSON carries no functions, so the compiler's own tooltip formatter cannot make the trip. Hovering shows the series name and the raw value.

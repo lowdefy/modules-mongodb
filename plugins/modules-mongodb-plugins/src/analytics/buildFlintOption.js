@@ -62,6 +62,32 @@ function buildFlintOption({ chart, x, y, rows, stacked }) {
   const multi = y.length > 1;
   const xName = humanize(x);
   const yName = humanize(y[0]);
+  // Humanizing can collide: distinct pipeline columns can map onto one display
+  // name (total_sales / totalSales), and an x column named "value" or "measure"
+  // maps onto the fold columns below. The folded rows are object literals, so a
+  // collision silently overwrites a key and draws a garbage chart — reject it
+  // with the rename that fixes it instead.
+  if (multi) {
+    if (xName === SERIES_KEY || xName === SERIES_VALUE) {
+      throw new Error(
+        `Chart columns collide: x column "${x}" displays as "${xName}", which the multi-series fold reserves — $project the column to another name.`,
+      );
+    }
+    const seen = new Map();
+    for (const column of y) {
+      const name = humanize(column);
+      if (seen.has(name)) {
+        throw new Error(
+          `Chart columns collide: y columns "${seen.get(name)}" and "${column}" both display as "${name}" — $project one to another name.`,
+        );
+      }
+      seen.set(name, column);
+    }
+  } else if (xName === yName) {
+    throw new Error(
+      `Chart columns collide: x column "${x}" and y column "${y[0]}" both display as "${xName}" — $project one to another name.`,
+    );
+  }
   // The fold key column is the series identity, so folded rows carry only
   // `x` — the other `y` columns of a row become that row's sibling entries.
   // Single-series rows are re-keyed the same way, narrowed to the encoded
