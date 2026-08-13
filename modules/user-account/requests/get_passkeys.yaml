@@ -21,10 +21,6 @@ properties:
           $ifNull:
             - "$name"
             - Passkey
-        device:
-          $ifNull:
-            - "$device_type"
-            - ""
         created_str:
           $dateToString:
             date: "$created_at"

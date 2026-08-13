@@ -245,11 +245,42 @@ _ref:
                               variant: outlined
                             events:
                               onClick:
-                                - id: open_disable2fa_modal
-                                  type: CallMethod
-                                  params:
-                                    blockId: modal_disable2fa
-                                    method: toggleOpen
+                                _build.if:
+                                  test:
+                                    _build.authConfig: twoFactor.required
+                                  then:
+                                    - id: twofa_disable_blocked_msg
+                                      type: DisplayMessage
+                                      # Turning off strands the account at zero factors
+                                      # unless a passkey remains to satisfy the floor.
+                                      skip:
+                                        _ne:
+                                          - _array.length:
+                                              _if_none:
+                                                - _state: passkeys_ui
+                                                - []
+                                          - 0
+                                      params:
+                                        status: info
+                                        content: "Two-factor is required for your account, so it can't be turned off. To switch authenticators, use Replace under Manage."
+                                    - id: open_disable2fa_modal
+                                      type: CallMethod
+                                      skip:
+                                        _eq:
+                                          - _array.length:
+                                              _if_none:
+                                                - _state: passkeys_ui
+                                                - []
+                                          - 0
+                                      params:
+                                        blockId: modal_disable2fa
+                                        method: toggleOpen
+                                  else:
+                                    - id: open_disable2fa_modal
+                                      type: CallMethod
+                                      params:
+                                        blockId: modal_disable2fa
+                                        method: toggleOpen
                 else: []
 
             # ── Passkeys section (deployment gate only) ──
@@ -336,37 +367,69 @@ _ref:
                                 _nunjucks:
                                   template: |
                                     <div style="font-size:13px; color:var(--ant-color-text);">{{ name }}</div>
-                                    {% if device %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">{{ device }}{% if created %} · Added {{ created }}{% endif %}</div>{% elif created %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Added {{ created }}</div>{% endif %}
+                                    {% if created %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Added {{ created }}</div>{% endif %}
                                   on:
                                     name:
                                       _state: passkeys_ui.$.name
-                                    device:
-                                      _state: passkeys_ui.$.device
                                     created:
                                       _state: passkeys_ui.$.created_str
-                          - id: passkeys_ui.$.remove
-                            type: Button
+                          - id: passkeys_ui.$.actions
+                            type: Box
                             layout:
                               flex: 0 0 auto
-                            properties:
-                              icon: AiOutlineDelete
-                              color: danger
-                              variant: text
-                              size: small
-                              shape: circle
-                            events:
-                              onClick:
-                                _build.array.concat:
-                                  - - id: passkey_delete
-                                      type: PasskeyDelete
-                                      messages:
-                                        loading: Removing…
-                                        success: Passkey removed.
-                                        error: Couldn't remove the passkey. Try again.
+                              direction: row
+                              align: middle
+                              selfAlign: middle
+                              gap: 4
+                            blocks:
+                              # Seed the rename modal's target + prefill its input
+                              # with the current name, then open it.
+                              - id: passkeys_ui.$.rename
+                                type: Button
+                                layout:
+                                  flex: 0 0 auto
+                                properties:
+                                  icon: AiOutlineEdit
+                                  variant: text
+                                  size: small
+                                  shape: circle
+                                events:
+                                  onClick:
+                                    - id: seed_renamepk
+                                      type: SetState
                                       params:
-                                        passkeyId:
+                                        renamepk.passkey_id:
                                           _state: passkeys_ui.$.passkey_id
-                                  - _ref: actions/refetch_account.yaml
+                                        renamepk.name:
+                                          _state: passkeys_ui.$.name
+                                    - id: open_rename_passkey_modal
+                                      type: CallMethod
+                                      params:
+                                        blockId: modal_rename_passkey
+                                        method: toggleOpen
+                              - id: passkeys_ui.$.remove
+                                type: Button
+                                layout:
+                                  flex: 0 0 auto
+                                properties:
+                                  icon: AiOutlineDelete
+                                  color: danger
+                                  variant: text
+                                  size: small
+                                  shape: circle
+                                events:
+                                  onClick:
+                                    _build.array.concat:
+                                      - - id: passkey_delete
+                                          type: PasskeyDelete
+                                          messages:
+                                            loading: Removing…
+                                            success: Passkey removed.
+                                            error: Couldn't remove the passkey. Try again.
+                                          params:
+                                            passkeyId:
+                                              _state: passkeys_ui.$.passkey_id
+                                      - _ref: actions/refetch_account.yaml
                   - id: passkeys_empty_hint
                     type: Html
                     visible:

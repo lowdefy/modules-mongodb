@@ -1,7 +1,9 @@
 # F39 — Security-tile display polish: passkey rows (raw `multiDevice`, casing) + optional passkey naming
 
-**Status:** `enhancement` · **Area:** user-account / security tile ·
-**Disposition:** passkey-row work **held for an upstream `PasskeyUpdate` action**; Sessions-explainer nit is independent (see below)
+**Status:** `built` (2026-08-13) · **Area:** user-account / security tile ·
+**Disposition:** upstream `PasskeyUpdate` action + `passkeyUpdate` client wrapper shipped in
+`0.0.0-experimental-20260813120102`; the whole row (drop `deviceType`, per-row rename pencil,
+naming entry point) plus the Sessions-explainer gate are now implemented (see "Implementation").
 
 Presentation nits on the signed-in **account-workspace tiles** (Security + Sessions), gathered
 on the run. Distinct from [F32](../../_completed/auth-page-polish/F32-auth-page-visual-polish.md), which covers the public
@@ -43,6 +45,12 @@ multiDevice · added 2026-08-06
 **Passkeys should be user-nameable, with a rename affordance** — the full ask in (3). A
 user-supplied name is the distinguisher that actually works across multiple passkeys; it
 replaces the value of showing `deviceType` (1).
+
+**Naming entry point: register-in-one-tap, then rename via the pencil** (the open question the
+disposition below deferred until rename shipped — now settled). No pre-ceremony name modal: a new
+passkey lands as the default "Passkey" and the user renames it inline via the per-row pencil. This
+is the simplest path and avoids adding modal friction to the register ceremony; register-time
+naming (`PasskeyRegister` → `addPasskey({ name })`) stays available upstream but is not wired in.
 
 **Drop `deviceType`, don't humanize it.** WebAuthn `deviceType` is _backup-eligibility_ (is
 this a synced/multi-device passkey), **not** a device identity — humanized ("Synced passkey" vs
@@ -87,5 +95,24 @@ the passkey row in one pass: drop `device` from `get_passkeys.yaml` (and the ide
 point + a per-row rename pencil (`PasskeyUpdate { passkeyId, name }` → `refetch_account`, a clone
 of the existing per-row delete wiring), rendering the user name in place of "Passkey".
 
-**Independent of the above:** the Sessions-explainer gate (4) has no passkey coupling and can
-ship standalone at any time, or ride the same pass.
+## Implementation (2026-08-13)
+
+The action shipped in `0.0.0-experimental-20260813120102` (`@lowdefy/actions-core` `PasskeyUpdate`
+with params `{ passkeyId, name }`; `@lowdefy/client` `createAuthMethods` now wraps
+`passkeyUpdate` → `auth.updatePasskey({ id, name })`, ownership-enforced server-side). Built in one
+pass:
+
+- **Dropped `deviceType`.** Removed the `device` projection from `get_passkeys.yaml` and
+  `get_user_passkeys.yaml`, the `{{ device }}` render in the user-account security-tile passkey row,
+  and the ` · {{ item.device }}` segment in `user-admin`'s `modal_revoke_passkeys.yaml` picker.
+- **Rename pencil (naming entry point = option A).** Each passkey row now carries a pencil beside
+  the delete button; it seeds `renamepk.{passkey_id,name}` and opens `modal_rename_passkey.yaml`
+  (new), a `TextInput` → `PasskeyUpdate { passkeyId, name }` → `refetch_account`. Registered in
+  `pages/view.yaml`. No register-time name modal.
+- **Casing** closed for free with `deviceType` gone: the passkey sub-line now stands alone → `Added`.
+- **Sessions explainer (4).** `tile_sessions.yaml` hint now gates its second sentence on
+  `_gt: [_array.length get_sessions, 1]`, so single-session users see only "Devices currently
+  signed in to your account."
+
+Verified with `pnpm ldf:b` (build successful) and confirmed `PasskeyUpdate` / `modal_rename_passkey`
+resolve into `pages/user-account/view.json`.

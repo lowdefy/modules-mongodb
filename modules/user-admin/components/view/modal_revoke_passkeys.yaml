@@ -99,7 +99,7 @@ blocks:
               - []
       valueKey: passkey_id
       html: >-
-        {% if item.passkey_id %}<div style="font-size:13px;">{{ item.name }}{% if item.device %} · {{ item.device }}{% endif %}</div>{% if item.created_str %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Added {{ item.created_str }}</div>{% endif %}{% else %}All passkeys{% endif %}
+        {% if item.passkey_id %}<div style="font-size:13px;">{{ item.name }}</div>{% if item.created_str %}<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Added {{ item.created_str }}</div>{% endif %}{% else %}All passkeys{% endif %}
   - id: revokepk.attested
     type: CheckboxSwitch
     layout:

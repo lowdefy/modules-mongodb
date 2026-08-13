@@ -51,4 +51,18 @@ _ref:
           - id: sessions_hint
             type: Html
             properties:
-              html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Devices currently signed in to your account. "Sign out other sessions" ends every session except this one.</div>'
+              # The second sentence references the "Sign out other sessions"
+              # button, which only renders with more than one session (same gate
+              # as the button); with a single session it would name a control the
+              # user can't see, so it's dropped.
+              html:
+                _nunjucks:
+                  template: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">Devices currently signed in to your account.{% if multi %} "Sign out other sessions" ends every session except this one.{% endif %}</div>'
+                  on:
+                    multi:
+                      _gt:
+                        - _array.length:
+                            _if_none:
+                              - _request: get_sessions
+                              - []
+                        - 1
