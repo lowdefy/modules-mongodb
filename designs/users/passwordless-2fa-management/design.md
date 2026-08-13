@@ -1,11 +1,15 @@
 # Passwordless two-factor management
 
-**Status:** Decisions 1 & 3 are in-module and shippable now. Decision 2 (the forced-enrol page)
-depends on **one small upstream engine change** — forwarding the invoking `pageId` into request
-authorization so the enrol page's existing gate exemption extends to its requests — after which the
-page reads `has_credential` from `get_accounts` exactly like the modals. Not a hard blocker: the
-change is a couple of lines in `@lowdefy/api` and lands alongside this work. See
-[Upstream](#upstream--engine-dependency).
+**Status:** Only Decision 3 (the enrol-page done-state flag) is pure in-module config and ships now.
+Decisions 1 and 2 both ride **one `@lowdefy/api` bump** carrying two small, independent engine
+changes: Decision 1 needs the twoFactor plugin instantiated with `allowPasswordless: true` — the
+server-side waiver the whole `password: ''` mechanism depends on, and **absent in every installed
+build today** (Finding 1 in [review 2](./review/review-2.md)); Decision 2 needs the invoking
+`pageId` forwarded into request authorization so the enrol page's gate exemption extends to its
+requests. Neither is a hard blocker — both are a few lines and land together. Until they do, the
+**passkey** enrol route is the only passwordless path (no password, satisfies `required` on its
+own); passwordless **TOTP** (the Security-tile modals and the forced-enrol page alike) waits on the
+`allowPasswordless` wiring. See [Upstream](#upstream--engine-dependencies).
 
 Promotes findings [F47](./F47-security-tile-hides-2fa-for-passwordless-users.md)
 and [F48](./F48-forced-enrol-page-broken-for-passwordless.md) (moved into this folder),
@@ -26,12 +30,23 @@ meant to prevent.
 
 BetterAuth's four password-gated 2FA endpoints — `enable`, `disable`, `get-totp-uri`,
 `generate-backup-codes` — each call `shouldRequirePassword(ctx, userId, allowPasswordless)`
-(`better-auth/dist/utils/password.mjs:26-30`). With `allowPasswordless` set, that returns
-`true` **only for a user who holds a `credential` account** and `false` for one who does not —
-**per user, not globally** (two-factor-lifecycle design lines 351–364). So the password is
-already waived server-side for exactly the passwordless population. Every place the module
-_itself_ demands a password from a passwordless caller is a **module-side over-restriction**,
-not a BetterAuth requirement.
+(`better-auth/dist/utils/password.mjs:26-30`). It short-circuits `if (!allowPasswordless) return
+true` (`:27`); **with `allowPasswordless` set** it then returns `true` **only for a user who holds a
+`credential` account** and `false` for one who does not — **per user, not globally**
+(two-factor-lifecycle design lines 351–364). So _once the plugin is configured with the flag_, the
+password is waived server-side for exactly the passwordless population, and every place the module
+_itself_ demands a password from a passwordless caller is a **module-side over-restriction**, not a
+BetterAuth requirement.
+
+**The flag is a prerequisite, not a given.** The installed `@lowdefy/api` instantiates the twoFactor
+plugin **without** `allowPasswordless` (`getBetterAuthConfig.js:385` — `issuer` + `schema` only;
+`grep -c allowPasswordless` is `0` in all six installed builds, latest Aug 7). So today the
+short-circuit fires and `shouldRequirePassword` returns `true` for **every** caller — the
+`password: ''` waiver Decision 1 relies on buys nothing, and a passwordless caller is rejected
+`INVALID_PASSWORD` exactly as before. Wiring `allowPasswordless: true` into those options is the
+engine change Decision 1 rides ([Upstream](#upstream--engine-dependencies)); the lifecycle design
+records the platform as already setting it (line 273), but the shipped engine has lost or never
+carried it.
 
 ## The rule — one correct way
 
@@ -76,6 +91,13 @@ password).
 
 The password row was always right to gate on `has_credential` (`:77`); the 2FA row and the two
 management modals inherited the same gate and must not.
+
+**Engine prerequisite.** The in-module changes below are necessary but not sufficient. The
+`password: ''` coalesce only unlocks a passwordless caller once the engine instantiates the twoFactor
+plugin with `allowPasswordless: true` — absent in every installed build (see "The flag is a
+prerequisite" above and [Upstream](#upstream--engine-dependencies)). Without it the server rejects
+`''` with `INVALID_PASSWORD` for every caller, so Decision 1 lands **with** that engine change, not
+before.
 
 **`tile_security.yaml` (F47):** drop the `has_credential` gate on `twofa_row` (`:133`). The 2FA
 row now shows whenever the deployment gate (`_build.authConfig: twoFactor.enabled`) passes,
@@ -127,8 +149,8 @@ predicate `pageId === enrolPageId → allow`, and `callRequest.js` already stamp
 `authorizeRequest.js` calls `authorize(requestConfig)` **without forwarding `{ pageId }`**, so the
 exemption — which fires for the page route — never fires for a request. Forward it, and requests
 invoked from the enrol page inherit the page's own exemption: _the page is allowed to skip the
-floor, so are its requests._ This is the upstream change, and it is small (see
-[Upstream](#upstream--engine-dependency)).
+floor, so are its requests._ This is Decision 2's engine change, and it is small (see
+[Upstream](#upstream--engine-dependencies)).
 
 **Why page-scoped, not a per-request flag or a session fact.**
 
@@ -158,19 +180,24 @@ a self-scoped `get_accounts` runs on load, its `has_credential` gates the passwo
 `TwoFactorEnable` `password` param coalesces null→`''`. A passwordless caller sees a clean
 "Generate QR code" screen with no password mention; a password caller sees the field as before.
 
-**Mitigation before the engine change lands — passwordless members are not locked out.** The enrol
+**Mitigation before the engine bump lands — passwordless members are not locked out.** The enrol
 page's **"Add a passkey"** branch (`PasskeyRegister`) needs no password and works for a passwordless
 caller today; a passkey satisfies `required` on its own (`twoFactorEnrolled = twoFactorEnabled ||
-passkeyCount > 0`). And once Decision 1 ships, a passwordless member can enrol **TOTP** voluntarily
-from the Security-tile modal. So the only route waiting on the engine change is forced-enrol-page
-TOTP, and it is a short wait, not a hard gate.
+passkeyCount > 0`). Passwordless **TOTP** — both the Security-tile modal (Decision 1) and this
+forced-enrol page (Decision 2) — waits on the engine bump, since both routes send `password: ''` and
+depend on the same `allowPasswordless` waiver. So until the bump, passkey is the passwordless enrol
+route; after it, both TOTP routes open together. A short wait, not a hard gate.
 
 ## Decision 3 — the enrol-page done-state is driven by a local flag, not the ambient fact
 
 F48 #2's loop is `_user.two_factor_enrolled` (a **session** fact, refreshed only on
-`UpdateSession`) disagreeing with the engine's `required` gate (recomputed **per request** from
-the DB). When the client fact reads truthy while the gate reads not-enrolled, the done-state and
-Continue render, and `Link {home: true}` bounces straight back off the gate.
+`UpdateSession`) disagreeing with the engine's `required` gate. That gate is recomputed **per
+request**, but not from the DB: `createAuthorizeOutcome` reads `user.two_factor_enrolled`, which
+`resolveAuthentication` derives from a fresh `getSession` — `session.user.twoFactorEnabled` for the
+**TOTP** factor, with a DB passkey `count` only for the unenrolled-TOTP case
+(`resolveAuthentication.js:171-185`). When the client fact reads truthy while that gate reads
+not-enrolled, the done-state and Continue render, and `Link {home: true}` bounces straight back off
+the gate.
 
 Rather than chase the staleness, **replace `_user.two_factor_enrolled` across the whole page with a
 local `enrol.done` flag** set only by this page's own successful enrolment chain — the
@@ -178,6 +205,25 @@ local `enrol.done` flag** set only by this page's own successful enrolment chain
 paths, seeded `false` in `seed_enrol` onInit. The page was reached _because_ the gate said "not
 enrolled", so the only legitimate route to "done" is completing an enrolment **here**; a flag set
 by that completion cannot disagree with a gate that has, by then, been satisfied.
+
+**The two `UpdateSession` calls stay load-bearing even though the page stops reading the session
+fact.** `enrol.done` drives only what this page _renders_; it does not satisfy the `required` gate
+on Continue's destination. Because that gate reads `session.user.twoFactorEnabled` for TOTP,
+`refresh_enrol_session` (`:310-311`) and `enrol_passkey_session` (`:183-184`) are what refresh the
+session so the home route admits the just-enrolled caller — drop either and Continue bounces
+straight back, F48 #2's loop reintroduced. A future reader who sees the page no longer reference
+`_user` must not read `UpdateSession` as dead code; the rewritten header comment records this.
+
+**Known tradeoff — an already-enrolled caller who re-arrives sees the form, not a done state.** An
+enrolled caller _can_ reach this page: the gate falls through to `allow` once `two_factor_enrolled`
+is true (`createAuthorizeOutcome.js:64-71`), reachable via the browser Back button right after
+Continue or by manual navigation. `seed_enrol` re-seeds `enrol.done: false`, so they now see the
+"Add a second factor" form rather than the old ambient-fact "Two-factor is set up" screen — and a
+Generate-QR there would silently **replace** their working authenticator. This is deliberate, not a
+regression: on arrival this caller is indistinguishable from the disabled-in-another-session
+stale-truthy caller (both hold `_user.two_factor_enrolled === true` yet want opposite screens), and
+only a fresh per-request gate read tells them apart — so defaulting to the form is the correct
+choice for the population F48 #2 is actually about.
 
 **It is the whole page, not just the done message + Continue.** `_user.two_factor_enrolled`
 currently drives **seventeen** blocks, and moving only two leaves the rest inconsistent — one of
@@ -229,16 +275,33 @@ codes; TOTP shows codes too. `enrol_continue.disabled` (`:421`) already keys off
     gate `enrol.password` + `enrol_totp_intro` on `has_credential` and coalesce the
     `TwoFactorEnable` `password` param null→`''`, exactly as Decision 1 does on the modals.
   - Rewrite the header comment (`:1-24`): drop the "runs no Lowdefy request" framing — the page now
-    runs `get_accounts` under the page-scoped gate exemption — and record the `enrol.done`
-    completion signal.
-- `apps/demo` / engine — the page-scoped exemption is an `@lowdefy/api` change (see Upstream); the
-  demo's forced-enrol flow verifies it end-to-end once it lands.
+    runs `get_accounts` under the page-scoped gate exemption — record the `enrol.done` completion
+    signal, and note that the two `UpdateSession` calls stay load-bearing for Continue's navigation
+    (the `required` gate reads `session.user.twoFactorEnabled`) even though the page no longer reads
+    the session fact.
+- `apps/demo` / engine — **two** `@lowdefy/api` changes (see Upstream), landing together in one
+  engine bump: `allowPasswordless: true` on the twoFactor plugin (Decision 1) and `pageId`
+  forwarding into request authorization (Decision 2). The demo's tile/modal and forced-enrol flows
+  verify them end-to-end once they land.
 - Demo verification: `apps/demo`'s `user-account/view` and forced-enrol flow already exercise
   these surfaces; verify with `pnpm ldf:b`, then a passwordless demo member (no `credential`
   account) through the tile modals and the enrol page's passkey route. No new demo page needed.
 
-## Upstream — engine dependency
+## Upstream — engine dependencies
 
+Two small, independent `@lowdefy/api` changes, landing together in one engine bump. Neither is a
+hard blocker (see the last bullet).
+
+- **Instantiate the twoFactor plugin with `allowPasswordless: true`** (`@lowdefy/api`) — the enabler
+  for Decision 1. `getBetterAuthConfig.js:385` currently pushes `twoFactor({ issuer, schema })` with
+  no `allowPasswordless`, and `shouldRequirePassword` short-circuits `if (!allowPasswordless) return
+true` (`better-auth/.../password.mjs:27`) — so without the flag the server demands a password from
+  **every** caller and Decision 1's coalesced `''` is rejected `INVALID_PASSWORD`. Adding the flag
+  restores the per-user waiver (`false` for a credential-less caller, `true` otherwise). Verified
+  absent from all six installed builds (latest Aug 7); the lifecycle design specifies this wiring
+  (line 273, "platform Decision 4"), so the shipped engine has lost or never carried it — this design
+  carries it explicitly rather than assuming it live. A test should cover that `shouldRequirePassword`
+  returns `false` for a credential-less caller once the flag is set.
 - **Forward the invoking `pageId` into request authorization** (`@lowdefy/api`) — the enabler for
   Decision 2. `callRequest.js` already sets `context.pageId` from the pageId the client sends with
   every request; `authorizeOutcome` already exempts `pageId === enrolPageId`. The only change is
@@ -247,10 +310,12 @@ codes; TOTP shows codes too. `enrol_continue.disabled` (`:421`) already keys off
   `getRequestConfig` resolves requests by `pages/{pageId}/requests/{requestId}.json`, so the
   exemption reaches only requests registered on the enrol page. Small and self-contained; a test
   should cover that a non-enrol page's request is _not_ exempted and that an enrol-page request is.
-- **Not a hard blocker.** Decisions 1 and 3 (tile, both modals, the Continue-loop fix) carry **no**
-  engine dependency and ship independently. Decision 2's forced-enrol-page fix rides the engine
-  change; until it lands, passkey is the passwordless enrol route on the forced-enrol page and the
-  Security-tile modal is the passwordless TOTP route. The design is complete when all three land.
+- **Not a hard blocker.** Only Decision 3 (the enrol-page Continue-loop fix) is pure in-module config
+  and ships now. Decisions 1 (tile + both modals) and 2 (forced-enrol page) both ride the engine bump
+  above. Until it lands, the **passkey** enrol route is the only passwordless path — it needs no
+  password and satisfies `required` on its own — while passwordless **TOTP** (both the Security-tile
+  modals and the forced-enrol page) waits on the `allowPasswordless` wiring. The design is complete
+  when both engine changes land.
 - **Superseded plan.** An earlier draft added a `_user.hasCredential` session fact for this. It is
   dropped: it duplicated a fact `get_accounts` already computes and split the read across two
   mechanisms. The page-scoped exemption lets the enrol page use the same `get_accounts` read as the
