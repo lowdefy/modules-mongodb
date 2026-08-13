@@ -144,7 +144,7 @@ email field to read. Registration `Validate` still covers the hoisted email.
   — the magic-link send has no email validation (empty send → GitHub 404). Method-first makes
   the magic-link button more prominent but does not fix F41; a `Validate` scoped to `email`
   before the send belongs there. Recommended to fold in, but tracked separately.
-- **[F32](../../auth-page-polish/F32-auth-page-visual-polish.md)** — auth-page shell polish
+- **[F32](../auth-page-polish/F32-auth-page-visual-polish.md)** — auth-page shell polish
   (Enter-to-submit, card width, logo).
 - Moving focus into the password field on reveal — a nice-to-have; a Lowdefy `Button` onClick
   cannot cleanly focus another input, so it is not attempted here.
