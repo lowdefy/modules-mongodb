@@ -110,6 +110,20 @@ link.
 
 ### 4. The `global_attributes` → `attributes` sweep restores the name, but the design doesn't establish that `_user.attributes.company_ids` is actually populated
 
+> **Resolved.** Investigated and the finding understates it: nothing in the repo populates a caller
+> `company_ids` on `_user` at any path — the only two reads of one are these `search_contacts` lines,
+> and `company_ids` otherwise lives solely on the contact (`contact.global_attributes.company_ids`,
+> written by contacts/companies). Root cause (per the owner): `user` and `contact` were one collection
+> pre-upgrade, and the split denormalized `profile` contact→user but **dropped `global_attributes`** —
+> so the caller's `company_ids` no longer reaches `_user`. A path rename therefore cannot restore the
+> filter; the data source is gone. Reframed the "stale read" bullet and Proposed-change item 5 around
+> this, and replaced the rename with a new **Decision 5**: read the scope **live from the caller's own
+> contact** (via the `_user` contact link — the `members_base` `$lookup` pattern), keeping the contact
+> as the single source of truth. Rejected alternatives recorded (denormalize onto `user.attributes` —
+> sync drift; admin-set `user_attribute` — semantics change). No migration (live read). Ships
+> module-side, using `_user.profile.contactId` today and `_user.contact_id` after ask 1. Changes-table
+> row rewritten.
+
 Decision 2's sweep (and the Changes-table row) rewrites `_user: global_attributes.company_ids` →
 `_user: attributes.company_ids` on `search_contacts.yaml:53,59`, on the premise that the auth upgrade
 renamed the caller's authorization bag and the filter "silently no-ops today." The rename direction
@@ -130,6 +144,16 @@ scope from the source that actually holds it. This is exactly the kind of open q
 says to resolve now rather than leave for the implementer to rediscover.
 
 ### 5. The migration renames a collection that carries an Atlas Search index, but treats index recreation as a single lockstep step with no reindex window
+
+> **Resolved.** Confirmed the `default` Atlas Search index is required and that a missing index with
+> `atlas_search: true` returns empty (no regex fallback) — `docs/contacts/reference/indexes.md`. The
+> `mongot` index does not survive `renameCollection`, so "in lockstep" does hide a search-availability
+> gap while it rebuilds. Rewrote Migration item 1 to state the constraint explicitly and give two
+> sequenced paths: **preferred** copy-and-cutover (build regular + Atlas indexes on the new collection
+> while the old one still serves, then cut over — zero search-downtime), or **acceptable** rename +
+> rebuild inside a maintenance window (or with `atlas_search: false` temporarily so searches degrade to
+> regex instead of returning empty). Left as a reviewed-not-run migration; the operator picks per their
+> downtime tolerance.
 
 Migration item 1 says to `db.user-contacts.renameCollection('contacts')` "with the connection updates
 deployed in lockstep" and to "Recreate indexes (the Atlas Search `default` index and the regular
