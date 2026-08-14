@@ -34,6 +34,17 @@ payloadSchema:
           type: array
           description: Read-only MongoDB aggregation pipeline stages.
 routine:
+  # Validation runs the catalog role gate, which treats a role-less collection
+  # as readable by any AUTHENTICATED user. This tool is HTTP-callable, so
+  # without this guard an unprotected app leaks catalog structure to anonymous
+  # callers through the validator's errors. Same guard the data-reading
+  # endpoints carry (see query-data).
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to export data.
   - :set_state:
       validated:
         _analytics.validateExportSpec:

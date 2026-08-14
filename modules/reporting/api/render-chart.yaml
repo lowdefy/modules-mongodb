@@ -58,6 +58,17 @@ payloadSchema:
         per category instead of side-by-side bars — use when the series are
         parts of a whole (a breakdown), not unrelated measures.
 routine:
+  # Validation runs the catalog role gate, which treats a role-less collection
+  # as readable by any AUTHENTICATED user. This tool is HTTP-callable, so
+  # without this guard an unprotected app leaks catalog structure to anonymous
+  # callers through the validator's errors. Same guard the data-reading
+  # endpoints carry (see query-data).
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to render a chart.
   # Validation throws on an invalid spec (bad pipeline or malformed contract) —
   # the tool call fails with the validator's actionable message. Passing the
   # catalog runs the full pipeline grammar/role gate now (validate-before-ack).
