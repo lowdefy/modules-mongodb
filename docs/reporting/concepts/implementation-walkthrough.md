@@ -200,13 +200,16 @@ called `useChat` with a transport but no `id`, so AI SDK v5 created the Chat
 instance once per mount and captured the mount-time `conversationId` URL. Every
 send in a page session posted under that id, so continuing a restored conversation
 forked a duplicate doc without its `data_parts`. It was carried as
-`patches/@lowdefy__blocks-antd-x.patch` (commit `7df0cca2`) until the
-2026-08-06 build shipped `id: effectiveConversationId` in `blocks-antd-x` itself;
-that hunk was then dropped from the patch.
+`patches/@lowdefy__blocks-antd-x.patch` (commit `7df0cca2`) until
+[lowdefy/lowdefy#2289](https://github.com/lowdefy/lowdefy/pull/2289) merged
+`id: effectiveConversationId` upstream; it shipped in the 2026-08-06 build and that
+hunk was dropped from the patch.
 
 Three `dist/` patches are in play in total, all interim and all owed upstream:
 `blocks-antd-x` (the `setInput` method the chat empty state fills the composer
-with, and the in-flow two-track welcome), `ai-utils` (`generateMessageId`, without which the assistant
+with, and the in-flow two-track welcome — both open upstream as
+[lowdefy/lowdefy#2303](https://github.com/lowdefy/lowdefy/pull/2303), along with the
+`ai-utils` fix below), `ai-utils` (`generateMessageId`, without which the assistant
 message reaches `onFinish` with `id: ""`), and `blocks-aggrid` (the `cell.type:
 menu` renderer the reports list's ⋯ column uses, plus the cell-renderer identity
 fix that menu needs — the block rebuilt every renderer on every render, and

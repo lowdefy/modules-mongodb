@@ -20,11 +20,18 @@ overrides:
 # renders two tracks in-flow inside the message scroll area (so the empty state
 # scrolls up with the transcript instead of vanishing).
 #
-# A third — keying useChat by conversationId, without which useChat captures the
-# transport at mount and a continued conversation is persisted under the mount-time
-# id — LANDED UPSTREAM and was dropped from the patch on the 2026-08-06 bump. That
-# is what these patches are for: each hunk is a debt, and the way it is repaid is by
-# disappearing from here.
+# Both, together with the ai-utils patch below, are open upstream as
+# lowdefy/lowdefy#2303 — so when that merges, two of these three patches go away
+# entirely rather than shrinking.
+#
+# A third hunk — keying useChat by conversationId, without which useChat captures
+# the transport at mount and a continued conversation is persisted under the
+# mount-time id — was split out of #2303 into its own PR, lowdefy/lowdefy#2289, and
+# merged; it shipped in the 2026-08-06 build and was dropped from this patch on the
+# bump. Worth knowing as a habit rather than a one-off: a small fix split out of a
+# feature PR lands first, so a patch can go stale one hunk at a time while the PR it
+# came from is still open. Re-roll against the published dist, never against the PR
+# branch.
 #
 # blocks-aggrid adds the `cell.type: menu` renderer the reports list's ⋯ column uses
 # and fixes cell-renderer identity, without which ag-grid destroys a cell on every
