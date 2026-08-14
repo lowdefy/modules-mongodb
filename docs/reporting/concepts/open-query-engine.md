@@ -74,13 +74,15 @@ The allowlists decide _what_ is allowed; these caps decide _how much_. They prot
 | `$facet` branches            | 10          | Per `$facet` stage                                                                  |
 | Expression tree depth        | 100         | Explicit guard — deep nesting fails with a validation error, never a stack overflow |
 | Total classified nodes       | 10,000      | Guards a broad-but-shallow tree                                                     |
-| Array literal length         | 100         | `$in`/`$nin`/`$all` operands written into the pipeline — not what a stage produces  |
+| Array literal length         | 500         | `$in`/`$nin`/`$all` operands written into the pipeline — not what a stage produces  |
 | Serialized pipeline size     | 100,000 B   | Bounds a payload padded with large `$literal` blobs                                 |
 | Regex pattern length / flags | 200 chars   | Flags restricted to `imsu`; a size bound only — see the note below                  |
 | `$sample.size`               | 1,000       | An unindexed `$sample` is a blocking scan                                           |
 | Result size                  | 8,000,000 B | Total size of the returned documents, enforced while draining the cursor            |
 
 The regex cap bounds pattern **size**, not complexity: catastrophic backtracking needs only a few characters (`^(a+)+$`), so the real mitigation there is `maxTimeMS`, and a read-only principal on a replica read preference keeps the blast radius to one query's compute.
+
+The array-literal cap is set by the filter path rather than by the pipeline grammar. A full multi-select selection compiles to a single `$in` operand, so this cap must stay at or above the 500-option cap on query-sourced filter lists ([options sources](../reference/presentation-contract.md#options-three-sources-in-precedence-order)) — below it, an ordinary full selection would be rejected as a pipeline that types too much. It bounds pipeline **text**, not result size, so it stays well inside the serialized-size and node budgets either way.
 
 ### The always-appended row limit
 
