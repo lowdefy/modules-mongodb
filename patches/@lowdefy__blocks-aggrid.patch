@@ -1,0 +1,548 @@
+diff --git a/dist/AgGrid.js b/dist/AgGrid.js
+index c52996a4249fe0eecc562cfa922a82879a70afa8..c2575a06dd5a8d3e3e7b1a80c64bcfab255e3497 100644
+--- a/dist/AgGrid.js
++++ b/dist/AgGrid.js
+@@ -16,7 +16,7 @@
+ import { AgGridReact } from '@ag-grid-community/react';
+ import { ClientSideRowModelModule } from '@ag-grid-community/client-side-row-model';
+ import { CsvExportModule } from '@ag-grid-community/csv-export';
+-import processColDefs from './processColDefs.js';
++import useColDefs from './useColDefs.js';
+ import assignRowId from './assignRowId.js';
+ import LoadingOverlay from './LoadingOverlay.js';
+ const AgGrid = ({ properties, methods, loading, events, components })=>{
+@@ -24,6 +24,12 @@ const AgGrid = ({ properties, methods, loading, events, components })=>{
+     const [rowData, setRowData] = useState(newRowData ?? []);
+     const gridRef = useRef();
+     const memoDefaultColDef = useMemo(()=>defaultColDef);
++    const processedColDefs = useColDefs({
++        columnDefs,
++        methods,
++        components,
++        gridRef
++    });
+     const getRowId = useCallback((params)=>{
+         if (properties.rowId && params.data[properties.rowId] !== undefined) return params.data[properties.rowId];
+         return assignRowId(params);
+@@ -157,7 +163,7 @@ const AgGrid = ({ properties, methods, loading, events, components })=>{
+             ClientSideRowModelModule,
+             CsvExportModule
+         ],
+-        columnDefs: processColDefs(columnDefs, methods, components),
++        columnDefs: processedColDefs,
+         ref: gridRef,
+         getRowId: getRowId,
+         suppressLoadingOverlay: true
+diff --git a/dist/AgGridInput.js b/dist/AgGridInput.js
+index 22be4849aa1260d323fafe5a10f484db63b686e6..7a90cbc906119feb2854a45cd321ed2d35850dce 100644
+--- a/dist/AgGridInput.js
++++ b/dist/AgGridInput.js
+@@ -16,7 +16,7 @@
+ import { AgGridReact } from '@ag-grid-community/react';
+ import { ClientSideRowModelModule } from '@ag-grid-community/client-side-row-model';
+ import { CsvExportModule } from '@ag-grid-community/csv-export';
+-import processColDefs from './processColDefs.js';
++import useColDefs from './useColDefs.js';
+ import assignRowId from './assignRowId.js';
+ import LoadingOverlay from './LoadingOverlay.js';
+ const AgGridInput = ({ properties, methods, loading, events, value })=>{
+@@ -24,6 +24,11 @@ const AgGridInput = ({ properties, methods, loading, events, value })=>{
+     const [rowData, setRowData] = useState(value ?? []);
+     const gridRef = useRef();
+     const memoDefaultColDef = useMemo(()=>defaultColDef);
++    const processedColDefs = useColDefs({
++        columnDefs,
++        methods,
++        gridRef
++    });
+     const getRowId = useCallback((params)=>{
+         if (properties.rowId && params.data[properties.rowId] !== undefined) return params.data[properties.rowId];
+         return assignRowId(params);
+@@ -206,7 +211,7 @@ const AgGridInput = ({ properties, methods, loading, events, value })=>{
+             ClientSideRowModelModule,
+             CsvExportModule
+         ],
+-        columnDefs: processColDefs(columnDefs, methods),
++        columnDefs: processedColDefs,
+         ref: gridRef,
+         getRowId: getRowId,
+         suppressLoadingOverlay: true
+diff --git a/dist/cellRenderers/MenuCell.js b/dist/cellRenderers/MenuCell.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..133f9f2cb707b3a12c194b3ee78463194def2411
+--- /dev/null
++++ b/dist/cellRenderers/MenuCell.js
+@@ -0,0 +1,117 @@
++/*
++  Copyright 2020-2026 Lowdefy, Inc
++
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++      http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License.
++*/ import React from 'react';
++import { Button, Dropdown } from 'antd';
++import { type } from '@lowdefy/helpers';
++import { renderHtml } from '@lowdefy/block-utils';
++import NullCell from './NullCell.js';
++import { resolvePath } from './resolveFieldRefs.js';
++function resolveField(literalKey, fieldKey, item, data) {
++    if (type.isString(item?.[fieldKey])) return resolvePath(item[fieldKey], data);
++    return item?.[literalKey];
++}
++function MenuCell(params) {
++    const { value, data, cellConfig, methods, components } = params;
++    const Icon = components?.Icon;
++    const items = type.isArray(cellConfig?.items) ? cellConfig.items : [];
++    // Resolve every item against the row BEFORE antd sees it, and drop hidden
++    // items rather than disabling them — so a row whose every item is hidden
++    // renders no trigger at all instead of a button opening an empty popover.
++    const resolved = items.map((item, idx)=>{
++        if (!type.isObject(item) || !type.isString(item.eventName)) return null;
++        if (resolveField('hidden', 'hiddenField', item, data) === true) return null;
++        return {
++            idx,
++            item,
++            title: resolveField('title', 'titleField', item, data),
++            iconConfig: resolveField('icon', 'iconField', item, data),
++            disabled: resolveField('disabled', 'disabledField', item, data) === true
++        };
++    }).filter(Boolean);
++    if (resolved.length === 0) return /*#__PURE__*/ React.createElement(NullCell, null);
++    const menuItems = resolved.map(({ idx, item, title, iconConfig, disabled })=>({
++            // Keyed by the item's index in the AUTHORED array, not by its position
++            // in the resolved one, so onClick can find it back after hidden items
++            // have shifted everything.
++            key: String(idx),
++            label: type.isNone(title) ? undefined : renderHtml({
++                html: String(title),
++                methods
++            }),
++            icon: iconConfig && Icon ? /*#__PURE__*/ React.createElement(Icon, {
++                blockId: `menucell_${idx}_icon`,
++                events: {},
++                properties: iconConfig
++            }) : undefined,
++            disabled,
++            danger: item.danger === true
++        }));
++    function onClick({ key, domEvent }) {
++        domEvent?.stopPropagation?.();
++        const entry = resolved.find((r)=>String(r.idx) === key);
++        if (!entry) return;
++        methods?.triggerEvent?.({
++            name: entry.item.eventName,
++            event: {
++                row: data,
++                value,
++                item: {
++                    eventName: entry.item.eventName,
++                    title: entry.title
++                },
++                itemIndex: entry.idx
++            }
++        });
++    }
++    // The trigger is icon-only: a row menu is an affordance, not a labelled
++    // action, and every caller so far wants the same ⋯.
++    const triggerIcon = Icon ? /*#__PURE__*/ React.createElement(Icon, {
++        blockId: 'menucell_trigger_icon',
++        events: {},
++        properties: cellConfig.icon ?? 'AiOutlineMore'
++    }) : undefined;
++    return(// Synthetic stopPropagation lives on a WRAPPER, not on the Button: antd's
++    // Dropdown clones its child to attach the trigger handler, so an onClick of
++    // ours on the Button is the one that gets shadowed. It keeps a stray click
++    // from bubbling within React; ag-grid uses native listeners, so a grid that
++    // also wires onCellClick / onRowClick may still see the click (same as the
++    // buttons cell).
++    /*#__PURE__*/ React.createElement("div", {
++        onClick: (e)=>e.stopPropagation()
++    }, /*#__PURE__*/ React.createElement(Dropdown, {
++        menu: {
++            items: menuItems,
++            onClick
++        },
++        trigger: [
++            'click'
++        ],
++        placement: cellConfig.placement ?? 'bottomRight',
++        // Render the menu to the body so it is not clipped by the ag-grid cell —
++        // the same reason SelectorCell does it. Without this the popover mounts
++        // inside a cell that hides its overflow, so the ⋯ looks inert.
++        getPopupContainer: ()=>document.body
++    }, /*#__PURE__*/ React.createElement(Button, {
++        // The trigger's own appearance is fixed rather than configurable: `type`
++        // and `shape` are already taken at cell level (the renderer name, and the
++        // avatar shape), so exposing them here would collide. These match the
++        // ButtonsCell defaults, which is what a ⋯ beside other cell buttons wants.
++        size: 'small',
++        type: 'text',
++        shape: 'square',
++        icon: triggerIcon
++    }))));
++}
++export default MenuCell;
+diff --git a/dist/cellRenderers/index.js b/dist/cellRenderers/index.js
+index 9da9ea09275b25f9b53f3b219cc26fdd8b65cd6b..cff3d45be3d8144b8d4f9db7b29f1290cb027195 100644
+--- a/dist/cellRenderers/index.js
++++ b/dist/cellRenderers/index.js
+@@ -20,6 +20,7 @@ import BooleanCell from './BooleanCell.js';
+ import ProgressCell from './ProgressCell.js';
+ import NumberCell from './NumberCell.js';
+ import ButtonsCell from './ButtonsCell.js';
++import MenuCell from './MenuCell.js';
+ import SelectorCell from './SelectorCell.js';
+ import SwitchCell from './SwitchCell.js';
+ import TextInputCell from './TextInputCell.js';
+@@ -33,6 +34,7 @@ const CELL_RENDERERS = {
+     progress: ProgressCell,
+     number: NumberCell,
+     buttons: ButtonsCell,
++    menu: MenuCell,
+     selector: SelectorCell,
+     multipleSelector: SelectorCell,
+     switch: SwitchCell,
+diff --git a/dist/createDisplayMeta.js b/dist/createDisplayMeta.js
+index 2255cb99f83260463c0d1a502f0e204ab41774e1..37936eb0b1cfed4bd9462f156df7acf99e0520dd 100644
+--- a/dist/createDisplayMeta.js
++++ b/dist/createDisplayMeta.js
+@@ -86,6 +86,15 @@ function createDisplayMeta(blockName) {
+                     button: 'The clicked button: { eventName, title }.',
+                     buttonIndex: 'Zero-based index in the buttons array.'
+                 }
++            },
++            onCellMenuItem: {
++                description: 'Documentation reference — the actual event name fired is the `eventName` string declared on each `cell.items[]` entry of a `cell.type: menu` cell. Wire any number of named events on the block (e.g. `onRename`, `onDelete`).',
++                event: {
++                    row: 'The row data.',
++                    value: 'The cell value.',
++                    item: 'The clicked item: { eventName, title }.',
++                    itemIndex: 'Zero-based index in the authored items array (unshifted by hidden items).'
++                }
+             }
+         },
+         properties: {
+@@ -211,6 +220,7 @@ function createDisplayMeta(blockName) {
+                                             'progress',
+                                             'number',
+                                             'buttons',
++                                            'menu',
+                                             'selector',
+                                             'multipleSelector',
+                                             'switch',
+@@ -538,6 +548,90 @@ function createDisplayMeta(blockName) {
+                                             }
+                                         }
+                                     },
++                                    items: {
++                                        type: 'array',
++                                        description: 'Menu cell: items in the row action menu, rendered in a dropdown behind a single trigger button. Each item triggers its own block-level event (declared in `events:`). `*Field` variants (`titleField`, `iconField`, `disabledField`, `hiddenField`) are row-data paths. A hidden item is dropped, not disabled — a row on which every item is hidden renders no trigger at all.',
++                                        items: {
++                                            type: 'object',
++                                            required: [
++                                                'eventName'
++                                            ],
++                                            properties: {
++                                                eventName: {
++                                                    type: 'string',
++                                                    description: 'Block-level event name to trigger on click. Event payload is `{ row, value, item: { eventName, title }, itemIndex }`.'
++                                                },
++                                                title: {
++                                                    type: 'string',
++                                                    description: 'Item label - supports html.'
++                                                },
++                                                titleField: {
++                                                    type: 'string',
++                                                    description: 'Row-data path for the label.'
++                                                },
++                                                icon: {
++                                                    type: [
++                                                        'string',
++                                                        'object'
++                                                    ],
++                                                    description: 'Name of a React-Icon or Icon block config.',
++                                                    docs: {
++                                                        displayType: 'icon'
++                                                    }
++                                                },
++                                                iconField: {
++                                                    type: 'string',
++                                                    description: 'Row-data path for the icon name or config.'
++                                                },
++                                                danger: {
++                                                    type: 'boolean',
++                                                    default: false,
++                                                    description: 'Render the item in the danger colour.'
++                                                },
++                                                disabled: {
++                                                    type: 'boolean',
++                                                    default: false
++                                                },
++                                                disabledField: {
++                                                    type: 'string',
++                                                    description: 'Row-data path → boolean.'
++                                                },
++                                                hidden: {
++                                                    type: 'boolean',
++                                                    default: false,
++                                                    description: 'Hide the item entirely.'
++                                                },
++                                                hiddenField: {
++                                                    type: 'string',
++                                                    description: 'Row-data path → boolean.'
++                                                }
++                                            }
++                                        }
++                                    },
++                                    icon: {
++                                        type: [
++                                            'string',
++                                            'object'
++                                        ],
++                                        default: 'AiOutlineMore',
++                                        description: 'Menu cell: the trigger icon. Name of a React-Icon or Icon block config. The trigger is icon-only.',
++                                        docs: {
++                                            displayType: 'icon'
++                                        }
++                                    },
++                                    placement: {
++                                        type: 'string',
++                                        enum: [
++                                            'bottomLeft',
++                                            'bottom',
++                                            'bottomRight',
++                                            'topLeft',
++                                            'top',
++                                            'topRight'
++                                        ],
++                                        default: 'bottomRight',
++                                        description: 'Menu cell: where the dropdown opens relative to its trigger.'
++                                    },
+                                     options: {
+                                         type: 'array',
+                                         description: 'Selector / Multiple selector cell: dropdown options. An array of primitives, or objects mirroring the `Selector` block options: `{ label, value, disabled, color, filterString, style }`. `label` supports html.'
+diff --git a/dist/processColDefs.js b/dist/processColDefs.js
+index b716b2ce3eae4e1b50b7eab8e71f094e029b37b7..7b9b7c9e28b0b595ece087ac1290d2f264048daf 100644
+--- a/dist/processColDefs.js
++++ b/dist/processColDefs.js
+@@ -16,7 +16,7 @@
+ import { type } from '@lowdefy/helpers';
+ import { getCellRenderer } from './cellRenderers/index.js';
+ import createEllipsisCell from './cellRenderers/EllipsisCell.js';
+-function applyEllipsis(colDef, ellipsis) {
++function applyEllipsis(colDef, ellipsis, makeEllipsisRenderer) {
+     if (!type.isInt(ellipsis) || ellipsis < 1) return colDef;
+     const clampClass = `lf-ellipsis-${Math.min(ellipsis, 6)}`;
+     const existingClass = colDef.cellClass;
+@@ -34,7 +34,7 @@ function applyEllipsis(colDef, ellipsis) {
+     // ag-grid's internal cell wrappers. Skip if a cellRenderer is already set
+     // (user or built-in cell.type takes precedence and can opt in via CSS).
+     if (!colDef.cellRenderer) {
+-        next.cellRenderer = createEllipsisCell(ellipsis);
++        next.cellRenderer = makeEllipsisRenderer();
+     }
+     return next;
+ }
+@@ -66,41 +66,75 @@ function applyAlignment(colDef, cell) {
+         headerClass
+     };
+ }
+-function buildCellRenderer({ cell, methods, components }) {
+-    const Renderer = getCellRenderer(cell?.type);
+-    if (!Renderer) return undefined;
+-    // ag-grid calls the renderer as a React function component when returned directly.
+-    return function CellRendererAdapter(params) {
+-        return Renderer({
+-            ...params,
+-            cellConfig: cell,
+-            methods,
+-            components
+-        });
+-    };
++// A cell renderer is a React element type, so ag-grid treats a new function as a
++// different component and throws the mounted cell away (CellCtrl.refreshCellRenderer
++// bails on `cellRendererClass !== componentClass`, and the React cell comp then
++// re-keys). Since this module rebuilds every renderer on every render, any state a
++// cell holds — an open dropdown, a focused input, a half-typed value — is destroyed
++// the moment anything else on the page re-renders the block.
++//
++// So the adapter installed on the colDef is created once per column and kept, while
++// the closure it calls is replaced in place. ag-grid keeps the cell; the cell renders
++// the current config.
++function stableRenderer(entry, slot, render) {
++    let stable = entry[slot];
++    if (!stable) {
++        const box = {
++            render
++        };
++        // ag-grid calls the renderer as a React function component when returned directly.
++        function CellRendererAdapter(params) {
++            return box.render(params);
++        }
++        stable = {
++            box,
++            Adapter: CellRendererAdapter
++        };
++        entry[slot] = stable;
++    }
++    stable.box.render = render;
++    return stable.Adapter;
++}
++// Keyed by colId or field so the identity survives a reorder, falling back to
++// position for columns that declare neither. A key already taken in this pass gets
++// a suffix, so two columns sharing a field do not share an adapter.
++function colKey(col, index, prefix, seen) {
++    const base = `${prefix}${type.isString(col.colId) ? col.colId : type.isString(col.field) ? col.field : index}`;
++    let key = base;
++    let n = 1;
++    while (seen.has(key)) {
++        key = `${base}#${n}`;
++        n += 1;
++    }
++    seen.add(key);
++    return key;
+ }
+-function recProcessColDefs(columnDefs, methods, components) {
+-    return columnDefs.map((col)=>{
++function recProcessColDefs(columnDefs, methods, components, cache, seen, prefix) {
++    return columnDefs.map((col, index)=>{
++        const key = colKey(col, index, prefix, seen);
++        const entry = cache.get(key) ?? {};
++        cache.set(key, entry);
+         const newColDef = {};
+         if (type.isArray(col.children)) {
+-            newColDef.children = recProcessColDefs(col.children, methods, components);
++            newColDef.children = recProcessColDefs(col.children, methods, components, cache, seen, `${key}/`);
+         }
+         if (type.isObject(col.cell) && type.isString(col.cell.type)) {
+-            const renderer = buildCellRenderer({
+-                cell: col.cell,
+-                methods,
+-                components
+-            });
+-            if (renderer) {
+-                newColDef.cellRenderer = renderer;
++            const Renderer = getCellRenderer(col.cell.type);
++            if (Renderer) {
++                const cell = col.cell;
++                newColDef.cellRenderer = stableRenderer(entry, 'cell', (params)=>Renderer({
++                        ...params,
++                        cellConfig: cell,
++                        methods,
++                        components
++                    }));
+             }
+         } else if (type.isFunction(col.cellRenderer)) {
+-            newColDef.cellRenderer = (params)=>{
+-                return renderHtml({
+-                    html: col.cellRenderer(params),
++            const cellRenderer = col.cellRenderer;
++            newColDef.cellRenderer = stableRenderer(entry, 'cell', (params)=>renderHtml({
++                    html: cellRenderer(params),
+                     methods
+-                });
+-            };
++                }));
+         }
+         const merged = {
+             ...col,
+@@ -110,10 +144,18 @@ function recProcessColDefs(columnDefs, methods, components) {
+         delete merged.cell;
+         delete merged.ellipsis;
+         const aligned = applyAlignment(merged, col.cell);
+-        return applyEllipsis(aligned, col.ellipsis);
++        return applyEllipsis(aligned, col.ellipsis, ()=>stableRenderer(entry, 'ellipsis', createEllipsisCell(col.ellipsis)));
+     });
+ }
+-function processColDefs(columnDefs = [], methods, components) {
+-    return recProcessColDefs(columnDefs, methods, components);
++function processColDefs(columnDefs = [], methods, components, cache = new Map()) {
++    const seen = new Set();
++    const processed = recProcessColDefs(columnDefs, methods, components, cache, seen, '');
++    // Drop columns that are no longer defined, so a grid whose columns come and go
++    // does not accumulate adapters. A column that returns gets a fresh one, which is
++    // correct — its cells were unmounted with it.
++    for (const key of cache.keys()){
++        if (!seen.has(key)) cache.delete(key);
++    }
++    return processed;
+ }
+ export default processColDefs;
+diff --git a/dist/useColDefs.js b/dist/useColDefs.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..2a2eb4bd4c888d11cd8aae504df81f874ff956b2
+--- /dev/null
++++ b/dist/useColDefs.js
+@@ -0,0 +1,64 @@
++/*
++  Copyright 2020-2026 Lowdefy, Inc
++
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++      http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License.
++*/ import { useEffect, useRef } from 'react';
++import { type } from '@lowdefy/helpers';
++import processColDefs from './processColDefs.js';
++// Fingerprint the authored columnDefs, functions included. JSON.stringify drops
++// function values unless a replacer returns something for them, and a cellRenderer
++// or valueGetter built by an operator is a new function on every evaluation — so
++// identity is the only signal available that one of them changed.
++function fingerprint(columnDefs) {
++    const functions = [];
++    const json = JSON.stringify(columnDefs, (_key, value)=>{
++        if (type.isFunction(value)) {
++            functions.push(value);
++            return `__fn__${functions.length - 1}`;
++        }
++        return value;
++    });
++    return {
++        json,
++        functions
++    };
++}
++function unchanged(previous, next) {
++    if (!previous) return false;
++    if (previous.json !== next.json) return false;
++    if (previous.functions.length !== next.functions.length) return false;
++    return previous.functions.every((fn, index)=>fn === next.functions[index]);
++}
++// Cell renderers now keep their identity across renders (see processColDefs), which
++// is what stops ag-grid destroying a cell mid-interaction — but it also means nothing
++// replaces a cell when its column definition changes. ag-grid only refreshes body
++// cells on a data change; it does not listen for colDefChanged. So ask it: refreshCells
++// re-renders the mounted cells in place with the new definition (newData stays false,
++// so React keeps the instances, and with them whatever the cell was holding).
++function useColDefs({ columnDefs, methods, components, gridRef }) {
++    const cache = useRef(new Map());
++    const previous = useRef();
++    const processed = processColDefs(columnDefs, methods, components, cache.current);
++    useEffect(()=>{
++        const next = fingerprint(columnDefs);
++        const first = previous.current === undefined;
++        const same = unchanged(previous.current, next);
++        previous.current = next;
++        if (first || same) return;
++        gridRef.current?.api?.refreshCells({
++            force: true
++        });
++    });
++    return processed;
++}
++export default useColDefs;

@@ -33,6 +33,7 @@ overrides:
 # by a version bump, where an unmatched patch fails the install loudly.
 patchedDependencies:
   "@lowdefy/ai-utils": patches/@lowdefy__ai-utils.patch
+  "@lowdefy/blocks-aggrid": patches/@lowdefy__blocks-aggrid.patch
   "@lowdefy/blocks-antd-x": patches/@lowdefy__blocks-antd-x.patch
 
 # These keys live here, not under a "pnpm" key in package.json: pnpm 10+ no
