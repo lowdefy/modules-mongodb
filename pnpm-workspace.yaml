@@ -15,12 +15,20 @@ packages:
 overrides:
   dayjs: 1.11.20
 
-# AgentChat carries three fixes the reporting chat depends on: it keys useChat by
-# conversationId (without it useChat captures the transport at mount, so switching
-# conversations persists the continued chat under the mount-time id); it adds a
-# controlled composer with a `setInput` method (so starters can fill it); and it
-# lets the `welcome` config render two tracks in-flow inside the message scroll
-# area (so the empty state scrolls up with the transcript instead of vanishing).
+# AgentChat carries two fixes the reporting chat depends on: a controlled composer
+# with a `setInput` method (so starters can fill it), and a `welcome` config that
+# renders two tracks in-flow inside the message scroll area (so the empty state
+# scrolls up with the transcript instead of vanishing).
+#
+# A third — keying useChat by conversationId, without which useChat captures the
+# transport at mount and a continued conversation is persisted under the mount-time
+# id — LANDED UPSTREAM and was dropped from the patch on the 2026-08-06 bump. That
+# is what these patches are for: each hunk is a debt, and the way it is repaid is by
+# disappearing from here.
+#
+# blocks-aggrid adds the `cell.type: menu` renderer the reports list's ⋯ column uses
+# and fixes cell-renderer identity, without which ag-grid destroys a cell on every
+# unrelated re-render. Submitted as lowdefy/lowdefy#2310.
 #
 # ai-utils passes generateMessageId when it builds the agent's UI message stream.
 # The AI SDK only ids the assistant message it hands the stream-level onFinish
@@ -62,24 +70,24 @@ minimumReleaseAgeExclude:
   - "@lowdefy/ai-utils@5.5.1"
   - "@lowdefy/ajv@5.5.1"
   - "@lowdefy/api@5.5.1"
-  - "@lowdefy/block-utils@5.5.1"
+  - '@lowdefy/block-utils@0.0.0-experimental-20260813120102 || 5.5.1'
   - "@lowdefy/blocks-aggrid@5.5.1"
   - "@lowdefy/blocks-antd-x@5.5.1"
-  - "@lowdefy/blocks-antd@5.5.1"
-  - "@lowdefy/blocks-basic@5.5.1"
+  - '@lowdefy/blocks-antd@0.0.0-experimental-20260813120102 || 5.5.1'
+  - '@lowdefy/blocks-basic@0.0.0-experimental-20260813120102 || 5.5.1'
   - "@lowdefy/blocks-loaders@5.5.1"
   - "@lowdefy/blocks-markdown@5.5.1"
   - "@lowdefy/blocks-tiptap@5.5.1"
   - "@lowdefy/build@5.5.1"
   - "@lowdefy/client@5.5.1"
-  - "@lowdefy/e2e-utils@5.5.1"
+  - '@lowdefy/e2e-utils@0.0.0-experimental-20260813120102 || 5.5.1'
   - "@lowdefy/engine@5.5.1"
-  - "@lowdefy/errors@5.5.1"
-  - "@lowdefy/helpers@5.5.1"
+  - '@lowdefy/errors@0.0.0-experimental-20260813120102 || 5.5.1'
+  - '@lowdefy/helpers@0.0.0-experimental-20260813120102 || 5.5.1'
   - "@lowdefy/layout@5.5.1"
-  - "@lowdefy/logger@5.5.1"
-  - "@lowdefy/node-utils@5.5.1"
-  - "@lowdefy/nunjucks@5.5.1"
+  - '@lowdefy/logger@0.0.0-experimental-20260813120102 || 5.5.1'
+  - '@lowdefy/node-utils@0.0.0-experimental-20260813120102 || 5.5.1'
+  - '@lowdefy/nunjucks@0.0.0-experimental-20260813120102 || 5.5.1'
   - "@lowdefy/operators-dayjs@5.5.1"
   - "@lowdefy/operators-js@5.5.1"
   - "@lowdefy/operators-mql@5.5.1"
@@ -88,7 +96,7 @@ minimumReleaseAgeExclude:
   - "@lowdefy/operators@5.5.1"
   - "@lowdefy/plugin-aws@5.5.1"
   - "@lowdefy/plugin-next-auth@5.5.1"
-  - lowdefy@5.5.1
+  - lowdefy@0.0.0-experimental-20260813120102 || 5.5.1
   - "@lowdefy/blocks-echarts@5.5.1"
   - "@lowdefy/connection-axios-http@5.5.1"
   - "@lowdefy/operators-change-case@5.5.1"

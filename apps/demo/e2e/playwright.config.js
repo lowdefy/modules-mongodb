@@ -34,15 +34,15 @@ export default {
   // has one writer. Same reasoning (and same settings) as apps/workflows-test.
   workers: 1,
   fullyParallel: false,
-  // `lowdefy build --server e2e` fails the auth config check unless NEXTAUTH_SECRET
-  // is set. The e2e server uses cookie-based mock auth, so the value is build-only —
+  // `lowdefy build --server e2e` fails the auth config check unless AUTH_SECRET
+  // is set (Auth.js v5 reads AUTH_SECRET; the v4 NEXTAUTH_SECRET is not read at
+  // all). The e2e server uses cookie-based mock auth, so the value is build-only —
   // mirror the `ldf:b` script and respect a real secret if one is already exported.
   webServer: {
     ...config.webServer,
     env: {
       ...process.env,
-      NEXTAUTH_SECRET:
-        process.env.NEXTAUTH_SECRET || "build-only-not-a-real-secret",
+      AUTH_SECRET: process.env.AUTH_SECRET || "build-only-not-a-real-secret",
     },
   },
 };

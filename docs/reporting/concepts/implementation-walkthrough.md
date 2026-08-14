@@ -195,17 +195,18 @@ a turn behind — and continuing from a stale transcript would overwrite the sav
 doc. `list-conversations.yaml:34-36` projects `messages` and `data_parts` _out_ to
 make that mistake impossible.
 
-There is also a framework patch here — `patches/@lowdefy__blocks-antd-x.patch`,
-commit `7df0cca2`. `AgentChat` called `useChat` with a transport but no `id`, so
-AI SDK v5 created the Chat instance once per mount and captured the mount-time
-`conversationId` URL. Every send in a page session posted under that id, so
-continuing a restored conversation forked a duplicate doc without its `data_parts`.
-The patch adds `id: effectiveConversationId`. It is interim — the fix belongs
-upstream in `blocks-antd-x`.
+This surface needed a framework fix, and that fix is now upstream. `AgentChat`
+called `useChat` with a transport but no `id`, so AI SDK v5 created the Chat
+instance once per mount and captured the mount-time `conversationId` URL. Every
+send in a page session posted under that id, so continuing a restored conversation
+forked a duplicate doc without its `data_parts`. It was carried as
+`patches/@lowdefy__blocks-antd-x.patch` (commit `7df0cca2`) until the
+2026-08-06 build shipped `id: effectiveConversationId` in `blocks-antd-x` itself;
+that hunk was then dropped from the patch.
 
 Three `dist/` patches are in play in total, all interim and all owed upstream:
-`blocks-antd-x` (above, plus the `setInput` method the chat empty state fills the
-composer with), `ai-utils` (`generateMessageId`, without which the assistant
+`blocks-antd-x` (the `setInput` method the chat empty state fills the composer
+with, and the in-flow two-track welcome), `ai-utils` (`generateMessageId`, without which the assistant
 message reaches `onFinish` with `id: ""`), and `blocks-aggrid` (the `cell.type:
 menu` renderer the reports list's ⋯ column uses, plus the cell-renderer identity
 fix that menu needs — the block rebuilt every renderer on every render, and

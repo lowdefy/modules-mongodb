@@ -1,5 +1,5 @@
 diff --git a/dist/blocks/AgentChat/AgentChat.js b/dist/blocks/AgentChat/AgentChat.js
-index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..6e61908dad796f181f5287e0f349d57992c3c238 100644
+index 5d161498c4d1bd4e19eb76ecc09cdbf7408230b8..efc461c1fda45479576b063316a4e1bb7d379581 100644
 --- a/dist/blocks/AgentChat/AgentChat.js
 +++ b/dist/blocks/AgentChat/AgentChat.js
 @@ -34,6 +34,7 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
@@ -10,20 +10,7 @@ index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..6e61908dad796f181f5287e0f349d579
      // Mirror the operator-evaluated sharedState object into a ref so transport.body()
      // sees the freshest value at send time without re-constructing the transport.
      const sharedStateRef = useRef(null);
-@@ -73,6 +74,12 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
-     ]);
-     const bubbleListRef = useRef(null);
-     const { messages, sendMessage, status, stop, addToolApprovalResponse, addToolOutput, setMessages, regenerate, clearError } = useChat({
-+        // Key the Chat instance by conversation: without an id, useChat creates
-+        // its Chat once per mount and CAPTURES that transport — the useMemo
-+        // transport rebuilt on a conversationId change is silently ignored, so
-+        // every send posts under the mount-time conversationId and continuing a
-+        // selected conversation persists it under a new id (duplicate doc).
-+        id: effectiveConversationId,
-         transport,
-         experimental_throttle: 50,
-         sendAutomaticallyWhen: (args)=>lastAssistantMessageIsCompleteWithToolCalls(args) || lastAssistantMessageIsCompleteWithApprovalResponses(args),
-@@ -204,6 +211,9 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+@@ -221,6 +222,9 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
                  });
              }
          });
@@ -33,7 +20,7 @@ index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..6e61908dad796f181f5287e0f349d579
          methods.registerMethod('clearMessages', ()=>{
              setMessages([]);
          });
-@@ -391,7 +401,12 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+@@ -409,7 +413,12 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
                  text
              });
          }
@@ -47,7 +34,7 @@ index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..6e61908dad796f181f5287e0f349d579
      }
      function handleStop() {
          stop();
-@@ -407,6 +422,12 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+@@ -425,6 +434,12 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
              text: prompt.label
          });
      }
@@ -60,7 +47,7 @@ index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..6e61908dad796f181f5287e0f349d579
      function handleSuggestionClick(suggestion) {
          methods.triggerEvent({
              name: 'onSuggestionClick',
-@@ -515,7 +536,7 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+@@ -533,7 +548,7 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
              minHeight: 0,
              padding: '16px 0'
          }
@@ -69,7 +56,7 @@ index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..6e61908dad796f181f5287e0f349d579
          config: welcome,
          onPromptClick: handlePromptClick
      }) : /*#__PURE__*/ React.createElement(MessageList, {
-@@ -523,6 +544,8 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+@@ -541,6 +556,8 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
          messages: messages,
          isStreaming: isBusy,
          config: messageDisplay,
@@ -78,7 +65,7 @@ index 43ba8966d223d5a9cfb14e56ba666789e973e9cc..6e61908dad796f181f5287e0f349d579
          addToolApprovalResponse: addToolApprovalResponse,
          onFeedback: handleFeedback,
          onRegenerate: handleRegenerate,
-@@ -588,6 +611,8 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
+@@ -606,6 +623,8 @@ function AgentChat({ blockId, components: { Icon }, methods, pageId, properties
          }
      }), /*#__PURE__*/ React.createElement(Sender, {
          ref: senderRef,
