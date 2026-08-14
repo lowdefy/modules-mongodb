@@ -54,6 +54,11 @@ _ref:
               - Button
               - Alert
               - Markdown
+              # The header's ⋯ is a DropdownMenu wrapping its trigger Button — a
+              # dropdown owns the block that opens it, so it cannot live in this
+              # page's static config the way the modals below do. See
+              # compileReport's report_menu for what that costs.
+              - DropdownMenu
             actions:
               - CallAPI
               - SetState
@@ -63,12 +68,11 @@ _ref:
               # report after removing a section (compileReport brokenSectionBlocks
               # / the header control).
               - Link
-              # The header's ⋯ opens report_menu_modal, which is STATIC config on
-              # this page rather than compiled output. That is why this list gains
-              # one action and no blocks: emitting the menu, its rename Modal with
-              # a TextInput/TextArea and the delete ConfirmModal from the compiler
-              # would put four more block types in the allowlist, each of which
-              # blanks the whole report if it is ever missed.
+              # The header's ⋯ items open the rename Modal and the delete
+              # ConfirmModal, which stay STATIC config on this page — so the menu
+              # itself is compiled but the two writes behind it are not, and their
+              # block types (Modal, TextInput, TextArea, ConfirmModal) stay out of
+              # this allowlist, where one missed type blanks the whole report.
               - CallMethod
             operators:
               - _state
@@ -78,6 +82,11 @@ _ref:
               # resolve-report loads the report from) for its remove-report-section
               # call and the re-navigation that refreshes the page.
               - _url_query
+              # The header's ⋯ fires one onClick for the whole menu, carrying the
+              # clicked item's key, so each item's actions are guarded by
+              # `skip: {_ne: [{_event: key}, <item>]}`.
+              - _event
+              - _ne
               # A table column carrying a `format` descriptor compiles to a
               # `__function` cell renderer wrapping `___intl.numberFormat` over
               # `___args` (compileReport numericCellRenderer). Dynamic resolution
@@ -98,55 +107,16 @@ _ref:
                   title: Report not found
                   subTitle: This report couldn't be loaded
 
-      # The same action menu the reports list opens from a row — one
-      # implementation of the ownership gates, the endpoints and the copy. The
-      # header's compiled ⋯ seeds `selected_report` from literals it already holds
-      # and opens this; every item below then reads page state exactly as it does
-      # on the list. Siblings of the Dynamic block, not inside it, so their state
-      # survives a re-resolve and so none of their block types has to join the
-      # allowlist above.
+      # The two writes the header's ⋯ hands off to. They stay static config, and
+      # siblings of the Dynamic block rather than inside it: their state survives a
+      # re-resolve, and none of their block types has to join the allowlist above.
+      # Everything else the menu does (publish, unpublish, duplicate) is compiled
+      # with the menu — see compileReport's report_menu.
       #
       # `after_write` re-navigates rather than refetching: the report is a
       # server-resolved Dynamic block with no client refetch, so re-opening the
-      # page is what re-renders a new title or visibility. The same mechanism the
-      # ★ and Drop-a-section use.
-      - _ref:
-          path: components/report_menu_modal.yaml
-          vars:
-            # Already here — Open would link to the page it is on.
-            show_open: false
-            after_write:
-              - id: reload_after_menu_action
-                type: Link
-                params:
-                  pageId:
-                    _module.pageId: report
-                  urlQuery:
-                    report_id:
-                      _url_query: report_id
-            # A duplicate is a different report, so reloading this one would
-            # leave the reader on the original with nothing to show the copy was
-            # made — the natural response being to click again and make a second.
-            # Open it in a new tab instead: the original stays put (it is often
-            # someone else's, and the reason to duplicate is to keep referring to
-            # it), and the copy is there to switch to.
-            #
-            # `url` rather than pageId/urlQuery, deliberately. The endpoint
-            # already returns a ready-made one, and the two Link paths differ on
-            # popup blocking: this fires after an async CallAPI, outside the
-            # user-gesture window some browsers require, and only the url path
-            # degrades to a "popup blocked" message. The pageId path calls
-            # `.focus()` on the null handle and throws.
-            after_duplicate:
-              - id: open_duplicate_in_new_tab
-                type: Link
-                params:
-                  url:
-                    _api:
-                      _build.string.concat:
-                        - _module.endpointId: duplicate-report
-                        - ".response.url"
-                  newTab: true
+      # page is what re-renders a new title. The same mechanism the ★, the
+      # compiled menu's publish/unpublish and Drop-a-section use.
       - _ref:
           path: components/report_rename_modal.yaml
           vars:

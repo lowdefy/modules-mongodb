@@ -115,7 +115,7 @@ It matters because the stored spec is **re-validated on every read**. A tighteni
 
 Deliberately narrow. An owner can edit a report's **title and description** and drop a section from it; there is no add-section, reorder, or edit-a-section path, and no general spec write.
 
-Title and description are document fields rather than spec fields, which is why editing them is a one-field write that never touches the compiled report. Both are reachable from the same **⋯** menu on two surfaces — a row in the reports list, and the report page's own header — and it is one menu: the same ownership gates, the same endpoints, the same copy. What differs is only what happens after a write, since the list refetches in place while the report page re-navigates to re-resolve.
+Title and description are document fields rather than spec fields, which is why editing them is a one-field write that never touches the compiled report. Both are reachable from the same **⋯** menu on two surfaces — a row in the reports list, and the report page's own header — and to a reader it is one menu: the same items, the same ownership gates, the same endpoints, the same copy. Both draw it as a dropdown. What differs is only what happens after a write, since the list refetches in place while the report page re-navigates to re-resolve.
 
 The description is optional and distinguishes _not sent_ from _emptied_: the list's rename modal sends the title alone and leaves any stored description untouched, while clearing the field on the report page clears it for real.
 

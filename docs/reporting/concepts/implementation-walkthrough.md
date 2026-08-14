@@ -203,6 +203,19 @@ continuing a restored conversation forked a duplicate doc without its `data_part
 The patch adds `id: effectiveConversationId`. It is interim — the fix belongs
 upstream in `blocks-antd-x`.
 
+Three `dist/` patches are in play in total, all interim and all owed upstream:
+`blocks-antd-x` (above, plus the `setInput` method the chat empty state fills the
+composer with), `ai-utils` (`generateMessageId`, without which the assistant
+message reaches `onFinish` with `id: ""`), and `blocks-aggrid` (the `cell.type:
+menu` renderer the reports list's ⋯ column uses, plus the cell-renderer identity
+fix that menu needs — the block rebuilt every renderer on every render, and
+ag-grid treats a new renderer function as a different component, so it destroyed
+the mounted cell and the popover with it; submitted as
+[lowdefy/lowdefy#2310](https://github.com/lowdefy/lowdefy/pull/2310)). They are declared in
+`pnpm-workspace.yaml` under `patchedDependencies`, keyed by bare package name so a
+release that touches a patched file fails the apply loudly instead of leaving the
+patch silently unapplied.
+
 ## 7. Chat → saved report
 
 When the user asks for a report, the agent calls `generate_report` with a full
@@ -308,22 +321,40 @@ old pooled filter row required is gone.
   from the accessibility tree too: the block exposes no `aria-label`, so an
   icon-only control here carries no accessible name. A KPI gets no ⤓: a single
   number is already on screen.
-- The header's **⋯** opens `report_menu_modal` — the SAME menu the reports list
-  opens from a row, and the one place the ownership gates, the endpoints and the
-  copy live. Only the **button** is compiled; the menu, its rename `Modal` with a
-  `TextInput`/`TextArea`, and the delete confirm are static config on
-  `report.yaml`, siblings of the `Dynamic` block. That split is what keeps the
-  allowlist cost at one action (`CallMethod`) instead of four block types, each
-  of which blanks the whole report if it is ever missed. What makes the reuse
-  work is the seed: the menu reads `selected_report`, which the list fills from
-  the clicked grid row and the compiled button fills from literals — `title`,
-  `description`, `is_owner`, `visibility` — plus `_id` from the page URL, since
-  the compiler is never told the report id. `is_owner` and `visibility` fall back
-  to the closed position (`false` / `private`), so a resolver that omits them
-  hides the owner's items rather than offering Publish on an already-shared
-  report. The ⋯ compiles for **every** viewer, like the ★: Duplicate is any
-  reader's path to a copy they control, and the menu hides what a viewer cannot
-  use.
+- The header's **⋯** is a `DropdownMenu` **compiled into the header**, wrapping the
+  ⋯ button as its trigger. The reports list renders the same items from an AgGrid
+  `cell.type: menu`, so both surfaces are the same antd dropdown — but the report
+  page's has to be compiled rather than static, because a dropdown **owns** the block
+  that opens it. A `Modal` can be opened from anywhere by id (`CallMethod`), which is
+  how this used to reuse the list's menu; a `Dropdown` or `Popover` cannot, and
+  neither registers a method to open one from elsewhere. The ⋯ lives in this compiled
+  header row, so the menu lives there too.
+  That has a cost, taken deliberately: **publish, unpublish and duplicate have a
+  second implementation in the compiler**, alongside the `modules/reporting/actions/`
+  files the list's cell `_ref`s — compiled output cannot `_ref` build-time config. A
+  change to one of those three endpoints or payloads has to be made in both places,
+  and the file comments say so. Rename and delete do **not** duplicate: they only
+  open the static `rename_modal` and `delete_confirm_modal`, which both surfaces
+  share, so the writes behind them stay single-definition — and their block types
+  (`Modal`, `TextInput`, `TextArea`, `ConfirmModal`) stay out of the allowlist, where
+  one missed type blanks the whole report. The allowlist cost of the menu itself is
+  one block (`DropdownMenu`) and two operators (`_event`, `_ne`).
+  The dispatch is why those two operators: the block fires **one** `onClick` for the
+  whole menu, carrying the clicked link's id, so each item's actions carry
+  `skip: {_ne: [{_event: key}, <item>]}`. An item's link and its actions are emitted
+  **together**, so a viewer's compiled config contains only the actions their own menu
+  can reach — a reader's page carries no rename or delete action at all.
+  Which items show is decided **server-side**, from `is_owner`, `visibility` and a new
+  `can_share` input the endpoint computes from the `share_roles` var (`_user` never
+  reaches compiled output, so it needs no allowlist entry). `is_owner` and
+  `visibility` fall back to the closed position (`false` / `private`), so a resolver
+  that omits them hides the owner's items rather than offering Publish on an
+  already-shared report. The ⋯ compiles for **every** viewer, like the ★: Duplicate is
+  any reader's path to a copy they control, and the menu leaves out what a viewer
+  cannot use. The seed is what lets the two shared modals work: they read
+  `selected_report`, which the list fills from the clicked grid row and this fills
+  from literals — `title`, `description`, `is_owner`, `visibility` — plus `_id` from
+  the page URL, since the compiler is never told the report id.
 - `selected_report` is that menu's **single source**, and the reason is staleness.
   Only `_id` is live (`__url_query`); everything else is a literal frozen at
   resolve, and the seeding `SetState` re-runs on every ⋯ click — so anything
@@ -331,26 +362,31 @@ old pooled filter row required is gone.
   The edit form's `rename_title` / `rename_description` are therefore filled
   **from** `selected_report` when the form opens (`menu_rename_seed`), not seeded
   by each caller, and they stay separate state paths so typing in the form does
-  not change the name the delete confirm shows. Every write then corrects
-  `selected_report` itself the moment it succeeds — rename writes back the saved
-  title and description, publish and unpublish their new `visibility` — so the
-  menu is right whether or not `after_write`'s reload re-resolved the page.
-  `CallAPI` throws on rejection and stops the chain, so a correction only runs on
-  a persisted write.
-  Without those corrections a published report would keep offering Publish and
-  keep hiding Unpublish — leaving no way to retract short of a hard refresh — and
-  a renamed one would show its old title in both the ⋯ header and the edit form.
-  The reports list never had the problem: it refetches `list-reports` and re-seeds
+  not change the name the delete confirm shows. Writes that leave the page standing
+  then correct `selected_report` themselves the moment they succeed — the rename
+  modal writes back the saved title and description, and the list's publish and
+  unpublish write back the new `visibility` — so the menu is right whether or not a
+  reload re-resolved anything. `CallAPI` throws on rejection and stops the chain, so
+  a correction only runs on a persisted write.
+  Without them a published report would keep offering Publish and keep hiding
+  Unpublish — leaving no way to retract short of a hard refresh — and a renamed one
+  would show its old title in both the ⋯ header and the edit form. The report page's
+  compiled publish and unpublish need no correction for a different reason: they
+  re-navigate immediately, so the literals are re-resolved rather than patched. The
+  reports list never had the problem at all: it refetches `list-reports` and re-seeds
   from the clicked row.
-- Duplicate takes its own after-action var (`after_duplicate`), separate from the
-  publish/unpublish `after_write`, because the copy is a **different** report:
+- Duplicate is followed by its own after-action — a var on the list's shared file
+  (`after_duplicate`), a hard-coded new tab in the compiled menu — separate from
+  publish/unpublish's reload, because the copy is a **different** report:
   "refresh what you are looking at" re-renders the original and leaves the copy
   invisible. The list refetches its scope (the copy lands in Mine); the report
-  page opens `duplicate-report`'s returned `url` in a new tab. That url is passed
-  to `Link` as `url` rather than `pageId`/`urlQuery` on purpose — the action fires
-  after an async `CallAPI`, outside the user-gesture window some browsers require
-  for `window.open`, and only the url path degrades to a "popup blocked" message
-  (the pageId path calls `.focus()` on the null handle and throws).
+  page opens the copy in a new tab, navigating by `pageId` + `urlQuery` on
+  `duplicate-report`'s returned `report_id`. **Not** the `url` the same response
+  carries: `Link`'s `url` param means an _external_ address and gets an `https://`
+  prefix whenever the value has no scheme, so a root-relative
+  `/{entry}/report?report_id=…` resolves to a host named after the entry. That
+  returned url is for the assistant to hand a person in chat; every in-app
+  navigation in this module goes through `pageId`/`urlQuery`.
 - Vertical rhythm comes from two distances, not one. `report.yaml`'s
   `layout.gap` y value is small — it spaces a heading off the chart or table it
   names — and `SECTION_TOP_GAP` adds the larger distance ahead of each section

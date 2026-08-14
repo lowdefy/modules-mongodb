@@ -2,7 +2,7 @@
 # states the truth: the report stops being listed, nothing is queried again, no
 # source data is touched. This is the one place a user meets the soft-delete
 # idiom, so it is the one place worth spelling out. Recoverable from the
-# Recently-deleted page. Not hidden with `visible:` (see report_menu_modal for
+# Recently-deleted page. Not hidden with `visible:` (see report_rename_modal for
 # why).
 #
 # `after_delete` is separate from the other modals' `after_write` because the two

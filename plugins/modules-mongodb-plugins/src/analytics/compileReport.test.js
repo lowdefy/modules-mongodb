@@ -1805,10 +1805,20 @@ describe("owner-only affordances", () => {
     const json = JSON.stringify(blocks);
     expect(json).not.toContain("remove-report-section");
     expect(json).not.toContain("reporting/chat");
+    // set-report-title is the rename endpoint the static modal calls; a non-owner's
+    // menu carries no item that opens it. Nor the delete confirm.
+    expect(json).not.toContain("rename_modal");
+    expect(json).not.toContain("delete_confirm_modal");
     const links = blocks
       .flatMap((block) => block.events?.onClick ?? [])
       .filter((action) => action.type === "Link");
-    expect(links.map((link) => link.id)).toEqual(["reload_after_favourite"]);
+    // Both of these are a reader's: the ★ reload, and the new tab a duplicate opens.
+    // The ⋯ menu's own actions are emitted per shown item, so an owner-only Link
+    // (publish's reload) cannot appear here.
+    expect(links.map((link) => link.id)).toEqual([
+      "reload_after_favourite",
+      "menu_duplicate_open",
+    ]);
   });
 
   // Favouriting is a read-side act (the endpoint checks readability, not
@@ -1845,34 +1855,179 @@ describe("owner-only affordances", () => {
     expect(withChat.report_continue_in_chat.layout.span).toBe(5);
   });
 
-  // The ⋯ is compiled for EVERY viewer, like the ★: the menu it opens holds
-  // Duplicate, which is any reader's path to a copy they control, and hides the
-  // owner-only items from its own is_owner / visibility tests. Compiling only
-  // the button — the menu itself is static page config — is what keeps the
-  // Dynamic allowlist at one new action instead of four new block types.
+  // The ⋯ is compiled for EVERY viewer, like the ★: it always holds Duplicate, which
+  // is any reader's path to a copy they control, and it leaves out the items a viewer
+  // cannot use. It is a DropdownMenu rather than a Button opening a static Modal
+  // because a dropdown owns its trigger — nothing can open one by id — which is what
+  // puts the menu in compiled output and one block type in the Dynamic allowlist.
   describe("the ⋯ header menu", () => {
     const seedOf = (byId) => byId.report_menu.events.onClick[0].params;
+    const keysOf = (byId) => byId.report_menu.properties.links.map((link) => link.id);
+    const actionsOf = (byId) => byId.report_menu.events.onClick.slice(1);
+    // Every action but the seed belongs to exactly one item, named by its skip.
+    const itemOf = (action) => action.skip.__ne[1];
 
-    test("is compiled for every viewer and opens the shared menu modal", () => {
+    test("is a dropdown wrapping the ⋯ trigger, for every viewer", () => {
       for (const is_owner of [true, false]) {
         const byId = compile({ is_owner });
-        expect(byId.report_menu.type).toBe("Button");
-        expect(byId.report_menu.properties.hideTitle).toBe(true);
-
-        const [, open] = byId.report_menu.events.onClick;
-        expect(open.type).toBe("CallMethod");
-        expect(open.params).toEqual({
-          blockId: "report_menu_modal",
-          method: "setOpen",
-          args: [{ open: true }],
-        });
+        expect(byId.report_menu.type).toBe("DropdownMenu");
+        expect(byId.report_menu.properties.trigger).toBe("click");
+        // The trigger is the block INSIDE the dropdown (slots.content), not the
+        // dropdown itself — that is the whole reason this is compiled.
+        const [trigger] = byId.report_menu.blocks;
+        expect(trigger.type).toBe("Button");
+        expect(trigger.properties.hideTitle).toBe(true);
+        expect(trigger.properties.icon).toBe("AiOutlineEllipsis");
       }
     });
 
-    // The menu reads `selected_report` — the same shape the list seeds from a
-    // grid row. Everything but the id is a compile-time literal; the id is not
-    // one of compileReport's inputs, so it comes from the page URL, the same
-    // value resolve-report loaded the report from.
+    // Which items show is decided here, server-side, so the compiled links are the
+    // whole answer — there is no client-side `visible:` left to re-check them.
+    describe("items per viewer", () => {
+      test("an owner of a private report can rename, publish, duplicate, delete", () => {
+        expect(
+          keysOf(compile({ is_owner: true, visibility: "private", can_share: true })),
+        ).toEqual(["rename", "publish", "duplicate", "delete"]);
+      });
+
+      // Publish is the one item that needs BOTH: unset share_roles means nothing in
+      // the app can be published, and the endpoint rejects it regardless.
+      test("without share_roles an owner gets no Publish", () => {
+        expect(
+          keysOf(compile({ is_owner: true, visibility: "private", can_share: false })),
+        ).toEqual(["rename", "duplicate", "delete"]);
+      });
+
+      test("a shared report offers Unpublish in Publish's place", () => {
+        expect(
+          keysOf(compile({ is_owner: true, visibility: "shared", can_share: true })),
+        ).toEqual(["rename", "unpublish", "duplicate", "delete"]);
+      });
+
+      // Unpublish falls back to the owner, so losing the role never strands a report
+      // in front of the whole app. This is the asymmetry ownership.md spells out.
+      test("an owner keeps Unpublish after losing the role", () => {
+        expect(
+          keysOf(compile({ is_owner: true, visibility: "shared", can_share: false })),
+        ).toEqual(["rename", "unpublish", "duplicate", "delete"]);
+      });
+
+      // The moderation power: anyone trusted to decide what the whole app sees may
+      // retract someone else's report. There is no equivalent power to publish one.
+      test("a share_roles holder can retract a report they do not own", () => {
+        expect(
+          keysOf(compile({ is_owner: false, visibility: "shared", can_share: true })),
+        ).toEqual(["unpublish", "duplicate"]);
+      });
+
+      test("a plain reader gets Duplicate alone", () => {
+        expect(
+          keysOf(compile({ is_owner: false, visibility: "shared", can_share: false })),
+        ).toEqual(["duplicate"]);
+      });
+
+      // Absent inputs must land on the closed position: an undefined is_owner would
+      // otherwise show the owner's items, and an undefined visibility would offer
+      // Publish on a report that is already shared.
+      test("gates fall back to the closed position when the resolver omits them", () => {
+        expect(keysOf(compile({}))).toEqual(["duplicate"]);
+        const seed = seedOf(compile({}));
+        expect(seed.selected_report.is_owner).toBe(false);
+        expect(seed.selected_report.visibility).toBe("private");
+      });
+    });
+
+    // The block fires ONE onClick for the whole menu, so the dispatch is the skip on
+    // each action. Two properties matter: every action belongs to an item that is
+    // actually on this viewer's menu, and every item on it has actions.
+    describe("item dispatch", () => {
+      test("every action is claimed by a shown item, and every shown item has actions", () => {
+        for (const extra of [
+          { is_owner: true, visibility: "private", can_share: true },
+          { is_owner: true, visibility: "shared", can_share: false },
+          { is_owner: false, visibility: "shared", can_share: true },
+          { is_owner: false },
+        ]) {
+          const byId = compile(extra);
+          const keys = keysOf(byId);
+          const claimed = actionsOf(byId).map(itemOf);
+          expect(new Set(claimed)).toEqual(new Set(keys));
+          expect(claimed.every((key) => keys.includes(key))).toBe(true);
+        }
+      });
+
+      // The seed is the one unskipped action: it runs for every item because it is
+      // what the static rename and delete modals read.
+      test("the seed runs for every item and nothing else does", () => {
+        const byId = compile({ is_owner: true, can_share: true });
+        const [seed] = byId.report_menu.events.onClick;
+        expect(seed.id).toBe("seed_report_menu");
+        expect(seed.skip).toBeUndefined();
+        expect(actionsOf(byId).every((action) => action.skip !== undefined)).toBe(true);
+      });
+
+      test("rename and delete only open the static modals that own the writes", () => {
+        const byId = compile({ is_owner: true, can_share: true });
+        const opens = actionsOf(byId).filter((action) => action.type === "CallMethod");
+        expect(opens.map((action) => action.params.blockId)).toEqual([
+          "rename_modal",
+          "delete_confirm_modal",
+        ]);
+        // The form is seeded from selected_report rather than from the compiled
+        // literals, so a title saved without a reload survives.
+        const seedForm = actionsOf(byId).find((a) => a.id === "menu_rename_seed");
+        expect(seedForm.params.rename_title).toEqual({
+          __state: "selected_report.title",
+        });
+      });
+
+      test("publish and unpublish are one endpoint with opposite values, then a reload", () => {
+        const shared = actionsOf(
+          compile({ is_owner: true, visibility: "private", can_share: true }),
+        );
+        const publish = shared.find((action) => action.id === "menu_publish_call");
+        expect(publish.params.endpointId).toBe("reporting/set-report-visibility");
+        expect(publish.params.payload).toEqual({
+          report_id: { __url_query: "report_id" },
+          visibility: "shared",
+        });
+        expect(
+          shared.find((action) => action.id === "menu_publish_reload").params.pageId,
+        ).toBe("reporting/report");
+
+        const retracted = actionsOf(
+          compile({ is_owner: true, visibility: "shared", can_share: true }),
+        );
+        expect(
+          retracted.find((action) => action.id === "menu_unpublish_call").params.payload
+            .visibility,
+        ).toBe("private");
+      });
+
+      // A duplicate is a different report, so this one opens a new tab instead of
+      // reloading. Navigation goes through pageId/urlQuery: Link's `url` param means
+      // an external address and gets an https:// prefix, which turns the endpoint's
+      // root-relative url into a hostname. This assertion is the regression guard.
+      test("duplicate opens the copy in a new tab, by pageId and urlQuery", () => {
+        const actions = actionsOf(compile({ is_owner: false }));
+        const call = actions.find((action) => action.id === "menu_duplicate_call");
+        expect(call.params.endpointId).toBe("reporting/duplicate-report");
+        const open = actions.find((action) => action.id === "menu_duplicate_open");
+        expect(open.params).toEqual({
+          pageId: "reporting/report",
+          urlQuery: {
+            report_id: { __api: "reporting/duplicate-report.response.report_id" },
+          },
+          newTab: true,
+        });
+        expect(open.params.url).toBeUndefined();
+      });
+    });
+
+    // The menu reads `selected_report` — the same shape the list seeds from a grid
+    // row. Everything but the id is a compile-time literal; the id is not one of
+    // compileReport's inputs, so it comes from the page URL, the same value
+    // resolve-report loaded the report from.
     test("seeds the row shape the list's menu already reads", () => {
       const seed = seedOf(compile({ is_owner: true, visibility: "shared" }));
       expect(seed.selected_report).toEqual({
@@ -1884,19 +2039,9 @@ describe("owner-only affordances", () => {
       });
     });
 
-    // The gates are what the menu branches on, so they must survive as real
-    // booleans and strings rather than undefined — an undefined is_owner would
-    // hide the owner's own items, and an undefined visibility would show
-    // Publish on a report that is already shared.
-    test("gates fall back to the closed position when the resolver omits them", () => {
-      const seed = seedOf(compile({}));
-      expect(seed.selected_report.is_owner).toBe(false);
-      expect(seed.selected_report.visibility).toBe("private");
-    });
-
-    // "" rather than undefined for a report with no description: the endpoint
-    // treats null as leave-alone, so a field the edit form opened as undefined
-    // would silently keep a description the user cannot see they still have.
+    // "" rather than undefined for a report with no description: the endpoint treats
+    // null as leave-alone, so a field the edit form opened as undefined would silently
+    // keep a description the user cannot see they still have.
     test("carries the description, empty rather than absent", () => {
       const withProse = seedOf(
         compile({
@@ -1915,10 +2060,9 @@ describe("owner-only affordances", () => {
     });
 
     // selected_report is the menu's SINGLE source. The edit form's own paths are
-    // filled from it when the form opens (menu_rename_seed in
-    // report_menu_modal.yaml), never seeded here — this SetState re-runs on
-    // every ⋯ click, so a compiled literal would overwrite a rename saved a
-    // moment ago the next time the menu was opened.
+    // filled from it when the form opens (menu_rename_seed), never seeded here —
+    // this SetState re-runs on every item click, so a compiled literal would
+    // overwrite a rename saved a moment ago the next time the form was opened.
     test("seeds nothing but selected_report", () => {
       expect(Object.keys(seedOf(compile({})))).toEqual(["selected_report"]);
     });

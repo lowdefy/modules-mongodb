@@ -44,6 +44,25 @@ _ref:
               type: SetState
               params:
                 scope: mine
+              # Whether this viewer may publish at all — one answer for the whole
+              # page, seeded here because the grid's rowData computes the menu's
+              # hide_* booleans in `_js`, which cannot reach a build-time module
+              # var. Same guard set-report-visibility's own control uses: the role
+              # test compiles to a literal false where share_roles is unset (it
+              # throws on a non-array).
+            - id: init_can_share
+              type: SetState
+              params:
+                can_share:
+                  _build.if:
+                    test:
+                      _build.ne:
+                        - _module.var: share_roles
+                        - null
+                    then:
+                      _user.hasSomeRoles:
+                        _module.var: share_roles
+                    else: false
           - _ref: pages/reports-list/actions/load_scope.yaml
     blocks:
       - id: reports_toolbar
@@ -221,20 +240,8 @@ _ref:
                   _module.pageId: reports-deleted
 
       # Row actions. Kept out of the grid so their state survives the grid's renders;
-      # the ⋯ cell seeds selected_report and opens the menu, which fans out to these.
-      # Shared with the report page's own ⋯ — the modals take the after-action as a
-      # var because that is the only thing the two callers disagree about: here a
-      # write refetches the scope in place, there it re-navigates.
-      - _ref:
-          path: components/report_menu_modal.yaml
-          vars:
-            show_open: true
-            after_write:
-              _ref: pages/reports-list/actions/load_scope.yaml
-            # The copy lands in Mine, so refetching the scope is enough to
-            # surface it — no navigation needed, unlike the report page.
-            after_duplicate:
-              _ref: pages/reports-list/actions/load_scope.yaml
+      # the ⋯ menu cell seeds selected_report from the clicked row and then fans out
+      # to these. The menu itself is the cell — no modal standing in for one.
       - _ref:
           path: components/report_rename_modal.yaml
           vars:

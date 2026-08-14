@@ -49,15 +49,22 @@ import {
  *                re-queries instead: its rows are inlined into an assembled
  *                ECharts option, so the server re-assembles and returns the
  *                option and its canvas height rather than rows.
+ *   can_share  — whether this viewer holds one of the module's share_roles.
+ *                Decided by the endpoint (it holds the var) and passed in as a
+ *                boolean, so the ⋯ menu's publish and unpublish items can be
+ *                included or left out HERE rather than gated by a `_user`
+ *                operator in compiled output. Absent reads as false, which
+ *                matches an unset share_roles: nothing can be published.
  *
  * The contract is verified against the actual rows per section: a missing
  * column key or a non-numeric y/KPI value renders that one section as an Alert
  * card (a graceful rendering failure). Verification skips empty results and
  * tolerates null value cells.
  *
- * Deferred client operators: compiled output carries `__state`, `__api` and
- * `__if_none` (double underscore) — the Dynamic block's server resolution
- * leaves them untouched and the client unescapes them to live operators.
+ * Deferred client operators: compiled output carries `__state`, `__api`,
+ * `__if_none`, `__url_query`, `__event` and `__ne` (double underscore) — the
+ * Dynamic block's server resolution leaves them untouched and the client
+ * unescapes them to live operators.
  *
  * The compiler never emits `_secret` and never evaluates AI-provided strings as
  * operators — the spec is data.
@@ -65,6 +72,43 @@ import {
 
 function fail(message) {
   throw new Error(`compileReport: ${message}`);
+}
+
+// A DropdownMenu item, in the Menu block link shape the block shares with Menu and
+// MobileMenu. The id is the key the block reports back on click, which is what the
+// header's ⋯ dispatches on.
+function menuLink(id, title, icon, properties = {}) {
+  return { id, type: "MenuLink", properties: { title, icon, ...properties } };
+}
+
+// `skip` for an action that belongs to one ⋯ item: skip unless the clicked key is
+// this one. Strict === true, so this has to evaluate to a boolean — __ne does.
+function unlessItem(key) {
+  return { __ne: [{ __event: "key" }, key] };
+}
+
+// Publish and unpublish differ only in the value they write, so they are one shape:
+// set the visibility, then re-open the page. The re-navigation IS the refresh — the
+// report is a server-resolved Dynamic block with no client refetch — and it runs
+// after the call, which throws on rejection and stops the chain.
+function visibilityActions(key, visibility, endpointId, pageId) {
+  return [
+    {
+      id: `menu_${key}_call`,
+      type: "CallAPI",
+      skip: unlessItem(key),
+      params: {
+        endpointId,
+        payload: { report_id: { __url_query: "report_id" }, visibility },
+      },
+    },
+    {
+      id: `menu_${key}_reload`,
+      type: "Link",
+      skip: unlessItem(key),
+      params: { pageId, urlQuery: { report_id: { __url_query: "report_id" } } },
+    },
+  ];
 }
 
 // Blocks laid out on the 24-column grid are block-level cells, and the layout
@@ -886,6 +930,7 @@ function compileReport({
   resolvedAt,
   is_owner,
   is_favourite,
+  can_share,
   conversation_id,
 }) {
   if (typeof endpointId !== "string" || endpointId === "") {
@@ -904,6 +949,8 @@ function compileReport({
   const reportPageId = `${entryId}/report`;
   const removeEndpointId = `${entryId}/remove-report-section`;
   const favouriteEndpointId = `${entryId}/set-report-favourite`;
+  const visibilityEndpointId = `${entryId}/set-report-visibility`;
+  const duplicateEndpointId = `${entryId}/duplicate-report`;
   // Inert re-validation only (no catalog): the per-section AnalyticsPipeline is
   // the security gate, so one inaccessible section must not throw here.
   const validated = validateReportSpec({ spec, roles });
@@ -1019,69 +1066,192 @@ function compileReport({
       ],
     },
   });
-  // ⋯ opens report_menu_modal — the SAME menu the reports list opens from a row,
-  // living in the page's static config rather than compiled here. That split is
-  // deliberate: a Modal, its TextInput/TextArea and a ConfirmModal emitted from
-  // the compiler would each have to join report.yaml's `types` allowlist, where
-  // one undeclared type blanks the WHOLE report to the fallback slot. Compiling
-  // only the button keeps the new allowlist surface at a single action
-  // (CallMethod) and gives both surfaces one implementation of the menu, its
-  // ownership gates and its endpoints.
+  // ⋯ is a DropdownMenu whose trigger is the ⋯ button, and it is compiled here
+  // rather than living in the page's static config, because a dropdown OWNS its
+  // trigger. A Modal can be opened from anywhere by id — which is how this used to
+  // reuse the list's menu — while a Dropdown or Popover cannot: it wraps the block
+  // that opens it, and neither registers a method to open one from elsewhere. The
+  // ⋯ sits in this compiled header row, so the menu has to be here too.
   //
-  // The seed is what makes that reuse work: the menu reads `selected_report`,
-  // which the list fills from the clicked grid row and this fills from literals
-  // the compiler already holds. `_id` is the exception — the compiler is not
-  // told the report id, so it comes from the page URL, the same value
-  // resolve-report loaded the report from. rename_title / rename_description are
-  // copied to their own paths so editing them leaves the title the delete
-  // confirm shows alone.
+  // The cost, accepted deliberately: publish, unpublish and duplicate have a second
+  // implementation below, alongside the actions/report_*.yaml files the list's menu
+  // cell _refs — compiled output cannot _ref build-time config. Rename and delete do
+  // NOT: they only open the static modals that own their behaviour, so those two stay
+  // single-definition. The same posture the ★ already has, one row up.
   //
-  // Shown to every viewer, not just the owner: Duplicate is a reader's path to a
-  // copy they control, and the menu hides the items a viewer cannot use from the
-  // same is_owner / visibility / roles tests the list uses. The endpoints
-  // authorize regardless.
+  // Allowlist surface (report.yaml properties.types, where one missed type blanks the
+  // WHOLE report): one block, DropdownMenu, and two operators, __event and __ne, for
+  // the item dispatch. Every action type used here was already declared.
+  //
+  // Which items show is decided HERE, server-side, from facts this function already
+  // holds — is_owner, visibility and can_share. Building the links from
+  // `_user.hasSomeRoles` instead would put another operator in that allowlist to save
+  // nothing: the answer is the same for the whole page load.
+  //
+  // An item's link and its actions are pushed TOGETHER, so a viewer's compiled config
+  // carries only the actions their own menu can reach. The block fires one onClick for
+  // the whole menu, carrying the clicked link's id, so each item's actions still carry
+  // a `skip` keyed to that id — the guard is against the other shown items, not
+  // against the hidden ones, which are not emitted at all.
+  //
+  // Shown to every viewer, not just the owner: Duplicate is a reader's path to a copy
+  // they control, and the menu leaves out the items a viewer cannot use. The endpoints
+  // authorize regardless — a menu is an affordance.
+  const reportVisibility = visibility ?? "private";
+  const canPublish = Boolean(is_owner) && Boolean(can_share) && reportVisibility !== "shared";
+  // Unpublish is the one item whose gate is not is_owner alone: a share_roles holder
+  // may retract a report they do not own. See docs/reporting/concepts/ownership.md.
+  const canUnpublish = reportVisibility === "shared" && (Boolean(is_owner) || Boolean(can_share));
+  const menuItems = [];
+  // No Open item: this menu only opens on the report page, which is already where Open
+  // would navigate. The list's menu cell has one.
+  if (is_owner) {
+    menuItems.push({
+      link: menuLink("rename", "Rename", "AiOutlineEdit"),
+      // Seeded FROM selected_report (which rename_modal writes back to on save), not
+      // from the literals in the seed below, so a title saved without a reload
+      // survives. Mirrors actions/report_rename_open.yaml.
+      actions: [
+        {
+          id: "menu_rename_seed",
+          type: "SetState",
+          skip: unlessItem("rename"),
+          params: {
+            rename_title: { __state: "selected_report.title" },
+            rename_description: {
+              __if_none: [{ __state: "selected_report.description" }, ""],
+            },
+          },
+        },
+        {
+          id: "menu_rename_open",
+          type: "CallMethod",
+          skip: unlessItem("rename"),
+          params: { blockId: "rename_modal", method: "setOpen", args: [{ open: true }] },
+        },
+      ],
+    });
+  }
+  // Publish and unpublish are one endpoint with opposite values. Neither corrects
+  // selected_report.visibility the way the shared actions do: this surface
+  // re-navigates immediately, so the seed's literals are re-resolved rather than
+  // patched.
+  if (canPublish) {
+    menuItems.push({
+      link: menuLink("publish", "Publish to the app", "AiOutlineGlobal"),
+      actions: visibilityActions("publish", "shared", visibilityEndpointId, reportPageId),
+    });
+  }
+  if (canUnpublish) {
+    menuItems.push({
+      link: menuLink("unpublish", "Unpublish", "AiOutlineEyeInvisible"),
+      actions: visibilityActions("unpublish", "private", visibilityEndpointId, reportPageId),
+    });
+  }
+  menuItems.push({
+    link: menuLink("duplicate", "Duplicate", "AiOutlineCopy"),
+    // The copy opens in a NEW TAB rather than replacing this page: it is a different
+    // report, so refreshing here would leave the reader on the original with nothing
+    // to show a copy was made.
+    //
+    // pageId + urlQuery, and NOT the `url` string duplicate-report returns. Link's
+    // `url` param means an external address: it prefixes `https://` whenever the value
+    // has no scheme, so the root-relative "/{entry}/report?report_id=…" the endpoint
+    // returns navigates to a HOST called {entry}. The returned url exists for the
+    // assistant to hand a person in chat; in-app navigation always goes through
+    // pageId/urlQuery, same as the chat's Open button
+    // (pages/chat/components/saved_from_chat.yaml).
+    actions: [
+      {
+        id: "menu_duplicate_call",
+        type: "CallAPI",
+        skip: unlessItem("duplicate"),
+        params: {
+          endpointId: duplicateEndpointId,
+          payload: { report_id: { __url_query: "report_id" } },
+        },
+      },
+      {
+        id: "menu_duplicate_open",
+        type: "Link",
+        skip: unlessItem("duplicate"),
+        params: {
+          pageId: reportPageId,
+          urlQuery: {
+            report_id: { __api: `${duplicateEndpointId}.response.report_id` },
+          },
+          newTab: true,
+        },
+      },
+    ],
+  });
+  if (is_owner) {
+    menuItems.push({
+      link: menuLink("delete", "Delete", "AiOutlineDelete", { danger: true }),
+      // Hands off to the confirm modal, which owns the write and its own follow-up
+      // (this page cannot stay on a report that no longer resolves), so nothing runs
+      // after the open. Mirrors actions/report_delete_open.yaml.
+      actions: [
+        {
+          id: "menu_delete_open",
+          type: "CallMethod",
+          skip: unlessItem("delete"),
+          params: {
+            blockId: "delete_confirm_modal",
+            method: "setOpen",
+            args: [{ open: true }],
+          },
+        },
+      ],
+    });
+  }
   header.push({
     id: "report_menu",
-    type: "Button",
+    type: "DropdownMenu",
     layout: { span: MENU_SPAN },
-    style: RIGHT_IN_CELL,
     properties: {
-      title: "Report actions",
-      hideTitle: true,
-      icon: "AiOutlineEllipsis",
-      type: "text",
-      size: "small",
+      trigger: "click",
+      placement: "bottomRight",
+      links: menuItems.map((item) => item.link),
     },
+    // slots.content — the blocks that trigger the dropdown. RIGHT_IN_CELL goes on the
+    // button rather than on the DropdownMenu: antd's Dropdown renders no element of
+    // its own, so a style on the block has nothing to land on.
+    blocks: [
+      {
+        id: "report_menu_trigger",
+        type: "Button",
+        style: RIGHT_IN_CELL,
+        properties: {
+          title: "Report actions",
+          hideTitle: true,
+          icon: "AiOutlineEllipsis",
+          type: "text",
+          size: "small",
+        },
+      },
+    ],
     events: {
       onClick: [
         {
           id: "seed_report_menu",
           type: "SetState",
-          // The ONLY thing seeded — `selected_report` is the menu's single
-          // source, and the edit modal fills its inputs from it when it opens.
-          // Seeding those inputs here instead would freeze them at resolve time:
-          // this SetState re-runs on every ⋯ click, so a rename saved a moment
-          // ago would be overwritten by the stale compiled literal the next time
-          // the menu was opened. The list seeds the same shape from its row.
+          // Re-seeded on every item click, not only on open, because it is what the
+          // static modals read. Only `selected_report` — seeding the rename inputs
+          // from these literals instead would freeze them at resolve time, so a
+          // rename saved a moment ago would be overwritten the next time the form
+          // was opened. The list seeds the same shape from its row.
           params: {
             selected_report: {
               _id: { __url_query: "report_id" },
               title: validated.title,
               description: validated.description ?? "",
               is_owner: Boolean(is_owner),
-              visibility: visibility ?? "private",
+              visibility: reportVisibility,
             },
           },
         },
-        {
-          id: "open_report_menu",
-          type: "CallMethod",
-          params: {
-            blockId: "report_menu_modal",
-            method: "setOpen",
-            args: [{ open: true }],
-          },
-        },
+        ...menuItems.flatMap((item) => item.actions),
       ],
     },
   });

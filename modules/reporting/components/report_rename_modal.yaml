@@ -1,11 +1,15 @@
 # Edit a report's prose — title and description, the two document fields that
-# live outside the spec. Opened from report_menu_modal, which fills these two
-# inputs from `selected_report` on the way (menu_rename_seed) — that object is
-# the menu's single source, seeded by the list from the grid row and by the
-# report page from compiled literals. Persist, write the saved values back onto
+# live outside the spec. Opened from actions/report_rename_open.yaml, which fills
+# these two inputs from `selected_report` on the way — that object is the menu's
+# single source, seeded by the list from the grid row (the ⋯ cell's onMenuRename)
+# and by the report page from compiled literals, via its compiled ⋯ menu.
+# Persist, then write the saved values back onto
 # `selected_report`, then run `after_write`, which is how the caller re-reads
 # from the server: the list refetches its scope, the report page re-navigates.
-# Not hidden with `visible:` (see report_menu_modal for why).
+# Not hidden with `visible:` — hiding a container drops its children's state on
+# every render, which would clear the seeded values before onOk could read them. A
+# closed antd Modal is already invisible, so there is nothing to gain. The delete
+# confirm follows the same rule.
 #
 # `description` is always sent, including as "" — set-report-title treats a
 # string as a write and only an absent key as leave-alone, so clearing the field

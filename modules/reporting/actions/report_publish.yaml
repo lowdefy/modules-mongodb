@@ -1,0 +1,38 @@
+# What Publish does, for the list's ⋯ menu cell
+# (pages/reports-list/components/table_reports.yaml). Kept as its own file because
+# the after-action is a var — the list refetches its scope in place — and because
+# it is the readable half of a pair that has to stay in step with the other:
+#
+# **The report page has a SECOND implementation of this**, in the plugin
+# (compileReport's report_menu, `menu_publish_call`). That is not duplication for
+# its own sake: the report page's ⋯ is a DropdownMenu compiled into the
+# server-resolved header, and compiled output cannot `_ref` build-time config. So a
+# change to the endpoint or the payload here has to be made there too. Rename and
+# delete avoid this by only opening static modals, which both surfaces share.
+#
+# Reads `selected_report`, which the caller seeds before running this — the list
+# from the clicked grid row.
+#
+# Vars:
+#   after_write — actions to run once the write has persisted.
+_build.array.concat:
+  - - id: report_publish_call
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: set-report-visibility
+        payload:
+          report_id:
+            _state: selected_report._id
+          visibility: shared
+    # Keep the seed honest without depending on after_write. On the report page
+    # the seed is a compile-time literal frozen at resolve, and re-opening ⋯
+    # re-runs it — so unless that reload genuinely re-resolves the page, a
+    # published report would still offer Publish and hide Unpublish, leaving no
+    # way to retract short of a hard refresh. CallAPI throws on rejection and
+    # stops the chain, so this only runs on a persisted write.
+    - id: report_publish_seed
+      type: SetState
+      params:
+        selected_report.visibility: shared
+  - _var: after_write

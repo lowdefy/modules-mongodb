@@ -69,7 +69,11 @@ Root `Modal` (`id: save_report_modal`):
     ```
   - On success: close the modal (`CallMethod setOpen { open: false }` on `save_report_modal`) and
     navigate to the returned report — `Link`/`SetState`-driven redirect to
-    `_api: <create-report>.response.url`. (Navigating to the new report is the natural post-save
+    `_api: <create-report>.response.url`. **Superseded as built:** navigate with
+    `pageId` + `urlQuery: { report_id }`, never the returned `url`. `Link`'s `url` param means an
+    external address and gains an `https://` prefix when the value has no scheme, so the
+    root-relative path the endpoint returns resolves to a host named after the module entry. The
+    returned `url` is for the assistant to hand a person in chat. (Navigating to the new report is the natural post-save
     behaviour — the agent route likewise "replies with the link"; this is not separately pinned by
     the design, so keep it simple and obvious.)
   - Disable Save when `sheet_title` is empty or `sheet_sections` is empty.

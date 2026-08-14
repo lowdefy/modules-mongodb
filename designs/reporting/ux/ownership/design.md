@@ -56,6 +56,24 @@ The asymmetry closes all three without a new field, endpoint or state, and it is
 
 The list's row menu therefore shows Unpublish on a shared report the viewer does not own when they hold the role. That needs nothing new from `list-reports` — the page already knows the viewer's roles and the configured `share_roles` — so it stays a display decision in [reports-list](../reports-list/design.md), with the endpoint as the boundary.
 
+### The report page's menu is compiled, and what that duplicates
+
+_Added 2026-08-14, when the report page's ⋯ became a dropdown._
+
+Both surfaces now draw the ⋯ as the same antd dropdown, but they get there differently, and the difference is forced rather than chosen. **A dropdown owns the block that opens it.** A `Modal` can be opened from anywhere by id (`CallMethod`), which is how the report page originally reused the list's menu wholesale; a `Dropdown` or `Popover` cannot, and neither registers a method to open one from elsewhere. The report page's ⋯ sits in the header `compileReport` emits inside a `Dynamic` block, so the menu had to be emitted there too.
+
+Compiled output cannot `_ref` build-time config, so **publish, unpublish and duplicate now have two implementations** — the shared `modules/reporting/actions/report_*.yaml` the list's cell `_ref`s, and the `CallAPI` sequences the compiler emits. That is the cost, and it is the reason to state it here rather than leave it to a code comment: a change to one of those three endpoints or payloads has to be made twice. Rename and delete do not duplicate — they only open the static `rename_modal` and `delete_confirm_modal`, which both surfaces share.
+
+Three things make that trade acceptable rather than merely tolerable:
+
+- **It is the posture the header already had.** ★, Drop-a-section and Continue-in-chat are compiler-emitted action sequences in the same row, and ★ has been implemented twice (compiler and grid cell) since it shipped.
+- **The alternative costs more.** Making the header static — so its items could `_ref` the shared files — needs the report's `title` / `description` / `is_owner` / `visibility` client-side, which `Dynamic` never exposes: it resolves server-side at page get and only the resolved blocks reach the client. That means a new authorized single-report read, which would put a **second** implementation of the readable predicate in the module — precisely the thing this design refuses to allow anywhere else — and a title that paints after mount instead of arriving with the page.
+- **What duplicates is wiring, not judgement.** Three `CallAPI` payloads, no branching. The authorization is untouched: the endpoints match the caller, exactly as before.
+
+The item gates move server-side as a result, which is a small improvement: the endpoint computes a `can_share` boolean from the `share_roles` var and passes it to the compiler, so no `_user` operator survives into compiled output and the answer is decided once per page load rather than per render. `is_owner` and `visibility` fall back closed (`false` / `private`), so a resolver that omits them hides the owner's items rather than offering Publish on an already-shared report.
+
+An item's link and its actions are emitted **together**, so a viewer's compiled config carries only the actions their own menu can reach — a reader's page contains no rename or delete action at all. That is hygiene, not the boundary; the boundary is still the match inside each endpoint.
+
 ### What `shared` does and does not promise
 
 There are **two independent role concepts** in this module, and publishing sits on top of the older one. `share_roles` governs who may publish a report. The catalog's per-collection `roles` govern who may query the data underneath it, and that gate is enforced by `AnalyticsPipeline` against the **viewing** user's roles on every resolve, section by section — a report is revalidated for whoever opens it, never trusted because it was valid when saved. Nothing checks the two against each other, and they are not meant to be the same thing.

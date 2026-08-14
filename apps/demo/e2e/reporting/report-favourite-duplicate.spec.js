@@ -233,9 +233,11 @@ test("a non-owner duplicates a shared report into one they own", async ({
 
   expect(response).toMatchObject({ ok: true });
   expect(response.report_id).toBeTruthy();
-  // The report page's ⋯ Duplicate opens this url in a new tab verbatim, so its
-  // shape is a contract now, not a convenience field: the entry-scoped page path
-  // plus the copy's id. A wrong path is a blank tab the user has to diagnose.
+  // In-app navigation uses report_id above, not this string — the ⋯ Duplicate
+  // opens the copy with pageId + urlQuery, because Link's `url` param means an
+  // external address. This field is the link the ASSISTANT hands a person in chat,
+  // which is why its shape still matters: the entry-scoped page path plus the
+  // copy's id, root-relative so it survives any host the app is served from.
   expect(response.url).toBe(
     `/reporting/report?report_id=${response.report_id}`,
   );

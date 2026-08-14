@@ -195,5 +195,21 @@ routine:
                   - _step: load_report.favourite_of
                   - []
               - _user: id
+          # Whether this viewer may publish — the header's ⋯ includes or leaves out
+          # its Publish and Unpublish items on it. Decided here because share_roles
+          # is a module var and only the config can read it; the compiler gets a
+          # boolean, so no `_user` operator has to survive into compiled output.
+          # An unset share_roles compiles to a literal false (hasSomeRoles throws on
+          # a non-array), the same guard set-report-visibility's own control uses.
+          can_share:
+            _build.if:
+              test:
+                _build.ne:
+                  - _module.var: share_roles
+                  - null
+              then:
+                _user.hasSomeRoles:
+                  _module.var: share_roles
+              else: false
           resolvedAt:
             _date: now

@@ -39,11 +39,24 @@ properties:
           )
         : rows;
       const pill = (n, label) => (n > 0 ? `${n} ${label}${n > 1 ? 's' : ''}` : null);
+      // Seeded once at mount from share_roles, which is a build-time module var
+      // and so unreachable from here. Viewer-level, not per-row: it is the same
+      // answer for every report on the page.
+      const canShare = state('can_share') === true;
       return matched.map((report) => {
         const sc = report.section_counts || {};
+        const shared = report.visibility === 'shared';
         return {
           ...report,
           fav_icon: report.is_favourite ? 'AiFillStar' : 'AiOutlineStar',
+          // hide_* rather than can_*, because the menu cell's hiddenField takes
+          // the value it hides on. Publish needs a share_roles holder and a report
+          // that is still private; Unpublish is the one item whose test has two
+          // inputs — a holder may retract a report they do not own.
+          hide_rename: !report.is_owner,
+          hide_publish: !(report.is_owner && !shared && canShare),
+          hide_unpublish: !(shared && (report.is_owner || canShare)),
+          hide_delete: !report.is_owner,
           // Pre-built label array for the Contents tag cell — one entry per
           // non-zero section type, filter last. section_counts is an object, so
           // the pills have to be assembled here rather than fed to the cell raw.
@@ -138,7 +151,12 @@ properties:
         colorMap:
           shared: blue
           private: default
-    # ⋯ — opens the row action menu. Fires onMenuClick with the row.
+    # ⋯ — the row action menu, as a real popover. Which items a row shows is a
+    # display choice off the hide_* booleans rowData computes above; the
+    # authorization is the check in each endpoint, so an item shown in error is a
+    # display bug, not a security one. Every item's behaviour lives in
+    # actions/report_*.yaml, shared with the report page's own ⋯ (which cannot use
+    # a cell — it is not a grid).
     - colId: menu
       headerName: ""
       width: 52
@@ -146,12 +164,31 @@ properties:
       cellStyle:
         textAlign: center
       cell:
-        type: buttons
-        buttons:
-          - eventName: onMenuClick
-            icon: AiOutlineMore
-            hideTitle: true
-            type: text
+        type: menu
+        items:
+          - eventName: onMenuOpen
+            title: Open
+            icon: AiOutlineFileText
+          - eventName: onMenuRename
+            title: Rename
+            icon: AiOutlineEdit
+            hiddenField: hide_rename
+          - eventName: onMenuPublish
+            title: Publish to the app
+            icon: AiOutlineGlobal
+            hiddenField: hide_publish
+          - eventName: onMenuUnpublish
+            title: Unpublish
+            icon: AiOutlineEyeInvisible
+            hiddenField: hide_unpublish
+          - eventName: onMenuDuplicate
+            title: Duplicate
+            icon: AiOutlineCopy
+          - eventName: onMenuDelete
+            title: Delete
+            icon: AiOutlineDelete
+            danger: true
+            hiddenField: hide_delete
 events:
   # Only the Report column opens — see the header comment for why it is a cell
   # event gated on colId rather than a whole-row click. Other columns (Author,
@@ -186,24 +223,74 @@ events:
                 _not:
                   _event: row.is_favourite
       - _ref: pages/reports-list/actions/load_scope.yaml
-  # Park the clicked row where the modals can read it — a modal's own onOk fires
-  # with an empty event, so the row cannot be read from the event there. The row
-  # is the whole seed: the menu reads title/is_owner/visibility from it, and the
-  # edit form fills its own paths from it when it opens (menu_rename_seed), so
-  # typing in that form still leaves the name the delete confirm shows alone.
-  # list-reports projects description, so the form opens with what is stored
-  # rather than blank — a blank field would look like "no description" and clear
-  # it on save.
-  onMenuClick:
-    - id: seed_selected_report
-      type: SetState
+  # One handler per menu item. Each starts by parking the clicked row in
+  # `selected_report`, because the rename and delete modals fire their own onOk
+  # with an empty event and cannot read the row from there. list-reports projects
+  # description, so the rename form opens with what is stored rather than blank —
+  # a blank field would look like "no description" and clear it on save.
+  #
+  # What each item DOES lives in actions/report_*.yaml, shared verbatim with the
+  # report page's ⋯ modal. Only the after-action differs, and that is the var.
+  onMenuOpen:
+    - id: menu_open_report
+      type: Link
       params:
-        selected_report:
-          _event: row
-    - id: open_row_menu
-      type: CallMethod
-      params:
-        blockId: report_menu_modal
-        method: setOpen
-        args:
-          - open: true
+        pageId:
+          _module.pageId: report
+        urlQuery:
+          report_id:
+            _event: row._id
+  onMenuRename:
+    _build.array.concat:
+      - - id: seed_selected_rename
+          type: SetState
+          params:
+            selected_report:
+              _event: row
+      - _ref: actions/report_rename_open.yaml
+  onMenuPublish:
+    _build.array.concat:
+      - - id: seed_selected_publish
+          type: SetState
+          params:
+            selected_report:
+              _event: row
+      - _ref:
+          path: actions/report_publish.yaml
+          vars:
+            after_write:
+              _ref: pages/reports-list/actions/load_scope.yaml
+  onMenuUnpublish:
+    _build.array.concat:
+      - - id: seed_selected_unpublish
+          type: SetState
+          params:
+            selected_report:
+              _event: row
+      - _ref:
+          path: actions/report_unpublish.yaml
+          vars:
+            after_write:
+              _ref: pages/reports-list/actions/load_scope.yaml
+  onMenuDuplicate:
+    _build.array.concat:
+      - - id: seed_selected_duplicate
+          type: SetState
+          params:
+            selected_report:
+              _event: row
+      - _ref:
+          path: actions/report_duplicate.yaml
+          vars:
+            # The copy lands in Mine, so refetching the scope is enough to surface
+            # it — no navigation needed, unlike the report page.
+            after_duplicate:
+              _ref: pages/reports-list/actions/load_scope.yaml
+  onMenuDelete:
+    _build.array.concat:
+      - - id: seed_selected_delete
+          type: SetState
+          params:
+            selected_report:
+              _event: row
+      - _ref: actions/report_delete_open.yaml
