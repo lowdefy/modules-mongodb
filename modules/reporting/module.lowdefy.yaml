@@ -28,6 +28,8 @@ exports:
       description: Constrained analytics query (report re-queries + panel downloads)
     - id: chart-data
       description: Assemble a chart section's ECharts option under live filter values
+    - id: list-reports
+      description: List a viewer's reports for a given scope (mine, shared, all, favourites, deleted)
     - id: generate-report
       description: Validate and persist a report spec (agent tool)
     - id: create-report
@@ -44,6 +46,8 @@ exports:
       description: Copy a readable report into a private one the caller owns
     - id: remove-report-section
       description: Drop one section from a report, cascading filter bindings (owner only)
+    - id: delete-report
+      description: Soft-delete a report the caller owns (recoverable from the deleted scope)
   connections:
     - id: reports-store
       description: MongoDB collection for saved report specs
