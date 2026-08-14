@@ -89,7 +89,7 @@ See `apps/demo/lowdefy.yaml` for the worked example. (The demo deliberately rema
 The curated catalog is a trusted, human-owned artifact. To lower the cost of the first draft across many collections, the `lowdefy-reporting-catalog` CLI — a bin of the plugin package the module already requires — drafts one from a live database. See [Bootstrap a catalog from a live database](../how-to/bootstrap-catalog.md) for installation, credentials and options; in outline it:
 
 1. It connects with the reporting **read-only principal** (the same credential the engine queries with — see the [provisioning steps](../../shared/secrets.md#read-only-reporting-principal-reporting_data_mongodb_uri)), lists collections and views, and `$samples` a bounded number of documents from each.
-2. It infers per-field types, flattens sub-documents one level into dotted paths, notes arrays, and detects low-cardinality string fields as candidate enums.
+2. It infers per-field types, flattens sub-documents into dotted paths (down to `--depth` levels, default 4), notes arrays, and detects low-cardinality string fields as candidate enums.
 3. Optionally it asks a model (via the reporting AI gateway) to draft descriptions, confirm enum candidates, propose display hints, and infer relationships from field naming.
 
 Two properties make the draft safe to hand a human:
