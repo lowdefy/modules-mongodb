@@ -10,11 +10,10 @@ import { REPORTS, callEndpoint } from "./helpers.js";
 //
 // Two layers, for the same reason the ownership specs split:
 //   - the RENDER layer drives the report page and asserts the compiled blocks.
-//     It is blocked by the same @lowdefy/server-e2e urlQuery gap documented in
-//     formatted-report.spec.js — the resolver reads `_payload: urlQuery.report_id`,
-//     which the e2e server does not thread, so the page renders the "Report not
-//     found" fallback and these are `test.fixme` until the harness threads
-//     urlQuery. They are written out in full so they light up the moment it does.
+//     It was parked as `test.fixme` until @lowdefy/server-e2e threaded urlQuery
+//     into Dynamic resolution (lowdefy/lowdefy#2295): the resolver reads
+//     `_payload: urlQuery.report_id`, so without it the page only ever rendered
+//     the "Report not found" fallback.
 //   - the AUTHORIZATION layer drives the endpoints directly (query-data,
 //     remove-report-section) and is real: it proves the SERVER-SIDE gates the
 //     render layer only displays — the role gate behind the withheld alert, and
@@ -184,7 +183,7 @@ test.describe("report page render", () => {
     await mdb.seed("demo_activities", ACTIVITIES);
   });
 
-  test.fixme(
+  test(
     "a broken section shows the owner recoveries; a non-owner sees only the alert",
     async ({ ldf, page, mdb }) => {
       await mdb.seed(REPORTS, [
@@ -224,7 +223,7 @@ test.describe("report page render", () => {
     },
   );
 
-  test.fixme(
+  test(
     "a withheld section reads as no-access with no recoveries, distinct from a broken one",
     async ({ ldf, page, mdb }) => {
       await mdb.seed(REPORTS, [
@@ -273,7 +272,7 @@ test.describe("report page render", () => {
     },
   );
 
-  test.fixme(
+  test(
     "two independent filter groups each render inline above their own group",
     async ({ ldf, page, mdb }) => {
       await mdb.seed(REPORTS, [
@@ -289,18 +288,20 @@ test.describe("report page render", () => {
       await ldf.goto("/reporting/report?report_id=e2e-two-groups");
       await expect(page.getByText("Report not found")).toBeHidden();
 
-      // Each control names its own scope — the "also filters" suffix appears
-      // because each drives more than one section — and there is no shared
-      // top-row filter box, so the two controls are distinct groups.
+      // Each control names its own scope, and because each drives more than one
+      // section it also carries a scope note. The note is the label's `extra` —
+      // a separate muted line under the control, NOT a parenthetical appended to
+      // the title (appending it wrapped the title and pushed the input out of
+      // alignment with the control beside it in the row). It names the sections
+      // beyond the one the control is anchored above, so each filter names the
+      // second of its two.
+      await expect(page.getByText("Activity type", { exact: true })).toBeVisible();
       await expect(
-        page.getByText("Activity type (also filters: Activities by type)", {
-          exact: false,
-        }),
+        page.getByText("Also filters: Activities by type", { exact: true }),
       ).toBeVisible();
+      await expect(page.getByText("Capture channel", { exact: true })).toBeVisible();
       await expect(
-        page.getByText("Capture channel (also filters: Activities by channel)", {
-          exact: false,
-        }),
+        page.getByText("Also filters: Activities by channel", { exact: true }),
       ).toBeVisible();
     },
   );

@@ -129,27 +129,27 @@ test("the reports list scopes by user id and hides soft-deleted reports", async 
   await expect(page.getByText("Other user report (e2e)")).toBeHidden();
 });
 
-// BLOCKED ON AN E2E-HARNESS GAP — the report page itself works.
-//
-// `lowdefy build --server e2e` scaffolds @lowdefy/server-e2e, which diverges
-// from @lowdefy/server in the two places that hand a Dynamic block its payload:
+// This spec, and every other one that loads the report page, was parked as
+// `test.fixme` for as long as the e2e harness could not reach the page at all.
+// `lowdefy build --server e2e` scaffolds @lowdefy/server-e2e, which diverged from
+// @lowdefy/server in the two places that hand a Dynamic block its payload:
 //
 //                        renderPage.js              apiPage.js
 //   @lowdefy/server      urlQuery: c.req.query()    urlQuery: c.req.query()
 //   @lowdefy/server-e2e  omitted                    omitted
 //
-// The report page's resolver reads `_payload: urlQuery.report_id`, so under the
-// e2e server it always receives `urlQuery: {}`, never matches a document, and
-// renders the "Report not found" fallback. Under dev/prod it resolves normally
-// — confirmed by hand on a dev server. So this is a false negative in the
-// harness, not a defect in the module, and un-fixme-ing it needs the e2e server
-// to thread urlQuery the way the real one does (filed upstream).
+// The report page's resolver reads `_payload: urlQuery.report_id`, so under e2e it
+// received `urlQuery: {}`, matched no document, and rendered "Report not found" —
+// a false negative in the harness, never a defect in the module.
+// lowdefy/lowdefy#2295 threads it in both places (and routes e2e-utils'
+// setUrlQuery through the app's router, so a urlQuery CHANGE re-resolves too);
+// this repo pins the build that carries it, and these specs run.
 //
 // The invariant this spec was written for — that the compiler never emits a
 // type the Dynamic block fails to declare, which is what 404'd every report
-// with a formatted column — is covered without a browser by
+// with a formatted column — is also covered without a browser by
 // plugins/modules-mongodb-plugins/src/analytics/compileReport.declared.test.js.
-test.fixme("a saved report with a formatted table column renders", async ({
+test("a saved report with a formatted table column renders", async ({
   ldf,
   page,
   mdb,

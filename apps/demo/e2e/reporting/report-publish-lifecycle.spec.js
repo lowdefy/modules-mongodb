@@ -14,13 +14,10 @@ import {
 // retracted, and leave that person's copy alone.
 //
 // The observable throughout is `list-reports` scopes plus the stored document,
-// not the report page. That is deliberate rather than a shortcut: the page cannot
-// be asserted positively under this harness — @lowdefy/server-e2e omits urlQuery
-// where @lowdefy/server threads it, so the report page renders its fallback
-// regardless of what is stored (documented at length in formatted-report.spec.js,
-// and the fixme'd page assertions live in report-resolve-shared.spec.js). A
-// "B cannot open it" assertion here would pass whether the model worked or not,
-// so it is not made. The scopes are endpoint-driven and mean what they say.
+// not the report page. The scopes are endpoint-driven and mean what they say, and
+// they are the layer publishing actually changes; whether a published report opens
+// for a non-owner is asserted directly, on the page, in
+// report-resolve-shared.spec.js.
 
 // Membership is asserted by id, never by title. `duplicate-report` copies the
 // title verbatim, so once B has a copy the original and the copy are

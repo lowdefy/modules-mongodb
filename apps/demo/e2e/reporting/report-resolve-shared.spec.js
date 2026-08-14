@@ -12,17 +12,12 @@ import {
 // the caller OR visibility: "shared". Publishing means nothing until this read
 // changes, so these are the specs that prove it.
 //
-// A note on what is and is not asserted here. The report page cannot be asserted
-// POSITIVELY under the e2e harness: `lowdefy build --server e2e` scaffolds
-// @lowdefy/server-e2e, which omits `urlQuery` where @lowdefy/server threads it
-// (renderPage.js and apiPage.js — the divergence is documented at length in
-// formatted-report.spec.js). The resolver reads `_payload: urlQuery.report_id`,
-// so under e2e it always receives `urlQuery: {}`, never matches a document, and
-// renders the "Report not found" fallback. Under dev/prod it resolves normally.
-//
-// So the negative assertions below are real — the fallback is the expected
-// outcome either way — and the positive ones are `test.fixme` pending the harness
-// fix, not pending anything in this module.
+// Both directions are asserted: the fallback for a report the caller may not read,
+// and the rendered report for one they may. The positive half was parked as
+// `test.fixme` while @lowdefy/server-e2e omitted `urlQuery` where @lowdefy/server
+// threads it, which made "Report not found" the only reachable outcome — the
+// divergence, and the upstream fix this repo now pins, are documented at length in
+// formatted-report.spec.js.
 
 test("a private report is not readable by a non-owner", async ({
   ldf,
@@ -69,11 +64,9 @@ test("a soft-deleted shared report is not readable by anyone", async ({
   await expect(page.getByText("Report not found")).toBeVisible();
 });
 
-// BLOCKED ON THE urlQuery HARNESS GAP described at the top of this file — the
-// read predicate itself is exercised by the negative specs above, and by hand on
-// a dev server. Un-fixme-ing these needs @lowdefy/server-e2e to thread urlQuery
-// the way @lowdefy/server does.
-test.fixme(
+// The positive half: a report the caller MAY read renders, and renders as theirs
+// or not. These were the specs parked on the urlQuery harness gap above.
+test(
   "a shared report is readable by a non-owner, who is not the owner",
   async ({ ldf, page, mdb }) => {
     await mdb.seed("demo_orders", ORDERS);
@@ -96,7 +89,7 @@ test.fixme(
   },
 );
 
-test.fixme(
+test(
   "the owner of a shared report still resolves it as the owner",
   async ({ ldf, page, mdb }) => {
     await mdb.seed("demo_orders", ORDERS);

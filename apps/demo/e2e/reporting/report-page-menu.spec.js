@@ -6,27 +6,19 @@ import { ORDERS, REPORTS, USER_A, USER_B, reportDoc } from "./helpers.js";
 // and nothing can open one by id the way `CallMethod` opens a Modal, so the menu
 // has to be emitted where the ⋯ is: inside the Dynamic block's resolved content.
 //
-// BLOCKED ON THE SAME urlQuery HARNESS GAP as report-render / report-resolve-shared:
-// resolve-report reads `_payload: urlQuery.report_id`, which @lowdefy/server-e2e
-// does not thread, so under e2e this page always renders the "Report not found"
-// fallback and there is no header to click. These are written out in full and
-// `test.fixme` so they light up the moment it is threaded — and the fix is no longer
-// hypothetical: lowdefy/lowdefy#2295 (`fix/server-e2e-url-query`, merged 2026-08-06)
-// does exactly that, upstream of the 2026-07-07 experimental build this repo pins.
-// Bumping past it should be all these need.
+// These ran as `test.fixme` for one commit: resolve-report reads
+// `_payload: urlQuery.report_id`, and @lowdefy/server-e2e did not thread urlQuery
+// into Dynamic resolution, so the page always rendered the "Report not found"
+// fallback and there was no header to click. lowdefy/lowdefy#2295 threads it, and
+// this repo now pins the build that carries it.
 //
-// What IS verified today, and what is not, is worth stating plainly:
-//   - compileReport's unit tests assert the emitted config exhaustively — which
-//     items each viewer gets, that every action is claimed by a shown item, and the
-//     endpoint and payload behind each one.
-//   - `pnpm ldf:b` proves DropdownMenu, `_event` and `_ne` are in the page's
-//     Dynamic types allowlist, so the report resolves instead of blanking.
-//   - NOTHING here proves the popover actually opens. That is not a hypothetical
-//     gap: the list's menu cell shipped inert twice — once mounted inside a cell
-//     that clips its overflow, once destroyed by a re-render — and both built green.
-//     Until these specs run, that check is a dev-server one.
+// They are the only automated proof that the popover OPENS. compileReport's unit
+// tests assert the emitted config exhaustively and `ldf:b` proves the block and
+// operators are in the page's Dynamic allowlist, but neither can see a menu that
+// renders inert — and the list's menu cell shipped inert twice, once clipped by the
+// cell's overflow and once destroyed by a re-render, building green both times.
 
-test.fixme(
+test(
   "the ⋯ opens as a dropdown, and the owner sees every item they may use",
   async ({ ldf, page, mdb }) => {
     await mdb.seed("demo_orders", ORDERS);
@@ -62,7 +54,7 @@ test.fixme(
 // Rename is the item that proves the compiled menu still reaches the STATIC modals
 // — the half of the menu that is not duplicated in the compiler. Both the modal and
 // its seed are asserted: an unseeded form opens blank and clears the title on save.
-test.fixme(
+test(
   "Rename opens the static edit form, seeded from the report",
   async ({ ldf, page, mdb }) => {
     await mdb.seed("demo_orders", ORDERS);
@@ -85,7 +77,7 @@ test.fixme(
 // rather than disabled. USER_B holds no share_roles role, so a shared report they
 // do not own leaves them Duplicate alone — no Unpublish, which is the item whose
 // gate is not is_owner (a share_roles holder may retract someone else's report).
-test.fixme(
+test(
   "a reader without share_roles sees Duplicate alone",
   async ({ ldf, page, mdb }) => {
     await mdb.seed("demo_orders", ORDERS);
@@ -119,7 +111,7 @@ test.fixme(
 // shared actions/report_publish.yaml the list _refs. Asserted through the document
 // so it covers the wiring the unit tests can only assert as config: the item
 // dispatches, the endpoint runs, the write lands.
-test.fixme(
+test(
   "Publish makes the report shared, from the compiled item",
   async ({ ldf, page, mdb }) => {
     await mdb.seed("demo_orders", ORDERS);
@@ -143,5 +135,51 @@ test.fixme(
     // Publishing does not stamp `updated` — it changes who may see a report, not
     // what it is. See docs/reporting/concepts/ownership.md.
     expect(doc.updated.timestamp.getTime()).toBe(doc.created.timestamp.getTime());
+  },
+);
+
+// Duplicate is the item whose NAVIGATION can only be checked in a browser. It fires
+// a Link after an async CallAPI, into a new tab, on the report_id the endpoint
+// returns — and a config that looks right can still land nowhere: passing the
+// endpoint's `url` instead sends Link down its external-address branch, which
+// prefixes https:// and resolves the root-relative path to a host named after the
+// module entry. Following the popup is what catches that.
+test(
+  "Duplicate opens the copy in a new tab, owned by the copier",
+  async ({ ldf, page, mdb }) => {
+    await mdb.seed("demo_orders", ORDERS);
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-menu-dup",
+        title: "Worth copying",
+        owner: USER_A,
+        visibility: "shared",
+      }),
+    ]);
+
+    // A reader, not the owner: duplicate is the one write a non-owner may make.
+    await ldf.user(USER_B);
+    await ldf.goto("/reporting/report?report_id=e2e-menu-dup");
+
+    await page.locator("#report_menu_trigger").click();
+    const popupOpened = page.waitForEvent("popup");
+    await page.getByRole("menuitem", { name: "Duplicate" }).click();
+    const copyTab = await popupOpened;
+
+    const copy = await mdb
+      .collection(REPORTS)
+      .findOne({ "owner.user_id": USER_B.id });
+    expect(copy).toBeTruthy();
+    expect(copy._id).not.toBe("e2e-menu-dup");
+    // Same origin, entry-scoped path, the copy's id — not the original's.
+    expect(new URL(copyTab.url()).pathname).toBe("/reporting/report");
+    expect(new URL(copyTab.url()).searchParams.get("report_id")).toBe(
+      String(copy._id),
+    );
+    // And it resolves: the copy renders rather than 404ing or falling back.
+    await expect(
+      copyTab.getByRole("heading", { name: "Worth copying" }),
+    ).toBeVisible();
+    await expect(copyTab.getByText("Report not found")).toBeHidden();
   },
 );

@@ -322,9 +322,8 @@ test("the copy resolves, which is what proves the copied spec is valid input", a
     SPEC.sections.map((s) => s.id),
   );
 
-  // Opening the copy is the real proof. Blocked by the same urlQuery harness gap
-  // documented in formatted-report.spec.js — @lowdefy/server-e2e omits urlQuery
-  // where @lowdefy/server threads it, so the report page always renders its
-  // fallback here regardless of the spec. Assert the document instead, and see
-  // report-resolve-shared.spec.js for the fixme'd page assertions.
+  // The document is the assertion here: it is what duplicate-report writes, and
+  // every field above (owner, visibility, reset favourites, dropped conversation)
+  // is invisible on the page. That the copy OPENS is proved on the page by
+  // report-page-menu.spec.js, which clicks ⋯ Duplicate and follows the new tab.
 });

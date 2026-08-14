@@ -23,7 +23,8 @@
 #     unwinding the filtered array;
 #   - filter co-location: each control compiles inline directly above the first
 #     section it drives (not into a shared top row), and when it drives more than
-#     one section its title carries an "(also filters: …)" scope label. So the
+#     one section a muted "Also filters: …" note renders under the control naming
+#     the others (the label's `extra`, not a suffix on the title). So the
 #     Region and Created controls sit above the orders sections, the two activity
 #     filters above the activities sections, and the contacts filter above the
 #     contacts sections — three visible groups, each next to what it scopes.
