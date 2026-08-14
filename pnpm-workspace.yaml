@@ -15,46 +15,14 @@ packages:
 overrides:
   dayjs: 1.11.20
 
-# AgentChat carries two fixes the reporting chat depends on: a controlled composer
-# with a `setInput` method (so starters can fill it), and a `welcome` config that
-# renders two tracks in-flow inside the message scroll area (so the empty state
-# scrolls up with the transcript instead of vanishing).
-#
-# Both, together with the ai-utils patch below, are open upstream as
-# lowdefy/lowdefy#2303 — so when that merges, two of these three patches go away
-# entirely rather than shrinking.
-#
-# A third hunk — keying useChat by conversationId, without which useChat captures
-# the transport at mount and a continued conversation is persisted under the
-# mount-time id — was split out of #2303 into its own PR, lowdefy/lowdefy#2289, and
-# merged; it shipped in the 2026-08-06 build and was dropped from this patch on the
-# bump. Worth knowing as a habit rather than a one-off: a small fix split out of a
-# feature PR lands first, so a patch can go stale one hunk at a time while the PR it
-# came from is still open. Re-roll against the published dist, never against the PR
-# branch.
-#
-# blocks-aggrid adds the `cell.type: menu` renderer the reports list's ⋯ column uses
-# and fixes cell-renderer identity, without which ag-grid destroys a cell on every
-# unrelated re-render. Submitted as lowdefy/lowdefy#2310.
-#
-# ai-utils passes generateMessageId when it builds the agent's UI message stream.
-# The AI SDK only ids the assistant message it hands the stream-level onFinish
-# when the caller supplies a generator — without it every assistant message an
-# onFinish hook persists carries id: "", so a saved transcript has them all
-# sharing one id, and AgentChat (which keys its bubbles by message id) renders
-# the last reply in every assistant bubble on reload.
-#
-# Both keys are deliberately version-less: a pinned version is silently dropped
-# by a version bump, where an unmatched patch fails the install loudly.
-patchedDependencies:
-  "@lowdefy/ai-utils": patches/@lowdefy__ai-utils.patch
-  "@lowdefy/blocks-aggrid": patches/@lowdefy__blocks-aggrid.patch
-  "@lowdefy/blocks-antd-x": patches/@lowdefy__blocks-antd-x.patch
+# No patchedDependencies: the three patches this branch carried (ai-utils
+# generateMessageId, blocks-antd-x setInput + two-track welcome, blocks-aggrid
+# menu cell + cell-renderer identity) all landed upstream and shipped in the
+# 0.0.0-experimental-20260814133003 build, verified present in the published
+# dist, so the patches were dropped on that bump.
 
-# These keys live here, not under a "pnpm" key in package.json: pnpm 10+ no
-# longer reads that key and silently ignores it — it only warns. A dropped
-# patchedDependencies is invisible and undoes the AgentChat fix above on the
-# next fresh install.
+# These pnpm keys live here, not under a "pnpm" key in package.json: pnpm 10+
+# no longer reads that key and silently ignores it — it only warns.
 packageExtensions:
   "@lowdefy/client":
     dependencies:
@@ -73,39 +41,43 @@ allowBuilds:
   "@sentry/cli": false
 
 minimumReleaseAgeExclude:
-  - "@lowdefy/actions-core@5.5.1"
-  - "@lowdefy/ai-utils@5.5.1"
-  - "@lowdefy/ajv@5.5.1"
-  - "@lowdefy/api@5.5.1"
-  - '@lowdefy/block-utils@0.0.0-experimental-20260813120102 || 5.5.1'
-  - "@lowdefy/blocks-aggrid@5.5.1"
-  - "@lowdefy/blocks-antd-x@5.5.1"
-  - '@lowdefy/blocks-antd@0.0.0-experimental-20260813120102 || 5.5.1'
-  - '@lowdefy/blocks-basic@0.0.0-experimental-20260813120102 || 5.5.1'
-  - "@lowdefy/blocks-loaders@5.5.1"
-  - "@lowdefy/blocks-markdown@5.5.1"
-  - "@lowdefy/blocks-tiptap@5.5.1"
-  - "@lowdefy/build@5.5.1"
-  - "@lowdefy/client@5.5.1"
-  - '@lowdefy/e2e-utils@0.0.0-experimental-20260813120102 || 5.5.1'
-  - "@lowdefy/engine@5.5.1"
-  - '@lowdefy/errors@0.0.0-experimental-20260813120102 || 5.5.1'
-  - '@lowdefy/helpers@0.0.0-experimental-20260813120102 || 5.5.1'
-  - "@lowdefy/layout@5.5.1"
-  - '@lowdefy/logger@0.0.0-experimental-20260813120102 || 5.5.1'
-  - '@lowdefy/node-utils@0.0.0-experimental-20260813120102 || 5.5.1'
-  - '@lowdefy/nunjucks@0.0.0-experimental-20260813120102 || 5.5.1'
-  - "@lowdefy/operators-dayjs@5.5.1"
-  - "@lowdefy/operators-js@5.5.1"
-  - "@lowdefy/operators-mql@5.5.1"
-  - "@lowdefy/operators-nunjucks@5.5.1"
-  - "@lowdefy/operators-uuid@5.5.1"
-  - "@lowdefy/operators@5.5.1"
-  - "@lowdefy/plugin-aws@5.5.1"
-  - "@lowdefy/plugin-next-auth@5.5.1"
-  - lowdefy@0.0.0-experimental-20260813120102 || 5.5.1
-  - "@lowdefy/blocks-echarts@5.5.1"
-  - "@lowdefy/connection-axios-http@5.5.1"
+  - "@lowdefy/actions-core@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/ai-utils@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/ajv@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/api@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/block-utils@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-aggrid@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-antd-x@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-antd@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-basic@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-loaders@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-markdown@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-tiptap@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/build@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/client@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/e2e-utils@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/engine@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/errors@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/helpers@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/layout@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/logger@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/node-utils@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/nunjucks@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-dayjs@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-js@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-mql@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-nunjucks@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-uuid@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/plugin-aws@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/plugin-next-auth@0.0.0-experimental-20260814133003 || 5.5.1"
+  - lowdefy@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1
+  - "@lowdefy/blocks-echarts@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/connection-axios-http@0.0.0-experimental-20260814133003 || 5.5.1"
   - "@lowdefy/operators-change-case@5.5.1"
   - "@lowdefy/operators-diff@5.5.1"
   - "@lowdefy/operators-yaml@5.5.1"
+  - "@lowdefy/blocks-files@0.0.0-experimental-20260814133003"
+  - "@lowdefy/websockets-core@0.0.0-experimental-20260814133003"
+  - "@lowdefy/connection-ai-gateway@0.0.0-experimental-20260814133003"
+  - "@lowdefy/connection-mongodb@0.0.0-experimental-20260814133003"

@@ -38,12 +38,12 @@
     "js-yaml": "^4.1.0"
   },
   "peerDependencies": {
-    "@lowdefy/block-utils": "0.0.0-experimental-20260806121008",
-    "@lowdefy/blocks-antd": "0.0.0-experimental-20260806121008",
-    "@lowdefy/blocks-basic": "0.0.0-experimental-20260806121008",
+    "@lowdefy/block-utils": "0.0.0-experimental-20260814133003",
+    "@lowdefy/blocks-antd": "0.0.0-experimental-20260814133003",
+    "@lowdefy/blocks-basic": "0.0.0-experimental-20260814133003",
     "@lowdefy/community-plugin-mongodb": "^3",
-    "@lowdefy/helpers": "0.0.0-experimental-20260806121008",
-    "@lowdefy/nunjucks": "0.0.0-experimental-20260806121008",
+    "@lowdefy/helpers": "0.0.0-experimental-20260814133003",
+    "@lowdefy/nunjucks": "0.0.0-experimental-20260814133003",
     "@lowdefy/plugin-aws": ">=4.0.0",
     "antd": ">=6",
     "mongodb": "^6",

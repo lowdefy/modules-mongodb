@@ -21,11 +21,11 @@
     "reporting:catalog": "infisical run --env=dev --path=/apps/demo -- lowdefy-reporting-catalog --out modules/reporting/catalog.draft.yaml"
   },
   "dependencies": {
-    "lowdefy": "0.0.0-experimental-20260806121008"
+    "lowdefy": "0.0.0-experimental-20260814133003"
   },
   "devDependencies": {
     "@lowdefy/community-plugin-e2e-mdb": "latest",
-    "@lowdefy/e2e-utils": "0.0.0-experimental-20260806121008",
+    "@lowdefy/e2e-utils": "0.0.0-experimental-20260814133003",
     "@lowdefy/modules-mongodb-plugins": "workspace:*",
     "@playwright/test": "^1.50.0"
   }
