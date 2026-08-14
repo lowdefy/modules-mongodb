@@ -37,6 +37,20 @@ test("empty rows produce an empty CSV", () => {
   expect(buildCsv({ rows: [] })).toBe("");
 });
 
+// The header is the UNION of every row's keys, not row 0's. An open-engine
+// pipeline legitimately yields a sparse first row (a $group with an optional
+// field, a $unionWith over differing shapes); a row-0-only header would drop
+// that column from the whole file, silently. First-seen order is kept.
+test("headers are the union of all row keys, not just the first row's", () => {
+  const csv = buildCsv({
+    rows: [
+      { region: "EU", revenue: 100 },
+      { region: "US", revenue: 200, discount: 15 },
+    ],
+  });
+  expect(csv).toBe("region,revenue,discount\r\nEU,100,\r\nUS,200,15");
+});
+
 // Excel strips leading whitespace before deciding whether a cell is a formula,
 // so tab and CR are formula triggers too — and a leading tab is not otherwise
 // quoted, since it is not one of the RFC-4180 special characters.
