@@ -113,17 +113,19 @@ blocks:
                     layout:
                       span: 24
                     properties:
-                      title: Organisation role
-                      # Labelled in the app's language rather than BetterAuth's,
-                      # where "member" reads as a status rather than an absence of
-                      # authority. There is no empty tier to invite with.
+                      title: Organisation authority
+                      # Binary: admin (may administer the organization) or member
+                      # (no authority). `owner` is not offered — it is the protected
+                      # creator tier, capability-identical to admin, never minted
+                      # from an invite. "No admin access" is plainer than
+                      # BetterAuth's "member", where the word reads as a status
+                      # rather than an absence of authority; there is no empty tier
+                      # to invite with.
                       options:
-                        - value: owner
-                          label: Organisation owner
                         - value: admin
-                          label: Organisation admin
+                          label: Admin
                         - value: member
-                          label: No organisation role
+                          label: No admin access
                 else: []
             # Member attributes: group label above the consumer fields.
             - - id: member_attributes_label

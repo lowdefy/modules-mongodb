@@ -65,11 +65,13 @@ vars:
     default: true
     description: >-
       Gates the organization-authority control on the access modal, promoting a
-      member to `admin` or `owner` in the administered organization, or revoking
-      them back to `member` (the no-authority value; there is no empty tier and
-      the write refuses one), and the matching `orgRole` field on the invite
-      form. Holding `admin` in an organization is what lets a person administer
-      it, so this control is how a deployment grants that. Set false in a
+      member to `admin` in the administered organization, or revoking them back to
+      `member` (the no-authority value; there is no empty tier and the write
+      refuses one), and the matching `orgRole` field on the invite form. `owner`
+      is the protected creator tier, capability-identical to `admin`, and is not
+      settable from either control — an owner member is shown read-only. Holding
+      `admin` in an organization is what lets a person administer it, so this
+      control is how a deployment grants that. Set false in a
       deployment where org authority is granted out of band.
 
       When false the control does not render AND `update-org-role` rejects, so a

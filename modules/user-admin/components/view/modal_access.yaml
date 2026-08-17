@@ -2,11 +2,18 @@
 # on (UpdateMemberRoles + UpdateMemberAttributes), plus, behind the `org_authority`
 # var, the member's organization-authority tier.
 #
-# The tier is a separate control with its own submit, because it is a separate
-# authority: an app role says "show this person the UI", the member row's tier says
-# "this person may actually administer the organization", and nothing keeps the two
-# in agreement. Folding them into one submit would also mean a refused tier write
-# leaving the app-role write applied, with nothing to roll it back.
+# The tier writes through its own endpoint (update-org-role) — a separate authority
+# from the app roles (an app role says "show this person the UI"; the tier says "this
+# person may administer the organization"), a separate write path (the organizations
+# plugin, so its last-owner and creator guards run), separately authorized and
+# audited. It shares the modal's single Save: onOk runs the tier write FIRST, so a
+# refusal halts before any app-role write lands (nothing to roll back), and skips it
+# when org_role is unchanged so a plain attributes save never touches the plugin.
+#
+# The assignable tier is binary — admin (administers the organization) or member (no
+# authority). `owner` holds the same capabilities as `admin` (it is the protected
+# creator tier, not a higher grade), so it is never minted here: an owner member is
+# shown read-only and left untouched by a save.
 #
 # Role picker options/labels/descriptions come from the app role catalog
 # (_build.authConfig.roles), concatenated with one option per held orphan (a role
@@ -47,16 +54,60 @@ events:
           type: Validate
           params:
             regex:
-              - "^roles$"
-              - '^member_attributes\.'
-        # UpdateMemberRoles + UpdateMemberAttributes. The selected ids submit
-        # as-is: an orphan among them is accepted and grants nothing, so an admin
-        # who never touched it does not lose the whole save over it.
-        - id: save_access
+              _build.array.concat:
+                - - "^roles$"
+                  - '^member_attributes\.'
+                # Only when the tier control renders (org_authority true).
+                - _build.if:
+                    test:
+                      _module.var: org_authority
+                    then:
+                      - "^org_role$"
+                    else: []
+      # Tier write FIRST, and only behind the `org_authority` var. Skipped when
+      # org_role is unchanged from its seeded value, so a plain attributes save
+      # never invokes the org plugin or emits an org-role-updated event — and an
+      # owner (shown read-only, seed unchanged) is never rewritten. A refusal
+      # (sole owner, creator demotion) halts the chain here, before any app-role
+      # write lands. No `error` message: the plugin's own refusal text must reach
+      # the admin, not be replaced by a generic string.
+      - _build.if:
+          test:
+            _module.var: org_authority
+          then:
+            - id: save_org_role
+              type: CallAPI
+              skip:
+                _eq:
+                  - _state: org_role
+                  - _request: get_user_detail.0.org_role
+              messages:
+                loading: Updating organisation access…
+              params:
+                endpointId:
+                  _module.endpointId: update-org-role
+                payload:
+                  member_id:
+                    _request: get_user_detail.0.member_id
+                  user_id:
+                    _request: get_user_detail.0.user_id
+                  org_role:
+                    _state: org_role
+                  target_name:
+                    _request: get_user_detail.0.name
+                  target_email:
+                    _request: get_user_detail.0.email
+          else: []
+      # UpdateMemberRoles + UpdateMemberAttributes. Reached only on tier success
+      # or skip. The selected ids submit as-is: an orphan among them is accepted
+      # and grants nothing, so an admin who never touched it does not lose the
+      # whole save over it. Idempotent SET, so a failure here after a tier success
+      # is resolved by re-running Save.
+      - - id: save_access
           type: CallAPI
           messages:
             loading: Saving…
-            success: Attributes updated.
+            success: Changes saved.
           params:
             endpointId:
               _module.endpointId: update-access
@@ -152,9 +203,9 @@ blocks:
                           - __args: 0
                           - " (no longer configured)</div></div>"
     - _module.var: fields.member_attributes
-    # Organization authority. Behind the `org_authority` var. Its own selector and
-    # its own button: the tier is a different authority from the app roles above and
-    # a different write, so it is not part of "Save attributes".
+    # Organization authority. Behind the `org_authority` var. Saved by the modal's
+    # single Save (onOk, tier write first), not a control of its own. The assignable
+    # tier is binary — admin or member; `owner` is never minted here (see header).
     - _build.if:
         test:
           _module.var: org_authority
@@ -163,62 +214,44 @@ blocks:
             type: Divider
             properties:
               margin: 4
+          # Owner is read-only: the protected creator tier, capability-identical to
+          # admin, never set from this control. Shown so the tier is visible; the
+          # save leaves it untouched (the tier write skips when org_role is
+          # unchanged, and this member's seed is `owner`).
+          - id: org_role_owner_display
+            type: Html
+            visible:
+              _eq:
+                - _request: get_user_detail.0.org_role
+                - owner
+            properties:
+              html: >
+                <div>
+                  <div style="margin-bottom:6px;">Organisation authority</div>
+                  <div>Owner
+                    <span style="color:var(--ant-color-text-tertiary);">— administers this organisation; the protected owner tier.</span>
+                  </div>
+                  <div style="font-size:12px; color:var(--ant-color-text-tertiary); margin-top:4px;">Ownership isn't changed here.</div>
+                </div>
           - id: org_role
             type: Selector
             required: true
+            visible:
+              _ne:
+                - _request: get_user_detail.0.org_role
+                - owner
             properties:
               label:
-                title: Organisation role
-                extra: Who may administer this organisation, separate from the app roles above.
+                title: Organisation authority
+                extra: Whether this person can administer the organisation — manage its members and their access. Independent of the app roles above.
               # `member` is the no-authority value, not an empty one: the write
               # refuses an empty role, so revoking authority writes `member`.
-              # Labelled in the app's language rather than BetterAuth's, where
-              # "member" reads as a status instead of an absence of authority.
+              # Labelled in plain terms — "No admin access" rather than BetterAuth's
+              # "member", where the word reads as a status instead of an absence of
+              # authority. `owner` is not offered (see header).
               options:
-                - value: owner
-                  label: Organisation owner
                 - value: admin
-                  label: Organisation admin
+                  label: Admin
                 - value: member
-                  label: No organisation role
-          - id: save_org_role_btn
-            type: Button
-            layout:
-              flex: 0 0 auto
-            properties:
-              title: Update organisation role
-              variant: outlined
-            events:
-              onClick:
-                _build.array.concat:
-                  - - id: validate_org_role
-                      type: Validate
-                      params:
-                        regex:
-                          - "^org_role$"
-                    # No `error` message: the write's refusals (demoting the
-                    # organization's sole owner, or demoting its creator) are the
-                    # reason it runs through the organization plugin at all, and an
-                    # admin needs to read them. A static error string here would
-                    # replace them with "something went wrong".
-                    - id: save_org_role
-                      type: CallAPI
-                      messages:
-                        loading: Updating…
-                        success: Organisation role updated.
-                      params:
-                        endpointId:
-                          _module.endpointId: update-org-role
-                        payload:
-                          member_id:
-                            _request: get_user_detail.0.member_id
-                          user_id:
-                            _request: get_user_detail.0.user_id
-                          org_role:
-                            _state: org_role
-                          target_name:
-                            _request: get_user_detail.0.name
-                          target_email:
-                            _request: get_user_detail.0.email
-                  - _ref: actions/detail_refetch.yaml
+                  label: No admin access
         else: []

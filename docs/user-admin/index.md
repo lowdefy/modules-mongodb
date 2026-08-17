@@ -43,8 +43,8 @@ two entries, two `org_slug` values. See
   filter / sort / pagination; a merged Excel export behind the `download` var.
 - **User detail** (`view` page) — one page with section-scoped edits: **Profile**
   (contact fields), **Attributes** (this app's roles + member attributes, plus — behind
-  the `org_authority` var, and with its own submit — the member's organization-authority
-  tier), **Global attributes** (user attributes), **Security** (suspend/reinstate,
+  the `org_authority` var — the member's organization-authority tier, saved by the
+  tile's single Save), **Global attributes** (user attributes), **Security** (suspend/reinstate,
   sign-out-everywhere, remove, delete, sessions, auth methods, two-factor and
   passkey recovery — see [Two-factor and passkey recovery](#two-factor-and-passkey-recovery)),
   **Apps** (cross-app badges), **Activity** (event timeline). Each tile edits
@@ -174,8 +174,11 @@ BetterAuth's invariants). Authorization has two independent halves:
 Organization authority is a separate endpoint rather than a fourth step on
 `update-access`: the two writes take different paths (app roles adapter-direct, the
 tier through the organization plugin so its creator-protection and last-owner guards
-run), they are separately audited, and a refused tier write must not leave an
-app-role write applied with nothing to roll it back. `org_authority: false` removes the
+run), and they are separately audited. The access modal's single Save runs the tier
+write **first**, so a refused tier write halts before any app-role write lands — which
+is how it shares one submit with no rollback path. The tier is written only when it
+changed; the assignable values are `admin` and `member` (`owner` is the protected
+creator tier and is not settable from the UI). `org_authority: false` removes the
 two controls that reach it and makes the endpoint reject, so a deployment granting
 organization authority out of band closes the surface rather than only hiding it.
 
