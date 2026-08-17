@@ -234,8 +234,25 @@ _ref:
                                     method: toggleOpen
                           - id: twofa_disable_btn
                             type: Button
+                            # Under `required`, hide "Turn off" when it would strand the
+                            # account at zero factors — no passkey remains to satisfy the
+                            # floor. When `required` is off, removal to zero legitimately
+                            # turns 2FA off, so the button follows only the enabled flag.
                             visible:
-                              _request: get_account.0.two_factor_enabled
+                              _build.if:
+                                test:
+                                  _build.authConfig: twoFactor.required
+                                then:
+                                  _and:
+                                    - _request: get_account.0.two_factor_enabled
+                                    - _ne:
+                                        - _array.length:
+                                            _if_none:
+                                              - _state: passkeys_ui
+                                              - []
+                                        - 0
+                                else:
+                                  _request: get_account.0.two_factor_enabled
                             layout:
                               flex: 0 0 auto
                             properties:
@@ -245,42 +262,11 @@ _ref:
                               variant: outlined
                             events:
                               onClick:
-                                _build.if:
-                                  test:
-                                    _build.authConfig: twoFactor.required
-                                  then:
-                                    - id: twofa_disable_blocked_msg
-                                      type: DisplayMessage
-                                      # Turning off strands the account at zero factors
-                                      # unless a passkey remains to satisfy the floor.
-                                      skip:
-                                        _ne:
-                                          - _array.length:
-                                              _if_none:
-                                                - _state: passkeys_ui
-                                                - []
-                                          - 0
-                                      params:
-                                        status: info
-                                        content: "Two-factor is required for your account, so it can't be turned off. To switch authenticators, use Replace under Manage."
-                                    - id: open_disable2fa_modal
-                                      type: CallMethod
-                                      skip:
-                                        _eq:
-                                          - _array.length:
-                                              _if_none:
-                                                - _state: passkeys_ui
-                                                - []
-                                          - 0
-                                      params:
-                                        blockId: modal_disable2fa
-                                        method: toggleOpen
-                                  else:
-                                    - id: open_disable2fa_modal
-                                      type: CallMethod
-                                      params:
-                                        blockId: modal_disable2fa
-                                        method: toggleOpen
+                                - id: open_disable2fa_modal
+                                  type: CallMethod
+                                  params:
+                                    blockId: modal_disable2fa
+                                    method: toggleOpen
                 else: []
 
             # ── Passkeys section (deployment gate only) ──
@@ -409,6 +395,27 @@ _ref:
                                         method: toggleOpen
                               - id: passkeys_ui.$.remove
                                 type: Button
+                                # Under `required`, hide remove when this passkey is the
+                                # account's only second factor (TOTP off and the sole
+                                # passkey) — deleting it would strand the account at zero
+                                # factors. When `required` is off, remove always shows.
+                                visible:
+                                  _build.if:
+                                    test:
+                                      _build.authConfig: twoFactor.required
+                                    then:
+                                      _not:
+                                        _and:
+                                          - _eq:
+                                              - _request: get_account.0.two_factor_enabled
+                                              - false
+                                          - _eq:
+                                              - _array.length:
+                                                  _if_none:
+                                                    - _state: passkeys_ui
+                                                    - []
+                                              - 1
+                                    else: true
                                 layout:
                                   flex: 0 0 auto
                                 properties:
@@ -419,63 +426,17 @@ _ref:
                                   shape: circle
                                 events:
                                   onClick:
-                                    _build.if:
-                                      test:
-                                        _build.authConfig: twoFactor.required
-                                      then:
-                                        _build.array.concat:
-                                          - - id: passkey_remove_blocked_msg
-                                              type: DisplayMessage
-                                              # Removing the only passkey while TOTP is off
-                                              # would strand the account at zero factors.
-                                              skip:
-                                                _not:
-                                                  _and:
-                                                    - _eq:
-                                                        - _request: get_account.0.two_factor_enabled
-                                                        - false
-                                                    - _eq:
-                                                        - _array.length:
-                                                            _if_none:
-                                                              - _state: passkeys_ui
-                                                              - []
-                                                        - 1
-                                              params:
-                                                status: info
-                                                content: "This is your only second factor. Add another passkey before removing this one."
-                                            - id: passkey_delete
-                                              type: PasskeyDelete
-                                              skip:
-                                                _and:
-                                                  - _eq:
-                                                      - _request: get_account.0.two_factor_enabled
-                                                      - false
-                                                  - _eq:
-                                                      - _array.length:
-                                                          _if_none:
-                                                            - _state: passkeys_ui
-                                                            - []
-                                                      - 1
-                                              messages:
-                                                loading: Removing…
-                                                success: Passkey removed.
-                                                error: Couldn't remove the passkey. Try again.
-                                              params:
-                                                passkeyId:
-                                                  _state: passkeys_ui.$.passkey_id
-                                          - _ref: actions/refetch_account.yaml
-                                      else:
-                                        _build.array.concat:
-                                          - - id: passkey_delete
-                                              type: PasskeyDelete
-                                              messages:
-                                                loading: Removing…
-                                                success: Passkey removed.
-                                                error: Couldn't remove the passkey. Try again.
-                                              params:
-                                                passkeyId:
-                                                  _state: passkeys_ui.$.passkey_id
-                                          - _ref: actions/refetch_account.yaml
+                                    _build.array.concat:
+                                      - - id: passkey_delete
+                                          type: PasskeyDelete
+                                          messages:
+                                            loading: Removing…
+                                            success: Passkey removed.
+                                            error: Couldn't remove the passkey. Try again.
+                                          params:
+                                            passkeyId:
+                                              _state: passkeys_ui.$.passkey_id
+                                      - _ref: actions/refetch_account.yaml
                   - id: passkeys_empty_hint
                     type: Html
                     visible:
