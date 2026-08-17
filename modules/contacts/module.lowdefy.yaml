@@ -87,7 +87,11 @@ vars:
         description: Additional pipeline stages appended to get_contact (e.g. $lookup, $addFields).
       selector:
         default: []
-        description: Pipeline stages appended to the contact-selector aggregation.
+        description: >-
+          Pipeline stages injected into the contact-selector aggregation after
+          the base hidden/disabled $match and BEFORE the label projection, so
+          stages can filter or derive on raw document fields (e.g. exclude
+          contacts that are also app users from pickers).
       filter_match:
         default: []
         description: >-

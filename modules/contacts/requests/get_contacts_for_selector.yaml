@@ -10,7 +10,13 @@ properties:
               $ne: true
             disabled:
               $ne: true
-        - $project:
+      # Consumer stages (request_stages.selector, default []) run BEFORE the
+      # label projection so they can filter/derive on raw document fields —
+      # e.g. excluding contacts that are also app users from a picker. After
+      # the projection only `label` and `value` survive, which is no use to a
+      # consumer wanting to filter. Mirrors get_companies_for_selector.
+      - _module.var: request_stages.selector
+      - - $project:
             label:
               $concat:
                 - "$profile.name"
@@ -20,4 +26,3 @@ properties:
             value: "$_id"
         - $sort:
             label: 1
-      - _module.var: request_stages.selector

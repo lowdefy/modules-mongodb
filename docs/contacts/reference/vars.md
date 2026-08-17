@@ -57,6 +57,6 @@ Pipeline overrides: get_all_contacts, get_contact, write, selector, filter_match
 |---|---|---|---|---|
 | `get_all_contacts` |  | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the contacts list and Excel export aggregations. |
 | `get_contact` |  | `[]` |  | Additional pipeline stages appended to get_contact (e.g. $lookup, $addFields). |
-| `selector` |  | `[]` |  | Pipeline stages appended to the contact-selector aggregation. |
+| `selector` |  | `[]` |  | Pipeline stages injected into the contact-selector aggregation after the base hidden/disabled $match and BEFORE the label projection, so stages can filter or derive on raw document fields (e.g. exclude contacts that are also app users from pickers). |
 | `filter_match` |  | `[]` |  | Atlas Search compound clauses appended to the list-page `$search` query. Used to add custom filter conditions to the contacts list. |
 | `write` |  | `[]` |  | Pipeline update stages appended to both create-contact and update-contact flows. Runs after the built-in `$mergeObjects` merge of profile and global_attributes; used for derived fields or extra transforms. |
