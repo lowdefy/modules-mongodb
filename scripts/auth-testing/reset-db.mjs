@@ -8,8 +8,12 @@
 // volume, indexes and all).
 //
 // GUARDED: refuses to run unless the connection is local (localhost/127.0.0.1)
-// AND the database name is the expected test DB. It structurally cannot touch a
-// remote Atlas cluster or a non-test database.
+// AND the database name is one of the known test DBs. It structurally cannot
+// touch a remote Atlas cluster or a non-test database.
+//
+// Serves both local apps: `demo-auth-test` (apps/demo, pinned) and
+// `modules-mongodb-tenant-demo` (apps/tenant-demo, tenant) are both in the
+// default allowlist, so `MONGODB_URI=<the tenant URI> pnpm reset-db` just works.
 //
 // Usage (from scripts/auth-testing/):
 //   node reset-db.mjs            # clear all data in the test DB
@@ -17,17 +21,21 @@
 //
 // Env:
 //   MONGODB_URI     default mongodb://localhost:27017/demo-auth-test
-//   RESET_DB_ALLOW  the DB name this script is allowed to clear (default demo-auth-test)
+//   RESET_DB_ALLOW  comma-separated DB names this script may clear
+//                   (default "demo-auth-test,modules-mongodb-tenant-demo")
 //
-// After a reset, restart the dev server (so the engine re-ensures the pinned org),
-// then re-run bootstrap-admin.
+// After a reset, restart the dev server (under pinned, so the engine re-ensures
+// the pinned org, then re-run bootstrap-admin; under tenant, sign up afresh).
 
 import { MongoClient } from 'mongodb';
 import { DEFAULT_URI, dbNameFromUri, isLocalUri, die } from './_shared.mjs';
 
 const dryRun = process.argv.includes('--dry-run');
 const uri = process.env.MONGODB_URI || DEFAULT_URI;
-const allowedDb = process.env.RESET_DB_ALLOW || 'demo-auth-test';
+const allowedDbs = (process.env.RESET_DB_ALLOW || 'demo-auth-test,modules-mongodb-tenant-demo')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 const dbName = dbNameFromUri(uri) || 'demo-auth-test';
 
 // --- safety guards -------------------------------------------------------------
@@ -38,9 +46,11 @@ if (!isLocalUri(uri)) {
       `  This guard exists so the reset can never reach a real cluster.`,
   );
 }
-if (dbName !== allowedDb) {
+if (!allowedDbs.includes(dbName)) {
   die(
-    `Refusing to reset database "${dbName}" — only "${allowedDb}" is allowed.\n` +
+    `Refusing to reset database "${dbName}" — only ${allowedDbs
+      .map((d) => `"${d}"`)
+      .join(', ')} ${allowedDbs.length === 1 ? 'is' : 'are'} allowed.\n` +
       `  If this really is your throwaway test DB, set RESET_DB_ALLOW="${dbName}".`,
   );
 }

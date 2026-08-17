@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Local test-infra helper scripts for the demo app's BetterAuth flows. Not a pnpm workspace member (the workspace globs only match apps/*, plugins/*, modules/*).",
+  "description": "Local test-infra helper scripts for the demo and tenant-demo apps' BetterAuth flows. Not a pnpm workspace member (the workspace globs only match apps/*, plugins/*, modules/*).",
   "scripts": {
     "bootstrap-admin": "node bootstrap-admin.mjs",
+    "ensure-indexes": "node ensure-indexes.mjs",
     "reset-db": "node reset-db.mjs",
     "mail-link": "node mail-link.mjs"
   },

@@ -3,18 +3,23 @@
 Infrastructure for testing the BetterAuth flows (login, signup, email
 verification, password reset, magic-link, 2FA, passkeys, invitations) end-to-end.
 
-Two environments, and they drive **different apps** — the deployment policy is
-the whole reason there are two:
+The **local rig** — a docker Mongo + Mailpit sink — is the same infrastructure
+for both apps; each just points its own `.env` at a different database on the one
+local Mongo. Only the tester-facing **QA** environment (§8) is separate, because
+it needs real email and a shared cluster:
 
-| Environment           | App                | Policy   | Use it for                                                                                          | Database                                 | Email                         |
-| --------------------- | ------------------ | -------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------- |
-| **Local rig** (§1–§7) | `apps/demo`        | `pinned` | Dev iteration — fast resets, scripted link extraction, throwaway data                               | local container `demo-auth-test`         | Mailpit sink (never forwards) |
-| **QA** (§8)           | `apps/tenant-demo` | `tenant` | Tester-facing passes ([`qa-test-plan.md`](../../designs/auth-tenancy-verification/qa-test-plan.md)) | Atlas `modules-mongodb-demo-tenant-test` | SendGrid → real inboxes       |
+| Environment             | App                | Policy   | Use it for                                                                                          | Database                                      | Email                         |
+| ----------------------- | ------------------ | -------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------- |
+| **Local rig** (§1–§7)   | `apps/demo`        | `pinned` | Dev iteration on the pinned surface — fast resets, scripted link extraction                         | local container `demo-auth-test`              | Mailpit sink (never forwards) |
+| **Local rig** (§1–§7.5) | `apps/tenant-demo` | `tenant` | Dev iteration on the tenant/workspace surface (org switcher, members, invitations)                  | local container `modules-mongodb-tenant-demo` | Mailpit sink (never forwards) |
+| **QA** (§8)             | `apps/tenant-demo` | `tenant` | Tester-facing passes ([`qa-test-plan.md`](../../designs/auth-tenancy-verification/qa-test-plan.md)) | Atlas `modules-mongodb-demo-tenant-test`      | SendGrid → real inboxes       |
 
-The local rig's tools are pinned-shape by construction: `bootstrap-admin` grants
-a `userAdminRole` that `tenant` forbids, and `reset-db` refuses a non-local host.
-The workspace surface (organization switcher, members, settings) only exists in
-`apps/tenant-demo`. Neither app can serve both passes — see
+The infra and the DB-agnostic tools (`reset-db`, `ensure-indexes`, `mail-link`)
+serve both local apps; §7.5 covers the tenant-only differences. One tool is
+pinned-only: `bootstrap-admin` grants a `userAdminRole` that `tenant` forbids —
+under `tenant` a fresh signup mints its own organization, so there is no
+first-admin bootstrap to do. The workspace surface (organization switcher,
+members, settings) exists only in `apps/tenant-demo` — see
 [`docs/shared/org-scoping.md`](../../docs/shared/org-scoping.md).
 
 **The local rig touches nothing real** — a fresh local container plus a mail sink.
@@ -196,8 +201,11 @@ docker compose restart mailpit   # clear the inbox without touching the DB
 
 Between test runs you'll often want a clean database (unconsumed invitations,
 verification tokens, and enrolled 2FA all persist). The helper scripts (§7) give
-you a targeted data reset that keeps the container and indexes, plus a first-admin
-bootstrap and a Mailpit link-extractor.
+you a targeted data reset that keeps the container and indexes, plus index
+creation, a first-admin bootstrap, and a Mailpit link-extractor.
+
+`down -v` wipes the volume — indexes included — so after it, re-run
+`ensure-indexes` (§7) before the next live pass. `reset-db` keeps them.
 
 ---
 
@@ -208,12 +216,20 @@ repo-root dependency and resolves via the root `node_modules`. (This directory
 isn't a pnpm workspace member, so a local `pnpm install` here just re-installs the
 root workspace and is a no-op for these scripts.)
 
-All three read `MONGODB_URI` (default `mongodb://localhost:27017/demo-auth-test`)
-and `MAILPIT_URL` (default `http://localhost:8025`) from the environment.
+They all read `MONGODB_URI` (default `mongodb://localhost:27017/demo-auth-test`)
+and `MAILPIT_URL` (default `http://localhost:8025`) from the environment. To run a
+tool against the tenant app's local DB, prefix it with that database's URI:
 
-**All three are local-rig tools.** `mail-link` speaks Mailpit's API, `reset-db`
-refuses a non-local host, and `bootstrap-admin` grants a role the QA environment's
-tenant policy doesn't use. §8 covers the QA equivalents.
+```sh
+MONGODB_URI="mongodb://localhost:27017/modules-mongodb-tenant-demo" pnpm ensure-indexes
+MONGODB_URI="mongodb://localhost:27017/modules-mongodb-tenant-demo" pnpm reset-db
+```
+
+**All are local-rig tools** — `mail-link` speaks Mailpit's API, and `reset-db` /
+`ensure-indexes` refuse a non-local host, so none can reach the QA cluster.
+`ensure-indexes`, `reset-db` and `mail-link` serve **both** local apps;
+`bootstrap-admin` is pinned-only (it grants a role the tenant policy doesn't use).
+§8 covers the QA equivalents.
 
 ### `bootstrap-admin` — make the first user an admin
 
@@ -233,20 +249,44 @@ the field the console page gate and `UpdateMemberRoles` read — with the org-au
 role rather than duplicating the row. Needs the dev server to have started once (so the
 engine has ensured the pinned org).
 
+### `ensure-indexes` — create the module-required indexes
+
+The modules never create their own indexes (index creation is a host-app concern —
+[`docs/user-account/reference/indexes.md`](../../docs/user-account/reference/indexes.md)),
+so a fresh DB has none. This creates all four idempotently: the two `user-contacts`
+partial-uniques, the `user-members` role-filter index, and the `user-two-factors`
+unique index — the last one is what turns a concurrent 2FA-enable from a silent
+lockout into a retryable error, so it matters wherever `twoFactor` is enabled (both
+apps). Run it **once per fresh DB** (a new container, or after `down -v`); it
+survives `reset-db`.
+
+```sh
+pnpm ensure-indexes                       # against demo-auth-test
+MONGODB_URI="mongodb://localhost:27017/modules-mongodb-tenant-demo" pnpm ensure-indexes
+```
+
+One index set serves both policies — the compound `{organization_id, …}` shape
+degenerates to the single-field guarantee under `pinned` (a missing
+`organization_id` indexes as null). **Guarded:** refuses a non-local host.
+
 ### `reset-db` — clean data slate between runs
 
 Clears every collection's documents in the test database (keeps collections and
-indexes, so you don't have to recreate the partial-unique indexes). **Guarded:**
-refuses to run unless the URI host is local _and_ the database name is the test DB —
-it structurally cannot touch a remote cluster.
+indexes, so you don't have to re-run `ensure-indexes`). **Guarded:** refuses to run
+unless the URI host is local _and_ the database name is a known test DB — it
+structurally cannot touch a remote cluster. The default allowlist covers both local
+apps (`demo-auth-test` and `modules-mongodb-tenant-demo`); override with
+`RESET_DB_ALLOW` (comma-separated) for any other throwaway local DB.
 
 ```sh
 pnpm reset-db            # clear all data in demo-auth-test
 pnpm reset-db --dry-run  # show what would be cleared, change nothing
+MONGODB_URI="mongodb://localhost:27017/modules-mongodb-tenant-demo" pnpm reset-db
 ```
 
-After a reset, restart the dev server so the engine re-ensures the pinned org, then
-re-run `bootstrap-admin`.
+After a reset, under `pinned` restart the dev server so the engine re-ensures the
+pinned org, then re-run `bootstrap-admin`; under `tenant` just sign up afresh (the
+signup mints a new organization).
 
 ### `mail-link` — pull the action link out of the latest email
 
@@ -258,6 +298,61 @@ email-gated flows instead of clicking through the web UI.
 pnpm mail-link                          # link from the newest message
 pnpm mail-link --to alice@example.com   # newest message to that recipient
 pnpm mail-link --json                   # raw message metadata + all links found
+```
+
+---
+
+## 7.5. Running `apps/tenant-demo` locally (`tenant`)
+
+The tenant/workspace surface — organization switcher, members, invitations —
+lives only in `apps/tenant-demo`, and you can exercise it against the **same local
+rig**: the same docker Mongo + Mailpit from §1–§2, just a different database on the
+one container and a different app `.env`. This is the fast local loop; §8 is the
+separate Atlas + SendGrid environment for tester-facing passes.
+
+Everything in §1–§2 (Docker, `docker compose up -d`) is shared — do that once. The
+only differences are the app's `.env`, the port, and that there's no first-admin
+bootstrap.
+
+**1. Secrets (`apps/tenant-demo/.env`).** Copy the example and fill the two signing
+secrets; the rest already points at the local rig (DB `modules-mongodb-tenant-demo`,
+Mailpit on `:1025`, GitHub/S3 dummies):
+
+```sh
+cd apps/tenant-demo
+cp .env.example .env
+# then set, each to `openssl rand -base64 32`:
+#   LOWDEFY_SECRET_AUTH_SECRET   — BetterAuth session/token signing
+#   NEXTAUTH_SECRET              — required to run ldf:d / ldf:s
+```
+
+`BETTER_AUTH_URL=http://localhost:3003` is already set and must match the serve
+port — the invitation accept URL only renders when the origin is a fixed string.
+
+**2. Indexes** (once per fresh DB — see §7):
+
+```sh
+cd scripts/auth-testing
+MONGODB_URI="mongodb://localhost:27017/modules-mongodb-tenant-demo" pnpm ensure-indexes
+```
+
+**3. Serve** (from `apps/tenant-demo`, port 3003):
+
+```sh
+pnpm ldf:b && pnpm ldf:s      # production build — no "building page" artifact
+# pnpm ldf:d                  # dev server; fine for iteration (may flash a "building page")
+```
+
+**4. First user — no bootstrap.** Under `tenant` a fresh signup mints its own
+organization and makes that user its owner, so `bootstrap-admin` is neither needed
+nor usable here (it's pinned-only). Verify the email via Mailpit (`pnpm mail-link`
+works unchanged), sign in, and you're in your own workspace. Grant additional app
+roles to members from `/organizations/members`.
+
+**Reset** the same way, pointed at the tenant DB:
+
+```sh
+MONGODB_URI="mongodb://localhost:27017/modules-mongodb-tenant-demo" pnpm reset-db
 ```
 
 ---
