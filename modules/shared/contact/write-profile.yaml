@@ -152,9 +152,9 @@
     - id: denorm_user_profile
       type: UpdateUserProfile
       properties:
-        user_id:
+        userId:
           _var: user_id
-        organization_id:
+        organizationId:
           _var: organization_id
         profile:
           _step: reread_contact.profile
