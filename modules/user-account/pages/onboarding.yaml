@@ -70,6 +70,10 @@ _ref:
                     type: Validate
                   - id: save_profile
                     type: CallAPI
+                    # error toast phrased by the catch; suppress the engine default
+                    # so the failure toasts once, not twice.
+                    messages:
+                      error: false
                     params:
                       endpointId:
                         _module.endpointId: update-profile
@@ -79,6 +83,8 @@ _ref:
                         set_profile_created: true
                   - id: refresh_session
                     type: UpdateSession
+                    messages:
+                      error: false
                   - id: enter_app
                     type: Link
                     params:
