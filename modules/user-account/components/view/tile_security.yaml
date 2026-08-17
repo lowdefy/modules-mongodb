@@ -6,9 +6,12 @@
 # Visibility has two gates (Decision 5): a deployment gate
 # (`_build.authConfig.<method>.enabled`: the method must be configured for the
 # app) wraps each row at build time, and a per-user credential gate
-# (get_accounts.has_credential: an OAuth/magic-link-only user has no credential
-# and changePassword / twoFactor.* would 400) applies at runtime. The password
-# and two-factor rows require both; passkeys require only the deployment gate.
+# (get_accounts.has_credential) applies at runtime. Only the PASSWORD row needs
+# the credential gate — an OAuth/magic-link-only user has no credential and
+# changePassword would 400. The two-factor row is deployment-gated only: its
+# modals waive the password per-user under allowPasswordless (a passwordless
+# member enrols with password ''), so 2FA is reachable for every caller. Passkeys
+# require only the deployment gate.
 #
 # The email-verified badge lives in the tile header (resend when unverified).
 _ref:
@@ -122,15 +125,13 @@ _ref:
                                 method: toggleOpen
                 else: []
 
-            # ── Two-factor row (deployment gate + per-user credential gate) ──
+            # ── Two-factor row (deployment gate only) ──
             - _build.if:
                 test:
                   _build.authConfig: twoFactor.enabled
                 then:
                   - id: twofa_row
                     type: Box
-                    visible:
-                      _request: get_accounts.0.has_credential
                     layout:
                       direction: row
                       align: middle

@@ -254,11 +254,15 @@ per-user for anyone holding none).
 
 This page is **protected**, unlike every other auth page the module ships —
 the caller reaching it already holds a valid session and is missing a factor,
-not an identity, so there is no sign-in-behind-the-wall paradox. It is also
-**self-sufficient on client actions**: an unenrolled caller is refused at every
-Lowdefy endpoint by the enrolment gate, so the page never issues a server-side
-request — it drives `TwoFactorEnable`, `TwoFactorVerify`, and `PasskeyRegister`
-directly against `/api/auth/*`.
+not an identity, so there is no sign-in-behind-the-wall paradox. Enrolment runs
+on the BetterAuth client actions directly — it drives `TwoFactorEnable`,
+`TwoFactorVerify`, and `PasskeyRegister` against `/api/auth/*`. It also runs one
+self-scoped Lowdefy read, `get_accounts`, for the `has_credential` signal that
+gates the password field (so a passwordless member sees no password prompt). The
+enrolment gate would normally refuse an unenrolled caller at every Lowdefy
+endpoint; the engine forwards the invoking `pageId` into request authorization, so
+a request fired from this page inherits the page's own gate exemption and is
+admitted.
 
 ### `_user.two_factor_enrolled`
 
@@ -268,9 +272,12 @@ The module reads enrolment status from exactly one field:
 server. **A passkey counts** — it means "holds a factor that satisfies
 `auth.twoFactor.required`," not "has TOTP configured," so a passkey-only user
 reads `two_factor_enrolled: true` and the engine's enrolment gate treats them as
-compliant. The enrolment page reads this same field to decide when the caller
-is done, so its completion state never disagrees with the gate about who still
-needs a factor.
+compliant. The enrolment page, however, decides its own done-state from a local
+`enrol.done` flag set by its successful enable/verify (TOTP) and passkey chains —
+not from this ambient session fact, which is refreshed only on `UpdateSession` and
+can lag the engine's per-request gate. Keying the done-state off the completion
+that just happened here avoids the fact/gate disagreement that otherwise bounces
+Continue straight back to the page.
 
 ### `required` is an enrolment floor, not a per-session challenge guarantee
 

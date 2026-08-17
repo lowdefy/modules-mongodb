@@ -5,29 +5,45 @@
 # identity. The module contributes it under the twoFactorEnrol role and adds NO
 # auth.public entry.
 #
-# Because that gate refuses an unenrolled caller at every Lowdefy endpoint, this
-# page makes NO Lowdefy request: it is built entirely from the BetterAuth
-# /api/auth/* client actions (TwoFactorEnable → TwoFactorVerify, PasskeyRegister)
-# the same actions the self-service enrolment modal uses, and completion is
-# read straight off the session fact _user.two_factor_enrolled after an
-# UpdateSession, never off a re-fetched request.
+# The page runs ONE self-scoped Lowdefy request, get_accounts, for the
+# has_credential signal that gates the password field. The engine forwards the
+# invoking pageId into request authorization, so a request fired from this page
+# inherits the page's own gate exemption (pageId === enrolPageId → allow) and is
+# not refused by the enrolment floor. Enrolment itself runs on the BetterAuth
+# /api/auth/* client actions (TwoFactorEnable → TwoFactorVerify, PasskeyRegister),
+# the same actions the self-service enrolment modal uses.
 #
-# `enrol.phase` (password | scan) drives the TOTP flow; the done state is gated
-# on _user.two_factor_enrolled, not a phase, so passkey enrolment (which shows no
-# backup codes) and verified TOTP enrolment reach the same "Continue" state.
+# Completion is driven by a LOCAL enrol.done flag, seeded false onInit and set
+# true only by this page's own successful enable/verify (TOTP) and PasskeyRegister
+# chains — never off the ambient _user.two_factor_enrolled session fact. That fact
+# is refreshed only on UpdateSession, so it can disagree with the engine's
+# per-request `required` gate and bounce Continue straight back (the redirect loop
+# this replaces). A flag set by completion here cannot disagree with a gate that
+# has, by then, been satisfied.
 #
-# The password field is offered to EVERY caller and is NOT required/validated:
-# upstream runs the twoFactor plugin with allowPasswordless, so TwoFactorEnable
-# waives the password per-user for a caller with no password credential and
-# enforces it for a password caller. The page needs no signal to tell them
-# apart. A blank password is legitimate for a passwordless member and a
-# BetterAuth error for a password member, surfaced by the enable catch.
+# The two UpdateSession calls (refresh_enrol_session in confirm_enrol_totp,
+# enrol_passkey_session here) STAY load-bearing even though the page no longer
+# reads the session fact: they refresh session.user.twoFactorEnabled, which the
+# `required` gate on Continue's home destination reads, so a just-enrolled caller
+# is admitted. Not dead code.
+#
+# `enrol.phase` (password | scan) drives the TOTP flow; the done state is gated on
+# enrol.done, not a phase, so passkey enrolment (which shows no backup codes) and
+# verified TOTP enrolment reach the same "Continue" state.
+#
+# The password field is shown/required/validated iff the caller holds a password
+# credential (get_accounts.0.has_credential), exactly as the Decision 1 modals do.
+# The TwoFactorEnable password param always sends a string — '' when the caller
+# holds none — which upstream's allowPasswordless waiver accepts per-user for a
+# passwordless member and BetterAuth rejects for a password member who blanked it.
 _ref:
   module: layout
   component: auth-page
   vars:
     id: two-factor-enrol
     title: ""
+    requests:
+      - _ref: requests/get_accounts.yaml
     events:
       onInit:
         - id: seed_enrol
@@ -35,13 +51,14 @@ _ref:
           params:
             enrol.phase: password
             enrol.codes_saved: false
+            enrol.done: false
     blocks:
       # ── Header (shown until enrolled) ──
       - id: enrol_title
         type: Title
         visible:
           _not:
-            _user: two_factor_enrolled
+            _state: enrol.done
         properties:
           content: Add a second factor
           level: 3
@@ -49,7 +66,7 @@ _ref:
         type: Html
         visible:
           _not:
-            _user: two_factor_enrolled
+            _state: enrol.done
         properties:
           # Honest copy: `required` is an enrolment floor, not a per-session
           # challenge guarantee, so this says "add a second factor to continue",
@@ -66,23 +83,25 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: two_factor_enrolled
+                _state: enrol.done
             - _eq:
                 - _state: enrol.phase
                 - password
+            - _request: get_accounts.0.has_credential
         layout:
           span: 24
         properties:
-          html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Confirm your account password to generate an authenticator secret. If you sign in without a password, leave this blank.</div>'
+          html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Confirm your account password to generate an authenticator secret.</div>'
       - id: enrol.password
         type: PasswordInput
         visible:
           _and:
             - _not:
-                _user: two_factor_enrolled
+                _state: enrol.done
             - _eq:
                 - _state: enrol.phase
                 - password
+            - _request: get_accounts.0.has_credential
         layout:
           span: 24
         properties:
@@ -95,7 +114,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: two_factor_enrolled
+                _state: enrol.done
             - _eq:
                 - _state: enrol.phase
                 - password
@@ -118,7 +137,9 @@ _ref:
                   error: false
                 params:
                   password:
-                    _state: enrol.password
+                    _if_none:
+                      - _state: enrol.password
+                      - ""
               - id: stash_enrol_totp
                 type: SetState
                 params:
@@ -142,7 +163,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: two_factor_enrolled
+                _state: enrol.done
             - _eq:
                 - _state: enrol.phase
                 - password
@@ -155,7 +176,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: two_factor_enrolled
+                _state: enrol.done
             - _eq:
                 - _state: enrol.phase
                 - password
@@ -179,6 +200,10 @@ _ref:
                   error: false
               - id: enrol_passkey_session
                 type: UpdateSession
+              - id: mark_passkey_done
+                type: SetState
+                params:
+                  enrol.done: true
             catch:
               - id: enrol_passkey_error
                 type: DisplayMessage
@@ -192,7 +217,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: two_factor_enrolled
+                _state: enrol.done
             - _eq:
                 - _state: enrol.phase
                 - scan
@@ -208,7 +233,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: two_factor_enrolled
+                _state: enrol.done
             - _eq:
                 - _state: enrol.phase
                 - scan
@@ -229,7 +254,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: two_factor_enrolled
+                _state: enrol.done
             - _eq:
                 - _state: enrol.phase
                 - scan
@@ -249,7 +274,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: two_factor_enrolled
+                _state: enrol.done
             - _eq:
                 - _state: enrol.phase
                 - scan
@@ -268,7 +293,7 @@ _ref:
         visible:
           _and:
             - _not:
-                _user: two_factor_enrolled
+                _state: enrol.done
             - _eq:
                 - _state: enrol.phase
                 - scan
@@ -315,17 +340,11 @@ _ref:
                             if (!uri) return null;
                             return new URLSearchParams(uri.split('?')[1] || '').get('secret');
 
-      # ── Done (gated on _user.two_factor_enrolled, reached by either route) ──
+      # ── Done (gated on enrol.done, reached by either route) ──
       - id: enrol_done_msg
         type: Html
-        # `_boolean` coercion is load-bearing: BetterAuth leaves twoFactorEnabled
-        # absent (not false) until enrolment, so a bare `_user: two_factor_enrolled`
-        # resolves to undefined, and Lowdefy only hides a block on a strict false —
-        # an undefined `visible` stays shown. Coerce to a real boolean so the done
-        # state hides for an unenrolled caller.
         visible:
-          _boolean:
-            _user: two_factor_enrolled
+          _state: enrol.done
         properties:
           html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Two-factor is set up on your account.</div>'
       # Backup codes appear only for the TOTP route (passkey leaves them null).
@@ -333,7 +352,7 @@ _ref:
         type: Html
         visible:
           _and:
-            - _user: two_factor_enrolled
+            - _state: enrol.done
             - _boolean:
                 _state: enrol.backup_codes
         layout:
@@ -344,7 +363,7 @@ _ref:
         type: Html
         visible:
           _and:
-            - _user: two_factor_enrolled
+            - _state: enrol.done
             - _boolean:
                 _state: enrol.backup_codes
         layout:
@@ -365,7 +384,7 @@ _ref:
         type: Alert
         visible:
           _and:
-            - _user: two_factor_enrolled
+            - _state: enrol.done
             - _boolean:
                 _state: enrol.backup_codes
         layout:
@@ -378,7 +397,7 @@ _ref:
         type: Button
         visible:
           _and:
-            - _user: two_factor_enrolled
+            - _state: enrol.done
             - _boolean:
                 _state: enrol.backup_codes
         layout:
@@ -406,7 +425,7 @@ _ref:
         type: CheckboxSwitch
         visible:
           _and:
-            - _user: two_factor_enrolled
+            - _state: enrol.done
             - _boolean:
                 _state: enrol.backup_codes
         layout:
@@ -417,11 +436,8 @@ _ref:
             disabled: true
       - id: enrol_continue
         type: Button
-        # See enrol_done_msg: coerce the absent-until-enrolled flag to a strict
-        # boolean so this Continue button hides for an unenrolled caller.
         visible:
-          _boolean:
-            _user: two_factor_enrolled
+          _state: enrol.done
         layout:
           span: 24
         properties:

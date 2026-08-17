@@ -147,9 +147,11 @@ blocks:
   - id: enroltotp_intro_setup
     type: Html
     visible:
-      _eq:
-        - _state: enroltotp.phase
-        - password
+      _and:
+        - _eq:
+            - _state: enroltotp.phase
+            - password
+        - _request: get_accounts.0.has_credential
     layout:
       span: 24
     properties:
@@ -185,9 +187,11 @@ blocks:
   - id: enroltotp.password
     type: PasswordInput
     visible:
-      _eq:
-        - _state: enroltotp.phase
-        - password
+      _and:
+        - _eq:
+            - _state: enroltotp.phase
+            - password
+        - _request: get_accounts.0.has_credential
     required: true
     layout:
       span: 24
@@ -223,6 +227,9 @@ blocks:
           # blank and marking no field.
           - id: validate_enrol_password
             type: Validate
+            skip:
+              _not:
+                _request: get_accounts.0.has_credential
             params:
               blockIds:
                 - enroltotp.password
@@ -234,7 +241,9 @@ blocks:
               error: false
             params:
               password:
-                _state: enroltotp.password
+                _if_none:
+                  - _state: enroltotp.password
+                  - ""
           - id: stash_totp
             type: SetState
             params:
@@ -273,6 +282,9 @@ blocks:
           _build.array.concat:
             - - id: validate_replace_password
                 type: Validate
+                skip:
+                  _not:
+                    _request: get_accounts.0.has_credential
                 params:
                   blockIds:
                     - enroltotp.password
@@ -285,7 +297,9 @@ blocks:
                   error: false
                 params:
                   password:
-                    _state: enroltotp.password
+                    _if_none:
+                      - _state: enroltotp.password
+                      - ""
               - id: mark_twofa_off
                 type: SetState
                 params:
@@ -309,7 +323,9 @@ blocks:
                   error: false
                 params:
                   password:
-                    _state: enroltotp.password
+                    _if_none:
+                      - _state: enroltotp.password
+                      - ""
               - id: stash_replace_totp
                 type: SetState
                 params:
@@ -368,6 +384,9 @@ blocks:
         try:
           - id: validate_getcodes_password
             type: Validate
+            skip:
+              _not:
+                _request: get_accounts.0.has_credential
             params:
               blockIds:
                 - enroltotp.password
@@ -383,7 +402,9 @@ blocks:
               error: false
             params:
               password:
-                _state: enroltotp.password
+                _if_none:
+                  - _state: enroltotp.password
+                  - ""
           - id: stash_new_codes
             type: SetState
             params:

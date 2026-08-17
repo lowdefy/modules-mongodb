@@ -7,9 +7,12 @@
 #                     renders as "Email & password" (unlike user-admin, which
 #                     hides it: self-service shows the caller all their methods)
 #   has_credential  : whether a `provider_id: "credential"` row exists; the per-user
-#                     gate for the password-dependent controls (change password,
-#                     2FA), since an OAuth/magic-link-only user has no credential
-#                     and `changePassword` / `twoFactor.*` would 400
+#                     gate for the password field on the credential-dependent
+#                     controls. An OAuth/magic-link-only user has no credential, so
+#                     `changePassword` would 400 (the password row hides entirely);
+#                     the `twoFactor.*` calls instead waive the password per-user
+#                     under `allowPasswordless`, so their modals only hide the
+#                     password field and send `password: ''`
 #   password_updated: the credential row's last-write date (Security tile subtitle)
 # Returns a single-element array; the page binds get_accounts.0.*.
 id: get_accounts

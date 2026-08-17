@@ -2,8 +2,9 @@
 # the code field's onPressEnter so click and Enter run the identical sequence.
 # Plain sequence, not try/catch: a wrong code throws inside TwoFactorVerify (its
 # error message shows) and stops the chain before UpdateSession, so the page stays
-# on the scan phase. UpdateSession refreshes _user so two_factor_enrolled reads
-# true and the done state takes over.
+# on the scan phase. UpdateSession refreshes session.user.twoFactorEnabled, which
+# the `required` gate on Continue's home destination reads; `enrol.done` then
+# drives the done state (this page's own completion signal, set only here).
 - id: validate_enrol_code
   type: Validate
   params:
@@ -26,3 +27,7 @@
     callbackUrl: false
 - id: refresh_enrol_session
   type: UpdateSession
+- id: mark_enrol_done
+  type: SetState
+  params:
+    enrol.done: true
