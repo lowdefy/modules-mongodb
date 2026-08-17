@@ -28,6 +28,31 @@
 - [ ] **Re-invite an Expired row** → cancel-then-invite; **no duplicate `pending`** row (Verify in Compass: `user-invitations`)
 - [ ] Member attributes captured on the invite are applied to the member at accept-time
 
+### Invite-only posture (`signup: invite-only`)
+
+> **Posture flip.** The rest of the campaign runs under `auth.organizations.signup: open`
+> (Phase 1) so the first admin can self-signup. This section is the **only** run under the
+> module default `invite-only`, which exists precisely to make an invite the _sole_ way in.
+> Flip `auth.organizations.signup: invite-only` in `lowdefy.yaml` and **restart the dev
+> server** (auth config loads at boot, not on hot reload). The bootstrapped admin and any
+> member minted during the `open` run keep their membership — you cannot bootstrap a _first_
+> admin under `invite-only`, which is why this runs after Phases 0/1, not before. Restore
+> `open` afterwards.
+
+- [ ] **Uninvited self-signup is refused and writes nothing.** A brand-new email (no
+      invitation) completes signup + email verification, then login yields the
+      **MEMBERSHIP_REQUIRED** "no access" state — **no session, no auto-join**. Verify in
+      Compass: **no `user-members` row** for that user (contrast the `open` run, where signup
+      auto-joins the pinned org). _(This is the reject-and-**write-nothing** assertion deferred
+      out of [`01-public-auth-pages.md`](./01-public-auth-pages.md) line "Verified but no
+      membership".)_
+- [ ] **Invited user gets in.** Using an invite minted in the Invite-flow section above,
+      the invited email signs up / signs in and — via the Phase 1 accept flow — lands with a
+      `user-members` row carrying the **invite's** roles/attributes (membership comes from the
+      invitation, not auto-join). Confirms the invite is the working path under `invite-only`.
+- [ ] **Restore posture** — flip `signup` back to `open` + restart, so later phases run under
+      the campaign's default posture.
+
 ### `view` (user detail)
 
 - [x] **Profile** tile edit (admin editing the target) → write-profile → the **target's** `users.profile` re-denormed; the change stamp carries `updated.user {name, id}` (Verify in Compass). Form UX → **F27**. — passes, sets data fine

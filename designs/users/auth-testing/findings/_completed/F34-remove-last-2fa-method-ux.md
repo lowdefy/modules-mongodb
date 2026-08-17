@@ -12,7 +12,7 @@ next Lowdefy endpoint call, and the user experiences:
 2. The page **hangs in a loading state**.
 3. An **abrupt redirect** to the forced two-factor enrolment page
    (`two-factor-enrol.yaml`), which **doesn't feel "inside the app"** (it renders on the
-   chrome-less auth-page shell — see [F32](../../_completed/auth-page-polish/F32-auth-page-visual-polish.md)).
+   chrome-less auth-page shell — see [F32](../../../_completed/auth-page-polish/F32-auth-page-visual-polish.md)).
 
 ## Root cause — verified
 
@@ -55,27 +55,35 @@ controls that can reach zero. The post-action enrolment count is available in-mo
 `get_account.0.two_factor_enabled` and the live `passkeys_ui` mirror (seeded from
 `get_passkeys`), so the guard needs no new request:
 
-- **"Turn off" (`twofa_disable_btn`, `:235`)** — strands iff **no passkey remains**
+- **"Turn off" (`twofa_disable_btn`)** — strands iff **no passkey remains**
   (`_array.length` of `passkeys_ui` is 0). With a passkey present, turning off TOTP is safe
   (the passkey still satisfies the floor) and is left alone.
-- **Passkey "remove" (`passkeys_ui.$.remove`, `:347`)** — strands iff **TOTP is off _and_ this
+- **Passkey "remove" (`passkeys_ui.$.remove`)** — strands iff **TOTP is off _and_ this
   is the only passkey** (`two_factor_enabled` false and `passkeys_ui` length 1). Removing a
   passkey while another factor remains is left alone.
 
-**Affordance — intercept with a guiding message** (not a hidden control). Keep the button
-visible; branch its onClick with `skip` (repo "conditional skip on actions"):
+**Affordance — hide the stranding control** (the enterprise "no disable button when enforced"
+pattern). When the strand condition holds under `required`, the control is not shown: its
+`visible` gains the strand test, so the button that would leave the account at zero factors
+simply isn't there to click.
 
-- when the guard fires → a `DisplayMessage` explaining the policy and pointing at the right
-  action — TOTP: _"Two-factor is required for your account, so it can't be turned off. To switch
-  authenticators, use **Replace** under Manage."_; passkey: _"This is your only second factor.
-  **Add another passkey** before removing this one."_
-- otherwise → the existing action (open `modal_disable2fa`, or `PasskeyDelete` + refetch).
+- **"Turn off"** — `visible` is `two_factor_enabled` **and** a passkey remains
+  (`_array.length` of `passkeys_ui` ≠ 0) under `required`.
+- **Passkey "remove"** — `visible` is `false` under `required` when TOTP is off _and_ this is
+  the only passkey; shown otherwise. (When `required` is off it always shows.)
 
-Hiding the control (the enterprise "no disable button when enforced" pattern) is the considered
-alternative; intercept-with-message is chosen for discoverability — it explains _why_ and names
-the path forward, where a vanished button explains nothing. Wrap the whole guard in `_build.if:
-{ _build.authConfig: twoFactor.required }` so a `required: false` deployment builds byte-identical
-to today (removal to zero legitimately turns 2FA off; no gate to trip).
+Because the stranding control is hidden, each onClick reverts to its plain safe action (open
+`modal_disable2fa`; `PasskeyDelete` + refetch) — no `DisplayMessage`, no `skip` branch. The
+`required` gate is build-time (`_build.if: { _build.authConfig: twoFactor.required }`) while the
+strand test itself is live state (passkey count + `two_factor_enabled`), so the `visible`
+expression is a `_build.if` that adds the runtime strand clause only under `required`; a
+`required: false` deployment builds byte-identical to today (removal to zero legitimately turns
+2FA off; no gate to trip).
+
+Intercept-with-a-guiding-message (keep the button, block the click with a `DisplayMessage`
+naming Replace / "add another passkey") is the considered alternative — more discoverable, since
+it explains _why_. Hiding is chosen instead: a control that can never succeed under the policy is
+removed rather than shown-then-refused.
 
 Because "Turn off" is now shown only when the disable is non-stranding, `modal_disable2fa`'s copy
 _"you can set it up again at any time"_ stays true wherever the modal can open — no copy change.
@@ -114,8 +122,9 @@ either part; there is no in-module substitute for reading the deployment's `requ
 ## Files changed
 
 - `modules/user-account/components/view/tile_security.yaml` — Part A: `_build.if(twoFactor.required)`
-  guards on `twofa_disable_btn` (`:235`) and `passkeys_ui.$.remove` (`:347`), each branching the
-  onClick between a guiding `DisplayMessage` and the existing action via `skip`.
+  guards on the `visible` of `twofa_disable_btn` and `passkeys_ui.$.remove`, each hiding the
+  control when its removal would strand the account at zero factors; onClick reverts to the plain
+  safe action (no `DisplayMessage`, no `skip`).
 - `modules/user-account/components/view/modal_enroltotp.yaml` — Part B: wrap the mid-flight
   `refetch_account` (`:298`) in `_build.if({ _build.authConfig: twoFactor.required })`, omit-when-required.
 - **Upstream** `@lowdefy/operators-js/.../build/authConfig.js` — add `'twoFactor.required'` to
@@ -128,11 +137,11 @@ Build (`pnpm ldf:b`) confirms the config compiles once the allowlist add lands (
 is wired). End-to-end needs the running rig with `required: true` and seeded members (a
 `/r:dev-test` step, not an autonomous gate):
 
-1. **TOTP-only, no passkey** — "Turn off" shows the guard message, does nothing; Manage → Replace
-   rotates the authenticator to completion with **no** raw error and **no** forced-enrol bounce
-   (this is the case that confirms Part B).
-2. **Passkey-only** — the sole passkey's remove shows the guard message; adding a second passkey
-   then allows removing the first.
+1. **TOTP-only, no passkey** — "Turn off" is **hidden**; Manage → Replace rotates the
+   authenticator to completion with **no** raw error and **no** forced-enrol bounce (this is the
+   case that confirms Part B).
+2. **Passkey-only** — the sole passkey's remove is **hidden**; adding a second passkey then makes
+   both removes appear, allowing the first to be removed.
 3. **TOTP + passkey** — "Turn off" and either passkey's remove both work normally (a factor
    always remains).
 4. **`required: false` deployment** — removal to zero turns 2FA fully off, unchanged from today.
