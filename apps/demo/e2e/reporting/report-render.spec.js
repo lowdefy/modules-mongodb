@@ -176,12 +176,64 @@ const TWO_GROUP_SECTIONS = [
   },
 ];
 
+// A filter over one bound KPI — the smallest report that proves the re-query
+// path: select a type, the KPI's count narrows. The KPI query counts every
+// activity; the bound filter prepends a `$match` on `type`, so the count drops
+// from the three seeded activities to the two of the chosen type.
+const FILTER_KPI_SECTIONS = [
+  { id: "s0", type: "filter", control: "select", field: "type", label: "Activity type" },
+  {
+    id: "s1",
+    type: "kpi",
+    label: "Matching activities",
+    query: activityCount,
+    valueKey: "activities",
+    // An integer format so the count reads "3"/"2" — the default carries two
+    // decimals ("3.00"), which is fine for money but noise for a row count.
+    format: { style: "decimal", decimals: 0 },
+    filterBy: ["type"],
+  },
+];
+
 // ── Render layer (blocked by the urlQuery harness gap; see file header) ──────
 
 test.describe("report page render", () => {
   test.beforeEach(async ({ mdb }) => {
     await mdb.seed("demo_activities", ACTIVITIES);
   });
+
+  test(
+    "changing a filter re-queries and updates the section it drives",
+    async ({ ldf, page, mdb }) => {
+      await mdb.seed(REPORTS, [
+        reportDoc({
+          id: "e2e-filter-interaction",
+          title: "Filter interaction",
+          owner: HOLDER,
+          sections: FILTER_KPI_SECTIONS,
+        }),
+      ]);
+
+      await ldf.user(HOLDER);
+      await ldf.goto("/reporting/report?report_id=e2e-filter-interaction");
+      await expect(page.getByText("Report not found")).toBeHidden();
+
+      // Before any selection the KPI resolves over all three seeded activities.
+      // This is the assertion report-render never made: not that the control
+      // renders, but that the section it drives holds the right number.
+      const kpiValue = page.locator(".ant-statistic-content-value");
+      await expect(kpiValue).toHaveText("3");
+
+      // Selecting a type fires the compiled onChange (CallAPI → SetState into
+      // sections.s1.rows), so the bound KPI re-queries with `type: "call"` and
+      // narrows to the two "call" activities — the re-render, end to end.
+      await page.getByRole("combobox").click();
+      // The open dropdown's options are clickable elements whose exact text is
+      // the type value; "call" is unique on the page while the menu is open.
+      await page.getByText("call", { exact: true }).click();
+      await expect(kpiValue).toHaveText("2");
+    },
+  );
 
   test(
     "a broken section shows the owner recoveries; a non-owner sees only the alert",

@@ -23,6 +23,17 @@
 id: save-conversation
 type: Api
 routine:
+  # Signed-in guard: the write below is an owner-scoped upsert, so a null
+  # `_user: id` would match nothing and INSERT a junk conversation owned by
+  # { user_id: null }. This hook is HTTP-callable, so an unprotected app must
+  # not let an anonymous caller litter null-owner documents. Precedes the
+  # conversationId no-op. Same guard delete-conversation carries.
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to save a conversation.
   - :if:
       _eq:
         - _payload: conversationId

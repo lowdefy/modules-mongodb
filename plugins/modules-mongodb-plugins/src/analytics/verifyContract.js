@@ -99,7 +99,23 @@ export function verifyChartContract({ x, y, rows }) {
 }
 
 export function verifyKpiContract({ valueKey, rows }) {
-  requireKeys(rows, [valueKey], "KPI contract");
+  // A KPI reads ROW 0 only (compileReport: `rows[0][valueKey] ?? 0`), so the
+  // key must be present in row 0 specifically — not merely somewhere in the
+  // result, which is the right rule for tables/charts but here would pass a
+  // result whose value sits in a later row while the card silently renders 0.
+  // Empty results are a legitimate zero KPI and skip the check, matching the
+  // shared helpers.
+  if (Array.isArray(rows) && rows.length > 0) {
+    const first = rows[0];
+    const present =
+      first !== null && typeof first === "object" && valueKey in first;
+    if (!present) {
+      throw new Error(
+        `KPI contract: column "${valueKey}" is not present in the first result row ` +
+          `(available columns: ${availableColumns(first)}).`,
+      );
+    }
+  }
   requireNumeric(rows, [valueKey], "KPI contract");
 }
 

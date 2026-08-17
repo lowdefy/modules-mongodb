@@ -224,10 +224,16 @@ function safeFilename(label) {
 // `D MMMM YYYY` order ("5 August 2026"); `withTime` adds the clock for the
 // resolve moment, where freshness is the point. Non-date/unparseable in yields
 // an empty string so the caller drops the fact rather than printing "Invalid Date".
+//
+// Pinned to UTC: without a timeZone the format follows the SERVER clock, so the
+// same report reads a different "Data as of …" time — and a midnight-UTC
+// date-only stamp shifts a whole day west of UTC. The module carries no
+// per-viewer timezone, so UTC is the one stable, reproducible choice (and it is
+// what keeps this deterministic across the machines that run the tests).
 function formatTimestamp(value, { withTime = false } = {}) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  const options = { day: "numeric", month: "long", year: "numeric" };
+  const options = { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" };
   if (withTime) {
     options.hour = "2-digit";
     options.minute = "2-digit";

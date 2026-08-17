@@ -96,6 +96,17 @@ function validateChartSpec({ spec, catalog, roles }) {
     }
   }
 
+  // A pie encodes exactly one measure as slice size — buildFlintOption reads
+  // y[0]. A second y column has nowhere to go: the multi-series fold below
+  // rekeys the rows to reserved names y[0] no longer names, so every slice
+  // computes to 0 and the pie renders empty. Reject it here, where the
+  // render_chart / generate_report message is still actionable in the turn.
+  if (spec.chart === "pie" && spec.y.length > 1) {
+    fail(
+      `a pie chart takes exactly one y column (got ${spec.y.length}) — use chart: bar for multiple measures, or $project the data to a single column.`,
+    );
+  }
+
   // Display-name collisions are static — knowable from the column names alone —
   // so they fail here, where a render_chart / generate_report call is still in
   // the agent's turn and the message is actionable. buildFlintOption re-checks

@@ -33,6 +33,27 @@ describe("requireKeys looks across all rows, not just the first", () => {
   });
 });
 
+// A KPI reads row 0 only (compileReport: `rows[0][valueKey] ?? 0`), so unlike
+// tables/charts its contract must check row 0 specifically — the at-least-one-
+// row rule would pass a result whose value sits in a later row while the card
+// silently renders 0.
+describe("verifyKpiContract checks row 0, not any row", () => {
+  test("valueKey present in row 0 passes", () => {
+    expect(() =>
+      verifyKpiContract({ valueKey: "total", rows: [{ total: 5 }] }),
+    ).not.toThrow();
+  });
+
+  test("valueKey only in a later row fails, naming the first row's columns", () => {
+    expect(() =>
+      verifyKpiContract({
+        valueKey: "total",
+        rows: [{ region: "EU" }, { total: 5 }],
+      }),
+    ).toThrow(/column "total" is not present in the first result row/);
+  });
+});
+
 test("empty results skip verification entirely", () => {
   expect(() =>
     verifyChartContract({ x: "region", y: ["total"], rows: [] }),

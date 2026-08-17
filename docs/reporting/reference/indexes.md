@@ -21,7 +21,7 @@ Field order follows **equality, then sort, then range** — a non-point predicat
 | reports         | `visibility`, `updated.timestamp`, `deleted.timestamp`       | Shared and `all` — the unbounded scopes |
 | reports         | `favourite_of`                                              | The Favourites scope                    |
 | reports         | `conversation_id`                                           | The report ↔ chat link                  |
-| conversations   | `owner.user_id`, `updated.timestamp`                        | The chat rail                           |
+| conversations   | `owner.user_id`, `updated.timestamp`, `deleted.timestamp`   | The chat rail                           |
 
 The collection names come from the [`reports_collection` and `conversations_collection`](vars.md) vars.
 
@@ -29,7 +29,7 @@ The collection names come from the [`reports_collection` and `conversations_coll
 
 **These serve the `$match`, not the default sort, and the default sort cannot be indexed at all.**
 
-The list's default order is favourite-first, then most recently updated. `is_favourite` is not a stored field — it is computed per viewer from the `favourite_of` array in an `$addFields` stage — and a `$sort` on a field produced by `$addFields` can never use an index. Nor can `$skip` / `$limit` inside a `$facet`, which is how paging works. So **favourite-first ordering is a blocking in-memory sort in every scope.**
+The list's default order is favourite-first, then most recently updated. `is_favourite` is not a stored field — it is computed per viewer from the `favourite_of` array in an `$addFields` stage — and a `$sort` on a field produced by `$addFields` can never use an index. So **favourite-first ordering is a blocking in-memory sort in every scope.** (`list-reports` returns the whole scope in one read — it does not `$skip` / `$limit`-page — so the sort runs over the entire matched set.)
 
 This is documented rather than fixed, because the cost depends entirely on the scope:
 
