@@ -47,8 +47,12 @@ events:
       # email reaches the Login action, whose single-provider auto-fill selects
       # the sole configured OAuth provider and redirects off-app instead of
       # sending a link. `email` is the canonical id the login/signup pages own.
+      # `messages.error: false` suppresses the break-condition toast so a blank
+      # email surfaces only as the inline field error, not a toast.
       - id: validate_email
         type: Validate
+        messages:
+          error: false
         params: email
       - id: begin_cooldown
         type: SetState
@@ -89,12 +93,21 @@ events:
         params:
           magic_link_cooldown: false
     catch:
+      # This catch also receives the Validate break condition. Only a genuinely
+      # failed send should toast: `magic_link_cooldown` is true only once
+      # `begin_cooldown` ran, i.e. validation passed and a send was attempted. A
+      # validation break arrives here with the cooldown still unset, so the
+      # toast is skipped and the inline field error stands alone. The toast must
+      # read the cooldown before `clear_cooldown_on_error` resets it.
+      - id: toast_magic_link_error
+        type: DisplayMessage
+        skip:
+          _not:
+            _state: magic_link_cooldown
+        params:
+          status: error
+          content: We couldn't send your sign-in link. Wait a moment and try again.
       - id: clear_cooldown_on_error
         type: SetState
         params:
           magic_link_cooldown: false
-      - id: toast_magic_link_error
-        type: DisplayMessage
-        params:
-          status: error
-          content: We couldn't send your sign-in link. Wait a moment and try again.

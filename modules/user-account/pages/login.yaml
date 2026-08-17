@@ -250,6 +250,7 @@ _ref:
                   _eq:
                     - _state: login_view
                     - signin
+                required: true
                 properties:
                   type: email
                   size: large
