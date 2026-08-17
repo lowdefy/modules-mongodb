@@ -17,11 +17,21 @@ properties:
       # consumer wanting to filter. Mirrors get_companies_for_selector.
       - _module.var: request_stages.selector
       - - $project:
+            # $concat returns null if ANY operand is null or missing, which
+            # rendered a blank, unselectable option for every contact without
+            # a name or an email. Guarded the same way as
+            # get_role_contacts_for_selector, falling back to lowercase_email.
             label:
               $concat:
-                - "$profile.name"
+                - $ifNull:
+                    - "$profile.name"
+                    - ""
                 - " ("
-                - "$email"
+                - $ifNull:
+                    - "$email"
+                    - $ifNull:
+                        - "$lowercase_email"
+                        - "no email"
                 - ")"
             value: "$_id"
         - $sort:
