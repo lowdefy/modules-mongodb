@@ -318,8 +318,14 @@ _ref:
       # ── Done (gated on _user.two_factor_enrolled, reached by either route) ──
       - id: enrol_done_msg
         type: Html
+        # `_boolean` coercion is load-bearing: BetterAuth leaves twoFactorEnabled
+        # absent (not false) until enrolment, so a bare `_user: two_factor_enrolled`
+        # resolves to undefined, and Lowdefy only hides a block on a strict false —
+        # an undefined `visible` stays shown. Coerce to a real boolean so the done
+        # state hides for an unenrolled caller.
         visible:
-          _user: two_factor_enrolled
+          _boolean:
+            _user: two_factor_enrolled
         properties:
           html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Two-factor is set up on your account.</div>'
       # Backup codes appear only for the TOTP route (passkey leaves them null).
@@ -411,8 +417,11 @@ _ref:
             disabled: true
       - id: enrol_continue
         type: Button
+        # See enrol_done_msg: coerce the absent-until-enrolled flag to a strict
+        # boolean so this Continue button hides for an unenrolled caller.
         visible:
-          _user: two_factor_enrolled
+          _boolean:
+            _user: two_factor_enrolled
         layout:
           span: 24
         properties:
