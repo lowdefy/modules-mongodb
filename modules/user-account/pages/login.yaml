@@ -132,6 +132,11 @@ _ref:
                               - 0
                 then: true
                 else: false
+            # `?email=` marks an address-bound entry (the accept page sends the
+            # invited address). Seeding it prefills the auto-bound email input,
+            # which then renders locked. See the input below.
+            email:
+              _url_query: email
     blocks:
       _build.array.concat:
         # --- Always present: resting title + lead + no-access alert ----------
@@ -244,6 +249,12 @@ _ref:
                 - _build.authConfig: emailAndPassword.enabled
                 - _build.authConfig: magicLink.enabled
             then:
+              # Locked on an address-bound entry (`?email=`): both methods that
+              # read this field, the password submit and the magic-link send,
+              # can only land the invitee where the invitation can be accepted
+              # if they run on the invited address. Magic-link is also the
+              # account-creating path in a passwordless deployment, where the
+              # accept page routes "create account" here.
               - id: email
                 type: TextInput
                 visible:
@@ -255,10 +266,22 @@ _ref:
                   type: email
                   size: large
                   suffixIcon: AiOutlineMail
+                  disabled:
+                    _ne:
+                      - _url_query: email
+                      - null
                   label:
                     title: Email
                     colon: false
                     span: 24
+                    extra:
+                      _if:
+                        test:
+                          _ne:
+                            - _url_query: email
+                            - null
+                        then: Your invitation was sent to this address.
+                        else: null
                   placeholder: you@example.com
             else: []
 
@@ -385,10 +408,11 @@ _ref:
                     disabled: true
 
               # Primary submit. Email/password via the one `Login` action.
-              # On session success `Login` navigates to the callbackUrl itself
-              # (from the `?callbackUrl=` set by the unauthenticated-page
-              # redirect); a 2FA-enrolled user gets no session but a
-              # `twoFactorRedirect` outcome, routed to the two-factor page.
+              # On session success `Login` resolves its own destination, the
+              # `?callbackUrl=` set by the unauthenticated-page redirect, else
+              # the app home, so no `callbackUrl` param is passed. A
+              # 2FA-enrolled user gets no session but a `twoFactorRedirect`
+              # outcome, routed to the two-factor page.
               - id: login_submit
                 type: Button
                 visible:
@@ -709,7 +733,8 @@ _ref:
 
         # --- Passkey (signin state). Rendered only when passkey is enabled ---
         # PasskeySignIn runs the WebAuthn assertion ceremony in the browser and
-        # navigates to the callbackUrl on success.
+        # resolves its own destination on success, the same way the email path
+        # does.
         - _build.if:
             test:
               _build.authConfig: passkey.enabled
@@ -776,12 +801,19 @@ _ref:
                       _eq:
                         - _state: login_view
                         - link-sent
+              # Offered only where the email is the user's to change, an
+              # address-bound entry (`?email=`) holds a locked field, so this
+              # would lead back to a form that cannot take a different address.
               - id: login_back_to_form
                 type: Button
                 visible:
-                  _eq:
-                    - _state: login_view
-                    - link-sent
+                  _and:
+                    - _eq:
+                        - _state: login_view
+                        - link-sent
+                    - _eq:
+                        - _url_query: email
+                        - null
                 properties:
                   title: Use a different email
                   block: true

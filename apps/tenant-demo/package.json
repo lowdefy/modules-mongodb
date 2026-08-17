@@ -1,0 +1,29 @@
+{
+  "name": "@lowdefy/modules-tenant-demo",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ldf:b": "NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-build-only-not-a-real-secret} lowdefy build",
+    "ldf:d": "lowdefy dev --log-level=debug --no-open --port 3003",
+    "ldf:s": "lowdefy start --port 3003",
+    "ldf": "lowdefy dev --no-open --port 3003",
+    "ldf:b:i": "infisical run --env=dev --path=/apps/tenant-demo -- lowdefy build",
+    "ldf:d:i": "infisical run --env=dev --path=/apps/tenant-demo -- lowdefy dev --log-level=debug --no-open --port 3003",
+    "ldf:s:i": "infisical run --env=dev --path=/apps/tenant-demo -- lowdefy start --port 3003",
+    "ldf:i": "infisical run --env=dev --path=/apps/tenant-demo -- lowdefy dev --no-open --port 3003",
+    "e2e": "playwright test --config=e2e/playwright.config.js",
+    "e2e:headed": "SLOW_MO=500 playwright test --headed --workers=1 --config=e2e/playwright.config.js",
+    "e2e:ui": "playwright test --ui --config=e2e/playwright.config.js",
+    "e2e:server": "lowdefy build --server e2e && lowdefy start --port 3103 --log-level warn"
+  },
+  "dependencies": {
+    "lowdefy": "0.0.0-experimental-20260813120102"
+  },
+  "devDependencies": {
+    "@lowdefy/e2e-utils": "latest",
+    "@playwright/test": "^1.50.0",
+    "@lowdefy/community-plugin-e2e-mdb": "latest"
+  }
+}

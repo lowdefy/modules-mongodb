@@ -35,23 +35,33 @@ Never move design folders into `_completed/` unless the user explicitly requests
 ## Project Structure
 
 ```
-apps/demo/          — Demo app that imports all modules
+apps/demo/          — Demo app that imports all modules (auth.organizations.policy: pinned)
+apps/tenant-demo/   — The same modules under policy: tenant, plus the organizations module
 modules/            — Reusable Lowdefy modules
 plugins/            — Custom Lowdefy plugins
 docs/               — Repo-level docs (shared idioms, per-module references)
 ```
 
+`apps/demo` is the canonical demo — wire new module capability there.
+`apps/tenant-demo` exists because the two deployment shapes are mutually
+exclusive in config: `userAdminRole` is rejected under `tenant`, and the
+organizations module's switcher fails the build under `pinned`. Its module vars
+duplicate the demo's, so a change to a shared vars file must be made in both
+(they differ only in the auth block, the organizations entry, the org menu
+group, the `header_extra` switcher, and app-slug-keyed keys like
+`event_display` / workflow `access`).
+
 ## Building & Running the App
 
 Agents almost always want to **verify config compiles**, not run a live server. Reach for the right command:
 
-- **Build check (default):** `pnpm ldf:b` from `apps/demo` (or `pnpm --filter @lowdefy/modules-demo ldf:b` from the root). This is the only command needed to confirm YAML/config compiles. It needs **no secrets, no Infisical, and no network beyond npm** — the script supplies a build-only `NEXTAUTH_SECRET` placeholder (and respects a real `NEXTAUTH_SECRET` if one is exported). Build failures here are real config errors; act on them.
+- **Build check (default):** `pnpm ldf:b` from `apps/demo` (or `pnpm --filter @lowdefy/modules-demo ldf:b` from the root). This is the only command needed to confirm YAML/config compiles. When a change touches the organizations module, the tenant wall, or any vars file both apps carry, build `apps/tenant-demo` too (`pnpm --filter @lowdefy/modules-tenant-demo ldf:b`) — the two policies compile different config. It needs **no secrets, no Infisical, and no network beyond npm** — the script supplies a build-only `NEXTAUTH_SECRET` placeholder (and respects a real `NEXTAUTH_SECRET` if one is exported). Build failures here are real config errors; act on them.
 - **Never run servers in the foreground.** `lowdefy dev` (`pnpm ldf` / `pnpm ldf:d`), `lowdefy start`, and `pnpm e2e` are long-running processes that **never exit** — a plain foreground call blocks until timeout and looks like a hang. If you genuinely need one, start it in the background and poll its health URL (`/api/auth/session`); otherwise don't run it for a build check.
 - **The `:i` (Infisical) variants don't work in the sandbox.** `ldf:b:i` / `ldf:d:i` / `ldf:i` fetch secrets from `app.infisical.com`, which the sandbox network blocks (TLS rejected). Use plain `ldf:b` for build checks.
 - **A build check is not a smoke test.** Running the app (dev server, e2e) needs real secrets (`MONGODB_URI`, etc.) and a reachable MongoDB — that's a human or `/r:dev-test` step, not part of an autonomous build gate.
 - **`pnpm build` at the repo root does _not_ build the demo.** It's `pnpm -r --filter '!@lowdefy/modules-demo' run build` — module/plugin bundles only. To build the app, use `ldf:b`.
 
-**Always add a demo consumer when adding module functionality.** Any new consumer-facing capability — a component or export, a new var/slot, a new block behaviour — must ship with at least one real example consumer in `apps/demo/` that exercises it, in the same change. This gives every capability a build-verified reference and a worked example authors can copy, and it's how you validate the feature actually resolves end-to-end (`ldf:b`, then inspect the generated `.lowdefy/server/build/pages/**` artifacts). This does not contradict "absence of a caller is not absence of need" above: that rule forbids _deleting_ capability because the demo lacks a caller; this rule requires _adding_ a caller when you add capability. Prefer wiring the example into an existing demo page/flow over a throwaway page.
+**Always add a demo consumer when adding module functionality.** Any new consumer-facing capability — a component or export, a new var/slot, a new block behaviour — must ship with at least one real example consumer in `apps/demo/` that exercises it, in the same change — or in `apps/tenant-demo/` when the capability only resolves under `policy: tenant`. This gives every capability a build-verified reference and a worked example authors can copy, and it's how you validate the feature actually resolves end-to-end (`ldf:b`, then inspect the generated `.lowdefy/server/build/pages/**` artifacts). This does not contradict "absence of a caller is not absence of need" above: that rule forbids _deleting_ capability because the demo lacks a caller; this rule requires _adding_ a caller when you add capability. Prefer wiring the example into an existing demo page/flow over a throwaway page.
 
 ## Database Access
 
@@ -76,7 +86,7 @@ Consumer-facing documentation lives in `docs/`. Source-side READMEs (`modules/{n
 - `docs/{module}/concepts/` — Concept pages (added only where the module needs them).
 - `docs/{module}/how-to/` — Goal-oriented guides (added only where the module needs them).
 - `docs/{module}/reference/` — Reference pages; `vars.md` is always generated (see below).
-- `docs/shared/` — One file per consumer-facing cross-cutting idiom: `change-stamps.md`, `event-display.md`, `slots.md`, `app-name.md`, `avatar-colors.md`, `secrets.md`.
+- `docs/shared/` — One file per consumer-facing cross-cutting idiom: `change-stamps.md`, `event-display.md`, `slots.md`, `app-name.md`, `avatar-colors.md`, `secrets.md`, `soft-delete.md`, `org-scoping.md`.
 - `docs/plugins/` — Plugin package overview (`index.md`) and one reference page per block.
 
 Most small modules are just `docs/{module}/index.md` + generated `docs/{module}/reference/vars.md`. Add `concepts/` or `how-to/` subdirectories only when the module genuinely needs them.

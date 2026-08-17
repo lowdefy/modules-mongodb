@@ -80,10 +80,10 @@ flat `{ event-type: template }` map (no `app_name` key) and its templates receiv
 
 - **`create-profile` is removed.** The record is no longer minted after first
   sign-in. Instead the module ships a **merge-on-signup hook**
-  (`link-contact-on-signup`, bound at `user.create.before` and `email.verified`)
-  that links a new signup to an existing contact by verified email, or mints a
-  bare one — so every user has a contact by first session. The `onboarding` page
-  only **updates** that contact.
+  (`ensure-contact-on-signup`, bound at `session.create.after`) that matches an
+  existing contact for the verified email in the session's organization, or mints
+  a bare one — so every user has a contact by first verified session. The
+  `onboarding` page only **updates** that contact.
 - **`update-profile` is new** in kind — it writes the contact through the shared
   `write-profile` fragment and re-denormalizes onto the caller's `user.profile`.
   See [Write pathways](../concepts/write-pathways.md).

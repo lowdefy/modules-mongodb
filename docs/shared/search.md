@@ -82,9 +82,21 @@ Fallback mode is for **development, e2e runs, and small collections**. It is not
 
 ## What is identical in both modes
 
-- **With an empty search box no `$search` runs at all.** Every searchable request skips the text stage when the term is missing, `null`, or the empty string a cleared input leaves behind. So plain browse / filter / paginate is a `$match` + `$sort` against `mongod` on Atlas exactly as it is locally, and the only behaviour that differs between the two modes is what happens once someone has actually typed something.
 - **Structural filters are plain `$match` clauses in both modes** — the unconditional exclusions, the list's own filter inputs, and the consumer hooks. That includes **`request_stages.filter_match`**, which is standard MongoDB query syntax and applies identically whichever mode the app is in.
 - Sort, pagination, `$lookup`s and derived display fields are unchanged by the flag.
+
+## The `$search` stage is unconditional
+
+With `atlas_search: true` the `$search` stage runs on **every** load of a searchable list, whether or not a term has been typed — an empty search box still goes to `mongot`. Only the stage's contents vary: the term clauses appear in `compound.must` when there is a term and are absent when there is not.
+
+This is a requirement of the tenant wall, not a performance choice. `$search` must be a pipeline's first stage, so the wall cannot prepend its organization filter before it; the request instead declares `tenant: authored` and carries the clause inside `compound.filter`, and the wall audits that clause on every run. **That declaration is static per request while the term is runtime.** A `$search` that appeared only when a term happened to be present would therefore be audited on the search path and _refused_ on the browse path — the wall rejects `authored` on a pipeline containing nothing that needs authoring. Emitting the stage unconditionally is what keeps one static declaration true on both paths.
+
+Two consequences worth knowing:
+
+- **The term clauses sit in `compound.must`, not `compound.should`.** `compound.filter` is always populated, and alongside a `filter` clause a `should` carries its default `minimumShouldMatch` of `0` — it would rank without narrowing, returning every row in the organization for any term. `must` requires the match; an inner `should` supplies the OR between the clauses and still scores them, so relevance ordering is unaffected.
+- **`compound.filter` always holds at least one clause**, because Atlas refuses a compound whose clause lists are all empty. Under `tenant` that clause is the audited `organization_id` equality; under `pinned` it is an `exists` on `_id`, a match-all that narrows nothing and, being a `filter`, does not affect scoring.
+
+With `atlas_search: false` none of this applies — there is no `$search` stage at all, the pipeline leads with a plain `$match`, and the wall scopes it mechanically with no declaration needed.
 
 ## Atlas Search index requirements
 

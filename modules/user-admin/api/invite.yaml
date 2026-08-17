@@ -1,7 +1,7 @@
 # invite: submit the invite form. Reconcile any genuinely-stale invitation →
-# create-or-link the contact → InviteMember with profile.contactId + roles +
-# member attributes → audit. The invitation email itself is sent by BetterAuth
-# via `auth.email`; this module ships no email endpoint/hook/binding (Decision 7).
+# ensure the contact exists → InviteMember with roles + member attributes →
+# audit. The invitation email itself is sent by BetterAuth via `auth.email`;
+# this module ships no email endpoint/hook/binding (Decision 7).
 #
 # Stale-expired reconciliation (verified against BetterAuth 1.6.23):
 # createInvitation's re-invite guard (findPendingInvitation) EXCLUDES expired rows
@@ -13,14 +13,14 @@
 # check-invite-email routes it to Resend, so this only cancels genuinely-stale
 # rows. Cancel-then-invite is idempotent: with nothing stale the loop is a no-op.
 #
-# Partial-failure: the create-or-link → InviteMember chain is safe because
-# create-or-link reconciles on duplicate key, so retry converges; an unknown-email
+# Partial-failure: the ensure-contact → InviteMember chain is safe because
+# ensure-contact reconciles on duplicate key, so retry converges; an unknown-email
 # invite that fails at InviteMember may leave an orphan contact the next check
 # resolves to "contact, no membership".
 #
 # Role-gated app-side. Payload: { email, roles (array of role ids), org_role?,
 #                                 member_attributes? (object), profile? (object) }
-# create-or-link mints the contact bare; the write-profile splice then persists
+# ensure-contact mints the contact bare; the write-profile splice then persists
 # the captured profile onto it (and re-denorms onto the user only if one already
 # exists). `profile.profile_created` stays unset, so the invitee still onboards.
 id: invite
@@ -71,37 +71,47 @@ routine:
           organizationId:
             _module.var: org_slug
 
-  # 3) Create-or-link the contact (shared fragment, inlined by relative _ref).
-  #    The canonical fragment keys on `user.email` and resolves the row into the
-  #    `read_contact` step, so the contactId is `_step: read_contact._id`. We pass
-  #    NO `binding_point`: the fragment's write-back branches (inline `:return` /
-  #    `UpdateUserProfile`) are for the signup hook only. Here `invite_member`
-  #    below carries `profile.contactId` itself. create-or-link mints the contact
-  #    bare; the write-profile splice below persists the captured profile.
-  - _ref:
-      path: ../shared/contact/create-or-link-contact.yaml
-      vars:
-        connection_id:
-          _module.connectionId: user-contacts-collection
-        user:
-          email:
-            _payload: email
-
-  # 3b) Resolve the target auth user, if one exists. An invitee has no user row
-  #     until they accept, but a contact matched by email may already belong to
-  #     another app. find_user._id is that user's id, or absent (no document) when
-  #     none matches. It gates write-profile's re-denorm.
+  # 3) Resolve the target auth user, if one exists. An invitee has no user row
+  #    until they accept, but the address may already be a user of another
+  #    organization. find_user._id is that user's id, or absent (no document)
+  #    when none matches. It both links the minted contact below and gates
+  #    write-profile's re-denorm. Matched case-insensitively on the address, the
+  #    same idiom check-invite-email uses.
   - id: find_user
     type: MongoDBFindOne
     connectionId:
       _module.connectionId: users
     properties:
       query:
-        profile.contactId:
-          _step: read_contact._id
+        $expr:
+          $eq:
+            - $toLower: "$email"
+            - _string.toLowerCase:
+                _string.trim:
+                  _if_none:
+                    - _payload: email
+                    - ""
       options:
         projection:
           _id: 1
+
+  # 3b) Ensure the contact exists (shared fragment, inlined by relative _ref). The
+  #     canonical fragment keys on the email and resolves the row into the
+  #     `read_contact` step, so the contact id is `_step: read_contact._id`. It
+  #     mints the contact bare; the write-profile splice below persists the
+  #     captured profile. `user_id` is passed so an address that is already a user
+  #     gets a linked contact immediately; a genuinely new invitee has no user yet,
+  #     so their contact is minted unlinked and is claimed on their first
+  #     own-contact resolution after accepting.
+  - _ref:
+      path: ../shared/contact/ensure-contact.yaml
+      vars:
+        connection_id:
+          _module.connectionId: user-contacts-collection
+        email:
+          _payload: email
+        user_id:
+          _step: find_user._id
 
   # 3c) Persist the captured profile onto the contact (shared write-profile
   #     fragment). The same write seam both update-profile routines use, so the
@@ -131,7 +141,8 @@ routine:
   #    minted with; `orgRole` is the unrelated organization-authority tier, which
   #    the step defaults to `member` (no authority) when the form omits it. Member
   #    attributes ride the invitation (applied to the minted member at accept by
-  #    afterAcceptInvitation); profile carries the linked contactId.
+  #    afterAcceptInvitation). The contact is linked from the contact side (its
+  #    own user_id at claim time), so no contactId rides the invitation.
   - id: invite_member
     type: InviteMember
     properties:
@@ -145,9 +156,6 @@ routine:
           - []
       orgRole:
         _payload: org_role
-      profile:
-        contactId:
-          _step: read_contact._id
       attributes:
         _if_none:
           - _payload: member_attributes

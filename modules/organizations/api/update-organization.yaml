@@ -1,0 +1,20 @@
+# update-organization — rename the caller's ACTIVE organization. The write goes
+# through the organization plugin, which authorizes it against the caller's
+# member row in the organization named here. Only the display name is offered:
+# the slug is the organization's identity (and, under the pinned policy
+# elsewhere in a suite, its id), so it is not self-serve editable.
+#
+# `organizationId` is explicit: under the `tenant` policy there is no pinned
+# organization for the step to default to.
+#
+# Payload: { name }
+id: update-organization
+type: Api
+routine:
+  - id: update_organization
+    type: UpdateOrganization
+    properties:
+      name:
+        _payload: name
+      organizationId:
+        _user: organization_id

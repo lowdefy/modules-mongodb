@@ -1,0 +1,33 @@
+# Every organization the caller belongs to, for the switcher. Scoped by
+# `user_id: { _user: id }` — the caller's own member rows by definition, which is
+# what makes this read safe on an unwalled connection.
+#
+# A single-membership caller still gets one row: the switcher renders the active
+# organization's name as plain context and offers no dropdown.
+id: get_switcher_memberships
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    - $match:
+        user_id:
+          _user: id
+    - $lookup:
+        from: user-organizations
+        localField: organization_id
+        foreignField: _id
+        as: organization
+    - $unwind: "$organization"
+    - $addFields:
+        organization_name: "$organization.name"
+        is_active:
+          $eq:
+            - "$organization_id"
+            - _user: organization_id
+    - $project:
+        organization_id: 1
+        organization_name: 1
+        is_active: 1
+    - $sort:
+        organization_name: 1

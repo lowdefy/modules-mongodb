@@ -1,5 +1,18 @@
 id: get_all_contacts
 type: MongoDBAggregation
+# Authored organization clause (tenant wall amendment-1). The shared text lead
+# emits a first-stage $search whenever `atlas_search` is set, and the wall can
+# not prepend its filter before a first-stage-only stage — so the clause is
+# authored inside that $search's `compound.filter` by the shared policy
+# fragment, and the wall audits it against the caller's organization on every
+# run. With `atlas_search` false there is no $search at all, the pipeline leads
+# with a plain $match and the wall scopes it mechanically; declaring `authored`
+# there is refused, so the declaration resolves away with the stage.
+tenant:
+  _build.if:
+    test:
+      _module.var: atlas_search
+    then: authored
 connectionId:
   _module.connectionId: contacts-collection
 payload:

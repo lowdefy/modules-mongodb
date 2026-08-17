@@ -29,8 +29,10 @@ properties:
       # The filter is a runtime payload, so the stage cannot be dropped at build
       # time.
       - _ref:
-          path: requests/stages/members_base.yaml
+          path: ../shared/org/members_base.yaml
           vars:
+            org_value:
+              _module.var: org_slug
             pre_join_stages:
               - $match:
                   _if:

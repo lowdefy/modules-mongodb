@@ -1,0 +1,18 @@
+# cancel-invitation — withdraw a pending invitation to the caller's ACTIVE
+# organization by id. Cancelling has no expiry/status guard in the engine, so
+# the same endpoint serves live and expired-but-pending rows.
+#
+# `organizationId` is explicit: under the `tenant` policy there is no pinned
+# organization for the step to default to.
+#
+# Payload: { invitation_id }
+id: cancel-invitation
+type: Api
+routine:
+  - id: cancel_invitation
+    type: CancelInvitation
+    properties:
+      invitationId:
+        _payload: invitation_id
+      organizationId:
+        _user: organization_id

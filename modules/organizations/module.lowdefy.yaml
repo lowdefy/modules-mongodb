@@ -1,0 +1,131 @@
+name: Organizations
+version: 0.17.0
+description: >-
+  Self-serve organization workspace for tenant deployments — see and switch the
+  active organization, name it, and manage its members (invite, cancel, remove,
+  change member role). Per-org throughout: every action targets the caller's
+  ACTIVE organization and is authorized by BetterAuth against the caller's
+  member role in it.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tenant deployments only (org-workspace Decision 6)
+# ─────────────────────────────────────────────────────────────────────────────
+# The per-org client endpoints this module drives (switching, leaving) are
+# mounted only under `auth.organizations.policy: tenant`; under `pinned` the
+# engine disables them (ORG_CLIENT_PATHS_DISABLED_WHEN_PINNED) and the build
+# REJECTS a wired org client action outright, naming the action and the policy.
+# So a pinned app simply does not add this module entry — the surface is
+# meaningless there (one organization, nothing to switch to, nothing to
+# self-administer). This is not suite administration: cross-user powers
+# (suspend, password reset, delete) stay in user-admin, whose instances are
+# welded to one organization each from app config.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# Same-database co-location precondition
+# ─────────────────────────────────────────────────────────────────────────────
+# The members read is a single aggregation that $lookup-joins the auth
+# collections to `user-contacts`, and MongoDB's $lookup cannot cross databases.
+# So the BetterAuth adapter's database (app `auth.database`), the
+# `user-contacts` connection, and every read-only connection below MUST all
+# resolve to ONE MongoDB database. The failure mode is SILENT: a cross-database
+# $lookup treats the missing collection as empty, so a divergent deployment
+# shows blank contact data rather than failing loudly.
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper
+  - id: user-account
+    description: >-
+      Invitation-accept page, cross-linked from the pending invitations list so
+      an admin can copy the link the invitee received.
+
+vars:
+  avatar_colors:
+    default:
+      _ref: ../shared/profile/avatar_colors.yaml
+    description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
+
+exports:
+  pages:
+    - id: members
+      description: Members table, invite form, and pending invitations for the active organization
+    - id: settings
+      description: Rename the active organization
+  components:
+    - id: org-switcher
+      description: >-
+        Header widget showing the active organization's name; a dropdown to
+        switch when the caller belongs to more than one. Wire into the layout's
+        `header_extra.blocks`, together with `org-switcher-requests`.
+    - id: org-switcher-requests
+      description: >-
+        The reads org-switcher depends on. Wire into the layout's
+        `header_extra.requests` — the block cannot carry its own.
+  connections:
+    - id: user-members
+      description: Read-only connection for the auth `user-members` collection
+    - id: user-organizations
+      description: Read-only connection for the auth `user-organizations` collection
+    - id: user-invitations
+      description: Read-only connection for the auth `user-invitations` collection
+    - id: user-contacts-collection
+      description: Walled app connection for the user-contacts records — writable, used by the invite-time contact mint
+  api:
+    - id: invite
+      description: Mint or link the invitee's contact in the active organization, then send the invitation with its app roles
+    - id: update-member-roles
+      description: Set a member's app roles (member.app_roles) in the active organization
+    - id: update-org-role
+      description: Set a member's organization-authority tier (member.role) in the active organization
+    - id: remove-member
+      description: Remove another member from the active organization
+    - id: cancel-invitation
+      description: Withdraw a pending invitation to the active organization
+    - id: update-organization
+      description: Rename the active organization
+  menus:
+    - id: default
+      description: Menu group linking the members and settings pages
+
+connections:
+  - _ref: connections/user-members.yaml
+  - _ref: connections/user-organizations.yaml
+  - _ref: connections/user-invitations.yaml
+  - _ref: connections/user-contacts-collection.yaml
+
+api:
+  - _ref: api/invite.yaml
+  - _ref: api/update-member-roles.yaml
+  - _ref: api/update-org-role.yaml
+  - _ref: api/remove-member.yaml
+  - _ref: api/cancel-invitation.yaml
+  - _ref: api/update-organization.yaml
+
+pages:
+  - _ref: pages/members.yaml
+  - _ref: pages/settings.yaml
+
+components:
+  - id: org-switcher
+    component:
+      _ref: components/org-switcher.yaml
+  - id: org-switcher-requests
+    component:
+      _ref: components/org-switcher-requests.yaml
+
+menus:
+  - _ref: menu.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: >-
+      MongoDB connection URI. Must resolve to the SAME database as the app's
+      `auth.database` adapter (see the co-location precondition above).
+
+plugins:
+  # The built-in @lowdefy/connection-mongodb provides MongoDBCollection and
+  # every MongoDB* request type this module uses, so no
+  # @lowdefy/community-plugin-mongodb pin is needed — the built-in is
+  # auto-included.
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.17.0"

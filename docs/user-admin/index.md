@@ -135,11 +135,11 @@ itself — the dispatch is the deployment's own mail/SMS/push infrastructure.
 
 ## Dependencies
 
-| Module                                     | Why                                                               |
-| ------------------------------------------- | ------------------------------------------------------------------ |
-| [layout](../layout/index.md)               | Page wrapper                                                      |
-| [events](../events/index.md)               | Audit logging and `change_stamp`                                  |
-| [notifications](../notifications/index.md) | Dispatches the two-factor reset / passkey revoke recovery notice  |
+| Module                                     | Why                                                              |
+| ------------------------------------------ | ---------------------------------------------------------------- |
+| [layout](../layout/index.md)               | Page wrapper                                                     |
+| [events](../events/index.md)               | Audit logging and `change_stamp`                                 |
+| [notifications](../notifications/index.md) | Dispatches the two-factor reset / passkey revoke recovery notice |
 
 **`notifications` is now a hard dependency of every `user-admin` consumer** —
 declared unconditionally in the manifest, so it is required to build the module
@@ -179,10 +179,10 @@ app-role write applied with nothing to roll it back. `org_authority: false` remo
 two controls that reach it and makes the endpoint reject, so a deployment granting
 organization authority out of band closes the surface rather than only hiding it.
 
-The two shared write-path fragments — `write-profile` and `create-or-link-contact`
-— live in `modules/shared/contact/` and are `_ref`'d by relative path (also by
-`user-account`). They are **shared files, not module exports**, and add no module
-dependency.
+The shared contact fragments — `write-profile`, `ensure-contact`, and
+`resolve-own-contact` — live in `modules/shared/contact/` and are `_ref`'d by
+relative path (also by `user-account`). They are **shared files, not module
+exports**, and add no module dependency.
 
 ## Prerequisite: same-database co-location
 

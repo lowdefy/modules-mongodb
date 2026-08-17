@@ -1,0 +1,97 @@
+# Shared resolve-own-contact fragment — one canonical spec, `_ref`'d by relative
+# path from every routine that needs "the caller's own contact row".
+#
+# A contact is linked to an auth user by `user_id`, and the link lives on the
+# CONTACT: a contact row is per-organization while the auth `user` is global, so a
+# person holds one contact per organization and the link belongs on the side that
+# is already per-organization. The contact is also the row these modules own and
+# can write at any moment, which is what makes the link maintainable — membership
+# is created by the auth engine (org mint, invitation accept, admin add) and no
+# module code runs at those points.
+#
+# Resolution is therefore an id match: the contact in the caller's organization
+# whose `user_id` is the caller. The organization half comes from the wall.
+#
+# The email is the CLAIM key, used once. A contact minted by an invite exists
+# before its person has an auth user, so it is born unlinked; the first time that
+# person's own contact is resolved, the claim step below links it by matching the
+# address they have proved they own. After that the address is never matched
+# again — an email change cannot break the link, because the link is by id.
+#
+# The claim can never take a contact that belongs to someone else: it filters on
+# `user_id` being unset, and `{organization_id, lowercase_email}` is unique, so at
+# most one unlinked row can match.
+#
+# This is a var-free file — every input is an `_ref` var (NEVER `_module.var`).
+#
+# Vars:
+#   connection_id — the caller's scoped user-contacts connection id. MUST be a
+#                   WALLED connection: the organization half of both the match and
+#                   the claim comes from the wall, so an unwalled connection would
+#                   resolve — or claim — a contact in any organization.
+#
+# It is a YAML sequence of routine steps — splice it into a routine with
+# `_build.array.concat` so the steps flatten inline. Callers read
+# `_step: resolve_own_contact._id`; it is null when the caller has no contact in
+# the active organization at all.
+
+# Already linked? The common path, and the reason the claim below is skipped
+# rather than run unconditionally: an every-request write would add a change-log
+# record to a read.
+- id: find_linked_contact
+  type: MongoDBFindOne
+  connectionId:
+    _var: connection_id
+  properties:
+    query:
+      user_id:
+        _user: id
+    options:
+      projection:
+        _id: 1
+
+# First touch: claim the unlinked contact for this address. `disableNoMatchError`
+# because "nothing to claim" is a legitimate outcome — a caller with no contact in
+# this organization at all is the caller's routine to report, not this step's.
+- :if:
+    _eq:
+      - _if_none:
+          - _step: find_linked_contact._id
+          - null
+      - null
+  :then:
+    - id: claim_contact
+      type: MongoDBUpdateOne
+      connectionId:
+        _var: connection_id
+      properties:
+        filter:
+          lowercase_email:
+            _string.toLowerCase:
+              _user: email
+          # Unlinked means missing OR null — a MongoDB null equality matches both,
+          # so a caller that stamped an absent user id as null is still claimable.
+          # A row linked to a different user never matches.
+          user_id: null
+        update:
+          $set:
+            user_id:
+              _user: id
+            updated:
+              _ref:
+                module: events
+                component: change_stamp
+        disableNoMatchError: true
+
+# The single value callers read, whether it was already linked or just claimed.
+- id: resolve_own_contact
+  type: MongoDBFindOne
+  connectionId:
+    _var: connection_id
+  properties:
+    query:
+      user_id:
+        _user: id
+    options:
+      projection:
+        _id: 1

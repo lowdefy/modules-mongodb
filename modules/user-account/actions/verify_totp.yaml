@@ -1,8 +1,8 @@
 # The TOTP verify chain, `_ref`'d by both the Verify button's onClick and the
 # code field's onPressEnter so click and Enter run the identical sequence.
 # TwoFactorVerify sets the session cookie itself but does not navigate, so on
-# success we navigate to the callbackUrl carried from login (?callbackUrl=),
-# completing sign-in.
+# success we navigate to the callbackUrl carried from login (?callbackUrl=), or
+# home, completing sign-in.
 try:
   - id: tf_verify_totp
     type: TwoFactorVerify
@@ -20,10 +20,22 @@ try:
   - id: tf_totp_continue
     type: Link
     params:
-      url:
-        _if_none:
-          - _url_query: callbackUrl
-          - "/"
+      # `url` is an external target: a value with no scheme gets `https://`
+      # prefixed, which promotes the first path segment to the hostname.
+      # Resolving the inbound `?callbackUrl=` against the current origin keeps it
+      # on-site; `home: true` covers the no-query case, which `url` cannot express.
+      _if:
+        test:
+          _ne:
+            - _url_query: callbackUrl
+            - null
+        then:
+          url:
+            _string.concat:
+              - _location: origin
+              - _url_query: callbackUrl
+        else:
+          home: true
 catch:
   # No valid two_factor cookie (page visited directly, or the cookie expired):
   # the code box can never succeed, so return to sign-in rather than show a

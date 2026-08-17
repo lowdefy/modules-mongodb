@@ -1,0 +1,21 @@
+# remove-member — end someone else's membership of the caller's ACTIVE
+# organization. Leaving your OWN organization is a different engine call
+# (LeaveOrganization, still a client action) — the members page swaps the
+# control by `is_self`.
+#
+# The write goes through the organization plugin so its last-owner guard runs;
+# its refusal carries its own message, which the page surfaces rather than
+# replaces. `organizationId` is explicit: under the `tenant` policy there is no
+# pinned organization for the step to default to.
+#
+# Payload: { member_id }
+id: remove-member
+type: Api
+routine:
+  - id: remove_member
+    type: RemoveMember
+    properties:
+      memberIdOrEmail:
+        _payload: member_id
+      organizationId:
+        _user: organization_id

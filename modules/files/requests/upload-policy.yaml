@@ -36,8 +36,10 @@ properties:
         - "unknown"
     x-amz-meta-uploaded-by-name:
       _if_none:
-        - _user: profile.name
-        - "unknown"
+        - _user: name
+        - _if_none:
+            - _user: profile.name
+            - "unknown"
     x-amz-meta-uploaded-by-url:
       _if_none:
         - _payload: url

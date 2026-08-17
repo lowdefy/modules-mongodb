@@ -1,8 +1,25 @@
-# Members base stages: shared by the members list, the detail read and the
-# Excel export. Root is `user-members` for the organization this instance
-# administers, welded in at build time from the `org_slug` var. The id IS the
-# slug under the pinned policy. Joins the auth `user` and the app
-# `user-contacts` record, then flattens the display shape:
+# Shared members base stages: one canonical member join, `_ref`'d by relative
+# path from BOTH user-admin (suite list, detail read and Excel export) and
+# organizations (the per-org members page), so the read shape can't drift
+# between them.
+#
+# Root is `user-members`, scoped by the REQUIRED `org_value` ref var. The two
+# consumers scope differently and the value is theirs to supply:
+#   user-admin    : the organization the instance administers, welded in at
+#                   build time: `org_value: { _module.var: org_slug }` (the org
+#                   id IS the slug).
+#   organizations : the caller's active organization, read at request time:
+#                   `org_value: { _user: organization_id }`.
+# (`_module.var` inside the passed value resolves against the CALLING module's
+# entry, plain-path refs inherit the module context, so the weld works even
+# though this file itself is shared config, not a module.)
+#
+# Joins the auth `user`, then the app `user-contacts` record through the shared
+# contact-match expression, with the organization taken from the member row
+# itself so the join stays inside the row's own organization (a `$lookup` is
+# never scoped by the tenant wall). That org comparison is policy-conditional
+# (shared fragment): present under `tenant`, absent under `pinned`, where
+# contacts carry no organization_id. Flattens the display shape:
 #   name / picture : from the contact profile (fallback to the user display name)
 #   email          : from the auth user row
 #   status         : Active unless user.banned === true → Suspended (Decision 2;
@@ -38,7 +55,7 @@
 _build.array.concat:
   - - $match:
         organization_id:
-          _module.var: org_slug
+          _var: org_value
   - _var:
       key: pre_join_stages
       default: []
@@ -50,8 +67,28 @@ _build.array.concat:
     - $unwind: "$user"
     - $lookup:
         from: user-contacts
-        localField: user.profile.contactId
-        foreignField: _id
+        let:
+          member_user_id: "$user._id"
+          member_email:
+            $toLower: "$user.email"
+          member_org: "$organization_id"
+        pipeline:
+          - $match:
+              $expr:
+                $and:
+                  _build.array.concat:
+                    - _ref:
+                        path: ../shared/org/tenant-clause.yaml
+                        vars:
+                          shape: member_eq
+                          org_expr: "$$member_org"
+                    - - _ref:
+                          path: ../shared/contact/contact-match-expr.yaml
+                          vars:
+                            contact_user_id_expr: "$user_id"
+                            contact_email_expr: "$lowercase_email"
+                            person_id_expr: "$$member_user_id"
+                            person_email_expr: "$$member_email"
         as: contact
     - $unwind:
         path: "$contact"

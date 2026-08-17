@@ -27,7 +27,11 @@ properties:
       - - $match:
             user_id:
               _payload: user_id
-      - _ref: requests/stages/members_base.yaml
+      - _ref:
+          path: ../shared/org/members_base.yaml
+          vars:
+            org_value:
+              _module.var: org_slug
       # Roles resolved against the catalog → [{ label, orphan }].
       - _ref: requests/stages/roles_from_catalog.yaml
       # Registered passkeys for the target user (Decision 5 auth-methods badge).

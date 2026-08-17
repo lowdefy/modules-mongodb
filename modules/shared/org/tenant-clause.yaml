@@ -1,0 +1,113 @@
+# The one policy branch for authored organization clauses. The tenant wall is
+# policy-conditional: it engages only under `auth.organizations.policy:
+# tenant`, and under `pinned` no document carries `organization_id` — so a
+# hand-authored org clause would filter on an absent field and silently return
+# nothing. Every site that authors its own clause (the stages the wall cannot
+# scope: a pipeline-leading $search, $graphLookup anywhere, $lookup
+# sub-pipelines, plus the system-context contact mint) therefore `_ref`s this
+# fragment, which resolves AT BUILD TIME to the clause under `tenant` and to
+# an empty splice/merge under `pinned`. The policy read lives here and nowhere
+# else in module config.
+#
+# Mis-branching is fail-closed in the direction that matters: under `tenant`
+# the wall audits every authored clause at runtime (present, right field,
+# equal to the caller's org) and refuses the request on a miss — a clause this
+# fragment wrongly dropped fails loudly rather than leaking. Under `pinned` a
+# dropped clause is harmless by construction: one organization exists.
+#
+# All inputs are `_ref` vars (NEVER `_module.var` — this file is shared config,
+# not a module):
+#   shape — which clause shape the site splices (required):
+#     search_filter        → element list for a $search `compound.filter`;
+#                            splice with `_build.array.concat`. Under pinned a
+#                            match-all clause rather than [] — see the note on
+#                            that branch below.
+#     match                → key(s) for a $match / query object; merge with
+#                            `_build.object.assign`. {} under pinned.
+#     graphlookup_restrict → `restrictSearchWithMatch` key for a $graphLookup
+#                            body; merge with `_build.object.assign` so the
+#                            key itself vanishes under pinned. {} under pinned.
+#     member_eq            → $expr comparison list equating a joined document's
+#                            organization_id with `org_expr`; splice into an
+#                            $and with `_build.array.concat`. [] under pinned.
+#     session_org_value    → the signup-session organization id value for the
+#                            contact mint's `organization_id` var; null under
+#                            pinned (the mint stamps no org).
+#   org_expr — member_eq only: the aggregation expression for the caller-side
+#              organization (e.g. "$$member_org").
+_build.if:
+  test:
+    _build.eq:
+      - _build.authConfig: organizations.policy
+      - tenant
+  then:
+    _build.switch:
+      branches:
+        - if:
+            _build.eq:
+              - _var: shape
+              - search_filter
+          then:
+            - equals:
+                path: organization_id
+                value:
+                  _user: organization_id
+        - if:
+            _build.eq:
+              - _var: shape
+              - match
+          then:
+            organization_id:
+              _user: organization_id
+        - if:
+            _build.eq:
+              - _var: shape
+              - graphlookup_restrict
+          then:
+            restrictSearchWithMatch:
+              organization_id:
+                _user: organization_id
+        - if:
+            _build.eq:
+              - _var: shape
+              - member_eq
+          then:
+            - $eq:
+                - "$organization_id"
+                - _var: org_expr
+        - if:
+            _build.eq:
+              - _var: shape
+              - session_org_value
+          then:
+            _payload: session.activeOrganizationId
+  else:
+    _build.switch:
+      branches:
+        - if:
+            _build.eq:
+              - _var: shape
+              - search_filter
+          # A match-all, not []. The $search stages that splice this clause are
+          # emitted unconditionally so their `tenant: authored` declaration is
+          # true on every path, which means a no-term browse reaches Atlas with
+          # no other clause to offer — and Atlas refuses a compound whose clause
+          # lists are all empty ("compound" must have at least one clause). This
+          # keeps the compound legal without narrowing anything: `_id` exists on
+          # every document, and a `filter` clause does not contribute to
+          # relevance scoring, so ordering is untouched. Requires `_id` to be
+          # indexed, which the per-module index contracts state.
+          then:
+            - exists:
+                path: _id
+        - if:
+            _build.eq:
+              - _var: shape
+              - member_eq
+          then: []
+        - if:
+            _build.eq:
+              - _var: shape
+              - session_org_value
+          then: null
+      default: {}

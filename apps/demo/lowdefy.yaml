@@ -87,7 +87,9 @@ auth:
   # Pinned-org policy: this app's own organization, ensured by slug at startup
   # with its id set to that slug. A user-admin instance names the organization it
   # administers through its own `org_slug` var, so the instance administering this
-  # one repeats the value below rather than inheriting it.
+  # one repeats the value below rather than inheriting it. Other module reads
+  # scope on the policy-portable `_user: organization_id`, so the same modules
+  # serve `apps/tenant-demo`.
   organizations:
     policy: pinned
     org: demo

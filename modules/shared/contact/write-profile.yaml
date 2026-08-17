@@ -14,7 +14,8 @@
 # Vars (all required unless noted):
 #   connection_id  — the caller's scoped user-contacts connection id
 #   contact_id     — target contact `_id`
-#   user_id        — target auth user id (users.profile.contactId === contact_id).
+#   user_id        — target auth user id (the user whose address resolves to
+#                    contact_id in that contact's organization).
 #                    MAY be absent (undefined/null) — the invite flow reuses this
 #                    fragment before the invitee has a `user` row, so the
 #                    `UpdateUserProfile` re-denorm is guarded on presence and
@@ -140,7 +141,7 @@
 # Guarded on `user_id` presence: coalesce to null first, so BOTH the no-match
 # (`undefined`, e.g. the invite flow's find_user with no user row) and the
 # explicit-`null` cases skip. A bare `_ne: [user_id, null]` would pass on
-# `undefined` and fire UpdateUserProfile with no userId.
+# `undefined` and fire UpdateUserProfile with no user_id.
 - :if:
     _ne:
       - _if_none:
@@ -151,9 +152,9 @@
     - id: denorm_user_profile
       type: UpdateUserProfile
       properties:
-        userId:
+        user_id:
           _var: user_id
-        organizationId:
+        organization_id:
           _var: organization_id
         profile:
           _step: reread_contact.profile

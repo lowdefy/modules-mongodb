@@ -29,6 +29,15 @@ import getMongoDb from "../../mongo/getMongoDb.js";
  * matching the community plugin). `planChangeLog` (task 12) stamps them onto
  * every log-changes entry.
  *
+ * `tenant` is the framework's resolved tenant verdict `{ field, value }` —
+ * present on every resolver call when the connection is scoped (policy:
+ * tenant, and the connection does not declare `tenant: shared`; the framework
+ * rejects org-less callers BEFORE the resolver runs, so a non-null verdict
+ * always carries a value); null under pinned, on a shared connection, or when
+ * the request opted out. The engine threads it into
+ * every `mongo/` wrapper call so all reads are org-scoped and all writes are
+ * org-stamped (tenant-wall contract).
+ *
  * `getMongoDb` is async (first call awaits `connect` + the `hello` topology
  * probe, D11), so the context is built at handler entry — never at module
  * scope.
@@ -49,6 +58,7 @@ async function createEngineContext(lowdefyContext) {
     connectionId,
     pageId,
     requestId,
+    tenant = null,
   } = lowdefyContext;
 
   const user = connection?.user;
@@ -65,6 +75,9 @@ async function createEngineContext(lowdefyContext) {
     callApi,
     user,
     params,
+    // Framework tenant verdict (tenant-wall contract) — threaded into every
+    // mongo/ wrapper call by the phases and read methods.
+    tenant,
     // Per-invocation mint (design D7).
     event_id: randomUUID(),
     now: connection.changeStamp,

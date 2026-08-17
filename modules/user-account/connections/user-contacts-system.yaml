@@ -1,0 +1,21 @@
+id: user-contacts-system
+type: MongoDBCollection
+# Deliberately shared — the system-context surface for the merge-on-signup
+# contact mint (ensure-contact-on-signup), which runs from the
+# session.create.after auth hook with no caller, where the tenant wall fails
+# closed by design (org-aware-modules Decision 7). Shared does NOT mean
+# org-less writes: the mint stamps an explicit organization_id read from the
+# hook payload's session (Decision 7's explicit-org rule) — see
+# docs/shared/org-scoping.md.
+# Every caller-ful path uses the walled user-contacts-collection instead.
+tenant: shared # system-context signup mint; stamps an explicit organization from the session
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-contacts
+  changeLog:
+    collection: log-changes
+    meta:
+      user:
+        _user: true
+  write: true

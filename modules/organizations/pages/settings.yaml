@@ -1,0 +1,86 @@
+# `settings` page — name the active organization.
+#
+# Deliberately small for v1. A tenant organization is born named after its
+# founder (`name: <user.name>`, slug `org-<userId>`), which is fine as a
+# placeholder and wrong as a workspace name, so renaming is the one thing this
+# page has to offer. Deletion, ownership transfer and org creation are all out
+# of scope — orgs are engine-minted.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: settings
+    content_width: 720
+    title: Organization
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Organization
+    requests:
+      - _ref: requests/get_active_organization.yaml
+      - _ref: requests/get_my_member.yaml
+    events:
+      onMountAsync:
+        - id: fetch_my_member
+          type: Request
+          params: get_my_member
+        - id: fetch_active_organization
+          type: Request
+          params: get_active_organization
+        # Seed the input from the stored name so the field opens populated and
+        # a save with no edit is a no-op rather than a blank rename.
+        - id: seed_organization_name
+          type: SetState
+          params:
+            organization:
+              name:
+                _request: get_active_organization.name
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: Organization name
+            blocks:
+              - id: organization.name
+                type: TextInput
+                required: true
+                properties:
+                  title: Name
+                  placeholder: Your organization's name
+                  # Renaming is owner/admin-gated by BetterAuth; a plain member
+                  # sees the current name read-only rather than a control that
+                  # fails when they use it.
+                  disabled:
+                    _not:
+                      _request: get_my_member.0.is_org_admin
+            footer_buttons:
+              - id: save_organization_name_btn
+                type: Button
+                layout:
+                  flex: 0 0 auto
+                visible:
+                  _request: get_my_member.0.is_org_admin
+                properties:
+                  title: Save
+                  color: primary
+                  variant: solid
+                events:
+                  onClick:
+                    - id: validate_organization_name
+                      type: Validate
+                      params: organization.name
+                    - id: update_organization
+                      type: CallAPI
+                      messages:
+                        loading: Saving…
+                        success: Organization renamed.
+                      params:
+                        endpointId:
+                          _module.endpointId: update-organization
+                        payload:
+                          name:
+                            _state: organization.name
+                    - id: refetch_active_organization
+                      type: Request
+                      params: get_active_organization

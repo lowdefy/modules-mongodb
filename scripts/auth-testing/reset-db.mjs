@@ -2,9 +2,10 @@
 // Clear the test database to a fresh data slate between runs.
 //
 // Deletes every document from every collection but KEEPS the collections and
-// their indexes — so the partial-unique indexes (user-contacts.lowercase_email,
-// users.profile.contactId) survive and you don't have to recreate them. This is
-// gentler than `docker compose down -v` (which wipes the volume, indexes and all).
+// their indexes — so the partial-unique index on
+// user-contacts.{organizationId, lowercase_email} survives and you don't have to
+// recreate it. This is gentler than `docker compose down -v` (which wipes the
+// volume, indexes and all).
 //
 // GUARDED: refuses to run unless the connection is local (localhost/127.0.0.1)
 // AND the database name is the expected test DB. It structurally cannot touch a

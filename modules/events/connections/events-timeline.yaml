@@ -1,5 +1,7 @@
 id: events-timeline
 type: EventsTimeline
+# Scoped, never shared: the organization filter is defense in depth over the
+# timeline's entity-id match.
 properties:
   databaseUri:
     _secret: MONGODB_URI

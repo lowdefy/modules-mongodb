@@ -23,7 +23,11 @@ properties:
   pipeline:
     _build.array.concat:
       # Match pending + org, join inviter, derive Invited/Expired + roles.
-      - _ref: requests/stages/invitations_base.yaml
+      - _ref:
+          path: ../shared/org/invitations_base.yaml
+          vars:
+            org_value:
+              _module.var: org_slug
       # Filter: email search + derived-status segment. The clauses are ANDed as a
       # $and array rather than merged into one object, so no two of them can
       # collide on a top-level key. The leading `{}` keeps the array non-empty

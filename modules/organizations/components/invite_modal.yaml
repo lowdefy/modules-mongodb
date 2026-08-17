@@ -1,0 +1,60 @@
+# Invite someone into the active organization, via the invite endpoint (contact
+# mint + InviteMember, both server-side — see api/invite.yaml).
+#
+# BetterAuth sends the invitation email itself (auth.email + the invitation
+# template); this module ships no email wiring.
+id: invite_modal
+type: Modal
+properties:
+  title: Invite a member
+  width: 480
+  okText: Send invitation
+events:
+  onOk:
+    _build.array.concat:
+      - - id: validate_invite
+          type: Validate
+          params:
+            regex:
+              - '^invite\.'
+        - id: send_invitation
+          type: CallAPI
+          messages:
+            loading: Inviting…
+            success: Invitation sent.
+          params:
+            endpointId:
+              _module.endpointId: invite
+            payload:
+              email:
+                _state: invite.email
+              roles:
+                _state: invite.roles
+        - id: clear_invite_form
+          type: SetState
+          params:
+            invite: null
+      - _ref: actions/refetch_members.yaml
+blocks:
+  - id: invite.email
+    type: TextInput
+    required: true
+    properties:
+      title: Email address
+      placeholder: person@example.com
+      type: email
+  - id: invite.roles
+    type: TagMultipleSelector
+    properties:
+      title: Roles
+      placeholder: Choose one or more roles
+      options:
+        _ref: components/role_options.yaml
+  - id: invite_hint
+    type: Html
+    properties:
+      html: >-
+        <div style="font-size:13px; color:var(--ant-color-text-secondary)">They
+        will receive an email with a link to join this organization. The link
+        expires; you can cancel or re-send from the list below until they
+        accept.</div>

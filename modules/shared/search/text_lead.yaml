@@ -2,10 +2,26 @@
 # requests. Text ranking only: structural filters live in the $match that
 # follows, so they run in both search modes.
 #
-# Two gates compose here. `atlas_search` is a module var, so a false flag drops
-# the whole mechanism at compile. `term` is runtime, so the stage resolves at
-# request time to either $search or a no-op $match — never to nothing, because
-# a build-time concat cannot flatten a runtime value.
+# `atlas_search` is a module var, so a false flag drops the whole mechanism at
+# compile and the regex clause in the following $match does the matching
+# instead.
+#
+# When the flag is set the $search stage is emitted UNCONDITIONALLY — it runs
+# whether or not a term was entered. $search is first-stage-only, so the tenant
+# wall cannot prepend its organization filter; the request declares
+# `tenant: authored` and carries the clause in `compound.filter` instead, and
+# the wall audits that clause on every run. The declaration is static per
+# request while the term is runtime, so a $search that appeared only when a
+# term happened to be present would be audited on the search path and refused
+# on the browse path — the wall rejects `authored` on a pipeline with nothing
+# to author. The stage is therefore always present and only its contents vary.
+#
+# The term clauses sit in `must`, not `should`. `compound.filter` is always
+# populated here, and alongside a filter clause `should` carries its default
+# minimumShouldMatch of 0 — it would rank without narrowing, so every row in
+# the organization would come back for any term. `must` requires the match; the
+# inner `should` supplies the OR between the clauses and still scores them, so
+# relevance ordering is unaffected.
 #
 # returnStoredSource defaults to true: mongot returns the matched documents
 # itself, so the $match below costs mongod no collection access. Callers whose
@@ -15,43 +31,54 @@ _build.if:
   test:
     _var: atlas_search
   then:
-    - _if:
-        test:
-          _ne:
-            - _if_none:
-                - _var: term
-                - ""
-            - ""
-        then:
-          $search:
-            returnStoredSource:
-              _var:
-                key: returnStoredSource
-                default: true
-            compound:
-              should:
-                _array.concat:
-                  - - text:
-                        query:
-                          _string.toLowerCase:
-                            _var: term
-                        path:
-                          _var: paths
-                    - wildcard:
-                        query:
-                          _string.concat:
-                            - "*"
-                            - _string.toLowerCase:
-                                _var: term
-                            - "*"
-                        path:
-                          _var: paths
-                        allowAnalyzedField: true
-                  - _var:
-                      key: should_extra
-                      default: []
-        # No term: resolve to a match-all rather than to nothing. The stage slot
-        # is fixed at build time, so the runtime branch must yield a valid stage.
-        else:
-          $match: {}
+    - $search:
+        returnStoredSource:
+          _var:
+            key: returnStoredSource
+            default: true
+        compound:
+          # Organization scope, and the clause that keeps this compound legal:
+          # Atlas refuses a compound whose clause lists are all empty, which is
+          # what a no-term browse would otherwise produce. Resolved at build
+          # time by the shared policy fragment — the audited organization
+          # equality under `tenant`, a match-all under `pinned`.
+          filter:
+            _build.array.concat:
+              - _ref:
+                  path: ../shared/org/tenant-clause.yaml
+                  vars:
+                    shape: search_filter
+          must:
+            _array.concat:
+              - _if:
+                  test:
+                    _ne:
+                      - _if_none:
+                          - _var: term
+                          - ""
+                      - ""
+                  then:
+                    - compound:
+                        should:
+                          _array.concat:
+                            - - text:
+                                  query:
+                                    _string.toLowerCase:
+                                      _var: term
+                                  path:
+                                    _var: paths
+                              - wildcard:
+                                  query:
+                                    _string.concat:
+                                      - "*"
+                                      - _string.toLowerCase:
+                                          _var: term
+                                      - "*"
+                                  path:
+                                    _var: paths
+                                  allowAnalyzedField: true
+                            - _var:
+                                key: should_extra
+                                default: []
+                  else: []
   else: []

@@ -29,11 +29,15 @@ An Atlas Search index named **`default`** — the module's `$search` stage names
       "description": {
         "type": "document",
         "fields": { "text": { "type": "string" } }
-      }
+      },
+      "organization_id": { "type": "token" },
+      "_id": { "type": "token" }
     }
   }
 }
 ```
+
+**`organization_id` and `_id` serve `compound.filter`, not the text search.** The `$search` here is emitted unconditionally (see [Search](../../shared/search.md)), so its compound always carries one `filter` clause — and Atlas refuses a compound whose clause lists are all empty. Under `auth.organizations.policy: tenant` that clause is a string `equals` on `organization_id`, the authored tenant clause the wall audits on every run; under `pinned` it is `exists` on `_id`, a match-all that narrows nothing. `dynamic: false` maps neither by default and a string `equals` requires a `token` mapping specifically, so both are listed explicitly. Keep both regardless of the policy the app runs today — an index missing the `organization_id` mapping blanks the list page the moment a deployment flips to `tenant`, fail-closed and silent.
 
 `title` and `description.text` are the only mapped fields, and both as `string` — they are the text paths the `$search` searches, with a `text` clause for whole-token relevance and a `wildcard: *term*` clause for substring matching. `description` is Tiptap rich text stored as `{ html, text }`, so it is mapped as a document with a `text` string child; the `html` sibling is deliberately unmapped, as searching markup would match tag names and attributes.
 
@@ -51,10 +55,9 @@ Nothing else needs mapping. The list's type, stage, contact, company and date-ra
 
 ## Regular `mongod` indexes
 
-These matter in two situations, both of which bypass `$search` entirely:
+These matter in two situations that bypass `$search` entirely. The first is **fallback mode**: with `atlas_search: false` there is no `$search` stage, so the request is a plain `$match` + `$sort` and text matching becomes a `$regex` `$or` inside that same `$match`. The second is the **Excel export**, which runs no `$search` in either mode.
 
-- **The browse path on Atlas.** With no search term the list request skips `$search` entirely and runs as a plain `$match` + `$sort`; only an actual text query goes to `mongot`. The Excel export never uses `$search` at all.
-- **Fallback mode.** With `atlas_search: false` there is no `$search`; text matching becomes a `$regex` `$or` inside the same `$match`.
+The list's Atlas browse path is not one of them. With `atlas_search: true` every load goes to `mongot`, term or no term — the `$search` stage is emitted unconditionally so that its `tenant: authored` declaration holds on the browse path as well as the search path, see [Search](../../shared/search.md).
 
 | Index                                 | Sort it mirrors                                                                                             |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |

@@ -62,7 +62,7 @@ The list/workspace pipelines assume the consuming app applies these indexes on t
 
 ### Atlas Search index: `default` on `deals`
 
-An Atlas Search index named **`default`** — `get_deals_list`'s `$search` stage names `index: default` explicitly.
+An Atlas Search index named **`default`** — `get_deals_list`'s `$search` names no index, so Atlas resolves it to `default`.
 
 ```json
 {
@@ -76,13 +76,18 @@ An Atlas Search index named **`default`** — `get_deals_list`'s `$search` stage
         "multi": {
           "keywordAnalyzer": { "type": "string", "analyzer": "lucene.keyword" }
         }
-      }
+      },
+      "organization_id": { "type": "token" }
     }
   }
 }
 ```
 
-`name` and `_id` are the only mapped fields. `_id` holds the deal code (`D-0001`), which `get_deals_list` searches through `path: { value: _id, multi: keywordAnalyzer }` — so the index must declare that `keywordAnalyzer` multi, or the deal-code clause finds nothing. Company name is not searchable at all: it is not stored on the deal document, and the list's `$lookup` fetches it for display only — the company filter matches `company_id`. Nothing else needs mapping either: the stage, company, salesperson and outcome filters are plain `$match` clauses that `mongot` never evaluates.
+> **This index does not yet exist on the QA cluster.** `listSearchIndexes()` on `deals` returns nothing, which is why the deal search box has never worked under either policy. Because the `$search` stage is now unconditional, the deal list needs this index to load at all — create it before deploying, and see [Search](../shared/search.md) for the `atlas_search: false` alternative if Atlas Search is unavailable.
+
+**`organization_id` serves `compound.filter`, not the text search.** The `$search` is emitted unconditionally (see [Search](../shared/search.md)), so its compound always carries one `filter` clause — and Atlas refuses a compound whose clause lists are all empty. Under `auth.organizations.policy: tenant` that clause is a string `equals` on `organization_id`, the authored tenant clause the wall audits on every run; under `pinned` it is `exists` on `_id`, which the mapping below already covers. `dynamic: false` maps nothing by default and a string `equals` requires a `token` mapping specifically, so `organization_id` is listed explicitly. Keep it regardless of the policy the app runs today — an index missing it blanks the deal list the moment a deployment flips to `tenant`, fail-closed and silent.
+
+`name`, `_id` and `organization_id` are the only mapped fields. `_id` holds the deal code (`D-0001`), which `get_deals_list` searches through `path: { value: _id, multi: keywordAnalyzer }` — so the index must declare that `keywordAnalyzer` multi, or the deal-code clause finds nothing. Company name is not searchable at all: it is not stored on the deal document, and the list's `$lookup` fetches it for display only — the company filter matches `company_id`. Nothing else needs mapping either: the stage, company, salesperson and outcome filters are plain `$match` clauses that `mongot` never evaluates.
 
 | Query site       | Searches                                                      | Stored source |
 | ---------------- | ------------------------------------------------------------- | ------------- |
@@ -114,7 +119,7 @@ db.deals.createIndex({ "updated.timestamp": -1 }, { name: "updated" })
 
 `get_deals_list` filters `removed: null` unconditionally, and its other filters (`status.0.stage`, `company_id`, `salesperson.name`, `outcome.type`, `outcome.reason`) are `$in` or equality predicates that drop out of the `$match` when unset. Do not lead a compound index with `removed`: the clause excludes only a small minority of deals, so as a prefix it narrows almost nothing. Let MongoDB apply it as a residual filter and index the fields users actually filter on. With no term and no filter set the `$match` is `removed: null` alone, which bounds no documented index's leading field, so that browse is a collection scan feeding a blocking in-memory sort.
 
-These indexes matter in two situations, both of which bypass `$search` entirely: the browse path on Atlas (no term, so no `$search` stage), and fallback mode (`atlas_search: false`, no `$search` at all). **Switching a deployment to `atlas_search: false` without them gives performance acceptable only at small scale** — the fallback's `$regex` is unanchored, so it cannot use an index to narrow, and the predicate is evaluated against every deal the query's other `$and` clauses let through. A stage or company filter narrows that set first; a search box with nothing else set does not.
+These indexes matter in **fallback mode** (`atlas_search: false`), now the only situation that bypasses `$search` entirely. The Atlas browse path is no longer one: with `atlas_search: true` every load goes to `mongot`, term or no term, because the `$search` stage is emitted unconditionally so that its `tenant: authored` declaration holds on the browse path as well as the search path. **Switching a deployment to `atlas_search: false` without them gives performance acceptable only at small scale** — the fallback's `$regex` is unanchored, so it cannot use an index to narrow, and the predicate is evaluated against every deal the query's other `$and` clauses let through. A stage or company filter narrows that set first; a search box with nothing else set does not.
 
 ## Shared idioms
 

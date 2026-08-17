@@ -1,0 +1,21 @@
+# The app `user-contacts` collection, used only by the invite-contact endpoint
+# to mint the invitee's contact before the invitation is sent.
+#
+# Tenant wall: every read and write through this connection is scoped to the
+# caller's organization; organization_id is stamped and filtered mechanically.
+# That is why the shared ensure-contact fragment is spliced here WITHOUT an
+# `organization_id` var — the inviter is a logged-in caller with the target org
+# active, so the wall supplies the org and would reject an authored
+# organization_id filter.
+id: user-contacts-collection
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-contacts
+  changeLog:
+    collection: log-changes
+    meta:
+      user:
+        _user: true
+  write: true

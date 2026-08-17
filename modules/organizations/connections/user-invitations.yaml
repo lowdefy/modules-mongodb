@@ -1,0 +1,16 @@
+# Read-only connection for the auth `user-invitations` collection — the pending
+# invitations list on the members page.
+# Adapter-fixed collection name (mongodb Decision 2). Same-database co-location
+# precondition applies (see module.lowdefy.yaml).
+#
+# Deliberately shared (see user-members.yaml): the shared invitations stages
+# scope the read on `organization_id: { _user: organization_id }`. Invitations are
+# created and cancelled through the client actions, never written here.
+id: user-invitations
+type: MongoDBCollection
+tenant: shared # an invitation is read before the invitee holds a membership, so no caller organization resolves
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-invitations
+  write: false

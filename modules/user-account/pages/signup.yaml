@@ -47,6 +47,11 @@ _ref:
                               - 0
                 then: true
                 else: false
+            # `?email=` marks an address-bound entry (the accept page sends the
+            # invited address). Seeding it prefills the auto-bound email input,
+            # which then renders locked. See the input below.
+            email:
+              _url_query: email
     blocks:
       _build.array.concat:
         # ---- Heading + shared email input. Hoisted out of the password branch so
@@ -66,6 +71,9 @@ _ref:
                 properties:
                   content: Create your account
                   level: 3
+              # Locked on an address-bound entry: the account has to be created
+              # on the address the invitation was sent to, so the field states
+              # it rather than inviting a value that cannot work.
               - id: email
                 type: TextInput
                 visible:
@@ -77,10 +85,22 @@ _ref:
                   type: email
                   size: large
                   suffixIcon: AiOutlineMail
+                  disabled:
+                    _ne:
+                      - _url_query: email
+                      - null
                   label:
                     title: Email
                     colon: false
                     span: 24
+                    extra:
+                      _if:
+                        test:
+                          _ne:
+                            - _url_query: email
+                            - null
+                        then: Your invitation was sent to this address.
+                        else: null
             else: []
 
         # ---- "Use a password" chooser button. Only when password AND at least one
@@ -426,12 +446,19 @@ _ref:
                         verified: "1"
                         email:
                           _state: signup_email
+          # Only where the address is the user's to change, on an address-bound
+          # entry (`?email=`) starting over would mean registering a second
+          # account on an address the invitation cannot be accepted for.
           - id: signup_check_hint
             type: Html
             visible:
-              _eq:
-                - _state: signup_view
-                - check
+              _and:
+                - _eq:
+                    - _state: signup_view
+                    - check
+                - _eq:
+                    - _url_query: email
+                    - null
             properties:
               html: Wrong email? <a href="signup">Use a different email</a>
             style:
@@ -484,9 +511,13 @@ _ref:
               - id: signup_back_to_form
                 type: Button
                 visible:
-                  _eq:
-                    - _state: signup_view
-                    - link-sent
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - link-sent
+                    - _eq:
+                        - _url_query: email
+                        - null
                 properties:
                   title: Use a different email
                   block: true

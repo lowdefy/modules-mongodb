@@ -1,0 +1,58 @@
+# Pending invitations for the active organization. Row click opens the cancel
+# confirm. Expired rows stay listed rather than being hidden: an admin needs to
+# see that the link they sent has lapsed, and cancelling one is how they clear
+# the way for a fresh invitation.
+id: invitations_table
+type: AgGridBalham
+loading:
+  _not:
+    _request: get_invitations
+properties:
+  height: 28vh
+  overlayNoRowsTemplate: No pending invitations
+  rowStyle:
+    cursor: pointer
+  defaultColDef:
+    sortable: false
+    filter: false
+    resizable: true
+    cellStyle:
+      display: flex
+      alignItems: center
+  columnDefs:
+    - headerName: Email
+      field: email
+      flex: 2
+      minWidth: 220
+    - headerName: Invited by
+      field: inviter_name
+      flex: 1
+      minWidth: 160
+    - headerName: Status
+      field: status
+      width: 120
+      cell:
+        type: tag
+        colorMap:
+          Invited: blue
+          Expired: orange
+    - headerName: Expires
+      field: expires_at
+      width: 130
+      cell:
+        type: date
+        format: YYYY-MM-DD
+  rowData:
+    _request: get_invitations
+events:
+  onRowClick:
+    - id: set_selected_invitation
+      type: SetState
+      params:
+        selected_invitation:
+          _event: row
+    - id: open_cancel_modal
+      type: CallMethod
+      params:
+        blockId: cancel_invitation_modal
+        method: toggleOpen

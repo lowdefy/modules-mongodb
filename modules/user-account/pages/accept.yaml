@@ -34,17 +34,24 @@ _ref:
             - id: fetch_invitation
               type: Request
               params: get_invitation
-            - id: select_accept_view
+            # Read the row through `_request`, which indexes into the response
+            # array as expected. An `_actions: fetch_invitation.response.0` path
+            # does NOT — it yields the whole array, which renders as a blank
+            # inviter/org/email and makes every status branch below miss.
+            - id: set_invite
               type: SetState
               params:
                 invite:
-                  _actions: fetch_invitation.response.0
+                  _request: get_invitation.0
+            - id: select_accept_view
+              type: SetState
+              params:
                 accept_view:
                   _switch:
                     branches:
                       - if:
                           _eq:
-                            - _actions: fetch_invitation.response.0
+                            - _state: invite
                             - null
                         then: expired
                       - if:
@@ -54,17 +61,17 @@ _ref:
                         then: nosession
                       - if:
                           _eq:
-                            - _actions: fetch_invitation.response.0.status
+                            - _state: invite.status
                             - accepted
                         then: member
                       - if:
                           _ne:
-                            - _actions: fetch_invitation.response.0.status
+                            - _state: invite.status
                             - pending
                         then: expired
                       - if:
                           _ne:
-                            - _actions: fetch_invitation.response.0.email
+                            - _state: invite.email
                             - _user: email
                         then: expired
                     default: signedin
@@ -141,7 +148,13 @@ _ref:
           fontSize: 13
           color: "var(--ant-color-text-secondary)"
       # Sign up / sign in, then return to this page (invitationId preserved) so
-      # the signed-in render can accept.
+      # the signed-in render can accept. Both buttons also carry the invited
+      # address as `?email=`, which the signup and login pages prefill and lock:
+      # BetterAuth only accepts the invitation for a session on that address, so
+      # any other value is guaranteed to fail — and under `policy: tenant`
+      # registering a different address mints that user their own organization
+      # (no membership, no pending invitation for it), leaving them with an
+      # unusable invitation and an organization nobody asked for.
       - id: accept_signup
         type: Button
         visible:
@@ -172,12 +185,15 @@ _ref:
                     else:
                       _module.pageId: login
                 urlQuery:
+                  email:
+                    _state: invite.email
+                  # The engine consumes `?callbackUrl=` raw, so the value has to
+                  # carry `basePath` itself. Take the live URL rather than
+                  # rebuilding it from the page id, which would drop it.
                   callbackUrl:
                     _string.concat:
-                      - "/"
-                      - _module.pageId: accept
-                      - "?invitationId="
-                      - _url_query: invitationId
+                      - _location: pathname
+                      - _location: search
       - id: accept_login
         type: Button
         visible:
@@ -197,12 +213,15 @@ _ref:
                 pageId:
                   _module.pageId: login
                 urlQuery:
+                  email:
+                    _state: invite.email
+                  # The engine consumes `?callbackUrl=` raw, so the value has to
+                  # carry `basePath` itself. Take the live URL rather than
+                  # rebuilding it from the page id, which would drop it.
                   callbackUrl:
                     _string.concat:
-                      - "/"
-                      - _module.pageId: accept
-                      - "?invitationId="
-                      - _url_query: invitationId
+                      - _location: pathname
+                      - _location: search
 
       # ---- Signed in, email matches ----
       - id: accept_title_signedin

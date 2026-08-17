@@ -1,4 +1,8 @@
 # Read-only usage — the events module owns writes to this collection.
+#
+# Scoped, never shared: `get_last_contact` matches events by `deal_ids` alone,
+# which is not an organization boundary — unscoped, it reads every
+# organization's events.
 id: events-collection
 type: MongoDBCollection
 properties:

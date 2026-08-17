@@ -4,6 +4,7 @@
 # engine steps, never this connection.
 id: user-accounts
 type: MongoDBCollection
+tenant: shared # provider links belong to the global user
 properties:
   databaseUri:
     _secret: MONGODB_URI

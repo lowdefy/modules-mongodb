@@ -1,0 +1,11 @@
+fields:
+  show_honorific: true
+  profile:
+    _ref: modules/shared/profile/fields.yaml
+# OAuth provider display metadata layered over _build.authConfig.providers.
+providers:
+  - id: github
+    label: GitHub
+    icon: AiOutlineGithub
+request_stages:
+  write: []

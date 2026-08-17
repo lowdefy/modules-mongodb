@@ -3,6 +3,7 @@
 # Same-database co-location precondition applies (see module.lowdefy.yaml).
 id: user-accounts
 type: MongoDBCollection
+tenant: shared # provider links belong to the global user
 properties:
   databaseUri:
     _secret: MONGODB_URI

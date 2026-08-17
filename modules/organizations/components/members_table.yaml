@@ -1,0 +1,70 @@
+# Members of the active organization. Row click opens the member modal, which
+# is where the role change and the removal live — the grid itself stays a
+# read surface.
+id: members_table
+type: AgGridBalham
+loading:
+  _not:
+    _request: get_members
+properties:
+  height: 45vh
+  overlayNoRowsTemplate: No members
+  rowStyle:
+    cursor: pointer
+  defaultColDef:
+    sortable: false
+    filter: false
+    resizable: true
+    cellStyle:
+      display: flex
+      alignItems: center
+  columnDefs:
+    - headerName: Person
+      field: name
+      flex: 2
+      minWidth: 200
+      cell:
+        type: avatar
+        nameField: name
+        srcField: picture
+        idField: user_id
+    - headerName: Email
+      field: email
+      flex: 2
+      minWidth: 220
+    - headerName: Role
+      field: roles_list
+      flex: 1
+      minWidth: 180
+      cellRenderer:
+        _function:
+          __nunjucks:
+            template: >
+              <span style="display:inline-flex; gap:4px; flex-wrap:wrap; align-items:center">{% for r in roles %}<span style="display:inline-flex; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-color-border); background:var(--ant-color-fill-quaternary); color:var(--ant-color-text-secondary)">{{ r }}</span>{% else %}<span style="color:var(--ant-color-text-quaternary)">No role</span>{% endfor %}</span>
+            on:
+              roles:
+                __args: 0.data.roles_list
+    - headerName: Joined
+      field: signed_up
+      width: 130
+      cell:
+        type: date
+        format: YYYY-MM-DD
+  rowData:
+    _request: get_members
+events:
+  onRowClick:
+    - id: set_selected_member
+      type: SetState
+      params:
+        selected_member:
+          _event: row
+        member_roles:
+          _event: row.roles_list
+        member_org_role:
+          _event: row.org_role
+    - id: open_member_modal
+      type: CallMethod
+      params:
+        blockId: member_modal
+        method: toggleOpen

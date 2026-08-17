@@ -1,22 +1,33 @@
-# Auth testing — local infrastructure
+# Auth testing — environments
 
-Local, throwaway infrastructure for testing the demo app's BetterAuth flows
-(login, signup, email verification, password reset, magic-link, 2FA, passkeys,
-invitations) end-to-end, without touching any real database or sending real
-email.
+Infrastructure for testing the BetterAuth flows (login, signup, email
+verification, password reset, magic-link, 2FA, passkeys, invitations) end-to-end.
 
-Two containers, defined in [`docker-compose.yml`](./docker-compose.yml):
+Two environments, and they drive **different apps** — the deployment policy is
+the whole reason there are two:
 
-| Service     | Purpose                                   | Reach it at                                             |
-| ----------- | ----------------------------------------- | ------------------------------------------------------- |
-| **MongoDB** | Isolated, ephemeral auth + contact data   | `mongodb://localhost:27017/demo-auth-test`              |
-| **Mailpit** | Catches every auth email (SMTP sink + UI) | `http://localhost:8025` (web UI + API), SMTP on `:1025` |
+| Environment           | App                | Policy   | Use it for                                                                                          | Database                                 | Email                         |
+| --------------------- | ------------------ | -------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------- |
+| **Local rig** (§1–§7) | `apps/demo`        | `pinned` | Dev iteration — fast resets, scripted link extraction, throwaway data                               | local container `demo-auth-test`         | Mailpit sink (never forwards) |
+| **QA** (§8)           | `apps/tenant-demo` | `tenant` | Tester-facing passes ([`qa-test-plan.md`](../../designs/auth-tenancy-verification/qa-test-plan.md)) | Atlas `modules-mongodb-demo-tenant-test` | SendGrid → real inboxes       |
 
-> **Nothing here touches production.** The database is a fresh local container;
-> email goes to a sink that never forwards. This is the whole reason we run local
-> infra instead of pointing at a real cluster or SMTP provider.
+The local rig's tools are pinned-shape by construction: `bootstrap-admin` grants
+a `userAdminRole` that `tenant` forbids, and `reset-db` refuses a non-local host.
+The workspace surface (organization switcher, members, settings) only exists in
+`apps/tenant-demo`. Neither app can serve both passes — see
+[`docs/shared/org-scoping.md`](../../docs/shared/org-scoping.md).
+
+**The local rig touches nothing real** — a fresh local container plus a mail sink.
+That's the whole reason it exists. **The QA environment is different:** it sends
+real email and lives on a shared Atlas cluster. Read §8 before pointing anything
+at it.
+
+Each is driven entirely by its app's `.env` — the apps are env-driven end to end,
+so switching database or mail provider never means editing config.
 
 ---
+
+# Local rig — `apps/demo` (`pinned`)
 
 ## 1. Install Docker (macOS)
 
@@ -145,16 +156,16 @@ mongodb://localhost:27017
 Then open the **`demo-auth-test`** database. The collections you'll watch during
 testing:
 
-| Collection           | What's in it                                              |
-| -------------------- | --------------------------------------------------------- |
-| `user-contacts`      | The person record (profile, `lowercase_email`, contactId) |
-| `users`              | Auth identity (email, `emailVerified`, `banned`, profile) |
-| `user-members`       | This app's access (org membership, roles)                 |
-| `user-invitations`   | Pending / accepted / cancelled invites                    |
-| `user-sessions`      | Active sessions (has the bearer `token` — never surfaced) |
-| `user-accounts`      | Credential + linked-provider rows                         |
-| `user-passkeys`      | Registered passkeys                                       |
-| `user-organizations` | The pinned `demo` org row                                 |
+| Collection           | What's in it                                                     |
+| -------------------- | ---------------------------------------------------------------- |
+| `user-contacts`      | The person record (profile, `organizationId`, `lowercase_email`) |
+| `users`              | Auth identity (email, `emailVerified`, `banned`, profile)        |
+| `user-members`       | This app's access (org membership, roles)                        |
+| `user-invitations`   | Pending / accepted / cancelled invites                           |
+| `user-sessions`      | Active sessions (has the bearer `token` — never surfaced)        |
+| `user-accounts`      | Credential + linked-provider rows                                |
+| `user-passkeys`      | Registered passkeys                                              |
+| `user-organizations` | The pinned `demo` org row                                        |
 
 Compass has a live-refresh toggle per collection — handy for watching a document
 change as you click through a flow in the app.
@@ -199,6 +210,10 @@ root workspace and is a no-op for these scripts.)
 
 All three read `MONGODB_URI` (default `mongodb://localhost:27017/demo-auth-test`)
 and `MAILPIT_URL` (default `http://localhost:8025`) from the environment.
+
+**All three are local-rig tools.** `mail-link` speaks Mailpit's API, `reset-db`
+refuses a non-local host, and `bootstrap-admin` grants a role the QA environment's
+tenant policy doesn't use. §8 covers the QA equivalents.
 
 ### `bootstrap-admin` — make the first user an admin
 
@@ -247,7 +262,7 @@ pnpm mail-link --json                   # raw message metadata + all links found
 
 ---
 
-## Troubleshooting
+## Troubleshooting (local rig)
 
 - **Port already in use (27017 / 1025 / 8025):** another Mongo/mail service is
   running. Stop it, or remap the host port in `docker-compose.yml` (e.g.
@@ -264,3 +279,112 @@ pnpm mail-link --json                   # raw message metadata + all links found
 - **Blank contact data everywhere in the app:** the co-location precondition is
   broken — some connection is resolving a different `MONGODB_URI`/database. Check
   §3a.
+
+---
+
+# QA environment — `apps/tenant-demo` (`tenant`)
+
+## 8. Atlas + SendGrid — tester-facing passes
+
+The environment [`qa-test-plan.md`](../../designs/auth-tenancy-verification/qa-test-plan.md)
+runs against. It differs from the local rig in the three ways that matter:
+
+- **A different app.** `apps/tenant-demo`, not `apps/demo` — the workspace surface
+  the plan's §2–§5 exercise exists only there, and its `slug` is `tenant-demo`, so
+  it writes its own `created.app_name` / workflow `access` axis.
+- **Real email.** SendGrid delivers to real inboxes, so a tester can click links
+  from their own mail client. The plan's "4 email addresses you can actually read"
+  precondition depends on this.
+- **A shared Atlas cluster.** The database is `modules-mongodb-demo-tenant-test`.
+  It is not a container you can throw away, and the cluster hosts other databases.
+
+### 8a. Secrets (`apps/tenant-demo/.env`)
+
+Same `LOWDEFY_SECRET_` mechanism as §3a — only the values differ:
+
+```sh
+LOWDEFY_SECRET_MONGODB_URI="mongodb://…/modules-mongodb-demo-tenant-test?…"
+LOWDEFY_SECRET_SMTP_HOST="smtp.sendgrid.net"
+LOWDEFY_SECRET_SMTP_PORT="465"
+LOWDEFY_SECRET_SMTP_SECURE="true"      # implicit TLS on :465 — see §3b on why this is a string
+LOWDEFY_SECRET_SMTP_USER="apikey"      # literal "apikey" for SendGrid
+LOWDEFY_SECRET_SMTP_PASS="<sendgrid key>"
+```
+
+`AUTH_FROM_ADDRESS` must be an address SendGrid will send as (a verified sender or
+a domain you've authenticated), or every auth email silently fails to deliver.
+
+### 8b. Tenant policy
+
+`apps/tenant-demo` runs `auth.organizations.policy: tenant` — a fresh signup mints
+its own organization and invited users join the inviter's. That's the mode the QA
+plan's workspace sections exercise; nothing needs enabling.
+
+Two consequences for the helper scripts:
+
+- **`bootstrap-admin` is not needed.** `userAdminRole` is forbidden under `tenant`,
+  and there's no pinned org to join. Grant roles from `/organizations/members`
+  instead — that's what the plan's §6.1 tells the tester to ask for.
+- **The user-admin console's writes refuse at runtime** by design (no engine
+  step-floor under `tenant`). The plan's §6 treats every refusal as a pass.
+
+### 8c. Indexes
+
+Already created on `modules-mongodb-demo-tenant-test`:
+
+| Collection      | Index                                                                            |
+| --------------- | -------------------------------------------------------------------------------- |
+| `user-contacts` | `{organization_id, lowercase_email}` unique, partial on `lowercase_email` exists |
+| `user-contacts` | `{organization_id, user_id}` unique, partial on `user_id` exists                 |
+
+They enforce per-workspace contact uniqueness — the invariant behind the plan's
+§3.4 (no duplicate pending row) and §5.4 (the same email in two workspaces). The
+`createIndex` command in the campaign's
+[Phase 0](../../designs/users/auth-testing/tasks/00-environment-bootstrap.md)
+targets the local container and is not part of this environment's setup.
+(Indexes created before the snake_case data-plane flip used the `organizationId`
+/ `userId` spellings — a fresh environment needs the snake_case shapes.)
+
+### 8d. Reading the data
+
+Connect Compass with the Atlas URI from `.env` and open
+`modules-mongodb-demo-tenant-test`. The collection guide in §4 applies, with one
+correction: `user-organizations` holds **one row per workspace**, not a single
+pinned `demo` row.
+
+### 8e. Serving it
+
+Serve a production build, not the dev server:
+
+```sh
+pnpm ldf:b && pnpm ldf:s      # from apps/tenant-demo/ — serves on port 3003
+```
+
+`ldf:d` intermittently leaves a page stuck on a "building page" screen — a
+dev-server artifact that reads as an app bug to a tester (logged as K3 in the QA
+plan). A production build removes it.
+
+### 8f. Resetting between passes
+
+There is no guarded script for this. `reset-db` structurally cannot reach a remote
+host, and that guard stays — it's the only thing standing between a stray
+`MONGODB_URI` and a wiped cluster.
+
+Clearing the QA database is therefore a deliberate, explicit act. It keeps
+collections and indexes:
+
+```sh
+mongosh "<the Atlas URI from .env>" --quiet --eval '
+  db.getCollectionNames().forEach((n) => {
+    print(`${n}: cleared ${db[n].deleteMany({}).deletedCount}`);
+  });
+'
+```
+
+Sign every tester out first — clearing `user-sessions` invalidates live sessions
+mid-flow, which surfaces as confusing errors rather than a clean sign-out.
+
+A tester-facing pass wants a clean slate: unconsumed invitations, verification
+tokens, enrolled 2FA and stale workspaces all persist, and leftovers make the
+plan's §5 data-separation checks unreadable — you can't tell a leak from a
+left-over row.

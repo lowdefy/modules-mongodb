@@ -15,8 +15,12 @@ const config = {
   testPathIgnorePatterns: [
     "/node_modules/",
     "/dist/",
-    "/apps/demo/\\.lowdefy/",
-    "/apps/demo/e2e/",
+    // Git worktrees live under .worktrees/, so every suite in the main tree has
+    // a copy there for each checked-out branch. Without this, `pnpm test` runs
+    // the same suites once per worktree against that branch's sources.
+    "/\\.worktrees/",
+    "/apps/[^/]+/\\.lowdefy/",
+    "/apps/[^/]+/e2e/",
   ],
   // Transform ESM deps under node_modules that ship raw `export` syntax
   // (community-plugin-mongodb and friends are dual ESM; @swc/jest re-compiles

@@ -29,12 +29,16 @@ An Atlas Search index named **`default`** — no `$search` stage in the module n
         "type": "document",
         "fields": { "name": { "type": "string" } }
       },
-      "lowercase_email": { "type": "string" }
+      "lowercase_email": { "type": "string" },
+      "organization_id": { "type": "token" },
+      "_id": { "type": "token" }
     }
   },
   "storedSource": true
 }
 ```
+
+**`organization_id` and `_id` serve `compound.filter`, not the text search.** Every `$search` here is emitted unconditionally (see [Search](../../shared/search.md)), so its compound always carries one `filter` clause — and Atlas refuses a compound whose clause lists are all empty. Under `auth.organizations.policy: tenant` that clause is a string `equals` on `organization_id`, the authored tenant clause the wall audits on every run; under `pinned` it is `exists` on `_id`, a match-all that narrows nothing. `dynamic: false` maps neither by default and a string `equals` requires a `token` mapping specifically, so both are listed explicitly. Keep both regardless of the policy the app runs today — an index missing the `organization_id` mapping blanks every list page the moment a deployment flips to `tenant`, fail-closed and silent.
 
 `profile.name` and `lowercase_email` are the only mapped fields, and both as `string` — they are the two text paths every `$search` in this module searches, with a `text` clause for whole-token relevance and a `wildcard: *term*` clause for substring matching. Nothing else needs mapping: the structural filters (`hidden`, `disabled`, the selector's `global_attributes.company_ids` scope, its `filter` var, and any consumer `request_stages.filter_match` clauses) are plain `$match` clauses, so `mongot` never evaluates them and needs no `token` mappings for them.
 
@@ -59,10 +63,9 @@ The contract is therefore **whole-document** stored source, expressed as `"store
 
 ## Regular `mongod` indexes
 
-These matter in two situations, both of which bypass `$search` entirely:
+These matter in **fallback mode**, now the only situation that bypasses `$search` entirely. With `atlas_search: false` there is no `$search` stage: the request is a plain `$match` + `$sort`, and text matching becomes a `$regex` `$or` inside that same `$match`.
 
-- **The browse path on Atlas.** With no search term the requests skip `$search` entirely and run as a plain `$match` + `$sort`; only an actual text query goes to `mongot`.
-- **Fallback mode.** With `atlas_search: false` there is no `$search` at all; text matching becomes a `$regex` `$or` inside the same `$match`.
+With `atlas_search: true` every load goes to `mongot` instead, term or no term. The `$search` stage is emitted unconditionally so that its `tenant: authored` declaration holds on the browse path as well as the search path — see [Search](../../shared/search.md). There is therefore no Atlas browse path left for these indexes to serve.
 
 | Index                                 | Sort it mirrors                              |
 | ------------------------------------- | -------------------------------------------- |

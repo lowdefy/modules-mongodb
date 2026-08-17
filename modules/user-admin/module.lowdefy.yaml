@@ -245,7 +245,7 @@ exports:
       description: Read-only connection for the auth `user-passkeys` collection
   api:
     - id: invite
-      description: Create invitation (reconcile stale expired → create-or-link contact → InviteMember)
+      description: Create invitation (reconcile stale expired → ensure contact → InviteMember)
     - id: check-invite-email
       description: Resolve an email to one of four invite states
     - id: cancel-invitation

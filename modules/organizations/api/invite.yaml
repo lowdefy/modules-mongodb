@@ -1,0 +1,53 @@
+# invite — ensure the invitee has a contact in the caller's ACTIVE organization,
+# then send the invitation. One endpoint for both halves: member writes are
+# server-side auth steps (the engine floors each against the caller's member row
+# in the organization the step names), so the invitation no longer needs a
+# client-action half split off from the contact mint.
+#
+# The mint runs first because it is the idempotent half — it reconciles on
+# duplicate key, so a failure at InviteMember leaves nothing to undo and a retry
+# converges. Minting at all is what makes the invited person visible in this
+# org's contact lists immediately rather than only once they accept.
+#
+# The shared fragment is spliced with NO `organization_id` var: the connection
+# is walled, the caller is a logged-in member with the target org active, so the
+# wall stamps the organization mechanically. Passing one here would be rejected.
+# Nothing is written onto the invitee's auth user, here or at accept — a contact
+# is addressed by {organization_id, lowercase_email}, so the row minted here is
+# already the one that resolves for them once they are in this organization.
+#
+# `appRoles` is the app-role id array the member row is minted with at accept;
+# the organization-authority tier is granted afterwards from the member modal,
+# so no `orgRole` rides the invitation (the engine defaults the tier to
+# `member`, no authority). `organizationId` is explicit: under the `tenant`
+# policy there is no pinned organization for the step to default to.
+#
+# BetterAuth sends the invitation email itself (auth.email + the invitation
+# template); this module ships no email wiring.
+#
+# Payload: { email, roles (array of app-role ids) }
+id: invite
+type: Api
+routine:
+  - _ref:
+      path: ../shared/contact/ensure-contact.yaml
+      vars:
+        connection_id:
+          _module.connectionId: user-contacts-collection
+        email:
+          _payload: email
+
+  - id: invite_member
+    type: InviteMember
+    properties:
+      email:
+        _payload: email
+      organizationId:
+        _user: organization_id
+      appRoles:
+        _if_none:
+          - _payload: roles
+          - []
+
+  - :return:
+      success: true

@@ -4,6 +4,7 @@
 # precondition applies (see module.lowdefy.yaml).
 id: user-organizations
 type: MongoDBCollection
+tenant: shared # the switcher lists every organization the caller belongs to; scoped, it collapses to the active one
 properties:
   databaseUri:
     _secret: MONGODB_URI

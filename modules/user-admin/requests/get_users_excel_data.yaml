@@ -22,7 +22,11 @@ properties:
   pipeline:
     _build.array.concat:
       # Member rows.
-      - _ref: requests/stages/members_base.yaml
+      - _ref:
+          path: ../shared/org/members_base.yaml
+          vars:
+            org_value:
+              _module.var: org_slug
       - - $addFields:
             roles:
               $trim:
@@ -45,7 +49,11 @@ properties:
             coll: user-invitations
             pipeline:
               _build.array.concat:
-                - _ref: requests/stages/invitations_base.yaml
+                - _ref:
+                    path: ../shared/org/invitations_base.yaml
+                    vars:
+                      org_value:
+                        _module.var: org_slug
                 - - $addFields:
                       name: null
                       roles:

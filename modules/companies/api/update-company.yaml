@@ -11,6 +11,13 @@ routine:
         then:
           - id: cycle_check
             type: MongoDBAggregation
+            # Authored org clause (tenant wall amendment-1): $graphLookup
+            # traverses the collection by name, outside the wall's entry
+            # $match — this step authors restrictSearchWithMatch below via the
+            # shared policy fragment (compiled out under `pinned`); under
+            # `tenant` the wall audits it against the caller's org on every
+            # run.
+            tenant: authored
             connectionId:
               _module.connectionId: companies-collection
             properties:
@@ -29,16 +36,25 @@ routine:
                           - _payload: parent_ids
                           - []
                 - $graphLookup:
-                    from:
-                      _ref:
-                        path: connections/companies-collection.yaml
-                        key: properties.collection
-                    startWith: "$_id"
-                    connectFromField: parent_ids
-                    connectToField: _id
-                    maxDepth:
-                      _module.var: hierarchy.max_depth
-                    as: __ancestors
+                    _build.object.assign:
+                      - from:
+                          _ref:
+                            path: connections/companies-collection.yaml
+                            key: properties.collection
+                        startWith: "$_id"
+                        connectFromField: parent_ids
+                        connectToField: _id
+                        maxDepth:
+                          _module.var: hierarchy.max_depth
+                        as: __ancestors
+                      # The authored tenant clause — resolved by the shared
+                      # policy fragment: restrictSearchWithMatch is present
+                      # under `tenant` (audited by the wall, enforced on every
+                      # traversal step) and absent under `pinned`.
+                      - _ref:
+                          path: ../shared/org/tenant-clause.yaml
+                          vars:
+                            shape: graphlookup_restrict
                 - $project:
                     has_cycle:
                       $in:

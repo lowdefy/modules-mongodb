@@ -22,6 +22,7 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [notifications](../modules/notifications/README.md) | Bell, inbox, deep-link routing, configurable send routine                                                            |
 | [user-account](../modules/user-account/README.md)   | Self-service auth pages (login, signup, password reset, verify email, 2FA, accept, logout) + account workspace       |
 | [user-admin](../modules/user-admin/README.md)       | Operator console for a person's access lifecycle in one organization — members/invitations list, user detail, invite |
+| [organizations](../modules/organizations/README.md) | Self-serve org workspace for tenant apps — members, invites, rename, org switcher (per-org, tenant policy only)      |
 | [contacts](../modules/contacts/README.md)           | Contact management — list, detail, edit, create, selector                                                            |
 | [companies](../modules/companies/README.md)         | Company management — list, detail, edit, create, selector                                                            |
 | [activities](../modules/activities/README.md)       | CRM activities — calls, meetings, emails logged against contacts and companies                                       |
@@ -38,6 +39,8 @@ graph TD
   user-account --> events
   user-admin --> layout
   user-admin --> events
+  organizations --> layout
+  organizations --> user-account
   notifications --> layout
   contacts --> layout
   contacts --> events
@@ -72,6 +75,7 @@ A few notes on the shape:
 | --------------------------------------------------------------------------- | ------------------------------------------- |
 | A login page and a profile page                                             | `layout`, `events`, `user-account`          |
 | To invite and manage users                                                  | + `user-admin`                              |
+| Tenants managing their own members, roles, and org name                     | + `organizations` (needs `policy: tenant`)  |
 | A bell and inbox for in-app messages                                        | + `notifications`                           |
 | Contact management with company links                                       | + `contacts`, `companies`, `files`          |
 | File attachments on any entity                                              | + `files`                                   |
@@ -112,11 +116,13 @@ modules:
 
 Each entry pins a `source` (GitHub ref or local `file:` path), passes `vars`, and optionally remaps `dependencies` and `connections` when entry IDs don't match the names declared in the module manifest. See <https://docs.lowdefy.com/modules> for the full module-system reference.
 
-Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. The [`docs/shared/`](shared/) folder covers the shared patterns (`change_stamp`, soft delete, `event_display`, slot vars, [app slug scoping](shared/app-name.md), avatar colors, secrets) that most modules use.
+Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. The [`docs/shared/`](shared/) folder covers the shared patterns (`change_stamp`, soft delete, `event_display`, slot vars, [app slug scoping](shared/app-name.md), avatar colors, secrets, [organization scoping](shared/org-scoping.md)) that most modules use.
 
 ## See it in action
 
-`apps/demo/` wires every module together against MongoDB. It's the canonical worked example — match its `vars.yaml` files in `apps/demo/modules/{module}/vars.yaml` for each module's input.
+`apps/demo/` wires the modules together against MongoDB under `auth.organizations.policy: pinned`. It's the canonical worked example — match its `vars.yaml` files in `apps/demo/modules/{module}/vars.yaml` for each module's input.
+
+`apps/tenant-demo/` is the same module set under `policy: tenant`, and additionally wires the [`organizations`](organizations/) module (workspace switcher, members, settings) — the surface that only exists in a multi-organization deployment. See [organization scoping](shared/org-scoping.md) for what changes between the two.
 
 ## Plugins
 

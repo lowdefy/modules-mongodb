@@ -1,0 +1,109 @@
+atlas_search:
+  _ref:
+    path: app_config.yaml
+    key: atlas_search
+label: Company
+label_plural: Companies
+hierarchy:
+  enabled: true
+fields:
+  registration:
+    _ref: ../../modules/companies/field-presets/registration-sa.yaml
+  contact:
+    _ref: ../../modules/companies/field-presets/contact-default.yaml
+  address:
+    _ref: ../../modules/companies/field-presets/address-text.yaml
+  attributes:
+    - id: attributes.industry
+      type: Selector
+      properties:
+        title: Industry
+        options:
+          - Manufacturing
+          - Services
+          - Retail
+event_display:
+  tenant-demo:
+    create-company: "{{ user.profile.name }} created company {{ target.name }}"
+    update-company: "{{ user.profile.name }} updated company {{ target.name }}"
+# PR #93: consumer stages spliced into the company-selector aggregation
+# after the base active-company $match and before the label projection, so
+# they can filter on raw document fields — here, keeping app-archived
+# companies out of selector pickers (harmless on demo data where no doc
+# carries the marker; demonstrates the extension point).
+request_stages:
+  selector:
+    - $match:
+        archived:
+          $ne: true
+on_create_routine:
+  # company-setup is started by the deal's track-company-setup tracker (via the
+  # start-company-setup page) on the deal's existing company — NOT on every
+  # company creation. Guarded on a parent action_id so a plain company create
+  # doesn't spawn an orphan company-setup workflow.
+  - ":if":
+      _ne:
+        - _payload: url_query.action_id
+        - null
+    ":then":
+      - id: start_company_setup
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId: { id: company-setup-start, module: workflows }
+          payload:
+            entity:
+              id:
+                _step: insert.insertedId
+            parent_action_id:
+              _payload: url_query.action_id
+components:
+  sidebar_slots:
+    - _ref:
+        module: layout
+        component: card
+        vars:
+          title: Workflows
+          blocks:
+            - _ref:
+                module: workflows
+                component: actions-on-entity
+                vars:
+                  entity_id:
+                    _url_query: _id
+                  entity_connection_id:
+                    _module.connectionId:
+                      { id: companies-collection, module: companies }
+    - _ref:
+        module: activities
+        component: tile_activities
+        vars:
+          reference_field: company_ids
+          reference_value:
+            _url_query: _id
+          prefill:
+            company_ids:
+              - _url_query: _id
+          on_created:
+            - id: refetch_events
+              type: Request
+              params: get-events
+    # Page owns the single check-action modal drop and its on_complete (Part 55
+    # D1). The co-present activities tile keeps its own on_created refetch and
+    # stays out of on_complete — a check submit changes workflow state, not
+    # activities — so only the action steps (actions-on-entity) refresh here.
+    - _ref:
+        module: workflows
+        component: check-action-modal
+        vars:
+          on_complete:
+            _build.array.concat:
+              - _ref:
+                  module: workflows
+                  component: entity-workflows-refetch
+                  vars:
+                    entity_id:
+                      _url_query: _id
+                    entity_connection_id:
+                      _module.connectionId:
+                        { id: companies-collection, module: companies }

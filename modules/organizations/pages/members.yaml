@@ -1,0 +1,69 @@
+# `members` page — the active organization's members and pending invitations.
+#
+# Everything here is per-org: the reads scope themselves to the caller's active
+# organization, and every mutation is a per-org client action BetterAuth
+# authorizes against the caller's member role in that organization. The
+# owner/admin gate below only decides what renders; it is not the boundary.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: members
+    content_width: 1200
+    title: Members
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Members
+    requests:
+      - _ref: requests/get_members.yaml
+      - _ref: requests/get_invitations.yaml
+      - _ref: requests/get_my_member.yaml
+    events:
+      onMountAsync:
+        - id: fetch_my_member
+          type: Request
+          params: get_my_member
+        - id: fetch_members
+          type: Request
+          params: get_members
+        - id: fetch_invitations
+          type: Request
+          params: get_invitations
+    page_actions:
+      - id: invite_member_btn
+        type: Button
+        layout:
+          flex: 0 1 auto
+        visible:
+          _request: get_my_member.0.is_org_admin
+        properties:
+          title: Invite member
+          icon: AiOutlinePlus
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            - id: open_invite_modal
+              type: CallMethod
+              params:
+                blockId: invite_modal
+                method: toggleOpen
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: Members
+            blocks:
+              - _ref: components/members_table.yaml
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: Pending invitations
+            blocks:
+              - _ref: components/invitations_table.yaml
+      - _ref: components/invite_modal.yaml
+      - _ref: components/member_modal.yaml
+      - _ref: components/cancel_invitation_modal.yaml

@@ -1,13 +1,19 @@
 # Account read (design Decision 5): the caller's own auth user row joined to
 # their contact, the spine of the workspace. Native read over `users` filtered to
 # the caller (`_user.id`, a plain string: this deployment stores ids as strings,
-# no ObjectId coercion), joined to `user-contacts` by `profile.contactId`. Feeds:
+# no ObjectId coercion), joined to `user-contacts` on {organization_id,
+# lowercase_email}, the contact key. The organization clause is authored here
+# because `users` is an unwalled connection and a `$lookup` is never scoped by the
+# tenant wall, so an unqualified join would read another organization's row. It is
+# policy-conditional (shared fragment): present under `tenant`, absent under
+# `pinned`, where contacts carry no organization_id.
+# Feeds:
 #   profile        : the contact profile subdoc (profile tile display + edit-modal
 #                    seed; display reads the contact directly, Decision 5)
 #   email          : the login identity, from the auth user row (display only)
 #   email_verified : Security-tile verified badge / resend gate
 #   two_factor_enabled : Security-tile 2FA on/off state
-#   contact_id     : the own-contact id (also on _user.profile.contactId)
+#   contact_id     : the caller's contact id in the active organization
 #   name           : the title-block display name, falling back to the auth user's
 #                    own name so a not-yet-onboarded caller still gets a title
 #                    (the same chain the members_base stage uses)
@@ -24,8 +30,25 @@ properties:
     - $limit: 1
     - $lookup:
         from: user-contacts
-        localField: profile.contactId
-        foreignField: _id
+        let:
+          caller_id: "$_id"
+          caller_email:
+            $toLower: "$email"
+        pipeline:
+          - $match:
+              _build.object.assign:
+                - _ref:
+                    path: ../shared/org/tenant-clause.yaml
+                    vars:
+                      shape: match
+                - $expr:
+                    _ref:
+                      path: ../shared/contact/contact-match-expr.yaml
+                      vars:
+                        contact_user_id_expr: "$user_id"
+                        contact_email_expr: "$lowercase_email"
+                        person_id_expr: "$$caller_id"
+                        person_email_expr: "$$caller_email"
         as: contact
     - $unwind:
         path: "$contact"
@@ -41,7 +64,7 @@ properties:
           $eq:
             - "$two_factor_enabled"
             - true
-        contact_id: "$profile.contactId"
+        contact_id: "$contact._id"
         name:
           $ifNull:
             - "$contact.profile.name"

@@ -60,6 +60,10 @@ async function commitWorkflowAndActions(context, plan, session) {
   const workflowsCollection =
     context.connection?.workflowsCollection ?? "workflows";
   const actionsCollection = context.connection?.actionsCollection ?? "actions";
+  // Tenant verdict (tenant-wall contract): inserts are org-stamped and update
+  // filters org-scoped by the mongo/ wrappers, so no commit write can land on
+  // or spawn a doc outside the caller's org.
+  const tenant = context.tenant ?? null;
 
   // Workflow-less plan (Part 24 UpdateActionFields): no workflow doc is written
   // — summary/groups/form_data are unaffected by action metadata. Skip step 1
@@ -73,6 +77,7 @@ async function commitWorkflowAndActions(context, plan, session) {
       collection: actionsCollection,
       operations: actionOperations,
       session,
+      tenant,
     });
     return;
   }
@@ -87,6 +92,7 @@ async function commitWorkflowAndActions(context, plan, session) {
       collection: workflowsCollection,
       doc: plannedWorkflowDoc,
       session,
+      tenant,
     });
   } else {
     // update (Submit/Cancel/Close/tracker): CAS-gated findOneAndUpdate.
@@ -100,6 +106,7 @@ async function commitWorkflowAndActions(context, plan, session) {
       },
       update: { $set: plannedWorkflowDoc },
       session,
+      tenant,
     });
     if (claimed === null) {
       // Concurrent write moved the workflow between load and commit.
@@ -116,6 +123,7 @@ async function commitWorkflowAndActions(context, plan, session) {
     collection: actionsCollection,
     operations: actionOperations,
     session,
+    tenant,
   });
 }
 
@@ -158,6 +166,9 @@ async function writeChangeLog(context, plan) {
     mongoDb: context.mongoDb,
     collection: context.connection.changeLog.collection,
     docs: plan.changeLog,
+    // Change-log rows are org-stamped too — harmless extra field on audit rows,
+    // and it keeps the log queryable behind the same wall.
+    tenant: context.tenant ?? null,
   });
 }
 
@@ -222,6 +233,8 @@ function buildCommitResult(plan, event_id, dispatchErrors, context) {
  *                               is the CAS anchor (D15)
  *   context.callApi           — Lowdefy callApi (community client, not engine session)
  *   context.user              — authenticated user
+ *   context.tenant            — framework tenant verdict ({ field, value } | null);
+ *                               threaded into every mongo/ wrapper write
  *
  * @param {Object} context
  * @param {import('./types.js').Plan} plan

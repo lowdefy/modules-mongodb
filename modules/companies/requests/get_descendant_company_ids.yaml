@@ -1,5 +1,11 @@
 id: get_descendant_company_ids
 type: MongoDBAggregation
+# Authored org clause (tenant wall amendment-1): $graphLookup traverses its
+# target collection by name, so the wall's entry $match can not constrain it —
+# this request authors the restrictSearchWithMatch clause below via the shared
+# policy fragment (compiled out under `pinned`); under `tenant` the wall
+# audits it against the caller's org on every run.
+tenant: authored
 connectionId:
   _module.connectionId: companies-collection
 payload:
@@ -24,16 +30,25 @@ properties:
         deleted.timestamp:
           $exists: false
     - $graphLookup:
-        from:
-          _ref:
-            path: connections/companies-collection.yaml
-            key: properties.collection
-        startWith: "$_id"
-        connectFromField: _id
-        connectToField: parent_ids
-        maxDepth:
-          _module.var: hierarchy.max_depth
-        as: __descendants
+        _build.object.assign:
+          - from:
+              _ref:
+                path: connections/companies-collection.yaml
+                key: properties.collection
+            startWith: "$_id"
+            connectFromField: _id
+            connectToField: parent_ids
+            maxDepth:
+              _module.var: hierarchy.max_depth
+            as: __descendants
+          # The authored tenant clause — resolved by the shared policy
+          # fragment: restrictSearchWithMatch is present under `tenant`
+          # (audited by the wall, enforced by MongoDB on every traversal
+          # step) and absent under `pinned`.
+          - _ref:
+              path: ../shared/org/tenant-clause.yaml
+              vars:
+                shape: graphlookup_restrict
     - $project:
         ids:
           $concatArrays:
