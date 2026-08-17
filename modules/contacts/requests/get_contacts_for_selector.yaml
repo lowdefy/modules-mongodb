@@ -6,10 +6,20 @@ properties:
   pipeline:
     _build.array.concat:
       - - $match:
-            hidden:
-              $ne: true
-            disabled:
-              $ne: true
+            _object.assign:
+              - hidden:
+                  $ne: true
+                disabled:
+                  $ne: true
+              # Dropped entirely when exclude_users_from_selectors is off, so
+              # the compiled $match is unchanged for apps leaving it unset.
+              - _build.if:
+                  test:
+                    _module.var: exclude_users_from_selectors
+                  then:
+                    $expr:
+                      _ref: requests/stages/expr_not_user_record.yaml
+                  else: {}
       # Consumer stages (request_stages.selector, default []) run BEFORE the
       # label projection so they can filter/derive on raw document fields —
       # e.g. excluding contacts that are also app users from a picker. After
