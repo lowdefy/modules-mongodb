@@ -43,14 +43,12 @@ _ref:
               color: "var(--ant-color-text-secondary)"
           - _ref: ../shared/profile/avatar-picker.yaml
         # ---- Core profile fields (shared form_core, same capture as the
-        # profile edit modal). stack_honorific drops the honorific onto its own
-        # row above the 50/50 names so the row reads well in the narrow card. ----
+        # profile edit modal): honorific + first + last inline on one row. ----
         - _ref:
             path: ../shared/profile/form_core.yaml
             vars:
               show_honorific:
                 _module.var: fields.show_honorific
-              stack_honorific: true
         # ---- Deployment-configured profile field blocks ----
         - _module.var: fields.profile
         # ---- Submit ----
