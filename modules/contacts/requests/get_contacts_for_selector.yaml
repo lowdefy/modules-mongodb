@@ -11,11 +11,14 @@ properties:
                   $ne: true
                 disabled:
                   $ne: true
-              # Dropped entirely when exclude_users_from_selectors is off, so
-              # the compiled $match is unchanged for apps leaving it unset.
+              # Dropped entirely when exclude_users_from_selectors is `none`,
+              # so the compiled $match is unchanged for apps leaving it unset.
+              # The stage file picks the this-app / any-app expression itself.
               - _build.if:
                   test:
-                    _module.var: exclude_users_from_selectors
+                    _build.ne:
+                      - _module.var: exclude_users_from_selectors
+                      - none
                   then:
                     $expr:
                       _ref: requests/stages/expr_not_user_record.yaml

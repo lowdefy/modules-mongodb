@@ -1,6 +1,12 @@
-# Aggregation expression — true when the contact is NOT a user record of this
-# app. Used by get_contacts_for_selector and get_role_contacts_for_selector
-# when `exclude_users_from_selectors` is set.
+# Aggregation expression — true when the contact is NOT a user record, at the
+# scope `exclude_users_from_selectors` asks for. Used by
+# get_contacts_for_selector and get_role_contacts_for_selector whenever that
+# var is anything other than `none`.
+#
+#   this-app  a user of THIS app only (apps.<app_name>.is_user). A contact who
+#             is a user of a sibling app sharing the collection still lists.
+#   any-app   a user of ANY app (any apps.*.is_user). For apps that treat a
+#             user record as a user record regardless of which app owns it.
 #
 # Deliberately NOT used by search_contacts: adding a nested `_ref` to that
 # request — which is itself `_ref`'d with per-call vars from
@@ -9,23 +15,48 @@
 #
 # This is a bare expression, not a `$match` clause, so callers can drop it into
 # an `$expr` directly or fold it into an existing `$and`. It deliberately does
-# not carry its own `_build.if` guard — each caller decides what the disabled
-# case looks like (`{}` when merged into a `$match` object, `true` when used as
-# an `$and` operand), which keeps the pipeline free of an always-true `$expr`
-# for apps that leave the option off.
+# not carry the `none` guard — each caller decides what the disabled case looks
+# like (`{}` when merged into a `$match` object, `true` when used as an `$and`
+# operand), which keeps the pipeline free of an always-true `$expr` for apps
+# that leave the option off.
 #
-# `app_name` is build-time, so the field path resolves to a literal string
-# before Mongo sees it. A runtime dot-notation key is not expressible as a
-# `$match` key, which is why this is an expression rather than
-# `apps.<app>.is_user: { $ne: true }` — the same reason
-# get_role_contacts_for_selector matches roles through `$expr`.
-#
-# Missing flag means "not a user record", hence the `$ifNull` default of false.
-$ne:
-  - $ifNull:
-      - _string.concat:
-          - "$apps."
-          - _module.var: app_name
-          - ".is_user"
-      - false
-  - true
+# A missing flag means "not a user record", hence the `$ifNull` default of
+# false (this-app) and the empty-object default before `$objectToArray`
+# (any-app).
+_build.switch:
+  branches:
+    # any-app cannot name the app, so it walks the whole `apps` map, which
+    # needs `$objectToArray` to reach values under runtime keys. For an app
+    # entry carrying no flag `$$this.v.is_user` is missing rather than null,
+    # and `$eq` against `true` reads both as false.
+    - if:
+        _build.eq:
+          - _module.var: exclude_users_from_selectors
+          - any-app
+      then:
+        $not:
+          - $anyElementTrue:
+              - $map:
+                  input:
+                    $objectToArray:
+                      $ifNull:
+                        - "$apps"
+                        - {}
+                  in:
+                    $eq:
+                      - "$$this.v.is_user"
+                      - true
+  # this-app. `app_name` is build-time, so the field path resolves to a literal
+  # string before Mongo sees it. A runtime dot-notation key is not expressible
+  # as a `$match` key, which is why this is an expression rather than
+  # `apps.<app>.is_user: { $ne: true }` — the same reason
+  # get_role_contacts_for_selector matches roles through `$expr`.
+  default:
+    $ne:
+      - $ifNull:
+          - _string.concat:
+              - "$apps."
+              - _module.var: app_name
+              - ".is_user"
+          - false
+      - true

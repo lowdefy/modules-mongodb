@@ -10,7 +10,7 @@ Contact management — list, detail, edit, and create pages over the shared `use
 
 User records (`apps.{app_name}.is_user === true`, managed by `user-admin` and `user-account`) are not editable through this module — the edit page, the view page and `update-contact` all guard on the flag.
 
-They do still appear in listings by default. Set `exclude_users_from_selectors: true` to drop them from `basic-contact-selector` and `role-contact-selector`. The rich `contact-selector` is not covered by that flag — exclude them there per call site with its `filter` var. To drop them from the contacts list page as well, add a `$match` via `request_stages.get_all_contacts`.
+They do still appear in listings by default. Set `exclude_users_from_selectors` to drop them from `basic-contact-selector` and `role-contact-selector` — `this-app` drops users of this app (`apps.{app_name}.is_user`), `any-app` drops anyone flagged `is_user` under any key of the `apps` map, which is what you want when sibling apps share the collection. The rich `contact-selector` is not covered by that var — exclude them there per call site with its `filter` var. To drop them from the contacts list page as well, add a `$match` via `request_stages.get_all_contacts`.
 
 ## Dependencies
 

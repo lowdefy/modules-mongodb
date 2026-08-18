@@ -29,14 +29,17 @@ properties:
                               - []
                           - _var: roles
                     - 0
-                # Collapses to `true` when exclude_users_from_selectors is off,
-                # leaving `$and: [<roles>]` — what the bare `$gt` compiled to
-                # before. The roles check already needs `$expr`, and a `$match`
-                # takes only one `$expr` key, so the two fold together here
-                # rather than merging as separate clauses.
+                # Collapses to the literal `true` when
+                # exclude_users_from_selectors is `none`, leaving
+                # `$and: [<roles>, true]` — semantically the bare `$gt` this
+                # replaced. The roles check already needs `$expr`, and a
+                # `$match` takes only one `$expr` key, so the two fold together
+                # here rather than merging as separate clauses.
                 - _build.if:
                     test:
-                      _module.var: exclude_users_from_selectors
+                      _build.ne:
+                        - _module.var: exclude_users_from_selectors
+                        - none
                     then:
                       _ref: requests/stages/expr_not_user_record.yaml
                     else: true

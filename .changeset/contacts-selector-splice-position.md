@@ -16,11 +16,27 @@ between the base `$match` and the `$project`, matching
 That request had no extension point at all, so `role-contact-selector` could not
 be filtered from config.
 
-**New `exclude_users_from_selectors` var (boolean, default `false`).** Excludes
-this app's user records (`apps.<app_name>.is_user`) from
-`basic-contact-selector` and `role-contact-selector`. The motivating case is an
-app whose contacts collection also holds its user records and wants those out of
-the pickers while keeping them on the contacts list.
+**New `exclude_users_from_selectors` var (string, default `none`).** Drops user
+records from `basic-contact-selector` and `role-contact-selector`. The
+motivating case is an app whose contacts collection also holds user records and
+wants those out of the pickers while keeping them on the contacts list.
+
+- `none` — pickers list every active contact, including user records.
+- `this-app` — drops contacts flagged `apps.<app_name>.is_user`, i.e. users of
+  this app. Someone who is a user of a sibling app sharing the collection, but
+  not of this one, still lists.
+- `any-app` — drops contacts flagged `is_user` under **any** key of the `apps`
+  map. `app_name` cannot name the keys to sweep, so this compiles to an
+  `$objectToArray` over `$apps` rather than a literal field path.
+
+Which scope is right depends on whether a sibling app's user is a legitimate
+contact here. On a collection owned by one app the two are equivalent.
+
+The `enum` is documentation, not enforcement — the build accepts any string for
+a module var and does not check it against the manifest (`layout.page_type` has
+the same exposure). An unrecognised value is treated as `this-app`, which is
+also what a stale `exclude_users_from_selectors: true` from an earlier read of
+this branch resolves to.
 
 **Labels are null-guarded.** `$concat` returns null if any operand is null or
 missing, so a contact with no `profile.name` or no `email` rendered a blank,
@@ -51,9 +67,9 @@ before extending the rich selector.
 ## Compatibility
 
 **Unchanged where `selector` is unset and `exclude_users_from_selectors` is
-off** — the default `[]` contributes nothing to the concat, and the flag's
-clause is dropped from the `$match` rather than compiled as an always-true
-expression. That is every consumer in this repo today.
+`none`** — the default `[]` contributes nothing to the concat, and the
+user-record clause is dropped from the `$match` rather than compiled as an
+always-true expression. That is every consumer in this repo today.
 
 `get_role_contacts_for_selector`'s roles check now sits inside an `$and` (as
 `$and: [<roles>, true]`) so the optional user-record clause can join it — a
@@ -77,9 +93,18 @@ against the role-scoped one.
 
 ## Verification
 
-Built the demo app with `exclude_users_from_selectors: true` and a marker
-`selector` stage configured. Both selectors compile to
-`$match` (base + `$apps.demo.is_user`) → `$match` (marker) → `$project` →
-`$sort`. With both unset, the role selector compiles back to
-`$match` → `$project` → `$sort` with `$and: [<roles>, true]`, and no `apps.null`
-field paths appear anywhere in the build.
+Built the demo app at each scope, with a scratch page consuming
+`basic-contact-selector` (nothing in the demo does today) so both requests
+appear in the build output. All builds succeeded, and no `apps.null` field
+paths appear anywhere in any of them.
+
+| `exclude_users_from_selectors` | compiled `$expr` on the base `$match`                   |
+| ------------------------------ | ------------------------------------------------------- |
+| unset / `none`                 | basic: none at all. role: `$and: [<roles>, true]`        |
+| `this-app`                     | `$ne: [{$ifNull: ["$apps.demo.is_user", false]}, true]`  |
+| `any-app`                      | `$not: [{$anyElementTrue: [{$map: {input: {$objectToArray: {$ifNull: ["$apps", {}]}}, in: {$eq: ["$$this.v.is_user", true]}}}]}]` |
+
+Stage order is `$match` → consumer `selector` stages → `$project` → `$sort` in
+both requests; a marker `$match` spliced through `request_stages.selector`
+lands between the base match and the projection. The scratch page, demo vars
+and lockfile drift were reverted afterwards.
