@@ -1,0 +1,43 @@
+# delete-thread.yaml — delete the OPEN thread, drop it from the list, and mint a
+# fresh one so the panel stays usable. The key is captured first so the
+# list-filter step is unaffected by ai_conversation_id being replaced under it.
+- id: ai_capture_delete_target
+  type: SetState
+  params:
+    ai_delete_target: 
+      _state: ai_conversation_id
+
+- id: ai_delete_thread
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: delete-thread
+    payload:
+      conversationId:
+        _state: ai_delete_target
+
+- id: ai_drop_deleted_thread
+  type: SetState
+  params:
+    ai_thread_selection: null
+    ai_threads:
+      _js:
+        fn: |
+          const key = state('ai_delete_target');
+          return (state('ai_threads') || []).filter((c) => c.key !== key);
+        args: {}
+
+# Land in a fresh thread rather than an empty shell — the panel is open and the
+# user is mid-task, so there has to be somewhere to type.
+- id: ai_replace_active_thread
+  type: SetState
+  params:
+    ai_conversation_id:
+      _js:
+        fn: |
+          const scope = state('ai_scope') || 'global';
+          return `${scope}_${user('id')}_${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        args: {}
+    ai_messages: []
+    ai_title: New chat
+    ai_view: chat

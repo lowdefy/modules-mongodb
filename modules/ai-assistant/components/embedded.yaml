@@ -1,0 +1,149 @@
+# embedded.yaml — the same chat and thread lifecycle as `panel`, inline in a
+# page's own layout: a toolbar (thread name, rename, delete, new chat, manage
+# chats) over the chat area, with the thread list swapping in over the same
+# space. The page owns the container — put this inside whatever Card or column
+# the layout calls for.
+#
+# Mounting differs from the panel in one way: there is no "open" moment, so the
+# page splices the module's `enter` component into its onInit (after `state`) to
+# resume the most recent thread. Do NOT mount `panel` and `embedded` on the same
+# page — they share block ids and ai_* state on purpose (one thread history), so
+# a page gets one shell or the other. An app-wide launcher should be hidden (its
+# `visible` var) on pages that embed.
+#
+# The chrome buttons keep their labels here — unlike the 420px panel, an
+# embedded chat has the width, and a visible word beats an icon-only glyph.
+id: ai_embedded
+type: Box
+layout:
+  gap: 8
+blocks:
+  - id: ai_embedded_toolbar
+    type: Box
+    class: fp-title-row
+    layout:
+      direction: row
+      align: middle
+      gap: 8
+    blocks:
+      # Level 5 (16px), same reasoning as the panel: the page around this chat
+      # has its own heading hierarchy to respect. TitleInput's id IS its state
+      # key, so this must be ai_title in both shells.
+      - id: ai_title
+        type: TitleInput
+        visible:
+          _ne:
+            - _state: ai_view
+            - threads
+        layout:
+          flex: 1 1 auto
+        style:
+          ".element":
+            margin: 0
+        properties:
+          level: 5
+          ellipsis: true
+          editable:
+            tooltip: Rename chat
+            maxLength: 120
+        events:
+          # antd commits on blur / Enter, not per keystroke, so this is one
+          # write per rename rather than one per character.
+          onChange:
+            _ref: actions/rename-thread.yaml
+
+      - id: ai_embedded_threads_title
+        type: Title
+        visible:
+          _eq:
+            - _state: ai_view
+            - threads
+        layout:
+          flex: 1 1 auto
+        style:
+          ".element":
+            margin: 0
+        properties:
+          level: 5
+          content: Your chats
+
+      - id: ai_embedded_new_chat_button
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: New chat
+          icon: AiOutlinePlus
+          type: text
+          size: small
+        events:
+          onClick:
+            _ref: actions/new-thread.yaml
+
+      - id: ai_embedded_manage_chats_button
+        type: Button
+        visible:
+          _ne:
+            - _state: ai_view
+            - threads
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Manage chats
+          icon: AiOutlineUnorderedList
+          type: text
+          size: small
+        events:
+          onClick:
+            _ref: actions/open-threads.yaml
+
+      - id: ai_embedded_back_to_chat_button
+        type: Button
+        visible:
+          _eq:
+            - _state: ai_view
+            - threads
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Back to chat
+          icon: AiOutlineArrowLeft
+          type: text
+          size: small
+        events:
+          onClick:
+            - id: ai_show_chat_view
+              type: SetState
+              params:
+                ai_view: chat
+                ai_thread_selection: null
+
+      - id: ai_embedded_delete_button
+        type: Button
+        visible:
+          _ne:
+            - _state: ai_view
+            - threads
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Delete chat
+          icon: AiOutlineDelete
+          type: text
+          danger: true
+          size: small
+        events:
+          onClick:
+            _ref: actions/delete-thread.yaml
+
+  - _ref:
+      path: components/threads.yaml
+      vars:
+        height:
+          _module.var: embedded_height
+
+  - _ref:
+      path: components/chat.yaml
+      vars:
+        height:
+          _module.var: embedded_height

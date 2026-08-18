@@ -1,0 +1,136 @@
+# enter.yaml — the resume-or-mint chain: the panel's onOpen, and (exported as
+# the `enter` component) the embedded shell's onInit splice. On the FIRST entry
+# (no active thread yet): mint a thread id SYNCHRONOUSLY first, so the chat has
+# a conversationId before the user can possibly send, then fetch this user's
+# threads for the scope and resume the most recent. Re-entering with a thread
+# already active is a no-op.
+#
+# ai_loading covers the whole chain. Without it the panel showed the empty-thread
+# welcome screen — "start a new chat", with its suggestion prompts — for as long
+# as the fetch took, then swapped it for the resumed conversation: advertising a
+# new chat and immediately taking it away.
+- id: ai_mark_seed_needed
+  type: SetState
+  params:
+    ai_seed_needed:
+      _eq:
+        - _state: ai_conversation_id
+        - null
+    # Same expression, so re-opening with a thread already active clears the
+    # flag instead of flashing a spinner at somebody who is not waiting.
+    ai_loading:
+      _eq:
+        - _state: ai_conversation_id
+        - null
+
+- id: ai_mint_thread
+  type: SetState
+  skip:
+    _ne:
+      - _state: ai_seed_needed
+      - true
+  params:
+    ai_conversation_id:
+      _js:
+        fn: |
+          const scope = state('ai_scope') || 'global';
+          return `${scope}_${user('id')}_${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        args: {}
+    ai_messages: []
+    ai_title: New chat
+
+- id: ai_fetch_threads
+  type: CallAPI
+  skip:
+    _ne:
+      - _state: ai_seed_needed
+      - true
+  params:
+    endpointId:
+      _module.endpointId: list-threads
+    payload:
+      scope:
+        _state: ai_scope
+
+- id: ai_seed_thread_list
+  type: SetState
+  skip:
+    _ne:
+      - _state: ai_seed_needed
+      - true
+  params:
+    ai_threads:
+      _if_none:
+        - _actions: ai_fetch_threads.response.response
+        - []
+
+# Existing threads → resume the most recent instead of the blank one just minted.
+- id: ai_resume_recent
+  type: SetState
+  skip:
+    _or:
+      - _ne:
+          - _state: ai_seed_needed
+          - true
+      - _eq:
+          - _array.length:
+              _if_none:
+                - _state: ai_threads
+                - []
+          - 0
+  params:
+    ai_conversation_id:
+      _state: ai_threads.0.key
+    ai_messages: []
+    ai_title:
+      _if_none:
+        - _state: ai_threads.0.label
+        - New chat
+
+- id: ai_load_recent_messages
+  type: CallAPI
+  skip:
+    _or:
+      - _ne:
+          - _state: ai_seed_needed
+          - true
+      - _eq:
+          - _array.length:
+              _if_none:
+                - _state: ai_threads
+                - []
+          - 0
+  params:
+    endpointId:
+      _module.endpointId: get-thread
+    payload:
+      conversationId:
+        _state: ai_conversation_id
+
+- id: ai_apply_recent_messages
+  type: SetState
+  skip:
+    _or:
+      - _ne:
+          - _state: ai_seed_needed
+          - true
+      - _eq:
+          - _array.length:
+              _if_none:
+                - _state: ai_threads
+                - []
+          - 0
+  params:
+    ai_messages:
+      _if_none:
+        - _actions: ai_load_recent_messages.response.response.messages
+        - []
+
+# Unconditional, and LAST: every skip above is on the seeding condition, so this
+# is the only step guaranteed to run on both paths. A rejected fetch aborts the
+# chain before it — panel.yaml wraps this list in try/catch and clears the flag
+# there, so a failed resume cannot leave a spinner running forever.
+- id: ai_end_loading
+  type: SetState
+  params:
+    ai_loading: false

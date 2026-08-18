@@ -1,0 +1,257 @@
+# panel.yaml — the docked assistant: an Intercom-style corner launcher and the
+# floating panel it opens (FloatingPanel, from @lowdefy/modules-mongodb-plugins).
+#
+# Not a Drawer. A drawer masks or reflows the page, and even unmasked it leaves a
+# full-height slab down one side, covering whatever the user wanted to look at
+# while asking about it. This panel's wrapper is pointer-events:none, so the page
+# behind stays fully clickable — and because shared_state is read per message
+# send, the assistant follows whatever the user selects while it is open.
+#
+# Closing HIDES rather than unmounts (the block keeps children mounted after the
+# first open), so scroll position, a half-typed message and an in-flight reply
+# all survive being minimised — which is what makes it a side-channel rather than
+# a modal you have to commit to.
+#
+# Layout, top to bottom:
+#   header  — identity + New chat / Manage chats + expand / close  (fixed)
+#   toolbar — the open thread's name, editable, + delete           (fixed)
+#   body    — the conversation, or the thread list                 (scrolls)
+id: ai_panel
+type: FloatingPanel
+visible:
+  _module.var: visible
+properties:
+  title:
+    _module.var: panel_title
+  subtitle:
+    _module.var: panel_subtitle
+  avatar:
+    icon:
+      _module.var: panel_avatar_icon
+  launcher:
+    icon:
+      _module.var: panel_launcher_icon
+    label:
+      _module.var: panel_launcher_label
+    ariaLabel:
+      _module.var: panel_launcher_aria_label
+  width:
+    _module.var: panel_width
+  expandedWidth:
+    _module.var: panel_expanded_width
+  height:
+    _module.var: panel_height
+  placement:
+    _module.var: panel_placement
+events:
+  # try/catch so a rejected thread fetch still clears ai_loading — otherwise the
+  # chain aborts mid-way and the panel spins forever. On failure the user lands
+  # on the freshly minted blank thread, which is usable.
+  onOpen:
+    try:
+      _ref: actions/enter.yaml
+    catch:
+      - id: ai_end_loading_on_error
+        type: SetState
+        params:
+          ai_loading: false
+  onClose:
+    - id: ai_reset_view
+      type: SetState
+      params:
+        ai_view: chat
+        ai_thread_selection: null
+
+slots:
+  # ── Header chrome: thread switching ────────────────────────────────────────
+  # These were a full-width row of labelled buttons at the top of the BODY,
+  # costing ~44px of panel height and pushing the conversation down, for two
+  # things pressed occasionally — and sitting above the thread's own title, so
+  # the panel opened on chrome rather than on content.
+  #
+  # In the header they use the dead space the identity block already leaves, at
+  # the same 28px as expand and close. Icon-only, but NOT nameless:
+  # .fp-icon-btn visually hides each label rather than deleting it, so
+  # the accessible name survives, and the Tooltip gives the same word on hover.
+  header:
+    blocks:
+      # One Box, direction row: Lowdefy stacks sibling slot blocks in a column,
+      # and its columns are full-width unless given a flex — without BOTH, the
+      # icons sit on top of each other and double the header's height.
+      - id: ai_header_actions
+        type: Box
+        layout:
+          direction: row
+          align: middle
+          gap: 2
+        blocks:
+          - id: ai_new_chat_tip
+            type: Tooltip
+            layout:
+              flex: 0 0 auto
+            class: fp-icon-btn
+            properties:
+              title: New chat
+              placement: bottom
+              # Portaled to <body>: must clear the panel's z-index (1100) or the
+              # tooltip renders behind the panel it belongs to.
+              zIndex: 1200
+            blocks:
+              - id: ai_new_chat_button
+                type: Button
+                properties:
+                  title: New chat
+                  icon: AiOutlinePlus
+                  type: text
+                  size: small
+                events:
+                  onClick:
+                    _ref: actions/new-thread.yaml
+
+          - id: ai_manage_chats_tip
+            type: Tooltip
+            layout:
+              flex: 0 0 auto
+            class: fp-icon-btn
+            visible:
+              _ne:
+                - _state: ai_view
+                - threads
+            properties:
+              title: Manage chats
+              placement: bottom
+              # Portaled to <body>: must clear the panel's z-index (1100) or the
+              # tooltip renders behind the panel it belongs to.
+              zIndex: 1200
+            blocks:
+              - id: ai_manage_chats_button
+                type: Button
+                properties:
+                  title: Manage chats
+                  icon: AiOutlineUnorderedList
+                  type: text
+                  size: small
+                events:
+                  onClick:
+                    _ref: actions/open-threads.yaml
+
+          - id: ai_back_to_chat_tip
+            type: Tooltip
+            layout:
+              flex: 0 0 auto
+            class: fp-icon-btn
+            visible:
+              _eq:
+                - _state: ai_view
+                - threads
+            properties:
+              title: Back to chat
+              placement: bottom
+              # Portaled to <body>: must clear the panel's z-index (1100) or the
+              # tooltip renders behind the panel it belongs to.
+              zIndex: 1200
+            blocks:
+              - id: ai_back_to_chat_button
+                type: Button
+                properties:
+                  title: Back to chat
+                  icon: AiOutlineArrowLeft
+                  type: text
+                  size: small
+                events:
+                  onClick:
+                    - id: ai_show_chat_view
+                      type: SetState
+                      params:
+                        ai_view: chat
+                        ai_thread_selection: null
+
+  # ── Fixed band: the open thread's name ─────────────────────────────────────
+  # In the panel's `toolbar` slot, NOT the body: the body scrolls, and a title
+  # that scrolls away from the thing it names is no longer a title. It is also
+  # the panel's one full-width row, so a long name has the whole width before it
+  # ellipses.
+  #
+  # Renaming happens here rather than through a list → button → modal chain:
+  # three surfaces to change one word, none of them where the thread actually
+  # is. Delete sits beside it for the same reason — it acts on the open thread.
+  toolbar:
+    blocks:
+      - id: ai_title_row
+        type: Box
+        class: fp-title-row
+        visible:
+          _ne:
+            - _state: ai_view
+            - threads
+        layout:
+          direction: row
+          align: middle
+          gap: 8
+        blocks:
+          # Level 5 (16px): level 4 is page-title size, which would out-rank the
+          # page heading still visible behind the panel. Renders as
+          # h5.ant-typography, so it picks up an app display font if one is set.
+          - id: ai_title
+            type: TitleInput
+            layout:
+              flex: 1 1 auto
+            style:
+              ".element":
+                margin: 0
+            properties:
+              level: 5
+              ellipsis: true
+              editable:
+                tooltip: Rename chat
+                maxLength: 120
+            events:
+              # antd commits on blur / Enter, not per keystroke, so this is one
+              # write per rename rather than one per character.
+              onChange:
+                _ref: actions/rename-thread.yaml
+          - id: ai_delete_tip
+            type: Tooltip
+            class: fp-icon-btn
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Delete chat
+              placement: bottomRight
+              # Portaled to <body>: must clear the panel's z-index (1100) or the
+              # tooltip renders behind the panel it belongs to.
+              zIndex: 1200
+            blocks:
+              - id: ai_delete_button
+                type: Button
+                properties:
+                  # Named the same way as the header chrome: the label is
+                  # visually hidden, not removed. An unlabelled destructive
+                  # control is the one you least want to be a mystery glyph
+                  # with no accessible name.
+                  title: Delete chat
+                  icon: AiOutlineDelete
+                  type: text
+                  danger: true
+                  size: small
+                events:
+                  onClick:
+                    _ref: actions/delete-thread.yaml
+
+  # ── Scrolling body: the conversation, or the thread list ───────────────────
+  # Both are sized to fill the panel body exactly: --fp-body-height is a
+  # measured pixel value published by the FloatingPanel block, and it inherits
+  # through Lowdefy's lf-col / lf-row wrappers, where a percentage would break.
+  # Nothing to subtract: the buttons and the title are both fixed chrome, so
+  # the chat IS the body.
+  content:
+    blocks:
+      - _ref:
+          path: components/threads.yaml
+          vars:
+            height: var(--fp-body-height, 520px)
+
+      - _ref:
+          path: components/chat.yaml
+          vars:
+            height: var(--fp-body-height, 520px)

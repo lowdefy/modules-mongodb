@@ -1,0 +1,52 @@
+# state.yaml — the panel's state contract, as a single SetState action.
+#
+# Splice into the consuming page's onInit:
+#
+#   onInit:
+#     _build.array.concat:
+#       - - id: init_state
+#           type: SetState
+#           params: { ...the page's own state... }
+#       - - _ref:
+#             module: ai-assistant
+#             component: state
+#
+# Every key the panel reads has to be declared somewhere, or Lowdefy raises a
+# ConfigWarning on each one at page load. Keeping the list here rather than in
+# each consuming page means adding a key to the module never silently breaks its
+# consumers. All keys are ai_-prefixed so they cannot collide with the page's own.
+id: ai_assistant_init_state
+type: SetState
+params:
+  # 'chat' | 'threads' — which view the panel body shows.
+  ai_view: chat
+  # The scope threads are partitioned by, resolved once here so the module's
+  # actions can read it without knowing what the app's scope operator was.
+  ai_scope:
+    _module.var: scope
+  # The open thread and its replayed history.
+  ai_conversation_id: null
+  ai_messages: []
+  # Thread list for the threads view, as lean { key, label, tags } items.
+  ai_threads: []
+  # The ListSelector's own value in the threads view — marks which thread is
+  # open. Nothing reads it; a row click opens directly.
+  ai_thread_selection: null
+  # One-shot latch for the first open (see actions/enter.yaml).
+  ai_seed_needed: false
+  # True until the first open has resolved which thread you are in. Seeded TRUE
+  # so the panel's first paint is already the spinner: children mount the moment
+  # the panel opens, a frame before onOpen's first SetState lands, and that frame
+  # was long enough to flash the empty-thread welcome screen.
+  ai_loading: true
+  # Value of the header's editable title. TitleInput has no content property —
+  # its value IS this key — so every path that changes the active thread seeds it.
+  ai_title: New chat
+  # { prompt, reply } of the first turn, staged for the titling call; null on
+  # every later turn.
+  ai_first_exchange: null
+  # Delete target, captured before the active thread is replaced under it.
+  ai_delete_target: null
+  # Resolved title from the titling call, staged so the apply step can read a
+  # committed value.
+  ai_generated_title: null

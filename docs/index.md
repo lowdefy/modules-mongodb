@@ -25,6 +25,7 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [contacts](../modules/contacts/README.md)           | Contact management — list, detail, edit, create, selector                                                   |
 | [companies](../modules/companies/README.md)         | Company management — list, detail, edit, create, selector                                                   |
 | [activities](../modules/activities/README.md)       | CRM activities — calls, meetings, emails logged against contacts and companies                              |
+| [ai-assistant](../modules/ai-assistant/README.md)   | Agent chat with persisted, per-user threads — docked corner panel or embedded in a page                     |
 | [workflows](../modules/workflows/README.md)         | Multi-workflow engine — declare workflow YAML, render entity action lists, FSM-driven lifecycle transitions |
 | [release-notes](../modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page                                                               |
 
@@ -53,6 +54,7 @@ graph TD
   activities --> layout
   activities --> events
   activities --> contacts
+  ai-assistant
   workflows --> layout
   workflows --> events
   workflows --> notifications
@@ -62,7 +64,7 @@ graph TD
 
 A few notes on the shape:
 
-- `events` has no dependencies — every other module either logs events or carries a change stamp, so it sits at the bottom of the graph.
+- `events` has no dependencies — every other module either logs events or carries a change stamp, so it sits at the bottom of the graph. `ai-assistant` is the other standalone: it needs an app agent and the plugin package, but no sibling module.
 - `layout` depends on `user-account` and `notifications` because the page chrome integrates the profile dropdown and the notification bell. Those modules in turn depend on `layout` for their own pages — the cycle is intentional and resolved at runtime.
 - `contacts` and `companies` depend on each other for selectors and bidirectional links. Same story — runtime cycle, by design.
 - Dependencies are **not** installed transitively. Declaring `dependencies:` in a manifest tells the build how to wire cross-module references — it does not pull modules in. Every module you use must be added as its own entry in `lowdefy.yaml`. So adding `companies` means also adding entries for `layout`, `events`, `contacts`, and `files` (and their dependencies in turn).
@@ -80,6 +82,7 @@ A few notes on the shape:
 | Multi-step business processes (lifecycle, actions, approvals) on any entity | + `workflows`                               |
 | An audit log on writes anywhere in the app                                  | + `events` (most other modules already log) |
 | A release-notes page from `CHANGELOG.md`                                    | + `release-notes`                           |
+| An AI agent chat with persisted threads — docked on every page or in a page | + `ai-assistant` (and an app agent)         |
 
 The minimum set for an authenticated app is `layout` + `events` + `user-account` + `notifications`. Everything else is opt-in.
 
@@ -120,7 +123,7 @@ Each module's `docs/{module}/` folder covers the vars, exports, and worked examp
 
 ## Plugins
 
-Some modules require [`@lowdefy/modules-mongodb-plugins`](../plugins/modules-mongodb-plugins/README.md), a peer plugin package shipped from this repo with custom blocks (ActionSteps, ContactSelector, DataDescriptions, EventsTimeline, FileManager, SmartDescriptions), a `FetchRequest` action, and the server-side `WorkflowAPI` connection that powers the `workflows` module engine.
+Some modules require [`@lowdefy/modules-mongodb-plugins`](../plugins/modules-mongodb-plugins/README.md), a peer plugin package shipped from this repo with custom blocks (ActionSteps, ContactSelector, DataDescriptions, EventsTimeline, FileManager, FloatingPanel, SmartDescriptions), a `FetchRequest` action, the server-side `WorkflowAPI` connection that powers the `workflows` module engine, and the `AiText` connection behind the `ai-assistant` module's thread titling.
 
 ## Versioning
 
