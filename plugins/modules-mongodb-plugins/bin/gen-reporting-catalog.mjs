@@ -299,7 +299,17 @@ export function inferSchemaFromSample(docs, flattenDepth = DEFAULT_FLATTEN_DEPTH
     const types = [...e.typeCounts.keys()].sort(
       (a, b) => CATALOG_TYPES.indexOf(a) - CATALOG_TYPES.indexOf(b)
     );
-    const type = types.length === 1 ? types[0] : types.join(" | ");
+    // A field observed only as null/undefined across the whole sample has no
+    // typeCounts. It is a real field (it appeared in documents), so keep it
+    // visible for the curator rather than dropping it or emitting an empty
+    // `type` — mark it `unknown` so the curator sets the real type (or re-runs
+    // with a larger --sample if it is merely sparsely populated).
+    const type =
+      types.length === 0
+        ? "unknown"
+        : types.length === 1
+          ? types[0]
+          : types.join(" | ");
     const field = { type, types, examples: e.examples };
     // Enum candidate: purely string, low-cardinality, not identifier-like.
     if (
@@ -407,6 +417,11 @@ async function callModel({ apiKey, baseURL, model, input }) {
 export function buildCatalogEntry({ inferred, draft, collectionNames }) {
   const known = new Set(collectionNames);
   const draftFields = (draft && draft.fields) || {};
+  // Did the model draft THIS collection? When it did, its per-field judgment on
+  // enums is authoritative (see the values merge below); when it did not (no
+  // gateway key, model failed, or the model omitted this collection), there is
+  // no judgment to honor and we fall back to the inference candidates.
+  const modelDraftedCollection = !!draft && typeof draft === "object";
 
   const entry = {};
   entry.roles = []; // placeholder for the curator; empty = any authenticated user
@@ -419,8 +434,18 @@ export function buildCatalogEntry({ inferred, draft, collectionNames }) {
     const field = {};
     field.type = inf.type;
     field.description = typeof d.description === "string" ? d.description.trim() : "";
-    // Enum values: model's confirmation wins; else the inference candidate.
-    const values = Array.isArray(d.values) && d.values.length ? d.values : inf.values;
+    // Enum values. When the model drafted this collection, its judgment is
+    // authoritative: a non-empty `values` is a confirmed enum, and a field the
+    // model left WITHOUT `values` is a deliberate drop (an id, name, email or
+    // other free text the drafting prompt tells it to discard) — so emit none,
+    // rather than resurrecting the inference candidate. When the model did not
+    // draft this collection there is no judgment to honor, so fall back to the
+    // inference candidate so the curator still sees it.
+    const values = modelDraftedCollection
+      ? Array.isArray(d.values) && d.values.length
+        ? d.values
+        : undefined
+      : inf.values;
     if (values && values.length) field.values = [...values].sort();
     // Display hints — prompt material only, copied verbatim from the model.
     if (d.format === "currency" || d.format === "decimal") field.format = d.format;
