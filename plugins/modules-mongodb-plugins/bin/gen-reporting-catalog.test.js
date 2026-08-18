@@ -1,6 +1,8 @@
 import {
   inferSchemaFromSample,
   buildCatalogEntry,
+  selectCollections,
+  parseArgs,
 } from "./gen-reporting-catalog.mjs";
 
 // Regression tests for two catalog-generator output defects found by running
@@ -91,5 +93,80 @@ describe("buildCatalogEntry — model enum authority (fix 2)", () => {
       "C-5",
     ]);
     expect(entry.fields.status.values).toEqual(["paid", "pending"]);
+  });
+});
+
+describe("selectCollections — --include / --exclude filtering", () => {
+  const all = [
+    "demo_orders",
+    "demo_companies",
+    "demo_activities",
+    "demo-log-changes",
+    "log-changes",
+    "user-sessions",
+    "user-verification-tokens",
+    "report_layouts",
+  ];
+
+  test("no filters selects everything (sorted)", () => {
+    const { selected } = selectCollections(all, {});
+    expect(selected).toEqual([...all].sort());
+  });
+
+  test("exact-name include keeps only the named collections", () => {
+    const { selected, unmatchedIncludes } = selectCollections(all, {
+      include: ["demo_orders", "demo_companies"],
+    });
+    expect(selected).toEqual(["demo_companies", "demo_orders"]);
+    expect(unmatchedIncludes).toEqual([]);
+  });
+
+  test("`*`-glob include matches a naming family and is anchored", () => {
+    const { selected } = selectCollections(all, { include: ["demo_*"] });
+    // Underscore family only — the hyphenated `demo-log-changes` must NOT match.
+    expect(selected).toEqual(["demo_activities", "demo_companies", "demo_orders"]);
+  });
+
+  test("exclude drops matching collections (exact and glob)", () => {
+    const { selected } = selectCollections(all, {
+      exclude: ["user-*", "*log-changes", "report_layouts"],
+    });
+    expect(selected).toEqual([
+      "demo_activities",
+      "demo_companies",
+      "demo_orders",
+    ]);
+  });
+
+  test("exclude is applied after include", () => {
+    const { selected } = selectCollections(all, {
+      include: ["demo_*"],
+      exclude: ["demo_activities"],
+    });
+    expect(selected).toEqual(["demo_companies", "demo_orders"]);
+  });
+
+  test("an include pattern that matches nothing is reported", () => {
+    const { selected, unmatchedIncludes } = selectCollections(all, {
+      include: ["demo_orders", "nope_*"],
+    });
+    expect(selected).toEqual(["demo_orders"]);
+    expect(unmatchedIncludes).toEqual(["nope_*"]);
+  });
+});
+
+describe("parseArgs — include/exclude", () => {
+  test("comma lists parse into arrays; default is empty", () => {
+    expect(parseArgs([]).include).toEqual([]);
+    expect(parseArgs([]).exclude).toEqual([]);
+    const args = parseArgs([
+      "--include",
+      "demo_orders, demo_*",
+      "--exclude",
+      "user-sessions",
+    ]);
+    // Whitespace trimmed, empties dropped.
+    expect(args.include).toEqual(["demo_orders", "demo_*"]);
+    expect(args.exclude).toEqual(["user-sessions"]);
   });
 });

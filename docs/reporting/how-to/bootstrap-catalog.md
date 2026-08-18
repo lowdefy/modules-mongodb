@@ -77,7 +77,23 @@ Without a gateway key the CLI still produces a useful draft, just type-inference
 | `--depth <n>`  | `4`                                      | Levels to flatten sub-documents into dotted paths |
 | `--model <id>` | `$REPORTING_MODEL` or the module default | Gateway model id                                  |
 | `--no-model`   | off                                      | Skip the model call entirely                      |
+| `--include <a,b>` | all non-system collections            | Catalog only these collections (exact names or `*`-globs, e.g. `demo_*`) |
+| `--exclude <a,b>` | none                                  | Skip these collections (exact names or `*`-globs); applied after `--include` |
 | `--help`       | —                                        | Print usage and exit                              |
+
+### Scoping which collections are cataloged
+
+By default the CLI samples every non-system collection in the database — including operational ones (sessions, tokens, change logs) that are noise for a reporting catalog and, on a large database, can make the model-drafting payload big enough to fail (the draft then falls back to type-inference only). Scope the run with `--include` to name the collections you want, or `--exclude` to drop the plumbing:
+
+```bash
+# Only the reporting-domain collections
+lowdefy-reporting-catalog --include 'demo_*' --out modules/reporting/catalog.draft.yaml
+
+# Everything except operational collections
+lowdefy-reporting-catalog --exclude 'user-*,log-*,*-sessions' --out modules/reporting/catalog.draft.yaml
+```
+
+Both accept exact names or `*`-globs (anchored full-match, so `demo_*` selects `demo_orders` but not `demo-log-changes`). `--exclude` is applied after `--include`. An `--include` pattern that matches nothing is reported so a typo does not silently catalog nothing.
 
 ### Nested fields
 
