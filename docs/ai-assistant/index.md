@@ -78,17 +78,23 @@ The embedded shell renders the same chat and thread lifecycle inline — a toolb
         component: embedded
 ```
 
-Because there is no "open" moment, the page also splices the module's `enter` chain (resume-or-mint) into `onInit`, **after** `state`:
+Because there is no "open" moment, the page also splices the module's `enter` chain (resume-or-mint) into `onInit`, **after** `state` — and wraps the event in a `try`/`catch` that clears `ai_loading`, mirroring what the panel does on open. Without the catch, a transient fetch failure aborts the chain before `enter`'s final step clears the flag, and the chat spins forever:
 
 ```yaml
 onInit:
-  _build.array.concat:
-    - - _ref:
+  try:
+    _build.array.concat:
+      - - _ref:
+            module: ai-assistant
+            component: state
+      - _ref:
           module: ai-assistant
-          component: state
-    - _ref:
-        module: ai-assistant
-        component: enter
+          component: enter
+  catch:
+    - id: ai_end_loading_on_error
+      type: SetState
+      params:
+        ai_loading: false
 ```
 
 **One shell per page.** `panel` and `embedded` share block ids and `ai_*` state on purpose — that is what gives them one thread history — so never mount both on the same page. An app-wide docked launcher should be hidden (its `visible` var) on pages that embed.

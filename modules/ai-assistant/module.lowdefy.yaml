@@ -183,7 +183,9 @@ exports:
         The resume-or-mint action chain as an action list: mint a thread id,
         fetch the scope's threads, resume the most recent. The `panel` runs this
         itself on first open; a page using `embedded` splices it into onInit
-        AFTER `state`.
+        AFTER `state`, inside a try/catch whose catch clears ai_loading — a
+        rejected fetch aborts the chain before its own clear, and without the
+        catch the chat spins forever.
   connections:
     - id: ai_assistant_threads
       description: MongoDB connection for the threads collection

@@ -57,7 +57,11 @@ Examples:
 
 async function GenerateChatTitle({ connection, request }) {
   if (!connection?.apiKey) {
-    throw new Error("AI Gateway apiKey not available to AiText");
+    // Same contract as every other failure — the caller keeps its provisional
+    // title. Throwing here surfaced an error after every first exchange for
+    // consumers that mount without the titling secret, on a call whose whole
+    // documented promise is to fail silently.
+    return { title: null, error: "AI Gateway apiKey not configured" };
   }
   const prompt = String(request.prompt || "").slice(0, PROMPT_CHARS);
   const reply = String(request.reply || "").slice(0, REPLY_CHARS);

@@ -57,9 +57,22 @@ routine:
             _date: now
         # Every label the thread has touched, as a set — one entry however many
         # messages happened on it. Read back as the thread card's chips.
+        # $each with an empty list when no tag was sent: a bare $addToSet of the
+        # null payload stored tags [null] for every consumer that leaves the tag
+        # var unset, which rendered as an empty chip on every thread card.
         $addToSet:
           tags:
-            _payload: tag
+            $each:
+              _if:
+                test:
+                  _eq:
+                    - _if_none:
+                        - _payload: tag
+                        - null
+                    - null
+                then: []
+                else:
+                  - _payload: tag
         $setOnInsert:
           created:
             _date: now

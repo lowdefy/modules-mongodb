@@ -12,14 +12,22 @@ _ref:
       onInit:
         # state first (declares every ai_* key), then enter (resume-or-mint) —
         # the embedded shell has no "open" moment, so the page runs the chain
-        # the panel would run on first open.
-        _build.array.concat:
-          - - _ref:
+        # the panel would run on first open. The catch mirrors the panel's own:
+        # a rejected fetch aborts the chain before enter's final step clears
+        # ai_loading, and without the catch the chat spins forever.
+        try:
+          _build.array.concat:
+            - - _ref:
+                  module: ai-assistant
+                  component: state
+            - _ref:
                 module: ai-assistant
-                component: state
-          - _ref:
-              module: ai-assistant
-              component: enter
+                component: enter
+        catch:
+          - id: ai_end_loading_on_error
+            type: SetState
+            params:
+              ai_loading: false
     blocks:
       - id: assistant_intro
         type: Paragraph

@@ -6,7 +6,8 @@
 #
 # Mounting differs from the panel in one way: there is no "open" moment, so the
 # page splices the module's `enter` component into its onInit (after `state`) to
-# resume the most recent thread. Do NOT mount `panel` and `embedded` on the same
+# resume the most recent thread — inside a try/catch that clears ai_loading on
+# failure, mirroring panel.yaml's onOpen. Do NOT mount `panel` and `embedded` on the same
 # page — they share block ids and ai_* state on purpose (one thread history), so
 # a page gets one shell or the other. An app-wide launcher should be hidden (its
 # `visible` var) on pages that embed.

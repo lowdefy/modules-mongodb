@@ -65,28 +65,10 @@
         - []
 
 # Existing threads → resume the most recent instead of the blank one just minted.
-- id: ai_resume_recent
-  type: SetState
-  skip:
-    _or:
-      - _ne:
-          - _state: ai_seed_needed
-          - true
-      - _eq:
-          - _array.length:
-              _if_none:
-                - _state: ai_threads
-                - []
-          - 0
-  params:
-    ai_conversation_id:
-      _state: ai_threads.0.key
-    ai_messages: []
-    ai_title:
-      _if_none:
-        - _state: ai_threads.0.label
-        - New chat
-
+# Load-then-commit, same reasoning as select-thread.yaml: a failed fetch aborts
+# the chain with the freshly minted blank thread still active (usable), instead
+# of leaving the recent thread active and EMPTY — where the next send would
+# overwrite its stored history via save-thread's full $set.
 - id: ai_load_recent_messages
   type: CallAPI
   skip:
@@ -105,9 +87,9 @@
       _module.endpointId: get-thread
     payload:
       conversationId:
-        _state: ai_conversation_id
+        _state: ai_threads.0.key
 
-- id: ai_apply_recent_messages
+- id: ai_resume_recent
   type: SetState
   skip:
     _or:
@@ -121,10 +103,16 @@
                 - []
           - 0
   params:
+    ai_conversation_id:
+      _state: ai_threads.0.key
     ai_messages:
       _if_none:
         - _actions: ai_load_recent_messages.response.response.messages
         - []
+    ai_title:
+      _if_none:
+        - _state: ai_threads.0.label
+        - New chat
 
 # Unconditional, and LAST: every skip above is on the seeding condition, so this
 # is the only step guaranteed to run on both paths. A rejected fetch aborts the

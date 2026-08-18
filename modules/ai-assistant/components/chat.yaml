@@ -178,6 +178,11 @@ events:
         _not:
           _module.var: generate_titles
       params:
+        # Which thread this titling pass is FOR — the apply step below checks
+        # it, so a slow titling call can never label whatever thread the user
+        # has switched to (or minted) in the meantime.
+        ai_titling_for:
+          _state: ai_conversation_id
         ai_first_exchange:
           _js:
             fn: |
@@ -231,15 +236,24 @@ events:
     - id: ai_apply_generated_title
       type: SetState
       skip:
-        # The _if_none is load-bearing, not decoration: when the step
-        # above was SKIPPED the _actions lookup is UNDEFINED, and
-        # undefined != null — so a bare _eq would fail to skip and then
-        # write undefined over a perfectly good title.
-        _eq:
-          - _if_none:
-              - _actions: ai_generate_title.response.response.title
+        _or:
+          # The _if_none is load-bearing, not decoration: when the step
+          # above was SKIPPED the _actions lookup is UNDEFINED, and
+          # undefined != null — so a bare _eq would fail to skip and then
+          # write undefined over a perfectly good title.
+          - _eq:
+              - _if_none:
+                  - _actions: ai_generate_title.response.response.title
+                  - null
               - null
-          - null
+          # The titling call takes seconds; if the user switched threads (or
+          # minted a new one) meanwhile, applying would write the OLD thread's
+          # title into the new thread's header and list entry. The server has
+          # already persisted the title against the right conversationId, so
+          # skipping only forgoes the cosmetic in-place update.
+          - _ne:
+              - _state: ai_titling_for
+              - _state: ai_conversation_id
       params:
         ai_title:
           _actions: ai_generate_title.response.response.title

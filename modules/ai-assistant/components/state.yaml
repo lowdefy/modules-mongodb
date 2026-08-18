@@ -47,6 +47,6 @@ params:
   ai_first_exchange: null
   # Delete target, captured before the active thread is replaced under it.
   ai_delete_target: null
-  # Resolved title from the titling call, staged so the apply step can read a
-  # committed value.
-  ai_generated_title: null
+  # Which thread the in-flight titling call is for — the apply step skips when
+  # the active thread has changed under it.
+  ai_titling_for: null
