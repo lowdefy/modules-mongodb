@@ -1,0 +1,498 @@
+# Seeds a worked-example saved report into the reporting module's reports-store
+# for the signed-in user, so the open-engine report surface is reproducible
+# without driving the chat agent. The report exercises every consumer-facing
+# capability the presentation contract adds:
+#   - every filter control: a Region multiselect (options from the catalog's
+#     enum `values`), a Created daterange on demo_orders.order_date, an
+#     Activity type single select (also cataloged values), and two multiselects
+#     over scalar foreign-key arrays — all bound via filterBy, which drives the
+#     server-built $match prepend re-query path. Activity type and Activity
+#     companies are bound to the SAME sections, so a select and a multiselect
+#     can be compared over one dataset;
+#   - both match modes, each on a field where the mode is actually observable.
+#     `match: any` ($in) goes on demo_activities.company_ids and `match: all`
+#     ($all) on demo_contacts.global_attributes.company_ids — not the other way
+#     round: both are declared arrays, but the seed puts exactly one id in every
+#     activity, so `all` there could never match a multi-company selection,
+#     while 4 of the 12 contacts belong to two companies;
+#   - a query-sourced options list with looked-up labels — both company filters'
+#     optionsQuery projects id/name pairs from demo_companies, so the dropdowns
+#     list company names, not raw ids;
+#   - the document-not-element rule made concrete: each array filter is bound
+#     only to sections that count DOCUMENTS (activities, contacts) rather than
+#     unwinding the filtered array;
+#   - filter co-location: each control compiles inline directly above the first
+#     section it drives (not into a shared top row), and when it drives more than
+#     one section a muted "Also filters: …" note renders under the control naming
+#     the others (the label's `extra`, not a suffix on the title). So the
+#     Region and Created controls sit above the orders sections, the two activity
+#     filters above the activities sections, and the contacts filter above the
+#     contacts sections — three visible groups, each next to what it scopes.
+#   - a currency-formatted KPI and table column sourced from the catalog's
+#     demo_orders.total display hint (format: currency USD);
+#   - a pipeline-backed bar chart with an x/y presentation contract;
+#   - a stacked multi-series bar chart (`stacked: true`) — channel revenue
+#     pivoted into one y column per channel, so each region's bar stacks to its
+#     total revenue and a filter re-query exercises the stacked chart-data path;
+#   - a CSV download section (pipeline only, no contract).
+# It reads demo_orders (seed it first with the "Seed demo orders" button) and
+# demo_activities / demo_contacts / demo_companies (seed with
+# "pnpm --filter @lowdefy/modules-demo reporting:seed").
+#
+# Stores validateReportSpec's OUTPUT, exactly as generate-report does. Not for
+# safety — resolve-report revalidates every pipeline through AnalyticsPipeline at
+# view time regardless — but because that output IS the document shape: section
+# ids are assigned once and become durable identities, and display defaults
+# freeze at create time rather than being re-applied from current constants on
+# every read. Seeding a raw spec here would write a document in the old shape and
+# make this file a divergent second reference instead of a working one.
+#
+# Nested $-prefixed pipeline keys live inside the report doc (MongoDB 5.0+); the
+# validator returns every pipeline unchanged, so nothing is sanitized either way.
+#
+# Idempotent: a deterministic per-user _id is cleared then reinserted, so the
+# report keeps a stable URL across re-seeds and never duplicates.
+id: reporting-seed-example-report
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to seed the example report.
+  - id: clear
+    type: MongoDBDeleteMany
+    connectionId: reporting-reports
+    properties:
+      filter:
+        _id:
+          _string.concat:
+            - "example-orders-report-"
+            - _user: id
+        owner.user_id:
+          _user: id
+  # The validator is what makes this seed a working reference for the insert
+  # shape rather than a divergent second one: the store holds its output, so a
+  # raw-seeded report would be a document in the old shape. It also throws on a
+  # spec this file has broken, which is a faster signal than a report that
+  # lists but will not open.
+  - :set_state:
+      validated:
+        _analytics.validateReportSpec:
+          spec:
+            title: Orders overview (seeded example)
+            description: >
+              Revenue and order counts across the synthetic demo_orders dataset,
+              plus activity and contact counts by company. Region and Created
+              scope the orders sections; Activity type and Activity companies
+              scope the activities sections; Contact companies scopes the contacts
+              sections.
+            sections:
+              # A multiselect filter; its options come from demo_orders.region's
+              # enum `values` in the catalog (no options, no optionsQuery — the
+              # scalar multi-select case). Bound to the four demo_orders
+              # sections below.
+              - type: filter
+                label: Region
+                control: multiselect
+                field: region
+              # A daterange filter on the catalogued demo_orders date field.
+              # Bound to the same four demo_orders sections as Region, so the
+              # report shows a range and a multi-select side by side.
+              - type: filter
+                label: Created
+                control: daterange
+                field: order_date
+              # A single-value select — one value, compiled to an $eq triple.
+              # Its options come from demo_activities.type's catalog enum
+              # `values`, and it is bound to the SAME activities sections as the
+              # Activity companies multiselect below, so the two controls sit side
+              # by side over one dataset: the difference between them is the
+              # control and the op, nothing else. Filtering on `type` is also the
+              # base-collection-field rule in miniature — the section groups BY
+              # type, and the $match still reads the raw document field because
+              # it is prepended before the $group.
+              - type: filter
+                label: Activity type
+                control: select
+                field: type
+              # A multiselect over demo_activities.company_ids (a scalar
+              # foreign-key array) with match: any (the $in triple — any
+              # selected company matches) and an optionsQuery joining
+              # demo_companies so the dropdown lists company names, not raw
+              # ids. Bound to the activities-grain section below, NOT to
+              # demo_activities_report — that view's catalog entry carries no
+              # company_ids.
+              - type: filter
+                label: Activity companies (any of)
+                control: multiselect
+                field: company_ids
+                match: any
+                optionsQuery:
+                  collection: demo_companies
+                  pipeline:
+                    - $project:
+                        company_id: $_id
+                        name: 1
+                    - $sort:
+                        name: 1
+                  valueKey: company_id
+                  labelKey: name
+              # The same shape with match: all (the $all triple — a contact must
+              # belong to EVERY selected company, not any of them). It filters
+              # demo_contacts, NOT demo_activities: the catalog declares
+              # activities.company_ids an array, but the seed writes exactly one
+              # id into all 36 of them, so `all` there could only ever match a
+              # single-company selection — any/all would be indistinguishable at
+              # best and zero rows at worst. 4 of the 12 contacts belong to two
+              # companies, which is what makes `all` observable.
+              #
+              # Only the pairs that actually co-occur return anything:
+              # C-0001+C-0002, C-0004+C-0005, C-0002+C-0003, C-0005+C-0001
+              # (Northwind+Contoso, Adventure+Tailspin, Contoso+Fabrikam,
+              # Tailspin+Northwind). Any other pair correctly matches nothing —
+              # that is `all` working, not a broken filter.
+              - type: filter
+                label: Contact companies (all of)
+                control: multiselect
+                field: global_attributes.company_ids
+                match: all
+                optionsQuery:
+                  collection: demo_companies
+                  pipeline:
+                    - $project:
+                        company_id: $_id
+                        name: 1
+                    - $sort:
+                        name: 1
+                  valueKey: company_id
+                  labelKey: name
+              - type: markdown
+                content: >
+                  ## Orders overview
+
+                  KPI, two charts and a table over the seeded `demo_orders`
+                  collection, activity counts over `demo_activities`, and contact
+                  counts over `demo_contacts`.
+
+                  Each filter scopes only the sections that subscribe to it via
+                  `filterBy` — nothing else on the report moves. **Region** and
+                  **Created** scope the four orders sections. **Activity type**
+                  (a single select, `$eq`) and **Activity companies (any of)** (a
+                  multiselect, `$in`) both scope the Activities KPI and chart, so
+                  the two control types can be compared over the same data.
+                  **Contact companies (all of)** scopes the Contacts KPI and
+                  table, matching only contacts that belong to *every* selected
+                  company. Each prepends a `$match` to its bound section's
+                  pipeline and re-queries it server-side.
+
+                  Only 4 of the 12 seeded contacts belong to two companies, so
+                  `all` with two companies selected matches at most one contact —
+                  and nothing at all unless the pair co-occurs. Zero rows there is
+                  the filter working, not failing.
+              # Currency KPI — the format is copied from the catalog's
+              # demo_orders.total display hint.
+              - type: kpi
+                label: Total revenue
+                query:
+                  collection: demo_orders
+                  pipeline:
+                    - $group:
+                        _id: null
+                        total:
+                          $sum: $total
+                valueKey: total
+                format:
+                  style: currency
+                  currency: USD
+                  locale: en-US
+                  decimals: 2
+                filterBy:
+                  - region
+                  - order_date
+              # Pipeline-backed bar chart with an x/y presentation contract.
+              - type: chart
+                label: Revenue by category
+                chart: bar
+                query:
+                  collection: demo_orders
+                  pipeline:
+                    - $group:
+                        _id: $category
+                        revenue:
+                          $sum: $total
+                    - $project:
+                        _id: 0
+                        category: $_id
+                        revenue: 1
+                    - $sort:
+                        revenue: -1
+                x: category
+                y:
+                  - revenue
+                filterBy:
+                  - region
+                  - order_date
+              # Stacked multi-series bar chart: channel revenue pivoted into one
+              # y column per channel, so the series are parts of a whole — each
+              # region's bar stacks to its total revenue. This is the stacked:
+              # true case (unrelated measures would stay grouped), and its
+              # filterBy makes a filter change re-query through chart-data with
+              # stacked intact.
+              - type: chart
+                label: Revenue by region and channel
+                chart: bar
+                query:
+                  collection: demo_orders
+                  pipeline:
+                    - $group:
+                        _id: $region
+                        online:
+                          $sum:
+                            $cond:
+                              if:
+                                $eq:
+                                  - $channel
+                                  - online
+                              then: $total
+                              else: 0
+                        retail:
+                          $sum:
+                            $cond:
+                              if:
+                                $eq:
+                                  - $channel
+                                  - retail
+                              then: $total
+                              else: 0
+                        partner:
+                          $sum:
+                            $cond:
+                              if:
+                                $eq:
+                                  - $channel
+                                  - partner
+                              then: $total
+                              else: 0
+                    - $project:
+                        _id: 0
+                        region: $_id
+                        online: 1
+                        retail: 1
+                        partner: 1
+                x: region
+                y:
+                  - online
+                  - retail
+                  - partner
+                stacked: true
+                filterBy:
+                  - region
+                  - order_date
+              # Table with a currency-formatted column (again from the catalog hint).
+              - type: table
+                label: Orders by status
+                query:
+                  collection: demo_orders
+                  pipeline:
+                    - $group:
+                        _id: $status
+                        orders:
+                          $sum: 1
+                        revenue:
+                          $sum: $total
+                    - $project:
+                        _id: 0
+                        status: $_id
+                        orders: 1
+                        revenue: 1
+                    - $sort:
+                        revenue: -1
+                columns:
+                  - key: status
+                    label: Status
+                  - key: orders
+                    label: Orders
+                  - key: revenue
+                    label: Revenue
+                    format:
+                      style: currency
+                      currency: USD
+                      locale: en-US
+                      decimals: 2
+                filterBy:
+                  - region
+                  - order_date
+              # Activities-grain sections: a KPI and a chart that count
+              # demo_activities DOCUMENTS per type rather than unwinding
+              # company_ids — the documented workaround for an array-match filter
+              # (counting elements would inflate the total whenever an activity
+              # links to more than one company). Both read demo_activities (the
+              # raw collection, which carries company_ids), not
+              # demo_activities_report (the view, whose catalog entry does not).
+              #
+              # A KPI and a chart rather than a table because the filter row sits
+              # at the top of the report and says nothing about which sections
+              # each control scopes: with only a table at the bottom bound to it,
+              # a company selection was easy to miss entirely. Every filter here
+              # now moves at least one prominent section.
+              - type: kpi
+                label: Activities
+                query:
+                  collection: demo_activities
+                  pipeline:
+                    - $group:
+                        _id: null
+                        activities:
+                          $sum: 1
+                valueKey: activities
+                filterBy:
+                  - type
+                  - company_ids
+              - type: chart
+                label: Activities by type
+                chart: bar
+                query:
+                  collection: demo_activities
+                  pipeline:
+                    - $group:
+                        _id: $type
+                        activities:
+                          $sum: 1
+                    - $project:
+                        _id: 0
+                        type: $_id
+                        activities: 1
+                    - $sort:
+                        activities: -1
+                x: type
+                y:
+                  - activities
+                filterBy:
+                  - type
+                  - company_ids
+              # Contacts-grain sections for the match: all filter — again counting
+              # DOCUMENTS (contacts per surname), so the document-level $match
+              # lines up with the section's rows. The KPI is here for the same
+              # reason as the activities one: without it the `all` filter's only
+              # visible effect was a table at the very bottom of the report.
+              - type: kpi
+                label: Contacts
+                query:
+                  collection: demo_contacts
+                  pipeline:
+                    - $group:
+                        _id: null
+                        contacts:
+                          $sum: 1
+                valueKey: contacts
+                filterBy:
+                  - global_attributes.company_ids
+              - type: table
+                label: Contacts by surname
+                query:
+                  collection: demo_contacts
+                  pipeline:
+                    - $group:
+                        _id: $profile.family_name
+                        contacts:
+                          $sum: 1
+                    - $project:
+                        _id: 0
+                        surname: $_id
+                        contacts: 1
+                    - $sort:
+                        contacts: -1
+                columns:
+                  - key: surname
+                    label: Surname
+                  - key: contacts
+                    label: Contacts
+                filterBy:
+                  - global_attributes.company_ids
+              # CSV download — pipeline only, no presentation contract; headers
+              # come from the row keys.
+              - type: download
+                label: Download orders CSV
+                query:
+                  collection: demo_orders
+                  pipeline:
+                    - $project:
+                        _id: 0
+                        region: 1
+                        category: 1
+                        status: 1
+                        channel: 1
+                        month: 1
+                        total: 1
+                        quantity: 1
+          catalog:
+            _ref: modules/reporting/catalog.yaml
+          roles:
+            _user: roles
+  - id: insert_report
+    type: MongoDBInsertOne
+    connectionId: reporting-reports
+    properties:
+      doc:
+        _id:
+          _string.concat:
+            - "example-orders-report-"
+            - _user: id
+        owner:
+          user_id:
+            _user: id
+          name:
+            _user: profile.name
+        title: Orders overview (seeded example)
+        description: >
+          A worked example over the seeded demo_orders, demo_activities and
+          demo_contacts collections — three KPIs, three bar charts (one a
+          stacked multi-series breakdown), two tables, a region multiselect, a
+          created daterange, an activity type select, two company multiselects
+          (match: any and match: all, both with looked-up labels) and a CSV
+          download. Copy the section shapes for your own reports.
+        # Point at a seeded conversation (reporting-seed-conversations writes it
+        # with this same deterministic _id) so opening it from the chat rail shows
+        # the "Saved from this chat" section with this report as a navigating row —
+        # the re-visit path end to end. A plain string match, no FK, so it holds
+        # regardless of which seed runs first.
+        conversation_id:
+          _string.concat:
+            - "seed-conversation-today-"
+            - _user: id
+        created:
+          timestamp:
+            _date: now
+          user:
+            name:
+              _user: profile.name
+            id:
+              _user: id
+        updated:
+          timestamp:
+            _date: now
+          user:
+            name:
+              _user: profile.name
+            id:
+              _user: id
+        spec:
+          sections:
+            _state: validated.sections
+        # Written on insert by every creator; nothing branches on it yet, and it
+        # cannot be backfilled meaningfully later.
+        spec_version: 1
+        visibility: private
+        favourite_of: []
+  - :return:
+      ok: true
+      report_id:
+        _string.concat:
+          - "example-orders-report-"
+          - _user: id
+      url:
+        _string.concat:
+          - "/reporting/report?report_id=example-orders-report-"
+          - _user: id

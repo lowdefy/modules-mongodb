@@ -1,0 +1,106 @@
+# Page-side twin of generate-report: same validation (validateReportSpec, same
+# auth guard) and same stored shape (both insert through defaults/new_report.yaml),
+# persisting the validator's OUTPUT rather than the payload. The only difference is
+# that this path records the source conversation_id, which the chat page has in hand
+# and a tool endpoint cannot supply.
+#
+# `spec` holds { sections } only. `title` and `description` are lifted to document
+# fields off the validated object — see new_report.yaml.
+id: create-report
+type: Api
+description: >
+  Save the chat page's ticked findings as a navigable report. Takes a report
+  spec — title, optional description, sections — plus the source conversation_id,
+  validates it against the catalog exactly as generate-report does, and returns
+  the report URL.
+payloadSchema:
+  type: object
+  required:
+    - spec
+  properties:
+    spec:
+      type: object
+      description: The report spec.
+      required:
+        - title
+        - sections
+      properties:
+        title:
+          type: string
+          description: Report title (max 200 characters).
+        description:
+          type: string
+          description: Short report description.
+        sections:
+          type: array
+          description: >
+            Report sections in render order. kpi/chart/table/download carry a
+            query; filter carries { control, field, label, labelKey?, match? }
+            (create-report derives its optionsQuery and filterBy before
+            validation); markdown carries { content }.
+          items:
+            type: object
+            required:
+              - type
+    conversation_id:
+      type: [string, "null"]
+      description: The source conversation this report was saved from, or null.
+routine:
+  # Reports are per-user; an unauthenticated context cannot save one.
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to save a report.
+  # The sheet posts filters as leaf inputs ({ field, labelKey? }); this pass
+  # builds each looked-up filter's optionsQuery from the catalog and binds every
+  # filter to the sections it scopes, producing the shape validateReportSpec
+  # accepts. The agent route writes complete filters and never runs this.
+  - :set_state:
+      derived:
+        _analytics.deriveReportSpec:
+          spec:
+            _payload: spec
+          catalog:
+            _module.var: catalog
+  # Validation throws on an invalid spec — the API call fails with the
+  # validator's actionable message. Its OUTPUT is what gets stored.
+  - :set_state:
+      validated:
+        _analytics.validateReportSpec:
+          spec:
+            _state: derived
+          catalog:
+            _module.var: catalog
+          roles:
+            _user: roles
+  - id: insert_report
+    type: MongoDBInsertOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      # The stored document shape lives in one place; this endpoint only supplies
+      # the validated leaves and the conversation link.
+      doc:
+        _ref:
+          path: defaults/new_report.yaml
+          vars:
+            title:
+              _state: validated.title
+            description:
+              _state: validated.description
+            sections:
+              _state: validated.sections
+            conversation_id:
+              _payload: conversation_id
+  - :return:
+      ok: true
+      report_id:
+        _step: insert_report.insertedId
+      url:
+        _string.concat:
+          - "/"
+          - _module.id: true
+          - "/report?report_id="
+          - _step: insert_report.insertedId

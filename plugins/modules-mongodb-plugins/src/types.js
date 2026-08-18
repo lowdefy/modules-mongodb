@@ -7,7 +7,7 @@ const blockTypes = extractBlockTypes(metas);
 export default {
   ...blockTypes,
   actions: Object.keys(actions),
-  operators: {},
+  operators: { client: [], server: ["_analytics"] },
   connections: Object.keys(connections),
   requests: Object.keys(connections).flatMap((c) =>
     Object.keys(connections[c].requests),

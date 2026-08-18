@@ -1,0 +1,343 @@
+# onFinish hook: read the validated chart/table/export specs from the turn's
+# toolResults, run each chart's and table's query once (bounded, inside :try — a
+# failed query skips only its own part), mint an id and the turn's date onto each
+# built part, and return chart + table + download data parts for the chat page's
+# adjacent panel. Tools cannot write to the stream — the parts are written only
+# from onFinish hook responses. No-ops when the payload carries no
+# conversationId — the parts have nowhere to be snapshotted.
+#
+# It also ties the turn's generate_report reports back to the conversation: the
+# tool creates them conversation_id: null (it never sees the id), so this hook
+# backfills conversation_id (owner-guarded) and streams a data-report-saved part
+# for each, so a report the agent saved appears in the panel's "Reports from this
+# chat" section instantly. That part is emitted only, NOT persisted to
+# data_parts — re-visit surfaces the report through get-conversation-results'
+# folded read on the now-populated conversation_id, so persisting would double it.
+id: emit-data-parts
+type: Api
+routine:
+  # Catalog entries with no `roles` are readable by any AUTHENTICATED user, so
+  # the engine's role gate assumes there is a user. This hook is HTTP-callable
+  # and runs catalog pipelines below (the chart/table AnalyticsPipeline loops),
+  # so without this guard an unprotected app lets an anonymous caller execute
+  # them. Same guard the other data-reading endpoints carry (see query-data) —
+  # it must precede the conversationId no-op so an anonymous caller cannot even
+  # reach the pipeline loops.
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to emit data parts.
+  - :if:
+      _eq:
+        - _payload: conversationId
+        - null
+    :then:
+      - :return: {}
+  # The validated specs, in tool-call order, each kind capped at 8 per turn —
+  # three independent budgets, so a chart-heavy turn cannot starve the tables and
+  # downloads it also produced.
+  - :set_state:
+      chart_specs:
+        _mql.expr:
+          on:
+            results:
+              _payload: toolResults
+          expr:
+            $slice:
+              - $map:
+                  input:
+                    $filter:
+                      input: $results
+                      cond:
+                        $eq:
+                          - $$this.toolName
+                          - render_chart
+                  in: $$this.output.spec
+              - 8
+      table_specs:
+        _mql.expr:
+          on:
+            results:
+              _payload: toolResults
+          expr:
+            $slice:
+              - $map:
+                  input:
+                    $filter:
+                      input: $results
+                      cond:
+                        $eq:
+                          - $$this.toolName
+                          - render_table
+                  in: $$this.output.spec
+              - 8
+      download_specs:
+        _mql.expr:
+          on:
+            results:
+              _payload: toolResults
+          expr:
+            $slice:
+              - $map:
+                  input:
+                    $filter:
+                      input: $results
+                      cond:
+                        $eq:
+                          - $$this.toolName
+                          - export_data
+                  in: $$this.output.spec
+              - 8
+      # The ids of reports the agent saved this turn — generate_report returns
+      # { report_id } (and creates the report conversation_id: null, since a tool
+      # never sees the conversationId). Capped like the others; in practice a turn
+      # saves at most one. Backfilled and streamed below.
+      report_ids:
+        _mql.expr:
+          on:
+            results:
+              _payload: toolResults
+          expr:
+            $slice:
+              - $map:
+                  input:
+                    $filter:
+                      input: $results
+                      cond:
+                        $eq:
+                          - $$this.toolName
+                          - generate_report
+                  in: $$this.output.report_id
+              - 8
+  - :for: chart
+    :in:
+      _state: chart_specs
+    :do:
+      - :try:
+          - id: chart_rows
+            type: AnalyticsPipeline
+            connectionId:
+              _module.connectionId: reporting-data
+            properties:
+              query:
+                _item: chart.query
+              roles:
+                _user: roles
+        :catch:
+          - :log: A chart pipeline failed at turn end — its chart is skipped.
+  # This loop and the chart loop above deliberately set no maxResultBytes, taking
+  # the connection's 8 MB default rather than the 200 KB budget query_data uses.
+  # That tight budget belongs on the agent's read path, where every row becomes
+  # model context re-sent on each later step. Here the part is projected to the
+  # columns it displays and its rows are capped before anything is persisted, so
+  # fetch size and persisted size are barely related: a `$$ROOT` pipeline
+  # charting or tabulating two of its fields is fat to fetch and tiny to store,
+  # and a tight budget would reject it for nothing. It would also fail badly —
+  # the turn is over, so the agent cannot narrow anything, and the :catch only
+  # logs and skips, so the user loses the artefact with no explanation. 8 MB is
+  # the right bound for a fetch nobody re-sends: an app-memory backstop, not a
+  # context budget.
+  - :for: table
+    :in:
+      _state: table_specs
+    :do:
+      - :try:
+          - id: table_rows
+            type: AnalyticsPipeline
+            connectionId:
+              _module.connectionId: reporting-data
+            properties:
+              query:
+                _item: table.query
+              roles:
+                _user: roles
+        :catch:
+          - :log: A table pipeline failed at turn end — its table is skipped.
+  # buildDataParts holds the fetched rows already, so it needs no catalog: it
+  # re-checks the inert spec shapes and verifies each chart's x/y and each
+  # table's column contract against its rows. A spec that fails is skipped inside
+  # buildDataParts, not thrown — the agent's turn is over so it cannot
+  # self-correct, and a throw here would lose every chart, table and download of
+  # the turn (handleAgentChat only console.warns a failed hook).
+  - :set_state:
+      built_parts:
+        _analytics.buildDataParts:
+          charts:
+            _state: chart_specs
+          results:
+            _step: chart_rows
+          tables:
+            _state: table_specs
+          tableResults:
+            _step: table_rows
+          downloads:
+            _state: download_specs
+          roles:
+            _user: roles
+  # One reading for the whole turn, because every part of a turn is an artefact
+  # of the same moment — that is in fact what they share. Read out here rather
+  # than inside the map below, where a `__date` re-fires per item and would drift
+  # the parts of one turn milliseconds apart for no reason.
+  - :set_state:
+      turn_timestamp:
+        _date: now
+  # Selection binds to a part's `id`, never its array index: the retention $slice
+  # below and a concurrent turn's $push each shift the array under an open
+  # selection. `created` dates the frozen artefact, so a card can say "as of 14
+  # July" about data that no longer matches the collection.
+  #
+  # Minted out here rather than inside buildDataParts because that function is
+  # pure, with a unit test file beside it — a uuid or a clock read in it would
+  # make it non-deterministic. `_uuid` is declared dynamic, so it stays deferred
+  # to runtime and the callback re-evaluates it per item; a non-dynamic operator
+  # would be resolved once and every part of the turn would carry one id.
+  #
+  # `created` keeps `_state` on a single underscore while the item reads take the
+  # `__` prefix. The prefixed forms resolve per call in the callback's `__args`
+  # scope, which _function gives no state — `__state` reads null. A single
+  # underscore resolves once in the enclosing scope before the callback exists,
+  # which is exactly the one-timestamp-per-turn sharing wanted.
+  #
+  # It is a bare timestamp, not the _ref'd defaults/change_stamp.yaml every
+  # DOCUMENT this module writes carries: a part is not a document and has no
+  # author of its own, since the conversation's `owner` already answers who. A
+  # user id and display name repeated across fifty array elements buys nothing
+  # and goes stale independently of the name it was copied from.
+  - :set_state:
+      data_parts:
+        _array.map:
+          - _state: built_parts
+          - _function:
+              type:
+                __args: 0.type
+              data:
+                __object.assign:
+                  - id:
+                      __uuid: true
+                    created:
+                      _state: turn_timestamp
+                  - __args: 0.data
+  # Snapshot this turn's built parts onto the conversation doc so reopening it
+  # restores the Results panel. save-conversation (the prior onFinish hook)
+  # owns the doc lifecycle (messages, title, created); this hook only appends
+  # `data_parts` per turn, mirroring the live panel's onDataPart accumulation.
+  # upsert is false: the prior hook has already created the doc, and creating it
+  # here would leave a title-less, created-less doc if that hook had failed.
+  - :if:
+      _gt:
+        - _array.length:
+            _state: data_parts
+        - 0
+    :then:
+      - id: persist_results
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: conversations-store
+        properties:
+          filter:
+            _id:
+              _payload: conversationId
+            # From _user, never the payload — see save-conversation. This
+            # endpoint is HTTP-callable, so a payload-supplied user id would let
+            # a caller $push parts into another user's conversation.
+            owner.user_id:
+              _user: id
+          update:
+            $push:
+              data_parts:
+                $each:
+                  _state: data_parts
+                # Panel length, not document size: the column projection and the
+                # 200-row cap are what bound the bytes. The 8-per-kind cap is per
+                # TURN, so without this the array grows for the life of the
+                # conversation — and a panel of two hundred cards is not a panel.
+                # It is a correctness bound as much as a UI one: an unbounded
+                # array under an id-keyed selection keeps growing behind the
+                # selection made against it. A starting number, not a derived one.
+                $slice: -50
+          options:
+            upsert: false
+  # The agent path's report tie-back. generate_report runs as a tool with no
+  # conversationId in scope, so it left conversation_id null; complete the create
+  # here, where the hook holds both the id and the turn's toolResults. Owner-
+  # guarded ($in over the ids, AND owner.user_id) so a caller can never attach a
+  # report they don't own to their conversation. The plugin has no findOneAnd
+  # update, so this is two ops — set on all the turn's ids, then read the rows the
+  # live part needs — rather than one; unmatched ids (not found / not owned)
+  # simply don't come back from the read, which is the skip-not-throw the turn's
+  # other parts need (the turn is over; a throw would lose them). Guarded on a
+  # non-empty id list so a turn that saved no report makes no write and no read.
+  #
+  # No `updated` re-stamp: setting conversation_id completes the create within the
+  # same turn (the tool couldn't), it is not a user edit, and the section's
+  # "saved" time reads `created` — bumping `updated` would misdate it.
+  - :if:
+      _gt:
+        - _array.length:
+            _state: report_ids
+        - 0
+    :then:
+      - id: backfill_report_conversation
+        type: MongoDBUpdateMany
+        connectionId:
+          _module.connectionId: reports-store
+        properties:
+          filter:
+            _id:
+              $in:
+                _state: report_ids
+            owner.user_id:
+              _user: id
+          update:
+            $set:
+              conversation_id:
+                _payload: conversationId
+      - id: saved_report_rows
+        type: MongoDBFind
+        connectionId:
+          _module.connectionId: reports-store
+        properties:
+          query:
+            _id:
+              $in:
+                _state: report_ids
+            owner.user_id:
+              _user: id
+          options:
+            projection:
+              title: 1
+              visibility: 1
+              created: 1
+  # Build the live parts from the read rows: the report row IS the part `data`, so
+  # no fresh id or `created` is minted (unlike chart/table parts) — the report's
+  # own _id keys it and its `created` dates it. Empty when the turn saved nothing.
+  - :set_state:
+      saved_report_parts:
+        _mql.expr:
+          on:
+            docs:
+              _if_none:
+                - _step: saved_report_rows
+                - []
+          expr:
+            $map:
+              input: $docs
+              in:
+                type: data-report-saved
+                data: $$this
+  # `dataParts` is the agent framework's key for parts written back to the
+  # stream (handleAgentChat reads `responseData.dataParts`), not a field this
+  # module names — so it stays camelCase while the persisted field above is
+  # snake_case.
+  #
+  # The saved-report parts are streamed here but were NOT added to the
+  # persist_results $push above: re-visit surfaces these reports through
+  # get-conversation-results' folded read (they now carry conversation_id), so
+  # persisting the part too would double them.
+  - :return:
+      dataParts:
+        _array.concat:
+          - _state: data_parts
+          - _state: saved_report_parts

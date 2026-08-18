@@ -1,0 +1,103 @@
+# Conversational surface: conversations sidebar, AgentChat, and an adjacent
+# results panel that accumulates the charts and downloads the emit-data-parts
+# hook streams back as the framework's `dataParts` at each turn's end, and
+# persists on the conversation doc as `data_parts`.
+#
+# Wrapped in layout's page so the chat sits in the host app's chrome (sider,
+# menu, profile) like every other module — but rendered full-bleed: hide_title
+# drops the title bar, no breadcrumbs are passed (so no breadcrumb bar), and
+# content_style zeroes the content padding so the three-column workspace fills
+# the viewport edge-to-edge beside the full-height sider. The workspace and its
+# own 100dvh height live in components/chat_workspace.yaml.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: chat
+    hide_title: true
+    # The workspace is pinned to 100dvh, so an app footer below it would push the
+    # page past the viewport and reintroduce a scrollbar. This is the one page
+    # whose content is the whole viewport, so it opts out of the footer.
+    hide_footer: true
+    content_width: "100%"
+    content_style:
+      padding: 0
+      # PageSidebarLayout reserves a ~40px band at the top of the content — its
+      # breadcrumb, or (with no crumbs, as here) a spacer div in its place. There
+      # is no prop to drop it, so pull the whole content up over it: the 100dvh
+      # workspace then fills the viewport with no page scroll. 40px is the lg
+      # `py-5` spacer, and the chat only runs at lg+ (its three columns need the
+      # width), so the offset matches in practice.
+      marginTop: -40px
+      # The workspace panels use bg-layout (grey), and the sider layout's own
+      # background is bg-layout too — so on a transparent content area they blend
+      # into it. A container background behind the transparent centre restores the
+      # panel/centre contrast the old full-bleed page got from the white body.
+      background: var(--ant-color-bg-container)
+    events:
+      onInit:
+        - id: init_state
+          type: SetState
+          params:
+            # A Continue-in-chat / Fix-in-chat link from a report opens this page
+            # with the source conversation in the URL; anything else starts a new
+            # one. Seeding it here rather than on mount means the id is right
+            # before AgentChat first renders, so it never binds to a fresh uuid
+            # and then has it swapped underneath.
+            conversationId:
+              _if_none:
+                - _url_query: conversation_id
+                - _uuid: true
+            charts: []
+            tables: []
+            downloads: []
+            results_scope: all
+        # The collapse globals are app-scoped and outlive this page's context, while
+        # this seed runs only when that context is built — so it fills in a missing
+        # value rather than assigning one, and `_if_none` keeps an explicit `false`
+        # that a truthiness default would overwrite.
+        #
+        # The 232 + 348 side columns, two 16px gaps and 48px of page padding are
+        # 660px of chrome, so under 1280 the transcript gets less than its ~520px
+        # measure with any room to breathe — start both sides collapsed there.
+        - id: init_collapsed
+          type: SetGlobal
+          params:
+            reporting_rail_collapsed:
+              _if_none:
+                - _global: reporting_rail_collapsed
+                - _lt:
+                    - _media: width
+                    - 1280
+            reporting_panel_collapsed:
+              _if_none:
+                - _global: reporting_panel_collapsed
+                - _lt:
+                    - _media: width
+                    - 1280
+      onMountAsync:
+        _build.array.concat:
+          - - id: load_conversations
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: list-conversations
+            - id: set_conversations
+              type: SetState
+              params:
+                conversations:
+                  _api:
+                    _build.string.concat:
+                      - _module.endpointId: list-conversations
+                      - ".response"
+          # Restore the deep-linked conversation — the same sequence the rail runs
+          # when a row is clicked, so a link lands on the transcript and results
+          # panel a click would give. Every step skips when the URL names no
+          # conversation, which is the ordinary case.
+          - _ref:
+              path: pages/chat/actions/load_conversation.yaml
+              vars:
+                conversation_key:
+                  _url_query: conversation_id
+    blocks:
+      - _ref: pages/chat/components/chat_workspace.yaml

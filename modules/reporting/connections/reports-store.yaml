@@ -1,0 +1,8 @@
+id: reports-store
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: REPORTING_MONGODB_URI
+  collection:
+    _module.var: reports_collection
+  write: true

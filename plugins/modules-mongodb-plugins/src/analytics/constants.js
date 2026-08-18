@@ -1,0 +1,128 @@
+// Shared caps and grammar for the reporting analytics engine. These are the
+// validation caps from the ai-chat-reporting design's security model — specs
+// exceeding a cap fail validation with a message the model can act on.
+
+export const MAX_SECTIONS = 24;
+export const MAX_LABEL_LENGTH = 200;
+export const MAX_MARKDOWN_LENGTH = 5000;
+// Per-KIND cap on the chart / download specs one turn may emit as dataParts.
+// Per kind, not shared: emit-data-parts already slices 8 charts and 8
+// downloads independently, and a single shared budget meant eight charts
+// starved every download in the same turn.
+export const MAX_DATA_PARTS_SPECS = 8;
+// Rows retained on a table dataPart. A table part freezes its rows onto the
+// conversation document, which is rewritten every turn and capped at 16 MB, so
+// what a card may CARRY is bounded independently of PIPELINE_RESULT_CAP, which
+// bounds only what a query may RETURN. `row_count` on the part records the true
+// total, so a card can say "first 200 of 964", and export_data is the
+// affordance for the whole result.
+export const MAX_DATA_PART_ROWS = 200;
+export const MAX_FILTER_OPTIONS = 50;
+// Options cap for a filter whose options are resolved server-side from a
+// query (not typed into the persisted spec). MAX_FILTER_OPTIONS bounds what
+// the agent types into a persisted spec (a payload-size concern); query-
+// sourced options are resolved server-side per report open and already
+// bounded by PIPELINE_RESULT_CAP, so the same number is needlessly tight.
+// INVARIANT: must stay <= MAX_ARRAY_LITERAL_LENGTH — a full multi-select
+// selection becomes ONE $in/$all operand in the server-built filter $match,
+// which the validator caps at MAX_ARRAY_LITERAL_LENGTH. Violating this
+// rejects an ordinary selection, and rejects it silently — the failed
+// CallAPI aborts before its SetState, so bound sections keep stale rows.
+export const MAX_QUERY_FILTER_OPTIONS = 500;
+
+export const CHART_TYPES = ["bar", "line", "pie"];
+export const FILTER_CONTROLS = ["select", "multiselect", "daterange"];
+// A multiselect filter's match mode, selecting between the `in` ($in, any
+// of) and `all` ($all, all of) filter-triple ops.
+export const FILTER_MATCH_MODES = ["any", "all"];
+
+// Number-format styles a presentation contract may declare on a KPI or table
+// column (`format: { style, currency?, locale?, decimals? }`). The agent copies
+// these from the catalog's per-field display hints; the engine only validates
+// the shape and applies it at compile time.
+export const FORMAT_STYLES = ["decimal", "currency"];
+
+// Number display defaults for the report renderer, used when a contract's
+// `format` descriptor omits a field. Currency is USD/en-US — the single
+// concrete need today; a contract can declare any locale/currency per column.
+export const REPORT_LOCALE = "en-US";
+export const REPORT_CURRENCY = "USD";
+export const REPORT_DECIMALS = 2;
+
+// ---------------------------------------------------------------------------
+// Open query engine resource caps (design §6).
+//
+// These bound AI-authored raw aggregation pipelines validated by
+// validatePipeline.js. They protect both the database (memory, cardinality,
+// scan cost) and the validator's own recursion (a deeply nested tree can
+// overflow the walker before any structural cap is consulted). The three
+// allowlists (stageAllowlist / expressionOperatorAllowlist /
+// matchOperatorAllowlist) decide WHAT is allowed; these caps decide HOW MUCH.
+// ---------------------------------------------------------------------------
+
+// Max total pipeline stages, counted INCLUDING stages inside `$facet` branches
+// and `$lookup` sub-pipelines (not just top-level).
+export const MAX_PIPELINE_STAGES = 50;
+
+// Max nesting depth of sub-pipelines (`$lookup.pipeline`, `$facet` branches).
+export const MAX_SUBPIPELINE_DEPTH = 5;
+
+// Max number of `$lookup` stages anywhere in the pipeline (bounds join fan-out
+// and uncorrelated-lookup cartesian products).
+export const MAX_LOOKUP_COUNT = 10;
+
+// Max number of branches in a single `$facet` stage.
+export const MAX_FACET_BRANCHES = 10;
+
+// Max nesting depth of a single expression tree. An explicit depth guard so the
+// recursive expression walker fails with a validation error, never a Node stack
+// overflow (e.g. a 100k-deep `$and` under `$expr`).
+export const MAX_EXPRESSION_DEPTH = 100;
+
+// Max total classified nodes across the whole pipeline (validator self-protection
+// against a broad-but-shallow tree that evades the depth guard).
+export const MAX_PIPELINE_NODES = 10000;
+
+// Max length of an array literal WRITTEN INTO the pipeline (`$in`/`$nin`/`$all`
+// operands, etc.). This bounds what the agent can type, NOT what a stage
+// produces: `{ $range: [0, 500000] }` is three tokens and a half-million
+// element result. Output size is bounded at execution by MAX_RESULT_BYTES.
+// INVARIANT: MAX_QUERY_FILTER_OPTIONS must stay <= MAX_ARRAY_LITERAL_LENGTH —
+// a full multi-select selection becomes ONE $in/$all operand in the
+// server-built filter $match, which this cap bounds. Violating this rejects
+// an ordinary selection, and rejects it silently — the failed CallAPI aborts
+// before its SetState, so bound sections keep stale rows.
+export const MAX_ARRAY_LITERAL_LENGTH = 500;
+
+// Max serialized (JSON) size of the pipeline in bytes — bounds a payload padded
+// with large `$literal` blobs, which the walker does not recurse into but must
+// still account for.
+export const MAX_PIPELINE_BYTES = 100000;
+
+// Max length of a regex pattern string (`$regex` and the expression forms
+// `$regexMatch`/`$regexFind`/`$regexFindAll`). A hard cap because `maxTimeMS` is
+// a weak backstop against catastrophic backtracking (design §3b).
+export const MAX_REGEX_PATTERN_LENGTH = 200;
+
+// Regex flags accepted on `$regex`/`$options` and the expression regex forms.
+// Anything outside this set — notably `x`/verbose — is rejected (design §3b).
+export const ALLOWED_REGEX_FLAGS = "imsu";
+
+// Cap on `$sample.size` — `$sample` on a large collection without a suitable
+// index is a blocking scan (design §6).
+export const MAX_SAMPLE_SIZE = 1000;
+
+// The unconditionally appended trailing `$limit`. The engine always appends this
+// as the final top-level stage (and to every `$facet` branch), never trusting an
+// agent-supplied limit to be the bound (design §6). Matches today's MAX_LIMIT.
+export const PIPELINE_RESULT_CAP = 1000;
+
+// Max total size, in bytes, of the documents one request may accumulate in the
+// app process. PIPELINE_RESULT_CAP bounds the row COUNT; nothing in the grammar
+// bounds a row's SIZE — one allowlisted expression (`{ $range: [0, 500000] }`,
+// `{ $push: "$$ROOT" }` over a wide collection) turns 1000 permitted rows into
+// gigabytes. maxTimeMS bounds server compute and allowDiskUse lifts the 100MB
+// in-memory stage limit, so neither bounds what the driver hands back: this is
+// the only place the app-side total can be enforced. Override per connection
+// with `maxResultBytes`.
+export const MAX_RESULT_BYTES = 8000000;

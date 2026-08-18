@@ -4,6 +4,25 @@ packages:
   - "modules/*"
   - "apps/*/.lowdefy/*"
 
+# Force a single dayjs copy across the tree. antd@6 resolves dayjs ^1.11.11
+# (→ 1.11.19) while @lowdefy/blocks-antd pins dayjs 1.11.20 exactly, so pnpm
+# installs two physical copies. blocks-antd calls dayjs.extend(utc) on its own
+# copy, but antd builds the DatePicker's calendar-cell date objects with its
+# copy; dayjs(cellDate) clones same-family instances, so blocks-antd's
+# disabledDate closure gets an antd-copy clone that never had utc extended —
+# "dayjs(...).utc is not a function" the moment a date picker opens. Deduping to
+# one copy (satisfies both ranges) makes the utc plugin registration shared.
+overrides:
+  dayjs: 1.11.20
+
+# No patchedDependencies: the three patches this branch carried (ai-utils
+# generateMessageId, blocks-antd-x setInput + two-track welcome, blocks-aggrid
+# menu cell + cell-renderer identity) all landed upstream and shipped in the
+# 0.0.0-experimental-20260814133003 build, verified present in the published
+# dist, so the patches were dropped on that bump.
+
+# These pnpm keys live here, not under a "pnpm" key in package.json: pnpm 10+
+# no longer reads that key and silently ignores it — it only warns.
 packageExtensions:
   "@lowdefy/client":
     dependencies:
@@ -22,39 +41,44 @@ allowBuilds:
   "@sentry/cli": false
 
 minimumReleaseAgeExclude:
-  - '@lowdefy/actions-core@5.5.1'
-  - '@lowdefy/ai-utils@5.5.1'
-  - '@lowdefy/ajv@5.5.1'
-  - '@lowdefy/api@5.5.1'
-  - '@lowdefy/block-utils@5.5.1'
-  - '@lowdefy/blocks-aggrid@5.5.1'
-  - '@lowdefy/blocks-antd-x@5.5.1'
-  - '@lowdefy/blocks-antd@5.5.1'
-  - '@lowdefy/blocks-basic@5.5.1'
-  - '@lowdefy/blocks-loaders@5.5.1'
-  - '@lowdefy/blocks-markdown@5.5.1'
-  - '@lowdefy/blocks-tiptap@5.5.1'
-  - '@lowdefy/build@5.5.1'
-  - '@lowdefy/client@5.5.1'
-  - '@lowdefy/e2e-utils@5.5.1'
-  - '@lowdefy/engine@5.5.1'
-  - '@lowdefy/errors@5.5.1'
-  - '@lowdefy/helpers@5.5.1'
-  - '@lowdefy/layout@5.5.1'
-  - '@lowdefy/logger@5.5.1'
-  - '@lowdefy/node-utils@5.5.1'
-  - '@lowdefy/nunjucks@5.5.1'
-  - '@lowdefy/operators-dayjs@5.5.1'
-  - '@lowdefy/operators-js@5.5.1'
-  - '@lowdefy/operators-mql@5.5.1'
-  - '@lowdefy/operators-nunjucks@5.5.1'
-  - '@lowdefy/operators-uuid@5.5.1'
-  - '@lowdefy/operators@5.5.1'
-  - '@lowdefy/plugin-aws@5.5.1'
-  - '@lowdefy/plugin-next-auth@5.5.1'
-  - lowdefy@5.5.1
-  - '@lowdefy/blocks-echarts@5.5.1'
-  - '@lowdefy/connection-axios-http@5.5.1'
-  - '@lowdefy/operators-change-case@5.5.1'
-  - '@lowdefy/operators-diff@5.5.1'
-  - '@lowdefy/operators-yaml@5.5.1'
+  - "@lowdefy/actions-core@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/ai-utils@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/ajv@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/api@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/block-utils@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-aggrid@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-antd-x@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-antd@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-basic@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-loaders@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-markdown@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-tiptap@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/build@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/client@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/e2e-utils@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/engine@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/errors@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/helpers@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/layout@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/logger@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/node-utils@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/nunjucks@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-dayjs@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-js@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-mql@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-nunjucks@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-uuid@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/plugin-aws@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/plugin-next-auth@0.0.0-experimental-20260814133003 || 5.5.1"
+  - lowdefy@0.0.0-experimental-20260813120102 || 0.0.0-experimental-20260814133003 || 5.5.1
+  - "@lowdefy/blocks-echarts@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/connection-axios-http@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-change-case@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-diff@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/operators-yaml@0.0.0-experimental-20260814133003 || 5.5.1"
+  - "@lowdefy/blocks-files@0.0.0-experimental-20260814133003"
+  - "@lowdefy/websockets-core@0.0.0-experimental-20260814133003"
+  - "@lowdefy/connection-ai-gateway@0.0.0-experimental-20260814133003"
+  - "@lowdefy/connection-mongodb@0.0.0-experimental-20260814133003"
+  - "@lowdefy/docs-content@0.0.0-experimental-20260814133003"

@@ -1,0 +1,80 @@
+# Edit a report's prose — title and description, the two document fields that
+# live outside the spec. Opened from actions/report_rename_open.yaml, which fills
+# these two inputs from `selected_report` on the way — that object is the menu's
+# single source, seeded by the list from the grid row (the ⋯ cell's onMenuRename)
+# and by the report page from compiled literals, via its compiled ⋯ menu.
+# Persist, then write the saved values back onto
+# `selected_report`, then run `after_write`, which is how the caller re-reads
+# from the server: the list refetches its scope, the report page re-navigates.
+# Not hidden with `visible:` — hiding a container drops its children's state on
+# every render, which would clear the seeded values before onOk could read them. A
+# closed antd Modal is already invisible, so there is nothing to gain. The delete
+# confirm follows the same rule.
+#
+# `description` is always sent, including as "" — set-report-title treats a
+# string as a write and only an absent key as leave-alone, so clearing the field
+# here clears the stored description rather than silently keeping it.
+id: rename_modal
+type: Modal
+# `selected_report` is seeded at runtime by whichever surface opened this — the
+# list's onMenuClick, or the report header's compiled SetState, which the build
+# cannot see inside the Dynamic block's server-resolved content. There is no
+# input block with that id on either page, so the state-refs check has nothing
+# to match and would warn on every build.
+~ignoreBuildChecks:
+  - state-refs
+properties:
+  title: Edit report
+  okText: Save
+events:
+  onOk:
+    _build.array.concat:
+      - - id: rename_report
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: set-report-title
+            payload:
+              report_id:
+                _state: selected_report._id
+              title:
+                _state: rename_title
+              # _if_none, not a bare _state: an untouched TextArea leaves the
+              # path null, and null is the endpoint's leave-alone signal — so
+              # opening the modal and saving without touching the description
+              # would keep a description the user could not see they still had.
+              description:
+                _if_none:
+                  - _state: rename_description
+                  - ""
+        # Write what was saved back onto selected_report, the menu's single
+        # source — the same reason publish/unpublish correct their own
+        # visibility. On the report page the seed is a compile-time literal, so
+        # without this the ⋯ header and the next open of this form would both
+        # show the old title until the page genuinely re-resolved. CallAPI throws
+        # on rejection and stops the chain, so this only runs on a persisted
+        # write.
+        - id: rename_seed_back
+          type: SetState
+          params:
+            selected_report.title:
+              _state: rename_title
+            selected_report.description:
+              _if_none:
+                - _state: rename_description
+                - ""
+      - _var: after_write
+blocks:
+  - id: rename_title
+    type: TextInput
+    properties:
+      title: Title
+      placeholder: Report title
+  - id: rename_description
+    type: TextArea
+    properties:
+      title: Description
+      placeholder: What this report answers
+      autoSize:
+        minRows: 2
+        maxRows: 6

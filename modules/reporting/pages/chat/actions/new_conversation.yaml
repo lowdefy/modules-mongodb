@@ -1,0 +1,15 @@
+# Starting a fresh conversation, shared by the rail and by the collapsed
+# strip's own New chat button. One copy, so every result key a new conversation
+# has to clear is cleared at both entry points.
+#
+# The blanked keys come from `blank_results.yaml` rather than being listed here,
+# so they cannot drift from the set `load_conversation` blanks — merged with
+# `_build.object.assign` at build time, which leaves the runtime `_uuid` alone
+# (`_uuid` is not a build operator, so it survives to evaluate per click).
+- id: new_conversation
+  type: SetState
+  params:
+    _build.object.assign:
+      - _ref: pages/chat/actions/blank_results.yaml
+      - conversationId:
+          _uuid: true

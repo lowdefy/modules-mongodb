@@ -3,7 +3,9 @@ const config = {
   testEnvironment: "node",
   testMatch: ["**/*.test.js"],
   transform: {
-    "^.+\\.js$": [
+    // Match `.js` and `.mjs` — the repo ships `.mjs` sources (bin scripts) that
+    // export testable helpers, and they need the same swc transform as `.js`.
+    "^.+\\.m?js$": [
       "@swc/jest",
       {
         swcrc: false,
@@ -24,7 +26,7 @@ const config = {
   // in the realpath (e.g. `@lowdefy+community-plugin-mongodb@3.0.0`), so we
   // match by package name anywhere on the path.
   transformIgnorePatterns: [
-    "/node_modules/(?!.*(@lowdefy|@swc/helpers|@formatjs|intl-messageformat)).+\\.js$",
+    "/node_modules/(?!.*(@lowdefy|@swc/helpers|@formatjs|intl-messageformat)).+\\.m?js$",
   ],
   testTimeout: 60000,
 };

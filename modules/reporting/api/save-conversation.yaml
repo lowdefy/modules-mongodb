@@ -1,0 +1,136 @@
+# onFinish hook: upsert the full conversation keyed by conversationId, scoped
+# by owner.user_id. No-ops when the payload carries no conversationId — there
+# is nothing to key the upsert on, and this endpoint is HTTP-callable. The title
+# is derived from the first user message on insert.
+#
+# `conversationId` and `messages` stay camelCase because they are the agent
+# framework's own onFinish payload keys, not fields this module names — the
+# document fields it does name are snake_case.
+#
+# The owner comes from _user, never from the hook payload. This endpoint is
+# type: Api — HTTP-callable by any authenticated user — and the write is an
+# upsert, so a payload-supplied user id would let a caller who knows another
+# user's id insert attacker-authored conversations into that user's sidebar
+# (a fresh uuid needs no existing document) or overwrite one whose id leaked.
+# Hooks run through invokeEndpoint with the request context, so _user resolves
+# here exactly as it does in a browser-invoked endpoint. Same derivation as
+# set-conversation-title, so both write the same identity key.
+#
+# $set and $setOnInsert here cover this writer's half of the live document
+# shape; set-conversation-title covers the rest ($setOnInsert: owner, created,
+# updated, messages, data_parts, deleted) — see the comment there for why the
+# split is a union, not a shared list.
+id: save-conversation
+type: Api
+routine:
+  # Signed-in guard: the write below is an owner-scoped upsert, so a null
+  # `_user: id` would match nothing and INSERT a junk conversation owned by
+  # { user_id: null }. This hook is HTTP-callable, so an unprotected app must
+  # not let an anonymous caller litter null-owner documents. Precedes the
+  # conversationId no-op. Same guard delete-conversation carries.
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to save a conversation.
+  - :if:
+      _eq:
+        - _payload: conversationId
+        - null
+    :then:
+      - :return:
+          skipped: true
+  - id: save
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: conversations-store
+    properties:
+      filter:
+        _id:
+          _payload: conversationId
+        owner.user_id:
+          _user: id
+      update:
+        $set:
+          messages:
+            _payload: messages
+          # The whole owner reference, not just the id — the name has to be
+          # refreshed alongside it so a display name change propagates.
+          owner:
+            _ref: defaults/owner.yaml
+          updated:
+            _ref: defaults/change_stamp.yaml
+        $setOnInsert:
+          created:
+            _ref: defaults/change_stamp.yaml
+          title:
+            _mql.expr:
+              on:
+                messages:
+                  _payload: messages
+              expr:
+                $let:
+                  vars:
+                    firstUserText:
+                      $arrayElemAt:
+                        # Alias the map/filter variable as `msg`: the inner
+                        # $reduce rebinds $$this to each part, so referencing the
+                        # message as $$this.parts here would resolve empty.
+                        - $map:
+                            as: msg
+                            input:
+                              $filter:
+                                as: msg
+                                input: $messages
+                                cond:
+                                  $eq:
+                                    - $$msg.role
+                                    - user
+                            in:
+                              $reduce:
+                                input: $$msg.parts
+                                initialValue: ""
+                                in:
+                                  $cond:
+                                    - $eq:
+                                        - $$this.type
+                                        - text
+                                    - $concat:
+                                        - $$value
+                                        - $$this.text
+                                    - $$value
+                        - 0
+                  in:
+                    $let:
+                      vars:
+                        text:
+                          $ifNull:
+                            - $$firstUserText
+                            - ""
+                      in:
+                        $switch:
+                          branches:
+                            - case:
+                                $eq:
+                                  - $$text
+                                  - ""
+                              then: New conversation
+                            - case:
+                                $gt:
+                                  - $strLenCP: $$text
+                                  - 60
+                              then:
+                                $concat:
+                                  - $substrCP:
+                                      - $$text
+                                      - 0
+                                      - 60
+                                  - "…"
+                          default: $$text
+          data_parts: []
+          deleted: null
+      options:
+        upsert: true
+  - :return:
+      ok: true
