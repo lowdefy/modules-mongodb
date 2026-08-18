@@ -8,45 +8,65 @@ connectionId:
   _module.connectionId: contacts-collection
 properties:
   pipeline:
-    - $match:
-        hidden:
-          $ne: true
-        disabled:
-          $ne: true
-        # app_name is build-time, so the field path resolves to a literal before
-        # Mongo sees it; $setIntersection avoids a runtime dot-notation key.
-        $expr:
-          $gt:
-            - $size:
-                $setIntersection:
-                  - $ifNull:
-                      - _string.concat:
-                          - "$apps."
-                          - _module.var: app_name
-                          - ".roles"
-                      - []
-                  - _var: roles
-            - 0
-    - $project:
-        _id: 0
-        value:
-          contact_id: "$_id"
-          name: "$profile.name"
-          email:
-            $ifNull:
-              - "$email"
-              - "$lowercase_email"
-        label:
-          $concat:
-            - $ifNull:
-                - "$profile.name"
-                - ""
-            - " ("
-            - $ifNull:
-                - "$email"
+    _build.array.concat:
+      - - $match:
+            hidden:
+              $ne: true
+            disabled:
+              $ne: true
+            # app_name is build-time, so the field path resolves to a literal before
+            # Mongo sees it; $setIntersection avoids a runtime dot-notation key.
+            $expr:
+              $and:
+                - $gt:
+                    - $size:
+                        $setIntersection:
+                          - $ifNull:
+                              - _string.concat:
+                                  - "$apps."
+                                  - _module.var: app_name
+                                  - ".roles"
+                              - []
+                          - _var: roles
+                    - 0
+                # Collapses to the literal `true` when
+                # exclude_users_from_selectors is `none`, leaving
+                # `$and: [<roles>, true]` — semantically the bare `$gt` this
+                # replaced. The roles check already needs `$expr`, and a
+                # `$match` takes only one `$expr` key, so the two fold together
+                # here rather than merging as separate clauses.
+                - _build.if:
+                    test:
+                      _build.ne:
+                        - _module.var: exclude_users_from_selectors
+                        - none
+                    then:
+                      _ref: requests/stages/expr_not_user_record.yaml
+                    else: true
+      # Consumer stages (request_stages.selector, default []) run BEFORE the
+      # projection so they can filter/derive on raw document fields — after it
+      # only `label` and `value` survive. Mirrors get_contacts_for_selector.
+      - _module.var: request_stages.selector
+      - - $project:
+            _id: 0
+            value:
+              contact_id: "$_id"
+              name: "$profile.name"
+              email:
+                $ifNull:
+                  - "$email"
+                  - "$lowercase_email"
+            label:
+              $concat:
                 - $ifNull:
-                    - "$lowercase_email"
-                    - "no email"
-            - ")"
-    - $sort:
-        label: 1
+                    - "$profile.name"
+                    - ""
+                - " ("
+                - $ifNull:
+                    - "$email"
+                    - $ifNull:
+                        - "$lowercase_email"
+                        - "no email"
+                - ")"
+        - $sort:
+            label: 1
