@@ -138,10 +138,10 @@ vars:
     description: Collection name for chat conversations.
   model:
     type: string
-    default: anthropic/claude-sonnet-4.5
+    default: anthropic/claude-sonnet-5
     description: >
       Gateway model id (provider/model) for the reporting assistant, e.g.
-      anthropic/claude-sonnet-4.5 or anthropic/claude-haiku-4.5.
+      anthropic/claude-sonnet-5 or anthropic/claude-haiku-4.5.
   welcome:
     type: object
     description: >

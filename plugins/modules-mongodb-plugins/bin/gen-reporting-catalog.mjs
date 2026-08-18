@@ -74,7 +74,7 @@
  *       Override the gateway base URL (default the Vercel AI Gateway, OpenAI-
  *       compatible endpoint). Mirrors the ai connection's `baseURL` property.
  *   REPORTING_MODEL                            (optional)
- *       Gateway model id (provider/model), default anthropic/claude-sonnet-4.5,
+ *       Gateway model id (provider/model), default anthropic/claude-sonnet-5,
  *       matching the reporting module's `model` var default. Overridden by --model.
  *
  * USAGE
@@ -113,7 +113,7 @@ export const DEFAULT_SAMPLE_SIZE = 100;
 // field count (and so the drafting prompt) on pathologically deep documents.
 export const DEFAULT_FLATTEN_DEPTH = 4;
 export const DEFAULT_OUT = "reporting-catalog.draft.yaml";
-export const DEFAULT_MODEL = "anthropic/claude-sonnet-4.5";
+export const DEFAULT_MODEL = "anthropic/claude-sonnet-5";
 export const DEFAULT_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 // A string field is a candidate enum when its distinct values are few and it is
 // not effectively an identifier (distinct values well below the observed count).

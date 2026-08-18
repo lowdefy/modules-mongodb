@@ -1,5 +1,5 @@
 # The AI provider for the reporting assistant — an AI gateway, so the `model`
-# var selects the provider/model (e.g. anthropic/claude-sonnet-4.5). Apps that
+# var selects the provider/model (e.g. anthropic/claude-sonnet-5). Apps that
 # already declare a gateway connection can remap this one instead of supplying
 # the secret:
 #   modules:
