@@ -59,7 +59,7 @@
       box-shadow 0.22s ease,
       background 0.18s ease;
   }
-  :global(.fp-root[data-placement='bottom-left'] .fp-launcher) {
+  :global(.fp-root[data-placement="bottom-left"] .fp-launcher) {
     right: auto;
     left: var(--fp-side, 24px);
     flex-direction: row-reverse;
@@ -144,7 +144,10 @@
        where the drop shadows below contribute almost nothing. The border does
        the rest: colorBorderSecondary flips to a light translucent in dark
        mode. */
-    background: var(--ant-color-bg-elevated, var(--ant-color-bg-container, #fff));
+    background: var(
+      --ant-color-bg-elevated,
+      var(--ant-color-bg-container, #fff)
+    );
     border: 1px solid var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
     border-radius: 16px;
     overflow: hidden;
@@ -159,25 +162,25 @@
       width 0.26s cubic-bezier(0.16, 1, 0.3, 1),
       visibility 0s linear 0.26s;
   }
-  :global(.fp-root[data-placement='bottom-left'] .fp-panel) {
+  :global(.fp-root[data-placement="bottom-left"] .fp-panel) {
     right: auto;
     left: var(--fp-side, 24px);
     transform-origin: bottom left;
   }
 
-  :global(.fp-panel[data-expanded='true']) {
+  :global(.fp-panel[data-expanded="true"]) {
     width: var(--fp-width-expanded, 720px);
   }
 
   /* Closed: hidden but still laid out, so the body keeps reporting its height
      (see --fp-body-height) and children keep their scroll position. */
-  :global(.fp-panel[data-open='false']) {
+  :global(.fp-panel[data-open="false"]) {
     opacity: 0;
     visibility: hidden;
     transform: translateY(12px) scale(0.96);
     pointer-events: none;
   }
-  :global(.fp-panel[data-open='true']) {
+  :global(.fp-panel[data-open="true"]) {
     opacity: 1;
     visibility: visible;
     transform: none;
@@ -195,7 +198,8 @@
     align-items: center;
     gap: 10px;
     padding: 12px 10px 12px 14px;
-    border-bottom: 1px solid var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
+    border-bottom: 1px solid
+      var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
     /* A hair of tint separates the chrome from the body without a second
        surface colour — the panel still reads as one object. */
     background: linear-gradient(
@@ -260,7 +264,8 @@
     gap: 2px;
     margin-right: 4px;
     padding-right: 6px;
-    border-right: 1px solid var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
+    border-right: 1px solid
+      var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
   }
 
   :global(.fp-controls) {
@@ -304,7 +309,8 @@
   :global(.fp-toolbar) {
     flex: 0 0 auto;
     padding: 9px 14px;
-    border-bottom: 1px solid var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
+    border-bottom: 1px solid
+      var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
   }
 
   /* ── Opt-in classes for slot content ──────────────────────────────────────
@@ -445,8 +451,12 @@
   :global(.fp-footer) {
     flex: 0 0 auto;
     padding: 10px 14px;
-    border-top: 1px solid var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
-    background: var(--ant-color-bg-elevated, var(--ant-color-bg-container, #fff));
+    border-top: 1px solid
+      var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
+    background: var(
+      --ant-color-bg-elevated,
+      var(--ant-color-bg-container, #fff)
+    );
   }
 
   /* ── Small viewports ──────────────────────────────────────────────────── */
@@ -456,7 +466,7 @@
      — it is how you dismiss the sheet. */
   @media (max-width: 640px) {
     :global(.fp-panel),
-    :global(.fp-root[data-placement='bottom-left'] .fp-panel) {
+    :global(.fp-root[data-placement="bottom-left"] .fp-panel) {
       left: 8px;
       right: 8px;
       bottom: calc(var(--fp-bottom, 24px) + 68px);
@@ -467,7 +477,7 @@
       max-height: none;
       transform-origin: bottom center;
     }
-    :global(.fp-panel[data-expanded='true']) {
+    :global(.fp-panel[data-expanded="true"]) {
       width: auto;
     }
     :global(.fp-launcher-label) {
@@ -485,7 +495,7 @@
       transition-property: opacity, visibility;
       transition-duration: 0.01ms;
     }
-    :global(.fp-panel[data-open='false']) {
+    :global(.fp-panel[data-open="false"]) {
       transform: none;
     }
     :global(.fp-launcher:hover),

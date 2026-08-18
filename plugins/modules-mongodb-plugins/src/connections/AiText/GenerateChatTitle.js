@@ -12,14 +12,14 @@
  * title. Every failure returns { title: null } and the caller keeps whatever
  * provisional title it already showed.
  */
-import { createGateway } from '@ai-sdk/gateway';
-import { generateText, Output } from 'ai';
-import { z } from 'zod';
+import { createGateway } from "@ai-sdk/gateway";
+import { generateText, Output } from "ai";
+import { z } from "zod";
 
-import cleanTitle, { MAX_TITLE_CHARS } from './cleanTitle.js';
+import cleanTitle, { MAX_TITLE_CHARS } from "./cleanTitle.js";
 
-const DEFAULT_MODEL = 'openai/gpt-5-mini';
-const DEFAULT_EFFORT = 'low';
+const DEFAULT_MODEL = "openai/gpt-5-mini";
+const DEFAULT_EFFORT = "low";
 // Enough of each side to identify the subject; the rest is elaboration the
 // title must not try to carry, and tokens on a call that runs on every new
 // thread. The reply gets the larger share — it is where the subject is named.
@@ -31,7 +31,7 @@ const TitleOutput = z.object({
 });
 
 const buildInstructions = (domain) => `You name chat threads${
-  domain ? ` in ${domain}` : ''
+  domain ? ` in ${domain}` : ""
 }.
 
 Given the user's opening question and the assistant's reply, write a title for the thread.
@@ -57,22 +57,24 @@ Examples:
 
 async function GenerateChatTitle({ connection, request }) {
   if (!connection?.apiKey) {
-    throw new Error('AI Gateway apiKey not available to AiText');
+    throw new Error("AI Gateway apiKey not available to AiText");
   }
-  const prompt = String(request.prompt || '').slice(0, PROMPT_CHARS);
-  const reply = String(request.reply || '').slice(0, REPLY_CHARS);
+  const prompt = String(request.prompt || "").slice(0, PROMPT_CHARS);
+  const reply = String(request.reply || "").slice(0, REPLY_CHARS);
   if (!prompt && !reply) return { title: null };
 
-  const context = request.context ? `Context: ${request.context}\n\n` : '';
+  const context = request.context ? `Context: ${request.context}\n\n` : "";
 
   try {
     const { output } = await generateText({
-      model: createGateway({ apiKey: connection.apiKey })(request.model || DEFAULT_MODEL),
+      model: createGateway({ apiKey: connection.apiKey })(
+        request.model || DEFAULT_MODEL,
+      ),
       providerOptions: {
         openai: { reasoningEffort: request.reasoningEffort || DEFAULT_EFFORT },
       },
       prompt: `${context}User's opening question:\n${prompt}\n\nAssistant's reply:\n${reply}\n\n${buildInstructions(
-        request.domain
+        request.domain,
       )}`,
       output: Output.object({ schema: TitleOutput }),
     });
@@ -86,25 +88,25 @@ async function GenerateChatTitle({ connection, request }) {
 }
 
 GenerateChatTitle.schema = {
-  type: 'object',
-  required: ['prompt', 'reply'],
+  type: "object",
+  required: ["prompt", "reply"],
   properties: {
-    prompt: { type: 'string', description: "The user's first message." },
-    reply: { type: 'string', description: "The assistant's first reply." },
+    prompt: { type: "string", description: "The user's first message." },
+    reply: { type: "string", description: "The assistant's first reply." },
     context: {
-      type: ['string', 'null'],
-      description: 'Optional one-line hint, e.g. the record or page in view.',
+      type: ["string", "null"],
+      description: "Optional one-line hint, e.g. the record or page in view.",
     },
     domain: {
-      type: ['string', 'null'],
+      type: ["string", "null"],
       description:
         'Optional description of the app, to ground the title vocabulary — e.g. "a staffing and payroll tool".',
     },
     model: {
-      type: ['string', 'null'],
-      description: 'Gateway model id. Small and fast is the right choice.',
+      type: ["string", "null"],
+      description: "Gateway model id. Small and fast is the right choice.",
     },
-    reasoningEffort: { type: ['string', 'null'] },
+    reasoningEffort: { type: ["string", "null"] },
   },
 };
 GenerateChatTitle.meta = { checkRead: false, checkWrite: false };
