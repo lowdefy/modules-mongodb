@@ -117,6 +117,39 @@
                       - null
                   then: "$$REMOVE"
                   else: "$profile.picture"
+        # Stage 4: T1 repair — the stamp above resolves from the session, but a
+        # SELF-write that CREATES the caller's name (onboarding) stamps from a
+        # session that doesn't hold one yet, leaving `updated.user.name` empty.
+        # When the stamped name is empty/null and the write is the caller's own
+        # contact (the var'd target user is the session user), take the
+        # freshly-derived profile name from stage 2 instead. Never fires for an
+        # admin editing another user (target ≠ caller), so the actor is never
+        # replaced by the target. Assumes the change_stamp template's
+        # `user.name` path — the module default and documented shape.
+        - - $set:
+              updated.user.name:
+                $cond:
+                  if:
+                    $and:
+                      - $in:
+                          - $ifNull: ['$updated.user.name', null]
+                          - [null, '']
+                      # Resolved before MongoDB sees the pipeline: true only
+                      # when the target user is the session caller. `_user: id`
+                      # coalesces to a sentinel so a caller-less system run can
+                      # never equal an absent user_id.
+                      - _eq:
+                          - _if_none:
+                              - _var: user_id
+                              - null
+                          - _if_none:
+                              - _user: id
+                              - '__no_caller__'
+                  then:
+                    $ifNull:
+                      - '$profile.name'
+                      - '$updated.user.name'
+                  else: '$updated.user.name'
         # Caller-supplied write-stage extensions.
         - _var: write_stages
 
