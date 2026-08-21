@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-contacts
 
+## 0.31.0
+
 ## 0.30.0
 
 ### Minor Changes

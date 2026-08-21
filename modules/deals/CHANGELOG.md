@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-deals
 
+## 0.31.0
+
 ## 0.30.0
 
 ## 0.29.0

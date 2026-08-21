@@ -1,5 +1,5 @@
 name: Release Notes
-version: 0.30.0
+version: 0.31.0
 description: Display release notes from CHANGELOG.md
 
 dependencies:
