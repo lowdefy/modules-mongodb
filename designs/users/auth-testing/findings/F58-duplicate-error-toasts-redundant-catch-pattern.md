@@ -1,6 +1,6 @@
 # F58 — Duplicate error toasts: `catch` blocks that re-toast an already-toasted failure
 
-**Status:** `partially-fixed` (clean batch landed; two passkey edge cases outstanding) · **Area:** user-account (+ cross-cutting) / event error handling
+**Status:** `fixed` (clean batch landed in `05b80dcf`; the two passkey edge cases closed alongside the F55 verification pass) · **Area:** user-account (+ cross-cutting) / event error handling
 
 On failure some event chains show **two error toasts** — first noticed on
 `user-account/onboarding`. The cause is a `catch` that displays an error toast for an action whose
@@ -107,9 +107,15 @@ no Validate; the empty password fails inside the suppressed `TwoFactorEnable`), 
 
 ## Outstanding
 
-The two **needs-judgement** passkey edge cases (`tile_security.yaml` `passkey_register_error`,
-`two-factor-enrol.yaml` `enrol_passkey_error`) are not yet fixed — both stem from the shared
-`refetch_account.yaml` Request carrying no `messages.error: false`, which also produces a _misleading_
-"couldn't add a passkey" catch message when the trailing request/session step fails after the passkey
-already registered. Suppressing the toast at the `refetch_account` source (or skipping the catch when
-the primary action didn't error) would close both; deferred as lower-likelihood.
+None. The two **needs-judgement** passkey edge cases are closed with both halves of the suggested fix:
+
+- `refetch_account.yaml` now carries `messages.error: false` at the source, so the shared trailing
+  refetch never stacks a raw engine toast wherever it rides inside a `try` (the reads it hydrates stay
+  stale until the next fetch — the chains' own catches remain the single failure surface).
+- Both passkey catches (`tile_security.yaml` `passkey_register_error`, `two-factor-enrol.yaml`
+  `enrol_passkey_error`) now `skip` when a `passkey_registered` state flag — reset at chain start, set
+  right after `PasskeyRegister` succeeds — shows the failure came from the trailing step, killing the
+  misleading "Couldn't add a passkey" toast after a successful registration (the success toast has
+  already fired; on the enrol page the per-request gate reads the DB, so a reload still routes the
+  enrolled caller home). `enrol_passkey_session` (`UpdateSession`) is suppressed the same way, making
+  that edge a silent fallback rather than a raw toast.

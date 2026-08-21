@@ -1,7 +1,8 @@
 # F55 — Magic-link / passwordless user cannot enrol 2FA: enrolment still demands a password
 
-**Status:** `confirmed` (regression on an already-designed fix) · **Area:** user-account / 2FA enrolment
-· **Owner:** [passwordless-2fa-management](../../passwordless-2fa-management/design.md) — **unimplemented**
+**Status:** `fixed` (`e9986305` — all in-repo tasks applied; runtime smoke with a passwordless member
+still owed, see Resolution) · **Area:** user-account / 2FA enrolment
+· **Owner:** [passwordless-2fa-management](../../passwordless-2fa-management/design.md) — **implemented**
 
 Signing in with a magic link and then trying to enrol two-factor auth fails: the flow presents /
 requires an **account password**, which a passwordless member does not have. This is the exact
@@ -56,3 +57,17 @@ a string** (empty when the caller holds none) via `{ _if_none: [ { _state: <ns>.
 letting `allowPasswordless` waive it server-side." Tasks 3 (tile + both modals) and 4 (forced-enrol page)
 were gated on the engine bump; **the bump is now installed, so they are unblocked and should be built.**
 Task 1 (engine bump) can be marked done.
+
+## Resolution
+
+The "still in their pre-design state" section above records the state **before** `e9986305`
+(`fix(user-account): Enrol 2FA without a password for passwordless members (F55)`), which landed the
+same afternoon this finding was logged and applied every in-repo task: the tile's 2FA row is ungated,
+all four `modal_enroltotp` param sites and `modal_disable2fa` coalesce null→`''` with `has_credential`
+gating field/intro/Validate, and the forced-enrol page runs the self-scoped `get_accounts`, gates its
+password field, coalesces the enable param, and drives its done-state off the local `enrol.done` flag.
+Both engine prerequisites (`allowPasswordless: true`, `pageId` forwarding) are confirmed in the pinned
+build. Still owed before this can be marked verified: a runtime smoke with a genuinely passwordless
+member (magic-link only) through both the tile modals and the forced-enrol page under
+`twoFactor.required: true` — [F56](./F56-two-factor-enable-request-slow.md) (slow `two-factor/enable`)
+remains open and untouched.

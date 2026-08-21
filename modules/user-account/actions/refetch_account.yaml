@@ -3,8 +3,14 @@
 # password change, 2FA enrol/disable, passkey add/delete, or session revoke
 # re-fetches every read. Passkeys are also mirrored into `passkeys_ui` state. The
 # List block that renders per-passkey delete binds to a state array, not a request.
+# error: false because this also rides as the trailing step inside try chains
+# whose primary action already succeeded and toasted — a refetch failure there
+# must not stack a raw engine toast on the chain's own catch handling (F58). The
+# reads it hydrates simply stay stale until the next fetch.
 - id: refetch_account
   type: Request
+  messages:
+    error: false
   params:
     - get_account
     - get_sessions
