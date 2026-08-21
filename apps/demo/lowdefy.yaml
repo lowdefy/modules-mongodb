@@ -31,7 +31,7 @@ plugins:
     version: 1.1.4
   - name: '@lowdefy/modules-mongodb-plugins'
     version: workspace:*
-  - name: '@lowdefy/connection-anthropic'
+  - name: '@lowdefy/connection-ai-gateway'
     version: 5.5.1
 
 auth:
@@ -116,11 +116,11 @@ connections:
       collection: user-contacts
   # Model connection for the demo-assistant agent (ai-assistant module demo).
   # Build needs no key; the secret is only read at runtime.
-  - id: anthropic
-    type: Anthropic
+  - id: ai_gateway
+    type: AIGateway
     properties:
       apiKey:
-        _secret: ANTHROPIC_API_KEY
+        _secret: AI_GATEWAY_API_KEY
   # Sales-pipeline workflow entity connection — the `deals` id the deals module's
   # GetEntityWorkflows queries match on (module r/w the collection via deals-collection).
   - id: deals
@@ -142,10 +142,10 @@ agents:
   # The agent behind the ai-assistant module demo. The module brings the chat
   # shell and thread lifecycle; the agent — model, prompt, tools — is the app's.
   - id: demo-assistant
-    type: ClaudeAgent
-    connectionId: anthropic
+    type: AIGatewayAgent
+    connectionId: ai_gateway
     properties:
-      model: claude-haiku-4-5
+      model: anthropic/claude-haiku-4-5
       maxSteps: 4
       instructions: >-
         You are the assistant in the Lowdefy modules-mongodb demo app. Answer
