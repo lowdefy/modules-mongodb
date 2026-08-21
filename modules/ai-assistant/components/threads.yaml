@@ -1,0 +1,75 @@
+# threads.yaml — the threads view, shared by both shells (shown when ai_view is
+# 'threads', in place of the chat): a searchable ListSelector of this user's
+# threads for the scope. vars: height — see chat.yaml.
+#
+# The list is pure NAVIGATION — one click opens. It carries no actions of its
+# own: rename and delete live in the panel's title band, on the thread they act
+# on. A select-then-act footer needed a double-click to open and put every verb
+# a row-plus-a-button away, for a highlight that revealed nothing the row was not
+# already showing.
+id: ai_threads_view
+type: Box
+visible:
+  _eq:
+    - _state: ai_view
+    - threads
+blocks:
+  - id: ai_threads_empty
+    type: Paragraph
+    visible:
+      _eq:
+        - _array.length:
+            _if_none:
+              - _state: ai_threads
+              - []
+        - 0
+    class: text-text-secondary
+    properties:
+      content: No saved chats yet. Start one with New chat.
+
+  # ListSelector id IS the selection state key — its value is the highlighted
+  # item. Hidden when there are no threads: the paragraph above covers the empty
+  # state, and the block's own "No data" would double up on it.
+  - id: ai_thread_selection
+    type: ListSelector
+    visible:
+      _gt:
+        - _array.length:
+            _if_none:
+              - _state: ai_threads
+              - []
+        - 0
+    properties:
+      data:
+        _state: ai_threads
+      selectable: true
+      allowDeselect: false
+      size: small
+      gap: 8
+      # Fills the same space as the chat it swaps in over, so only the list
+      # scrolls, not the container around it. The wrapper passes the height:
+      # the panel's measured body height (see chat.yaml), or embedded_height
+      # inline in a page.
+      height:
+        _var: height
+      search:
+        fields:
+          - label
+        sticky: true
+        placeholder: Search chats
+      html: |
+        <div class="py-2 px-1.5">
+          <div class="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">{{ item.label }}</div>
+          {% if item.tags.length > 0 %}
+          <div class="flex flex-wrap gap-1.5 mt-2">
+            {% for tag in item.tags %}
+            <span class="text-[10px] font-semibold text-text-secondary bg-fill-secondary rounded px-2 py-0.5">{{ tag }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+    events:
+      # One click opens. The block's own onChange still highlights the row, which
+      # is what the eye follows during the switch back to the chat view.
+      onClick:
+        _ref: actions/select-thread.yaml

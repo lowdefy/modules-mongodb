@@ -1,0 +1,27 @@
+# new-thread.yaml — mint a fresh thread client-side and switch to it (no server
+# round-trip). save-thread creates the row lazily on the first message, so an
+# empty thread simply never persists.
+#
+# Two steps: the prepend reads the id the mint step just committed — a single
+# SetState reads PRIOR state, and re-minting would produce a different id.
+- id: ai_mint_new_thread
+  type: SetState
+  params:
+    ai_view: chat
+    ai_title: New chat
+    ai_conversation_id:
+      _js:
+        fn: |
+          const scope = state('ai_scope') || 'global';
+          return `${scope}_${user('id')}_${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        args: {}
+    ai_messages: []
+- id: ai_prepend_new_thread
+  type: SetState
+  params:
+    ai_threads:
+      _js:
+        fn: |
+          return [{ key: state('ai_conversation_id'), label: 'New chat', tags: [] },
+                  ...(state('ai_threads') || [])];
+        args: {}

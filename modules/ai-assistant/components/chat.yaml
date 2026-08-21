@@ -1,0 +1,277 @@
+# chat.yaml — the conversation itself: the AgentChat block plus the persistence
+# and titling chain on its onMessageComplete. Shared by both shells — `panel`
+# _refs it with the FloatingPanel's measured body height, `embedded` with the
+# embedded_height var — so the two variants cannot drift apart.
+#
+# vars:
+#   height — CSS height the chat must fill exactly. The wrapper decides:
+#            var(--fp-body-height, 520px) inside the panel (a measured pixel
+#            value published by the FloatingPanel block, inherited through
+#            Lowdefy's lf-col / lf-row wrappers where a percentage would
+#            break), or the module's embedded_height inline in a page.
+id: ai_chat
+type: AgentChat
+class: fp-chat
+visible:
+  _ne:
+    - _state: ai_view
+    - threads
+# Held until enter.yaml has decided which thread you are in. A spinner, not
+# message skeletons: skeletons would promise a conversation that may turn out
+# to be empty, and this wait is short.
+loading:
+  _state: ai_loading
+skeleton:
+  type: Box
+  style:
+    height:
+      _var: height
+    display: flex
+    alignItems: center
+    justifyContent: center
+  blocks:
+    - id: ai_chat_spinner
+      type: Spinner
+      properties:
+        size: medium
+properties:
+  agentId:
+    _module.var: agent_id
+  height:
+    _var: height
+  conversationId:
+    _state: ai_conversation_id
+  messages:
+    _state: ai_messages
+  # The module's one domain seam: whatever the app wants the agent to know
+  # about the page, read fresh on every message send.
+  sharedState:
+    _module.var: shared_state
+  welcome:
+    _module.var: welcome
+  sender:
+    placeholder:
+      _module.var: sender_placeholder
+  messageDisplay:
+    _build.object.assign:
+      - # Borderless, not the block's default `outlined`. An outlined assistant
+        # bubble is a bordered card inside the chat area: its border and
+        # padding cost ~30px of every line, on the messages that are longest.
+        # The user's own messages keep their filled bubble — that contrast is
+        # what separates the two speakers, and they are short.
+        #
+        # NOTE `_build.object.assign` is a SHALLOW merge, so a consumer
+        # setting message_display.roles replaces this whole `roles` key.
+        # Set variant there too if you do.
+        roles:
+          assistant:
+            variant: borderless
+        showThoughtChain: false
+        reasoningDisplay: interleaved
+        toolResultDisplay: readable
+        actions:
+          - copy
+        thinkingMessages:
+          _module.var: thinking_messages
+        thinkingMessageDelay: 1200
+        thinkingMessageRotationInterval: 3500
+      - _module.var: message_display
+events:
+  # Persist the full history (incl. the assistant reply) from the client:
+  # this is where the thread title and the thread-list update also live,
+  # so all three stay in one place.
+  onMessageComplete:
+    - id: ai_save_messages
+      type: SetState
+      params:
+        ai_messages:
+          _event: messages
+        # PROVISIONAL title, shown instantly: keep a real title already
+        # on the thread (a resumed thread's saved title, or one the
+        # generated pass has already set), otherwise fall back to the
+        # first user message. That fallback is often a canned suggestion
+        # prompt and so a poor title — but it is instant, and it means a
+        # thread is never stranded as "New chat" if generation fails.
+        # Reading the list also avoids clobbering the title later on.
+        ai_title:
+          _js:
+            fn: |
+              const id = state('ai_conversation_id');
+              const entry = (state('ai_threads') || []).find((c) => c.key === id);
+              const current = (entry && entry.label) || null;
+              if (current && current !== 'New chat') return current;
+              const msgs = event('messages') || [];
+              const firstUser = msgs.find((m) => m.role === 'user');
+              let text = '';
+              if (firstUser) {
+                text = (firstUser.parts || [])
+                  .filter((p) => p.type === 'text')
+                  .map((p) => p.text)
+                  .join(' ');
+                if (!text && typeof firstUser.content === 'string') text = firstUser.content;
+              }
+              text = (text || '').replace(/\s+/g, ' ').trim();
+              if (!text) return current || 'New chat';
+              return text.length > 48 ? text.slice(0, 48).trim() + '…' : text;
+            args: {}
+
+    - id: ai_persist_thread
+      type: CallAPI
+      skip:
+        _eq:
+          - _state: ai_conversation_id
+          - null
+      params:
+        endpointId:
+          _module.endpointId: save-thread
+        payload:
+          conversationId:
+            _state: ai_conversation_id
+          messages:
+            _event: messages
+          title:
+            _state: ai_title
+          scope:
+            _state: ai_scope
+          tag:
+            _module.var: tag
+
+    # Relabel the thread in the list (prepend if not present yet).
+    - id: ai_patch_thread_title
+      type: SetState
+      params:
+        ai_threads:
+          _js:
+            fn: |
+              const id = state('ai_conversation_id');
+              const title = state('ai_title') || 'New chat';
+              const tag = args.tag;
+              const list = state('ai_threads') || [];
+              // Union this turn's tag into the thread's set so the chip
+              // shows immediately, before the next refetch (the server
+              // $addToSet is the source of truth on reload).
+              const withTag = (tags) => {
+                const set = tags || [];
+                return tag && !set.includes(tag) ? [...set, tag] : set;
+              };
+              if (list.some((c) => c.key === id)) {
+                return list.map((c) =>
+                  c.key === id ? { ...c, label: title, tags: withTag(c.tags) } : c);
+              }
+              return [{ key: id, label: title, tags: withTag([]) }, ...list];
+            args:
+              tag:
+                _module.var: tag
+
+    # ── Name the thread from the FIRST EXCHANGE ─────────────────────
+    # Prefer this to an agent's own generateTitle, which sees only the
+    # opening message: where a panel offers suggestion prompts, that
+    # message is one of a handful of canned strings, so every thread
+    # ends up named after the question rather than the subject. The
+    # subject is in the reply.
+    #
+    # First turn only. Re-titling every turn would rename a thread under
+    # the user as it went on — including one they had renamed by hand.
+    - id: ai_extract_first_exchange
+      type: SetState
+      skip:
+        _not:
+          _module.var: generate_titles
+      params:
+        # Which thread this titling pass is FOR — the apply step below checks
+        # it, so a slow titling call can never label whatever thread the user
+        # has switched to (or minted) in the meantime.
+        ai_titling_for:
+          _state: ai_conversation_id
+        ai_first_exchange:
+          _js:
+            fn: |
+              const msgs = event('messages') || [];
+              const textOf = (m) => {
+                if (!m) return '';
+                const parts = (m.parts || [])
+                  .filter((p) => p.type === 'text')
+                  .map((p) => p.text)
+                  .join(' ');
+                const raw = parts || (typeof m.content === 'string' ? m.content : '');
+                return String(raw || '').replace(/\s+/g, ' ').trim();
+              };
+              const assistants = msgs.filter((m) => m.role === 'assistant');
+              // Second assistant message onwards = not the first turn.
+              if (assistants.length !== 1) return null;
+              const prompt = textOf(msgs.find((m) => m.role === 'user'));
+              const reply = textOf(assistants[0]);
+              if (!prompt && !reply) return null;
+              return { prompt, reply };
+            args: {}
+
+    - id: ai_generate_title
+      type: CallAPI
+      skip:
+        _or:
+          - _not:
+              _module.var: generate_titles
+          - _eq:
+              - _state: ai_first_exchange
+              - null
+          - _eq:
+              - _state: ai_conversation_id
+              - null
+      params:
+        endpointId:
+          _module.endpointId: title-thread
+        payload:
+          conversationId:
+            _state: ai_conversation_id
+          prompt:
+            _state: ai_first_exchange.prompt
+          reply:
+            _state: ai_first_exchange.reply
+          context:
+            _module.var: title_context
+
+    # The endpoint already persisted the title (and returns null on any
+    # failure), so this only mirrors it into the UI. On null nothing is
+    # touched and the provisional title stands.
+    - id: ai_apply_generated_title
+      type: SetState
+      skip:
+        _or:
+          # The _if_none is load-bearing, not decoration: when the step
+          # above was SKIPPED the _actions lookup is UNDEFINED, and
+          # undefined != null — so a bare _eq would fail to skip and then
+          # write undefined over a perfectly good title.
+          - _eq:
+              - _if_none:
+                  - _actions: ai_generate_title.response.response.title
+                  - null
+              - null
+          # The titling call takes seconds; if the user switched threads (or
+          # minted a new one) meanwhile, applying would write the OLD thread's
+          # title into the new thread's header and list entry. The server has
+          # already persisted the title against the right conversationId, so
+          # skipping only forgoes the cosmetic in-place update.
+          - _ne:
+              - _state: ai_titling_for
+              - _state: ai_conversation_id
+      params:
+        ai_title:
+          _actions: ai_generate_title.response.response.title
+        ai_threads:
+          _js:
+            fn: |
+              const id = state('ai_conversation_id');
+              return (state('ai_threads') || []).map(
+                (c) => (c.key === id ? { ...c, label: args.title } : c));
+            args:
+              title:
+                _actions: ai_generate_title.response.response.title
+
+  onError:
+    - id: ai_show_chat_error
+      type: DisplayMessage
+      params:
+        status: error
+        duration: 6
+        content:
+          _event: message

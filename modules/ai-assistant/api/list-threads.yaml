@@ -1,0 +1,42 @@
+id: list-threads
+type: Api
+description: >
+  Lists the session user's threads for one scope, newest first, as lean
+  ListSelector items ({ key, label, tags }). The shape matches the optimistic
+  items the client prepends on "New chat", so the ListSelector value-matches and
+  the selection ring holds across a refresh.
+payloadSchema:
+  type: object
+  required:
+    - scope
+  additionalProperties: false
+  properties:
+    scope:
+      type: string
+routine:
+  - id: list_threads
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: ai_assistant_threads
+    properties:
+      pipeline:
+        - $match:
+            scope:
+              _payload: scope
+            user_id:
+              _user: id
+            conversationId:
+              $exists: true
+              $ne: null
+        - $sort:
+            updated: -1
+        - $project:
+            _id: 0
+            key: "$conversationId"
+            label: "$title"
+            tags:
+              $ifNull:
+                - "$tags"
+                - []
+  - :return:
+      _step: list_threads

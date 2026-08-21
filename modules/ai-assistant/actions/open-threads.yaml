@@ -1,0 +1,32 @@
+# open-threads.yaml — the "Manage chats" control: refresh the thread list for the
+# scope, then flip the panel body to the threads view.
+- id: ai_refresh_threads
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: list-threads
+    payload:
+      scope:
+        _state: ai_scope
+
+- id: ai_apply_thread_list
+  type: SetState
+  params:
+    ai_threads:
+      _if_none:
+        - _actions: ai_refresh_threads.response.response
+        - []
+    # Pre-highlight the open thread so the list says "you are here". Reads the
+    # FRESH API response, not prior state, which a single SetState would see.
+    ai_thread_selection:
+      _js:
+        fn: |
+          const active = state('ai_conversation_id');
+          const list = actions('ai_refresh_threads.response.response') || [];
+          return list.find((c) => c.key === active) || null;
+        args: {}
+
+- id: ai_show_threads_view
+  type: SetState
+  params:
+    ai_view: threads
