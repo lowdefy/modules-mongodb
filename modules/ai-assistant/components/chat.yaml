@@ -77,6 +77,18 @@ properties:
         thinkingMessageRotationInterval: 3500
       - _module.var: message_display
 events:
+  # Consumer-owned seams. The module wires none of these itself: they exist so an app
+  # can gate a send (a quota cap), read a streamed data part, or handle the feedback
+  # control it turns on through `message_display`, without forking the shell. The
+  # module's own chain lives on onMessageComplete below and is not overridable — thread
+  # persistence and titling are the module's job, not the consumer's.
+  onBeforeSend:
+    _module.var: on_before_send
+  onUserMessage:
+    _module.var: on_user_message
+  onDataPart:
+    _module.var: on_data_part
+
   # Persist the full history (incl. the assistant reply) from the client:
   # this is where the thread title and the thread-list update also live,
   # so all three stay in one place.
@@ -266,6 +278,9 @@ events:
             args:
               title:
                 _actions: ai_generate_title.response.response.title
+
+  onFeedback:
+    _module.var: on_feedback
 
   onError:
     - id: ai_show_chat_error
