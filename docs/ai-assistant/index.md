@@ -117,6 +117,52 @@ Two vars sharpen the generated names: `title_context` (one line of grounding, e.
 
 `tag` is a display **label**, accumulated as a set and shown as chips on the thread cards. It is stored as the string, not an id — the module cannot resolve app ids, and a thread list is a historical record of what was discussed. The trade-off is that renaming the underlying record does not retitle old chips.
 
+## App behaviour on the chat
+
+The module owns the thread lifecycle on `onMessageComplete` and will not hand that over. Everything else an app might want to do around a message is a var, each a list of actions run on the corresponding chat-block event:
+
+| Var | Event | For |
+|---|---|---|
+| `on_before_send` | `onBeforeSend` | Refuse a send — `Throw` here. The only seam that runs *before* the model is called, so quotas and entitlement checks belong here. |
+| `on_user_message` | `onUserMessage` | The app's own record of what was asked. |
+| `on_data_part` | `onDataPart` | Custom data parts the agent streams. Filter on the part type yourself; every part arrives here. |
+| `on_feedback` | `onFeedback` | Ratings from the feedback control. |
+
+Each event brings its own `_event` payload from the chat block, and they do not agree on field names — `onBeforeSend` gives you `{ text, files, messages, switches }`, so a rule about what the user typed reads `_event: text`, not `content`. Reading a field the event does not carry yields null silently, which in a `skip` reads as "skip this action" — a gate written against the wrong field does not error, it just never fires. Worth a check against the block's reference when writing one.
+
+The feedback control is off by default. Turning it on is a `message_display` change, and it needs `on_feedback` to do anything:
+
+```yaml
+message_display:
+  actions: [copy, feedback]
+on_feedback:
+  - id: record_rating
+    type: CallAPI
+    params:
+      endpointId: rate-answer
+      payload:
+        rating:
+          _event: rating
+```
+
+A quota gate, for contrast, refuses the send outright:
+
+```yaml
+on_before_send:
+  - id: recheck_quota
+    type: Request
+    params: check_quota
+  - id: block_when_capped
+    type: Throw
+    skip:
+      _lt:
+        - _request: check_quota.0.n
+        - 30
+    params:
+      throw: true
+      message: You have reached today's question limit.
+```
+
 ## Requirements
 
 - An app agent whose id is passed as `agent_id`.

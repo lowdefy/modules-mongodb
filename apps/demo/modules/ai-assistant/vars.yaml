@@ -14,3 +14,19 @@ welcome:
       description: How this assistant stores and titles conversations
 sender_placeholder: Ask about the demo app…
 title_domain: a Lowdefy module demo app
+
+# Demonstrates the consumer-owned event seams. A real app would send the rating to an
+# endpoint here; the toast is enough to show the wiring reaches the app.
+message_display:
+  actions:
+    - copy
+    - feedback
+on_feedback:
+  - id: demo_ack_feedback
+    type: DisplayMessage
+    params:
+      content:
+        _string.concat:
+          - 'Thanks — recorded a '
+          - _event: rating
+          - ' (demo only).'

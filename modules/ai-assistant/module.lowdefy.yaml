@@ -119,6 +119,35 @@ vars:
       Overrides merged over the module's AgentChat messageDisplay defaults
       (assistant name, reasoning/tool display, copy action).
 
+  on_before_send:
+    type: array
+    default: []
+    description: >-
+      Actions run before a message is sent, on the chat block's onBeforeSend. Throw
+      here to refuse the send — this is where a per-user quota or an entitlement check
+      belongs, since it is the only seam that runs before the model is called.
+  on_user_message:
+    type: array
+    default: []
+    description: >-
+      Actions run when the user sends a message, on the chat block's onUserMessage.
+      For the app's own record of what was asked; the module already persists the
+      message itself.
+  on_data_part:
+    type: array
+    default: []
+    description: >-
+      Actions run for each custom data part the agent streams, on the chat block's
+      onDataPart. Filter on the part type: the module does not, so every part reaches
+      these actions.
+  on_feedback:
+    type: array
+    default: []
+    description: >-
+      Actions run when the user rates a message, on the chat block's onFeedback. Only
+      reachable when the feedback action is enabled through `message_display`; leaving
+      this empty while enabling that control renders a button that does nothing.
+
   tag:
     default: null
     description: >-
