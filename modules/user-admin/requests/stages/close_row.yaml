@@ -42,6 +42,7 @@ $unset:
   - contact
   - passkeys
   - inviter
+  - inviter_member
   - attributes
   - app_roles
   - role
