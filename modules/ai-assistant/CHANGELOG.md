@@ -1,5 +1,13 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 0.31.0
+
+### Minor Changes
+
+- [#186](https://github.com/lowdefy/modules-mongodb/pull/186) [`309a157`](https://github.com/lowdefy/modules-mongodb/commit/309a157e9281ba54f150be7a4647cb3f1ce19db5) Thanks [@Yianni99](https://github.com/Yianni99)! - The `ai-assistant` module's chat now takes app behaviour on four events: `on_before_send`, `on_user_message`, `on_data_part` and `on_feedback`. Thread persistence and titling stay the module's own, but an app can now refuse a send before the model is called (a daily question cap, an entitlement check), keep its own record of what was asked, read custom data parts the agent streams, and handle ratings from the feedback control — none of which was possible without forking the chat shell.
+
+  The feedback control remains off unless `message_display` turns it on, and it now has somewhere to send the rating.
+
 ## 0.30.0
 
 ### Minor Changes
