@@ -113,6 +113,32 @@ routine:
                           user:
                             _step: reread_contact
                     description: null
+            # T1: the onboarding save is the write that CREATES the caller's
+            # name, so the session this event would stamp from doesn't hold one
+            # yet ('' on the engine's user row). Pass the actor explicitly from
+            # the freshly-written contact in that one case; null otherwise so
+            # the plain template stamps as usual. Self-service API — the actor
+            # IS the target, so the substitution can never name someone else.
+            actor:
+              _if:
+                test:
+                  _or:
+                    - _eq:
+                        - _if_none:
+                            - _user: name
+                            - _user: profile.name
+                        - null
+                    - _eq:
+                        - _if_none:
+                            - _user: name
+                            - _user: profile.name
+                        - ''
+                then:
+                  name:
+                    _step: reread_contact.profile.name
+                  id:
+                    _user: id
+                else: null
             references:
               contact_ids:
                 - _step: resolve_own_contact._id
