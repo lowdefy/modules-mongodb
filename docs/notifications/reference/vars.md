@@ -15,3 +15,4 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 |---|---|---|---|---|
 | `app_name` | string |  | Yes | App identifier used to scope notifications. Matches created.app_name on notification documents.  |
 | `send_routine` | array | `[]` |  | API routine steps for dispatching notifications. Receives event_ids in the payload. Default is an empty routine (no-op).  |
+| `popup_limit` | number | `3` |  | Maximum number of popup notification toasts shown at once. The layout page component fetches this many unread notifications flagged popup:true and renders them as a fixed-position toast stack.  |

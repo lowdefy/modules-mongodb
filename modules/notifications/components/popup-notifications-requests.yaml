@@ -1,0 +1,45 @@
+# Requests backing the popup-notifications toast stack. Returned as an array so
+# the layout page component can wire both with a single _ref. Mirrors the
+# _module.* style of unread-count-request.yaml.
+- id: notifications_popups
+  type: MongoDBAggregation
+  connectionId:
+    _module.connectionId: notifications-collection
+  payload:
+    app_name:
+      _module.var: app_name
+  properties:
+    pipeline:
+      - $match:
+          read: false
+          popup: true
+          contact_id:
+            _user: id
+          created.app_name:
+            _payload: app_name
+      - $sort:
+          created.timestamp: -1
+      - $limit:
+          _module.var: popup_limit
+
+- id: set_popup_read
+  type: MongoDBUpdateOne
+  connectionId:
+    _module.connectionId: notifications-collection
+  payload:
+    popup_id:
+      _state: popup_id
+    app_name:
+      _module.var: app_name
+  properties:
+    disableNoMatchError: true
+    filter:
+      _id:
+        _payload: popup_id
+      contact_id:
+        _user: id
+      created.app_name:
+        _payload: app_name
+    update:
+      $set:
+        read: true

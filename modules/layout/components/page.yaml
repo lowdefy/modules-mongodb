@@ -97,6 +97,17 @@ requests:
               module: notifications
               component: unread-count-request
         else: []
+    - _build.if:
+        test:
+          _build.not:
+            _var:
+              key: hide_popup_notifications
+              default: false
+        then:
+          _ref:
+            module: notifications
+            component: popup-notifications-requests
+        else: []
     - _module.var: header_extra.requests
     - _var:
         key: requests
@@ -126,6 +137,22 @@ events:
             - id: __fetch_notifications_unread_count
               type: Request
               params: notifications_unread_count
+          else: []
+      - _build.if:
+          test:
+            _build.not:
+              _var:
+                key: hide_popup_notifications
+                default: false
+          then:
+            - id: __fetch_notifications_popups
+              type: Request
+              params: notifications_popups
+            - id: __set_notifications_popups
+              type: SetState
+              params:
+                popup_notifications:
+                  _request: notifications_popups
           else: []
       - _var:
           key: events.onMountAsync
@@ -180,6 +207,20 @@ blocks:
       margin: auto
     blocks:
       _build.array.concat:
+        # Global popup notification toast stack — position:fixed, floats over the
+        # viewport regardless of this Box, and only renders when popup:true unread
+        # notifications exist.
+        - _build.if:
+            test:
+              _build.not:
+                _var:
+                  key: hide_popup_notifications
+                  default: false
+            then:
+              - _ref:
+                  module: notifications
+                  component: popup-notifications
+            else: []
         # Title block (per-page override > module-level override > default)
         - _build.if:
             test:
