@@ -7,7 +7,7 @@
       _module.endpointId: list-threads
     payload:
       scope:
-        _state: ai_scope
+        _module.var: scope
 
 - id: ai_apply_thread_list
   type: SetState

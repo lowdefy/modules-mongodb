@@ -20,8 +20,14 @@ type: SetState
 params:
   # 'chat' | 'threads' — which view the panel body shows.
   ai_view: chat
-  # The scope threads are partitioned by, resolved once here so the module's
-  # actions can read it without knowing what the app's scope operator was.
+  # The scope at page init. The module's own actions no longer read this — they
+  # resolve the `scope` var at the moment they use it, so an operator that is
+  # still null here (state populated by an async request, say) no longer freezes.
+  # Kept because it is the only way a consumer can tell that the active scope has
+  # CHANGED since the page initialised: nothing in the module can observe an app
+  # global moving, so a consumer whose scope can change mid-session compares this
+  # against its own source of truth on every visit and clears the open thread.
+  # See "Scope" in the module docs.
   ai_scope:
     _module.var: scope
   # The open thread and its replayed history.

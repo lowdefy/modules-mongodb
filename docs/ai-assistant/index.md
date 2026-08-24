@@ -103,6 +103,38 @@ onInit:
 
 `scope` is the string that partitions threads. Threads are listed and created against `(scope, session user)`, so the same page in a different scope is a different set of chats. Pass a state operator for a per-record assistant (`{_state: record_id}`), or a constant for a single global one.
 
+The operator is resolved **each time it is used** — when a thread is minted, listed, or saved — not once at page init. So a scope whose value arrives late (state populated by an async request, for example) is not frozen as null.
+
+**A scope that CHANGES mid-session needs one thing from the consumer.** Nothing in the module can observe an app global or a page state key moving, so an already-open thread and its list stay as they were until something re-enters. If your scope can change while the app is running — an active-company or active-record switcher, typically — compare `ai_scope` (the scope at page init) against your own source of truth on every visit, and clear the open thread when they differ. `onInit` runs once per page per session; `onMount` runs on every visit, so the check belongs there:
+
+```yaml
+onMount:
+  _build.array.concat:
+    - - id: rescope_on_change
+        type: SetState
+        skip:
+          _eq:
+            - _state: ai_scope
+            - _global: active_company_id   # your source of truth
+        params:
+          ai_scope:
+            _global: active_company_id
+          ai_view: chat
+          ai_conversation_id: null
+          ai_messages: []
+          ai_threads: []
+          ai_thread_selection: null
+          ai_title: New chat
+    # A page hosting `embedded` re-runs `enter` here too — it is a no-op while a thread is
+    # open, and the null id above is what makes it resume in the new scope. A page carrying
+    # the docked panel needs nothing more: the panel runs `enter` on open.
+    - _ref:
+        module: ai-assistant
+        component: enter
+```
+
+Clearing `ai_conversation_id` is the whole mechanism: `enter` treats a null id as a first entry and resumes the most recent thread in the new scope.
+
 ## Titles
 
 Threads are named from their **first exchange** — the opening question and the reply — once the first reply lands.

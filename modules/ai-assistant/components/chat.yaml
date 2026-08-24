@@ -144,7 +144,7 @@ events:
           title:
             _state: ai_title
           scope:
-            _state: ai_scope
+            _module.var: scope
           tag:
             _module.var: tag
 

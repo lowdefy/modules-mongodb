@@ -14,7 +14,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
 | `agent_id` | string |  | Yes | Id of the app agent the chat talks to (an entry under the app's `agents`). The module does not define an agent — the system prompt, model, and tools are the app's business. |
-| `scope` |  |  | Yes | Runtime operator resolving to the string that partitions threads, e.g. `{_state: record_id}`. Threads are listed and created against (scope, session user), so the same page in a different scope is a different set of threads. Use a constant string for a single global assistant. |
+| `scope` |  |  | Yes | Runtime operator resolving to the string that partitions threads, e.g. `{_state: record_id}`. Threads are listed and created against (scope, session user), so the same page in a different scope is a different set of threads. Use a constant string for a single global assistant. Resolved each time it is used — minting, listing, saving — so a value that arrives late is not frozen as null. A scope that CHANGES mid-session needs the consumer to clear the open thread on visit; the module cannot observe an app global moving. See "Scope" in the module docs. |
 | `page_id` | string | `ai-assistant` |  | Stamped on saved threads so they can be traced back to a surface. |
 | `visible` |  | `true` |  | Runtime operator gating the whole panel INCLUDING its launcher — e.g. `{_state: loaded}`, so the assistant appears with the page's content rather than over its skeleton. Read only by the `panel` component; the `embedded` component's visibility is its page's business. |
 | `panel_title` |  | `Assistant` |  | Panel header title. Takes the app display font when one is defined. |
