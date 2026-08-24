@@ -208,6 +208,8 @@ on_before_send:
   | `{ scope: 1, user_id: 1, updated: -1 }` | `list-threads`, which matches on scope and the session user and sorts newest-first. The whole index, in order — a partial one still sorts in memory. |
   | `{ conversationId: 1, user_id: 1 }` | the other four endpoints: get, save, rename, delete all filter on exactly this pair. |
 
+  The thread list is capped at 200 per (scope, user), newest first. The threads view searches client-side over that window, so a user holding more chats than the cap in one scope cannot reach the older ones — an app expecting that needs pagination in `list-threads`, not a larger cap.
+
   A **TTL index** is also worth having where threads should expire — the module stamps
   `updated` on every save, so `{ updated: 1 }` with `expireAfterSeconds` set to your retention
   period expires a thread a fixed time after its last activity, not after its creation.
