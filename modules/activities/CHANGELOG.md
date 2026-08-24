@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-activities
 
+## 0.31.1
+
 ## 0.31.0
 
 ## 0.30.0

@@ -1,5 +1,5 @@
 name: AI Assistant
-version: 0.31.0
+version: 0.31.1
 description: >-
   A persisted, multi-thread chat with one of the app's agents, in two shapes: a
   docked assistant for any page (an Intercom-style corner launcher and floating
@@ -278,4 +278,4 @@ plugins:
   # FloatingPanel (the launcher + panel block) and the AiText connection
   # (the titling call) both ship here.
   - name: '@lowdefy/modules-mongodb-plugins'
-    version: "^0.31.0"
+    version: "^0.31.1"
