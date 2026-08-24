@@ -30,6 +30,10 @@ routine:
               $ne: null
         - $sort:
             updated: -1
+        # Bounded: the thread list is a sidebar, not an archive, and the view has its own
+        # search. Without this the pipeline grows with the user's whole history for the
+        # scope — which the collection's TTL bounds in time but not in count.
+        - $limit: 200
         - $project:
             _id: 0
             key: "$conversationId"

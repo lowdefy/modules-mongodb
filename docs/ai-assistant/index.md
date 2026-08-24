@@ -200,6 +200,17 @@ on_before_send:
 - An app agent whose id is passed as `agent_id`.
 - `@lowdefy/modules-mongodb-plugins` — ships the [`FloatingPanel`](../plugins/floating-panel.md) block and the `AiText` connection used for titling.
 - Secrets `MONGODB_URI` and (while `generate_titles` is on) `AI_GATEWAY_API_KEY`.
+- **Two indexes on the threads collection.** The module does not create them; nothing breaks
+  without them until the collection grows, which is the worst time to find out.
+
+  | Index | Serves |
+  |---|---|
+  | `{ scope: 1, user_id: 1, updated: -1 }` | `list-threads`, which matches on scope and the session user and sorts newest-first. The whole index, in order — a partial one still sorts in memory. |
+  | `{ conversationId: 1, user_id: 1 }` | the other four endpoints: get, save, rename, delete all filter on exactly this pair. |
+
+  A **TTL index** is also worth having where threads should expire — the module stamps
+  `updated` on every save, so `{ updated: 1 }` with `expireAfterSeconds` set to your retention
+  period expires a thread a fixed time after its last activity, not after its creation.
 
 ## Reference
 
