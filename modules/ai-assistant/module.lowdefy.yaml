@@ -33,7 +33,10 @@ vars:
       `{_state: record_id}`. Threads are listed and created against
       (scope, session user), so the same page in a different scope is a
       different set of threads. Use a constant string for a single global
-      assistant.
+      assistant. Resolved each time it is used — minting, listing, saving — so a
+      value that arrives late is not frozen as null. A scope that CHANGES
+      mid-session needs the consumer to clear the open thread on visit; the
+      module cannot observe an app global moving. See "Scope" in the module docs.
   page_id:
     type: string
     default: ai-assistant

@@ -103,6 +103,38 @@ onInit:
 
 `scope` is the string that partitions threads. Threads are listed and created against `(scope, session user)`, so the same page in a different scope is a different set of chats. Pass a state operator for a per-record assistant (`{_state: record_id}`), or a constant for a single global one.
 
+The operator is resolved **each time it is used** — when a thread is minted, listed, or saved — not once at page init. So a scope whose value arrives late (state populated by an async request, for example) is not frozen as null.
+
+**A scope that CHANGES mid-session needs one thing from the consumer.** Nothing in the module can observe an app global or a page state key moving, so an already-open thread and its list stay as they were until something re-enters. If your scope can change while the app is running — an active-company or active-record switcher, typically — compare `ai_scope` (the scope at page init) against your own source of truth on every visit, and clear the open thread when they differ. `onInit` runs once per page per session; `onMount` runs on every visit, so the check belongs there:
+
+```yaml
+onMount:
+  _build.array.concat:
+    - - id: rescope_on_change
+        type: SetState
+        skip:
+          _eq:
+            - _state: ai_scope
+            - _global: active_company_id   # your source of truth
+        params:
+          ai_scope:
+            _global: active_company_id
+          ai_view: chat
+          ai_conversation_id: null
+          ai_messages: []
+          ai_threads: []
+          ai_thread_selection: null
+          ai_title: New chat
+    # A page hosting `embedded` re-runs `enter` here too — it is a no-op while a thread is
+    # open, and the null id above is what makes it resume in the new scope. A page carrying
+    # the docked panel needs nothing more: the panel runs `enter` on open.
+    - _ref:
+        module: ai-assistant
+        component: enter
+```
+
+Clearing `ai_conversation_id` is the whole mechanism: `enter` treats a null id as a first entry and resumes the most recent thread in the new scope.
+
 ## Titles
 
 Threads are named from their **first exchange** — the opening question and the reply — once the first reply lands.
@@ -168,6 +200,19 @@ on_before_send:
 - An app agent whose id is passed as `agent_id`.
 - `@lowdefy/modules-mongodb-plugins` — ships the [`FloatingPanel`](../plugins/floating-panel.md) block and the `AiText` connection used for titling.
 - Secrets `MONGODB_URI` and (while `generate_titles` is on) `AI_GATEWAY_API_KEY`.
+- **Two indexes on the threads collection.** The module does not create them; nothing breaks
+  without them until the collection grows, which is the worst time to find out.
+
+  | Index | Serves |
+  |---|---|
+  | `{ scope: 1, user_id: 1, updated: -1 }` | `list-threads`, which matches on scope and the session user and sorts newest-first. The whole index, in order — a partial one still sorts in memory. |
+  | `{ conversationId: 1, user_id: 1 }` | the other four endpoints: get, save, rename, delete all filter on exactly this pair. |
+
+  The thread list is capped at 200 per (scope, user), newest first. The threads view searches client-side over that window, so a user holding more chats than the cap in one scope cannot reach the older ones — an app expecting that needs pagination in `list-threads`, not a larger cap.
+
+  A **TTL index** is also worth having where threads should expire — the module stamps
+  `updated` on every save, so `{ updated: 1 }` with `expireAfterSeconds` set to your retention
+  period expires a thread a fixed time after its last activity, not after its creation.
 
 ## Reference
 

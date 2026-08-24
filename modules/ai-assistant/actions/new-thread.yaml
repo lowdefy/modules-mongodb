@@ -12,9 +12,11 @@
     ai_conversation_id:
       _js:
         fn: |
-          const scope = state('ai_scope') || 'global';
+          const scope = (args && args[0] && args[0].scope) || 'global';
           return `${scope}_${user('id')}_${Date.now()}${Math.floor(Math.random() * 1000)}`;
-        args: {}
+        args:
+          - scope:
+              _module.var: scope
     ai_messages: []
 - id: ai_prepend_new_thread
   type: SetState

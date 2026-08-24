@@ -30,6 +30,13 @@ routine:
               $ne: null
         - $sort:
             updated: -1
+        # Bounded: without this the pipeline grows with the user's whole history for the
+        # scope, which a TTL bounds in time but not in count. The cost is real, not just a
+        # sort order: the threads view searches CLIENT-side over what this returns, so a
+        # user past the limit cannot reach older threads at all. 200 is chosen to sit well
+        # clear of that for a per-record or per-tenant scope; an app where one user holds
+        # more chats than this in a single scope needs pagination here, not a bigger number.
+        - $limit: 200
         - $project:
             _id: 0
             key: "$conversationId"
