@@ -151,12 +151,12 @@ Two vars sharpen the generated names: `title_context` (one line of grounding, e.
 
 ## App behaviour on the chat
 
-The module owns the thread lifecycle on `onMessageComplete` and will not hand that over. Everything else an app might want to do around a message is a var, each a list of actions run on the corresponding chat-block event:
+The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` and will not hand that over. A thread is persisted twice: once when the message is sent, and again when the reply completes. The first save is what makes a thread survive a client that leaves mid-stream — without it the thread was never created, and the question went with it. Everything else an app might want to do around a message is a var, each a list of actions run on the corresponding chat-block event:
 
 | Var | Event | For |
 |---|---|---|
 | `on_before_send` | `onBeforeSend` | Refuse a send — `Throw` here. The only seam that runs *before* the model is called, so quotas and entitlement checks belong here. |
-| `on_user_message` | `onUserMessage` | The app's own record of what was asked. |
+| `on_user_message` | `onUserMessage` | The app's own record of what was asked. Runs after the module has persisted the thread, so a thread id is already stored by this point. |
 | `on_data_part` | `onDataPart` | Custom data parts the agent streams. Filter on the part type yourself; every part arrives here. |
 | `on_feedback` | `onFeedback` | Ratings from the feedback control. |
 
