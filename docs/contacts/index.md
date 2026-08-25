@@ -33,7 +33,7 @@ Add `contacts` when an app needs to manage individual people — CRM contacts, l
 # lowdefy.yaml
 modules:
   - id: contacts
-    source: "github:lowdefy/modules-mongodb/modules/contacts@v0.29.0"
+    source: "github:lowdefy/modules-mongodb/modules/contacts@v0.32.0"
     vars:
       app_name: my-app
       fields:
