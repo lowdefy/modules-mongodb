@@ -74,8 +74,9 @@
               - ":"
               - $dateToString:
                   date: $created.timestamp
+          # Surface quote-approved as a popup toast (per-notification opt-in).
           popup:
-            $literal: false
+            $literal: true
           contact_id: $recipient_id
           title: Quote approved
           description:

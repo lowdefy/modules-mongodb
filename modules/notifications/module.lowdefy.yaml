@@ -19,6 +19,13 @@ vars:
     description: >
       API routine steps for dispatching notifications. Receives event_ids
       in the payload. Default is an empty routine (no-op).
+  popup_limit:
+    type: number
+    default: 3
+    description: >
+      Maximum number of popup notification toasts shown at once. The layout
+      page component fetches this many unread notifications flagged popup:true
+      and renders them as a fixed-position toast stack.
 
 connections:
   - _ref: connections/notifications-collection.yaml
@@ -52,6 +59,10 @@ exports:
       description: Notification bell config for PageHeaderMenu — count, icon, and link
     - id: unread-count-request
       description: MongoDB count request for unread notifications
+    - id: popup-notifications
+      description: Fixed-position toast stack rendering unread popup:true notifications, mounted globally by the layout page component
+    - id: popup-notifications-requests
+      description: MongoDB requests backing the popup toasts — fetch (notifications_popups) and mark-read (set_popup_read)
 
 api:
   - _ref: api/send-notification.yaml
@@ -63,6 +74,12 @@ components:
   - id: unread-count-request
     component:
       _ref: components/unread-count-request.yaml
+  - id: popup-notifications
+    component:
+      _ref: components/popup-notifications.yaml
+  - id: popup-notifications-requests
+    component:
+      _ref: components/popup-notifications-requests.yaml
 
 secrets:
   - name: MONGODB_URI
