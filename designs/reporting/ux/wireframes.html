@@ -1,0 +1,2828 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!--
+  Archived copy of the reporting UX wireframe deck (published as an Artifact
+  during design). The doctype/head wrapper and the box-sizing reset below are
+  added so the file renders standalone from disk; the deck itself is unchanged
+  from the published copy. Light/dark follows the OS preference here — the
+  published copy also honours a viewer theme toggle.
+-->
+<style>
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+<title>Reporting UX Wireframes — chat, results, reports</title>
+
+<style>
+  /* ── Tokens ─────────────────────────────────────────────────────────── */
+  :root {
+    --ground: #eef1ef;
+    --surface: #fcfcfb;
+    --surface-2: #f4f7f5;
+    --surface-3: #eaefec;
+    --ink: #151c1a;
+    --ink-2: #3d4a46;
+    --muted: #6b7873;
+    --rule: #d3dad6;
+    --rule-2: #e4e9e6;
+    --accent: #0b7a5c;
+    --accent-ink: #085f48;
+    --accent-soft: #e2efea;
+    --new: #b0722a;
+    --new-soft: #f6ecdd;
+    --warn: #a3591c;
+    --warn-soft: #f8eede;
+    --s1: #0b7a5c;
+    --s2: #8c5bb0;
+    --s3: #b0722a;
+    --grid: rgba(11, 122, 92, 0.09);
+    --shadow: 0 14px 30px -24px rgba(10, 30, 24, 0.55);
+    --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, ui-sans-serif, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #101413;
+      --surface: #191f1d;
+      --surface-2: #202725;
+      --surface-3: #262e2b;
+      --ink: #e7ece9;
+      --ink-2: #bcc7c2;
+      --muted: #8b9994;
+      --rule: #2d3532;
+      --rule-2: #232a28;
+      --accent: #22a57f;
+      --accent-ink: #56c4a2;
+      --accent-soft: #123028;
+      --new: #bc8a34;
+      --new-soft: #2c2315;
+      --warn: #d09a4a;
+      --warn-soft: #2c2315;
+      --s1: #22a57f;
+      --s2: #a374cc;
+      --s3: #bc8a34;
+      --grid: rgba(34, 165, 127, 0.13);
+      --shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.9);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101413;
+    --surface: #191f1d;
+    --surface-2: #202725;
+    --surface-3: #262e2b;
+    --ink: #e7ece9;
+    --ink-2: #bcc7c2;
+    --muted: #8b9994;
+    --rule: #2d3532;
+    --rule-2: #232a28;
+    --accent: #22a57f;
+    --accent-ink: #56c4a2;
+    --accent-soft: #123028;
+    --new: #bc8a34;
+    --new-soft: #2c2315;
+    --warn: #d09a4a;
+    --warn-soft: #2c2315;
+    --s1: #22a57f;
+    --s2: #a374cc;
+    --s3: #bc8a34;
+    --grid: rgba(34, 165, 127, 0.13);
+    --shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.9);
+  }
+
+  :root[data-theme="light"] {
+    --ground: #eef1ef;
+    --surface: #fcfcfb;
+    --surface-2: #f4f7f5;
+    --surface-3: #eaefec;
+    --ink: #151c1a;
+    --ink-2: #3d4a46;
+    --muted: #6b7873;
+    --rule: #d3dad6;
+    --rule-2: #e4e9e6;
+    --accent: #0b7a5c;
+    --accent-ink: #085f48;
+    --accent-soft: #e2efea;
+    --new: #b0722a;
+    --new-soft: #f6ecdd;
+    --warn: #a3591c;
+    --warn-soft: #f8eede;
+    --s1: #0b7a5c;
+    --s2: #8c5bb0;
+    --s3: #b0722a;
+    --grid: rgba(11, 122, 92, 0.09);
+    --shadow: 0 14px 30px -24px rgba(10, 30, 24, 0.55);
+  }
+
+  /* ── Page shell ─────────────────────────────────────────────────────── */
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .deck-head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 20px;
+    padding: 11px 28px;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .deck-head b {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .deck-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 14px;
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .deck-nav a {
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+  }
+  .deck-nav a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  /* ── Opening ────────────────────────────────────────────────────────── */
+  .open {
+    display: grid;
+    gap: 22px;
+    padding: 60px 0 30px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+  .open h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(30px, 4.6vw, 47px);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0;
+    max-width: 22ch;
+  }
+  .lede {
+    max-width: 64ch;
+    font-size: 17px;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .lede em {
+    font-style: normal;
+    color: var(--ink);
+    box-shadow: inset 0 -0.45em 0 var(--accent-soft);
+  }
+
+  .jobs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px;
+    margin-top: 6px;
+  }
+  .job {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 16px 18px;
+    display: grid;
+    gap: 6px;
+    align-content: start;
+  }
+  .job h3 {
+    font-family: var(--display);
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .job p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .job .said {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    border-top: 1px dashed var(--rule);
+    padding-top: 8px;
+    margin-top: 2px;
+  }
+
+  .flowline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .flowline span.step {
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    padding: 4px 11px;
+  }
+  .flowline span.arrow {
+    color: var(--accent);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    align-items: center;
+  }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid var(--rule);
+    background: var(--surface-2);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .tag.is-new {
+    border-color: color-mix(in srgb, var(--new) 45%, transparent);
+    background: var(--new-soft);
+    color: var(--new);
+  }
+  .tag.is-now {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+
+  /* ── Plates ─────────────────────────────────────────────────────────── */
+  .plate {
+    padding: 54px 0 10px;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    gap: 20px;
+  }
+  .plate:last-of-type {
+    border-bottom: none;
+  }
+  .plate-head {
+    display: grid;
+    gap: 7px;
+  }
+  .plate-head .kicker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .plate-head .kicker b {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .plate-head h2 {
+    font-family: var(--display);
+    font-size: clamp(23px, 2.9vw, 30px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .plate-head p {
+    margin: 0;
+    max-width: 68ch;
+    color: var(--ink-2);
+  }
+
+  .scrollx {
+    overflow-x: auto;
+    border-radius: 7px;
+  }
+  .frame {
+    min-width: 940px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .frame.narrow {
+    min-width: 720px;
+  }
+  .frame-chrome {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--surface-3);
+    border-bottom: 1px solid var(--rule);
+  }
+  .frame-chrome .dots {
+    display: flex;
+    gap: 5px;
+  }
+  .frame-chrome .dots i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--rule);
+    display: block;
+  }
+  .frame-chrome .url {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 2px 9px;
+  }
+
+  /* callout chips, keyed to the notes list under each plate */
+  .c {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1;
+    vertical-align: 2px;
+    margin: 0 0 0 5px;
+  }
+  .c.n {
+    background: var(--new);
+  }
+
+  .notes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+    gap: 12px 26px;
+  }
+  .notes li {
+    display: grid;
+    grid-template-columns: 15px 1fr;
+    gap: 10px;
+    align-items: start;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  .notes li > .c {
+    margin: 3px 0 0;
+  }
+  .notes b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .notes code,
+  .impl code,
+  .plate-head code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    padding: 0.5px 4px;
+  }
+
+  /* ── Mock app primitives ────────────────────────────────────────────── */
+  .m-app {
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .m-top {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 0 16px;
+    height: 46px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+  }
+  .m-brand {
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  .m-tabs {
+    display: flex;
+    gap: 18px;
+    font-size: 12.5px;
+    color: var(--muted);
+    align-items: center;
+  }
+  .m-tabs .on {
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: inset 0 -2px 0 var(--accent);
+    padding-bottom: 12px;
+    margin-bottom: -12px;
+  }
+  .m-avatar {
+    margin-left: auto;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-size: 11px;
+    font-weight: 650;
+    display: grid;
+    place-items: center;
+  }
+
+  .m-chat {
+    display: grid;
+    grid-template-columns: 232px minmax(320px, 1fr) 348px;
+    min-height: 560px;
+  }
+  .m-chat > * {
+    min-width: 0;
+  }
+  .m-rail {
+    border-right: 1px solid var(--rule);
+    background: var(--surface-2);
+    padding: 14px 12px;
+    display: grid;
+    gap: 12px;
+    align-content: start;
+  }
+  .m-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 4px;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 12.5px;
+    font-weight: 550;
+    white-space: nowrap;
+  }
+  .m-btn.pri {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .m-btn.ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+  }
+  .m-btn.sm {
+    height: 25px;
+    padding: 0 9px;
+    font-size: 11.5px;
+  }
+  .m-btn.block {
+    width: 100%;
+  }
+  .m-field {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 28px;
+    padding: 0 9px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .m-label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+  }
+  .m-conv {
+    display: grid;
+    gap: 2px;
+  }
+  .m-conv-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 9px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+    color: var(--ink-2);
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+  .m-conv-item .txt {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-conv-item .when {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .m-conv-item.on {
+    background: var(--surface);
+    border-left-color: var(--accent);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: 0 1px 0 var(--rule-2);
+  }
+  .m-conv-item.hov {
+    background: var(--surface);
+  }
+  .m-rail-foot {
+    margin-top: 4px;
+    padding-top: 11px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .m-count {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    background: var(--surface-3);
+    border-radius: 100px;
+    padding: 1px 7px;
+    color: var(--muted);
+  }
+
+  /* transcript */
+  .m-thread {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    background: var(--surface);
+    min-height: 0;
+  }
+  .m-scroll {
+    padding: 22px 26px 8px;
+    display: grid;
+    gap: 16px;
+    align-content: start;
+  }
+  .m-turn {
+    display: grid;
+    gap: 8px;
+    max-width: 62ch;
+  }
+  .m-turn.user {
+    justify-items: end;
+    margin-left: auto;
+  }
+  .m-bubble {
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    border-radius: 12px 12px 3px 12px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .m-role {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .m-say {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+  .m-say strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .m-trace {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 100px;
+    padding: 3px 10px;
+    width: fit-content;
+  }
+  .m-trace .cv {
+    color: var(--accent);
+  }
+  .m-trace.open {
+    border-radius: 5px;
+    display: grid;
+    gap: 6px;
+    padding: 7px 10px;
+    width: 100%;
+  }
+  .m-trace pre {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  /* an inline mermaid sketch — deliberately plainer than a panel chart:
+     mermaid brings its own theme, square marks, no hover layer */
+  .m-mermaid {
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 8px 10px 4px;
+    display: grid;
+    gap: 4px;
+    position: relative;
+  }
+  .mm-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+  }
+  .mm-title {
+    fill: var(--ink-2);
+    font-family: var(--display);
+    font-size: 10px;
+  }
+  .mm-ax {
+    stroke: var(--muted);
+    stroke-width: 1;
+    opacity: 0.5;
+  }
+  .mm-lab {
+    fill: var(--muted);
+    font-family: var(--sans);
+    font-size: 8px;
+  }
+  .fmm {
+    fill: var(--s2);
+    opacity: 0.62;
+  }
+
+  .m-typing {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--accent);
+  }
+  .m-typing i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: block;
+    opacity: 0.45;
+  }
+  .m-typing i:nth-child(2) {
+    opacity: 0.75;
+  }
+  .m-typing i:nth-child(3) {
+    opacity: 1;
+  }
+
+  .m-composer {
+    border-top: 1px solid var(--rule);
+    padding: 12px 26px 16px;
+    display: grid;
+    gap: 9px;
+    background: var(--surface);
+  }
+  .m-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .m-chip {
+    font-size: 11.5px;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    padding: 3px 10px;
+    white-space: nowrap;
+  }
+  .m-chip.lead {
+    border-style: dashed;
+    color: var(--muted);
+    background: transparent;
+  }
+  .m-input {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 9px 11px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 10px;
+    min-height: 54px;
+    box-shadow: 0 1px 0 var(--rule-2);
+  }
+  .m-input .ph {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .m-hint {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* results panel */
+  .m-panel {
+    border-left: 1px solid var(--rule);
+    background: var(--surface-2);
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    min-height: 0;
+  }
+  .m-panel-head {
+    padding: 12px 14px 10px;
+    display: grid;
+    gap: 9px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .m-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .m-panel-title h4 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .m-panel-title .m-btn {
+    margin-left: auto;
+  }
+  .m-seg {
+    display: inline-flex;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--surface);
+    width: fit-content;
+    font-size: 11.5px;
+  }
+  .m-seg span {
+    padding: 3px 10px;
+    color: var(--muted);
+    border-right: 1px solid var(--rule);
+  }
+  .m-seg span:last-child {
+    border-right: none;
+  }
+  .m-seg span.on {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .m-cards {
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+  .m-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 10px 11px;
+    display: grid;
+    gap: 8px;
+  }
+  .m-card.sel {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .m-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .m-check {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+  }
+  .m-check.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-size: 9px;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+  }
+  .m-card-head .t {
+    font-size: 12.5px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-kind {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+  .m-acts {
+    display: flex;
+    gap: 3px;
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .m-acts i {
+    width: 21px;
+    height: 21px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    border: 1px solid transparent;
+    font-style: normal;
+  }
+  .m-card .cap {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .m-panel-foot {
+    border-top: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+  }
+  .m-panel-foot .n {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .m-panel-foot .m-btn {
+    margin-left: auto;
+  }
+
+  /* empty / first-run chat */
+  .m-welcome {
+    display: grid;
+    gap: 26px;
+    justify-items: center;
+    text-align: center;
+    padding: 54px 40px 30px;
+    align-content: start;
+  }
+  .m-welcome h3 {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .m-welcome p {
+    margin: 0;
+    max-width: 52ch;
+    color: var(--ink-2);
+    font-size: 13.5px;
+  }
+  .m-tracks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(210px, 1fr));
+    gap: 12px;
+    text-align: left;
+    width: 100%;
+    max-width: 620px;
+  }
+  .m-track {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface-2);
+    padding: 12px;
+    display: grid;
+    gap: 7px;
+    align-content: start;
+  }
+  .m-track h5 {
+    margin: 0;
+    font-size: 12.5px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .m-track h5 span.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: block;
+  }
+  .m-track h5 span.dot.b {
+    background: var(--s3);
+  }
+  .m-track .sub {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin: 0;
+  }
+  .m-starter {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .m-panel-empty {
+    padding: 26px 18px;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    align-content: start;
+  }
+  .m-panel-empty .box {
+    width: 100%;
+    height: 74px;
+    border: 1px dashed var(--rule);
+    border-radius: 6px;
+    background: repeating-linear-gradient(135deg, transparent 0 7px, var(--grid) 7px 8px);
+  }
+
+  /* list page */
+  .m-page {
+    padding: 22px 26px 30px;
+    display: grid;
+    gap: 16px;
+    background: var(--surface);
+  }
+  .m-page-head {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .m-page-head h3 {
+    font-family: var(--display);
+    font-size: 23px;
+    font-weight: 600;
+    margin: 0 0 2px;
+    letter-spacing: -0.01em;
+  }
+  .m-page-head p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    max-width: 58ch;
+  }
+  .m-page-head .m-btn {
+    margin-left: auto;
+  }
+  .m-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 2px;
+  }
+  .m-toolbar .m-field {
+    min-width: 210px;
+  }
+  .m-toolbar .right {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .m-table {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .m-tr {
+    display: grid;
+    grid-template-columns: 34px minmax(220px, 2.2fr) minmax(150px, 1fr) 108px 132px 34px;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--rule-2);
+  }
+  .m-tr:last-child {
+    border-bottom: none;
+  }
+  .m-tr.head {
+    background: var(--surface-2);
+    border-bottom-color: var(--rule);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 12px;
+  }
+  .m-tr.hov {
+    background: var(--surface-2);
+  }
+  /* filter picker rows in the save sheet */
+  .m-fgrid {
+    display: grid;
+    grid-template-columns: 16px minmax(76px, auto) minmax(112px, auto) 1fr;
+    align-items: center;
+    gap: 7px 10px;
+    font-size: 12px;
+  }
+  .m-fgrid b {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .m-fon,
+  .m-foff {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-align: center;
+  }
+  .m-fon {
+    color: var(--accent);
+  }
+  .m-foff {
+    color: var(--muted);
+  }
+  .m-fctl {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 2px 8px;
+    color: var(--muted);
+    font-size: 11.5px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .m-fctl.on {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  /* any-of / all-of toggle, shown only on array fields */
+  .m-mtoggle {
+    display: inline-flex;
+    border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-left: 6px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+  .m-mtoggle span {
+    padding: 0 4px;
+    color: var(--muted);
+  }
+  .m-mtoggle span.on {
+    background: color-mix(in srgb, var(--accent) 26%, transparent);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .m-fval {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+  }
+  .m-tr.gone .title,
+  .m-tr.gone .m-meta {
+    opacity: 0.66;
+  }
+  .m-star {
+    text-align: center;
+    color: var(--rule);
+    font-size: 14px;
+    line-height: 1;
+  }
+  .m-star.on {
+    color: var(--new);
+  }
+  .m-tr .title {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .m-tr .title b {
+    font-size: 13px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-tr .title span {
+    font-size: 11.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .m-pill {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    padding: 1.5px 6px;
+    white-space: nowrap;
+  }
+  .m-vis {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .m-vis.on {
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .m-when {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .m-who {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--ink-2);
+    min-width: 0;
+  }
+  .m-who i {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    color: var(--muted);
+    font-style: normal;
+    font-size: 9.5px;
+    font-weight: 650;
+    display: grid;
+    place-items: center;
+  }
+  .m-who span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-kebab {
+    text-align: center;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .m-menu {
+    position: relative;
+  }
+  .m-menu-pop {
+    position: absolute;
+    right: 0;
+    top: 6px;
+    z-index: 5;
+    width: 152px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    box-shadow: 0 10px 22px -14px rgba(10, 30, 24, 0.5);
+    padding: 4px;
+    display: grid;
+    gap: 1px;
+    text-align: left;
+    font-size: 12px;
+    letter-spacing: normal;
+  }
+  .m-menu-pop b {
+    font-weight: 400;
+    color: var(--ink-2);
+    padding: 5px 8px;
+    border-radius: 3px;
+    display: flex;
+    gap: 8px;
+  }
+  .m-menu-pop b.hov {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+  .m-menu-pop b.danger {
+    color: #a33a2e;
+  }
+  .m-menu-pop hr {
+    border: none;
+    border-top: 1px solid var(--rule-2);
+    margin: 3px 0;
+  }
+
+  .m-empty {
+    border: 1px dashed var(--rule);
+    border-radius: 6px;
+    padding: 34px 22px;
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    text-align: center;
+    background: var(--surface-2);
+  }
+  .m-empty h5 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .m-empty p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    max-width: 46ch;
+  }
+
+  /* report view */
+  .m-crumb {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .m-filters {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface-2);
+  }
+  .m-tagv {
+    font-size: 10.5px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    white-space: nowrap;
+  }
+  .m-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .m-kpi {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 13px 14px;
+    display: grid;
+    gap: 3px;
+    background: var(--surface);
+  }
+  .m-kpi .lab {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .m-kpi .val {
+    font-family: var(--display);
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .m-kpi .cap {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .m-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 12px;
+  }
+  .m-sec {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 13px 14px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+  .m-sec-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .m-sec-head h5 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .m-sec-head .m-acts {
+    font-size: 11px;
+  }
+  .m-alert {
+    border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+    background: var(--warn-soft);
+    border-radius: 5px;
+    padding: 11px 12px;
+    display: grid;
+    gap: 6px;
+  }
+  .m-alert b {
+    font-size: 12.5px;
+    color: var(--warn);
+  }
+  .m-alert p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .m-dtable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .m-dtable th,
+  .m-dtable td {
+    text-align: left;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--rule-2);
+    white-space: nowrap;
+  }
+  .m-dtable th {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom-color: var(--rule);
+  }
+  .m-dtable td.num,
+  .m-dtable th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .m-legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--ink-2);
+  }
+  .m-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .m-legend i {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: block;
+  }
+  .sw1 {
+    background: var(--s1);
+  }
+  .sw2 {
+    background: var(--s2);
+  }
+
+  /* chart svg helpers */
+  .f1 {
+    fill: var(--s1);
+  }
+  .f2 {
+    fill: var(--s2);
+  }
+  .st1 {
+    stroke: var(--s1);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .gl {
+    stroke: var(--rule);
+    stroke-width: 1;
+  }
+  .axl {
+    fill: var(--muted);
+    font-family: var(--mono);
+    font-size: 8px;
+  }
+  .dl {
+    fill: var(--ink-2);
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 600;
+  }
+  .area1 {
+    fill: var(--s1);
+    opacity: 0.13;
+  }
+  .ring {
+    stroke: var(--surface);
+    stroke-width: 2;
+  }
+  .tip {
+    fill: var(--ink);
+  }
+  .tiptxt {
+    fill: var(--surface);
+    font-family: var(--mono);
+    font-size: 8px;
+  }
+
+  /* ── Implications ───────────────────────────────────────────────────── */
+  .impl {
+    padding: 54px 0 0;
+    display: grid;
+    gap: 18px;
+  }
+  .impl h2 {
+    font-family: var(--display);
+    font-size: clamp(23px, 2.9vw, 30px);
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .impl > p {
+    margin: 0;
+    max-width: 68ch;
+    color: var(--ink-2);
+  }
+  .impl-wrap {
+    overflow-x: auto;
+  }
+  .impl-table {
+    width: 100%;
+    min-width: 700px;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  .impl-table th,
+  .impl-table td {
+    text-align: left;
+    vertical-align: top;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .impl-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface-2);
+  }
+  .impl-table td:first-child {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .impl-table td {
+    color: var(--ink-2);
+  }
+  .deck-foot {
+    padding: 44px 0 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .wrap,
+    .deck-head {
+      padding-left: 18px;
+      padding-right: 18px;
+    }
+    .m-tracks {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<header class="deck-head">
+  <b>Reporting · chat &amp; reports</b>
+  <span class="tag">wireframes v1</span>
+  <nav class="deck-nav">
+    <a href="#p1">1 · First run</a>
+    <a href="#p2">2 · Conversation</a>
+    <a href="#p3">3 · Save as report</a>
+    <a href="#p4">4 · Reports list</a>
+    <a href="#p5">5 · Confirm &amp; empty</a>
+    <a href="#p6">6 · Report</a>
+    <a href="#impl">Module changes</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section class="open">
+    <p class="eyebrow">modules/reporting · UX wireframes · 29 Jul 2026</p>
+    <h1>Ask your data anything. Keep the answers worth keeping.</h1>
+    <p class="lede">
+      The reporting module carries two jobs on one surface, and today the second one is
+      invisible — a report only exists if the user happens to type <em>"turn this into a
+      report"</em>. These wireframes make both jobs legible: exploration is the default
+      motion, and every result the assistant produces is one click from becoming a saved
+      report.
+    </p>
+
+    <div class="jobs">
+      <div class="job">
+        <h3>Explore</h3>
+        <p>
+          Ask a question, read the answer, follow it with another. Charts, tables and
+          exports land in a panel beside the transcript instead of scrolling away.
+        </p>
+        <p class="said">"Which region grew fastest last quarter?"</p>
+      </div>
+      <div class="job">
+        <h3>Report</h3>
+        <p>
+          Pick the results that answered the question and save them as a report with
+          filters — a page to revisit weekly, not a message to scroll back to.
+        </p>
+        <p class="said">"Build me a monthly revenue report by channel."</p>
+      </div>
+      <div class="job">
+        <h3>Revisit</h3>
+        <p>
+          Your reports, plus any published for the whole app. Favourites, search — and
+          re-queried live on open, so a saved report is never a stale screenshot.
+        </p>
+        <p class="said">"Where's that margin report from last month?"</p>
+      </div>
+    </div>
+
+    <p class="flowline">
+      <span class="step">Ask</span><span class="arrow">→</span>
+      <span class="step">See results</span><span class="arrow">→</span>
+      <span class="step">Save as report</span><span class="arrow">→</span>
+      <span class="step">Revisit &amp; filter</span>
+    </p>
+
+    <p class="legend">
+      <span><span class="tag is-now">ships today</span> already in the module</span>
+      <span><span class="tag is-new">new</span> proposed — needs module work (see <a href="#impl" style="color:var(--accent)">module changes</a>)</span>
+      <span>Callout chips <span class="c">1</span> / <span class="c n">2</span> key to the notes under each plate.</span>
+    </p>
+  </section>
+
+  <!-- ── PLATE 1 ─────────────────────────────────────────────────────── -->
+  <article class="plate" id="p1">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 1</b> <span>/reporting/chat — first run</span> <span class="tag is-new">new</span></p>
+      <h2>The empty state has to teach both jobs</h2>
+      <p>
+        Today's welcome is a title and a sentence. This version splits the starters into two
+        tracks — <b>ask a question</b> and <b>build a report</b> — so the report path is
+        discoverable without knowing the magic phrase, and the results panel shows its own
+        shape before anything is in it.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/chat</span>
+        </div>
+        <div class="m-app">
+          <div class="m-top">
+            <span class="m-brand">Acme Freight</span>
+            <span class="m-tabs"><span class="on">Ask</span><span>Reports</span><span>Orders</span></span>
+            <span class="m-avatar">JM</span>
+          </div>
+          <div class="m-chat">
+            <div class="m-rail">
+              <span class="m-btn pri block">+ New chat</span>
+              <div class="m-conv">
+                <span class="m-label">Recent<span class="c">1</span></span>
+                <div class="m-panel-empty" style="padding:14px 4px">
+                  <span style="font-size:11.5px">Your chats will appear here.</span>
+                </div>
+              </div>
+              <div class="m-rail-foot">
+                <span>Reports</span><span class="m-count">0</span>
+              </div>
+            </div>
+
+            <div class="m-thread">
+              <div class="m-welcome">
+                <div>
+                  <h3>Ask about your orders</h3>
+                  <p style="margin-top:7px">
+                    Ask in plain language — revenue, regions, channels, order status. When an
+                    answer is worth keeping, save it as a report.<span class="c n">2</span>
+                  </p>
+                </div>
+                <div class="m-tracks">
+                  <div class="m-track">
+                    <h5><span class="dot"></span> Get an answer<span class="c n">3</span></h5>
+                    <p class="sub">One question, one answer. Follow it with another.</p>
+                    <span class="m-starter">Revenue by region this quarter</span>
+                    <span class="m-starter">Which category is growing fastest?</span>
+                    <span class="m-starter">How many orders are still pending?</span>
+                  </div>
+                  <div class="m-track">
+                    <h5><span class="dot b"></span> Build a report<span class="c n">3</span></h5>
+                    <p class="sub">A saved page with filters you can open next month.</p>
+                    <span class="m-starter">Monthly revenue by channel, as a report</span>
+                    <span class="m-starter">Report: order status by region</span>
+                    <span class="m-starter">Top categories, filterable by month</span>
+                  </div>
+                </div>
+                <p style="font-size:11.5px;color:var(--muted)">
+                  I can read: orders, companies, contacts, activities.<span class="c n">4</span>
+                </p>
+              </div>
+              <div class="m-composer">
+                <div class="m-input">
+                  <span class="ph">Ask about your data…</span>
+                  <span class="m-btn pri sm">Send ↑</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="m-panel">
+              <div class="m-panel-head">
+                <div class="m-panel-title"><h4>Results</h4></div>
+              </div>
+              <div class="m-panel-empty">
+                <div class="box"></div>
+                <b style="color:var(--ink-2);font-size:12.5px">Charts, tables and exports land here</b>
+                <span>They stay put while the conversation moves on, so you can compare answers side by side.<span class="c n">5</span></span>
+              </div>
+              <div></div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>Rail is present from the first visit</b>, empty but shaped — the user learns chats persist before they have one. Today's page already loads <code>list-conversations</code> on mount.</span></li>
+      <li><span class="c n">2</span><span><b>One sentence carries the dual purpose</b>: ask freely; keep what matters. It replaces the current welcome copy, which mentions the panel and the phrase "turn this into a report".</span></li>
+      <li><span class="c n">3</span><span><b>Two tracks, not one list of prompts.</b> The left track is exploratory, the right is report-shaped — the split is the teaching device. Clicking a starter fills the composer rather than sending, so the user can edit it.</span></li>
+      <li><span class="c n">4</span><span><b>Name what the assistant can see</b>, derived from the catalog's collection descriptions. Prevents the "why can't it answer that?" dead end, and sets scope honestly.</span></li>
+      <li><span class="c n">5</span><span><b>The panel explains itself when empty</b> instead of hiding. Today the whole results column is <code>visible: false</code> until a chart arrives, so first-time users never learn it exists.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── PLATE 2 ─────────────────────────────────────────────────────── -->
+  <article class="plate" id="p2">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 2</b> <span>/reporting/chat — mid-conversation</span> <span class="tag is-now">ships today</span> <span class="tag is-new">panels reworked</span></p>
+      <h2>Three columns, three time horizons</h2>
+      <p>
+        Left is <b>history</b>, middle is <b>now</b>, right is <b>what you've produced</b>. The
+        transcript stays a conversation — prose, with a mermaid sketch where one earns its
+        place — and every real artefact is promoted into the panel, where it can be reread,
+        compared and reused. That division isn't only taste: <code>AgentChat</code> cannot host
+        Lowdefy blocks inside a message, so the panel is the only place an <code>EChart</code>
+        can live.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/chat</span>
+        </div>
+        <div class="m-app">
+          <div class="m-top">
+            <span class="m-brand">Acme Freight</span>
+            <span class="m-tabs"><span class="on">Ask</span><span>Reports</span><span>Orders</span></span>
+            <span class="m-avatar">JM</span>
+          </div>
+          <div class="m-chat">
+            <!-- rail -->
+            <div class="m-rail">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span class="m-btn pri sm" style="flex:1 1 auto">+ New chat</span>
+                <span class="m-btn ghost sm" style="padding:0 6px">⇥<span class="c n">1</span></span>
+              </div>
+              <span class="m-field">⌕ <span>Search chats</span></span>
+              <div class="m-conv">
+                <span class="m-label">Today<span class="c n">2</span></span>
+                <div class="m-conv-item on"><span class="txt">Q3 revenue by region</span><span class="when">now</span></div>
+                <div class="m-conv-item hov"><span class="txt">Pending orders over $5k</span><span class="when">⋯</span></div>
+                <span class="m-label" style="margin-top:8px">Previous 7 days</span>
+                <div class="m-conv-item"><span class="txt">Channel mix, retail vs online</span><span class="when">Mon</span></div>
+                <div class="m-conv-item"><span class="txt">Cancelled order rate by category</span><span class="when">Sun</span></div>
+                <div class="m-conv-item"><span class="txt">Average order value, West</span><span class="when">23 Jul</span></div>
+                <span class="m-label" style="margin-top:8px">Older</span>
+                <div class="m-conv-item"><span class="txt">Toys seasonality</span><span class="when">Jun</span></div>
+              </div>
+              <div class="m-rail-foot">
+                <span>Reports</span><span class="m-count">12</span>
+                <span class="m-btn ghost sm" style="margin-left:auto">Open →</span>
+              </div>
+            </div>
+
+            <!-- transcript -->
+            <div class="m-thread">
+              <div class="m-scroll">
+                <div class="m-turn user">
+                  <span class="m-bubble">Revenue by region for Q3, and how does that compare to Q2?</span>
+                </div>
+
+                <div class="m-turn">
+                  <span class="m-role">Assistant</span>
+                  <span class="m-trace"><span class="cv">▸</span> Read <b>orders</b> · 4,812 rows · 0.4s<span class="c">3</span></span>
+                  <p class="m-say" style="margin:0">
+                    Q3 revenue was <strong>$2.41M</strong>, up 8.6% on Q2. <strong>West</strong> drove
+                    the growth (+$96k, +14%); <strong>South</strong> was flat and <strong>East</strong>
+                    slipped 3% on a drop in Electronics.
+                  </p>
+                  <div class="m-mermaid">
+                    <span class="mm-tag">mermaid · xychart-beta<span class="c n">4</span></span>
+                    <svg viewBox="0 0 320 108" width="100%" height="108" role="img" aria-label="Sketch bar chart: Q3 revenue by region, West highest at 727 thousand.">
+                      <text class="mm-title" x="160" y="12" text-anchor="middle">Q3 revenue by region</text>
+                      <line class="mm-ax" x1="40" y1="88" x2="310" y2="88" />
+                      <line class="mm-ax" x1="40" y1="20" x2="40" y2="88" />
+                      <text class="mm-lab" x="35" y="91" text-anchor="end">0</text>
+                      <text class="mm-lab" x="35" y="26" text-anchor="end">800k</text>
+                      <rect class="fmm" x="62" y="46" width="34" height="42" />
+                      <rect class="fmm" x="130" y="56" width="34" height="32" />
+                      <rect class="fmm" x="198" y="53" width="34" height="35" />
+                      <rect class="fmm" x="266" y="25" width="34" height="63" />
+                      <g class="mm-lab" text-anchor="middle">
+                        <text x="79" y="100">North</text><text x="147" y="100">South</text>
+                        <text x="215" y="100">East</text><text x="283" y="100">West</text>
+                      </g>
+                    </svg>
+                  </div>
+                  <p class="m-say" style="margin:0">
+                    The Q2 comparison, with exact values on hover, is in
+                    <strong>Results</strong> →<span class="c n">5</span> Want the East drop broken
+                    down by category?
+                  </p>
+                </div>
+
+                <div class="m-turn user">
+                  <span class="m-bubble">Yes — and give me the raw rows for East.</span>
+                </div>
+
+                <div class="m-turn">
+                  <span class="m-role">Assistant</span>
+                  <span class="m-typing"><i></i><i></i><i></i> writing…</span>
+                  <p class="m-say" style="margin:0">
+                    East's decline is almost entirely Electronics (−$41k). Clothing and Home both
+                    grew slightly. I've put the row-level export in the panel —
+                  </p>
+                </div>
+              </div>
+
+              <div class="m-composer">
+                <div class="m-chips">
+                  <span class="m-chip lead">Try</span>
+                  <span class="m-chip">Break East down by month</span>
+                  <span class="m-chip">Compare to last year</span>
+                  <span class="m-chip">Save this as a report</span>
+                </div>
+                <div class="m-input">
+                  <span class="ph">Ask a follow-up…</span>
+                  <span class="m-btn sm">■ Stop</span>
+                </div>
+                <span class="m-hint">The assistant reads data only — it never changes your records.<span class="c n">6</span></span>
+              </div>
+            </div>
+
+            <!-- results panel -->
+            <div class="m-panel">
+              <div class="m-panel-head">
+                <div class="m-panel-title">
+                  <h4>Results</h4><span class="m-count">4</span>
+                  <span class="m-btn sm">⇤ Hide<span class="c n">7</span></span>
+                </div>
+                <div class="m-seg">
+                  <span class="on">All 4</span><span>Charts 2</span><span>Tables 1</span><span>Exports 1</span>
+                </div>
+              </div>
+
+              <div class="m-cards">
+                <div class="m-card">
+                  <div class="m-card-head">
+                    <span class="m-check"></span><span class="m-kind">Export</span>
+                    <span class="t">East orders, Q3</span>
+                    <span class="m-acts"><i>⤓</i></span>
+                  </div>
+                  <span class="cap">1,204 rows · orders · CSV</span>
+                </div>
+
+                <div class="m-card sel">
+                  <div class="m-card-head">
+                    <span class="m-check on">✓</span><span class="m-kind">Table</span>
+                    <span class="t">East by category</span>
+                    <span class="m-acts"><i>⤢</i><i>⤓</i><i>⋯</i></span>
+                  </div>
+                  <table class="m-dtable">
+                    <tr><th>Category</th><th class="num">Q3</th><th class="num">Δ</th></tr>
+                    <tr><td>Electronics</td><td class="num">$188,402</td><td class="num">−$41,120</td></tr>
+                    <tr><td>Clothing</td><td class="num">$142,910</td><td class="num">+$6,240</td></tr>
+                    <tr><td>Home</td><td class="num">$97,655</td><td class="num">+$2,890</td></tr>
+                  </table>
+                  <span class="cap">Selected for report<span class="c n">8</span></span>
+                </div>
+
+                <div class="m-card sel">
+                  <div class="m-card-head">
+                    <span class="m-check on">✓</span><span class="m-kind">Chart</span>
+                    <span class="t">Revenue by region</span>
+                    <span class="m-acts"><i>⤢</i><i>⋯</i></span>
+                  </div>
+                  <svg viewBox="0 0 300 84" width="100%" height="80" role="img" aria-label="Grouped bar chart: revenue by region, Q2 versus Q3.">
+                    <line class="gl" x1="2" y1="70" x2="298" y2="70" />
+                    <rect class="f1" x="14" y="26" width="20" height="44" rx="3" />
+                    <rect class="f2" x="36" y="18" width="20" height="52" rx="3" />
+                    <rect class="f1" x="88" y="38" width="20" height="32" rx="3" />
+                    <rect class="f2" x="110" y="37" width="20" height="33" rx="3" />
+                    <rect class="f1" x="162" y="32" width="20" height="38" rx="3" />
+                    <rect class="f2" x="184" y="35" width="20" height="35" rx="3" />
+                    <rect class="f1" x="236" y="30" width="20" height="40" rx="3" />
+                    <rect class="f2" x="258" y="16" width="20" height="54" rx="3" />
+                    <text class="axl" x="35" y="80" text-anchor="middle">North</text>
+                    <text class="axl" x="109" y="80" text-anchor="middle">South</text>
+                    <text class="axl" x="183" y="80" text-anchor="middle">East</text>
+                    <text class="axl" x="257" y="80" text-anchor="middle">West</text>
+                  </svg>
+                  <div class="m-legend"><span><i class="sw1"></i> Q2</span><span><i class="sw2"></i> Q3</span></div>
+                </div>
+
+                <div class="m-card">
+                  <div class="m-card-head">
+                    <span class="m-check"></span><span class="m-kind">Chart</span>
+                    <span class="t">Monthly revenue trend</span>
+                    <span class="m-acts"><i>⤢</i><i>⋯</i></span>
+                  </div>
+                  <svg viewBox="0 0 300 84" width="100%" height="80" role="img" aria-label="Line chart: monthly revenue trend, rising to 812 thousand in September.">
+                    <line class="gl" x1="2" y1="70" x2="298" y2="70" />
+                    <path class="area1" d="M14 54 L60 47 L106 50 L152 38 L198 33 L244 25 L244 70 L14 70 Z" />
+                    <path class="st1" d="M14 54 L60 47 L106 50 L152 38 L198 33 L244 25" />
+                    <circle class="ring" cx="244" cy="25" r="4.5" fill="var(--s1)" />
+                    <rect class="tip" x="200" y="4" width="80" height="15" rx="3" />
+                    <text class="tiptxt" x="206" y="14">Sep · $812,400</text>
+                    <text class="axl" x="14" y="80">Apr</text>
+                    <text class="axl" x="244" y="80" text-anchor="middle">Sep</text>
+                  </svg>
+                  <span class="cap">Grouped by month · orders.total</span>
+                </div>
+              </div>
+
+              <div class="m-panel-foot">
+                <span class="n">2 selected</span>
+                <span class="m-btn ghost sm">Clear</span>
+                <span class="m-btn pri sm">Save as report →<span class="c n">9</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c n">1</span><span><b>Both side panels collapse.</b> The rail folds to an icon strip (new chat, search, expand) and the results panel to a counted strip — so the transcript can run full-width when the user is reading rather than producing. Collapse state persists per user; on a narrow viewport both start collapsed.</span></li>
+      <li><span class="c n">2</span><span><b>Chats group by recency</b> (Today / Previous 7 days / Older) with a search field above. Needs an <code>updated</code> timestamp on the conversation doc — <code>list-conversations</code> returns titles only today. Hover reveals a <code>⋯</code> for rename and delete, and delete is soft.</span></li>
+      <li><span class="c">3</span><span><b>One collapsed line per tool call</b> — what it read, how many rows, how long. Expanding shows the pipeline. This is the trust surface: the user can always see what the answer was computed from, and it's already streamed as data parts.</span></li>
+      <li><span class="c n">4</span><span><b>A sketch, where a sketch helps.</b> The bubble can't host a Lowdefy block, but <code>AgentChat</code> renders markdown and mermaid natively — so a simple shape (one series, ≤6 categories) can be a real inline chart via an <code>xychart-beta</code> or <code>pie</code> fence. It carries mermaid's own theme, square marks and no hover, which is why it stays a sketch: prompt the agent to skip it for anything multi-series or long-labelled and just describe the result.</span></li>
+      <li><span class="c n">5</span><span><b>The sketch hands off in prose.</b> No buttons exist inside a bubble either, so the transcript names where the full chart is and the panel scrolls to the newest card. The comparison, the formatting and the hover values live there — one place, not two half-charts.</span></li>
+      <li><span class="c n">6</span><span><b>State the read-only guarantee where it reassures</b>, under the composer. It is true by construction — the engine runs on a read-only principal — so say it once, quietly, instead of leaving users to wonder.</span></li>
+      <li><span class="c n">7</span><span><b>Panel collapse is the mirror image</b> of the rail's, on the opposite edge, so the two read as one pattern rather than two features. Expanded layout is <code>232px / fluid / 348px</code>; the middle column holds a ~62ch measure so prose stays readable at any width.</span></li>
+      <li><span class="c n">8</span><span><b>Tables are first-class results.</b> Today only charts and downloads stream back, so a tabular answer is stranded in the transcript and can't be reused. Add a <code>data-report-table</code> part.</span></li>
+      <li><span class="c n">9</span><span><b>Select results → save as report.</b> The one change that makes the second job real: report creation stops depending on the user guessing a phrase. Selection is the card's only marking affordance — expand, download and <code>⋯</code> act on a single result, and nothing on a card competes with the checkbox for "this one matters".</span></li>
+    </ol>
+  </article>
+
+  <!-- ── PLATE 3 ─────────────────────────────────────────────────────── -->
+  <article class="plate" id="p3">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 3</b> <span>Save as report — confirm sheet</span> <span class="tag is-new">new</span></p>
+      <h2>The moment exploration becomes an artefact</h2>
+      <p>
+        Selecting results and pressing <b>Save as report</b> opens one small sheet: name it,
+        order the sections, choose which filters it should carry. The assistant proposes all
+        three from the conversation; the user only edits. No blank-form authoring.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame narrow" style="min-width:660px">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/chat — Save as report</span>
+        </div>
+        <div class="m-app m-page" style="max-width:640px;margin:0 auto;padding:22px">
+          <div class="m-page-head" style="align-items:flex-start">
+            <div>
+              <h3 style="font-size:19px">Save as report</h3>
+              <p>3 results from “Q3 revenue by region”. You can add more later from any chat.</p>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:6px">
+            <span class="m-label">Report name<span class="c">1</span></span>
+            <span class="m-field" style="height:32px;color:var(--ink)">Q3 revenue by region and category</span>
+            <span class="m-hint">Suggested from the conversation — edit it to whatever you'll search for.</span>
+          </div>
+
+          <div style="display:grid;gap:7px">
+            <span class="m-label">Sections<span class="c n">2</span></span>
+            <div class="m-table">
+              <div class="m-tr" style="grid-template-columns:20px 62px 1fr 88px 26px">
+                <span class="m-kebab">⣿</span><span class="m-kind">KPI</span>
+                <span class="title"><b>Q3 revenue</b></span><span class="m-when">from chart</span><span class="m-kebab">✕</span>
+              </div>
+              <div class="m-tr" style="grid-template-columns:20px 62px 1fr 88px 26px">
+                <span class="m-kebab">⣿</span><span class="m-kind">Chart</span>
+                <span class="title"><b>Revenue by region, Q2 vs Q3</b></span><span class="m-when">bar</span><span class="m-kebab">✕</span>
+              </div>
+              <div class="m-tr" style="grid-template-columns:20px 62px 1fr 88px 26px">
+                <span class="m-kebab">⣿</span><span class="m-kind">Table</span>
+                <span class="title"><b>East by category</b></span><span class="m-when">3 columns</span><span class="m-kebab">✕</span>
+              </div>
+            </div>
+            <span class="m-hint">Drag to reorder. The KPI was derived from the chart's total — remove it if you don't want it.</span>
+          </div>
+
+          <div style="display:grid;gap:7px">
+            <span class="m-label">Filters this report carries<span class="c n">3</span></span>
+            <div class="m-fgrid">
+              <span class="m-fon">✓</span>
+              <b>Order date</b>
+              <span class="m-fctl">Date range</span>
+              <span class="m-fval">order_date</span>
+
+              <span class="m-fon">✓</span>
+              <b>Region</b>
+              <span class="m-fctl on">Choose several ▾<span class="c n">4</span></span>
+              <span class="m-fval">North, South, East, West</span>
+
+              <span class="m-foff">+</span>
+              <b>Channel</b>
+              <span class="m-fctl">Choose one ▾</span>
+              <span class="m-fval">online, retail, partner</span>
+
+              <span class="m-foff">+</span>
+              <b>Company</b>
+              <span class="m-fctl">Choose several ▾</span>
+              <span class="m-fval">looked up from companies<span class="c n">5</span></span>
+
+              <span class="m-fon">✓</span>
+              <b>Tags</b>
+              <span class="m-fctl on">
+                Choose several ▾
+                <span class="m-mtoggle"><span>any</span><span class="on">all</span></span>
+                <span class="c n">6</span>
+              </span>
+              <span class="m-fval">list field · priority, urgent, backorder</span>
+            </div>
+            <span class="m-hint">
+              These come from your data dictionary — only fields on the underlying orders can be
+              filtered.
+            </span>
+          </div>
+
+          <div style="display:grid;gap:7px">
+            <span class="m-label">Who can see it<span class="c n">7</span></span>
+            <div class="m-seg" style="font-size:12px">
+              <span class="on">Only me</span><span>Everyone</span>
+            </div>
+            <span class="m-hint">
+              You can publish reports for the whole app. Published reports show your name and
+              stay yours to edit.
+            </span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:9px;padding-top:4px">
+            <span class="m-hint" style="margin-right:auto">Saved reports re-run their queries each time they're opened.<span class="c n">8</span></span>
+            <span class="m-btn">Cancel</span>
+            <span class="m-btn pri">Save report</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>Name is pre-filled</b> from the conversation title the agent already generates on turn one, so the fast path is one keystroke: Save.</span></li>
+      <li><span class="c n">2</span><span><b>Sections are the selected results, in order</b>, each showing what it came from. Removing one here is cheaper than editing a saved report later — and the shape maps directly onto the report spec the module already persists.</span></li>
+      <li><span class="c n">3</span><span><b>The offered fields come from the catalog, and so do the dropdown values.</b> Two rules narrow the list, both already true in the engine: a bound field must exist on the section's <b>base collection</b> (the filter <code>$match</code> is prepended before the rest of the pipeline, so it can't see a post-<code>$group</code> alias), and a <code>select</code> needs an option source — <code>filterOptions()</code> takes the agent's declared <code>options</code> if present, otherwise the field's enum <code>values</code> from the catalog. A <code>date</code> field needs neither and offers a range. So the sheet lists date fields plus cataloged-enum fields, and shows the values inline — a field with nothing to populate a dropdown from is never offered, rather than saved and then found empty. Options are re-resolved from the catalog each time the report is opened, so widening an enum reaches every saved report without editing any of them.</span></li>
+      <li><span class="c n">4</span><span><b>Choose one or choose several — the second doesn't exist yet.</b> <code>FILTER_CONTROLS</code> is <code>["select", "daterange"]</code>, the compiler emits a single-value <code>Selector</code>, and the server's op map is <code>{ eq, gte, lte }</code> — a default-deny map that throws on anything else. Multi-select needs a <code>multiselect</code> control compiling to <code>MultipleSelector</code>, and an <code>in → $in</code> op whose value is an array. The array value itself needs no new validation: the built <code>$match</code> goes through the same pipeline walk as any stage, which already type-checks the <code>$in</code> operand, caps it at 100 elements, and rejects <code>$</code>-prefixed keys inside literal values. What it can't know is intent — so the one genuinely new check is that an <b>empty array must drop the triple</b> exactly as null does. <code>$in: []</code> matches nothing, so clearing a multi-select would otherwise blank every section bound to it rather than removing the constraint, and this is the ordinary cleared state: the block always sets an array, never null, so removing the last tag lands on <code>[]</code>. Which control a filter uses is the author's call, so the sheet offers it per filter rather than the agent deciding silently.</span></li>
+      <li><span class="c n">5</span><span><b>A foreign-key filter needs a lookup, and that does not exist yet.</b> Today a <code>select</code>'s options are literal scalars: the validator rejects anything that isn't a string or number, so a value cannot carry a separate label — you would filter on <code>company_id</code> and the dropdown would show raw ids. They're also capped at 50 and frozen into the spec at save time. A company filter needs three additions: an <code>optionsQuery: { collection, pipeline }</code> on the filter section, a small <code>{ valueKey, labelKey }</code> contract naming which column is the id and which the display text (the same shape the chart and KPI contracts already use), and <code>{ label, value }</code> options accepted through to the <code>Selector</code>, which supports them natively. The query is catalog-validated and role-checked exactly like a section query — a filter must not become a way to read a collection you can't otherwise reach — and it re-runs on open, so a new company appears without touching the report. Labels can be composite (<code>name</code>, or <code>name + id</code> where names collide); that's the <code>labelKey</code>'s job, or a <code>$concat</code> in the pipeline. Long lists get <code>showSearch</code>; a set too large for one dropdown is an autocomplete, which is a separate design if a real case appears.</span></li>
+      <li><span class="c n">6</span><span><b>A list field can be filtered two ways, and <code>$in</code> is only one of them.</b> Where the field holds an array — tags, categories, assigned users — "choose several" is ambiguous: match documents carrying <i>any</i> of the chosen values, or <i>all</i> of them. Each is a single query operator, and both are already in the engine's <code>$match</code> allowlist. <b>Any</b> is <code>$in</code>, with no array special case: <code>{tags: {$in: [priority, urgent]}}</code> matches a document whose <code>tags</code> array contains either, by the same multikey rule that makes it match a scalar <code>tags</code> equal to either — one op, both field shapes, still index-usable. <b>All</b> is <code>$all</code>, not an <code>$expr</code>: <code>{tags: {$all: [priority, urgent]}}</code> is the entire clause, where <code>{$expr: {$eq: [{$size: {$setIntersection: ["$tags", […]]}}, 2]}}</code> is the same predicate at three costs — it forfeits the index (and this <code>$match</code> is prepended precisely so it can use one), <code>$setIntersection</code> <b>errors the whole aggregation</b> on any document where the field is missing, null, or scalar unless wrapped in an <code>$isArray</code> guard, and it makes <code>buildFilterMatch</code> emit expression trees where it now emits flat <code>{field: {op: value}}</code> clauses. So: two ops, <code>in → $in</code> and <code>all → $all</code>, chosen by a <code>match: any | all</code> on the filter section that defaults to <code>any</code>. The toggle is only <i>offered</i> where the catalog types the field as an array, since that's where the question is real — but it is not <i>validated</i> against the catalog type, because types there are prompt material rather than enforcement, and a wrong one should cost a hidden toggle, not a rejected report. <b>One limitation to write down rather than discover:</b> this filters documents, not array elements. A section that <code>$unwind</code>s the same array and groups by it still shows unselected tags — the leading <code>$match</code> keeps documents having priority or urgent, then the unwind emits every tag those documents carry. Filtering elements would mean inserting the <code>$match</code> after the unwind, which prepend-only cannot express.</span></li>
+      <li><span class="c n">7</span><span><b>This control only exists for users who can publish.</b> Reports are private by default; holding any role listed in the <code>share_roles</code> var grants the ability to publish one to the whole app. Without one the row isn't rendered at all, because a disabled toggle teaches a capability the user can't have. Enforced server-side on write, not by hiding the control.</span></li>
+      <li><span class="c n">8</span><span><b>Say that reports are live.</b> Users assume "save" means "snapshot". One line prevents the wrong mental model — and the wrong expectation about stale numbers.</span></li>
+      <li><span class="c n">9</span><span><b>The typed path still works.</b> "Save this as a report" in the composer opens this same sheet pre-filled, so the conversational and UI routes converge on one confirm step instead of two behaviours.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── PLATE 4 ─────────────────────────────────────────────────────── -->
+  <article class="plate" id="p4">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 4</b> <span>/reporting/reports-list</span> <span class="tag is-now">page exists</span> <span class="tag is-new">rebuilt</span></p>
+      <h2>A list built for finding, not just for opening</h2>
+      <p>
+        Today's list is stacked cards with Open and Delete. At a dozen reports that stops
+        working. This is a scannable table: favourites first, what's inside each report, who
+        made it, when it last ran — and who else can see it.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/reports-list</span>
+        </div>
+        <div class="m-app">
+          <div class="m-top">
+            <span class="m-brand">Acme Freight</span>
+            <span class="m-tabs"><span>Ask</span><span class="on">Reports</span><span>Orders</span></span>
+            <span class="m-avatar">JM</span>
+          </div>
+          <div class="m-page">
+            <div class="m-page-head">
+              <div>
+                <h3>Reports</h3>
+                <p>Saved answers that re-run on open. Favourite the ones you check often.</p>
+              </div>
+              <span class="m-btn pri">+ New report<span class="c n">1</span></span>
+            </div>
+
+            <div class="m-toolbar">
+              <span class="m-field">⌕ <span>Search reports</span></span>
+              <div class="m-seg">
+                <span class="on">Mine 8</span><span>Shared 4</span><span>★ Favourites 3</span>
+              </div>
+              <span class="c n">2</span>
+              <span class="right">
+                <span class="m-label">Sort</span>
+                <span class="m-field">Last opened ▾</span>
+              </span>
+            </div>
+
+            <div class="m-table">
+              <div class="m-tr head">
+                <span></span><span>Report</span><span>Contents</span><span>Last run</span><span>Visibility</span><span></span>
+              </div>
+
+              <div class="m-tr">
+                <span class="m-star on">★</span>
+                <span class="title"><b>Monthly revenue by channel</b><span>Online vs retail vs partner, rolling 12 months</span></span>
+                <span class="m-meta"><span class="m-pill">2 charts</span><span class="m-pill">1 KPI</span><span class="m-pill">2 filters</span></span>
+                <span class="m-when">2 hours ago</span>
+                <span class="m-vis">Only me</span>
+                <span class="m-kebab">⋯</span>
+              </div>
+
+              <div class="m-tr hov">
+                <span class="m-star on">★</span>
+                <span class="title"><b>Order status by region</b><span>Pending, paid, shipped, cancelled — current snapshot</span></span>
+                <span class="m-meta"><span class="m-pill">1 chart</span><span class="m-pill">table</span></span>
+                <span class="m-when">Yesterday</span>
+                <span class="m-vis on">◎ Everyone<span class="c n">3</span></span>
+                <span class="m-kebab m-menu">⋯
+                  <span class="m-menu-pop" style="width:176px">
+                    <b class="hov">★ Remove favourite</b>
+                    <b>✎ Rename</b>
+                    <b>⧉ Duplicate</b>
+                    <b>↩ Open source chat<span class="c n">4</span></b>
+                    <b>◎ Unpublish<span class="c n">5</span></b>
+                    <hr />
+                    <b class="danger">🗑 Delete<span class="c n">6</span></b>
+                  </span>
+                </span>
+              </div>
+
+              <div class="m-tr">
+                <span class="m-star on">★</span>
+                <span class="title"><b>Q3 revenue by region and category</b><span>From the chat “Q3 revenue by region”</span></span>
+                <span class="m-meta"><span class="m-pill">1 chart</span><span class="m-pill">1 KPI</span><span class="m-pill">table</span></span>
+                <span class="m-when">Yesterday</span>
+                <span class="m-vis">Only me</span>
+                <span class="m-kebab">⋯</span>
+              </div>
+
+              <div class="m-tr">
+                <span class="m-star">☆</span>
+                <span class="title"><b>Average order value by category</b><span>Quarterly, with unit counts</span></span>
+                <span class="m-meta"><span class="m-pill">1 chart</span><span class="m-pill">1 filter</span></span>
+                <span class="m-when">3 days ago</span>
+                <span class="m-vis">Only me</span>
+                <span class="m-kebab">⋯</span>
+              </div>
+
+              <div class="m-tr">
+                <span class="m-star">☆</span>
+                <span class="title"><b>Cancelled orders — weekly watch</b><span>Cancellation rate by category and channel</span></span>
+                <span class="m-meta"><span class="m-pill">2 charts</span><span class="m-pill">export</span></span>
+                <span class="m-when">Last week</span>
+                <span class="m-vis on">◎ Everyone</span>
+                <span class="m-kebab">⋯</span>
+              </div>
+
+              <div class="m-tr">
+                <span class="m-star">☆</span>
+                <span class="title"><b>Top companies by revenue</b><span>Joined to companies · top 25</span></span>
+                <span class="m-meta"><span class="m-pill">table</span><span class="m-pill">export</span></span>
+                <span class="m-when">12 Jul</span>
+                <span class="m-vis">Only me</span>
+                <span class="m-kebab">⋯</span>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span class="m-hint">Showing 6 of 8 · <b style="color:var(--accent)">Load more</b><span class="c n">7</span></span>
+              <span class="m-hint" style="margin-left:auto">Recently deleted<span class="c n">8</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame narrow">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/reports-list?scope=shared</span>
+        </div>
+        <div class="m-app m-page">
+          <div class="m-toolbar">
+            <div class="m-seg"><span>Mine 8</span><span class="on">Shared 4</span><span>★ Favourites 3</span></div>
+            <span class="m-hint" style="margin-left:auto">Published for everyone in the app<span class="c n">9</span></span>
+          </div>
+          <div class="m-table">
+            <div class="m-tr head" style="grid-template-columns:34px minmax(210px,2.2fr) minmax(130px,1fr) 104px 124px 34px">
+              <span></span><span>Report</span><span>Contents</span><span>Last run</span><span>Published by</span><span></span>
+            </div>
+            <div class="m-tr" style="grid-template-columns:34px minmax(210px,2.2fr) minmax(130px,1fr) 104px 124px 34px">
+              <span class="m-star on">★</span>
+              <span class="title"><b>Company revenue league table</b><span>All accounts, ranked, current quarter</span></span>
+              <span class="m-meta"><span class="m-pill">table</span><span class="m-pill">2 filters</span></span>
+              <span class="m-when">1 hour ago</span>
+              <span class="m-who"><i>PN</i><span>Priya N.</span></span>
+              <span class="m-kebab m-menu">⋯
+                <span class="m-menu-pop">
+                  <b class="hov">★ Remove favourite</b>
+                  <b>⧉ Duplicate to my reports<span class="c n">10</span></b>
+                </span>
+              </span>
+            </div>
+            <div class="m-tr" style="grid-template-columns:34px minmax(210px,2.2fr) minmax(130px,1fr) 104px 124px 34px">
+              <span class="m-star">☆</span>
+              <span class="title"><b>Weekly cancellations watch</b><span>Cancellation rate by category and channel</span></span>
+              <span class="m-meta"><span class="m-pill">2 charts</span><span class="m-pill">export</span></span>
+              <span class="m-when">Yesterday</span>
+              <span class="m-who"><i>DK</i><span>Dan K.</span></span>
+              <span class="m-kebab">⋯</span>
+            </div>
+          </div>
+          <span class="m-hint">Shared reports can be opened, favourited and copied. Only the person who published one can rename, edit, unpublish or delete it.<span class="c n">11</span></span>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c n">1</span><span><b>"New report" leads to the chat</b>, with the report track pre-selected. The list is where reports are found; the chat is the only place they're made — and the button says so rather than opening a builder that doesn't exist.</span></li>
+      <li><span class="c n">2</span><span><b>Three scopes, one control.</b> <b>Mine</b> is the default and the common case — most users only ever have their own. <b>Shared</b> holds what publishers have released to the app. <b>Favourites</b> spans both. There is no archived scope: the modules in this repo have one retirement act, a soft delete, and adding a second state would mean two ways to retire a report and a scope to explain.</span></li>
+      <li><span class="c n">3</span><span><b>Visibility is a column, not a hidden property.</b> In the Mine scope every row is yours, so "created by" would be a column of one repeated name — the useful fact is which of your reports the whole app can see.</span></li>
+      <li><span class="c n">4</span><span><b>"Open source chat"</b> reopens the conversation the report came from — the natural way to extend a report is to keep talking. Owner-only, because the conversation belongs to whoever had it. Requires storing <code>conversationId</code> on the report doc.</span></li>
+      <li><span class="c n">5</span><span><b>Publishing is its own reversible act, and it has exactly one audience: everyone.</b> This slot reads <b>Unpublish</b> on a shared report and <b>Publish to everyone</b> on a private one — a plain toggle with no other consequence: the report stays in your list, keeps its favourites and its history, only its audience changes. There is no per-person or per-team sharing, and no link-sharing: the states are <i>only me</i> and <i>everyone in the app</i>. The slot is absent for users without a publish role.</span></li>
+      <li><span class="c n">6</span><span><b>Delete is the only retirement, and it is soft.</b> It writes a <code>deleted</code> change stamp — who and when, the same idiom every module in this repo uses — and every read filters <code>deleted: null</code>, so a deleted report leaves the Shared scope for everyone without a second unpublish step. Nothing is removed from the collection, so an operator can restore one; there is deliberately no user-facing undelete, because that is the archive feature under another name. The confirm names the blast radius when the report is published.</span></li>
+      <li><span class="c n">7</span><span><b>Paged, searchable, sorted server-side.</b> <code>list-reports</code> currently returns everything, unsorted; the toolbar's controls only mean something if the endpoint takes <code>search</code>, <code>scope</code>, <code>sort</code> and a cursor — and applies the ownership match itself.</span></li>
+      <li><span class="c n">8</span><span><b>Recovery lives here, deliberately quiet.</b> A footer link, not a fourth tab — deleted reports are recoverable, but recovery isn't part of anyone's daily loop and a peer tab would imply it is. See plate 5.</span></li>
+      <li><span class="c n">9</span><span><b>The Shared scope swaps that column for "Published by".</b> Same table, one column different — here the author is the fact that matters, because you can't edit these and may need to ask someone who can.</span></li>
+      <li><span class="c n">10</span><span><b>Duplicate is the non-owner's escape hatch.</b> Rather than a request-access dance, copy a shared report into your own and change it freely. The copy is private and yours, and the original is untouched.</span></li>
+      <li><span class="c n">11</span><span><b>Non-owners get a two-item menu</b> — favourite and duplicate. No rename, unpublish, delete or continue-in-chat: those need ownership, and the server enforces it on every write rather than trusting the hidden menu item. No export either, for a reason that isn't about permissions — see plate 6.</span></li>
+      <li><span class="c">12</span><span><b>Row is the click target</b>, opening the report; ★ and ⋯ stop propagation. Contents pills come from the spec's section types — a cheap, honest preview of what a report holds without rendering it.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── PLATE 5 ─────────────────────────────────────────────────────── -->
+  <article class="plate" id="p5">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 5</b> <span>Delete · recover · empty states</span> <span class="tag is-new">new</span></p>
+      <h2>Retiring a report, and the states nobody designs</h2>
+      <p>
+        Delete is the only retirement, so its confirm is where a published report's blast radius
+        gets stated — and because the delete is soft, recovery is real. It just doesn't get a tab.
+        Then the empty states, which a new user meets before anything else.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame narrow" style="min-width:620px">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/reports-list — delete a published report</span>
+        </div>
+        <div class="m-app m-page" style="max-width:460px;margin:0 auto;padding:20px">
+          <div style="display:grid;gap:9px">
+            <h3 style="font-family:var(--display);font-size:18px;font-weight:600;margin:0">
+              Delete “Order status by region”?
+            </h3>
+            <p style="margin:0;font-size:12.5px;color:var(--ink-2)">
+              This report is published, so it will disappear for everyone in the app.<span class="c n">1</span>
+              Anyone who favourited it will lose it.
+            </p>
+            <p style="margin:0;font-size:12.5px;color:var(--muted)">
+              Nothing is queried again and no data is touched — reports only ever read.<span class="c n">2</span>
+            </p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px">
+              <span class="m-btn">Keep it</span>
+              <span class="m-btn" style="border-color:#a33a2e;color:#a33a2e">Delete report</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame narrow">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/reports-list?deleted=1</span>
+        </div>
+        <div class="m-app m-page">
+          <div class="m-page-head">
+            <div>
+              <p class="m-crumb">Reports ›</p>
+              <h3 style="font-size:19px">Recently deleted</h3>
+              <p>Deleted reports are kept, not destroyed. Restore one to put it back in your reports.<span class="c n">3</span></p>
+            </div>
+            <span class="m-btn" style="margin-left:auto">← Back to reports</span>
+          </div>
+          <div class="m-table">
+            <div class="m-tr gone" style="grid-template-columns:minmax(200px,2.2fr) minmax(130px,1fr) 150px 96px">
+              <span class="title"><b>2025 pilot — partner channel</b><span>Superseded by “Monthly revenue by channel”</span></span>
+              <span class="m-meta"><span class="m-pill">1 chart</span><span class="m-pill">1 filter</span></span>
+              <span class="m-when">deleted by You · 4 Jun<span class="c n">4</span></span>
+              <span class="m-btn sm">↺ Restore</span>
+            </div>
+            <div class="m-tr gone" style="grid-template-columns:minmax(200px,2.2fr) minmax(130px,1fr) 150px 96px">
+              <span class="title"><b>Toys seasonality (draft)</b><span>Was published for everyone</span></span>
+              <span class="m-meta"><span class="m-pill">2 charts</span><span class="m-pill">table</span></span>
+              <span class="m-when">deleted by You · 2 Jun</span>
+              <span class="m-btn sm">↺ Restore</span>
+            </div>
+          </div>
+          <span class="m-hint">Restored reports come back visible only to you, even if they were published before. Publish again when you've checked the numbers.<span class="c n">5</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame narrow" style="min-width:700px">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/reports-list — empty states</span>
+        </div>
+        <div class="m-app m-page" style="grid-template-columns:1fr 1fr;display:grid;gap:14px">
+          <div class="m-empty">
+            <span class="m-label">No reports yet</span>
+            <h5>Reports start as questions</h5>
+            <p>Ask about your orders in the chat. When an answer is worth keeping, save the results as a report — it'll show up here.<span class="c n">6</span></p>
+            <span class="m-btn pri sm">Ask about your data →</span>
+          </div>
+          <div class="m-empty">
+            <span class="m-label">No matches</span>
+            <h5>Nothing matches “margin”</h5>
+            <p>No report titles or descriptions contain that. Try a different word, or look in the shared scope.<span class="c n">7</span></p>
+            <div style="display:flex;gap:7px">
+              <span class="m-btn sm">Clear search</span><span class="m-btn sm">Search all scopes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c n">1</span><span><b>The confirm names who else is affected</b>, and only when that's true — deleting a private report is a one-line confirm about your own report. A published report is the outward-facing case, so the wording leads with the consequence rather than asking "are you sure?", which tells the user nothing they didn't already know.</span></li>
+      <li><span class="c n">2</span><span><b>It also says what deleting doesn't do.</b> "Delete" over a data tool reads as destructive; the second line is there because the fear it addresses is real and the answer is reassuring. The write is a <code>deleted</code> change stamp on the report spec — the source collections are never written to by this module at all.</span></li>
+      <li><span class="c n">3</span><span><b>Recovery is a page, not a scope.</b> Reached from the list's footer link, it holds your own deleted reports and does one thing. Keeping it out of the segmented control matters: three tabs a user picks between daily, and one page they visit twice a year, are different kinds of thing and shouldn't look alike. Server-side this is <code>list-reports</code> with <code>scope: deleted</code>, still matched to the caller — you never see anyone else's deleted reports, including ones that were published to you.</span></li>
+      <li><span class="c n">4</span><span><b>The change stamp is the audit trail, so show it.</b> Soft delete already records who and when; a recovery screen that omits it makes the user guess whether they're looking at their own mistake. There is no permanent-delete action here — nothing in this module hard-deletes, and adding a purge button would be the one irreversible act in an otherwise recoverable system.</span></li>
+      <li><span class="c n">5</span><span><b>Restore returns a report to private, always.</b> Silently re-publishing something deleted months ago would hand it back to the whole app before anyone re-read the numbers — and the second row shows exactly that case. So restore is a recovery of the report, not of its audience; republishing is one deliberate click afterwards. Reversing this is a one-line change if you'd rather restore be exact.</span></li>
+      <li><span class="c n">6</span><span><b>The empty list points at the chat</b> and names the whole loop in two sentences. It's the same dual-purpose message as the chat welcome, from the other end.</span></li>
+      <li><span class="c n">7</span><span><b>A zero-result search says what it searched</b> and offers the escapes that actually help — including the other scopes, since a report someone published is easy to miss when the default view is your own.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── PLATE 6 ─────────────────────────────────────────────────────── -->
+  <article class="plate" id="p6">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 6</b> <span>/reporting/report?report_id=…</span> <span class="tag is-now">page exists</span></p>
+      <h2>A report is a page you can question again</h2>
+        <p>
+        Filters at the top, headline numbers, then the sections in saved order. Two exits
+        matter: <b>a CSV of the rows behind a section</b>, for people who wanted a spreadsheet,
+        and <b>continue in chat</b>, for people whose next thought is another question.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/report?report_id=rp_8f21</span>
+        </div>
+        <div class="m-app">
+          <div class="m-top">
+            <span class="m-brand">Acme Freight</span>
+            <span class="m-tabs"><span>Ask</span><span class="on">Reports</span><span>Orders</span></span>
+            <span class="m-avatar">JM</span>
+          </div>
+          <div class="m-page">
+            <div class="m-page-head">
+              <div>
+                <p class="m-crumb">Reports ›</p>
+                <h3>Monthly revenue by channel <span class="m-star on" style="font-size:16px">★</span></h3>
+                <p>Rolling 12 months · created by you, 4 Jun · ran just now<span class="c n">1</span></p>
+              </div>
+              <span class="m-btn" style="margin-left:auto">↩ Continue in chat<span class="c n">2</span></span>
+              <span class="m-btn">⋯</span>
+            </div>
+
+            <div class="m-filters">
+              <span class="m-label">Filters</span>
+              <span class="m-field" style="color:var(--ink)">Order date · Last 12 months ▾</span>
+              <span class="m-field" style="color:var(--ink);gap:4px">Region ·
+                <span class="m-tagv">North ✕</span><span class="m-tagv">West ✕</span> ▾<span class="c n">3</span>
+              </span>
+              <span class="m-btn ghost sm">Reset</span>
+              <span class="m-hint" style="margin-left:auto">Applies to 3 of 4 sections<span class="c n">4</span></span>
+            </div>
+
+            <div class="m-kpis">
+              <div class="m-kpi">
+                <span class="lab">Revenue, 12 months</span>
+                <span class="val">$9.24M</span>
+                <span class="cap">4,812 orders · paid and shipped</span>
+              </div>
+              <div class="m-kpi">
+                <span class="lab">Average order value</span>
+                <span class="val">$1,920</span>
+                <span class="cap">Across all channels</span>
+              </div>
+              <div class="m-kpi">
+                <span class="lab">Online share</span>
+                <span class="val">58.4%</span>
+                <span class="cap">Of revenue, not order count</span>
+              </div>
+            </div>
+
+            <div class="m-sec">
+              <div class="m-sec-head">
+                <h5>Monthly revenue by channel</h5>
+                <span class="m-acts"><i>⤢</i><i>⤓</i><span class="c n">5</span></span>
+              </div>
+              <div class="m-legend"><span><i class="sw1"></i> Online</span><span><i class="sw2"></i> Retail</span></div>
+              <svg viewBox="0 0 700 170" width="100%" height="180" role="img" aria-label="Grouped bar chart: monthly revenue by channel, online and retail, August to July.">
+                <line class="gl" x1="46" y1="140" x2="694" y2="140" />
+                <line class="gl" x1="46" y1="96" x2="694" y2="96" stroke-dasharray="2 4" />
+                <line class="gl" x1="46" y1="52" x2="694" y2="52" stroke-dasharray="2 4" />
+                <line class="gl" x1="46" y1="10" x2="694" y2="10" stroke-dasharray="2 4" />
+                <text class="axl" x="42" y="143" text-anchor="end">0</text>
+                <text class="axl" x="42" y="99" text-anchor="end">200k</text>
+                <text class="axl" x="42" y="55" text-anchor="end">400k</text>
+                <text class="axl" x="42" y="13" text-anchor="end">600k</text>
+                <g>
+                  <rect class="f1" x="56" y="88" width="16" height="52" rx="3" /><rect class="f2" x="74" y="104" width="16" height="36" rx="3" />
+                  <rect class="f1" x="110" y="82" width="16" height="58" rx="3" /><rect class="f2" x="128" y="106" width="16" height="34" rx="3" />
+                  <rect class="f1" x="164" y="76" width="16" height="64" rx="3" /><rect class="f2" x="182" y="100" width="16" height="40" rx="3" />
+                  <rect class="f1" x="218" y="84" width="16" height="56" rx="3" /><rect class="f2" x="236" y="98" width="16" height="42" rx="3" />
+                  <rect class="f1" x="272" y="70" width="16" height="70" rx="3" /><rect class="f2" x="290" y="96" width="16" height="44" rx="3" />
+                  <rect class="f1" x="326" y="64" width="16" height="76" rx="3" /><rect class="f2" x="344" y="102" width="16" height="38" rx="3" />
+                  <rect class="f1" x="380" y="58" width="16" height="82" rx="3" /><rect class="f2" x="398" y="94" width="16" height="46" rx="3" />
+                  <rect class="f1" x="434" y="62" width="16" height="78" rx="3" /><rect class="f2" x="452" y="90" width="16" height="50" rx="3" />
+                  <rect class="f1" x="488" y="50" width="16" height="90" rx="3" /><rect class="f2" x="506" y="92" width="16" height="48" rx="3" />
+                  <rect class="f1" x="542" y="44" width="16" height="96" rx="3" /><rect class="f2" x="560" y="88" width="16" height="52" rx="3" />
+                  <rect class="f1" x="596" y="38" width="16" height="102" rx="3" /><rect class="f2" x="614" y="84" width="16" height="56" rx="3" />
+                  <rect class="f1" x="650" y="30" width="16" height="110" rx="3" /><rect class="f2" x="668" y="80" width="16" height="60" rx="3" />
+                  <text class="dl" x="658" y="26" text-anchor="middle">$498k</text>
+                  <text class="dl" x="676" y="76" text-anchor="middle">$272k</text>
+                </g>
+                <g class="axl" text-anchor="middle">
+                  <text x="73" y="155">Aug</text><text x="127" y="155">Sep</text><text x="181" y="155">Oct</text>
+                  <text x="235" y="155">Nov</text><text x="289" y="155">Dec</text><text x="343" y="155">Jan</text>
+                  <text x="397" y="155">Feb</text><text x="451" y="155">Mar</text><text x="505" y="155">Apr</text>
+                  <text x="559" y="155">May</text><text x="613" y="155">Jun</text><text x="667" y="155">Jul</text>
+                </g>
+              </svg>
+              <span class="cap" style="font-size:11px;color:var(--muted)">Grouped by month · orders.total, USD. Partner channel excluded by this report's filters.<span class="c n">6</span></span>
+            </div>
+
+            <div class="m-sections">
+              <div class="m-sec">
+                <div class="m-sec-head"><h5>Channel detail</h5><span class="m-acts"><i>⤓</i></span></div>
+                <table class="m-dtable">
+                  <tr><th>Channel</th><th class="num">Revenue</th><th class="num">Orders</th><th class="num">AOV</th></tr>
+                  <tr><td>Online</td><td class="num">$5,396,120</td><td class="num">2,884</td><td class="num">$1,871</td></tr>
+                  <tr><td>Retail</td><td class="num">$2,918,440</td><td class="num">1,402</td><td class="num">$2,081</td></tr>
+                  <tr><td>Partner</td><td class="num">$925,300</td><td class="num">526</td><td class="num">$1,759</td></tr>
+                </table>
+                <span class="cap" style="font-size:11px;color:var(--muted)">Money columns right-align; so do plain counts.<span class="c">7</span></span>
+              </div>
+
+              <div class="m-sec">
+                <div class="m-sec-head"><h5>Revenue by region</h5></div>
+                <div class="m-alert">
+                  <b>⚠ This section can't be shown</b>
+                  <p>
+                    It charts a column called <code>region_total</code>, which the query no longer
+                    returns. The rest of the report is unaffected.
+                  </p>
+                  <div style="display:flex;gap:7px;padding-top:2px">
+                    <span class="m-btn sm">Fix in chat<span class="c">8</span></span>
+                    <span class="m-btn ghost sm">Remove section</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame narrow">
+        <div class="frame-chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">acme.app/reporting/report?report_id=rp_44c0 — shared report, viewed by someone else</span>
+        </div>
+        <div class="m-app m-page">
+          <div class="m-page-head">
+            <div>
+              <p class="m-crumb">Reports › Shared ›</p>
+              <h3>Company revenue league table <span class="m-star">☆</span></h3>
+              <p>Published by Priya N. · ran just now<span class="c n">9</span></p>
+            </div>
+            <span class="m-btn" style="margin-left:auto">⧉ Duplicate to my reports</span>
+          </div>
+          <div class="m-sec">
+            <div class="m-sec-head"><h5>Revenue by region</h5></div>
+            <div class="m-alert">
+              <b>⚠ This section can't be shown</b>
+              <p>
+                It charts a column the query no longer returns. The rest of the report is
+                unaffected — Priya N. maintains this report and can fix it.<span class="c n">10</span>
+              </p>
+            </div>
+          </div>
+          <span class="m-hint">
+            No Continue in chat, no Fix in chat, no rename or delete — this report isn't yours.
+            Duplicate it to get an editable copy. Section downloads still work.
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c n">1</span><span><b>Provenance in one line</b> — who made it, when, and when it last ran. "Ran just now" is the antidote to the stale-screenshot assumption.</span></li>
+      <li><span class="c n">2</span><span><b>Continue in chat</b> reopens the source conversation with the report attached as context, so "why is East down?" is a follow-up rather than a fresh start. Owner-only: the conversation is the author's, and nobody else should be reading it.</span></li>
+      <li><span class="c n">3</span><span><b>A multi-select reads as tags, and its empty state means "no constraint".</b> Removing the last tag must widen the report back to everything, not narrow it to nothing — the same rule the server needs for an empty <code>$in</code>. Values are the ids the <code>$match</code> binds on; the tags show labels.</span></li>
+      <li><span class="c n">4</span><span><b>Say which sections a filter touches.</b> Sections opt in via <code>filterBy</code>, so a filter that visibly moves three of four cards would otherwise read as a bug.</span></li>
+      <li><span class="c n">5</span><span><b>Download belongs to a section, not to the report.</b> An export is one query's rows — <code>export-data</code> validates a single <code>{ collection, pipeline }</code> and the CSV's headers are that result's row keys. A report holds several sections over different collections and grains, so a report-level "Export" has no answer to "export what?": it would either silently pick one section or invent a multi-sheet format the module has no way to produce. Each query-backed section carries its own <code>⤓</code> instead, and a KPI — one number you can already read — carries none. This is also why the list rows have no Export: you open the report and download the section you meant.</span></li>
+      <li><span class="c n">6</span><span><b>Every section states its grain</b> and any exclusions its query bakes in. This is the difference between a number and a number you'd send to a customer.</span></li>
+      <li><span class="c">7</span><span><b>Alignment already works this way</b>: formatted columns right-align, and so do unformatted all-numeric ones — counts line up beside money without inventing decimals.</span></li>
+      <li><span class="c">8</span><span><b>A broken section degrades alone.</b> The module already validates each section against its rows at resolve time and contains a failure to one card; the wireframe adds the two recoveries — ask the assistant to fix it, or drop it. Both are owner-only, since both write to the spec.</span></li>
+      <li><span class="c n">9</span><span><b>A shared report you don't own is read-plus-copy.</b> Open it, favourite it, download any section, duplicate it — but no edit actions, and their absence rather than a row of disabled buttons. The header names the publisher instead of "created by you", because that's who to ask.</span></li>
+      <li><span class="c n">10</span><span><b>A non-owner's broken section names who can fix it</b> and stops there. No "request a fix" button — that would be a notification system nobody asked for. Knowing whose report it is, is the actionable part.</span></li>
+    </ol>
+  </article>
+
+  <!-- ── IMPLICATIONS ────────────────────────────────────────────────── -->
+  <section class="impl" id="impl">
+    <h2>What this asks of the module</h2>
+    <p>
+      Grouped by where the work lands. Nothing here changes the query engine or the safety
+      model — the catalog stays the allowlist, the read-only principal stays the second layer,
+      and every new endpoint is a read or a write against the reports and conversations stores.
+    </p>
+
+    <div class="impl-wrap">
+      <table class="impl-table">
+        <thead>
+          <tr><th>Change</th><th>Where</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Table results</td>
+            <td><code>api/emit-data-parts.yaml</code>, <code>pages/chat.yaml</code></td>
+            <td>A <code>data-report-table</code> part alongside chart and download, so tabular answers become reusable artefacts instead of transcript text. Panel gains an All / Charts / Tables / Exports scope.</td>
+          </tr>
+          <tr>
+            <td>Inline sketches</td>
+            <td><code>agents/reporting-assistant.yaml</code></td>
+            <td>
+              Prompt-only. Emit a mermaid <code>xychart-beta</code> / <code>pie</code> fence for
+              one-series, few-category shapes and name the panel for the full chart; describe
+              the result in prose otherwise. <code>AgentChat</code> renders it already —
+              <code>renderMermaid</code> defaults true and mermaid 11 ships via
+              <code>@ant-design/x</code>. No block or module change.
+            </td>
+          </tr>
+          <tr>
+            <td>Save selected results</td>
+            <td>new <code>api/create-report.yaml</code></td>
+            <td>Report creation without the agent's <code>generate_report</code> tool: compose the selected result specs into a report doc. Plate 3's sheet is the caller. The tool path stays, and opens the same sheet.</td>
+          </tr>
+          <tr>
+            <td>Favourites</td>
+            <td>report doc, <code>list-reports</code>, new <code>set-report-favourite</code></td>
+            <td>Per-user, so one user's ★ isn't everyone's: store <code>favourite_of: [user_id]</code> and project a boolean for the caller. Works on shared reports you don't own — it's a read-side marker, not an edit. Drives the Favourites scope and the default sort.</td>
+          </tr>
+          <tr>
+            <td>Visibility &amp; ownership</td>
+            <td>report doc, <code>module.lowdefy.yaml</code>, every report endpoint</td>
+            <td>
+              Reports are private by default: reads match <code>created.user.id</code> against
+              <code>_user: id</code>. A <code>visibility: private | shared</code> field opens one
+              to the whole app, and only a user holding one of the roles listed in the
+              <code>share_roles</code> var (string array — more than one role can carry the
+              privilege) may set it. Unset var means no publishing at all. Ownership is checked
+              server-side on every mutation and on <code>resolve-report</code>'s chat
+              hand-back — not by omitting a menu item.
+            </td>
+          </tr>
+          <tr>
+            <td>Publish / unpublish</td>
+            <td>new <code>set-report-visibility</code></td>
+            <td>
+              One endpoint, both directions, role-checked and owner-checked. Binary: private or
+              the whole app. No per-user grants, no groups, no share links — the reference
+              pattern this follows has the same two states, and anything finer would need an
+              access model the module doesn't have.
+            </td>
+          </tr>
+          <tr>
+            <td>Soft delete, and only soft delete</td>
+            <td><code>delete-report</code>, new <code>delete-conversation</code></td>
+            <td>
+              No archive state: no module in this repo has one, and the established idiom is a
+              <code>deleted</code> change stamp with reads filtering <code>deleted: null</code>
+              (<code>docs/shared/soft-delete.md</code>). Reports already work this way;
+              conversations must too. Deleting a published report drops it from everyone's
+              Shared scope for free, since every read filters the marker.
+            </td>
+          </tr>
+          <tr>
+            <td>Recover a deleted report</td>
+            <td>new <code>restore-report</code>, <code>list-reports</code></td>
+            <td>
+              <code>list-reports</code> gains <code>scope: deleted</code> — owner-matched, so the
+              recovery page only ever shows your own — returning the delete stamp's who/when.
+              <code>restore-report</code> clears the marker and writes
+              <code>visibility: private</code> in the same update. No purge endpoint.
+            </td>
+          </tr>
+          <tr>
+            <td>Multi-select filters</td>
+            <td>
+              <code>constants.js</code>, <code>validateReportSpec.js</code>,
+              <code>compileReport.js</code>, <code>AnalyticsPipeline.js</code>
+            </td>
+            <td>
+              Add <code>multiselect</code> to <code>FILTER_CONTROLS</code>; compile it to
+              <code>MultipleSelector</code>; emit <code>op: "in"</code> from
+              <code>boundFilters</code>; add <code>in: "$in"</code> to the connection's
+              <code>FILTER_OPS</code> map, with an empty array treated as "no constraint"
+              alongside null — otherwise clearing the control emits <code>$in: []</code> and
+              blanks every bound section. No new value validation: the pipeline walk already
+              type-checks and caps the operand. For a field
+              holding an array, add <code>match: any | all</code> on the filter section
+              (default <code>any</code>) selecting between <code>$in</code> and
+              <code>$all</code> — both already in <code>ALLOWED_MATCH_OPERATORS</code>, both
+              index-usable, neither needing <code>$expr</code>. Not gated on the catalog's
+              <code>type: array</code>: the toggle is offered from it, never validated against
+              it. Document that a bound array filter matches documents, not elements.
+            </td>
+          </tr>
+          <tr>
+            <td>Query-backed filter options</td>
+            <td>
+              <code>validateReportSpec.js</code>, <code>compileReport.js</code>,
+              <code>generate-report</code>, agent instructions
+            </td>
+            <td>
+              For foreign-key filters (a <code>company_id</code> that must show company names).
+              Adds <code>optionsQuery: { collection, pipeline }</code> plus
+              <code>{ valueKey, labelKey }</code> to the filter section; validates that query
+              through <code>validateQuery</code> like any other, so the catalog allowlist and
+              role gate cover it; runs it in <code>querySections</code> and compiles
+              <code>{ label, value }</code> pairs into the <code>Selector</code>. Requires
+              relaxing the options validator, which today accepts only strings and numbers, and
+              revisiting <code>MAX_FILTER_OPTIONS</code> (50) for lookup lists. Literal
+              <code>options</code> and catalog <code>values</code> stay as the cheap paths for
+              enums.
+            </td>
+          </tr>
+          <tr>
+            <td>List endpoint grows up</td>
+            <td><code>api/list-reports.yaml</code></td>
+            <td>Takes <code>scope</code> (mine / shared / favourites), <code>search</code>, <code>sort</code> and a cursor; returns section-type counts, filter count, visibility, publisher and <code>created</code> / <code>updated</code> / <code>lastRunAt</code>. The toolbar is only honest if the server does the work — and the scope match is the authorization boundary, so it belongs there and nowhere else.</td>
+          </tr>
+          <tr>
+            <td>Rename &amp; duplicate</td>
+            <td>new <code>set-report-title</code>, <code>duplicate-report</code></td>
+            <td>The two edits users reach for that don't require re-deriving a spec. Rename is owner-only; duplicate is allowed on anything you can read, and always produces a private report owned by the copier — it's how a non-owner adapts a shared report.</td>
+          </tr>
+          <tr>
+            <td>Report ↔ chat link</td>
+            <td>report doc, <code>report.yaml</code>, <code>chat.yaml</code></td>
+            <td>Persist <code>conversationId</code> on the report so "Continue in chat" and "Open source chat" can deep-link, and the chat can open with the report as context.</td>
+          </tr>
+          <tr>
+            <td>Conversation rail</td>
+            <td><code>api/list-conversations.yaml</code>, new <code>delete-conversation</code></td>
+            <td>Return <code>updated</code> for recency grouping and a snippet for search, filtered to the caller's own conversations; add rename (the title endpoint already exists) and a soft delete on the row's ⋯. Plus a persisted collapse state for the rail and the panel.</td>
+          </tr>
+          <tr>
+            <td>Chat page layout</td>
+            <td><code>pages/chat.yaml</code></td>
+            <td>Fixed rail and panel widths with a fluid, measure-capped middle; both side panels collapsible; panel visible-when-empty with its explanatory state; starter chips wired to fill the composer.</td>
+          </tr>
+          <tr>
+            <td>Vars</td>
+            <td><code>module.lowdefy.yaml</code></td>
+            <td>The welcome copy and starter prompts are app-specific — they name the app's own data. Candidate vars: <code>welcome_title</code>, <code>starters_explore</code>, <code>starters_report</code>, plus <code>share_roles</code> (string array) for the publish capability. Collection names in the welcome, and the filter fields the save sheet offers, both derive from the catalog — no new var.</td>
+          </tr>
+          <tr>
+            <td>Demo consumers</td>
+            <td><code>apps/demo/</code></td>
+            <td>Every new capability needs a build-verified example: seeded private, shared and favourite reports (at least one owned by a second user so the non-owner view is exercised), a report carrying <code>conversationId</code>, <code>share_roles</code> on the demo entry, and starter prompts.</td>
+          </tr>
+          <tr>
+            <td>Docs</td>
+            <td><code>docs/reporting/</code></td>
+            <td>The index's surfaces table, a how-to for the save-as-report flow, and regenerated <code>reference/vars.md</code> via <code>pnpm docs:gen</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="max-width:68ch;color:var(--ink-2);margin:0">
+      What the block will not do, and what that costs: <code>AgentChat</code> renders only
+      <code>text</code>, <code>reasoning</code>, <code>tool</code>, <code>file</code> and
+      <code>data-status</code> parts — <code>messageParts.js</code> states outright that
+      "custom <code>data-*</code> parts [are] not handled inline", and the schema has no block
+      areas. So an <code>EChart</code>, a button, or a link that scrolls the panel are all
+      out of reach inside a message. A <code>partRenderers</code>-style property on the block
+      would remove that ceiling; until one exists, mermaid and markdown are the whole
+      in-thread vocabulary.
+    </p>
+    <p style="max-width:68ch;color:var(--ink-2);margin:0">
+      <b>The visibility model, settled.</b> Reports are private to their author. Holding any role
+      in the <code>share_roles</code> var grants the ability to publish one to the whole app —
+      the same shape an existing app already uses for its saved exports: per-user documents
+      matched on the creator's id, plus a curated set everyone can read. Publishing is binary and
+      reversible: <i>only me</i> or <i>everyone in the app</i>, toggled in one place, with no
+      per-user grants, groups or share links. Everything that writes to a report spec — rename,
+      publish, unpublish, delete, fix-a-section, continue-in-chat — requires ownership;
+      everything that only reads — open, favourite, download a section, duplicate — does not, and
+      duplicate is the non-owner's path to a version they control. Retirement is a single soft
+      delete, per this repo's established idiom, so there is no second retired-but-not-deleted
+      state to reconcile against visibility — recovery is a quiet page over the same
+      <code>deleted</code> marker, and restoring returns a report private.
+    </p>
+  </section>
+
+  <p class="deck-foot">
+    modules/reporting · wireframes v1 · plates 1–6 · light &amp; dark · chart palettes CVD-validated
+  </p>
+</main>
+
+</body>
+</html>

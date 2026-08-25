@@ -1,0 +1,110 @@
+# Report tool: validate the report spec against the catalog and the
+# allow-listed section types (each query section's pipeline is run through
+# validatePipeline before persist), persist the VALIDATOR'S OUTPUT, return the
+# report's URL.
+#
+# The document holds validateReportSpec's return value, not the payload it was
+# handed. That fixes the spec's meaning at create time: section ids are assigned
+# once and become durable identities, and the display defaults (REPORT_LOCALE /
+# REPORT_CURRENCY / REPORT_DECIMALS, a multiselect's `match`) freeze here rather
+# than being re-applied from whatever the constants say on every read — so an app
+# changing its currency default does not retroactively re-denominate reports
+# saved last year. Unrecognised keys are dropped rather than persisted forever.
+#
+# Pipelines are unaffected and still stored verbatim: validateQuery returns the
+# pipeline array unchanged, so the output carries every pipeline byte-for-byte,
+# nothing is sanitized, and AnalyticsPipeline still revalidates each one per
+# section per viewer on every resolve — that revalidation is the guarantee. This
+# stores nested $-prefixed keys inside the report doc, which MongoDB allows from
+# 5.0.
+#
+# `spec` holds { sections } only. `title` and `description` are document fields:
+# the single source for the list, search, sort and set-report-title.
+id: generate-report
+type: Api
+description: >
+  Save the conversation's findings as a navigable report. Takes a report
+  spec — title, optional description, and up to 24 sections of types kpi,
+  chart (bar|line|pie), table, filter (select|daterange), markdown, download.
+  Query-backed sections carry a { collection, pipeline } query plus a
+  presentation contract (kpi: valueKey, format?; chart: x, y; table: columns
+  [{ key, label?, format? }]); bind sections to filter controls with
+  filterBy: [field]. Returns the report URL to share with the user.
+payloadSchema:
+  type: object
+  required:
+    - spec
+  properties:
+    spec:
+      type: object
+      description: The report spec.
+      required:
+        - title
+        - sections
+      properties:
+        title:
+          type: string
+          description: Report title (max 200 characters).
+        description:
+          type: string
+          description: Short report description.
+        sections:
+          type: array
+          description: >
+            Report sections in render order. kpi/chart/table/download carry a
+            query; filter carries { control, field, label }; markdown carries
+            { content }.
+          items:
+            type: object
+            required:
+              - type
+routine:
+  # Reports are per-user; an unauthenticated context cannot save one.
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to save a report.
+  # Validation throws on an invalid spec — the tool call fails with the
+  # validator's actionable message. Its OUTPUT is what gets stored.
+  - :set_state:
+      validated:
+        _analytics.validateReportSpec:
+          spec:
+            _payload: spec
+          catalog:
+            _module.var: catalog
+          roles:
+            _user: roles
+  - id: insert_report
+    type: MongoDBInsertOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      # The stored document shape lives in one place; this endpoint only supplies
+      # the validated leaves and the conversation link.
+      doc:
+        _ref:
+          path: defaults/new_report.yaml
+          vars:
+            title:
+              _state: validated.title
+            description:
+              _state: validated.description
+            sections:
+              _state: validated.sections
+            # Tool endpoints receive only the tool input as payload — the agent
+            # context (conversationId) does not reach them in the current agent
+            # system, so the source conversation is not linked on this path.
+            conversation_id: null
+  - :return:
+      ok: true
+      report_id:
+        _step: insert_report.insertedId
+      url:
+        _string.concat:
+          - "/"
+          - _module.id: true
+          - "/report?report_id="
+          - _step: insert_report.insertedId

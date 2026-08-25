@@ -1,0 +1,1173 @@
+# The chat workspace — the three-column conversational surface (conversations
+# rail, AgentChat, results panel) plus each side's collapsed strip. Extracted from
+# the chat page so that page stays a thin layout wrapper; every block, id, state
+# key and event here is unchanged from when this was the page root.
+#
+# Pinned to the viewport height so the page never scrolls as a whole. The height
+# itself comes from the chat column, which carries an explicit 100dvh (see the
+# chat block): Lowdefy's intermediate flex-row Area is height:auto, so a root
+# height can't cascade down through it — the tallest child has to set a real
+# viewport height for the row to fill the screen. With that, the side panels and
+# collapsed strips stretch to the same bottom edge, and each scrolls its own
+# overflow internally. This cap keeps the whole workspace from scrolling past
+# 100dvh; the layout page renders it with zero content padding (content_style) so
+# it reaches the sider and viewport edges.
+id: chat_layout
+type: Box
+style:
+  height: 100dvh
+  # height caps the box but does not clip; hidden stops the page itself from
+  # scrolling, forcing each side panel to scroll its own overflow instead.
+  overflow: hidden
+layout:
+  gap: 16
+  # Fixed side columns with a fluid middle. The row wraps by default, and
+  # wrapping is decided on base sizes before anything shrinks — so a transcript
+  # wider than the space left over would drop the results panel onto a second
+  # line instead of narrowing the middle.
+  wrap: nowrap
+blocks:
+  # The rail's collapsed form. `AgentConversations` has no collapsed mode of its
+  # own and is hidden with its column, so the strip has to re-offer New chat
+  # itself — the rail's own `creation` button is gone while this is showing.
+  # Compared against `true` so the strip and the rail are exact complements: the
+  # engine treats any non-`false` as visible, so a null global would otherwise
+  # show both.
+  - id: conversations_strip
+    type: Box
+    properties:
+      style:
+        padding: 12px 6px
+    style:
+      background: var(--ant-color-bg-layout)
+      border: 1px solid var(--ant-color-border-secondary)
+    layout:
+      flex: 0 0 auto
+      gap: 8
+    visible:
+      _eq:
+        - _global: reporting_rail_collapsed
+        - true
+    blocks:
+      - id: expand_rail_button
+        type: Button
+        properties:
+          # `hideTitle` drops the button's own title from the DOM — with it the
+          # tooltip and the accessible name — so the name goes on the icon,
+          # which renders it into the svg. `hideTitle` still has to stay:
+          # without it an untitled button labels itself with its block id.
+          icon:
+            name: AiOutlineDoubleRight
+            title: Show conversations
+          hideTitle: true
+          type: text
+        events:
+          onClick:
+            - id: expand_rail
+              type: SetGlobal
+              params:
+                reporting_rail_collapsed:
+                  _not:
+                    _global: reporting_rail_collapsed
+      - id: strip_new_chat_button
+        type: Button
+        properties:
+          icon:
+            name: AiOutlinePlus
+            title: New chat
+          hideTitle: true
+          type: text
+        events:
+          onClick:
+            _ref: pages/chat/actions/new_conversation.yaml
+  - id: conversations_panel
+    type: Box
+    properties:
+      style:
+        padding: 32px 24px 24px 24px
+    layout:
+      flex: 0 0 232px
+      gap: 8
+    # Hidden with CSS, never `visible:`. Hiding a container deletes the state of
+    # every block beneath it, and only input blocks republish a value when they
+    # come back — so `conversations`, written by SetState and rendered by a
+    # display block, would be gone for good, and the rail only refetches on
+    # mount and at the end of a turn. `display: none` leaves the flex row as if
+    # the column were absent.
+    style:
+      display:
+        _if:
+          test:
+            _eq:
+              - _global: reporting_rail_collapsed
+              - true
+          then: none
+          else: null
+      background: var(--ant-color-bg-layout)
+      border: 1px solid var(--ant-color-border-secondary)
+      # A definite height for the scroll to bite on. In this height:auto flex
+      # row `overflowY` alone can't constrain the column — the panel grows to
+      # its content and pushes the row past the viewport. Capped at 100dvh (a
+      # self-determining viewport unit; a % collapses through the auto Area), a
+      # long conversation list scrolls inside the column instead.
+      maxHeight: 100dvh
+      overflowY: auto
+    blocks:
+      - id: conversations_header
+        type: Box
+        layout:
+          justify: end
+        blocks:
+          - id: collapse_rail_button
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              icon:
+                name: AiOutlineDoubleLeft
+                title: Hide conversations
+              hideTitle: true
+              type: text
+            events:
+              onClick:
+                - id: collapse_rail
+                  type: SetGlobal
+                  params:
+                    reporting_rail_collapsed:
+                      _not:
+                        _global: reporting_rail_collapsed
+      # Filters the rail client-side, over the window list-conversations
+      # returned. Nothing is refetched as the term changes, so there is no
+      # server round trip to debounce.
+      - id: conversation_search
+        type: TextInput
+        properties:
+          placeholder: Search conversations
+          size: small
+          allowClear: true
+          label:
+            # An unset label falls back to the block id.
+            disabled: true
+      # Names the window, because search cannot see past it: without the number
+      # a conversation that exists but sits outside the 200 most recent reads as
+      # no match at all. A leaf display block, so `visible:` is safe here — it
+      # holds no state anything reads back.
+      - id: conversations_no_match
+        type: Paragraph
+        visible:
+          _and:
+            - _ne:
+                - _if_none:
+                    - _state: conversation_search
+                    - ""
+                - ""
+            - _eq:
+                - _array.length:
+                    _ref: pages/chat/components/conversation_items.yaml
+                - 0
+        properties:
+          content: >-
+            No match in your 200 most recent conversations — search does not
+            reach further back than that.
+          style:
+            fontSize: 12px
+            color: var(--ant-color-text-secondary)
+      - id: conversations
+        type: AgentConversations
+        properties:
+          # Fill the column's content box rather than repeat a fixed width. The
+          # block styles its own div (defaulting to 250px), and a hardcoded 232
+          # here ignored the column's 24px horizontal padding — so the block ran
+          # 48px wider than the 184px it sits in and its list bled past the right
+          # border. '100%' tracks the padded content width, whatever it is.
+          width: "100%"
+          items:
+            _ref: pages/chat/components/conversation_items.yaml
+          # `collapsible: false` is load-bearing: the block defaults it to true,
+          # and upstream expands only the groups named in `defaultExpandedKeys`
+          # — which would render all three headings collapsed and the rail
+          # apparently empty. `label` is deliberately unset: upstream treats it
+          # as a heading renderer, so a string there labels every group with it.
+          groupable:
+            collapsible: false
+          menu:
+            - key: rename
+              label: Rename
+            - key: delete
+              label: Delete
+              danger: true
+          activeKey:
+            _state: conversationId
+          creation:
+            label: New chat
+        events:
+          onNew:
+            _build.array.concat:
+              - _ref: pages/chat/actions/new_conversation.yaml
+              # A term left in the box would filter the new conversation back
+              # out of the rail the moment the next refetch adds it. Only the
+              # rail's own New chat clears it — the collapsed strip's button
+              # reveals no rail to be confused by.
+              - - id: clear_conversation_search
+                  type: SetState
+                  params:
+                    conversation_search: null
+          onMenuClick:
+            # One seed for both modals: a modal's own onOk fires with an empty
+            # event object, so the row the kebab was clicked on has to be parked
+            # in state where the modal can still read it. `rename_title` is the
+            # input's own path, and a copy — typing a new title leaves the name
+            # the delete confirm shows alone.
+            - id: seed_menu_conversation
+              type: SetState
+              params:
+                menu_conversation_id:
+                  _event: conversationKey
+                menu_conversation_title:
+                  _event: conversation.label
+                rename_title:
+                  _event: conversation.label
+            - id: open_rename_modal
+              type: CallMethod
+              skip:
+                _ne:
+                  - _event: action
+                  - rename
+              params:
+                blockId: rename_conversation_modal
+                method: setOpen
+                args:
+                  - open: true
+            - id: open_delete_modal
+              type: CallMethod
+              skip:
+                _ne:
+                  - _event: action
+                  - delete
+              params:
+                blockId: delete_conversation_modal
+                method: setOpen
+                args:
+                  - open: true
+          # Shared with the page's mount, which opens the conversation a
+          # Continue-in-chat link names in the URL.
+          onSelect:
+            _ref:
+              path: pages/chat/actions/load_conversation.yaml
+              vars:
+                conversation_key:
+                  _event: key
+      # The rail's kebab menu opens these. Each leaves only an empty placeholder
+      # div in the column — antd portals the dialog itself to the document body
+      # — so they add no chrome to the rail.
+      - _ref: pages/chat/components/rename_conversation_modal.yaml
+      - _ref: pages/chat/components/delete_conversation_modal.yaml
+  - id: chat_panel
+    type: Box
+    layout:
+      flex: 1 1 auto
+      gap: 16
+    # Page-wide shortcuts to collapse either side, hosted here because this
+    # column is always mounted (the two rails toggle with display, so a shortcut
+    # on them would still fire, but this is the stable home). `mod` is ⌘ on a
+    # Mac and Ctrl elsewhere. The event needs the object form to carry a
+    # `shortcut`, so the actions sit under `try`.
+    events:
+      toggle_rail:
+        shortcut: mod+b
+        try:
+          - id: shortcut_toggle_rail
+            type: SetGlobal
+            params:
+              reporting_rail_collapsed:
+                _not:
+                  _global: reporting_rail_collapsed
+      toggle_panel:
+        shortcut: mod+j
+        try:
+          - id: shortcut_toggle_panel
+            type: SetGlobal
+            params:
+              reporting_panel_collapsed:
+                _not:
+                  _global: reporting_panel_collapsed
+    blocks:
+      - id: chat
+        type: AgentChat
+        properties:
+          agentId:
+            _module.agentId: reporting-assistant
+          conversationId:
+            _state: conversationId
+          messages:
+            _state: messages
+          # An explicit viewport height, not 100% — this is the column that
+          # drives the row's height. Lowdefy inserts a flex-row Area between a Box
+          # and its children that is height:auto, so a 100% here (or on any
+          # column) resolves against that auto Area and collapses to content
+          # height — which is what left every panel cut off mid-page. A viewport
+          # unit is self-determining: the block sizes its own div to 100dvh
+          # regardless of the ancestor chain, becoming the tallest child so the
+          # row grows to the full viewport and the side panels/strips stretch to
+          # the same top and bottom edge (align defaults to stretch). This full-
+          # bleed page carries no app header, so 100dvh needs no chrome subtracted.
+          # The composer stays anchored at the bottom, and the welcome renders
+          # in-flow as the transcript's leading item (see the `welcome` prop
+          # below), so there is no empty-state box stacked above and no first-send
+          # height change — the composer keeps one bottom anchor throughout.
+          #
+          # maxWidth widened from the original ~62ch measure on request. antd's
+          # body fontSize is 14px; this caps the transcript column and composer.
+          height: 100dvh
+          maxWidth: 620
+          # The two-track teaching empty state, rendered by the block inside the
+          # message scroll area: it is the transcript's leading item, so it
+          # scrolls up with the conversation and stays reachable by scrolling
+          # back rather than being hidden on the first send. A track starter
+          # fills the composer (never sends), so a generic shipped default is an
+          # editable first draft. `data_scope` has no default and resolves to
+          # null when unset — the block drops the line rather than inventing one.
+          welcome:
+            title:
+              _module.var: welcome.title
+            description:
+              _module.var: welcome.data_scope
+            tracks:
+              - label:
+                  _module.var: welcome.explore_label
+                prompts:
+                  _module.var: welcome.explore_starters
+              - label:
+                  _module.var: welcome.report_label
+                prompts:
+                  _module.var: welcome.report_starters
+          # A persistent follow-up chip, shown below the transcript whenever the
+          # agent is idle. Clicking SENDS the label as a message (not fills the
+          # composer like a welcome starter), so the label is written as the
+          # request itself — it drives the agent's generate_report route, the
+          # guided complement to ticking cards in the panel. The description is
+          # chip subtext only; the block drops any icon.
+          suggestions:
+            - key: create_report
+              label: Turn this conversation into a report
+              description: The assistant drafts a saved report from what you've explored
+        events:
+          onDataPart:
+            - id: append_chart
+              type: SetState
+              skip:
+                _not:
+                  _eq:
+                    - _event: type
+                    - data-report-chart
+              params:
+                charts:
+                  _array.concat:
+                    - _if_none:
+                        - _state: charts
+                        - []
+                    - - _event: data
+            - id: append_table
+              type: SetState
+              skip:
+                _not:
+                  _eq:
+                    - _event: type
+                    - data-report-table
+              params:
+                tables:
+                  _array.concat:
+                    - _if_none:
+                        - _state: tables
+                        - []
+                    - - _event: data
+            - id: append_download
+              type: SetState
+              skip:
+                _not:
+                  _eq:
+                    - _event: type
+                    - data-report-download
+              params:
+                downloads:
+                  _array.concat:
+                    - _if_none:
+                        - _state: downloads
+                        - []
+                    - - _event: data
+            # The agent path's instant-on-save: emit-data-parts (task 4) streams a
+            # data-report-saved part carrying the row shape, and it lands here in
+            # the same List as the read-sourced rows, no reload. Not persisted to
+            # data_parts server-side — re-visit surfaces it through the folded
+            # read, so persisting would double it.
+            - id: append_saved_report
+              type: SetState
+              skip:
+                _not:
+                  _eq:
+                    - _event: type
+                    - data-report-saved
+              params:
+                saved_reports:
+                  _array.concat:
+                    - _if_none:
+                        - _state: saved_reports
+                        - []
+                    - - _event: data
+          onMessageComplete:
+            _ref: pages/chat/actions/refresh_conversations.yaml
+          # The agent generates a title on the first turn; persist it, then
+          # refresh the sidebar so the item shows the AI title (not the derived
+          # fallback). Persist runs first so the refetch reads the saved title.
+          onTitleGenerated:
+            _build.array.concat:
+              - - id: persist_title
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _module.endpointId: set-conversation-title
+                    payload:
+                      conversationId:
+                        _state: conversationId
+                      title:
+                        _event: title
+              - _ref: pages/chat/actions/refresh_conversations.yaml
+  - id: results_panel
+    type: Box
+    properties:
+      style:
+        padding: 32px 24px 24px 24px
+    layout:
+      flex: 0 0 420px
+      # The one card-to-card gap for the whole panel. This spaces the sections
+      # (chart-card → table-card) and the header/scope/save stack; each List
+      # repeats the same 16 internally, so every gap between cards matches
+      # whether the neighbours are the same kind or not.
+      gap: 16
+    # Hidden with CSS, never `visible:` — hiding this container would delete
+    # `charts` and `downloads` with it, and the display blocks that render them
+    # republish nothing when it comes back, so the strip's counts and the panel
+    # itself would read empty with results in hand.
+    style:
+      display:
+        _if:
+          test:
+            _eq:
+              - _global: reporting_panel_collapsed
+              - true
+          then: none
+          else: null
+      background: var(--ant-color-bg-layout)
+      border: 1px solid var(--ant-color-border-secondary)
+      # A definite height for the scroll to bite on. In this height:auto flex
+      # row `overflowY` alone can't constrain the column — a tall stack of
+      # results grows the panel and pushes the row past the viewport. Capped at
+      # 100dvh (a self-determining viewport unit; a % collapses through the auto
+      # Area), the stack scrolls inside this column instead.
+      maxHeight: 100dvh
+      overflowY: auto
+    blocks:
+      - id: results_header
+        type: Box
+        layout:
+          justify: space-between
+        blocks:
+          - id: results_title
+            type: Title
+            layout:
+              flex: 0 1 auto
+            properties:
+              content: Results
+              level: 4
+          - id: collapse_panel_button
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              icon:
+                name: AiOutlineDoubleRight
+                title: Hide results
+              hideTitle: true
+              type: text
+            events:
+              onClick:
+                - id: collapse_panel
+                  type: SetGlobal
+                  params:
+                    reporting_panel_collapsed:
+                      _not:
+                        _global: reporting_panel_collapsed
+      # The reports this conversation has produced, above the scope tabs so a
+      # returning user sees what the chat is durably worth before its live
+      # results. Absent when the conversation produced nothing.
+      - _ref: pages/chat/components/saved_from_chat.yaml
+      # Above the content rather than in it, so the panel keeps one stable home
+      # for scoping whether or not it has produced anything yet.
+      - id: results_scope
+        type: SegmentedSelector
+        properties:
+          block: true
+          size: small
+          label:
+            # An unset label falls back to the block id, and the header above
+            # already names the panel.
+            disabled: true
+          options:
+            - label: All
+              value: all
+            - label: Charts
+              value: charts
+            - label: Tables
+              value: tables
+            - label: Exports
+              value: exports
+      # Bulk-marks whatever the scope tab shows: All ticks every card, a
+      # narrowed tab only its own kind — selecting cards the tab is hiding
+      # would put unseen sections in the report. The box reflects the last
+      # bulk action, not a live aggregate: unticking one card afterwards
+      # leaves it checked, and clicking it again re-applies to everything in
+      # scope. An input block, so `visible:` is safe here — inputs republish
+      # their value when they come back.
+      - id: select_all
+        type: CheckboxSwitch
+        visible:
+          _gt:
+            - _array.length:
+                _array.concat:
+                  - _if_none:
+                      - _state: charts
+                      - []
+                  - _if_none:
+                      - _state: tables
+                      - []
+                  - _if_none:
+                      - _state: downloads
+                      - []
+            - 0
+        properties:
+          label:
+            disabled: true
+          # Inline checkbox text, not a field label — the block renders
+          # `description` beside the box.
+          description: Select all
+        events:
+          onChange:
+            - id: select_all_charts
+              type: SetState
+              skip:
+                _not:
+                  _or:
+                    - _eq:
+                        - _state: results_scope
+                        - all
+                    - _eq:
+                        - _state: results_scope
+                        - charts
+              params:
+                charts:
+                  _array.map:
+                    - _if_none:
+                        - _state: charts
+                        - []
+                    - _function:
+                        __object.assign:
+                          - __args: 0
+                          - selected:
+                              _event: value
+            - id: select_all_tables
+              type: SetState
+              skip:
+                _not:
+                  _or:
+                    - _eq:
+                        - _state: results_scope
+                        - all
+                    - _eq:
+                        - _state: results_scope
+                        - tables
+              params:
+                tables:
+                  _array.map:
+                    - _if_none:
+                        - _state: tables
+                        - []
+                    - _function:
+                        __object.assign:
+                          - __args: 0
+                          - selected:
+                              _event: value
+            - id: select_all_downloads
+              type: SetState
+              skip:
+                _not:
+                  _or:
+                    - _eq:
+                        - _state: results_scope
+                        - all
+                    - _eq:
+                        - _state: results_scope
+                        - exports
+              params:
+                downloads:
+                  _array.map:
+                    - _if_none:
+                        - _state: downloads
+                        - []
+                    - _function:
+                        __object.assign:
+                          - __args: 0
+                          - selected:
+                              _event: value
+      # Assembles the ticked cards into report sections and opens the confirm
+      # sheet. Disabled until at least one card across the three arrays is
+      # ticked — with nothing selected the assembly would produce no sections,
+      # and the sheet's own save is already gated on a non-empty list.
+      - id: save_as_report_button
+        type: Button
+        properties:
+          title: Save as report
+          type: primary
+          block: true
+          disabled:
+            _eq:
+              - _array.length:
+                  _array.filter:
+                    - _array.concat:
+                        - _if_none:
+                            - _state: charts
+                            - []
+                        - _if_none:
+                            - _state: tables
+                            - []
+                        - _if_none:
+                            - _state: downloads
+                            - []
+                    - _function:
+                        __eq:
+                          - __args: 0.selected
+                          - true
+              - 0
+        events:
+          onClick:
+            _ref: pages/chat/actions/save_as_report.yaml
+      # The panel is rendered before it has anything in it, so it has to say
+      # what it is for; a panel that appears only with the first chart teaches
+      # nothing until the user has already succeeded without it.
+      # The single empty message for the whole panel, shown only on the All tab
+      # when nothing has landed yet. The per-section "No charts / No tables / No
+      # downloads" lines below are scoped to their own tabs, so the All tab
+      # never stacks three of them or sandwiches a lone table between two.
+      - id: results_explainer
+        type: Paragraph
+        visible:
+          _and:
+            - _eq:
+                - _array.length:
+                    _array.concat:
+                      - _if_none:
+                          - _state: charts
+                          - []
+                      - _if_none:
+                          - _state: tables
+                          - []
+                      - _if_none:
+                          - _state: downloads
+                          - []
+                - 0
+            - _eq:
+                - _state: results_scope
+                - all
+        properties:
+          content: >-
+            Nothing here yet — ask the assistant to create a chart, table or
+            data export. Tick items to save them as a report.
+      - id: charts_section
+        type: Box
+        # Hidden with CSS, never `visible:` — scoping the panel to Exports would
+        # otherwise delete `charts` along with this section, and the list of
+        # display blocks under it republishes nothing on the way back.
+        style:
+          display:
+            _if:
+              test:
+                _or:
+                  - _eq:
+                      - _state: results_scope
+                      - all
+                  - _eq:
+                      - _state: results_scope
+                      - charts
+              then: null
+              else: none
+        blocks:
+          # Only on the Charts tab: on All, the panel-level explainer covers the
+          # empty case, so this would just clutter a lone table.
+          - id: charts_empty
+            type: Paragraph
+            visible:
+              _and:
+                - _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: charts
+                          - []
+                    - 0
+                - _eq:
+                    - _state: results_scope
+                    - charts
+            properties:
+              content: No charts yet — ask the assistant to chart something.
+          - id: charts
+            type: List
+            # A List renders its items straight into its own div, skipping the
+            # flex Area that carries a container's `layout.gap` — so the gap
+            # between cards has to ride the List element itself: `direction`
+            # makes it a flex column, and the gap goes in `properties.style`
+            # (the block's own element). A top-level `style` lands on the outer
+            # .lf-col wrapper, which holds one child and ignores it.
+            properties:
+              direction: column
+              wrap: nowrap
+              style:
+                gap: 16px
+            blocks:
+              - id: charts.$.card
+                type: Box
+                # A bordered card per result. The tick is inline in the header
+                # with the title — the panel's only marking affordance — and the
+                # border takes the primary colour while selected, so a ticked card
+                # reads at a glance.
+                layout:
+                  gap: 12
+                style:
+                  padding: 16px
+                  borderRadius: 8px
+                  background: var(--ant-color-bg-container)
+                  border:
+                    _if:
+                      test:
+                        _state: charts.$.selected
+                      then: 1px solid var(--ant-color-primary)
+                      else: 1px solid var(--ant-color-border-secondary)
+                blocks:
+                  - id: charts.$.header
+                    type: Box
+                    # nowrap keeps the tick and title on one line; the title
+                    # (flex 1 1 auto) wraps its own text. The checkbox needs a
+                    # DEFINITE basis — its antd form wrapper is full-width, so a
+                    # basis of `auto` lets it balloon and push the title below.
+                    layout:
+                      gap: 8
+                      wrap: nowrap
+                    blocks:
+                      # Bare checkbox — no field label. The panel explainer
+                      # ("Tick items to save them as a report") carries the
+                      # instruction; each card needs only the control, inline
+                      # with its title.
+                      - id: charts.$.selected
+                        type: CheckboxSwitch
+                        layout:
+                          flex: "0 0 24px"
+                          selfAlign: top
+                        properties:
+                          label:
+                            disabled: true
+                      - id: charts.$.chart_title
+                        type: Title
+                        layout:
+                          flex: "1 1 auto"
+                          selfAlign: top
+                        properties:
+                          content:
+                            _state: charts.$.title
+                          level: 5
+                          style:
+                            marginBottom: 0
+                      # Opens this card's snapshot bigger in the panel-level
+                      # modal. A modal's own events see none of this row, so
+                      # the card is seeded into `expanded_chart` first — the
+                      # rail's kebab → rename/delete pattern. Explicit fields,
+                      # not the bare item: mid-path `$` reads are the
+                      # established pattern; a trailing-`$` read is not.
+                      - id: charts.$.expand
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                          selfAlign: top
+                        properties:
+                          icon:
+                            name: AiOutlineExpandAlt
+                            title: Expand chart
+                          hideTitle: true
+                          type: text
+                        events:
+                          onClick:
+                            - id: seed_expanded_chart
+                              type: SetState
+                              params:
+                                expanded_chart:
+                                  title:
+                                    _state: charts.$.title
+                                  option:
+                                    _state: charts.$.option
+                                  height:
+                                    _if_none:
+                                      - _state: charts.$.height
+                                      - null
+                                  created:
+                                    _if_none:
+                                      - _state: charts.$.created
+                                      - null
+                            - id: open_expand_chart_modal
+                              type: CallMethod
+                              params:
+                                blockId: expand_chart_modal
+                                method: setOpen
+                                args:
+                                  - open: true
+                  # The canvas height is sized server-side with the option, so it
+                  # travels on the part. Parts written before the part gained
+                  # `height` fall back to the fixed height they were drawn at.
+                  - id: charts.$.chart
+                    type: EChart
+                    properties:
+                      height:
+                        _if_none:
+                          - _state: charts.$.height
+                          - 300
+                      option:
+                        _state: charts.$.option
+                  # The option is a snapshot of the turn that produced it — a
+                  # reopened conversation shows those numbers, not today's — so the
+                  # card dates itself. A leaf, so `visible:` is safe. Read through
+                  # `_if_none`: parts written before the part gained `created`
+                  # render with no date line rather than a blank one.
+                  - id: charts.$.as_of
+                    type: Paragraph
+                    visible:
+                      _ne:
+                        - _if_none:
+                            - _state: charts.$.created
+                            - null
+                        - null
+                    properties:
+                      content:
+                        _nunjucks:
+                          template: "as of {{ d }}"
+                          on:
+                            d:
+                              _dayjs:
+                                - _if_none:
+                                    - _state: charts.$.created
+                                    - 0
+                                - format: D MMMM
+                      style:
+                        fontSize: 12px
+                        color: var(--ant-color-text-secondary)
+                        marginBottom: 0
+      - id: tables_section
+        type: Box
+        # Hidden with CSS, never `visible:` — a `List`'s id IS its state key, so
+        # hiding this container with `visible:` would delete `tables` and the
+        # display blocks under it republish nothing on the way back. `display:
+        # none` leaves the state intact while removing the section from the flow.
+        style:
+          display:
+            _if:
+              test:
+                _or:
+                  - _eq:
+                      - _state: results_scope
+                      - all
+                  - _eq:
+                      - _state: results_scope
+                      - tables
+              then: null
+              else: none
+        blocks:
+          # Only on the Tables tab, for the same reason as charts_empty.
+          - id: tables_empty
+            type: Paragraph
+            visible:
+              _and:
+                - _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: tables
+                          - []
+                    - 0
+                - _eq:
+                    - _state: results_scope
+                    - tables
+            properties:
+              content: No tables yet — ask the assistant for a table.
+          - id: tables
+            type: List
+            # See charts: a List skips the flex Area that carries `layout.gap`,
+            # so the inter-card gap rides the List's own element via
+            # `properties.style`.
+            properties:
+              direction: column
+              wrap: nowrap
+              style:
+                gap: 16px
+            # The card file is a one-block sequence, so it fills `blocks`
+            # directly — a `_ref` list item would nest it one array too deep.
+            blocks:
+              _ref: pages/chat/components/table_card.yaml
+      - id: downloads_section
+        type: Box
+        # Hidden with CSS, never `visible:` — scoping the panel to Charts would
+        # otherwise delete `downloads` along with this section.
+        style:
+          display:
+            _if:
+              test:
+                _or:
+                  - _eq:
+                      - _state: results_scope
+                      - all
+                  - _eq:
+                      - _state: results_scope
+                      - exports
+              then: null
+              else: none
+        blocks:
+          # Only on the Exports tab, for the same reason as charts_empty.
+          - id: downloads_empty
+            type: Paragraph
+            visible:
+              _and:
+                - _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: downloads
+                          - []
+                    - 0
+                - _eq:
+                    - _state: results_scope
+                    - exports
+            properties:
+              content: No downloads yet — ask the assistant to export data.
+          - id: downloads
+            type: List
+            # See charts: a List skips the flex Area that carries `layout.gap`,
+            # so the inter-card gap rides the List's own element via
+            # `properties.style`.
+            properties:
+              direction: column
+              wrap: nowrap
+              style:
+                gap: 16px
+            blocks:
+              - id: downloads.$.item
+                type: Box
+                # A bordered card per result, matching the chart and table cards.
+                # The tick is inline in the header with the title — the panel's
+                # only marking affordance — and the border takes the primary
+                # colour while selected, so a ticked card reads at a glance.
+                layout:
+                  gap: 12
+                style:
+                  padding: 16px
+                  borderRadius: 8px
+                  background: var(--ant-color-bg-container)
+                  border:
+                    _if:
+                      test:
+                        _state: downloads.$.selected
+                      then: 1px solid var(--ant-color-primary)
+                      else: 1px solid var(--ant-color-border-secondary)
+                blocks:
+                  - id: downloads.$.header
+                    type: Box
+                    # nowrap keeps the tick and title on one line; see the chart
+                    # card header for why the checkbox needs a definite basis.
+                    layout:
+                      gap: 8
+                      wrap: nowrap
+                    blocks:
+                      # Bare checkbox — the panel explainer carries the wording;
+                      # here it sits inline with the title.
+                      - id: downloads.$.selected
+                        type: CheckboxSwitch
+                        layout:
+                          flex: "0 0 24px"
+                          selfAlign: top
+                        properties:
+                          label:
+                            disabled: true
+                      - id: downloads.$.title
+                        type: Title
+                        layout:
+                          flex: "1 1 auto"
+                          selfAlign: top
+                        properties:
+                          content:
+                            _state: downloads.$.label
+                          level: 5
+                          style:
+                            marginBottom: 0
+                  - id: downloads.$.desc
+                    type: Paragraph
+                    visible:
+                      _ne:
+                        - _if_none:
+                            - _state: downloads.$.description
+                            - ""
+                        - ""
+                    properties:
+                      content:
+                        _state: downloads.$.description
+                      style:
+                        fontSize: 12px
+                        color: var(--ant-color-text-secondary)
+                        marginBottom: 0
+                  # Full-width button on its own line, not an icon beside the
+                  # title — an export label runs long and would otherwise shove a
+                  # header icon onto a second row.
+                  - id: downloads.$.download
+                    type: Button
+                    properties:
+                      title: Download CSV
+                      icon: AiOutlineDownload
+                      block: true
+                    events:
+                      onClick:
+                        - id: run_download_query
+                          type: CallAPI
+                          params:
+                            endpointId:
+                              _module.endpointId: query-data
+                            payload:
+                              query:
+                                _state: downloads.$.query
+                        - id: download_csv
+                          type: DownloadCsv
+                          params:
+                            data:
+                              _api:
+                                _build.string.concat:
+                                  - _module.endpointId: query-data
+                                  - ".response"
+                            filename: export.csv
+      # The Save-as-report button seeds this sheet and opens it. Like the rail's
+      # conversation modals, it leaves only an empty placeholder here — antd
+      # portals the dialog to the document body — so it adds no panel chrome.
+      - _ref: pages/chat/components/save_report_sheet.yaml
+      # Each card's ⤢ seeds one of these and opens it; like the sheet above,
+      # only an empty placeholder lands in the panel.
+      - _ref: pages/chat/components/expand_chart_modal.yaml
+      - _ref: pages/chat/components/expand_table_modal.yaml
+  # The panel's collapsed form. Counts, not just an icon: the point of the strip
+  # is that three charts waiting is visible without paying the expand to find
+  # out. Compared against `true` so the strip and the panel are exact
+  # complements for any value of the global.
+  - id: results_strip
+    type: Box
+    properties:
+      style:
+        padding: 12px 6px
+    layout:
+      flex: 0 0 auto
+      gap: 8
+    style:
+      background: var(--ant-color-bg-layout)
+      border: 1px solid var(--ant-color-border-secondary)
+    visible:
+      _eq:
+        - _global: reporting_panel_collapsed
+        - true
+    blocks:
+      - id: expand_panel_button
+        type: Button
+        properties:
+          icon:
+            name: AiOutlineDoubleLeft
+            title: Show results
+          hideTitle: true
+          type: text
+        events:
+          onClick:
+            - id: expand_panel
+              type: SetGlobal
+              params:
+                reporting_panel_collapsed:
+                  _not:
+                    _global: reporting_panel_collapsed
+      # Reports first, mirroring the expanded panel where "Reports from this
+      # chat" sits above the results. Gated on non-empty (the section's absent-
+      # when-empty rule), unlike the always-shown result counts below — a strip
+      # that said "0 reports" on every chat that only charted something would be
+      # noise, where "3 charts" waiting is the whole point of the strip.
+      - id: results_strip_reports
+        type: Paragraph
+        visible:
+          _gt:
+            - _array.length:
+                _if_none:
+                  - _state: saved_reports
+                  - []
+            - 0
+        properties:
+          content:
+            _nunjucks:
+              template: "{{ n }} report{{ 's' if n != 1 }}"
+              on:
+                n:
+                  _array.length:
+                    _if_none:
+                      - _state: saved_reports
+                      - []
+          style:
+            fontSize: 12px
+            color: var(--ant-color-text-secondary)
+            marginBottom: 0
+      - id: results_strip_charts
+        type: Paragraph
+        properties:
+          content:
+            _nunjucks:
+              template: "{{ n }} chart{{ 's' if n != 1 }}"
+              on:
+                n:
+                  _array.length:
+                    _if_none:
+                      - _state: charts
+                      - []
+          style:
+            fontSize: 12px
+            color: var(--ant-color-text-secondary)
+            marginBottom: 0
+      - id: results_strip_tables
+        type: Paragraph
+        properties:
+          content:
+            _nunjucks:
+              template: "{{ n }} table{{ 's' if n != 1 }}"
+              on:
+                n:
+                  _array.length:
+                    _if_none:
+                      - _state: tables
+                      - []
+          style:
+            fontSize: 12px
+            color: var(--ant-color-text-secondary)
+            marginBottom: 0
+      - id: results_strip_exports
+        type: Paragraph
+        properties:
+          content:
+            _nunjucks:
+              template: "{{ n }} export{{ 's' if n != 1 }}"
+              on:
+                n:
+                  _array.length:
+                    _if_none:
+                      - _state: downloads
+                      - []
+          style:
+            fontSize: 12px
+            color: var(--ant-color-text-secondary)
+            marginBottom: 0

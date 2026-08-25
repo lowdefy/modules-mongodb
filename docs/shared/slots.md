@@ -52,7 +52,7 @@ Add an "Industry" attribute to the company form and a matching column to the lis
 
 ```yaml
 - id: companies
-  source: "github:lowdefy/modules-mongodb/modules/companies@v0.8.1"
+  source: "github:lowdefy/modules-mongodb/modules/companies@v0.29.0"
   vars:
     fields:
       attributes:

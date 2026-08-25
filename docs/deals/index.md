@@ -32,7 +32,7 @@ Add `deals` when an app needs a pipeline-driven opportunity/deal workspace — a
 # lowdefy.yaml (or modules.yaml)
 modules:
   - id: deals
-    source: "github:lowdefy/modules-mongodb/modules/deals@v0.13.0"
+    source: "github:lowdefy/modules-mongodb/modules/deals@v0.29.0"
     vars:
       app_name: my-app
       workflow_type: sales-pipeline # the workflows workflow to render

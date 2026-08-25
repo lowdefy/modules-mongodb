@@ -1,0 +1,59 @@
+# Bring a soft-deleted report back. The inverse of delete-report, and it reads
+# as one: owner-only, matched in the filter, one round trip.
+#
+# Restoring always returns the report to private. Silently re-publishing
+# something deleted months ago would hand it back to the whole app before anyone
+# re-read the numbers, so republishing is one deliberate act afterwards. There is
+# no field recording the previous audience, because nothing needs one.
+#
+# NO change stamp, and that is deliberate rather than an omission — the repo rule
+# is a stamp on every write. Two reasons. The reports list sorts on
+# updated.timestamp, so the stamp is the list's order and not just an audit
+# record; and the report page's provenance line states when the SPEC last
+# changed, which a restore does not touch. Stamping here would make that line
+# assert an edit that never happened. The visible cost is that a report last
+# edited in March and restored today returns to its March position rather than
+# the top, which is paid for by handing the user the restored report directly
+# instead of returning them to a list to find it.
+id: restore-report
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to restore a report.
+  - id: restore
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      # The stamp test is inverted here — only a report that IS deleted can be
+      # restored, so restoring a live one matches nothing and reports 0 modified
+      # rather than silently forcing it private.
+      filter:
+        _id:
+          _payload: report_id
+        owner.user_id:
+          _user: id
+        deleted.timestamp:
+          $exists: true
+      # Authorization lives in this filter, so a caller who may not do this
+      # matches nothing — the expected outcome, not a fault. Without this flag
+      # the request THROWS on a zero match, and the error body hands that caller
+      # the filter, this file path and a stack trace. A zero modifiedCount
+      # discloses nothing.
+      disableNoMatchError: true
+      update:
+        $set:
+          # null rather than $unset: the field is initialised null on insert so
+          # live documents have one shape, and the read predicate treats a
+          # document as live whether `deleted` is absent, null, or an object
+          # with no timestamp.
+          deleted: null
+          visibility: private
+  - :return:
+      ok: true
+      modifiedCount:
+        _step: restore.modifiedCount

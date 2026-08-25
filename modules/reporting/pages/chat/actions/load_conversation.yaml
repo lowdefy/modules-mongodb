@@ -1,0 +1,86 @@
+# Open an existing conversation: switch to it and repopulate the transcript and
+# results panel from a fresh read. Shared by the rail's onSelect and by the
+# page's mount, which opens the `conversation_id` a Continue-in-chat / Fix-in-chat
+# link puts in the URL — one copy, so a deep link restores exactly what clicking
+# the row restores.
+#
+# `conversation_key` is the id to open, passed as an operator by each caller
+# (`_event: key` from the rail, `_url_query` on mount).
+#
+# Switch first (atomic, infallible) and clear the transcript and panel as the
+# loading state, so a failed fetch can never strand the user on the previous
+# conversation. Then repopulate — messages included — from the FRESH
+# get-conversation-results read, never from the sidebar list snapshot: that
+# snapshot refreshes when the stream ends client-side, racing the server's
+# onFinish save, so it can be a turn behind — and continuing a chat restored from
+# it would overwrite the saved doc with the stale transcript.
+#
+# Every step skips on a null key. The rail always has one; the URL usually does
+# not, and without this the mount path would blank the fresh conversation the
+# page just minted and read the endpoint for a null id.
+- id: select_conversation
+  type: SetState
+  skip:
+    _eq:
+      - _var: conversation_key
+      - null
+  # The blanked keys come from `blank_results.yaml`, shared with
+  # `new_conversation` so the two switch paths cannot blank different sets.
+  # `_var` resolves during ref resolution, before build operators run, so what
+  # `_build.object.assign` merges here is already the caller's own operator.
+  params:
+    _build.object.assign:
+      - _ref: pages/chat/actions/blank_results.yaml
+      - conversationId:
+          _var: conversation_key
+- id: load_results
+  type: CallAPI
+  skip:
+    _eq:
+      - _var: conversation_key
+      - null
+  params:
+    endpointId:
+      _module.endpointId: get-conversation-results
+    payload:
+      conversationId:
+        _var: conversation_key
+# Drop a response that is no longer for the selected conversation. Selecting A
+# then B quickly runs two of these chains concurrently; if A's response lands
+# after B's SetState, state becomes B's id with A's transcript. AgentChat syncs
+# external messages, so the next send would persist A's transcript under B. A
+# null key fails this test too, so it doubles as the skip above.
+- id: set_results
+  type: SetState
+  skip:
+    _ne:
+      - _var: conversation_key
+      - _state: conversationId
+  params:
+    messages:
+      _api:
+        _build.string.concat:
+          - _module.endpointId: get-conversation-results
+          - ".response.messages"
+    charts:
+      _api:
+        _build.string.concat:
+          - _module.endpointId: get-conversation-results
+          - ".response.charts"
+    tables:
+      _api:
+        _build.string.concat:
+          - _module.endpointId: get-conversation-results
+          - ".response.tables"
+    downloads:
+      _api:
+        _build.string.concat:
+          - _module.endpointId: get-conversation-results
+          - ".response.downloads"
+    # Folded into the same read as the four above, so it inherits this step's
+    # stale-response skip and needs nothing new in the callers.
+    saved_reports:
+      _api:
+        _build.string.concat:
+          - _module.endpointId: get-conversation-results
+          - ".response.saved_reports"

@@ -28,6 +28,7 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [ai-assistant](../modules/ai-assistant/README.md)   | Agent chat with persisted, per-user threads — docked corner panel or embedded in a page                     |
 | [workflows](../modules/workflows/README.md)         | Multi-workflow engine — declare workflow YAML, render entity action lists, FSM-driven lifecycle transitions |
 | [release-notes](../modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page                                                               |
+| [reporting](../modules/reporting/README.md)         | AI chat over your data — open query engine, charts, CSV exports, saved reports                              |
 
 ## Dependency graph
 
@@ -60,10 +61,12 @@ graph TD
   workflows --> notifications
   release-notes --> layout
   events
+  reporting
 ```
 
 A few notes on the shape:
 
+- `reporting` has no dependencies either, and does not wrap its pages in `layout` — it is self-contained and can be added on its own.
 - `events` has no dependencies — every other module either logs events or carries a change stamp, so it sits at the bottom of the graph. `ai-assistant` is the other standalone: it needs an app agent and the plugin package, but no sibling module.
 - `layout` depends on `user-account` and `notifications` because the page chrome integrates the profile dropdown and the notification bell. Those modules in turn depend on `layout` for their own pages — the cycle is intentional and resolved at runtime.
 - `contacts` and `companies` depend on each other for selectors and bidirectional links. Same story — runtime cycle, by design.
@@ -71,18 +74,19 @@ A few notes on the shape:
 
 ## What to use when
 
-| You need…                                                                   | Add…                                        |
-| --------------------------------------------------------------------------- | ------------------------------------------- |
-| A login page and a profile page                                             | `layout`, `events`, `user-account`          |
-| To invite and manage users                                                  | + `user-admin`, `notifications`             |
-| A bell and inbox for in-app messages                                        | + `notifications`                           |
-| Contact management with company links                                       | + `contacts`, `companies`, `files`          |
-| File attachments on any entity                                              | + `files`                                   |
-| To log calls, meetings, and emails against contacts/companies               | + `activities`, `contacts`                  |
-| Multi-step business processes (lifecycle, actions, approvals) on any entity | + `workflows`                               |
-| An audit log on writes anywhere in the app                                  | + `events` (most other modules already log) |
-| A release-notes page from `CHANGELOG.md`                                    | + `release-notes`                           |
-| An AI agent chat with persisted threads — docked on every page or in a page | + `ai-assistant` (and an app agent)         |
+| You need…                                                                   | Add…                                         |
+| --------------------------------------------------------------------------- | -------------------------------------------- |
+| A login page and a profile page                                             | `layout`, `events`, `user-account`           |
+| To invite and manage users                                                  | + `user-admin`, `notifications`              |
+| A bell and inbox for in-app messages                                        | + `notifications`                            |
+| Contact management with company links                                       | + `contacts`, `companies`, `files`           |
+| File attachments on any entity                                              | + `files`                                    |
+| To log calls, meetings, and emails against contacts/companies               | + `activities`, `contacts`                   |
+| Multi-step business processes (lifecycle, actions, approvals) on any entity | + `workflows`                                |
+| An audit log on writes anywhere in the app                                  | + `events` (most other modules already log)  |
+| A release-notes page from `CHANGELOG.md`                                    | + `release-notes`                            |
+| An AI agent chat with persisted threads — docked on every page or in a page | + `ai-assistant` (and an app agent)          |
+| To chat to your data and save the answers as navigable reports              | + `reporting` (standalone — no dependencies) |
 
 The minimum set for an authenticated app is `layout` + `events` + `user-account` + `notifications`. Everything else is opt-in.
 

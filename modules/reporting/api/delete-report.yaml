@@ -1,0 +1,46 @@
+# Owner-scoped soft delete from the reports-list page.
+#
+# Soft, not hard: the repo convention is that a delete sets a `deleted` change
+# stamp and reads filter it out (docs/shared/soft-delete.md). The stamp comes
+# from this module's own defaults/change_stamp.yaml rather than the events
+# module's exported component, because reporting declares no dependencies — a
+# deferred choice, not a limitation; see the note in that file. The shape
+# ({ timestamp, user: { name, id } }) is identical either way, so a host app
+# reads it with the same predicate as every other module's soft delete.
+id: delete-report
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to delete a report.
+  - id: delete
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      # Already-deleted reports are excluded so a repeat delete reports 0
+      # modified rather than overwriting the original stamp's who/when.
+      filter:
+        _id:
+          _payload: report_id
+        owner.user_id:
+          _user: id
+        deleted.timestamp:
+          $exists: false
+      # Authorization lives in this filter, so a caller who may not do this
+      # matches nothing — the expected outcome, not a fault. Without this flag
+      # the request THROWS on a zero match, and the error body hands that caller
+      # the filter, this file path and a stack trace. A zero modifiedCount
+      # discloses nothing.
+      disableNoMatchError: true
+      update:
+        $set:
+          deleted:
+            _ref: defaults/change_stamp.yaml
+  - :return:
+      ok: true
+      deletedCount:
+        _step: delete.modifiedCount

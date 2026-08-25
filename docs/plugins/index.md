@@ -97,6 +97,18 @@ Best-effort by design: every failure returns `{ title: null }` so the caller kee
 | `domain`          | string | —                   | Description of the app, to ground the title vocabulary.                      |
 | `model`           | string | `openai/gpt-5-mini` | Gateway model id. Small and fast is the right choice.                        |
 | `reasoningEffort` | string | `low`               | Passed to the model provider; this runs on a cosmetic path, latency matters. |
+## Reporting analytics
+
+The `reporting` module's query engine ships here. These are documented with the module rather than duplicated:
+
+| Export                       | What it is                                                                                                                                                 |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ReportingData` connection   | Read-only MongoDB connection carrying the collections catalog — the engine's authorization boundary                                                        |
+| `AnalyticsPipeline` request  | The single path from an AI-authored aggregation pipeline to the driver: validate against the catalog and three default-deny grammars, reconstruct, execute |
+| `DownloadCsv` action         | Client action turning request rows into a CSV download                                                                                                     |
+| `_analytics` server operator | Server-side spec validation and block compilation (`buildDataParts`, `compileReport`, `querySections`)                                                     |
+
+See [AI Chat Reporting](../reporting/index.md), and [the open query engine](../reporting/concepts/open-query-engine.md) for the validation model and caps.
 
 ## Install
 

@@ -24,16 +24,13 @@ properties:
   _build.object.assign:
     - title:
         _var: title
-      breadcrumb:
-        list:
-          _var:
-            key: breadcrumbs
-            default: []
       menu:
         _var:
           key: menu
           default:
-            _module.var: menu
+            _build.if_none:
+              - _module.var: menu
+              - _menu: default
       # Built-in header features — gated by per-page hide flags
       profile:
         _build.if:
@@ -65,6 +62,27 @@ properties:
           else: null
       darkModeToggle:
         _module.var: dark_mode_toggle
+    # Breadcrumb only when the page supplies crumbs. Passing an empty `breadcrumb`
+    # object still renders the block — an empty bar taking its own 16px margin — so
+    # a page with no breadcrumbs (and any full-bleed page) would carry a stray gap.
+    # Omitting the property entirely leaves properties.breadcrumb undefined, which
+    # the page block reads as "no breadcrumb". Tested against null (the default when
+    # unset), not on length: a page's breadcrumbs are often a `_build.array.concat`
+    # expression, so length can't be taken here — but any supplied value is non-null.
+    - _build.if:
+        test:
+          _build.ne:
+            - _var:
+                key: breadcrumbs
+                default: null
+            - null
+        then:
+          breadcrumb:
+            list:
+              _var:
+                key: breadcrumbs
+                default: []
+        else: {}
     # sider / siderStorageKey only apply to sider-menu and sidebar variants.
     # PageHeaderMenu rejects them (additionalProperties: false).
     - _build.if:
@@ -84,6 +102,15 @@ properties:
 style:
   .logo:
     _module.var: logo.style
+  # Override the content area's own style — the page block defaults it to
+  # `padding: 0 40px 40px 40px`. Merged over that default, so `{}` (the default)
+  # is a no-op and a full-bleed page passes `content_style: { padding: 0 }` to
+  # let its content reach the sider and viewport edges. Dot-prefixed to target the
+  # `content` CSS slot key (a bare `content:` reads as a raw CSS property).
+  .content:
+    _var:
+      key: content_style
+      default: {}
 requests:
   _build.array.concat:
     - _build.if:
@@ -135,21 +162,24 @@ slots:
     - header:
         blocks:
           _module.var: header_extra.blocks
-      footer:
-        _build.if:
-          test:
-            _build.not:
-              _var:
-                key: hide_footer
-                default: false
-          then:
+    # A hidden footer drops the slot key entirely — a slot must be a block
+    # object, so an empty placeholder value would draw a ConfigWarning (and an
+    # empty footer bar) rather than nothing.
+    - _build.if:
+        test:
+          _build.not:
+            _var:
+              key: hide_footer
+              default: false
+        then:
+          footer:
             style:
               textAlign: center
               fontSize: 12
               color: "var(--ant-color-text-secondary)"
             blocks:
               _module.var: footer
-          else: []
+        else: {}
     - _build.if:
         test:
           _build.eq:

@@ -1,0 +1,172 @@
+# Fetches a conversation's transcript and persisted result parts (charts,
+# tables + downloads) for the chat page, owner-scoped. The page calls this on
+# select and restores messages FROM THIS FRESH READ — never from the sidebar
+# list snapshot, which races the onFinish save hook and can be a turn behind;
+# restoring a stale transcript and continuing would overwrite the saved doc
+# with the stale messages (permanent turn loss). Returns the parts already
+# split by type, matching the page's three charts/tables/downloads state keys.
+# Charts carry a baked ECharts option and tables their capped rows (a snapshot
+# of the data as of the turn, which each part's `created` date is what dates)
+# plus the validated spec a saved report section is built from; downloads
+# carry a query spec that re-runs live on click.
+#
+# It also returns the conversation's `saved_reports` — the caller's non-deleted
+# reports whose `conversation_id` matches this conversation, read owner-scoped
+# from reports-store. This is the chat -> report link the panel's "Saved from
+# this chat" section renders; folding it here (rather than a second endpoint)
+# means the section tracks the conversation's results wherever they load.
+id: get-conversation-results
+type: Api
+routine:
+  # Scoped by `_user: id`, the same key the agent hooks write to owner.user_id.
+  # Hooks run through context.callEndpoint with the request context, so _user
+  # resolves in them exactly as in a browser-invoked endpoint.
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :return:
+          messages: []
+          charts: []
+          tables: []
+          downloads: []
+          saved_reports: []
+  - id: load
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: conversations-store
+    properties:
+      query:
+        _id:
+          _payload: conversationId
+        owner.user_id:
+          _user: id
+      options:
+        projection:
+          data_parts: 1
+          messages: 1
+  # The caller's reports for this conversation, owner-scoped and not-deleted —
+  # the reports-store "mine" predicate (see list-reports.yaml). A plain find,
+  # not an aggregation: no computed fields, so a projection is the whole job.
+  # `created`, not `updated`, is the save time the row shows and sorts on. An
+  # independent read from `load` above — kept a separate step, no cross-store
+  # $lookup.
+  - id: load_reports
+    type: MongoDBFind
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      query:
+        conversation_id:
+          _payload: conversationId
+        owner.user_id:
+          _user: id
+        deleted.timestamp:
+          $exists: false
+      options:
+        sort:
+          created.timestamp: -1
+        projection:
+          title: 1
+          visibility: 1
+          created: 1
+  - :return:
+      _mql.expr:
+        on:
+          parts:
+            _if_none:
+              - _step: load.data_parts
+              - []
+          messages:
+            _if_none:
+              - _step: load.messages
+              - []
+          saved_reports:
+            _if_none:
+              - _step: load_reports
+              - []
+        expr:
+          $let:
+            vars:
+              # Backfill a message id wherever the saved transcript has none.
+              # The AI SDK ids the assistant reply it hands the onFinish hook
+              # with "" unless the caller passes generateMessageId, so every
+              # assistant message save-conversation persisted before that fix
+              # shares the empty id — and AgentChat keys its bubbles by message
+              # id and looks each bubble's parts up in an id -> parts map, so a
+              # shared id collapses them: the earlier bubble renders the LAST
+              # message's content, and a reloaded conversation shows its final
+              # answer in every assistant bubble.
+              #
+              # Healing here rather than at write time repairs the conversations
+              # already saved that way, and the index is a stable key to do it
+              # with: messages only ever append, so the same message keeps the
+              # same synthesized id across reads. Continuing the conversation
+              # sends these back and save-conversation persists them, so a
+              # document heals for good the next time it is written to.
+              messages:
+                $map:
+                  input:
+                    $range:
+                      - 0
+                      - $size: $messages
+                  as: idx
+                  in:
+                    $let:
+                      vars:
+                        msg:
+                          $arrayElemAt:
+                            - $messages
+                            - $$idx
+                      in:
+                        $mergeObjects:
+                          - $$msg
+                          - id:
+                              $cond:
+                                - $gt:
+                                    - $strLenCP:
+                                        $ifNull:
+                                          - $$msg.id
+                                          - ""
+                                    - 0
+                                - $$msg.id
+                                - $concat:
+                                    - restored-
+                                    - $toString: $$idx
+              charts:
+                $map:
+                  input:
+                    $filter:
+                      input: $parts
+                      cond:
+                        $eq:
+                          - $$this.type
+                          - data-report-chart
+                  in: $$this.data
+              tables:
+                $map:
+                  input:
+                    $filter:
+                      input: $parts
+                      cond:
+                        $eq:
+                          - $$this.type
+                          - data-report-table
+                  in: $$this.data
+              downloads:
+                $map:
+                  input:
+                    $filter:
+                      input: $parts
+                      cond:
+                        $eq:
+                          - $$this.type
+                          - data-report-download
+                  in: $$this.data
+            in:
+              messages: $$messages
+              charts: $$charts
+              tables: $$tables
+              downloads: $$downloads
+              saved_reports: $saved_reports

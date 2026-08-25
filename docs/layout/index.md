@@ -33,7 +33,7 @@ Per-page overrides are supported via `_ref` vars when a single app needs more th
 # lowdefy.yaml
 modules:
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v0.8.1"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v0.29.0"
     vars:
       page_type: header-menu
       footer:

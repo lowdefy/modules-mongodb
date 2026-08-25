@@ -1,4 +1,4 @@
-lowdefy: 5.5.1
+lowdefy: 0.0.0-experimental-20260814133003
 name: Module Demo App
 slug: demo
 
@@ -10,7 +10,7 @@ theme:
   antd:
     algorithm: compact
     token:
-      colorPrimary: '#7c3aed'
+      colorPrimary: "#7c3aed"
 
 config:
   homePageId: router
@@ -23,13 +23,13 @@ global:
         component: event_types
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
+  - name: "@lowdefy/community-plugin-mongodb"
     version: 3.0.0
-  - name: '@lowdefy/community-plugin-xlsx'
+  - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
-  - name: '@lowdefy/community-plugin-nodemailer'
+  - name: "@lowdefy/community-plugin-nodemailer"
     version: 1.1.4
-  - name: '@lowdefy/modules-mongodb-plugins'
+  - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
   - name: '@lowdefy/connection-ai-gateway'
     version: 5.5.1
@@ -40,7 +40,7 @@ auth:
     verifyRequest: /user-account/verify-email-request
     error: /user-account/login
   theme:
-    brandColor: '#7c3aed'
+    brandColor: "#7c3aed"
   adapter:
     id: mdb_adapter
     type: MultiAppMongoDBAdapter
@@ -86,7 +86,7 @@ auth:
   pages:
     protected: true
     public:
-      - '404'
+      - "404"
       - notifications-invalid
       - notifications-link
       - router
@@ -135,8 +135,54 @@ connections:
         meta:
           user:
             _user: true
+  # Write side of the reporting demo dataset — seeded by reporting-seed-orders.
+  # The reporting module reads the same collection through reporting-analytics
+  # (below), which its reporting-data connection is remapped to.
+  - id: demo-orders
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: demo_orders
+      write: true
+  # The reporting module's own connections default to REPORTING_MONGODB_URI /
+  # REPORTING_DATA_MONGODB_URI so an app can keep reporting storage and its
+  # analytics source on separate databases. The demo has one database, so we
+  # remap all three module connections (on the reporting module entry) to these
+  # MONGODB_URI-backed connections instead of introducing new secrets.
+  - id: reporting-reports # module reports-store — saved report specs
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: report_layouts
+      write: true
+  - id: reporting-conversations # module conversations-store — chat conversations
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: conversations
+      write: true
+  - id: reporting-analytics # module reporting-data — read-only analytics source
+    type: ReportingData
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      # The module binds the collections catalog on its own reporting-data
+      # connection via _module.var, but remapping reporting-data onto this
+      # app connection replaces that definition — so the catalog must be bound
+      # here too, or validatePipeline gets no catalog and rejects every
+      # collection. Same file the module var references (modules/reporting/
+      # catalog.yaml), so the two can't drift.
+      catalog:
+        _ref: modules/reporting/catalog.yaml
 
-api: []
+api:
+  - _ref: api/reporting-seed-orders.yaml
+  - _ref: api/reporting-seed-example-report.yaml
+  - _ref: api/reporting-seed-ownership.yaml
+  - _ref: api/reporting-seed-conversations.yaml
 
 agents:
   # The agent behind the ai-assistant module demo. The module brings the chat
@@ -162,6 +208,7 @@ pages:
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml
   - _ref: pages/assistant-demo.yaml
+  - _ref: pages/reporting/reporting-demo.yaml
   - _ref: pages/files/files-demo.yaml
   - _ref: pages/quote-builder.yaml
   - _ref: pages/start-company-setup.yaml
