@@ -13,6 +13,14 @@ The agent answers questions by authoring near-arbitrary read-only MongoDB aggreg
 
 Charts, saved reports, and CSV exports ride the same engine: their queries are pipelines paired with an AI-declared [presentation contract](reference/presentation-contract.md).
 
+## Requirements
+
+**A Lowdefy build whose server passes `urlQuery` into page config.** The `report` page is a `Dynamic` block: it resolves each viewer's report through `resolve-report`, which reads the report id as `_payload: urlQuery.report_id`. That only works where the server threads the URL query into `getPageConfig` — it does so on the Vite/Hono line (verified in `0.0.0-experimental-20260814133003` and `0.0.0-experimental-20260822164337`), and not on the current stable `5.5.1`, which calls `getPageConfig(context, { pageId })` with no `urlQuery` at all.
+
+On a build without it, every report page resolves as though no report id had been supplied and renders the not-found fallback. Nothing else degrades: the agent still answers questions, `generate_report` still persists specs, and the reports list still shows them — the saved report simply cannot be opened. Only this page is affected, because `chat` reads its deep-link parameter with the client-side `_url_query` operator, which every build supports.
+
+**MongoDB ≥ 5.0** for the database behind `REPORTING_MONGODB_URI` — see [minimum server version](../shared/secrets.md#minimum-server-version). The reporting-data database is unaffected.
+
 ## Dependencies
 
 `reporting` depends on the [`layout`](../layout/index.md) module: every reporting page renders through layout's `page` component, so the module sits in the host app's chrome (sider, menu, profile, notifications) like every other module rather than as bare full-screen pages. The build auto-wires it when a module entry with id `layout` exists; remap with a `dependencies:` entry if yours is named differently. The `chat` page renders full-bleed inside that shell (no title bar or breadcrumb, content padding removed) so its three-column workspace keeps the viewport.
