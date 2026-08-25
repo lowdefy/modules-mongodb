@@ -49,7 +49,12 @@
           properties:
             title: Saved reports
             icon: AiOutlineFileText
-
+    - id: assistant-demo
+      type: MenuLink
+      pageId: assistant-demo
+      properties:
+        title: AI Assistant
+        icon: AiOutlineRobot
     - id: admin-group
       type: MenuGroup
       properties:

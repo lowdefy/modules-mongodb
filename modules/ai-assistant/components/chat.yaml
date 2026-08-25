@@ -84,8 +84,37 @@ events:
   # persistence and titling are the module's job, not the consumer's.
   onBeforeSend:
     _module.var: on_before_send
+  # Persist on SEND as well as on completion. Saving only when the reply lands means a
+  # thread the client leaves mid-stream was never created at all, and the question goes
+  # with it — there is nothing to resume, and nothing to tell them why. Saving here makes
+  # the worst case a thread missing its answer rather than a thread that never existed.
+  #
+  # The module's own steps run before the consumer's, and are not overridable: persistence
+  # is the module's job. `messages` from this event already includes the message just sent.
   onUserMessage:
-    _module.var: on_user_message
+    _build.array.concat:
+      - - _ref: actions/stash-provisional-title.yaml
+        - id: ai_persist_on_send
+          type: CallAPI
+          skip:
+            _eq:
+              - _state: ai_conversation_id
+              - null
+          params:
+            endpointId:
+              _module.endpointId: save-thread
+            payload:
+              conversationId:
+                _state: ai_conversation_id
+              messages:
+                _event: messages
+              title:
+                _state: ai_title
+              scope:
+                _module.var: scope
+              tag:
+                _module.var: tag
+      - _module.var: on_user_message
   onDataPart:
     _module.var: on_data_part
 
@@ -98,34 +127,7 @@ events:
       params:
         ai_messages:
           _event: messages
-        # PROVISIONAL title, shown instantly: keep a real title already
-        # on the thread (a resumed thread's saved title, or one the
-        # generated pass has already set), otherwise fall back to the
-        # first user message. That fallback is often a canned suggestion
-        # prompt and so a poor title — but it is instant, and it means a
-        # thread is never stranded as "New chat" if generation fails.
-        # Reading the list also avoids clobbering the title later on.
-        ai_title:
-          _js:
-            fn: |
-              const id = state('ai_conversation_id');
-              const entry = (state('ai_threads') || []).find((c) => c.key === id);
-              const current = (entry && entry.label) || null;
-              if (current && current !== 'New chat') return current;
-              const msgs = event('messages') || [];
-              const firstUser = msgs.find((m) => m.role === 'user');
-              let text = '';
-              if (firstUser) {
-                text = (firstUser.parts || [])
-                  .filter((p) => p.type === 'text')
-                  .map((p) => p.text)
-                  .join(' ');
-                if (!text && typeof firstUser.content === 'string') text = firstUser.content;
-              }
-              text = (text || '').replace(/\s+/g, ' ').trim();
-              if (!text) return current || 'New chat';
-              return text.length > 48 ? text.slice(0, 48).trim() + '…' : text;
-            args: {}
+    - _ref: actions/stash-provisional-title.yaml
 
     - id: ai_persist_thread
       type: CallAPI
