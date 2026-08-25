@@ -1,0 +1,9 @@
+# Gateway key only, no database — the single one-shot LLM call the module makes
+# is naming a thread from its first exchange. See the AiText connection in
+# @lowdefy/modules-mongodb-plugins for why this is a plugin request rather than
+# a routine step.
+id: ai_assistant_text
+type: AiText
+properties:
+  apiKey:
+    _secret: AI_GATEWAY_API_KEY

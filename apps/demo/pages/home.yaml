@@ -7,6 +7,13 @@ _ref:
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
+    events:
+      onInit:
+        # The docked assistant's state contract — required on any page that
+        # mounts the module's panel.
+        - _ref:
+            module: ai-assistant
+            component: state
     blocks:
       - id: description
         type: Paragraph
@@ -124,9 +131,25 @@ _ref:
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
+                id: ai_assistant
+                icon: AiOutlineRobot
+                title: AI Assistant
+                description: Agent chat with persisted, per-user threads.
+                note: The docked launcher is live on this page (bottom right); the card opens the embedded variant.
+                pageId: assistant-demo
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
                 id: reporting
                 icon: AiOutlineBarChart
                 title: AI Chat Reporting
                 description: Chat to your data; generate saved, navigable reports.
                 note: Seed the demo dataset first, then open a surface.
                 pageId: reporting-demo
+
+      # The module's docked variant, live on this page: corner launcher bottom
+      # right. The assistant-demo page shows the embedded variant — one shell
+      # per page, never both.
+      - _ref:
+          module: ai-assistant
+          component: panel

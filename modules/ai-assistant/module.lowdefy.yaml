@@ -1,0 +1,281 @@
+name: AI Assistant
+version: 0.31.1
+description: >-
+  A persisted, multi-thread chat with one of the app's agents, in two shapes: a
+  docked assistant for any page (an Intercom-style corner launcher and floating
+  panel) and an embedded variant that sits inline in a page's own layout. Both
+  share one thread history per (scope, user), with a searchable thread list,
+  in-place rename, delete, and titles generated from each thread's first
+  exchange. The panel never masks or reflows the page, so the page stays fully
+  usable while the assistant is open.
+
+  The module owns the chat SHELL and the thread lifecycle. It owns no domain
+  knowledge: the agent, what the agent is told about the current page
+  (shared_state), how threads are partitioned (scope), and every string the user
+  reads are all vars. Mount it by _ref'ing the `panel` component into a page (or
+  `embedded` into the page's own layout) and splicing the `state` component into
+  that page's onInit — a page using `embedded` also splices `enter` after it.
+
+dependencies: []
+
+vars:
+  agent_id:
+    type: string
+    required: true
+    description: >-
+      Id of the app agent the chat talks to (an entry under the app's
+      `agents`). The module does not define an agent — the system prompt, model,
+      and tools are the app's business.
+  scope:
+    required: true
+    description: >-
+      Runtime operator resolving to the string that partitions threads, e.g.
+      `{_state: record_id}`. Threads are listed and created against
+      (scope, session user), so the same page in a different scope is a
+      different set of threads. Use a constant string for a single global
+      assistant. Resolved each time it is used — minting, listing, saving — so a
+      value that arrives late is not frozen as null. A scope that CHANGES
+      mid-session needs the consumer to clear the open thread on visit; the
+      module cannot observe an app global moving. See "Scope" in the module docs.
+  page_id:
+    type: string
+    default: ai-assistant
+    description: Stamped on saved threads so they can be traced back to a surface.
+  visible:
+    default: true
+    description: >-
+      Runtime operator gating the whole panel INCLUDING its launcher — e.g.
+      `{_state: loaded}`, so the assistant appears with the page's content
+      rather than over its skeleton. Read only by the `panel` component; the
+      `embedded` component's visibility is its page's business.
+
+  # Flat, not a `panel:` object: module vars are read with `_module.var: <name>`,
+  # which takes a var name and not a path — so a nested group cannot be reached
+  # one leaf at a time.
+  panel_title:
+    default: Assistant
+    description: Panel header title. Takes the app display font when one is defined.
+  panel_subtitle:
+    default: null
+    description: Small line under the title — an identity or status line, not a sentence.
+  panel_avatar_icon:
+    default: AiOutlineRobot
+    description: Icon in the round mark left of the title.
+  panel_launcher_icon:
+    default: AiOutlineRobot
+    description: Icon on the closed launcher.
+  panel_launcher_label:
+    default: null
+    description: >-
+      Optional text pill beside the launcher while closed. Leave null for a
+      circular icon-only launcher.
+  panel_launcher_aria_label:
+    default: Open assistant
+    description: Accessible name for the launcher. Always meaningful, label or not.
+  panel_width:
+    default: 420
+    description: Panel width in px. ~420 is about 62 characters of chat.
+  panel_expanded_width:
+    default: 760
+    description: Panel width in px when expanded with the header control.
+  panel_height:
+    default: 660
+    description: Panel height in px. Always clamped to the viewport.
+  panel_placement:
+    default: bottom-right
+    description: Corner the launcher and panel anchor to — bottom-right or bottom-left.
+
+  embedded_height:
+    type: string
+    default: 65vh
+    description: >-
+      CSS height of the `embedded` component's chat area (and its thread list,
+      which swaps in over the same space). Any CSS length; the default keeps a
+      composer on screen for most viewports.
+
+  shared_state:
+    type: object
+    default: {}
+    description: >-
+      Object of runtime operators handed to the agent with every message, so the
+      assistant knows what the user is looking at right now. This is the module's
+      main seam: everything domain-specific about the conversation enters here.
+  welcome:
+    type: object
+    default: {}
+    description: >-
+      The empty-thread screen — { title, description, prompts }, where prompts is
+      a list of { label, description } suggestion cards.
+  sender_placeholder:
+    type: string
+    default: Ask a question…
+  thinking_messages:
+    type: array
+    default: []
+    description: >-
+      Rotating status lines shown while the agent works. App-specific on purpose:
+      generic ones ("Thinking…") waste the one moment the user is watching.
+  message_display:
+    type: object
+    default: {}
+    description: >-
+      Overrides merged over the module's AgentChat messageDisplay defaults
+      (assistant name, reasoning/tool display, copy action).
+
+  on_before_send:
+    type: array
+    default: []
+    description: >-
+      Actions run before a message is sent, on the chat block's onBeforeSend. Throw
+      here to refuse the send — this is where a per-user quota or an entitlement check
+      belongs, since it is the only seam that runs before the model is called.
+  on_user_message:
+    type: array
+    default: []
+    description: >-
+      Actions run when the user sends a message, on the chat block's onUserMessage.
+      For the app's own record of what was asked; the module already persists the
+      message itself.
+  on_data_part:
+    type: array
+    default: []
+    description: >-
+      Actions run for each custom data part the agent streams, on the chat block's
+      onDataPart. Filter on the part type: the module does not, so every part reaches
+      these actions.
+  on_feedback:
+    type: array
+    default: []
+    description: >-
+      Actions run when the user rates a message, on the chat block's onFeedback. Only
+      reachable when the feedback action is enabled through `message_display`; leaving
+      this empty while enabling that control renders a button that does nothing.
+
+  tag:
+    default: null
+    description: >-
+      Runtime operator resolving to a short LABEL to attach to the thread on each
+      save, accumulated as a set and shown as chips on the thread cards — e.g.
+      the title of the record being discussed. Stored as the display string, not
+      an id: the module cannot resolve app ids, and a thread list is a
+      historical record of what was discussed. Null to disable chips.
+
+  generate_titles:
+    type: boolean
+    default: true
+    description: >-
+      Name each thread from its FIRST EXCHANGE — the opening question and the
+      reply together — once the first reply lands. Prefer this to an agent's own
+      generateTitle, which sees only the opening message; where that message is a
+      canned suggestion prompt, every thread ends up with the same name. Turn off
+      to keep the provisional title (the user's first message, truncated) and
+      skip the model call — the AI_GATEWAY_API_KEY secret is only used when this
+      is on.
+  title_context:
+    default: null
+    description: >-
+      Runtime operator resolving to one line of grounding for the title
+      generator, e.g. "Acme Ltd — onboarding". Lets it name the subject when the
+      exchange only ever says "this record".
+  title_domain:
+    type: string
+    default: null
+    description: >-
+      One phrase describing the app for the title generator's vocabulary, e.g.
+      "a staffing and payroll tool". Null for a generic prompt.
+  title_model:
+    type: string
+    default: openai/gpt-5-mini
+    description: Gateway model id for the titling call. Small and fast is the right choice.
+
+  collection:
+    type: string
+    default: conversations
+    description: MongoDB collection holding threads.
+
+exports:
+  components:
+    - id: panel
+      description: >-
+        The docked assistant — launcher, floating panel, chat, thread list,
+        rename and delete. _ref this into a page's blocks.
+    - id: embedded
+      description: >-
+        The same chat and thread lifecycle inline in a page's own layout — a
+        toolbar (title, rename, delete, new chat, manage chats) over the chat
+        area. _ref this where the page wants the chat; splice `state` and then
+        `enter` into that page's onInit. Do not mount `panel` and `embedded` on
+        the same page — they share block ids and state on purpose.
+    - id: state
+      description: >-
+        The chat's state contract as a SetState action. Splice into the
+        consuming page's onInit; without it Lowdefy warns on every state key the
+        chat reads.
+    - id: enter
+      description: >-
+        The resume-or-mint action chain as an action list: mint a thread id,
+        fetch the scope's threads, resume the most recent. The `panel` runs this
+        itself on first open; a page using `embedded` splices it into onInit
+        AFTER `state`, inside a try/catch whose catch clears ai_loading — a
+        rejected fetch aborts the chain before its own clear, and without the
+        catch the chat spins forever.
+  connections:
+    - id: ai_assistant_threads
+      description: MongoDB connection for the threads collection
+    - id: ai_assistant_text
+      description: AI Gateway connection for the thread-titling call
+  api:
+    - id: save-thread
+      description: Upsert a thread's full message history, title, scope and tags
+    - id: list-threads
+      description: List the session user's threads for one scope, newest first
+    - id: get-thread
+      description: Load one thread's stored messages
+    - id: rename-thread
+      description: Rename a thread
+    - id: delete-thread
+      description: Delete a thread
+    - id: title-thread
+      description: Name a thread from its first exchange and persist the result
+
+connections:
+  - _ref: connections/ai_assistant_threads.yaml
+  - _ref: connections/ai_assistant_text.yaml
+
+api:
+  - _ref: api/save-thread.yaml
+  - _ref: api/list-threads.yaml
+  - _ref: api/get-thread.yaml
+  - _ref: api/rename-thread.yaml
+  - _ref: api/delete-thread.yaml
+  - _ref: api/title-thread.yaml
+
+components:
+  - id: panel
+    component:
+      _ref: components/panel.yaml
+  - id: embedded
+    component:
+      _ref: components/embedded.yaml
+  - id: state
+    component:
+      _ref: components/state.yaml
+  - id: enter
+    component:
+      _ref: actions/enter.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+  - name: AI_GATEWAY_API_KEY
+    description: >-
+      Vercel AI Gateway key — used only for the thread-titling call, so only
+      exercised while generate_titles is on.
+
+plugins:
+  - name: '@lowdefy/community-plugin-mongodb'
+    version: '^3'
+  # FloatingPanel (the launcher + panel block) and the AiText connection
+  # (the titling call) both ship here.
+  - name: '@lowdefy/modules-mongodb-plugins'
+    version: "^0.31.1"

@@ -1,5 +1,5 @@
 name: AI Chat Reporting
-version: 0.29.0
+version: 0.31.1
 description: >
   Chat to your data and generate saved, navigable reports. Ships a reporting
   agent chat surface, a constrained query engine over an app-supplied data
@@ -223,7 +223,7 @@ plugins:
   - name: "@lowdefy/community-plugin-mongodb"
     version: "^3"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.29.0"
+    version: "^0.31.1"
 
 connections:
   - _ref: connections/reports-store.yaml

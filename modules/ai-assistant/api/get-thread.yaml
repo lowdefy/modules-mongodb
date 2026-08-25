@@ -1,0 +1,34 @@
+id: get-thread
+type: Api
+description: >
+  Returns one thread's stored messages, for replaying it into the chat block.
+  Ownership-scoped to the session user, so a thread can only be loaded by the
+  person who created it.
+payloadSchema:
+  type: object
+  required:
+    - conversationId
+  additionalProperties: false
+  properties:
+    conversationId:
+      type: string
+routine:
+  - id: load_thread
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: ai_assistant_threads
+    properties:
+      query:
+        conversationId:
+          _payload: conversationId
+        user_id:
+          _user: id
+      options:
+        projection:
+          _id: 0
+          messages: 1
+  - :return:
+      messages:
+        _if_none:
+          - _step: load_thread.messages
+          - []

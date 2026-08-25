@@ -1,0 +1,82 @@
+id: save-thread
+type: Api
+description: >
+  Upserts a thread's full message history. Called from the chat block's
+  onMessageComplete on the CLIENT rather than an agent onFinish hook, because the
+  client is where the thread title and the thread-list update also live —
+  persisting there keeps all three in one place.
+
+  Private per user: user_id comes from the session, never the payload.
+payloadSchema:
+  type: object
+  required:
+    - conversationId
+    - messages
+  additionalProperties: false
+  properties:
+    conversationId:
+      type: string
+      minLength: 1
+    messages:
+      type: array
+      description: Full UIMessage history (user + assistant) from the chat block.
+    title:
+      type: string
+    scope:
+      type: string
+      description: Partition key — threads are listed per (scope, user).
+    tag:
+      type: string
+      description: Display label accumulated onto the thread as a chip.
+routine:
+  - id: upsert_thread
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: ai_assistant_threads
+    properties:
+      filter:
+        conversationId:
+          _payload: conversationId
+        # In the filter as well as the $set: without it, knowing a
+        # conversationId would be enough to overwrite somebody else's thread.
+        user_id:
+          _user: id
+      update:
+        $set:
+          messages:
+            _payload: messages
+          title:
+            _payload: title
+          scope:
+            _payload: scope
+          user_id:
+            _user: id
+          page_id:
+            _module.var: page_id
+          updated:
+            _date: now
+        # Every label the thread has touched, as a set — one entry however many
+        # messages happened on it. Read back as the thread card's chips.
+        # $each with an empty list when no tag was sent: a bare $addToSet of the
+        # null payload stored tags [null] for every consumer that leaves the tag
+        # var unset, which rendered as an empty chip on every thread card.
+        $addToSet:
+          tags:
+            $each:
+              _if:
+                test:
+                  _eq:
+                    - _if_none:
+                        - _payload: tag
+                        - null
+                    - null
+                then: []
+                else:
+                  - _payload: tag
+        $setOnInsert:
+          created:
+            _date: now
+      options:
+        upsert: true
+  - :return:
+      saved: true

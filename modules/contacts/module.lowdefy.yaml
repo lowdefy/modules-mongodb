@@ -1,5 +1,5 @@
 name: Contacts
-version: 0.29.0
+version: 0.31.1
 description: Contact management — list, detail, edit, create, selector
 
 dependencies:
@@ -87,7 +87,15 @@ vars:
         description: Additional pipeline stages appended to get_contact (e.g. $lookup, $addFields).
       selector:
         default: []
-        description: Pipeline stages appended to the contact-selector aggregation.
+        description: >-
+          Pipeline stages injected into the two simple contact-selector
+          aggregations — get_contacts_for_selector (basic-contact-selector) and
+          get_role_contacts_for_selector (role-contact-selector) — after the
+          base $match and BEFORE the label projection, so stages can filter or
+          derive on raw document fields. Not applied to search_contacts (the
+          rich contact-selector); filter that one per call site with its own
+          `filter` var. For the common case of hiding user records, prefer the
+          exclude_users_from_selectors var over hand-writing the $match here.
       filter_match:
         default: []
         description: >-
@@ -107,6 +115,30 @@ vars:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
     description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
+  exclude_users_from_selectors:
+    type: string
+    default: none
+    enum:
+      - none
+      - this-app
+      - any-app
+    description: |
+      Exclude user records from the contact selectors, and at which scope.
+      - none: pickers list every active contact, including user records.
+      - this-app: drops contacts flagged `apps.<app_name>.is_user` — users of
+        THIS app. A contact who is a user of a sibling app sharing the
+        collection still lists.
+      - any-app: drops contacts flagged `is_user` under ANY key of the `apps`
+        map, for apps that treat a user record as a user record whoever owns
+        it.
+      Applies to basic-contact-selector and role-contact-selector.
+      Does NOT cover the rich contact-selector (search_contacts) — exclude
+      them there per call site with its `filter` var.
+      Scoped to the pickers either way: user records still appear on the
+      contacts list page — drop them there with a $match via
+      `request_stages.get_all_contacts` if that is wanted too. They remain
+      uneditable through this module regardless, which is enforced separately
+      on the edit and view pages and in update-contact.
   use_verified:
     type: boolean
     default: false
@@ -184,4 +216,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.29.0"
+    version: "^0.31.1"
