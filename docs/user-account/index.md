@@ -25,7 +25,7 @@ Add `user-account` to any app that needs passwordless email-based login and self
 # lowdefy.yaml
 modules:
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.29.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.32.0"
     vars:
       app_name: my-app
       fields:
