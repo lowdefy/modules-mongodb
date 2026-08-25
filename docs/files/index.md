@@ -27,7 +27,7 @@ Add `files` when an app needs file attachments on any entity — documents, imag
 # lowdefy.yaml
 modules:
   - id: files
-    source: "github:lowdefy/modules-mongodb/modules/files@v0.32.0"
+    source: "github:lowdefy/modules-mongodb/modules/files@v0.32.1"
     vars:
       s3_region: us-east-1
 ```
