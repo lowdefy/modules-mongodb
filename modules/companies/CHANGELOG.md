@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-companies
 
+## 0.32.1
+
 ## 0.32.0
 
 ## 0.31.1
