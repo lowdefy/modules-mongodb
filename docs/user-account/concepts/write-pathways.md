@@ -48,7 +48,8 @@ with the re-denorm in one routine — four database operations:
    API, with any `request_stages.write` appended). Its pipeline merges the incoming
    fields atomically, then sets the fields the write owns — `profile.name`,
    `profile.avatar_color` and `profile.picture` (see
-   [Avatar colors](../../shared/avatar-colors.md)).
+   [Avatar colors](../../shared/avatar-colors.md)); an uploaded `profile.photo`
+   replaces the derived `picture` on the same write.
 3. A **re-read** of the freshly-written contact, so the denorm copies what actually
    landed — including anything a consumer's `request_stages.write` changed.
 4. An **`UpdateUserProfile`** step that re-denormalizes the contact's `profile`

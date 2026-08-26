@@ -10,14 +10,15 @@ Custom Lowdefy blocks and actions used by the modules in this repo. The package 
 
 ## Blocks
 
-| Block                                      | Category          | Purpose                                                                                                                                               |
-| ------------------------------------------ | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [ActionSteps](action-steps.md)             | `display`         | Antd `Steps` view of grouped actions — each step is an action group with badged, optionally linked sub-actions and a rolled-up status.                |
-| [ContactSelector](contact-selector.md)     | `input-container` | Multi-select contact picker with search, add, edit, remove, and verify flows. Backs the `contacts` module's selector component.                       |
-| [DataDescriptions](data-descriptions.md)   | `display`         | Rich, structured Antd `Descriptions` view driven by an explicit `formConfig` with sections, ordering, and component hints.                            |
-| [EventsTimeline](events-timeline.md)       | `display`         | Timeline of `log-events` documents — avatars, time-ago labels, action badges, optional file attachments. Backs the `events` module's timeline.        |
-| [FileManager](file-manager.md)             | `container`       | Drag-drop S3 upload with thumbnails, paste-to-upload, optional metadata form, download, and delete. Backs the `files` module.                         |
-| [SmartDescriptions](smart-descriptions.md) | `display`         | Antd `Descriptions` view with auto type detection from the data — no schema required. Use `DataDescriptions` instead when you need explicit grouping. |
+| Block                                      | Category          | Purpose                                                                                                                                                                            |
+| ------------------------------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [ActionSteps](action-steps.md)             | `display`         | Antd `Steps` view of grouped actions — each step is an action group with badged, optionally linked sub-actions and a rolled-up status.                                             |
+| [AvatarUpload](avatar-upload.md)           | `input`           | Round avatar that is the upload control — center-crops, downscales, and compresses a picked image to a data URI under a byte cap. Backs the shared `avatar-picker` row.            |
+| [ContactSelector](contact-selector.md)     | `input-container` | Multi-select contact picker with search, add, edit, remove, and verify flows. Backs the `contacts` module's selector component.                                                    |
+| [DataDescriptions](data-descriptions.md)   | `display`         | Rich, structured Antd `Descriptions` view driven by an explicit `formConfig` with sections, ordering, and component hints.                                                         |
+| [EventsTimeline](events-timeline.md)       | `display`         | Timeline of `log-events` documents — avatars, time-ago labels, action badges, optional file attachments. Backs the `events` module's timeline.                                     |
+| [FileManager](file-manager.md)             | `container`       | Drag-drop S3 upload with thumbnails, paste-to-upload, optional metadata form, download, and delete. Backs the `files` module.                                                      |
+| [SmartDescriptions](smart-descriptions.md) | `display`         | Antd `Descriptions` view with auto type detection from the data — no schema required. Use `DataDescriptions` instead when you need explicit grouping.                              |
 | [WorkflowProgress](workflow-progress.md)   | `display`         | Collapsible per-workflow sections of grouped, status-colored action buttons — a presentation variant of `ActionSteps`. Backs the workflows module's `workflow-progress` component. |
 
 ## `FetchRequest` action
