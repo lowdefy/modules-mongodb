@@ -1,69 +1,110 @@
-# Avatar preview + colour picker — the labelled form row used by the onboarding
-# page and the profile edit modal. Left: the 64px preview. Right: the "Avatar"
-# field label above a quiet Change colour button.
+# Avatar row — photo upload + colour picker: the labelled form row used by the
+# onboarding page and the profile edit modal.
 #
-# The preview calls the same derivation the write seams use, so the initials, the
-# `?` empty-name fallback and the gradient all come from the one implementation that
-# also produces the saved `profile.picture`. It reads `state.profile.avatar_color`,
-# which the host seeds with avatar-picker-seed.yaml — an unseeded preview would draw
-# a fresh random gradient on every keystroke in the name fields.
+# Left: the AvatarUpload control. Its value binds `state.profile.photo` — the
+# user's UPLOADED image as a compressed data URI (≤ maxBytes), or null when
+# none. With no photo it renders the same initials-on-gradient fallback the
+# derivation stores, computed live from the name fields and
+# `state.profile.avatar_color` (seeded by avatar-picker-seed.yaml).
 #
-# `profile.avatar_color` is the only state the Change colour button reads or writes,
-# so there is nothing that can disagree with the gradient on screen. It lives under
-# `profile` so it travels with that subtree into the payload.
+# The photo travels with the `profile` subtree into the payload; the shared
+# write-profile fragment makes it the stored `profile.picture` (falling back to
+# the derived initials SVG when no photo), and the re-denorm copies that onto
+# `user.image`, which the header, member tables and contact lists render.
 #
-# Both children need `flex: 0 0 auto` — a child block with no flex value spans the
-# full row, which would stack the preview above the label instead of beside it.
+# Right: field label, upload hint, and the Change colour button — the colour
+# only shows through on the initials fallback, so the button hides once a
+# photo is set.
 id: avatar_picker
 type: Box
 layout:
   span: 24
   gap: 16
 style:
-  marginBottom: 20
+  marginBottom: 24
+  padding: 16px
+  borderRadius: 10px
+  background: var(--ant-color-fill-quaternary)
 blocks:
-  - id: avatar_picker_face
-    type: Avatar
+  - id: profile.photo
+    type: AvatarUpload
     layout:
       flex: 0 0 auto
       selfAlign: middle
     properties:
-      size: large
-      theme:
-        containerSizeLG: 64
-      src:
-        _get:
-          from:
-            _js:
-              fn:
-                _ref:
-                  path: ../shared/profile/derive-profile.js.njk
-              args:
-                stored: {}
-                incoming:
-                  _state: profile
-                palette:
-                  _module.var: avatar_colors
-          key: picture
+      size: 76
+      maxBytes: 512000
+      maxDimension: 512
+      initials:
+        _js:
+          fn: |
+            const gn = String(args.given || '').trim();
+            const fn = String(args.family || '').trim();
+            if (gn && fn) return (gn[0] + fn[0]).toUpperCase();
+            if (gn) return gn.slice(0, 2).toUpperCase();
+            return '?';
+          args:
+            given:
+              _state: profile.given_name
+            family:
+              _state: profile.family_name
+      background:
+        _nunjucks:
+          template: "linear-gradient(135deg, {{ from }}, {{ to }})"
+          on:
+            from:
+              _if_none:
+                - _state: profile.avatar_color.from
+                - "#8c8c8c"
+            to:
+              _if_none:
+                - _state: profile.avatar_color.to
+                - "#595959"
+    events:
+      onError:
+        - id: show_photo_error
+          type: DisplayMessage
+          params:
+            status: error
+            content:
+              _event: message
+  # Fluid column beside the fixed-width avatar: flex 1 1 0 + minWidth 0 keeps
+  # the row a ROW — without them the column stacks under the avatar (the block
+  # wrapper is the flex item).
   - id: avatar_picker_field
     type: Box
     layout:
-      flex: 0 0 auto
+      flex: 1 1 0
       selfAlign: middle
-      gap: 6
+      gap: 4
+    style:
+      minWidth: 0
     blocks:
       # The form's own field-label styling — the row reads as a field, so it is
       # labelled like one rather than with a section eyebrow.
       - id: avatar_picker_label
         type: Html
         properties:
-          html: Avatar
+          html: Profile photo
         style:
           fontSize: 13
-          fontWeight: 500
-          color: "var(--ant-color-text-secondary)"
+          fontWeight: 600
+          color: "var(--ant-color-text)"
+      - id: avatar_picker_hint
+        type: Html
+        properties:
+          html: Click the avatar to upload or drop an image on it.
+        style:
+          fontSize: 12
+          color: "var(--ant-color-text-tertiary)"
+      # Colour applies to the initials fallback only — hidden once a photo is
+      # set (the button holds no value, so visibility pruning is safe).
       - id: avatar_picker_button
         type: Button
+        visible:
+          _eq:
+            - _state: profile.photo
+            - null
         properties:
           title: Change colour
           icon: AiOutlineReload
@@ -73,10 +114,9 @@ blocks:
         events:
           onClick:
             # `_js` rather than operator chaining because the palette's `from`
-            # values repeat — #c62828 at 0 and 15, #6a1b9a at 2 and 17, plus five
-            # more pairs — so the current position can only be recovered by matching
-            # both fields. findIndex returning -1 for an absent or off-palette
-            # colour lands the first click on entry 0.
+            # values repeat — the current position can only be recovered by
+            # matching both fields. findIndex returning -1 for an absent or
+            # off-palette colour lands the first click on entry 0.
             - id: advance_avatar_color
               type: SetState
               params:

@@ -48,6 +48,11 @@ _ref:
         - id: seed_login_view
           type: SetState
           params:
+            # Resend affordance address — null on every load; only the in-page
+            # password catch fills it (EMAIL_NOT_VERIFIED), since only an
+            # in-page attempt holds the typed address. Seeded here so the
+            # state key exists for the build's state-refs check.
+            login_resend_email: null
             login_view:
               _switch:
                 branches:

@@ -292,16 +292,41 @@ _ref:
                 params:
                   invitationId:
                     _url_query: invitationId
+              # Refresh the client's _user BEFORE routing. The accept just gave
+              # this session its organization; without the refresh the router
+              # still reads awaiting_organization from the stale client user and
+              # bounces straight back to the awaiting page.
+              - id: refresh_session_after_accept
+                type: UpdateSession
               - id: accept_enter_app
                 type: Link
                 params:
                   home: true
             catch:
-              - id: accept_error
-                type: DisplayMessage
-                params:
-                  status: error
-                  content: This invitation couldn't be accepted. It may have expired or been sent to a different email address. Ask for a new one.
+              # A retry against an invitation THIS caller already consumed (an
+              # interrupted first accept) fails "not found" even though they are
+              # in. Re-read the invitation: consumed by them → refresh the
+              # session and enter; anything else is a real error.
+              - id: refetch_invitation_after_error
+                type: Request
+                params: get_invitation
+              - :if:
+                  _eq:
+                    - _request: get_invitation.0.status
+                    - accepted
+                :then:
+                  - id: refresh_session_after_retry
+                    type: UpdateSession
+                  - id: enter_app_after_retry
+                    type: Link
+                    params:
+                      home: true
+                :else:
+                  - id: accept_error
+                    type: DisplayMessage
+                    params:
+                      status: error
+                      content: This invitation couldn't be accepted. It may have expired or been sent to a different email address. Ask for a new one.
       - id: accept_not_you
         type: Html
         visible:
@@ -340,6 +365,11 @@ _ref:
           variant: solid
         events:
           onClick:
+            # Refresh first: the "already a member" caller often arrives here
+            # with a stale client user (accepted moments ago in this tab) and
+            # the router would bounce them back to awaiting without it.
+            - id: member_refresh_session
+              type: UpdateSession
             - id: member_enter_app
               type: Link
               params:

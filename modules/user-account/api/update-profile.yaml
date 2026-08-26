@@ -24,6 +24,32 @@ routine:
         :then:
           :reject: Missing required profile fields.
 
+    # Profile-photo guard. The AvatarUpload block compresses to ≤ 512 KB
+    # client-side, but /api/endpoints callers bypass the client — so the server
+    # re-checks. A 512 KB image is ~700 K base64 characters; the cap allows
+    # headroom for the data-URI prefix, nothing more. Also refuse a photo that
+    # is not an image data URI at all.
+    - - :if:
+          _and:
+            - _ne:
+                - _if_none:
+                    - _payload: profile.photo
+                    - null
+                - null
+            - _js:
+                fn: |
+                  const photo = args.photo;
+                  return (
+                    typeof photo !== 'string' ||
+                    !photo.startsWith('data:image/') ||
+                    photo.length > 720000
+                  );
+                args:
+                  photo:
+                    _payload: profile.photo
+        :then:
+          :reject: Profile photo must be an image of at most 500 KB.
+
     # Resolve which contact row is the caller's, from the walled connection:
     # {active organization, caller's email}. The organization half comes from the
     # wall, so the row always belongs to the organization the caller is acting in.
@@ -132,7 +158,7 @@ routine:
                         - _if_none:
                             - _user: name
                             - _user: profile.name
-                        - ''
+                        - ""
                 then:
                   name:
                     _step: reread_contact.profile.name

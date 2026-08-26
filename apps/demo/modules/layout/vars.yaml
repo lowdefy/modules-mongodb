@@ -11,3 +11,39 @@ footer:
           on:
             name:
               _app: name
+
+# App-wide seams — the same widget rides EVERY page that uses the layout `page`
+# component, without any page opting in. `global_events.onInit` seeds the
+# widget's state contract after the page's own onInit; `global_blocks` renders
+# it after the page content (it floats, so its place in the tree is immaterial).
+global_events:
+  onInit:
+    - id: seed_whats_new
+      type: SetState
+      params:
+        whats_new_dismissed: false
+global_blocks:
+  - id: whats_new_launcher
+    type: Button
+    visible:
+      _not:
+        _state: whats_new_dismissed
+    style:
+      position: fixed
+      right: 24
+      bottom: 24
+      zIndex: 10
+    properties:
+      title: What's new
+      icon: AiOutlineNotification
+      shape: round
+    events:
+      onClick:
+        - id: dismiss_whats_new
+          type: SetState
+          params:
+            whats_new_dismissed: true
+        - id: open_release_notes
+          type: Link
+          params:
+            pageId: release-notes/view

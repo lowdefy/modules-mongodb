@@ -107,14 +107,19 @@ requests:
               component: unread-count-request
         else: []
     - _module.var: header_extra.requests
+    - _module.var: global_requests
     - _var:
         key: requests
         default: []
 events:
   onInit:
-    _var:
-      key: events.onInit
-      default: []
+    _build.array.concat:
+      - _var:
+          key: events.onInit
+          default: []
+      # Module-entry global init, AFTER the page's own — its state is set by
+      # the time a global widget's state contract runs.
+      - _module.var: global_events.onInit
   onInitAsync:
     _var:
       key: events.onInitAsync
@@ -172,14 +177,29 @@ events:
                   - null
               params:
                 __build.args: 0.id
+      # Module-entry global actions, spliced into EVERY page that uses this
+      # component — the module-level counterpart of the per-page events var.
+      # Runs after the header fetches above (their `_request:` values have
+      # resolved) and before the page's own onMountAsync, so an app can hang
+      # app-wide guards here (e.g. an onboarding gate that redirects until the
+      # caller's org is set up) without touching each page.
+      - _module.var: global_events.onMountAsync
       - _var:
           key: events.onMountAsync
           default: []
 slots:
   _build.object.assign:
+    # The header seam's blocks (search, org switcher) come from the module var,
+    # so every page carries the same header. A page may replace them —
+    # `header_blocks: []` for a bare header, or a shorter list to keep only
+    # some of them. Used by the onboarding wizard, which shows the org switcher
+    # but neither search nor the app menu.
     - header:
         blocks:
-          _module.var: header_extra.blocks
+          _var:
+            key: header_blocks
+            default:
+              _module.var: header_extra.blocks
       footer:
         _build.if:
           test:
@@ -299,3 +319,5 @@ blocks:
             else: []
         # Consumer content
         - _var: blocks
+        # App-wide widgets (floating, so position in the tree is immaterial).
+        - _module.var: global_blocks

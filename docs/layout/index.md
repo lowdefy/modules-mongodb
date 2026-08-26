@@ -75,6 +75,23 @@ The `page` component renders a shared title bar above the content. Key per-page 
 | `page_actions`     | array   | `[]`    | Action blocks to the right of the title.                                                                                                       |
 | `show_back_button` | boolean | `false` | Back button to the left of the title.                                                                                                          |
 
+## App-wide seams
+
+Four module vars splice into every page that uses the `page` component, so an app can hang app-wide behaviour in one place instead of on each page:
+
+| Var                          | Where it lands                                                                                                                                        |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `global_events.onInit`       | Appended to every page's `onInit`, after the page's own — a page's initial state is already set when these run.                                       |
+| `global_events.onMountAsync` | Appended to every page's `onMountAsync`, after the `header_extra` request fetches (their `_request:` values have resolved) and before the page's own. |
+| `global_blocks`              | Blocks appended after the consumer content on every page — for floating widgets (an assistant launcher, a help beacon, a "what's new" button).        |
+| `global_requests`            | Requests declared on every page for `global_blocks` to use. Unlike `header_extra.requests` they are not auto-fired on mount.                          |
+
+`global_events.onMountAsync` is the seam for app-wide guards: an onboarding gate that redirects until the caller's organization is set up, for example, reads the header requests that have just resolved and issues a `Link` — no page opts in, and pages outside the layout (auth pages, a wizard) are exempt by construction.
+
+The header blocks themselves (`header_extra.blocks`) are module-wide, but a page may replace them with the `header_blocks` `_ref` var — `header_blocks: []` for a bare header, or a shorter list to keep only some of them.
+
+See `apps/demo/modules/layout/vars.yaml` for a floating "What's new" launcher wired through `global_events.onInit` + `global_blocks`, and `apps/demo/pages/user-components-demo.yaml` for a page that clears its header blocks.
+
 ## Auth page
 
 The `auth-page` component is the centered card shell the auth pages render on. Its
