@@ -78,6 +78,42 @@ vars:
     type: object
     default: {}
     description: "Page block header properties: { theme, contentStyle }"
+  global_events:
+    type: object
+    default: {}
+    description: >-
+      Module-entry actions spliced into EVERY page that uses the page
+      component — the module-level counterpart of the per-page `events` var.
+      Use for app-wide guards (e.g. an onboarding gate that redirects until
+      the caller's org is set up) so no page has to opt in.
+    properties:
+      onInit:
+        default: []
+        description: >-
+          Actions appended to every page's onInit, AFTER the page's own
+          events.onInit — so a page's initial state is already set when these
+          run (e.g. a global widget's state contract that reads it).
+      onMountAsync:
+        default: []
+        description: >-
+          Actions appended to every page's onMountAsync, after the
+          header_extra request fetches (their `_request:` values have
+          resolved) and before the page's own events.onMountAsync.
+  global_blocks:
+    type: array
+    default: []
+    description: >-
+      Blocks appended after the consumer content on EVERY page that uses the
+      page component — for app-wide floating widgets (an assistant launcher,
+      a help beacon). Pair with `global_requests` for any requests they need
+      and `global_events.onInit` for their state contract.
+  global_requests:
+    type: array
+    default: []
+    description: >-
+      Requests declared on every page for `global_blocks` to use. Unlike
+      `header_extra.requests` these are NOT auto-fired on mount — they are
+      on-demand (e.g. upload/download policies a block calls itself).
   header_extra:
     type: object
     description: "Header customization: { blocks, requests }"

@@ -19,6 +19,8 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `sider_storage_key` | string | `layout-sider` |  | localStorage key suffix for sider collapsed-state persistence. Produces key 'lf-{sider_storage_key}-open'. Ignored for page_type 'header-menu' (no sider to persist). |
 | `menu` | object |  |  | Menu config passed to the page block, to override the menu for this module entry. When omitted, the page block falls back to the app's "default" menu (_menu default). |
 | `header` | object | `{}` |  | Page block header properties: { theme, contentStyle } |
+| `global_blocks` | array | `[]` |  | Blocks appended after the consumer content on EVERY page that uses the page component — for app-wide floating widgets (an assistant launcher, a help beacon). Pair with `global_requests` for any requests they need and `global_events.onInit` for their state contract. |
+| `global_requests` | array | `[]` |  | Requests declared on every page for `global_blocks` to use. Unlike `header_extra.requests` these are NOT auto-fired on mount — they are on-demand (e.g. upload/download policies a block calls itself). |
 | `title_block` | object |  |  | Custom title block override (replaces default title bar) |
 | `footer` | array | `[]` |  | Footer blocks appended after page content |
 | `card` | object |  |  | Custom card component override (replaces default Card layout) |
@@ -26,6 +28,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `profile_menu_id` | string | `profile` |  | Id of the app-level menu used for the profile dropdown. Menu links are filtered server-side by page access (auth.pages.roles). The app must register a menu with this id in its menus list.  |
 | `sider` | object | `{}` |  | Sider properties forwarded to the page block: { width, initialCollapsed, collapsible, hideToggleButton, collapsedWidth }. `collapsible` applies to PageSidebarLayout only. Ignored for page_type 'header-menu' (PageHeaderMenu has no sider). |
 | `logo` | object |  |  | Logo config for the auth page and header logo style override. The page header logo follows the Lowdefy public-folder convention — drop `logo-light-theme.png` / `logo-dark-theme.png` (and the `logo-square-*-theme.png` variants for mobile) into the app's `public/` folder and the page block auto-swaps between light/dark variants based on dark mode. |
+| `global_events` | object | `{}` |  | Module-entry actions spliced into EVERY page that uses the page component — the module-level counterpart of the per-page `events` var. Use for app-wide guards (e.g. an onboarding gate that redirects until the caller's org is set up) so no page has to opt in. |
 | `header_extra` | object |  |  | Header customization: { blocks, requests } |
 | `auth_page` | object |  |  | Auth page overrides: { cover_background, card_style, max_width, logo_max_width } |
 
@@ -52,6 +55,15 @@ Logo config for the auth page and header logo style override. The page header lo
 | `primary_dark` |  | `/logo-dark-theme.png` |  | Logo rendered on the auth-page cover (always-dark background). |
 | `primary` |  | `/logo-light-theme.png` |  | Logo rendered in the auth-page brand panel and mobile auth view. |
 | `style` |  |  |  | Inline style object applied to the header logo (mapped to the `.logo` cssKey on the page block). |
+
+### `global_events`
+
+Module-entry actions spliced into EVERY page that uses the page component — the module-level counterpart of the per-page `events` var. Use for app-wide guards (e.g. an onboarding gate that redirects until the caller's org is set up) so no page has to opt in.
+
+| Name | Type | Default | Required | Description |
+|---|---|---|---|---|
+| `onInit` |  | `[]` |  | Actions appended to every page's onInit, AFTER the page's own events.onInit — so a page's initial state is already set when these run (e.g. a global widget's state contract that reads it). |
+| `onMountAsync` |  | `[]` |  | Actions appended to every page's onMountAsync, after the header_extra request fetches (their `_request:` values have resolved) and before the page's own events.onMountAsync. |
 
 ### `header_extra`
 
