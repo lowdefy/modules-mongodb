@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-reporting
 
+## 0.34.0
+
 ## 0.33.0
 
 ### Patch Changes
