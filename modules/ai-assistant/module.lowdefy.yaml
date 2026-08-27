@@ -143,6 +143,20 @@ vars:
       Actions run for each custom data part the agent streams, on the chat block's
       onDataPart. Filter on the part type: the module does not, so every part reaches
       these actions.
+  feedback_values:
+    type: object
+    default: {}
+    description: >-
+      Ratings already stored for the OPEN thread, keyed by message id, each `like` or
+      `dislike` — the block's own vocabulary, as `on_feedback` reports it.
+
+      The chat block persists no rating, so without this a reload or a thread switch
+      shows every message unrated even where the app recorded it, which reads as a lost
+      write rather than a display gap. Storing remains the app's job; this only hands
+      back what it stored. A rating clicked during the visit takes precedence, so the
+      thumb still responds immediately.
+
+      Rebuild it for the thread being opened — `on_thread_change` is the seam for that.
   on_feedback:
     type: array
     default: []

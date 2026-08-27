@@ -179,6 +179,17 @@ on_feedback:
           _event: rating
 ```
 
+Recording it is only half of it. The chat block persists no rating, so a reload or a
+thread switch shows the message unrated again even though the app stored it. Hand back
+what you stored through `feedback_values`, keyed by message id and in the block's own
+`like`/`dislike` vocabulary — and rebuild it for the thread being opened, which is what
+`on_thread_change` is for:
+
+```yaml
+feedback_values:
+  _state: stored_ratings_for_thread
+```
+
 A quota gate, for contrast, refuses the send outright:
 
 ```yaml

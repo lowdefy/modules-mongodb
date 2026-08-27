@@ -43,6 +43,10 @@ properties:
     _state: ai_conversation_id
   messages:
     _state: ai_messages
+  # Passed through unchanged: on_feedback reports the block's own vocabulary, so the
+  # seam stays transparent both ways rather than translating for one consumer.
+  feedbackValues:
+    _module.var: feedback_values
   # The module's one domain seam: whatever the app wants the agent to know
   # about the page, read fresh on every message send.
   sharedState:
