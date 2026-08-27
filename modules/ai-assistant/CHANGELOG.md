@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 0.33.0
+
 ## 0.32.1
 
 ### Patch Changes
