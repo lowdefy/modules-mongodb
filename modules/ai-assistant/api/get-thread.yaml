@@ -27,6 +27,27 @@ routine:
         projection:
           _id: 0
           messages: 1
+  # Opening a thread IS the signal that it is the active one, so the stamp rides the
+  # load rather than needing its own endpoint and its own round trip. Read-then-write
+  # on purpose: get-active-thread sorts on this, and without it "resume where I left
+  # off" can only fall back to the last thread that was WRITTEN to.
+  # disableNoMatchError: a thread has no stored row until its first message is saved,
+  # so opening one that was minted and never sent must not throw.
+  - id: stamp_opened
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: ai_assistant_threads
+    properties:
+      disableNoMatchError: true
+      filter:
+        conversationId:
+          _payload: conversationId
+        user_id:
+          _user: id
+      update:
+        $set:
+          last_opened:
+            _date: now
   - :return:
       messages:
         _if_none:

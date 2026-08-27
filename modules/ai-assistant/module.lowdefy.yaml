@@ -150,6 +150,24 @@ vars:
       Actions run when the user rates a message, on the chat block's onFeedback. Only
       reachable when the feedback action is enabled through `message_display`; leaving
       this empty while enabling that control renders a button that does nothing.
+  on_thread_change:
+    type: array
+    default: []
+    description: >-
+      Actions run whenever the ACTIVE thread changes by a user action — opening one
+      from the thread list, or starting a new chat. Not run by `enter`: a page splices
+      its own actions after `enter` directly, and firing both would run them twice on
+      the first visit.
+
+      For anything the consumer derives from the open conversation and renders outside
+      the chat — a references panel, filters keyed to the current answer. Without it
+      such state is built once on mount and then silently belongs to the wrong thread
+      the moment the user switches, which reads as stale data rather than as missing
+      data.
+
+      Read the new thread from `_state: ai_conversation_id`, which is committed before
+      these actions run. Not from the event: the two call sites deliver different ones
+      (a thread-list click, a new-chat button press), and only the state is common.
   on_link_click:
     # Null rather than [] like the other on_* seams, because this one is TESTED
     # rather than passed straight through: null is the only value that reliably
@@ -244,7 +262,9 @@ exports:
     - id: list-threads
       description: List the session user's threads for one scope, newest first
     - id: get-thread
-      description: Load one thread's stored messages
+      description: Load one thread's stored messages, and mark it the active one
+    - id: get-active-thread
+      description: Load the thread the user last opened in a scope, for resuming
     - id: rename-thread
       description: Rename a thread
     - id: delete-thread
@@ -260,6 +280,7 @@ api:
   - _ref: api/save-thread.yaml
   - _ref: api/list-threads.yaml
   - _ref: api/get-thread.yaml
+  - _ref: api/get-active-thread.yaml
   - _ref: api/rename-thread.yaml
   - _ref: api/delete-thread.yaml
   - _ref: api/title-thread.yaml

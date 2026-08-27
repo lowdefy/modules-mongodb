@@ -133,7 +133,7 @@ onMount:
         component: enter
 ```
 
-Clearing `ai_conversation_id` is the whole mechanism: `enter` treats a null id as a first entry and resumes the most recent thread in the new scope.
+Clearing `ai_conversation_id` is the whole mechanism: `enter` treats a null id as a first entry and resumes the thread last opened in the new scope.
 
 ## Titles
 
@@ -159,6 +159,7 @@ The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` 
 | `on_user_message` | `onUserMessage` | The app's own record of what was asked. Runs after the module has persisted the thread, so a thread id is already stored by this point. |
 | `on_data_part` | `onDataPart` | Custom data parts the agent streams. Filter on the part type yourself; every part arrives here. |
 | `on_feedback` | `onFeedback` | Ratings from the feedback control. |
+| `on_thread_change` | — | The active thread changed by a user action: a thread opened from the list, or a new chat started. Not fired by `enter`, which a page splices its own actions after directly. Re-derive anything you render outside the chat from the open conversation; read the new thread from `ai_conversation_id`, not the event. |
 | `on_link_click` | `onLinkClick` | A link clicked inside a message, as `{ href, text }`. Open an in-app target in place instead of navigating out of the conversation. Wiring it turns interception on for the whole message, so an href you do not recognise navigates nowhere — handle the fall-through. Modified and non-primary clicks are never delivered, so open-in-new-tab keeps working. |
 
 Each event brings its own `_event` payload from the chat block, and they do not agree on field names — `onBeforeSend` gives you `{ text, files, messages, switches }`, so a rule about what the user typed reads `_event: text`, not `content`. Reading a field the event does not carry yields null silently, which in a `skip` reads as "skip this action" — a gate written against the wrong field does not error, it just never fires. Worth a check against the block's reference when writing one.
@@ -206,10 +207,14 @@ on_before_send:
 
   | Index | Serves |
   |---|---|
-  | `{ scope: 1, user_id: 1, updated: -1 }` | `list-threads`, which matches on scope and the session user and sorts newest-first. The whole index, in order — a partial one still sorts in memory. |
+  | `{ scope: 1, user_id: 1, updated: -1 }` | `list-threads`, which matches on scope and the session user and sorts newest-first. The whole index, in order — a partial one still sorts in memory. Also serves the match stage of `get-active-thread`. |
   | `{ conversationId: 1, user_id: 1 }` | the other four endpoints: get, save, rename, delete all filter on exactly this pair. |
 
   The thread list is capped at 200 per (scope, user), newest first. The threads view searches client-side over that window, so a user holding more chats than the cap in one scope cannot reach the older ones — an app expecting that needs pagination in `list-threads`, not a larger cap.
+
+  `get-active-thread` sorts on `last_opened` falling back to `updated`, which is a computed
+  field and so sorts in memory — over one user's threads in one scope, which is the same
+  bounded set the list is capped at.
 
   A **TTL index** is also worth having where threads should expire — the module stamps
   `updated` on every save, so `{ updated: 1 }` with `expireAfterSeconds` set to your retention

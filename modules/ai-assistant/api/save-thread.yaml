@@ -55,6 +55,11 @@ routine:
             _module.var: page_id
           updated:
             _date: now
+          # Sending in a thread makes it the active one too, and this is where a freshly
+          # minted thread first gets a row at all — without it a new chat would not be
+          # resumable until the user happened to re-open it.
+          last_opened:
+            _date: now
         # Every label the thread has touched, as a set — one entry however many
         # messages happened on it. Read back as the thread card's chips.
         # $each with an empty list when no tag was sent: a bare $addToSet of the
