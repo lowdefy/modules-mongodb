@@ -41,12 +41,12 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@lowdefy/block-utils": "5.5.1 || 0.0.0-experimental-20260814133003",
-    "@lowdefy/blocks-antd": "5.5.1 || 0.0.0-experimental-20260814133003",
-    "@lowdefy/blocks-basic": "5.5.1 || 0.0.0-experimental-20260814133003",
+    "@lowdefy/block-utils": "5.5.1 || 0.0.0-experimental-20260814133003 || 0.0.0-experimental-20260827105525",
+    "@lowdefy/blocks-antd": "5.5.1 || 0.0.0-experimental-20260814133003 || 0.0.0-experimental-20260827105525",
+    "@lowdefy/blocks-basic": "5.5.1 || 0.0.0-experimental-20260814133003 || 0.0.0-experimental-20260827105525",
     "@lowdefy/community-plugin-mongodb": "^3",
-    "@lowdefy/helpers": "5.5.1 || 0.0.0-experimental-20260814133003",
-    "@lowdefy/nunjucks": "5.5.1 || 0.0.0-experimental-20260814133003",
+    "@lowdefy/helpers": "5.5.1 || 0.0.0-experimental-20260814133003 || 0.0.0-experimental-20260827105525",
+    "@lowdefy/nunjucks": "5.5.1 || 0.0.0-experimental-20260814133003 || 0.0.0-experimental-20260827105525",
     "@lowdefy/plugin-aws": ">=4.0.0",
     "antd": ">=6",
     "mongodb": "^6",

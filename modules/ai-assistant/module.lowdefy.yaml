@@ -150,6 +150,23 @@ vars:
       Actions run when the user rates a message, on the chat block's onFeedback. Only
       reachable when the feedback action is enabled through `message_display`; leaving
       this empty while enabling that control renders a button that does nothing.
+  on_link_click:
+    type: array
+    default: []
+    description: >-
+      Actions run when the user clicks a link inside a message, on the chat block's
+      onLinkClick. The event carries `href` and `text`. Use it to open an in-app target in
+      place — a record, a document modal — instead of navigating out of the conversation.
+
+      The block suppresses the anchor's own navigation only when this is wired, so leaving
+      it empty changes nothing: links navigate as before. The key is dropped from the block
+      config entirely rather than passed as an empty array, because the block decides
+      whether to intercept from the event's presence, and an empty array is still present.
+
+      Modified and non-primary clicks are never delivered here (ctrl/cmd/shift/alt, middle
+      click), so open-in-new-tab keeps working on a link the app otherwise handles. An href
+      the app does not recognise still needs handling — nothing navigates once interception
+      is on.
 
   tag:
     default: null
