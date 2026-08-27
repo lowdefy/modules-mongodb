@@ -93,8 +93,9 @@ slots:
             properties:
               title: New chat
               placement: bottom
-              # Portaled to <body>: must clear the panel's z-index (1100) or the
-              # tooltip renders behind the panel it belongs to.
+              # Every Tooltip in this panel needs this: they portal to <body>, so
+              # without clearing the panel's z-index (1100) the tooltip renders
+              # behind the panel it belongs to.
               zIndex: 1200
             blocks:
               - id: ai_new_chat_button
@@ -120,8 +121,6 @@ slots:
             properties:
               title: Manage chats
               placement: bottom
-              # Portaled to <body>: must clear the panel's z-index (1100) or the
-              # tooltip renders behind the panel it belongs to.
               zIndex: 1200
             blocks:
               - id: ai_manage_chats_button
@@ -147,8 +146,6 @@ slots:
             properties:
               title: Back to chat
               placement: bottom
-              # Portaled to <body>: must clear the panel's z-index (1100) or the
-              # tooltip renders behind the panel it belongs to.
               zIndex: 1200
             blocks:
               - id: ai_back_to_chat_button
@@ -218,8 +215,6 @@ slots:
             properties:
               title: Delete chat
               placement: bottomRight
-              # Portaled to <body>: must clear the panel's z-index (1100) or the
-              # tooltip renders behind the panel it belongs to.
               zIndex: 1200
             blocks:
               - id: ai_delete_button

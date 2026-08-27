@@ -39,6 +39,16 @@ blocks:
               - _state: ai_threads
               - []
         - 0
+    # Replaces ListSelector's default border-plus-ring: a box-shadow ring keeps the
+    # radius it is given rather than growing to stay concentric, so the two curves fall
+    # out of phase and every corner reads thick and faceted. One outline, tinted fill.
+    # `.selected` is a declared css slot (meta.cssKeys) — dot-prefixed under `style`,
+    # since `properties.styles` is never read and a plain nested object fails the build.
+    style:
+      .selected:
+        borderColor: var(--ant-color-primary-border)
+        backgroundColor: var(--ant-color-primary-bg)
+        boxShadow: none
     properties:
       data:
         _state: ai_threads

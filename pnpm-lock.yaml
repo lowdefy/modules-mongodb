@@ -114,22 +114,22 @@ importers:
         specifier: ^3.0.133
         version: 3.0.179(zod@4.4.3)
       '@lowdefy/block-utils':
-        specifier: 5.5.1 || 0.0.0-experimental-20260814133003
+        specifier: 5.5.1 || 0.0.0-experimental-20260814133003 || 0.0.0-experimental-20260827105525
         version: 0.0.0-experimental-20260814133003(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd':
-        specifier: 5.5.1 || 0.0.0-experimental-20260814133003
+        specifier: 5.5.1 || 0.0.0-experimental-20260814133003 || 0.0.0-experimental-20260827105525
         version: 0.0.0-experimental-20260814133003(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-basic':
-        specifier: 5.5.1 || 0.0.0-experimental-20260814133003
+        specifier: 5.5.1 || 0.0.0-experimental-20260814133003 || 0.0.0-experimental-20260827105525
         version: 0.0.0-experimental-20260814133003(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-mongodb':
         specifier: ^3
         version: 3.0.0(next@15.5.22(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/helpers':
-        specifier: 5.5.1 || 0.0.0-experimental-20260814133003
-        version: 0.0.0-experimental-20260814133003
+        specifier: 5.5.1 || 0.0.0-experimental-20260814133003 || 0.0.0-experimental-20260827105525
+        version: 5.5.1
       '@lowdefy/nunjucks':
-        specifier: 5.5.1 || 0.0.0-experimental-20260814133003
+        specifier: 5.5.1 || 0.0.0-experimental-20260814133003 || 0.0.0-experimental-20260827105525
         version: 0.0.0-experimental-20260814133003
       '@lowdefy/plugin-aws':
         specifier: '>=4.0.0'

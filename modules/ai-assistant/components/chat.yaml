@@ -77,24 +77,60 @@ properties:
         thinkingMessageRotationInterval: 3500
       - _module.var: message_display
 events:
-  # Consumer-owned seams. The module wires none of these itself: they exist so an app
-  # can gate a send (a quota cap), read a streamed data part, or handle the feedback
-  # control it turns on through `message_display`, without forking the shell. The
-  # module's own chain lives on onMessageComplete below and is not overridable — thread
-  # persistence and titling are the module's job, not the consumer's.
-  onBeforeSend:
-    _module.var: on_before_send
-  # Persist on SEND as well as on completion. Saving only when the reply lands means a
-  # thread the client leaves mid-stream was never created at all, and the question goes
-  # with it — there is nothing to resume, and nothing to tell them why. Saving here makes
-  # the worst case a thread missing its answer rather than a thread that never existed.
-  #
-  # The module's own steps run before the consumer's, and are not overridable: persistence
-  # is the module's job. `messages` from this event already includes the message just sent.
-  onUserMessage:
-    _build.array.concat:
-      - - _ref: actions/stash-provisional-title.yaml
-        - id: ai_persist_on_send
+  _build.object.assign:
+    - # Consumer-owned seams. The module wires none of these itself: they exist so an app
+      # can gate a send (a quota cap), read a streamed data part, or handle the feedback
+      # control it turns on through `message_display`, without forking the shell. The
+      # module's own chain lives on onMessageComplete below and is not overridable — thread
+      # persistence and titling are the module's job, not the consumer's.
+      onBeforeSend:
+        _module.var: on_before_send
+      # Persist on SEND as well as on completion. Saving only when the reply lands means a
+      # thread the client leaves mid-stream was never created at all, and the question goes
+      # with it — there is nothing to resume, and nothing to tell them why. Saving here makes
+      # the worst case a thread missing its answer rather than a thread that never existed.
+      #
+      # The module's own steps run before the consumer's, and are not overridable: persistence
+      # is the module's job. `messages` from this event already includes the message just sent.
+      onUserMessage:
+        _build.array.concat:
+          - - _ref: actions/stash-provisional-title.yaml
+            - id: ai_persist_on_send
+              type: CallAPI
+              skip:
+                _eq:
+                  - _state: ai_conversation_id
+                  - null
+              params:
+                endpointId:
+                  _module.endpointId: save-thread
+                payload:
+                  conversationId:
+                    _state: ai_conversation_id
+                  messages:
+                    _event: messages
+                  title:
+                    _state: ai_title
+                  scope:
+                    _module.var: scope
+                  tag:
+                    _module.var: tag
+          - _module.var: on_user_message
+      onDataPart:
+        _module.var: on_data_part
+
+      # Persist the full history (incl. the assistant reply) from the client:
+      # this is where the thread title and the thread-list update also live,
+      # so all three stay in one place.
+      onMessageComplete:
+        - id: ai_save_messages
+          type: SetState
+          params:
+            ai_messages:
+              _event: messages
+        - _ref: actions/stash-provisional-title.yaml
+
+        - id: ai_persist_thread
           type: CallAPI
           skip:
             _eq:
@@ -114,181 +150,164 @@ events:
                 _module.var: scope
               tag:
                 _module.var: tag
-      - _module.var: on_user_message
-  onDataPart:
-    _module.var: on_data_part
 
-  # Persist the full history (incl. the assistant reply) from the client:
-  # this is where the thread title and the thread-list update also live,
-  # so all three stay in one place.
-  onMessageComplete:
-    - id: ai_save_messages
-      type: SetState
-      params:
-        ai_messages:
-          _event: messages
-    - _ref: actions/stash-provisional-title.yaml
+        # Relabel the thread in the list (prepend if not present yet).
+        - id: ai_patch_thread_title
+          type: SetState
+          params:
+            ai_threads:
+              _js:
+                fn: |
+                  const id = state('ai_conversation_id');
+                  const title = state('ai_title') || 'New chat';
+                  const tag = args.tag;
+                  const list = state('ai_threads') || [];
+                  // Union this turn's tag into the thread's set so the chip
+                  // shows immediately, before the next refetch (the server
+                  // $addToSet is the source of truth on reload).
+                  const withTag = (tags) => {
+                    const set = tags || [];
+                    return tag && !set.includes(tag) ? [...set, tag] : set;
+                  };
+                  if (list.some((c) => c.key === id)) {
+                    return list.map((c) =>
+                      c.key === id ? { ...c, label: title, tags: withTag(c.tags) } : c);
+                  }
+                  return [{ key: id, label: title, tags: withTag([]) }, ...list];
+                args:
+                  tag:
+                    _module.var: tag
 
-    - id: ai_persist_thread
-      type: CallAPI
-      skip:
-        _eq:
-          - _state: ai_conversation_id
-          - null
-      params:
-        endpointId:
-          _module.endpointId: save-thread
-        payload:
-          conversationId:
-            _state: ai_conversation_id
-          messages:
-            _event: messages
-          title:
-            _state: ai_title
-          scope:
-            _module.var: scope
-          tag:
-            _module.var: tag
-
-    # Relabel the thread in the list (prepend if not present yet).
-    - id: ai_patch_thread_title
-      type: SetState
-      params:
-        ai_threads:
-          _js:
-            fn: |
-              const id = state('ai_conversation_id');
-              const title = state('ai_title') || 'New chat';
-              const tag = args.tag;
-              const list = state('ai_threads') || [];
-              // Union this turn's tag into the thread's set so the chip
-              // shows immediately, before the next refetch (the server
-              // $addToSet is the source of truth on reload).
-              const withTag = (tags) => {
-                const set = tags || [];
-                return tag && !set.includes(tag) ? [...set, tag] : set;
-              };
-              if (list.some((c) => c.key === id)) {
-                return list.map((c) =>
-                  c.key === id ? { ...c, label: title, tags: withTag(c.tags) } : c);
-              }
-              return [{ key: id, label: title, tags: withTag([]) }, ...list];
-            args:
-              tag:
-                _module.var: tag
-
-    # ── Name the thread from the FIRST EXCHANGE ─────────────────────
-    # Prefer this to an agent's own generateTitle, which sees only the
-    # opening message: where a panel offers suggestion prompts, that
-    # message is one of a handful of canned strings, so every thread
-    # ends up named after the question rather than the subject. The
-    # subject is in the reply.
-    #
-    # First turn only. Re-titling every turn would rename a thread under
-    # the user as it went on — including one they had renamed by hand.
-    - id: ai_extract_first_exchange
-      type: SetState
-      skip:
-        _not:
-          _module.var: generate_titles
-      params:
-        # Which thread this titling pass is FOR — the apply step below checks
-        # it, so a slow titling call can never label whatever thread the user
-        # has switched to (or minted) in the meantime.
-        ai_titling_for:
-          _state: ai_conversation_id
-        ai_first_exchange:
-          _js:
-            fn: |
-              const msgs = event('messages') || [];
-              const textOf = (m) => {
-                if (!m) return '';
-                const parts = (m.parts || [])
-                  .filter((p) => p.type === 'text')
-                  .map((p) => p.text)
-                  .join(' ');
-                const raw = parts || (typeof m.content === 'string' ? m.content : '');
-                return String(raw || '').replace(/\s+/g, ' ').trim();
-              };
-              const assistants = msgs.filter((m) => m.role === 'assistant');
-              // Second assistant message onwards = not the first turn.
-              if (assistants.length !== 1) return null;
-              const prompt = textOf(msgs.find((m) => m.role === 'user'));
-              const reply = textOf(assistants[0]);
-              if (!prompt && !reply) return null;
-              return { prompt, reply };
-            args: {}
-
-    - id: ai_generate_title
-      type: CallAPI
-      skip:
-        _or:
-          - _not:
+        # ── Name the thread from the FIRST EXCHANGE ─────────────────────
+        # Prefer this to an agent's own generateTitle, which sees only the
+        # opening message: where a panel offers suggestion prompts, that
+        # message is one of a handful of canned strings, so every thread
+        # ends up named after the question rather than the subject. The
+        # subject is in the reply.
+        #
+        # First turn only. Re-titling every turn would rename a thread under
+        # the user as it went on — including one they had renamed by hand.
+        - id: ai_extract_first_exchange
+          type: SetState
+          skip:
+            _not:
               _module.var: generate_titles
-          - _eq:
-              - _state: ai_first_exchange
-              - null
-          - _eq:
-              - _state: ai_conversation_id
-              - null
-      params:
-        endpointId:
-          _module.endpointId: title-thread
-        payload:
-          conversationId:
-            _state: ai_conversation_id
-          prompt:
-            _state: ai_first_exchange.prompt
-          reply:
-            _state: ai_first_exchange.reply
-          context:
-            _module.var: title_context
+          params:
+            # Which thread this titling pass is FOR — the apply step below checks
+            # it, so a slow titling call can never label whatever thread the user
+            # has switched to (or minted) in the meantime.
+            ai_titling_for:
+              _state: ai_conversation_id
+            ai_first_exchange:
+              _js:
+                fn: |
+                  const msgs = event('messages') || [];
+                  const textOf = (m) => {
+                    if (!m) return '';
+                    const parts = (m.parts || [])
+                      .filter((p) => p.type === 'text')
+                      .map((p) => p.text)
+                      .join(' ');
+                    const raw = parts || (typeof m.content === 'string' ? m.content : '');
+                    return String(raw || '').replace(/\s+/g, ' ').trim();
+                  };
+                  const assistants = msgs.filter((m) => m.role === 'assistant');
+                  // Second assistant message onwards = not the first turn.
+                  if (assistants.length !== 1) return null;
+                  const prompt = textOf(msgs.find((m) => m.role === 'user'));
+                  const reply = textOf(assistants[0]);
+                  if (!prompt && !reply) return null;
+                  return { prompt, reply };
+                args: {}
 
-    # The endpoint already persisted the title (and returns null on any
-    # failure), so this only mirrors it into the UI. On null nothing is
-    # touched and the provisional title stands.
-    - id: ai_apply_generated_title
-      type: SetState
-      skip:
-        _or:
-          # The _if_none is load-bearing, not decoration: when the step
-          # above was SKIPPED the _actions lookup is UNDEFINED, and
-          # undefined != null — so a bare _eq would fail to skip and then
-          # write undefined over a perfectly good title.
-          - _eq:
-              - _if_none:
-                  - _actions: ai_generate_title.response.response.title
+        - id: ai_generate_title
+          type: CallAPI
+          skip:
+            _or:
+              - _not:
+                  _module.var: generate_titles
+              - _eq:
+                  - _state: ai_first_exchange
                   - null
-              - null
-          # The titling call takes seconds; if the user switched threads (or
-          # minted a new one) meanwhile, applying would write the OLD thread's
-          # title into the new thread's header and list entry. The server has
-          # already persisted the title against the right conversationId, so
-          # skipping only forgoes the cosmetic in-place update.
-          - _ne:
-              - _state: ai_titling_for
-              - _state: ai_conversation_id
-      params:
-        ai_title:
-          _actions: ai_generate_title.response.response.title
-        ai_threads:
-          _js:
-            fn: |
-              const id = state('ai_conversation_id');
-              return (state('ai_threads') || []).map(
-                (c) => (c.key === id ? { ...c, label: args.title } : c));
-            args:
-              title:
-                _actions: ai_generate_title.response.response.title
+              - _eq:
+                  - _state: ai_conversation_id
+                  - null
+          params:
+            endpointId:
+              _module.endpointId: title-thread
+            payload:
+              conversationId:
+                _state: ai_conversation_id
+              prompt:
+                _state: ai_first_exchange.prompt
+              reply:
+                _state: ai_first_exchange.reply
+              context:
+                _module.var: title_context
 
-  onFeedback:
-    _module.var: on_feedback
+        # The endpoint already persisted the title (and returns null on any
+        # failure), so this only mirrors it into the UI. On null nothing is
+        # touched and the provisional title stands.
+        - id: ai_apply_generated_title
+          type: SetState
+          skip:
+            _or:
+              # The _if_none is load-bearing, not decoration: when the step
+              # above was SKIPPED the _actions lookup is UNDEFINED, and
+              # undefined != null — so a bare _eq would fail to skip and then
+              # write undefined over a perfectly good title.
+              - _eq:
+                  - _if_none:
+                      - _actions: ai_generate_title.response.response.title
+                      - null
+                  - null
+              # The titling call takes seconds; if the user switched threads (or
+              # minted a new one) meanwhile, applying would write the OLD thread's
+              # title into the new thread's header and list entry. The server has
+              # already persisted the title against the right conversationId, so
+              # skipping only forgoes the cosmetic in-place update.
+              - _ne:
+                  - _state: ai_titling_for
+                  - _state: ai_conversation_id
+          params:
+            ai_title:
+              _actions: ai_generate_title.response.response.title
+            ai_threads:
+              _js:
+                fn: |
+                  const id = state('ai_conversation_id');
+                  return (state('ai_threads') || []).map(
+                    (c) => (c.key === id ? { ...c, label: args.title } : c));
+                args:
+                  title:
+                    _actions: ai_generate_title.response.response.title
 
-  onError:
-    - id: ai_show_chat_error
-      type: DisplayMessage
-      params:
-        status: error
-        duration: 6
-        content:
-          _event: message
+      onFeedback:
+        _module.var: on_feedback
+
+      onError:
+        - id: ai_show_chat_error
+          type: DisplayMessage
+          params:
+            status: error
+            duration: 6
+            content:
+              _event: message
+
+
+    # onLinkClick is added ONLY when the consumer supplies actions. The block turns link
+    # interception on whenever the event is present (`Boolean(events?.onLinkClick)`), and an
+    # event declared with an empty action array is still present — so wiring this
+    # unconditionally would swallow every link click in every consuming app and do nothing
+    # with it. A dropped key leaves the block's own anchor behaviour untouched.
+    - _build.if:
+        test:
+          _build.ne:
+            - _build.if_none:
+                - _module.var: on_link_click
+                - null
+            - null
+        then:
+          onLinkClick:
+            _module.var: on_link_click
+        else: {}
