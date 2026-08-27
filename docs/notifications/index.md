@@ -26,7 +26,7 @@ Add `notifications` when an app needs an in-app notification bell and inbox. The
 # lowdefy.yaml
 modules:
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.32.1"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.33.0"
     vars:
       app_name: my-app
       send_routine:

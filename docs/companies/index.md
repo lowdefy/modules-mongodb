@@ -31,7 +31,7 @@ Add `companies` when an app needs to manage an organisation/account list — CRM
 # lowdefy.yaml
 modules:
   - id: companies
-    source: "github:lowdefy/modules-mongodb/modules/companies@v0.32.1"
+    source: "github:lowdefy/modules-mongodb/modules/companies@v0.33.0"
     vars:
       app_name: my-app
       label: Company
