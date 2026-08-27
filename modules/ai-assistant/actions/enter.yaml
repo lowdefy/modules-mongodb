@@ -2,8 +2,8 @@
 # the `enter` component) the embedded shell's onInit splice. On the FIRST entry
 # (no active thread yet): mint a thread id SYNCHRONOUSLY first, so the chat has
 # a conversationId before the user can possibly send, then fetch this user's
-# threads for the scope and resume the most recent. Re-entering with a thread
-# already active is a no-op.
+# threads for the scope and resume the one they last opened. Re-entering with a
+# thread already active is a no-op.
 #
 # ai_loading covers the whole chain. Without it the panel showed the empty-thread
 # welcome screen — "start a new chat", with its suggestion prompts — for as long
@@ -66,31 +66,31 @@
         - _actions: ai_fetch_threads.response.response
         - []
 
-# Existing threads → resume the most recent instead of the blank one just minted.
+# Existing threads → resume the last one OPENED instead of the blank one just
+# minted. Asked of get-active-thread rather than read off ai_threads.0: that list
+# is sorted `updated: -1`, which only moves on send, so resuming from it dropped
+# the user into the thread they last SENT in rather than the one they were last
+# reading.
+#
 # Load-then-commit, same reasoning as select-thread.yaml: a failed fetch aborts
 # the chain with the freshly minted blank thread still active (usable), instead
 # of leaving the recent thread active and EMPTY — where the next send would
 # overwrite its stored history via save-thread's full $set.
-- id: ai_load_recent_messages
+- id: ai_load_active_thread
   type: CallAPI
   skip:
-    _or:
-      - _ne:
-          - _state: ai_seed_needed
-          - true
-      - _eq:
-          - _array.length:
-              _if_none:
-                - _state: ai_threads
-                - []
-          - 0
+    _ne:
+      - _state: ai_seed_needed
+      - true
   params:
     endpointId:
-      _module.endpointId: get-thread
+      _module.endpointId: get-active-thread
     payload:
-      conversationId:
-        _state: ai_threads.0.key
+      scope:
+        _module.var: scope
 
+# Skips on the returned id, not on the thread list: a user with no threads gets
+# null here and keeps the blank thread just minted.
 - id: ai_resume_recent
   type: SetState
   skip:
@@ -99,21 +99,20 @@
           - _state: ai_seed_needed
           - true
       - _eq:
-          - _array.length:
-              _if_none:
-                - _state: ai_threads
-                - []
-          - 0
+          - _if_none:
+              - _actions: ai_load_active_thread.response.response.conversationId
+              - null
+          - null
   params:
     ai_conversation_id:
-      _state: ai_threads.0.key
+      _actions: ai_load_active_thread.response.response.conversationId
     ai_messages:
       _if_none:
-        - _actions: ai_load_recent_messages.response.response.messages
+        - _actions: ai_load_active_thread.response.response.messages
         - []
     ai_title:
       _if_none:
-        - _state: ai_threads.0.label
+        - _actions: ai_load_active_thread.response.response.title
         - New chat
 
 # Unconditional, and LAST: every skip above is on the seeding condition, so this

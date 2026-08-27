@@ -10,26 +10,29 @@
 # ONE click opens. Reads the key/label off the EVENT rather than the selection
 # state, so this never depends on whether the ListSelector has committed its own
 # selection write before the click handler runs.
-- id: ai_load_thread_messages
-  type: CallAPI
-  params:
-    endpointId:
-      _module.endpointId: get-thread
-    payload:
-      conversationId:
-        _event: item.key
+_build.array.concat:
+  - - id: ai_load_thread_messages
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: get-thread
+        payload:
+          conversationId:
+            _event: item.key
 
-- id: ai_set_active_thread
-  type: SetState
-  params:
-    ai_conversation_id:
-      _event: item.key
-    ai_messages:
-      _if_none:
-        - _actions: ai_load_thread_messages.response.response.messages
-        - []
-    ai_title:
-      _if_none:
-        - _event: item.label
-        - New chat
-    ai_view: chat
+    - id: ai_set_active_thread
+      type: SetState
+      params:
+        ai_conversation_id:
+          _event: item.key
+        ai_messages:
+          _if_none:
+            - _actions: ai_load_thread_messages.response.response.messages
+            - []
+        ai_title:
+          _if_none:
+            - _event: item.label
+            - New chat
+        ai_view: chat
+  # Runs LAST, so a consumer reading ai_conversation_id sees the thread just opened.
+  - _module.var: on_thread_change

@@ -1,0 +1,71 @@
+id: get-active-thread
+type: Api
+description: >
+  Returns the thread the user most recently OPENED in one scope, with its
+  messages — what `enter` resumes on a fresh visit.
+
+  Separate from list-threads deliberately. Resuming used to take the first item
+  of that list, which is sorted `updated: -1`, and `updated` only moves when
+  save-thread writes — on send. Merely opening a thread left it untouched, so a
+  reload dropped the user into whichever thread they last SENT in rather than
+  the one they were last reading. Ordering the sidebar and choosing what to
+  resume are two different questions; this endpoint answers the second so the
+  list is free to stay in send order.
+
+  Ownership-scoped to the session user, like every other thread endpoint.
+payloadSchema:
+  type: object
+  required:
+    - scope
+  additionalProperties: false
+  properties:
+    scope:
+      type: string
+routine:
+  - id: load_active_thread
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: ai_assistant_threads
+    properties:
+      pipeline:
+        - $match:
+            scope:
+              _payload: scope
+            user_id:
+              _user: id
+            conversationId:
+              $exists: true
+              $ne: null
+        # Threads written before last_opened existed have never been stamped, so they
+        # fall back to `updated` rather than sorting below every stamped thread.
+        - $addFields:
+            active_at:
+              $ifNull:
+                - "$last_opened"
+                - "$updated"
+        - $sort:
+            active_at: -1
+        - $limit: 1
+        - $project:
+            _id: 0
+            conversationId: 1
+            title: 1
+            messages:
+              $ifNull:
+                - "$messages"
+                - []
+  - :return:
+      # Null when the user has no threads in this scope — `enter` reads this to tell
+      # "resume the last one" from "keep the blank thread just minted".
+      conversationId:
+        _if_none:
+          - _step: load_active_thread.0.conversationId
+          - null
+      title:
+        _if_none:
+          - _step: load_active_thread.0.title
+          - null
+      messages:
+        _if_none:
+          - _step: load_active_thread.0.messages
+          - []
