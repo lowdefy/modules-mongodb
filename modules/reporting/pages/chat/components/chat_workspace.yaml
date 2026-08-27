@@ -3,19 +3,25 @@
 # the chat page so that page stays a thin layout wrapper; every block, id, state
 # key and event here is unchanged from when this was the page root.
 #
-# Pinned to the viewport height so the page never scrolls as a whole. The height
-# itself comes from the chat column, which carries an explicit 100dvh (see the
-# chat block): Lowdefy's intermediate flex-row Area is height:auto, so a root
+# Pinned to the content area's height so the page never scrolls as a whole. That
+# height is --layout-content-height, published by layout's page component under
+# `full_bleed` — the viewport less whatever chrome this page_type puts above the
+# content. The 100dvh fallback covers a page not wrapped by that component; it is
+# only correct where nothing sits above the content, which is why the figure is
+# layout's to give rather than ours to assume.
+#
+# The height itself comes from the chat column, which carries it explicitly (see
+# the chat block): Lowdefy's intermediate flex-row Area is height:auto, so a root
 # height can't cascade down through it — the tallest child has to set a real
-# viewport height for the row to fill the screen. With that, the side panels and
-# collapsed strips stretch to the same bottom edge, and each scrolls its own
-# overflow internally. This cap keeps the whole workspace from scrolling past
-# 100dvh; the layout page renders it with zero content padding (content_style) so
-# it reaches the sider and viewport edges.
+# height for the row to fill the area. With that, the side panels and collapsed
+# strips stretch to the same bottom edge, and each scrolls its own overflow
+# internally. This cap keeps the whole workspace from scrolling past it; the
+# layout page renders it with zero content padding (full_bleed) so it reaches the
+# sider and viewport edges.
 id: chat_layout
 type: Box
 style:
-  height: 100dvh
+  height: var(--layout-content-height, 100dvh)
   # height caps the box but does not clip; hidden stops the page itself from
   # scrolling, forcing each side panel to scroll its own overflow instead.
   overflow: hidden
@@ -107,10 +113,11 @@ blocks:
       border: 1px solid var(--ant-color-border-secondary)
       # A definite height for the scroll to bite on. In this height:auto flex
       # row `overflowY` alone can't constrain the column — the panel grows to
-      # its content and pushes the row past the viewport. Capped at 100dvh (a
-      # self-determining viewport unit; a % collapses through the auto Area), a
-      # long conversation list scrolls inside the column instead.
-      maxHeight: 100dvh
+      # its content and pushes the row past the viewport. Capped at the content
+      # area's height (self-determining, like the viewport unit it resolves to; a
+      # % collapses through the auto Area), a long conversation list scrolls
+      # inside the column instead.
+      maxHeight: var(--layout-content-height, 100dvh)
       overflowY: auto
     blocks:
       - id: conversations_header
@@ -301,16 +308,18 @@ blocks:
             _state: conversationId
           messages:
             _state: messages
-          # An explicit viewport height, not 100% — this is the column that
-          # drives the row's height. Lowdefy inserts a flex-row Area between a Box
-          # and its children that is height:auto, so a 100% here (or on any
-          # column) resolves against that auto Area and collapses to content
-          # height — which is what left every panel cut off mid-page. A viewport
-          # unit is self-determining: the block sizes its own div to 100dvh
-          # regardless of the ancestor chain, becoming the tallest child so the
-          # row grows to the full viewport and the side panels/strips stretch to
-          # the same top and bottom edge (align defaults to stretch). This full-
-          # bleed page carries no app header, so 100dvh needs no chrome subtracted.
+          # An explicit height, not 100% — this is the column that drives the
+          # row's height. Lowdefy inserts a flex-row Area between a Box and its
+          # children that is height:auto, so a 100% here (or on any column)
+          # resolves against that auto Area and collapses to content height —
+          # which is what left every panel cut off mid-page. This value is
+          # self-determining: it resolves to a viewport-relative length, so the
+          # block sizes its own div regardless of the ancestor chain, becoming the
+          # tallest child so the row grows to fill the content area and the side
+          # panels/strips stretch to the same top and bottom edge (align defaults
+          # to stretch). The chrome above the content is already subtracted by
+          # whoever published the variable — assuming there is none is what put
+          # the composer below the fold under a header bar.
           # The composer stays anchored at the bottom, and the welcome renders
           # in-flow as the transcript's leading item (see the `welcome` prop
           # below), so there is no empty-state box stacked above and no first-send
@@ -318,7 +327,7 @@ blocks:
           #
           # maxWidth widened from the original ~62ch measure on request. antd's
           # body fontSize is 14px; this caps the transcript column and composer.
-          height: 100dvh
+          height: var(--layout-content-height, 100dvh)
           maxWidth: 620
           # The two-track teaching empty state, rendered by the block inside the
           # message scroll area: it is the transcript's leading item, so it
@@ -462,9 +471,10 @@ blocks:
       # A definite height for the scroll to bite on. In this height:auto flex
       # row `overflowY` alone can't constrain the column — a tall stack of
       # results grows the panel and pushes the row past the viewport. Capped at
-      # 100dvh (a self-determining viewport unit; a % collapses through the auto
-      # Area), the stack scrolls inside this column instead.
-      maxHeight: 100dvh
+      # the content area's height (self-determining, like the viewport unit it
+      # resolves to; a % collapses through the auto Area), the stack scrolls
+      # inside this column instead.
+      maxHeight: var(--layout-content-height, 100dvh)
       overflowY: auto
     blocks:
       - id: results_header

@@ -6,29 +6,28 @@
 # Wrapped in layout's page so the chat sits in the host app's chrome (sider,
 # menu, profile) like every other module — but rendered full-bleed: hide_title
 # drops the title bar, no breadcrumbs are passed (so no breadcrumb bar), and
-# content_style zeroes the content padding so the three-column workspace fills
-# the viewport edge-to-edge beside the full-height sider. The workspace and its
-# own 100dvh height live in components/chat_workspace.yaml.
+# full_bleed zeroes the content padding so the three-column workspace fills the
+# content area edge-to-edge. How much of the viewport that area is depends on the
+# host's page_type, which only the layout module knows, so it publishes the figure
+# as --layout-content-height and the workspace sizes off it. See
+# components/chat_workspace.yaml.
 _ref:
   module: layout
   component: page
   vars:
     id: chat
     hide_title: true
-    # The workspace is pinned to 100dvh, so an app footer below it would push the
-    # page past the viewport and reintroduce a scrollbar. This is the one page
-    # whose content is the whole viewport, so it opts out of the footer.
+    # The workspace fills the content area, so an app footer below it would push
+    # the page past the viewport and reintroduce a scrollbar. This is the one page
+    # whose content is the whole content area, so it opts out of the footer.
     hide_footer: true
     content_width: "100%"
+    # Zeroes the content padding, publishes --layout-content-height, and applies
+    # whatever top offset this page_type's chrome needs. All three are layout's to
+    # decide: hard-coding them here assumed the full-height sider, and under a
+    # header bar it put the chat input below the fold.
+    full_bleed: true
     content_style:
-      padding: 0
-      # PageSidebarLayout reserves a ~40px band at the top of the content — its
-      # breadcrumb, or (with no crumbs, as here) a spacer div in its place. There
-      # is no prop to drop it, so pull the whole content up over it: the 100dvh
-      # workspace then fills the viewport with no page scroll. 40px is the lg
-      # `py-5` spacer, and the chat only runs at lg+ (its three columns need the
-      # width), so the offset matches in practice.
-      marginTop: -40px
       # The workspace panels use bg-layout (grey), and the sider layout's own
       # background is bg-layout too — so on a transparent content area they blend
       # into it. A container background behind the transparent centre restores the
