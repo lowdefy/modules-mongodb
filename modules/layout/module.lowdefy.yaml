@@ -146,7 +146,15 @@ vars:
 exports:
   components:
     - id: page
-      description: Page layout wrapper with title bar, header/sider slots, menu, and content area. Selects PageHeaderMenu, PageSiderMenu, or PageSidebarLayout based on the page_type var.
+      description: >-
+        Page layout wrapper with title bar, header/sider slots, menu, and content
+        area. Selects PageHeaderMenu, PageSiderMenu, or PageSidebarLayout based on
+        the page_type var. Pass `full_bleed: true` for a page whose content is the
+        whole content area: it zeroes the content padding, applies the top offset
+        the selected page type needs, and publishes the remaining height as the
+        CSS custom property `--layout-content-height` for the content to size off
+        (read it with a `100dvh` fallback). A full-bleed page will usually also
+        want `hide_title: true`, `hide_footer: true` and no breadcrumbs.
     - id: card
       description: Standard content card layout with optional back button and footer
     - id: floating-actions

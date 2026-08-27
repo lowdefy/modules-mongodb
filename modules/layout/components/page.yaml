@@ -104,13 +104,53 @@ style:
     _module.var: logo.style
   # Override the content area's own style — the page block defaults it to
   # `padding: 0 40px 40px 40px`. Merged over that default, so `{}` (the default)
-  # is a no-op and a full-bleed page passes `content_style: { padding: 0 }` to
-  # let its content reach the sider and viewport edges. Dot-prefixed to target the
-  # `content` CSS slot key (a bare `content:` reads as a raw CSS property).
+  # is a no-op. Dot-prefixed to target the `content` CSS slot key (a bare
+  # `content:` reads as a raw CSS property).
+  #
+  # `full_bleed` is applied UNDER content_style, so a page can still add its own
+  # background or override an offset, and the two are independent: a page may set
+  # content_style without asking for full bleed.
   .content:
-    _var:
-      key: content_style
-      default: {}
+    _build.object.assign:
+      - _build.if:
+          test:
+            _var:
+              key: full_bleed
+              default: false
+          then:
+            padding: 0
+            # Only this module knows how much chrome it puts above the content, so
+            # it publishes the remaining height rather than leaving each full-bleed
+            # page to guess. Custom properties inherit, so content nested any depth
+            # down can size itself off it — which is what lets a page fill the
+            # viewport without a page scrollbar. Consumers should read it with a
+            # 100dvh fallback, for a page not wrapped by this component.
+            --layout-content-height:
+              _build.if:
+                test:
+                  _build.eq:
+                    - _var:
+                        key: page_type
+                        default:
+                          _module.var: page_type
+                    - sidebar
+                then: 100dvh
+                # PageHeaderMenu and PageSiderMenu both put a header bar above the
+                # content; PageSidebarLayout does not (its sider is full-height).
+                # The header block itself sizes off this same variable, so the two
+                # cannot drift apart.
+                else: calc(100dvh - var(--ant-layout-header-height, 64px))
+            # All three page blocks reserve a band at the top of the content —
+            # the breadcrumb, or an empty spacer div in its place when there are
+            # no crumbs (`py-1.5 sm:py-1.5 md:py-2.5 lg:py-5`, so 12/20/40px).
+            # There is no prop to drop it, so a full-bleed page is pulled up over
+            # it. Hard-coded to the lg value: a full-bleed page is a
+            # whole-viewport layout, which needs the width to work at all.
+            marginTop: -40px
+          else: {}
+      - _var:
+          key: content_style
+          default: {}
 requests:
   _build.array.concat:
     - _build.if:
