@@ -155,18 +155,12 @@ vars:
     default: []
     description: >-
       Actions run when the user clicks a link inside a message, on the chat block's
-      onLinkClick. The event carries `href` and `text`. Use it to open an in-app target in
-      place — a record, a document modal — instead of navigating out of the conversation.
-
-      The block suppresses the anchor's own navigation only when this is wired, so leaving
-      it empty changes nothing: links navigate as before. The key is dropped from the block
-      config entirely rather than passed as an empty array, because the block decides
-      whether to intercept from the event's presence, and an empty array is still present.
-
-      Modified and non-primary clicks are never delivered here (ctrl/cmd/shift/alt, middle
-      click), so open-in-new-tab keeps working on a link the app otherwise handles. An href
-      the app does not recognise still needs handling — nothing navigates once interception
-      is on.
+      onLinkClick. The event carries `href` and `text`. Use it to open an in-app target
+      in place instead of navigating out of the conversation. Leaving this empty changes
+      nothing: the anchor's own navigation is suppressed only when actions are supplied.
+      Once wired, interception covers the whole message — an href you do not recognise
+      navigates nowhere, so handle the fall-through. Modified and non-primary clicks are
+      never delivered, so open-in-new-tab keeps working.
 
   tag:
     default: null
