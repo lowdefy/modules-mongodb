@@ -151,8 +151,10 @@ vars:
       reachable when the feedback action is enabled through `message_display`; leaving
       this empty while enabling that control renders a button that does nothing.
   on_link_click:
-    type: array
-    default: []
+    # Null rather than [] like the other on_* seams, because this one is TESTED
+    # rather than passed straight through: null is the only value that reliably
+    # means "not wired" across both the array and the { try, catch } event forms.
+    default: null
     description: >-
       Actions run when the user clicks a link inside a message, on the chat block's
       onLinkClick. The event carries `href` and `text`. Use it to open an in-app target
@@ -160,7 +162,8 @@ vars:
       nothing: the anchor's own navigation is suppressed only when actions are supplied.
       Once wired, interception covers the whole message — an href you do not recognise
       navigates nowhere, so handle the fall-through. Modified and non-primary clicks are
-      never delivered, so open-in-new-tab keeps working.
+      never delivered, so open-in-new-tab keeps working. Takes either a plain action
+      array or the full `{ try, catch }` event form.
 
   tag:
     default: null

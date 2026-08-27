@@ -302,12 +302,11 @@ events:
     # with it. A dropped key leaves the block's own anchor behaviour untouched.
     - _build.if:
         test:
-          _build.gt:
-            - _build.array.length:
-                _build.if_none:
-                  - _module.var: on_link_click
-                  - []
-            - 0
+          _build.ne:
+            - _build.if_none:
+                - _module.var: on_link_click
+                - null
+            - null
         then:
           onLinkClick:
             _module.var: on_link_click
