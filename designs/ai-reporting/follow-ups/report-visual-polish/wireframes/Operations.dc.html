@@ -88,6 +88,8 @@
     table.grid td { padding: 6px 12px; border-bottom: 1px solid #e4e9e6; }
     table.grid tr:last-child td { border-bottom: none; }
     table.grid .num { text-align: right; font-variant-numeric: tabular-nums; }
+    table.grid td:nth-child(2) { color: #151c1a; font-weight: 500; }
+    table.grid .sev { color: #a3591c; font-weight: 600; }
     .axis { font: 9.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7873; }
     .vlab { font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #3d4a46; }
   </style>
@@ -99,7 +101,7 @@
     <div style="display: flex; flex-direction: column; gap: 5px">
       <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #6b7873">AI Reporting · Saved report</span>
       <div style="display: flex; align-items: center; gap: 12px">
-        <h1 style="margin: 0; font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 26px; line-height: 1.1; letter-spacing: -0.01em">Activity Operations — This Week</h1>
+        <h1 style="margin: 0; font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 28px; line-height: 1.1; letter-spacing: -0.014em">Activity Operations — This Week</h1>
         <span class="mono" style="font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; border: 1px solid rgba(11, 122, 92, 0.4); background: #e2efea; color: #085f48">Shared</span>
       </div>
     </div>
@@ -143,11 +145,12 @@
     <div class="card" style="flex: 1 1 0; padding: 14px 16px 8px 16px; display: flex; flex-direction: column; gap: 8px">
       <span class="mini-title">Calls by day</span>
       <svg viewBox="0 0 300 150" width="100%" role="img" aria-label="Mini bar chart, calls per weekday, Monday highest at 31.">
-        <path d="M24 118 V42 Q24 38 28 38 H54 Q58 38 58 42 V118 Z" fill="#0b7a5c"></path>
-        <path d="M76 118 V49.7 Q76 45.7 80 45.7 H106 Q110 45.7 110 49.7 V118 Z" fill="#0b7a5c"></path>
-        <path d="M128 118 V60.1 Q128 56.1 132 56.1 H158 Q162 56.1 162 60.1 V118 Z" fill="#0b7a5c"></path>
-        <path d="M180 118 V65.2 Q180 61.2 184 61.2 H210 Q214 61.2 214 65.2 V118 Z" fill="#0b7a5c"></path>
-        <path d="M232 118 V80.7 Q232 76.7 236 76.7 H262 Q266 76.7 266 80.7 V118 Z" fill="#0b7a5c"></path>
+        <defs><linearGradient id="opsbarg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#129271"></stop><stop offset="1" stop-color="#0b6b52"></stop></linearGradient></defs>
+        <path d="M24 118 V42 Q24 38 28 38 H54 Q58 38 58 42 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M76 118 V49.7 Q76 45.7 80 45.7 H106 Q110 45.7 110 49.7 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M128 118 V60.1 Q128 56.1 132 56.1 H158 Q162 56.1 162 60.1 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M180 118 V65.2 Q180 61.2 184 61.2 H210 Q214 61.2 214 65.2 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M232 118 V80.7 Q232 76.7 236 76.7 H262 Q266 76.7 266 80.7 V118 Z" fill="url(#opsbarg)"></path>
         <line x1="16" y1="118" x2="284" y2="118" stroke="#d3dad6" stroke-width="1"></line>
         <text class="vlab" x="41" y="30" text-anchor="middle">31</text>
         <text class="axis" x="41" y="134" text-anchor="middle">Mon</text>
@@ -160,11 +163,11 @@
     <div class="card" style="flex: 1 1 0; padding: 14px 16px 8px 16px; display: flex; flex-direction: column; gap: 8px">
       <span class="mini-title">Emails by day</span>
       <svg viewBox="0 0 300 150" width="100%" role="img" aria-label="Mini bar chart, emails per weekday, Tuesday highest at 71.">
-        <path d="M24 118 V49.9 Q24 45.9 28 45.9 H54 Q58 45.9 58 49.9 V118 Z" fill="#0b7a5c"></path>
-        <path d="M76 118 V42 Q76 38 80 38 H106 Q110 38 110 42 V118 Z" fill="#0b7a5c"></path>
-        <path d="M128 118 V56.6 Q128 52.6 132 52.6 H158 Q162 52.6 162 56.6 V118 Z" fill="#0b7a5c"></path>
-        <path d="M180 118 V47.6 Q180 43.6 184 43.6 H210 Q214 43.6 214 47.6 V118 Z" fill="#0b7a5c"></path>
-        <path d="M232 118 V85.9 Q232 81.9 236 81.9 H262 Q266 81.9 266 85.9 V118 Z" fill="#0b7a5c"></path>
+        <path d="M24 118 V49.9 Q24 45.9 28 45.9 H54 Q58 45.9 58 49.9 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M76 118 V42 Q76 38 80 38 H106 Q110 38 110 42 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M128 118 V56.6 Q128 52.6 132 52.6 H158 Q162 52.6 162 56.6 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M180 118 V47.6 Q180 43.6 184 43.6 H210 Q214 43.6 214 47.6 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M232 118 V85.9 Q232 81.9 236 81.9 H262 Q266 81.9 266 85.9 V118 Z" fill="url(#opsbarg)"></path>
         <line x1="16" y1="118" x2="284" y2="118" stroke="#d3dad6" stroke-width="1"></line>
         <text class="vlab" x="93" y="30" text-anchor="middle">71</text>
         <text class="axis" x="41" y="134" text-anchor="middle">Mon</text>
@@ -177,11 +180,11 @@
     <div class="card" style="flex: 1 1 0; padding: 14px 16px 8px 16px; display: flex; flex-direction: column; gap: 8px">
       <span class="mini-title">Meetings by day</span>
       <svg viewBox="0 0 300 150" width="100%" role="img" aria-label="Mini bar chart, meetings per weekday, Thursday highest at 11.">
-        <path d="M24 118 V78.4 Q24 74.4 28 74.4 H54 Q58 74.4 58 78.4 V118 Z" fill="#0b7a5c"></path>
-        <path d="M76 118 V56.5 Q76 52.5 80 52.5 H106 Q110 52.5 110 56.5 V118 Z" fill="#0b7a5c"></path>
-        <path d="M128 118 V63.8 Q128 59.8 132 59.8 H158 Q162 59.8 162 63.8 V118 Z" fill="#0b7a5c"></path>
-        <path d="M180 118 V42 Q180 38 184 38 H210 Q214 38 214 42 V118 Z" fill="#0b7a5c"></path>
-        <path d="M232 118 V92.9 Q232 88.9 236 88.9 H262 Q266 88.9 266 92.9 V118 Z" fill="#0b7a5c"></path>
+        <path d="M24 118 V78.4 Q24 74.4 28 74.4 H54 Q58 74.4 58 78.4 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M76 118 V56.5 Q76 52.5 80 52.5 H106 Q110 52.5 110 56.5 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M128 118 V63.8 Q128 59.8 132 59.8 H158 Q162 59.8 162 63.8 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M180 118 V42 Q180 38 184 38 H210 Q214 38 214 42 V118 Z" fill="url(#opsbarg)"></path>
+        <path d="M232 118 V92.9 Q232 88.9 236 88.9 H262 Q266 88.9 266 92.9 V118 Z" fill="url(#opsbarg)"></path>
         <line x1="16" y1="118" x2="284" y2="118" stroke="#d3dad6" stroke-width="1"></line>
         <text class="vlab" x="197" y="30" text-anchor="middle">11</text>
         <text class="axis" x="41" y="134" text-anchor="middle">Mon</text>
@@ -207,13 +210,13 @@
         <tr><th>Due</th><th>Deal</th><th>Company</th><th>Owner</th><th>Type</th><th style="text-align: right">Days overdue</th><th style="text-align: right">Amount</th></tr>
       </thead>
       <tbody>
-        <tr><td>Aug 14</td><td>Platform renewal + seats</td><td>Nimbus Logistics</td><td>M. Okafor</td><td>Call</td><td class="num">14</td><td class="num">$412,000.00</td></tr>
-        <tr><td>Aug 16</td><td>Analytics add-on</td><td>Coretta Health</td><td>M. Okafor</td><td>Email</td><td class="num">12</td><td class="num">$187,000.00</td></tr>
-        <tr><td>Aug 17</td><td>Rollout, EU region</td><td>Harbor &amp; Lane</td><td>J. Reyes</td><td>Meeting</td><td class="num">11</td><td class="num">$268,400.00</td></tr>
-        <tr><td>Aug 19</td><td>Support tier upgrade</td><td>Amberline Freight</td><td>A. Silva</td><td>Call</td><td class="num">9</td><td class="num">$74,900.00</td></tr>
-        <tr><td>Aug 20</td><td>Workflow migration</td><td>Quill &amp; Prairie</td><td>A. Silva</td><td>Email</td><td class="num">8</td><td class="num">$98,300.00</td></tr>
-        <tr><td>Aug 20</td><td>Pilot conversion</td><td>Statler Mills</td><td>T. Ngata</td><td>Call</td><td class="num">8</td><td class="num">$52,000.00</td></tr>
-        <tr><td>Aug 21</td><td>Team expansion</td><td>Bright Foundry</td><td>A. Silva</td><td>Meeting</td><td class="num">7</td><td class="num">$156,750.00</td></tr>
+        <tr><td>Aug 14</td><td>Platform renewal + seats</td><td>Nimbus Logistics</td><td>M. Okafor</td><td>Call</td><td class="num sev">14</td><td class="num">$412,000.00</td></tr>
+        <tr><td>Aug 16</td><td>Analytics add-on</td><td>Coretta Health</td><td>M. Okafor</td><td>Email</td><td class="num sev">12</td><td class="num">$187,000.00</td></tr>
+        <tr><td>Aug 17</td><td>Rollout, EU region</td><td>Harbor &amp; Lane</td><td>J. Reyes</td><td>Meeting</td><td class="num sev">11</td><td class="num">$268,400.00</td></tr>
+        <tr><td>Aug 19</td><td>Support tier upgrade</td><td>Amberline Freight</td><td>A. Silva</td><td>Call</td><td class="num sev">9</td><td class="num">$74,900.00</td></tr>
+        <tr><td>Aug 20</td><td>Workflow migration</td><td>Quill &amp; Prairie</td><td>A. Silva</td><td>Email</td><td class="num sev">8</td><td class="num">$98,300.00</td></tr>
+        <tr><td>Aug 20</td><td>Pilot conversion</td><td>Statler Mills</td><td>T. Ngata</td><td>Call</td><td class="num sev">8</td><td class="num">$52,000.00</td></tr>
+        <tr><td>Aug 21</td><td>Team expansion</td><td>Bright Foundry</td><td>A. Silva</td><td>Meeting</td><td class="num sev">7</td><td class="num">$156,750.00</td></tr>
         <tr><td>Aug 22</td><td>Multi-year platform</td><td>Fielder Group</td><td>J. Reyes</td><td>Email</td><td class="num">6</td><td class="num">$140,000.00</td></tr>
         <tr><td>Aug 24</td><td>Seat true-up</td><td>Larkspur Media</td><td>T. Ngata</td><td>Call</td><td class="num">4</td><td class="num">$31,200.00</td></tr>
         <tr><td>Aug 24</td><td>Onboarding services</td><td>Verity Build Co.</td><td>M. Okafor</td><td>Email</td><td class="num">4</td><td class="num">$28,000.00</td></tr>

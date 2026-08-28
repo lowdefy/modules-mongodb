@@ -138,6 +138,7 @@
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
+    table.grid td:first-child { color: #151c1a; font-weight: 500; }
     .axis { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7873; }
     .vlab { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #3d4a46; }
     .slab { font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #3d4a46; }
@@ -149,7 +150,7 @@
   <header style="display: flex; flex-direction: column; gap: 8px">
     <span class="mono" style="font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #6b7873">AI Reporting · Saved report</span>
     <div style="display: flex; align-items: center; gap: 14px">
-      <h1 style="margin: 0; font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 32px; line-height: 1.1; letter-spacing: -0.012em">Pipeline Overview — Q3 2026</h1>
+      <h1 style="margin: 0; font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 36px; line-height: 1.08; letter-spacing: -0.018em">Pipeline Overview — Q3 2026</h1>
       <span class="mono" style="font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; border: 1px solid rgba(11, 122, 92, 0.4); background: #e2efea; color: #085f48">Shared</span>
       <span style="display: inline-flex; margin-left: auto; gap: 14px; align-items: center">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" role="img" aria-label="Favourited"><path d="M10 2.5l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L2.8 7.8l5-.7L10 2.5z" fill="#b0722a" stroke="#b0722a" stroke-width="1.2" stroke-linejoin="round"></path></svg>
@@ -157,6 +158,7 @@
       </span>
     </div>
     <p style="margin: 0; max-width: 70ch; color: #3d4a46; font-size: 15px">Open pipeline health and won revenue for the quarter. Sections re-query when a filter changes; numbers resolve fresh on every open.</p>
+    <div style="height: 2px; width: 148px; margin-top: 4px; border-radius: 1px; background: linear-gradient(90deg, #0b7a5c, rgba(11, 122, 92, 0))"></div>
   </header>
 
   <!-- ── Filter row (max 3 per row) ────────────────────────────────── -->
@@ -182,22 +184,34 @@
   <div style="display: flex; gap: 16px">
     <div class="kpi">
       <span class="kpi-label">Open pipeline</span>
-      <span class="kpi-value">$4.21M</span>
-      <span class="kpi-cap"><b>+12%</b> vs Q2</span>
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 10px">
+        <span class="kpi-value">$4.21M</span>
+        <svg width="84" height="30" viewBox="0 0 84 30" role="img" aria-label="Sparkline, rising"><polyline points="0,22 14,20 28,23 42,16 56,14 70,9 84,6" fill="none" stroke="#0b7a5c" stroke-width="1.5" opacity="0.8"></polyline><circle cx="84" cy="6" r="2.2" fill="#0b7a5c"></circle></svg>
+      </div>
+      <span class="kpi-cap"><svg width="9" height="9" viewBox="0 0 9 9"><path d="M4.5 1 L8.5 8 H0.5 Z" fill="#085f48"></path></svg> <b>+12%</b> vs Q2</span>
     </div>
     <div class="kpi">
       <span class="kpi-label">Won this quarter</span>
-      <span class="kpi-value">$1.38M</span>
-      <span class="kpi-cap"><b>+34%</b> vs Q2</span>
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 10px">
+        <span class="kpi-value">$1.38M</span>
+        <svg width="84" height="30" viewBox="0 0 84 30" role="img" aria-label="Sparkline, rising"><polyline points="0,24 14,21 28,19 42,17 56,11 70,8 84,4" fill="none" stroke="#0b7a5c" stroke-width="1.5" opacity="0.8"></polyline><circle cx="84" cy="4" r="2.2" fill="#0b7a5c"></circle></svg>
+      </div>
+      <span class="kpi-cap"><svg width="9" height="9" viewBox="0 0 9 9"><path d="M4.5 1 L8.5 8 H0.5 Z" fill="#085f48"></path></svg> <b>+34%</b> vs Q2</span>
     </div>
     <div class="kpi">
       <span class="kpi-label">Win rate</span>
-      <span class="kpi-value">34%</span>
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 10px">
+        <span class="kpi-value">34%</span>
+        <svg width="84" height="30" viewBox="0 0 84 30" role="img" aria-label="Sparkline, flat"><polyline points="0,15 14,16 28,14 42,15 56,13 70,14 84,13" fill="none" stroke="#6b7873" stroke-width="1.5" opacity="0.8"></polyline><circle cx="84" cy="13" r="2.2" fill="#6b7873"></circle></svg>
+      </div>
       <span class="kpi-cap">128 of 376 closed</span>
     </div>
     <div class="kpi">
       <span class="kpi-label">Avg deal size</span>
-      <span class="kpi-value">$10.8k</span>
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 10px">
+        <span class="kpi-value">$10.8k</span>
+        <svg width="84" height="30" viewBox="0 0 84 30" role="img" aria-label="Sparkline, drifting down"><polyline points="0,10 14,12 28,11 42,14 56,13 70,16 84,15" fill="none" stroke="#6b7873" stroke-width="1.5" opacity="0.8"></polyline><circle cx="84" cy="15" r="2.2" fill="#6b7873"></circle></svg>
+      </div>
       <span class="kpi-cap">won deals, this quarter</span>
     </div>
   </div>
@@ -211,18 +225,19 @@
         <span class="csv"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5 9 5.5M2 11h8" stroke="#6b7873" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>csv</span>
       </div>
       <svg viewBox="0 0 640 310" width="100%" role="img" aria-label="Bar chart: open pipeline value by stage, Qualified highest at 1.24 million dollars, descending to Legal at 150 thousand.">
+        <defs><linearGradient id="mainbarg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#129271"></stop><stop offset="1" stop-color="#0b6b52"></stop></linearGradient></defs>
         <line x1="40" y1="62" x2="628" y2="62" stroke="#e4e9e6" stroke-width="1"></line>
         <line x1="40" y1="127" x2="628" y2="127" stroke="#e4e9e6" stroke-width="1"></line>
         <line x1="40" y1="191" x2="628" y2="191" stroke="#e4e9e6" stroke-width="1"></line>
         <text class="axis" x="36" y="65" text-anchor="end">1.2M</text>
         <text class="axis" x="36" y="130" text-anchor="end">800k</text>
         <text class="axis" x="36" y="194" text-anchor="end">400k</text>
-        <path d="M56 256 V60 Q56 56 60 56 H116 Q120 56 120 60 V256 Z" fill="#0b7a5c"></path>
-        <path d="M152 256 V102 Q152 98 156 98 H212 Q216 98 216 102 V256 Z" fill="#0b7a5c"></path>
-        <path d="M248 256 V128 Q248 124 252 124 H308 Q312 124 312 128 V256 Z" fill="#0b7a5c"></path>
-        <path d="M344 256 V157 Q344 153 348 153 H404 Q408 153 408 157 V256 Z" fill="#0b7a5c"></path>
-        <path d="M440 256 V199 Q440 195 444 195 H500 Q504 195 504 199 V256 Z" fill="#0b7a5c"></path>
-        <path d="M536 256 V236 Q536 232 540 232 H596 Q600 232 600 236 V256 Z" fill="#0b7a5c"></path>
+        <path d="M56 256 V60 Q56 56 60 56 H116 Q120 56 120 60 V256 Z" fill="url(#mainbarg)"></path>
+        <path d="M152 256 V102 Q152 98 156 98 H212 Q216 98 216 102 V256 Z" fill="url(#mainbarg)"></path>
+        <path d="M248 256 V128 Q248 124 252 124 H308 Q312 124 312 128 V256 Z" fill="url(#mainbarg)"></path>
+        <path d="M344 256 V157 Q344 153 348 153 H404 Q408 153 408 157 V256 Z" fill="url(#mainbarg)"></path>
+        <path d="M440 256 V199 Q440 195 444 195 H500 Q504 195 504 199 V256 Z" fill="url(#mainbarg)"></path>
+        <path d="M536 256 V236 Q536 232 540 232 H596 Q600 232 600 236 V256 Z" fill="url(#mainbarg)"></path>
         <line x1="40" y1="256" x2="628" y2="256" stroke="#d3dad6" stroke-width="1"></line>
         <text class="vlab" x="88" y="46" text-anchor="middle">$1.24M</text>
         <text class="vlab" x="184" y="88" text-anchor="middle">$980k</text>
@@ -283,13 +298,14 @@
       <span class="csv" style="margin-left: 20px"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5 9 5.5M2 11h8" stroke="#6b7873" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>csv</span>
     </div>
     <svg viewBox="0 0 1080 280" width="100%" role="img" aria-label="Line chart, April to September: new-business revenue rises from 205 to 350 thousand dollars; expansion from 105 to 174 thousand.">
+      <defs><linearGradient id="mainareag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(11, 122, 92, 0.2)"></stop><stop offset="1" stop-color="rgba(11, 122, 92, 0)"></stop></linearGradient></defs>
       <line x1="46" y1="224" x2="960" y2="224" stroke="#d3dad6" stroke-width="1"></line>
       <line x1="46" y1="124" x2="960" y2="124" stroke="#e4e9e6" stroke-width="1"></line>
       <line x1="46" y1="24" x2="960" y2="24" stroke="#e4e9e6" stroke-width="1"></line>
       <text class="axis" x="40" y="227" text-anchor="end">0</text>
       <text class="axis" x="40" y="127" text-anchor="end">200k</text>
       <text class="axis" x="40" y="27" text-anchor="end">400k</text>
-      <path d="M46 121.5 L221 108 L396 100 L571 94 L746 71.5 L921 49 L921 224 L46 224 Z" fill="rgba(11, 122, 92, 0.07)"></path>
+      <path d="M46 121.5 L221 108 L396 100 L571 94 L746 71.5 L921 49 L921 224 L46 224 Z" fill="url(#mainareag)"></path>
       <path d="M46 121.5 L221 108 L396 100 L571 94 L746 71.5 L921 49" fill="none" stroke="#0b7a5c" stroke-width="2" stroke-linejoin="round"></path>
       <path d="M46 171.5 L221 164 L396 163 L571 153 L746 147.5 L921 137" fill="none" stroke="#8c5bb0" stroke-width="2" stroke-linejoin="round"></path>
       <circle cx="921" cy="49" r="4.5" fill="#0b7a5c" stroke="#fcfcfb" stroke-width="2"></circle>

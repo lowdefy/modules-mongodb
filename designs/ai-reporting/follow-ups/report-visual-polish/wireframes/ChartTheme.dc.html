@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; }
+    a { color: #0b7a5c; } a:hover { color: #085f48; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .card {
+      background: #fcfcfb;
+      border: 1px solid #d3dad6;
+      border-radius: 6px;
+      box-shadow: 0 14px 30px -26px rgba(10, 30, 24, 0.45);
+    }
+    .card-head {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 16px 20px 0 20px;
+    }
+    .card-title {
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: #151c1a;
+    }
+    .card-sub {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #6b7873;
+    }
+    .axis { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7873; }
+    .daxis { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #8b9994; }
+    .spec li {
+      margin: 0 0 10px 0;
+      font-size: 13.5px;
+      color: #3d4a46;
+      line-height: 1.5;
+    }
+    .spec li:last-child { margin-bottom: 0; }
+    .spec code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      background: #f4f7f5;
+      border: 1px solid #e4e9e6;
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: #151c1a;
+      white-space: nowrap;
+    }
+  </style>
+</helmet>
+<div style="width: 1240px; min-height: 1240px; background: #eef1ef; color: #151c1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, ui-sans-serif, sans-serif; font-size: 14px; line-height: 1.5; padding: 36px 40px 40px 40px; display: flex; flex-direction: column; gap: 20px">
+
+  <!-- ── Head ──────────────────────────────────────────────────────── -->
+  <header style="display: flex; flex-direction: column; gap: 8px">
+    <span class="mono" style="font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #6b7873">AI Reporting · Chart theme spec</span>
+    <h1 style="margin: 0; font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 32px; line-height: 1.1; letter-spacing: -0.015em">One chart language, two surfaces</h1>
+    <p style="margin: 0; max-width: 78ch; color: #3d4a46; font-size: 15px">The same compiled chart under the module palette, on the light report surface and a dark one. Both palettes pass the colorblind-separation, lightness-band and contrast checks against their surface.</p>
+    <div style="height: 2px; width: 148px; margin-top: 4px; border-radius: 1px; background: linear-gradient(90deg, #0b7a5c, rgba(11, 122, 92, 0))"></div>
+  </header>
+
+  <!-- ── Specimens ─────────────────────────────────────────────────── -->
+  <div style="display: flex; gap: 20px">
+    <div class="card" style="flex: 1 1 0; padding-bottom: 12px">
+      <div class="card-head">
+        <span class="card-title">Light surface</span>
+        <span class="card-sub">#fcfcfb</span>
+        <span style="display: inline-flex; gap: 14px; margin-left: auto; align-items: center; font-size: 12px; color: #3d4a46">
+          <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; background: #0b7a5c"></span>New Business</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; background: #8c5bb0"></span>Expansion</span>
+        </span>
+      </div>
+      <svg viewBox="0 0 520 260" width="100%" role="img" aria-label="Two-series line chart on a light surface, April to September.">
+        <defs><linearGradient id="thlareag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(11, 122, 92, 0.2)"></stop><stop offset="1" stop-color="rgba(11, 122, 92, 0)"></stop></linearGradient></defs>
+        <line x1="40" y1="210" x2="500" y2="210" stroke="#d3dad6" stroke-width="1"></line>
+        <line x1="40" y1="120" x2="500" y2="120" stroke="#e4e9e6" stroke-width="1"></line>
+        <line x1="40" y1="30" x2="500" y2="30" stroke="#e4e9e6" stroke-width="1"></line>
+        <text class="axis" x="34" y="123" text-anchor="end">200k</text>
+        <text class="axis" x="34" y="33" text-anchor="end">400k</text>
+        <path d="M40 117.8 L128 105.6 L216 98.4 L304 93 L392 72.8 L480 52.5 L480 210 L40 210 Z" fill="url(#thlareag)"></path>
+        <path d="M40 117.8 L128 105.6 L216 98.4 L304 93 L392 72.8 L480 52.5" fill="none" stroke="#0b7a5c" stroke-width="2" stroke-linejoin="round"></path>
+        <path d="M40 162.8 L128 156 L216 155.1 L304 146.1 L392 141.2 L480 131.7" fill="none" stroke="#8c5bb0" stroke-width="2" stroke-linejoin="round"></path>
+        <circle cx="480" cy="52.5" r="4.5" fill="#0b7a5c" stroke="#fcfcfb" stroke-width="2"></circle>
+        <circle cx="480" cy="131.7" r="4.5" fill="#8c5bb0" stroke="#fcfcfb" stroke-width="2"></circle>
+        <text class="axis" x="40" y="232" text-anchor="middle">Apr</text>
+        <text class="axis" x="128" y="232" text-anchor="middle">May</text>
+        <text class="axis" x="216" y="232" text-anchor="middle">Jun</text>
+        <text class="axis" x="304" y="232" text-anchor="middle">Jul</text>
+        <text class="axis" x="392" y="232" text-anchor="middle">Aug</text>
+        <text class="axis" x="480" y="232" text-anchor="middle">Sep</text>
+      </svg>
+    </div>
+    <div style="flex: 1 1 0; background: #191f1d; border: 1px solid #2d3532; border-radius: 6px; box-shadow: 0 14px 30px -26px rgba(0, 0, 0, 0.8); padding-bottom: 12px">
+      <div class="card-head">
+        <span style="font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-size: 17px; font-weight: 600; color: #e7ece9">Dark surface</span>
+        <span class="mono" style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #8b9994">#191f1d</span>
+        <span style="display: inline-flex; gap: 14px; margin-left: auto; align-items: center; font-size: 12px; color: #bcc7c2">
+          <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; background: #22a57f"></span>New Business</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; background: #a374cc"></span>Expansion</span>
+        </span>
+      </div>
+      <svg viewBox="0 0 520 260" width="100%" role="img" aria-label="The same two-series line chart on a dark surface.">
+        <defs><linearGradient id="thdareag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(34, 165, 127, 0.25)"></stop><stop offset="1" stop-color="rgba(34, 165, 127, 0)"></stop></linearGradient></defs>
+        <line x1="40" y1="210" x2="500" y2="210" stroke="#2d3532" stroke-width="1"></line>
+        <line x1="40" y1="120" x2="500" y2="120" stroke="#232a28" stroke-width="1"></line>
+        <line x1="40" y1="30" x2="500" y2="30" stroke="#232a28" stroke-width="1"></line>
+        <text class="daxis" x="34" y="123" text-anchor="end">200k</text>
+        <text class="daxis" x="34" y="33" text-anchor="end">400k</text>
+        <path d="M40 117.8 L128 105.6 L216 98.4 L304 93 L392 72.8 L480 52.5 L480 210 L40 210 Z" fill="url(#thdareag)"></path>
+        <path d="M40 117.8 L128 105.6 L216 98.4 L304 93 L392 72.8 L480 52.5" fill="none" stroke="#22a57f" stroke-width="2" stroke-linejoin="round"></path>
+        <path d="M40 162.8 L128 156 L216 155.1 L304 146.1 L392 141.2 L480 131.7" fill="none" stroke="#a374cc" stroke-width="2" stroke-linejoin="round"></path>
+        <circle cx="480" cy="52.5" r="4.5" fill="#22a57f" stroke="#191f1d" stroke-width="2"></circle>
+        <circle cx="480" cy="131.7" r="4.5" fill="#a374cc" stroke="#191f1d" stroke-width="2"></circle>
+        <text class="daxis" x="40" y="232" text-anchor="middle">Apr</text>
+        <text class="daxis" x="128" y="232" text-anchor="middle">May</text>
+        <text class="daxis" x="216" y="232" text-anchor="middle">Jun</text>
+        <text class="daxis" x="304" y="232" text-anchor="middle">Jul</text>
+        <text class="daxis" x="392" y="232" text-anchor="middle">Aug</text>
+        <text class="daxis" x="480" y="232" text-anchor="middle">Sep</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── The merge rule ────────────────────────────────────────────── -->
+  <div style="background: #f4f7f5; border: 1px solid #d3dad6; border-radius: 6px; padding: 14px 20px; font-size: 13.5px; color: #3d4a46">
+    <b style="color: #151c1a">The merge rule decides the split.</b> ECharts applies a registered theme <i>under</i> the option — anything the option pins wins. Flint's compiled option pins the stock palette (<span class="mono" style="font-size: 12px">color: ["#5470c6", …]</span>) and a per-series <span class="mono" style="font-size: 12px">itemStyle.color</span>, so the palette can only land in the server compile pass; the theme object carries what flint leaves unset.
+  </div>
+
+  <!-- ── Where each decision lives ─────────────────────────────────── -->
+  <div style="display: flex; gap: 20px; align-items: stretch">
+    <div class="card" style="flex: 1 1 0; padding: 18px 22px">
+      <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px">
+        <span class="card-title" style="font-size: 16px">Compiled into the option</span>
+        <span class="card-sub">server · buildFlintOption post-pass</span>
+      </div>
+      <ul class="spec" style="margin: 0; padding: 0 0 0 18px">
+        <li><code>color</code> — replace flint's pinned defaults with the module palette <code>#0b7a5c · #8c5bb0 · #b0722a · #3f6fae</code></li>
+        <li><code>series[].itemStyle.color</code> — delete, so the palette assigns by series order (color follows the entity)</li>
+        <li>bars: <code>itemStyle.borderRadius: [4, 4, 0, 0]</code> — rounded data-ends, square baseline</li>
+        <li>lines: <code>lineStyle.width: 2</code>, end-point symbol with a surface ring, <code>areaStyle</code> gradient on single-series lines</li>
+        <li>pie: <code>itemStyle: { borderRadius: 4, borderWidth: 2, borderColor: surface }</code> — the 2px slice gaps</li>
+      </ul>
+    </div>
+    <div class="card" style="flex: 1 1 0; padding: 18px 22px">
+      <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px">
+        <span class="card-title" style="font-size: 16px">Theme object</span>
+        <span class="card-sub">client · EChart properties.theme</span>
+      </div>
+      <ul class="spec" style="margin: 0; padding: 0 0 0 18px">
+        <li><code>textStyle.fontFamily</code> — the app's sans for axis labels, legend and tooltip text</li>
+        <li><code>categoryAxis</code> / <code>valueAxis</code> — axis lines in the rule token, split lines one step quieter, muted label ink</li>
+        <li><code>legend.textStyle</code> and <code>tooltip</code> — surface, hairline border, ink tokens</li>
+        <li><code>backgroundColor: transparent</code> — the section card owns the surface</li>
+        <li>one theme object, shared by every EChart the module renders: report sections, chat cards, the expand modal</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── Wiring ────────────────────────────────────────────────────── -->
+  <div class="card" style="padding: 18px 22px">
+    <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px">
+      <span class="card-title" style="font-size: 16px">Wiring</span>
+      <span class="card-sub">the EChart block registers a theme object per block — verified in blocks-echarts 5.5.1</span>
+    </div>
+    <pre class="mono" style="margin: 0; font-size: 12.5px; line-height: 1.6; color: #3d4a46; background: #f4f7f5; border: 1px solid #e4e9e6; border-radius: 5px; padding: 14px 16px; overflow-x: auto">- id: sections.$.chart
+  type: EChart
+  properties:
+    height: { _state: sections.$.height }
+    option: { _state: sections.$.option }   # palette + mark styling compiled server-side
+    theme:
+      _ref: defaults/chart_theme.yaml       # typography + axis chrome, one file for every chart</pre>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

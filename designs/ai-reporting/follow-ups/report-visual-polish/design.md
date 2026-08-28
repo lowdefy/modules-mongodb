@@ -47,6 +47,16 @@ at by designing against real wireframes rather than tweaking CSS in the dark.
   module vs. the `flint-chart` compiler vs. app theme tokens? A polish pass can
   only change what the module actually controls — needs mapping before the Fable
   pass, so proposals target the right layer.
+  **Resolved for charts** (verified against `@lowdefy/blocks-echarts` 5.5.1
+  source and a `flint-chart` 0.5.0 probe; see
+  [`wireframes/README.md`](wireframes/README.md)): the `EChart` block accepts
+  a full ECharts theme _object_ via `properties.theme` (it registers it per
+  block), but ECharts merges a theme under the option and flint pins the
+  stock palette plus per-series `itemStyle.color` — so palette and mark
+  styling must land in `buildFlintOption`'s existing post-pass, while a
+  shared theme object owns typography, axis chrome and tooltips across every
+  `EChart` the module renders. Non-chart styling (cards, KPI tiles, tables)
+  remains to be mapped.
 - **Layout responsiveness.** Do target layouts (KPI row, chart grid) need to
   reflow for narrow viewports, and does the current section renderer support
   that, or is it a straight vertical stack today?

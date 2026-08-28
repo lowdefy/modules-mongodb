@@ -18,6 +18,15 @@
       color: #3d4a46;
     }
     .prose b { color: #151c1a; font-weight: 600; }
+    .dropcap::first-letter {
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
+      font-size: 56px;
+      font-weight: 600;
+      float: left;
+      line-height: 0.82;
+      padding: 5px 10px 0 0;
+      color: #0b7a5c;
+    }
     .sect-label {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 10px;
@@ -61,14 +70,14 @@
     <header style="display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #d3dad6; padding-bottom: 28px">
       <span class="mono" style="font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #6b7873">AI Reporting · Saved report</span>
       <div style="display: flex; align-items: flex-start; gap: 14px">
-        <h1 style="margin: 0; font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 40px; line-height: 1.08; letter-spacing: -0.015em; max-width: 18ch">Q3 Business Review</h1>
+        <h1 style="margin: 0; font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 45px; line-height: 1.06; letter-spacing: -0.018em; max-width: 18ch">Q3 Business Review</h1>
         <span class="mono" style="margin-left: auto; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; border: 1px solid #d3dad6; background: #f4f7f5; color: #6b7873; white-space: nowrap">Private</span>
       </div>
       <span style="font-size: 13.5px; color: #6b7873">Composed by the reporting assistant · resolved Aug 28, 2026</span>
     </header>
 
     <!-- ── Markdown lede ───────────────────────────────────────────── -->
-    <p class="prose" style="font-size: 18px; line-height: 1.6">The quarter closed <b>ahead of plan</b>. Won revenue reached $1.38M against a $1.25M target, carried by two record months in August and September. Win rate held at 34% while average cycle time shortened by six days — the pipeline is converting faster, not just wider.</p>
+    <p class="prose dropcap" style="font-size: 18px; line-height: 1.6">The quarter closed <b>ahead of plan</b>. Won revenue reached $1.38M against a $1.25M target, carried by two record months in August and September. Win rate held at 34% while average cycle time shortened by six days — the pipeline is converting faster, not just wider.</p>
 
     <!-- ── Hero KPI ────────────────────────────────────────────────── -->
     <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 0; border-top: 1px solid #e4e9e6; border-bottom: 1px solid #e4e9e6">
@@ -82,12 +91,13 @@
       <span class="sect-label">Figure 1 · line</span>
       <span class="fig-title">Won Revenue by Month</span>
       <svg viewBox="0 0 720 250" width="100%" role="img" aria-label="Line chart, April to September: monthly won revenue rises from 310 to 524 thousand dollars.">
+        <defs><linearGradient id="narrareag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(11, 122, 92, 0.2)"></stop><stop offset="1" stop-color="rgba(11, 122, 92, 0)"></stop></linearGradient></defs>
         <line x1="40" y1="210" x2="700" y2="210" stroke="#d3dad6" stroke-width="1"></line>
         <line x1="40" y1="145.7" x2="700" y2="145.7" stroke="#e4e9e6" stroke-width="1"></line>
         <line x1="40" y1="81.4" x2="700" y2="81.4" stroke="#e4e9e6" stroke-width="1"></line>
         <text class="axis" x="34" y="148.7" text-anchor="end">200k</text>
         <text class="axis" x="34" y="84.4" text-anchor="end">400k</text>
-        <path d="M40 110.4 L164 96.9 L288 91.1 L412 80.8 L536 62.8 L660 41.6 L660 210 L40 210 Z" fill="rgba(11, 122, 92, 0.07)"></path>
+        <path d="M40 110.4 L164 96.9 L288 91.1 L412 80.8 L536 62.8 L660 41.6 L660 210 L40 210 Z" fill="url(#narrareag)"></path>
         <path d="M40 110.4 L164 96.9 L288 91.1 L412 80.8 L536 62.8 L660 41.6" fill="none" stroke="#0b7a5c" stroke-width="2" stroke-linejoin="round"></path>
         <circle cx="660" cy="41.6" r="4.5" fill="#0b7a5c" stroke="#fcfcfb" stroke-width="2"></circle>
         <text class="vlab" x="672" y="45">$524k</text>
@@ -122,14 +132,15 @@
       <span class="sect-label">Figure 2 · bar</span>
       <span class="fig-title">Win Rate by Segment</span>
       <svg viewBox="0 0 720 270" width="100%" role="img" aria-label="Bar chart: win rate by segment. Enterprise 41 percent, Mid-market 36, SMB 28, Self-serve 19.">
+        <defs><linearGradient id="narrbarg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#129271"></stop><stop offset="1" stop-color="#0b6b52"></stop></linearGradient></defs>
         <line x1="40" y1="139" x2="700" y2="139" stroke="#e4e9e6" stroke-width="1"></line>
         <line x1="40" y1="46" x2="700" y2="46" stroke="#e4e9e6" stroke-width="1"></line>
         <text class="axis" x="34" y="142" text-anchor="end">20%</text>
         <text class="axis" x="34" y="49" text-anchor="end">40%</text>
-        <path d="M76 232 V46 Q76 42 80 42 H164 Q168 42 168 46 V232 Z" fill="#0b7a5c"></path>
-        <path d="M242 232 V69 Q242 65 246 65 H330 Q334 65 334 69 V232 Z" fill="#0b7a5c"></path>
-        <path d="M408 232 V106 Q408 102 412 102 H496 Q500 102 500 106 V232 Z" fill="#0b7a5c"></path>
-        <path d="M574 232 V148 Q574 144 578 144 H662 Q666 144 666 148 V232 Z" fill="#0b7a5c"></path>
+        <path d="M76 232 V46 Q76 42 80 42 H164 Q168 42 168 46 V232 Z" fill="url(#narrbarg)"></path>
+        <path d="M242 232 V69 Q242 65 246 65 H330 Q334 65 334 69 V232 Z" fill="url(#narrbarg)"></path>
+        <path d="M408 232 V106 Q408 102 412 102 H496 Q500 102 500 106 V232 Z" fill="url(#narrbarg)"></path>
+        <path d="M574 232 V148 Q574 144 578 144 H662 Q666 144 666 148 V232 Z" fill="url(#narrbarg)"></path>
         <line x1="40" y1="232" x2="700" y2="232" stroke="#d3dad6" stroke-width="1"></line>
         <text class="vlab" x="122" y="32" text-anchor="middle">41%</text>
         <text class="vlab" x="288" y="55" text-anchor="middle">36%</text>
