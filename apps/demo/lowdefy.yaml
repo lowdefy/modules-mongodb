@@ -32,7 +32,7 @@ plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
   - name: "@lowdefy/connection-ai-gateway"
-    version: 5.5.1
+    version: 0.0.0-experimental-20260814133003
 
 auth:
   authPages:

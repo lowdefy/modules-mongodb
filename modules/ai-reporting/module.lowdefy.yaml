@@ -224,6 +224,14 @@ plugins:
     version: "^3"
   - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.35.0"
+  # The `ai` connection (AIGateway) and the reporting assistant (AIGatewayAgent)
+  # are both types from this package, so the module declares it rather than
+  # leaving the host app to know it needs it. Pinned exactly: 5.5.1's
+  # buildAgentTools keys agent tools by endpointId instead of the configured
+  # name, and a module-scoped endpoint id contains `/`, which the provider's
+  # tool-name pattern rejects with a 400 on every chat turn.
+  - name: "@lowdefy/connection-ai-gateway"
+    version: 0.0.0-experimental-20260814133003
 
 connections:
   - _ref: connections/reports-store.yaml
