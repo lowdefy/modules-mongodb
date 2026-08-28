@@ -14,10 +14,10 @@ Captured 2026-08-18, off `feat/reporting-open-engine`.
 2. **[Report-data MCP](./report-data-mcp/design.md)** — an MCP server that lets a
    user reference a saved report and pull its resolved data into their own agent,
    to build a presentation or anything else from it.
-3. **[Report interpretation section](./report-interpretation/design.md)** — an
-   on-demand, AI-generated "what this report is telling you" section the user can
-   refresh against the latest data, reflecting the report's currently-applied
-   filters so it describes the filtered slice, not the whole dataset.
+3. **Report interpretation section** — promoted 2026-08-28 to a settled design
+   at [../report-summary/design.md](../report-summary/design.md), reshaped from
+   an inline section into a header-button drawer. The filter-scope requirement
+   (describe the filtered slice, not the whole dataset) carried over unchanged.
 
 These do not contradict "build for concrete needs" — they are recorded as a
 backlog to pull from when a concrete need surfaces, not committed work.
