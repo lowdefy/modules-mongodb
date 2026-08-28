@@ -3,7 +3,7 @@
     { "file": "Main.dc.html", "title": "Dashboard — KPI band + chart grid", "x": 0, "y": 0, "w": 1240, "h": 1720 },
     { "file": "Narrative.dc.html", "title": "Narrative report — markdown-led", "x": 1360, "y": 0, "w": 980, "h": 2320 },
     { "file": "Operations.dc.html", "title": "Dense operational view", "x": 2460, "y": 0, "w": 1240, "h": 1400 },
-    { "file": "ChartTheme.dc.html", "title": "Chart theme — compiled + themed", "x": 0, "y": 2560, "w": 1240, "h": 1240 }
+    { "file": "ChartTheme.dc.html", "title": "Chart theme — compiled + themed", "x": 0, "y": 2560, "w": 1240, "h": 1340 }
   ],
   "annotations": [
     {
@@ -15,7 +15,7 @@
     },
     {
       "id": "note-dashboard",
-      "x": 620,
+      "x": 660,
       "y": -430,
       "w": 480,
       "text": "Dashboard: KPI band + chart grid.\nFilters dock in one row (max 3), the KPI band answers first, then a 7/5 chart row, a full-width trend, one table. Bars sort value-descending with direct value labels and rounded caps; the multi-series line carries a legend, end labels and a gradient area under the lead series. Proposed additions to today's renderer: side-by-side section widths (7/5 split), KPI delta captions, and KPI tile sparklines (each needs a small trend query) — all flagged for the design pass."
@@ -36,7 +36,7 @@
     },
     {
       "id": "note-theme",
-      "x": 1300,
+      "x": 1340,
       "y": 2560,
       "w": 520,
       "text": "Chart theme: where each styling decision lives.\nVerified against the real code: the Lowdefy EChart block accepts a full theme OBJECT (properties.theme — it calls echarts registerTheme per block), but ECharts merges a theme UNDER the option, and flint's compiled option pins the stock palette and per-series itemStyle.color. So: palette + mark styling land in buildFlintOption's existing post-pass (it already rewrites barWidth, pie radius, legend), and one shared theme object carries typography, axis chrome and tooltip styling for every EChart the module renders — report sections, chat cards, expand modal."
