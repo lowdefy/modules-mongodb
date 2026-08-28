@@ -1,5 +1,5 @@
 name: AI Chat Reporting
-version: 0.35.0
+version: 0.36.0
 description: >
   Chat to your data and generate saved, navigable reports. Ships a reporting
   agent chat surface, a constrained query engine over an app-supplied data
@@ -223,7 +223,7 @@ plugins:
   - name: "@lowdefy/community-plugin-mongodb"
     version: "^3"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.35.0"
+    version: "^0.36.0"
   # The `ai` connection (AIGateway) and the reporting assistant (AIGatewayAgent)
   # are both types from this package, so the module declares it rather than
   # leaving the host app to know it needs it. Pinned exactly: 5.5.1's
