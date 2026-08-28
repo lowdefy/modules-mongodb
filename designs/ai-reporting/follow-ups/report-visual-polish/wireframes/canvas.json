@@ -1,7 +1,7 @@
 {
   "artboards": [
     { "file": "Main.dc.html", "title": "Dashboard — KPI band + chart grid", "x": 0, "y": 0, "w": 1240, "h": 1720 },
-    { "file": "Narrative.dc.html", "title": "Narrative report — markdown-led", "x": 1360, "y": 0, "w": 980, "h": 2140 },
+    { "file": "Narrative.dc.html", "title": "Narrative report — markdown-led", "x": 1360, "y": 0, "w": 980, "h": 2320 },
     { "file": "Operations.dc.html", "title": "Dense operational view", "x": 2460, "y": 0, "w": 1240, "h": 1400 }
   ],
   "annotations": [
