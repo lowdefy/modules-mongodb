@@ -1,0 +1,240 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; }
+    a { color: #0b7a5c; } a:hover { color: #085f48; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .card {
+      background: #fcfcfb;
+      border: 1px solid #d3dad6;
+      border-radius: 6px;
+      box-shadow: 0 14px 30px -26px rgba(10, 30, 24, 0.45);
+    }
+    .filter-label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6b7873;
+    }
+    .control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 10px;
+      background: #fcfcfb;
+      border: 1px solid #d3dad6;
+      border-radius: 5px;
+      font-size: 13px;
+      color: #3d4a46;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      background: #e2efea;
+      color: #085f48;
+      border-radius: 3px;
+      padding: 1px 7px;
+      font-size: 12px;
+    }
+    .stat { display: flex; flex-direction: column; gap: 2px; flex: 1 1 0; padding: 0 22px; }
+    .stat + .stat { border-left: 1px solid #e4e9e6; }
+    .stat .lab {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 9.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6b7873;
+      white-space: nowrap;
+    }
+    .stat .val {
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
+      font-size: 26px;
+      font-weight: 600;
+      line-height: 1.1;
+      color: #151c1a;
+      font-variant-numeric: lining-nums;
+    }
+    .mini-title {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6b7873;
+    }
+    table.grid { width: 100%; border-collapse: collapse; font-size: 12.5px; color: #3d4a46; }
+    table.grid th {
+      text-align: left;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 9.5px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      font-weight: 500;
+      color: #6b7873;
+      background: #f4f7f5;
+      padding: 8px 12px;
+      border-bottom: 1px solid #d3dad6;
+      position: sticky;
+      top: 0;
+    }
+    table.grid td { padding: 6px 12px; border-bottom: 1px solid #e4e9e6; }
+    table.grid tr:last-child td { border-bottom: none; }
+    table.grid .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .axis { font: 9.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7873; }
+    .vlab { font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #3d4a46; }
+  </style>
+</helmet>
+<div style="width: 1240px; min-height: 1400px; background: #eef1ef; color: #151c1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, ui-sans-serif, sans-serif; font-size: 13.5px; line-height: 1.45; padding: 30px 36px 36px 36px; display: flex; flex-direction: column; gap: 16px">
+
+  <!-- ── Compact header + filters on one band ──────────────────────── -->
+  <header style="display: flex; align-items: flex-end; gap: 18px">
+    <div style="display: flex; flex-direction: column; gap: 5px">
+      <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #6b7873">AI Reporting · Saved report</span>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <h1 style="margin: 0; font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 26px; line-height: 1.1; letter-spacing: -0.01em">Activity Operations — This Week</h1>
+        <span class="mono" style="font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; border: 1px solid rgba(11, 122, 92, 0.4); background: #e2efea; color: #085f48">Shared</span>
+      </div>
+    </div>
+    <span style="display: inline-flex; margin-left: auto; gap: 14px; align-items: center; padding-bottom: 4px">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" role="img" aria-label="Favourite"><path d="M10 2.5l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L2.8 7.8l5-.7L10 2.5z" stroke="#6b7873" stroke-width="1.3" stroke-linejoin="round"></path></svg>
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" role="img" aria-label="Report menu"><circle cx="4.5" cy="10" r="1.6" fill="#6b7873"></circle><circle cx="10" cy="10" r="1.6" fill="#6b7873"></circle><circle cx="15.5" cy="10" r="1.6" fill="#6b7873"></circle></svg>
+    </span>
+  </header>
+
+  <!-- ── Filter row ────────────────────────────────────────────────── -->
+  <div style="display: flex; gap: 14px; align-items: flex-end">
+    <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 0">
+      <span class="filter-label">Date range</span>
+      <div class="control">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke="#6b7873" stroke-width="1.2"></rect><path d="M1.5 5.5h11M4.5 1v3M9.5 1v3" stroke="#6b7873" stroke-width="1.2"></path></svg>
+        <span>Aug 24 → Aug 28, 2026</span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 0">
+      <span class="filter-label">Rep</span>
+      <div class="control"><span>All reps</span><span style="margin-left: auto; color: #6b7873">▾</span></div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 0">
+      <span class="filter-label">Activity type</span>
+      <div class="control"><span class="chip">Call</span><span class="chip">Email</span><span class="chip">Meeting</span><span style="margin-left: auto; color: #6b7873">▾</span></div>
+    </div>
+  </div>
+
+  <!-- ── Compact KPI strip: dividers, not cards ────────────────────── -->
+  <div class="card" style="display: flex; align-items: center; padding: 16px 4px">
+    <div class="stat"><span class="lab">Activities logged</span><span class="val">482</span></div>
+    <div class="stat"><span class="lab">Overdue follow-ups</span><span class="val" style="color: #a3591c">27</span></div>
+    <div class="stat"><span class="lab">Meetings booked</span><span class="val">38</span></div>
+    <div class="stat"><span class="lab">Emails sent</span><span class="val">291</span></div>
+    <div class="stat"><span class="lab">Calls made</span><span class="val">121</span></div>
+    <div class="stat"><span class="lab">Median response</span><span class="val">3.1h</span></div>
+  </div>
+
+  <!-- ── Small multiples: activity volume by day, per type ─────────── -->
+  <div style="display: flex; gap: 16px">
+    <div class="card" style="flex: 1 1 0; padding: 14px 16px 8px 16px; display: flex; flex-direction: column; gap: 8px">
+      <span class="mini-title">Calls by day</span>
+      <svg viewBox="0 0 300 150" width="100%" role="img" aria-label="Mini bar chart, calls per weekday, Monday highest at 31.">
+        <path d="M24 118 V42 Q24 38 28 38 H54 Q58 38 58 42 V118 Z" fill="#0b7a5c"></path>
+        <path d="M76 118 V49.7 Q76 45.7 80 45.7 H106 Q110 45.7 110 49.7 V118 Z" fill="#0b7a5c"></path>
+        <path d="M128 118 V60.1 Q128 56.1 132 56.1 H158 Q162 56.1 162 60.1 V118 Z" fill="#0b7a5c"></path>
+        <path d="M180 118 V65.2 Q180 61.2 184 61.2 H210 Q214 61.2 214 65.2 V118 Z" fill="#0b7a5c"></path>
+        <path d="M232 118 V80.7 Q232 76.7 236 76.7 H262 Q266 76.7 266 80.7 V118 Z" fill="#0b7a5c"></path>
+        <line x1="16" y1="118" x2="284" y2="118" stroke="#d3dad6" stroke-width="1"></line>
+        <text class="vlab" x="41" y="30" text-anchor="middle">31</text>
+        <text class="axis" x="41" y="134" text-anchor="middle">Mon</text>
+        <text class="axis" x="93" y="134" text-anchor="middle">Tue</text>
+        <text class="axis" x="145" y="134" text-anchor="middle">Wed</text>
+        <text class="axis" x="197" y="134" text-anchor="middle">Thu</text>
+        <text class="axis" x="249" y="134" text-anchor="middle">Fri</text>
+      </svg>
+    </div>
+    <div class="card" style="flex: 1 1 0; padding: 14px 16px 8px 16px; display: flex; flex-direction: column; gap: 8px">
+      <span class="mini-title">Emails by day</span>
+      <svg viewBox="0 0 300 150" width="100%" role="img" aria-label="Mini bar chart, emails per weekday, Tuesday highest at 71.">
+        <path d="M24 118 V49.9 Q24 45.9 28 45.9 H54 Q58 45.9 58 49.9 V118 Z" fill="#0b7a5c"></path>
+        <path d="M76 118 V42 Q76 38 80 38 H106 Q110 38 110 42 V118 Z" fill="#0b7a5c"></path>
+        <path d="M128 118 V56.6 Q128 52.6 132 52.6 H158 Q162 52.6 162 56.6 V118 Z" fill="#0b7a5c"></path>
+        <path d="M180 118 V47.6 Q180 43.6 184 43.6 H210 Q214 43.6 214 47.6 V118 Z" fill="#0b7a5c"></path>
+        <path d="M232 118 V85.9 Q232 81.9 236 81.9 H262 Q266 81.9 266 85.9 V118 Z" fill="#0b7a5c"></path>
+        <line x1="16" y1="118" x2="284" y2="118" stroke="#d3dad6" stroke-width="1"></line>
+        <text class="vlab" x="93" y="30" text-anchor="middle">71</text>
+        <text class="axis" x="41" y="134" text-anchor="middle">Mon</text>
+        <text class="axis" x="93" y="134" text-anchor="middle">Tue</text>
+        <text class="axis" x="145" y="134" text-anchor="middle">Wed</text>
+        <text class="axis" x="197" y="134" text-anchor="middle">Thu</text>
+        <text class="axis" x="249" y="134" text-anchor="middle">Fri</text>
+      </svg>
+    </div>
+    <div class="card" style="flex: 1 1 0; padding: 14px 16px 8px 16px; display: flex; flex-direction: column; gap: 8px">
+      <span class="mini-title">Meetings by day</span>
+      <svg viewBox="0 0 300 150" width="100%" role="img" aria-label="Mini bar chart, meetings per weekday, Thursday highest at 11.">
+        <path d="M24 118 V78.4 Q24 74.4 28 74.4 H54 Q58 74.4 58 78.4 V118 Z" fill="#0b7a5c"></path>
+        <path d="M76 118 V56.5 Q76 52.5 80 52.5 H106 Q110 52.5 110 56.5 V118 Z" fill="#0b7a5c"></path>
+        <path d="M128 118 V63.8 Q128 59.8 132 59.8 H158 Q162 59.8 162 63.8 V118 Z" fill="#0b7a5c"></path>
+        <path d="M180 118 V42 Q180 38 184 38 H210 Q214 38 214 42 V118 Z" fill="#0b7a5c"></path>
+        <path d="M232 118 V92.9 Q232 88.9 236 88.9 H262 Q266 88.9 266 92.9 V118 Z" fill="#0b7a5c"></path>
+        <line x1="16" y1="118" x2="284" y2="118" stroke="#d3dad6" stroke-width="1"></line>
+        <text class="vlab" x="197" y="30" text-anchor="middle">11</text>
+        <text class="axis" x="41" y="134" text-anchor="middle">Mon</text>
+        <text class="axis" x="93" y="134" text-anchor="middle">Tue</text>
+        <text class="axis" x="145" y="134" text-anchor="middle">Wed</text>
+        <text class="axis" x="197" y="134" text-anchor="middle">Thu</text>
+        <text class="axis" x="249" y="134" text-anchor="middle">Fri</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── Dense table ───────────────────────────────────────────────── -->
+  <div class="card">
+    <div style="display: flex; align-items: baseline; gap: 10px; padding: 14px 18px 10px 18px">
+      <span style="font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-size: 16px; font-weight: 600">Overdue Follow-ups</span>
+      <span class="mono" style="font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7873">table · sorted by days overdue</span>
+      <span class="mono" style="margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: #6b7873; font-size: 10px; letter-spacing: 0.05em">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5 9 5.5M2 11h8" stroke="#6b7873" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>csv
+      </span>
+    </div>
+    <table class="grid">
+      <thead>
+        <tr><th>Due</th><th>Deal</th><th>Company</th><th>Owner</th><th>Type</th><th style="text-align: right">Days overdue</th><th style="text-align: right">Amount</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Aug 14</td><td>Platform renewal + seats</td><td>Nimbus Logistics</td><td>M. Okafor</td><td>Call</td><td class="num">14</td><td class="num">$412,000.00</td></tr>
+        <tr><td>Aug 16</td><td>Analytics add-on</td><td>Coretta Health</td><td>M. Okafor</td><td>Email</td><td class="num">12</td><td class="num">$187,000.00</td></tr>
+        <tr><td>Aug 17</td><td>Rollout, EU region</td><td>Harbor &amp; Lane</td><td>J. Reyes</td><td>Meeting</td><td class="num">11</td><td class="num">$268,400.00</td></tr>
+        <tr><td>Aug 19</td><td>Support tier upgrade</td><td>Amberline Freight</td><td>A. Silva</td><td>Call</td><td class="num">9</td><td class="num">$74,900.00</td></tr>
+        <tr><td>Aug 20</td><td>Workflow migration</td><td>Quill &amp; Prairie</td><td>A. Silva</td><td>Email</td><td class="num">8</td><td class="num">$98,300.00</td></tr>
+        <tr><td>Aug 20</td><td>Pilot conversion</td><td>Statler Mills</td><td>T. Ngata</td><td>Call</td><td class="num">8</td><td class="num">$52,000.00</td></tr>
+        <tr><td>Aug 21</td><td>Team expansion</td><td>Bright Foundry</td><td>A. Silva</td><td>Meeting</td><td class="num">7</td><td class="num">$156,750.00</td></tr>
+        <tr><td>Aug 22</td><td>Multi-year platform</td><td>Fielder Group</td><td>J. Reyes</td><td>Email</td><td class="num">6</td><td class="num">$140,000.00</td></tr>
+        <tr><td>Aug 24</td><td>Seat true-up</td><td>Larkspur Media</td><td>T. Ngata</td><td>Call</td><td class="num">4</td><td class="num">$31,200.00</td></tr>
+        <tr><td>Aug 24</td><td>Onboarding services</td><td>Verity Build Co.</td><td>M. Okafor</td><td>Email</td><td class="num">4</td><td class="num">$28,000.00</td></tr>
+        <tr><td>Aug 25</td><td>Integration scoping</td><td>Rowan &amp; Birch</td><td>J. Reyes</td><td>Meeting</td><td class="num">3</td><td class="num">$66,500.00</td></tr>
+        <tr><td>Aug 25</td><td>Contract redline review</td><td>Pemberton Dairy</td><td>A. Silva</td><td>Email</td><td class="num">3</td><td class="num">$44,750.00</td></tr>
+        <tr><td>Aug 26</td><td>Renewal kickoff</td><td>Halcyon Labs</td><td>T. Ngata</td><td>Call</td><td class="num">2</td><td class="num">$120,000.00</td></tr>
+        <tr><td>Aug 27</td><td>Security questionnaire</td><td>Marrow &amp; Finch</td><td>M. Okafor</td><td>Email</td><td class="num">1</td><td class="num">$92,600.00</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Footer ────────────────────────────────────────────────────── -->
+  <div style="display: flex; align-items: center; gap: 16px">
+    <span style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 13px; border: 1px solid #d3dad6; border-radius: 5px; background: #fcfcfb; font-size: 12.5px; color: #085f48">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5 9 5.5M2 11h8" stroke="#085f48" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      Download all follow-ups (CSV)
+    </span>
+    <span class="mono" style="font-size: 10px; letter-spacing: 0.05em; color: #6b7873">Resolved Aug 28, 2026 09:14 · 27 overdue of 214 open · re-queries on filter change</span>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

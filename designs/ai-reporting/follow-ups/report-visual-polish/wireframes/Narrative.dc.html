@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; }
+    a { color: #0b7a5c; } a:hover { color: #085f48; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .prose {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.65;
+      color: #3d4a46;
+    }
+    .prose b { color: #151c1a; font-weight: 600; }
+    .sect-label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10px;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: #6b7873;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sect-label::after { content: ""; flex: 1; border-top: 1px solid #e4e9e6; }
+    .fig-title {
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: #151c1a;
+    }
+    .axis { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b7873; }
+    .vlab { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #3d4a46; }
+    table.grid { width: 100%; border-collapse: collapse; font-size: 13.5px; color: #3d4a46; }
+    table.grid th {
+      text-align: left;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      font-weight: 500;
+      color: #6b7873;
+      padding: 8px 4px;
+      border-bottom: 1px solid #d3dad6;
+    }
+    table.grid td { padding: 9px 4px; border-bottom: 1px solid #e4e9e6; }
+    table.grid tr:last-child td { border-bottom: none; }
+    table.grid .num { text-align: right; font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+<div style="width: 980px; min-height: 2140px; background: #eef1ef; padding: 48px 0 56px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, ui-sans-serif, sans-serif; color: #151c1a">
+  <div style="width: 860px; margin: 0 auto; background: #fcfcfb; border: 1px solid #d3dad6; border-radius: 8px; box-shadow: 0 20px 44px -32px rgba(10, 30, 24, 0.5); padding: 64px 88px 56px 88px; display: flex; flex-direction: column; gap: 34px">
+
+    <!-- ── Title block ─────────────────────────────────────────────── -->
+    <header style="display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #d3dad6; padding-bottom: 28px">
+      <span class="mono" style="font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #6b7873">AI Reporting · Saved report</span>
+      <div style="display: flex; align-items: flex-start; gap: 14px">
+        <h1 style="margin: 0; font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 40px; line-height: 1.08; letter-spacing: -0.015em; max-width: 18ch">Q3 Business Review</h1>
+        <span class="mono" style="margin-left: auto; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; border: 1px solid #d3dad6; background: #f4f7f5; color: #6b7873; white-space: nowrap">Private</span>
+      </div>
+      <span style="font-size: 13.5px; color: #6b7873">Composed by the reporting assistant · resolved Aug 28, 2026</span>
+    </header>
+
+    <!-- ── Markdown lede ───────────────────────────────────────────── -->
+    <p class="prose" style="font-size: 18px; line-height: 1.6">The quarter closed <b>ahead of plan</b>. Won revenue reached $1.38M against a $1.25M target, carried by two record months in August and September. Win rate held at 34% while average cycle time shortened by six days — the pipeline is converting faster, not just wider.</p>
+
+    <!-- ── Hero KPI ────────────────────────────────────────────────── -->
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 0; border-top: 1px solid #e4e9e6; border-bottom: 1px solid #e4e9e6">
+      <span class="mono" style="font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #6b7873">Won revenue, Q3</span>
+      <span style="font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 72px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: lining-nums">$1,384,200</span>
+      <span style="font-size: 13.5px; color: #6b7873">110% of target · 128 deals</span>
+    </div>
+
+    <!-- ── Chart: monthly trend ────────────────────────────────────── -->
+    <figure style="margin: 0; display: flex; flex-direction: column; gap: 10px">
+      <span class="sect-label">Figure 1 · line</span>
+      <span class="fig-title">Won Revenue by Month</span>
+      <svg viewBox="0 0 720 250" width="100%" role="img" aria-label="Line chart, April to September: monthly won revenue rises from 180 to 315 thousand dollars.">
+        <line x1="40" y1="210" x2="700" y2="210" stroke="#d3dad6" stroke-width="1"></line>
+        <line x1="40" y1="154" x2="700" y2="154" stroke="#e4e9e6" stroke-width="1"></line>
+        <line x1="40" y1="98" x2="700" y2="98" stroke="#e4e9e6" stroke-width="1"></line>
+        <line x1="40" y1="41" x2="700" y2="41" stroke="#e4e9e6" stroke-width="1"></line>
+        <text class="axis" x="34" y="157" text-anchor="end">100k</text>
+        <text class="axis" x="34" y="101" text-anchor="end">200k</text>
+        <text class="axis" x="34" y="44" text-anchor="end">300k</text>
+        <path d="M40 108.8 L164 90.2 L288 84 L412 78.9 L536 52.5 L660 32.8 L660 210 L40 210 Z" fill="rgba(11, 122, 92, 0.07)"></path>
+        <path d="M40 108.8 L164 90.2 L288 84 L412 78.9 L536 52.5 L660 32.8" fill="none" stroke="#0b7a5c" stroke-width="2" stroke-linejoin="round"></path>
+        <circle cx="660" cy="32.8" r="4.5" fill="#0b7a5c" stroke="#fcfcfb" stroke-width="2"></circle>
+        <text class="vlab" x="672" y="36">$315k</text>
+        <text class="axis" x="40" y="232" text-anchor="middle">Apr</text>
+        <text class="axis" x="164" y="232" text-anchor="middle">May</text>
+        <text class="axis" x="288" y="232" text-anchor="middle">Jun</text>
+        <text class="axis" x="412" y="232" text-anchor="middle">Jul</text>
+        <text class="axis" x="536" y="232" text-anchor="middle">Aug</text>
+        <text class="axis" x="660" y="232" text-anchor="middle">Sep</text>
+      </svg>
+    </figure>
+
+    <!-- ── Markdown interpretation ─────────────────────────────────── -->
+    <p class="prose">September's $315k is the strongest month on record and the first above $300k. The step-change begins in August, when the two enterprise negotiations opened in Q2 landed within a week of each other — the trend line is real, but roughly $140k of it is those two deals, so October should be read against the June baseline rather than the September peak.</p>
+
+    <!-- ── KPI pair ────────────────────────────────────────────────── -->
+    <div style="display: flex; gap: 20px">
+      <div style="flex: 1 1 0; border: 1px solid #d3dad6; border-radius: 6px; padding: 18px 22px; display: flex; flex-direction: column; gap: 4px; background: #fcfcfb">
+        <span class="mono" style="font-size: 10px; letter-spacing: 0.11em; text-transform: uppercase; color: #6b7873">Win rate</span>
+        <span style="font-family: 'Iowan Old Style', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 38px; line-height: 1.05; font-variant-numeric: lining-nums">34%</span>
+        <span style="font-size: 12.5px; color: #6b7873">flat vs Q2 — volume did the work</span>
+      </div>
+      <div style="flex: 1 1 0; border: 1px solid #d3dad6; border-radius: 6px; padding: 18px 22px; display: flex; flex-direction: column; gap: 4px; background: #fcfcfb">
+        <span class="mono" style="font-size: 10px; letter-spacing: 0.11em; text-transform: uppercase; color: #6b7873">Median cycle</span>
+        <span style="font-family: 'Iowan Old Style', Palatino, Georgia, ui-serif, serif; font-weight: 600; font-size: 38px; line-height: 1.05; font-variant-numeric: lining-nums">42 days</span>
+        <span style="font-size: 12.5px; color: #6b7873">down from 48 in Q2</span>
+      </div>
+    </div>
+
+    <!-- ── Chart: win rate by segment ──────────────────────────────── -->
+    <figure style="margin: 0; display: flex; flex-direction: column; gap: 10px">
+      <span class="sect-label">Figure 2 · bar</span>
+      <span class="fig-title">Win Rate by Segment</span>
+      <svg viewBox="0 0 720 270" width="100%" role="img" aria-label="Bar chart: win rate by segment. Enterprise 41 percent, Mid-market 36, SMB 28, Self-serve 19.">
+        <line x1="40" y1="139" x2="700" y2="139" stroke="#e4e9e6" stroke-width="1"></line>
+        <line x1="40" y1="46" x2="700" y2="46" stroke="#e4e9e6" stroke-width="1"></line>
+        <text class="axis" x="34" y="142" text-anchor="end">20%</text>
+        <text class="axis" x="34" y="49" text-anchor="end">40%</text>
+        <path d="M76 232 V46 Q76 42 80 42 H164 Q168 42 168 46 V232 Z" fill="#0b7a5c"></path>
+        <path d="M242 232 V69 Q242 65 246 65 H330 Q334 65 334 69 V232 Z" fill="#0b7a5c"></path>
+        <path d="M408 232 V106 Q408 102 412 102 H496 Q500 102 500 106 V232 Z" fill="#0b7a5c"></path>
+        <path d="M574 232 V148 Q574 144 578 144 H662 Q666 144 666 148 V232 Z" fill="#0b7a5c"></path>
+        <line x1="40" y1="232" x2="700" y2="232" stroke="#d3dad6" stroke-width="1"></line>
+        <text class="vlab" x="122" y="32" text-anchor="middle">41%</text>
+        <text class="vlab" x="288" y="55" text-anchor="middle">36%</text>
+        <text class="vlab" x="454" y="92" text-anchor="middle">28%</text>
+        <text class="vlab" x="620" y="134" text-anchor="middle">19%</text>
+        <text class="axis" x="122" y="252" text-anchor="middle">Enterprise</text>
+        <text class="axis" x="288" y="252" text-anchor="middle">Mid-market</text>
+        <text class="axis" x="454" y="252" text-anchor="middle">SMB</text>
+        <text class="axis" x="620" y="252" text-anchor="middle">Self-serve</text>
+      </svg>
+    </figure>
+
+    <p class="prose">Enterprise continues to convert at roughly twice the self-serve rate, which is the argument for the Q4 staffing shift already under discussion. The risk sits in renewals: four accounts worth $612k combined renew in October with open support escalations.</p>
+
+    <!-- ── Table: renewals at risk ─────────────────────────────────── -->
+    <figure style="margin: 0; display: flex; flex-direction: column; gap: 10px">
+      <span class="sect-label">Table 1</span>
+      <span class="fig-title">Renewals at Risk — Next 60 Days</span>
+      <table class="grid">
+        <thead>
+          <tr><th>Company</th><th style="text-align: right">ARR</th><th>Renewal</th><th>Owner</th><th style="text-align: right">Open escalations</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Nimbus Logistics</td><td class="num">$248,000.00</td><td>Oct 14, 2026</td><td>M. Okafor</td><td class="num">3</td></tr>
+          <tr><td>Coretta Health</td><td class="num">$186,500.00</td><td>Oct 21, 2026</td><td>J. Reyes</td><td class="num">2</td></tr>
+          <tr><td>Amberline Freight</td><td class="num">$102,000.00</td><td>Oct 9, 2026</td><td>A. Silva</td><td class="num">2</td></tr>
+          <tr><td>Statler Mills</td><td class="num">$75,400.00</td><td>Oct 30, 2026</td><td>T. Ngata</td><td class="num">1</td></tr>
+        </tbody>
+      </table>
+    </figure>
+
+    <!-- ── Closing markdown + download ─────────────────────────────── -->
+    <p class="prose">Recommended focus for October: close out the four at-risk renewals before pursuing net-new enterprise pipeline, and re-run this review on Nov 1 with the same filters to confirm the June-baseline read.</p>
+
+    <div style="display: flex; align-items: center; gap: 16px; border-top: 1px solid #e4e9e6; padding-top: 22px">
+      <span style="display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border: 1px solid #d3dad6; border-radius: 5px; background: #fcfcfb; font-size: 13px; color: #085f48">
+        <svg width="13" height="13" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5 9 5.5M2 11h8" stroke="#085f48" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        Download won deals (CSV)
+      </span>
+      <span class="mono" style="font-size: 10.5px; letter-spacing: 0.05em; color: #6b7873">10 sections · markdown-led</span>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

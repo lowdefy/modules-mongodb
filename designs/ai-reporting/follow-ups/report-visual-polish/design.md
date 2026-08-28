@@ -28,6 +28,10 @@ at by designing against real wireframes rather than tweaking CSS in the dark.
    report, a dense operational table view. These are the target, independent of
    current output. (The `ux/` folder already has `wireframes.html` /
    `wireframes-blocks.html` as a starting point and format precedent.)
+   **Done — see [`wireframes/`](wireframes/README.md)**: three artboards
+   covering exactly these archetypes, grounded in the existing section
+   vocabulary, with the two spec gaps they surface (side-by-side section
+   widths, KPI delta captions) flagged for step 2.
 2. **Design pass with Fable + the lowdefy-docs MCP.** Have Fable use the
    lowdefy-docs MCP (live block schemas, examples, screenshots of the running
    app) together with the wireframes to propose specific changes: which Lowdefy

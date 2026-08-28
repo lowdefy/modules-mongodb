@@ -1,0 +1,38 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Dashboard — KPI band + chart grid", "x": 0, "y": 0, "w": 1240, "h": 1720 },
+    { "file": "Narrative.dc.html", "title": "Narrative report — markdown-led", "x": 1360, "y": 0, "w": 980, "h": 2140 },
+    { "file": "Operations.dc.html", "title": "Dense operational view", "x": 2460, "y": 0, "w": 1240, "h": 1400 }
+  ],
+  "annotations": [
+    {
+      "id": "deck-brief",
+      "x": 0,
+      "y": -430,
+      "w": 560,
+      "text": "Report visual polish — aspirational targets.\nThree archetypes the module should render beautifully from the same section vocabulary (kpi, chart, table, filter, markdown, download). Everything shown maps to a section the spec already has, except where a note says otherwise. Light theme; series palette (green, purple, amber, blue) is CVD-validated against the surface. Sample data is fictional."
+    },
+    {
+      "id": "note-dashboard",
+      "x": 620,
+      "y": -430,
+      "w": 480,
+      "text": "Dashboard: KPI band + chart grid.\nFilters dock in one row (max 3), the KPI band answers first, then a 7/5 chart row, a full-width trend, one table. Bars sort value-descending with direct value labels; the multi-series line carries a legend plus end labels. Proposed additions to today's renderer: side-by-side section widths (7/5 split) and the quiet delta caption on KPI tiles — both flagged for the design pass."
+    },
+    {
+      "id": "note-narrative",
+      "x": 1720,
+      "y": -430,
+      "w": 480,
+      "text": "Narrative report: markdown-led single column.\nA generate_report composition that reads like a document: serif prose interleaved with a hero KPI, figures sized to the text measure, numbered figure labels, and a compact table. Everything here exists in the contract today (markdown + kpi + chart + table + download) — the polish is measure, rhythm, and the centered paper surface."
+    },
+    {
+      "id": "note-operations",
+      "x": 2880,
+      "y": -430,
+      "w": 480,
+      "text": "Dense operational view: the table is the report.\nCompact header, filters, a divider-strip of six KPIs (not six cards), a small-multiples strip (same measure, per-panel scale, one hue), then a dense grid sorted by urgency. The amber ink on the overdue count is the only accent — status color reserved for state, never decoration."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}
