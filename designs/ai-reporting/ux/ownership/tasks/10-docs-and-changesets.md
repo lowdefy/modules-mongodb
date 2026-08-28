@@ -26,7 +26,7 @@ A concepts page covering ownership, visibility and retirement, with the front-ma
 ```yaml
 ---
 title: Report ownership, visibility and retirement
-module: reporting
+module: ai-reporting
 type: concept
 concepts: [ownership, visibility, favourites, soft-delete, share-roles]
 ---

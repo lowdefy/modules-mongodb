@@ -29,7 +29,7 @@ Add a how-to page **`docs/ai-reporting/how-to/save-as-report.md`** covering:
   reports created by the agent tool do not (the continue-in-chat affordance is simply absent
   there, not broken).
 
-Follow the docs front-matter schema (required `title`, `module: reporting`, `type: how-to`, and
+Follow the docs front-matter schema (required `title`, `module: ai-reporting`, `type: how-to`, and
 `concepts:` where useful) and `docs/CONTRIBUTING.md`. Link the new page from
 `docs/ai-reporting/index.md` where the module's how-tos are listed.
 

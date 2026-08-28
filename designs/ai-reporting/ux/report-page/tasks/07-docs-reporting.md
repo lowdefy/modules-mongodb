@@ -23,7 +23,7 @@ updating (design's Files changed, `docs/ai-reporting/`):
    download; filters render inline above their first bound section rather than in a top row; a
    role-denied section renders a withheld Alert distinct from a broken one; the `Dynamic` types
    list now declares `Link`.
-3. Follow the docs front-matter schema (every file opens with the YAML block — `title`, `module: reporting`, `type`). Do not hand-edit generated files (`reference/vars.md`, `llms.txt`).
+3. Follow the docs front-matter schema (every file opens with the YAML block — `title`, `module: ai-reporting`, `type`). Do not hand-edit generated files (`reference/vars.md`, `llms.txt`).
 4. Run `pnpm docs:gen` then `pnpm docs:check` — both must be clean (front-matter valid, no drift).
 
 ## Acceptance Criteria

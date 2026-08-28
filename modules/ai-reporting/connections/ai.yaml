@@ -3,7 +3,7 @@
 # already declare a gateway connection can remap this one instead of supplying
 # the secret:
 #   modules:
-#     - id: reporting
+#     - id: ai-reporting
 #       connections:
 #         ai: my-gateway-connection
 id: ai
