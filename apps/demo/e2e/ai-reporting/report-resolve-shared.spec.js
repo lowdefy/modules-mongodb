@@ -66,48 +66,50 @@ test("a soft-deleted shared report is not readable by anyone", async ({
 
 // The positive half: a report the caller MAY read renders, and renders as theirs
 // or not. These were the specs parked on the urlQuery harness gap above.
-test(
-  "a shared report is readable by a non-owner, who is not the owner",
-  async ({ ldf, page, mdb }) => {
-    await mdb.seed("demo_orders", ORDERS);
-    await mdb.seed(REPORTS, [
-      reportDoc({
-        id: "e2e-shared",
-        title: "Shared report",
-        owner: USER_A,
-        visibility: "shared",
-      }),
-    ]);
+test("a shared report is readable by a non-owner, who is not the owner", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await mdb.seed("demo_orders", ORDERS);
+  await mdb.seed(REPORTS, [
+    reportDoc({
+      id: "e2e-shared",
+      title: "Shared report",
+      owner: USER_A,
+      visibility: "shared",
+    }),
+  ]);
 
-    await ldf.user(USER_B);
-    await ldf.goto("/ai-reporting/report?report_id=e2e-shared");
+  await ldf.user(USER_B);
+  await ldf.goto("/ai-reporting/report?report_id=e2e-shared");
 
-    await expect(page.getByText("Report not found")).toBeHidden();
-    await expect(
-      page.getByRole("heading", { name: "Shared report" }),
-    ).toBeVisible();
-  },
-);
+  await expect(page.getByText("Report not found")).toBeHidden();
+  await expect(
+    page.getByRole("heading", { name: "Shared report" }),
+  ).toBeVisible();
+});
 
-test(
-  "the owner of a shared report still resolves it as the owner",
-  async ({ ldf, page, mdb }) => {
-    await mdb.seed("demo_orders", ORDERS);
-    await mdb.seed(REPORTS, [
-      reportDoc({
-        id: "e2e-shared-own",
-        title: "My shared report",
-        owner: USER_A,
-        visibility: "shared",
-      }),
-    ]);
+test("the owner of a shared report still resolves it as the owner", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await mdb.seed("demo_orders", ORDERS);
+  await mdb.seed(REPORTS, [
+    reportDoc({
+      id: "e2e-shared-own",
+      title: "My shared report",
+      owner: USER_A,
+      visibility: "shared",
+    }),
+  ]);
 
-    await ldf.user(USER_A);
-    await ldf.goto("/ai-reporting/report?report_id=e2e-shared-own");
+  await ldf.user(USER_A);
+  await ldf.goto("/ai-reporting/report?report_id=e2e-shared-own");
 
-    await expect(page.getByText("Report not found")).toBeHidden();
-    await expect(
-      page.getByRole("heading", { name: "My shared report" }),
-    ).toBeVisible();
-  },
-);
+  await expect(page.getByText("Report not found")).toBeHidden();
+  await expect(
+    page.getByRole("heading", { name: "My shared report" }),
+  ).toBeVisible();
+});

@@ -41,9 +41,24 @@ const PLAIN = {
 };
 
 const ACTIVITIES = [
-  { _id: "a1", type: "call", source: { channel: "manual" }, status: [{ stage: "open" }] },
-  { _id: "a2", type: "meeting", source: { channel: "email" }, status: [{ stage: "done" }] },
-  { _id: "a3", type: "call", source: { channel: "import" }, status: [{ stage: "open" }] },
+  {
+    _id: "a1",
+    type: "call",
+    source: { channel: "manual" },
+    status: [{ stage: "open" }],
+  },
+  {
+    _id: "a2",
+    type: "meeting",
+    source: { channel: "email" },
+    status: [{ stage: "done" }],
+  },
+  {
+    _id: "a3",
+    type: "call",
+    source: { channel: "import" },
+    status: [{ stage: "open" }],
+  },
 ];
 
 const activityCount = {
@@ -78,8 +93,18 @@ const confidentialQuery = {
   ],
 };
 
-function reportDoc({ id, title, owner, visibility = "shared", sections, conversationId = null }) {
-  const stamp = { timestamp: new Date(), user: { name: owner.name, id: owner.id } };
+function reportDoc({
+  id,
+  title,
+  owner,
+  visibility = "shared",
+  sections,
+  conversationId = null,
+}) {
+  const stamp = {
+    timestamp: new Date(),
+    user: { name: owner.name, id: owner.id },
+  };
   return {
     _id: id,
     owner: { user_id: owner.id, name: owner.name },
@@ -151,11 +176,46 @@ const WITHHELD_SECTIONS = [
 ];
 
 const TWO_GROUP_SECTIONS = [
-  { id: "s0", type: "filter", control: "select", field: "type", label: "Activity type" },
-  { id: "s1", type: "filter", control: "select", field: "source.channel", label: "Capture channel" },
-  { id: "s2", type: "kpi", label: "Activities (by type)", query: activityCount, valueKey: "activities", filterBy: ["type"] },
-  { id: "s3", type: "chart", chart: "bar", label: "Activities by type", query: activitiesByType, x: "type", y: ["activities"], filterBy: ["type"] },
-  { id: "s4", type: "kpi", label: "Activities (by channel)", query: activityCount, valueKey: "activities", filterBy: ["source.channel"] },
+  {
+    id: "s0",
+    type: "filter",
+    control: "select",
+    field: "type",
+    label: "Activity type",
+  },
+  {
+    id: "s1",
+    type: "filter",
+    control: "select",
+    field: "source.channel",
+    label: "Capture channel",
+  },
+  {
+    id: "s2",
+    type: "kpi",
+    label: "Activities (by type)",
+    query: activityCount,
+    valueKey: "activities",
+    filterBy: ["type"],
+  },
+  {
+    id: "s3",
+    type: "chart",
+    chart: "bar",
+    label: "Activities by type",
+    query: activitiesByType,
+    x: "type",
+    y: ["activities"],
+    filterBy: ["type"],
+  },
+  {
+    id: "s4",
+    type: "kpi",
+    label: "Activities (by channel)",
+    query: activityCount,
+    valueKey: "activities",
+    filterBy: ["source.channel"],
+  },
   {
     id: "s5",
     type: "table",
@@ -181,7 +241,13 @@ const TWO_GROUP_SECTIONS = [
 // activity; the bound filter prepends a `$match` on `type`, so the count drops
 // from the three seeded activities to the two of the chosen type.
 const FILTER_KPI_SECTIONS = [
-  { id: "s0", type: "filter", control: "select", field: "type", label: "Activity type" },
+  {
+    id: "s0",
+    type: "filter",
+    control: "select",
+    field: "type",
+    label: "Activity type",
+  },
   {
     id: "s1",
     type: "kpi",
@@ -202,161 +268,173 @@ test.describe("report page render", () => {
     await mdb.seed("demo_activities", ACTIVITIES);
   });
 
-  test(
-    "changing a filter re-queries and updates the section it drives",
-    async ({ ldf, page, mdb }) => {
-      await mdb.seed(REPORTS, [
-        reportDoc({
-          id: "e2e-filter-interaction",
-          title: "Filter interaction",
-          owner: HOLDER,
-          sections: FILTER_KPI_SECTIONS,
-        }),
-      ]);
+  test("changing a filter re-queries and updates the section it drives", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-filter-interaction",
+        title: "Filter interaction",
+        owner: HOLDER,
+        sections: FILTER_KPI_SECTIONS,
+      }),
+    ]);
 
-      await ldf.user(HOLDER);
-      await ldf.goto("/ai-reporting/report?report_id=e2e-filter-interaction");
-      await expect(page.getByText("Report not found")).toBeHidden();
+    await ldf.user(HOLDER);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-filter-interaction");
+    await expect(page.getByText("Report not found")).toBeHidden();
 
-      // Before any selection the KPI resolves over all three seeded activities.
-      // This is the assertion report-render never made: not that the control
-      // renders, but that the section it drives holds the right number.
-      const kpiValue = page.locator(".ant-statistic-content-value");
-      await expect(kpiValue).toHaveText("3");
+    // Before any selection the KPI resolves over all three seeded activities.
+    // This is the assertion report-render never made: not that the control
+    // renders, but that the section it drives holds the right number.
+    const kpiValue = page.locator(".ant-statistic-content-value");
+    await expect(kpiValue).toHaveText("3");
 
-      // Selecting a type fires the compiled onChange (CallAPI → SetState into
-      // sections.s1.rows), so the bound KPI re-queries with `type: "call"` and
-      // narrows to the two "call" activities — the re-render, end to end.
-      await page.getByRole("combobox").click();
-      // The open dropdown's options are clickable elements whose exact text is
-      // the type value; "call" is unique on the page while the menu is open.
-      await page.getByText("call", { exact: true }).click();
-      await expect(kpiValue).toHaveText("2");
-    },
-  );
+    // Selecting a type fires the compiled onChange (CallAPI → SetState into
+    // sections.s1.rows), so the bound KPI re-queries with `type: "call"` and
+    // narrows to the two "call" activities — the re-render, end to end.
+    await page.getByRole("combobox").click();
+    // The open dropdown's options are clickable elements whose exact text is
+    // the type value; "call" is unique on the page while the menu is open.
+    await page.getByText("call", { exact: true }).click();
+    await expect(kpiValue).toHaveText("2");
+  });
 
-  test(
-    "a broken section shows the owner recoveries; a non-owner sees only the alert",
-    async ({ ldf, page, mdb }) => {
-      await mdb.seed(REPORTS, [
-        reportDoc({
-          id: "e2e-broken",
-          title: "Broken report",
-          owner: HOLDER,
-          conversationId: "conv-broken",
-          sections: BROKEN_SECTIONS,
-        }),
-      ]);
+  test("a broken section shows the owner recoveries; a non-owner sees only the alert", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-broken",
+        title: "Broken report",
+        owner: HOLDER,
+        conversationId: "conv-broken",
+        sections: BROKEN_SECTIONS,
+      }),
+    ]);
 
-      // Owner: the alert plus both recoveries.
-      await ldf.user(HOLDER);
-      await ldf.goto("/ai-reporting/report?report_id=e2e-broken");
-      await expect(page.getByText("Report not found")).toBeHidden();
-      await expect(
-        page.getByText("This section failed to load", { exact: false }),
-      ).toBeVisible();
-      await expect(page.getByRole("button", { name: "Fix in chat" })).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Drop this section" }),
-      ).toBeVisible();
-      // The healthy KPI still renders beside the broken table.
-      await expect(page.getByText("Activities")).toBeVisible();
+    // Owner: the alert plus both recoveries.
+    await ldf.user(HOLDER);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-broken");
+    await expect(page.getByText("Report not found")).toBeHidden();
+    await expect(
+      page.getByText("This section failed to load", { exact: false }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Fix in chat" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Drop this section" }),
+    ).toBeVisible();
+    // The healthy KPI still renders beside the broken table.
+    await expect(page.getByText("Activities")).toBeVisible();
 
-      // Non-owner: the alert names the owner to ask, and offers nothing to click.
-      await ldf.user(PLAIN);
-      await ldf.goto("/ai-reporting/report?report_id=e2e-broken");
-      await expect(
-        page.getByText(`Ask ${HOLDER.name} to fix it`, { exact: false }),
-      ).toBeVisible();
-      await expect(page.getByRole("button", { name: "Fix in chat" })).toBeHidden();
-      await expect(
-        page.getByRole("button", { name: "Drop this section" }),
-      ).toBeHidden();
-    },
-  );
+    // Non-owner: the alert names the owner to ask, and offers nothing to click.
+    await ldf.user(PLAIN);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-broken");
+    await expect(
+      page.getByText(`Ask ${HOLDER.name} to fix it`, { exact: false }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Fix in chat" }),
+    ).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: "Drop this section" }),
+    ).toBeHidden();
+  });
 
-  test(
-    "a withheld section reads as no-access with no recoveries, distinct from a broken one",
-    async ({ ldf, page, mdb }) => {
-      await mdb.seed(REPORTS, [
-        reportDoc({
-          id: "e2e-withheld",
-          title: "Confidential report",
-          owner: HOLDER,
-          conversationId: "conv-withheld",
-          sections: WITHHELD_SECTIONS,
-        }),
-      ]);
+  test("a withheld section reads as no-access with no recoveries, distinct from a broken one", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-withheld",
+        title: "Confidential report",
+        owner: HOLDER,
+        conversationId: "conv-withheld",
+        sections: WITHHELD_SECTIONS,
+      }),
+    ]);
 
-      // A viewer who lacks the confidential role owns nothing here and lacks the
-      // role, so s1 is withheld and s2 is broken — in the same report.
-      await ldf.user(PLAIN);
-      await ldf.goto("/ai-reporting/report?report_id=e2e-withheld");
-      await expect(page.getByText("Report not found")).toBeHidden();
+    // A viewer who lacks the confidential role owns nothing here and lacks the
+    // role, so s1 is withheld and s2 is broken — in the same report.
+    await ldf.user(PLAIN);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-withheld");
+    await expect(page.getByText("Report not found")).toBeHidden();
 
-      // Withheld: the no-access wording, and it names neither the collection nor
-      // the role — the access model must not leak.
-      await expect(
-        page.getByText("You don't have access to the data in this section"),
-      ).toBeVisible();
-      await expect(
-        page.getByText("demo_activities_confidential", { exact: false }),
-      ).toBeHidden();
-      await expect(
-        page.getByText("report-confidential", { exact: false }),
-      ).toBeHidden();
+    // Withheld: the no-access wording, and it names neither the collection nor
+    // the role — the access model must not leak.
+    await expect(
+      page.getByText("You don't have access to the data in this section"),
+    ).toBeVisible();
+    await expect(
+      page.getByText("demo_activities_confidential", { exact: false }),
+    ).toBeHidden();
+    await expect(
+      page.getByText("report-confidential", { exact: false }),
+    ).toBeHidden();
 
-      // Broken (s2) reads differently — its generic failure wording is present,
-      // so the two variants are not the same alert.
-      await expect(
-        page.getByText("This section failed to load", { exact: false }),
-      ).toBeVisible();
+    // Broken (s2) reads differently — its generic failure wording is present,
+    // so the two variants are not the same alert.
+    await expect(
+      page.getByText("This section failed to load", { exact: false }),
+    ).toBeVisible();
 
-      // Withheld carries no recoveries for anyone — not even an owner could act
-      // on it, so there is nothing to click on the confidential section.
-      await ldf.user(HOLDER);
-      await ldf.goto("/ai-reporting/report?report_id=e2e-withheld");
-      // As the role holder the confidential chart resolves, so the no-access line
-      // is gone entirely.
-      await expect(
-        page.getByText("You don't have access to the data in this section"),
-      ).toBeHidden();
-    },
-  );
+    // Withheld carries no recoveries for anyone — not even an owner could act
+    // on it, so there is nothing to click on the confidential section.
+    await ldf.user(HOLDER);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-withheld");
+    // As the role holder the confidential chart resolves, so the no-access line
+    // is gone entirely.
+    await expect(
+      page.getByText("You don't have access to the data in this section"),
+    ).toBeHidden();
+  });
 
-  test(
-    "two independent filter groups each render inline above their own group",
-    async ({ ldf, page, mdb }) => {
-      await mdb.seed(REPORTS, [
-        reportDoc({
-          id: "e2e-two-groups",
-          title: "Two filter groups",
-          owner: HOLDER,
-          sections: TWO_GROUP_SECTIONS,
-        }),
-      ]);
+  test("two independent filter groups each render inline above their own group", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-two-groups",
+        title: "Two filter groups",
+        owner: HOLDER,
+        sections: TWO_GROUP_SECTIONS,
+      }),
+    ]);
 
-      await ldf.user(HOLDER);
-      await ldf.goto("/ai-reporting/report?report_id=e2e-two-groups");
-      await expect(page.getByText("Report not found")).toBeHidden();
+    await ldf.user(HOLDER);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-two-groups");
+    await expect(page.getByText("Report not found")).toBeHidden();
 
-      // Each control names its own scope, and because each drives more than one
-      // section it also carries a scope note. The note is the label's `extra` —
-      // a separate muted line under the control, NOT a parenthetical appended to
-      // the title (appending it wrapped the title and pushed the input out of
-      // alignment with the control beside it in the row). It names the sections
-      // beyond the one the control is anchored above, so each filter names the
-      // second of its two.
-      await expect(page.getByText("Activity type", { exact: true })).toBeVisible();
-      await expect(
-        page.getByText("Also filters: Activities by type", { exact: true }),
-      ).toBeVisible();
-      await expect(page.getByText("Capture channel", { exact: true })).toBeVisible();
-      await expect(
-        page.getByText("Also filters: Activities by channel", { exact: true }),
-      ).toBeVisible();
-    },
-  );
+    // Each control names its own scope, and because each drives more than one
+    // section it also carries a scope note. The note is the label's `extra` —
+    // a separate muted line under the control, NOT a parenthetical appended to
+    // the title (appending it wrapped the title and pushed the input out of
+    // alignment with the control beside it in the row). It names the sections
+    // beyond the one the control is anchored above, so each filter names the
+    // second of its two.
+    await expect(
+      page.getByText("Activity type", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Also filters: Activities by type", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Capture channel", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Also filters: Activities by channel", { exact: true }),
+    ).toBeVisible();
+  });
 });
 
 // ── Authorization layer (real — the gates the render layer displays) ─────────
@@ -373,19 +451,25 @@ test.describe("report failure gates (endpoint-level)", () => {
     // classification mirrors: a viewer without report-confidential cannot query
     // the gated collection, which is exactly why their section is withheld.
     await ldf.user(PLAIN);
-    const denied = await callEndpoint(page, "query-data", { query: confidentialQuery });
+    const denied = await callEndpoint(page, "query-data", {
+      query: confidentialQuery,
+    });
     expect(denied.body?.success).not.toBe(true);
 
     // The holder is admitted — the same query succeeds, proving the gate turns on
     // the role and nothing else.
     await ldf.user(HOLDER);
-    const allowed = await callEndpoint(page, "query-data", { query: confidentialQuery });
+    const allowed = await callEndpoint(page, "query-data", {
+      query: confidentialQuery,
+    });
     expect(allowed.body?.success).toBe(true);
 
     // A role-less collection stays queryable for the non-holder — the gate is
     // opt-in per collection, not a blanket lock.
     await ldf.user(PLAIN);
-    const open = await callEndpoint(page, "query-data", { query: activityCount });
+    const open = await callEndpoint(page, "query-data", {
+      query: activityCount,
+    });
     expect(open.body?.success).toBe(true);
   });
 
@@ -423,7 +507,9 @@ test.describe("report failure gates (endpoint-level)", () => {
     });
     expect(dropped.response).toMatchObject({ ok: true });
 
-    const doc = await mdb.collection(REPORTS).findOne({ _id: "e2e-broken-drop" });
+    const doc = await mdb
+      .collection(REPORTS)
+      .findOne({ _id: "e2e-broken-drop" });
     expect(doc.spec.sections.map((s) => s.id)).toEqual(["s0"]);
   });
 

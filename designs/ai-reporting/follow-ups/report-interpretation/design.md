@@ -11,7 +11,7 @@ latest data rather than a stale snapshot.
 
 Crucially, the interpretation must reflect the report's **currently-applied
 filters**. If the viewer has filtered to one region and one quarter, the
-interpretation must describe *that slice* — not the whole dataset. An
+interpretation must describe _that slice_ — not the whole dataset. An
 interpretation that silently reads the unfiltered data while the tables and
 charts beside it show a filtered view would be actively misleading.
 
@@ -32,30 +32,30 @@ A report section type — call it `interpretation` — that:
 
 ## Why filters come for free — and where they don't
 
-The report's filters (`filterBy` sections) are applied at *resolve* time: the
+The report's filters (`filterBy` sections) are applied at _resolve_ time: the
 server builds the `$match` from the active filter values and every bound
 section's rows already reflect it. So an interpretation built as a **consumer of
 resolved rows** (point 1) automatically sees the filtered data — it never
 queries anything itself, it reads what the sections read. That is the whole
 reason to feed it resolved rows rather than have it re-query.
 
-What does *not* come for free:
+What does _not_ come for free:
 
 - **Scope awareness in the prose.** Seeing filtered rows is not the same as
-  *saying* the numbers are filtered. The active filter selections (region =
+  _saying_ the numbers are filtered. The active filter selections (region =
   West, quarter = Q3) must be passed into the prompt so the model can open with
   "For the West region in Q3…" instead of stating a filtered figure as if it
   were the total. Without this, correct data reads as a wrong claim.
 - **Staying in sync on filter change.** When the viewer changes a filter, the
   tables and charts re-query — but a previously-generated interpretation would
-  now describe the *old* slice. It must be invalidated: either marked stale
+  now describe the _old_ slice. It must be invalidated: either marked stale
   ("filters changed — refresh") or re-run as part of the same re-query the other
   bound sections do. A stale interpretation next to fresh charts is the failure
   mode this whole section has to avoid.
 
 ## What this can reuse
 
-- **Resolved data is already in hand.** The interpretation runs *after*
+- **Resolved data is already in hand.** The interpretation runs _after_
   `resolve-report` has produced section rows — it reads those, so it adds no new
   query path and no new engine surface. It is a consumer of resolution.
 - **Filter binding already exists.** An interpretation section is just another
@@ -91,7 +91,7 @@ What does *not* come for free:
 
 ## Deliberately not in scope (yet)
 
-Redacting sensitive fields before sending data to the model is a *separate*
+Redacting sensitive fields before sending data to the model is a _separate_
 concern from filters and is **not** part of this design — raised here only so it
 is not confused with the filter-scope requirement above. If external-model data
 egress needs controlling, that is its own design.

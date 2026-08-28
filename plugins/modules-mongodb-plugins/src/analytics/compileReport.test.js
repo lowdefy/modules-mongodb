@@ -1862,7 +1862,8 @@ describe("owner-only affordances", () => {
   // puts the menu in compiled output and one block type in the Dynamic allowlist.
   describe("the ⋯ header menu", () => {
     const seedOf = (byId) => byId.report_menu.events.onClick[0].params;
-    const keysOf = (byId) => byId.report_menu.properties.links.map((link) => link.id);
+    const keysOf = (byId) =>
+      byId.report_menu.properties.links.map((link) => link.id);
     const actionsOf = (byId) => byId.report_menu.events.onClick.slice(1);
     // Every action but the seed belongs to exactly one item, named by its skip.
     const itemOf = (action) => action.skip.__ne[1];
@@ -1886,7 +1887,9 @@ describe("owner-only affordances", () => {
     describe("items per viewer", () => {
       test("an owner of a private report can rename, publish, duplicate, delete", () => {
         expect(
-          keysOf(compile({ is_owner: true, visibility: "private", can_share: true })),
+          keysOf(
+            compile({ is_owner: true, visibility: "private", can_share: true }),
+          ),
         ).toEqual(["rename", "publish", "duplicate", "delete"]);
       });
 
@@ -1894,13 +1897,21 @@ describe("owner-only affordances", () => {
       // the app can be published, and the endpoint rejects it regardless.
       test("without share_roles an owner gets no Publish", () => {
         expect(
-          keysOf(compile({ is_owner: true, visibility: "private", can_share: false })),
+          keysOf(
+            compile({
+              is_owner: true,
+              visibility: "private",
+              can_share: false,
+            }),
+          ),
         ).toEqual(["rename", "duplicate", "delete"]);
       });
 
       test("a shared report offers Unpublish in Publish's place", () => {
         expect(
-          keysOf(compile({ is_owner: true, visibility: "shared", can_share: true })),
+          keysOf(
+            compile({ is_owner: true, visibility: "shared", can_share: true }),
+          ),
         ).toEqual(["rename", "unpublish", "duplicate", "delete"]);
       });
 
@@ -1908,7 +1919,9 @@ describe("owner-only affordances", () => {
       // in front of the whole app. This is the asymmetry ownership.md spells out.
       test("an owner keeps Unpublish after losing the role", () => {
         expect(
-          keysOf(compile({ is_owner: true, visibility: "shared", can_share: false })),
+          keysOf(
+            compile({ is_owner: true, visibility: "shared", can_share: false }),
+          ),
         ).toEqual(["rename", "unpublish", "duplicate", "delete"]);
       });
 
@@ -1916,13 +1929,21 @@ describe("owner-only affordances", () => {
       // retract someone else's report. There is no equivalent power to publish one.
       test("a share_roles holder can retract a report they do not own", () => {
         expect(
-          keysOf(compile({ is_owner: false, visibility: "shared", can_share: true })),
+          keysOf(
+            compile({ is_owner: false, visibility: "shared", can_share: true }),
+          ),
         ).toEqual(["unpublish", "duplicate"]);
       });
 
       test("a plain reader gets Duplicate alone", () => {
         expect(
-          keysOf(compile({ is_owner: false, visibility: "shared", can_share: false })),
+          keysOf(
+            compile({
+              is_owner: false,
+              visibility: "shared",
+              can_share: false,
+            }),
+          ),
         ).toEqual(["duplicate"]);
       });
 
@@ -1963,19 +1984,25 @@ describe("owner-only affordances", () => {
         const [seed] = byId.report_menu.events.onClick;
         expect(seed.id).toBe("seed_report_menu");
         expect(seed.skip).toBeUndefined();
-        expect(actionsOf(byId).every((action) => action.skip !== undefined)).toBe(true);
+        expect(
+          actionsOf(byId).every((action) => action.skip !== undefined),
+        ).toBe(true);
       });
 
       test("rename and delete only open the static modals that own the writes", () => {
         const byId = compile({ is_owner: true, can_share: true });
-        const opens = actionsOf(byId).filter((action) => action.type === "CallMethod");
+        const opens = actionsOf(byId).filter(
+          (action) => action.type === "CallMethod",
+        );
         expect(opens.map((action) => action.params.blockId)).toEqual([
           "rename_modal",
           "delete_confirm_modal",
         ]);
         // The form is seeded from selected_report rather than from the compiled
         // literals, so a title saved without a reload survives.
-        const seedForm = actionsOf(byId).find((a) => a.id === "menu_rename_seed");
+        const seedForm = actionsOf(byId).find(
+          (a) => a.id === "menu_rename_seed",
+        );
         expect(seedForm.params.rename_title).toEqual({
           __state: "selected_report.title",
         });
@@ -1985,22 +2012,27 @@ describe("owner-only affordances", () => {
         const shared = actionsOf(
           compile({ is_owner: true, visibility: "private", can_share: true }),
         );
-        const publish = shared.find((action) => action.id === "menu_publish_call");
-        expect(publish.params.endpointId).toBe("ai-reporting/set-report-visibility");
+        const publish = shared.find(
+          (action) => action.id === "menu_publish_call",
+        );
+        expect(publish.params.endpointId).toBe(
+          "ai-reporting/set-report-visibility",
+        );
         expect(publish.params.payload).toEqual({
           report_id: { __url_query: "report_id" },
           visibility: "shared",
         });
         expect(
-          shared.find((action) => action.id === "menu_publish_reload").params.pageId,
+          shared.find((action) => action.id === "menu_publish_reload").params
+            .pageId,
         ).toBe("ai-reporting/report");
 
         const retracted = actionsOf(
           compile({ is_owner: true, visibility: "shared", can_share: true }),
         );
         expect(
-          retracted.find((action) => action.id === "menu_unpublish_call").params.payload
-            .visibility,
+          retracted.find((action) => action.id === "menu_unpublish_call").params
+            .payload.visibility,
         ).toBe("private");
       });
 
@@ -2010,13 +2042,19 @@ describe("owner-only affordances", () => {
       // root-relative url into a hostname. This assertion is the regression guard.
       test("duplicate opens the copy in a new tab, by pageId and urlQuery", () => {
         const actions = actionsOf(compile({ is_owner: false }));
-        const call = actions.find((action) => action.id === "menu_duplicate_call");
+        const call = actions.find(
+          (action) => action.id === "menu_duplicate_call",
+        );
         expect(call.params.endpointId).toBe("ai-reporting/duplicate-report");
-        const open = actions.find((action) => action.id === "menu_duplicate_open");
+        const open = actions.find(
+          (action) => action.id === "menu_duplicate_open",
+        );
         expect(open.params).toEqual({
           pageId: "ai-reporting/report",
           urlQuery: {
-            report_id: { __api: "ai-reporting/duplicate-report.response.report_id" },
+            report_id: {
+              __api: "ai-reporting/duplicate-report.response.report_id",
+            },
           },
           newTab: true,
         });

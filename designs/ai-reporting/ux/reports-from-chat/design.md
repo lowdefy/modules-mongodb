@@ -211,7 +211,7 @@ linger under the incoming one before the read resolves.
 
 **The load was made mechanical; the clear was left a convention, and it drifted.** Riding
 `get-conversation-results` means the rows arrive wherever the conversation loads — but nothing makes
-them *leave*. That was a literal key list written out twice: in `select_conversation` (a loading
+them _leave_. That was a literal key list written out twice: in `select_conversation` (a loading
 state the read fills in a moment later) and in `new_conversation` (terminal — New chat starts a
 conversation with no read behind it to cover an omission). The paragraph above named only the first,
 so `saved_reports` was added there and not to `new_conversation`, and New chat left the previous
@@ -221,7 +221,7 @@ Fixed by removing the duplication rather than by asking the next author to remem
 blanked keys live in `pages/chat/actions/blank_results.yaml`, and each `SetState` merges them with
 its own `conversationId` using `_build.object.assign`. That composition works because the two passes
 run in the right order — `_ref` and `_var` resolve before build operators, so what `assign` merges
-is already the caller's operator, and `_uuid` is *not* a build operator, so it survives the merge as
+is already the caller's operator, and `_uuid` is _not_ a build operator, so it survives the merge as
 a runtime node and still mints a fresh id per click. Verified in the built artifact: all five call
 sites carry the same five keys, with `{_uuid: true}` on New chat and `{_event: key}` /
 `{_url_query: conversation_id}` on the two select paths. `chat-deep-link.spec.js` covers the
