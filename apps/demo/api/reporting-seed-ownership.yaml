@@ -85,7 +85,7 @@ routine:
                 field: status
                 label: Status
           catalog:
-            _ref: modules/reporting/catalog.yaml
+            _ref: modules/ai-reporting/catalog.yaml
           roles:
             _user: roles
   - id: clear

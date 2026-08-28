@@ -1106,7 +1106,7 @@ function compileReport({
   const reportVisibility = visibility ?? "private";
   const canPublish = Boolean(is_owner) && Boolean(can_share) && reportVisibility !== "shared";
   // Unpublish is the one item whose gate is not is_owner alone: a share_roles holder
-  // may retract a report they do not own. See docs/reporting/concepts/ownership.md.
+  // may retract a report they do not own. See docs/ai-reporting/concepts/ownership.md.
   const canUnpublish = reportVisibility === "shared" && (Boolean(is_owner) || Boolean(can_share));
   const menuItems = [];
   // No Open item: this menu only opens on the report page, which is already where Open

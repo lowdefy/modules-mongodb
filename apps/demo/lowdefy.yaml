@@ -173,10 +173,10 @@ connections:
       # connection via _module.var, but remapping reporting-data onto this
       # app connection replaces that definition — so the catalog must be bound
       # here too, or validatePipeline gets no catalog and rejects every
-      # collection. Same file the module var references (modules/reporting/
+      # collection. Same file the module var references (modules/ai-reporting/
       # catalog.yaml), so the two can't drift.
       catalog:
-        _ref: modules/reporting/catalog.yaml
+        _ref: modules/ai-reporting/catalog.yaml
 
 api:
   - _ref: api/reporting-seed-orders.yaml

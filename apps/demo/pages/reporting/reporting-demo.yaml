@@ -116,7 +116,7 @@ _ref:
                 Then ask the chat things like "how many activities per month",
                 "actions by workflow type", "workload per assignee", or
                 "contacts per company". Each view fixes its grain so the counts
-                are always exact. See docs/reporting/how-to/complex-data.md for
+                are always exact. See docs/ai-reporting/how-to/complex-data.md for
                 the pattern.
               style:
                 fontSize: 12px
@@ -170,7 +170,7 @@ _ref:
                   params:
                     pageId:
                       _module.pageId:
-                        module: reporting
+                        module: ai-reporting
                         id: report
                     urlQuery:
                       report_id:
@@ -255,7 +255,7 @@ _ref:
                   params:
                     pageId:
                       _module.pageId:
-                        module: reporting
+                        module: ai-reporting
                         id: chat
           - id: open_reports
             type: Button
@@ -271,5 +271,5 @@ _ref:
                   params:
                     pageId:
                       _module.pageId:
-                        module: reporting
+                        module: ai-reporting
                         id: reports-list

@@ -149,7 +149,7 @@ const actions = Array.from({ length: 44 }, (_, i) => {
 });
 
 // ── Saved reports (report_layouts) ───────────────────────────────────────────
-// Reports in the stored shape modules/reporting/defaults/new_report.yaml
+// Reports in the stored shape modules/ai-reporting/defaults/new_report.yaml
 // produces, so the report-page surface is reproducible without driving the chat
 // agent. The first two cover the healthy surface and conversation_id presence;
 // the last three cover the report page's failure and filter-layout surfaces:
