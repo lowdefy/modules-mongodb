@@ -31,8 +31,8 @@ plugins:
     version: 1.1.4
   - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
-  - name: '@lowdefy/connection-ai-gateway'
-    version: 5.5.1
+  - name: "@lowdefy/connection-ai-gateway"
+    version: 0.0.0-experimental-20260814133003
 
 auth:
   authPages:
@@ -173,10 +173,10 @@ connections:
       # connection via _module.var, but remapping reporting-data onto this
       # app connection replaces that definition — so the catalog must be bound
       # here too, or validatePipeline gets no catalog and rejects every
-      # collection. Same file the module var references (modules/reporting/
+      # collection. Same file the module var references (modules/ai-reporting/
       # catalog.yaml), so the two can't drift.
       catalog:
-        _ref: modules/reporting/catalog.yaml
+        _ref: modules/ai-reporting/catalog.yaml
 
 api:
   - _ref: api/reporting-seed-orders.yaml

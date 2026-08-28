@@ -589,8 +589,8 @@ function header({ dbName, sampleSize, flattenDepth, model, modelStatus, generate
     "means re-running against a drifted schema diffs cleanly against your curated",
     "file — the diff doubles as schema-drift detection.",
     "",
-    "See the reporting `catalog` var reference (docs/reporting/reference/vars.md)",
-    "and docs/reporting/how-to/complex-data.md for the full catalog shape.",
+    "See the reporting `catalog` var reference (docs/ai-reporting/reference/vars.md)",
+    "and docs/ai-reporting/how-to/complex-data.md for the full catalog shape.",
   ];
   return lines.map((l) => (l.length ? `# ${l}` : "#")).join("\n");
 }

@@ -70,8 +70,8 @@
   vars:
     _ref: modules/user-admin/vars.yaml
 
-- id: reporting
-  source: "file:../../modules/reporting"
+- id: ai-reporting
+  source: "file:../../modules/ai-reporting"
   # Remap the module's storage + data connections onto MONGODB_URI-backed app
   # connections so the demo needs no REPORTING_MONGODB_URI / REPORTING_DATA_MONGODB_URI
   # secrets. (ai keeps its bundled gateway connection → AI_GATEWAY_API_KEY.)
@@ -82,4 +82,4 @@
     conversations-store: reporting-conversations
     reporting-data: reporting-analytics
   vars:
-    _ref: modules/reporting/vars.yaml
+    _ref: modules/ai-reporting/vars.yaml

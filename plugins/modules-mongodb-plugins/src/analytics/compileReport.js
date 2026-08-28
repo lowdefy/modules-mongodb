@@ -233,7 +233,12 @@ function safeFilename(label) {
 function formatTimestamp(value, { withTime = false } = {}) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  const options = { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" };
+  const options = {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  };
   if (withTime) {
     options.hour = "2-digit";
     options.minute = "2-digit";
@@ -1104,10 +1109,12 @@ function compileReport({
   // they control, and the menu leaves out the items a viewer cannot use. The endpoints
   // authorize regardless — a menu is an affordance.
   const reportVisibility = visibility ?? "private";
-  const canPublish = Boolean(is_owner) && Boolean(can_share) && reportVisibility !== "shared";
+  const canPublish =
+    Boolean(is_owner) && Boolean(can_share) && reportVisibility !== "shared";
   // Unpublish is the one item whose gate is not is_owner alone: a share_roles holder
-  // may retract a report they do not own. See docs/reporting/concepts/ownership.md.
-  const canUnpublish = reportVisibility === "shared" && (Boolean(is_owner) || Boolean(can_share));
+  // may retract a report they do not own. See docs/ai-reporting/concepts/ownership.md.
+  const canUnpublish =
+    reportVisibility === "shared" && (Boolean(is_owner) || Boolean(can_share));
   const menuItems = [];
   // No Open item: this menu only opens on the report page, which is already where Open
   // would navigate. The list's menu cell has one.
@@ -1133,7 +1140,11 @@ function compileReport({
           id: "menu_rename_open",
           type: "CallMethod",
           skip: unlessItem("rename"),
-          params: { blockId: "rename_modal", method: "setOpen", args: [{ open: true }] },
+          params: {
+            blockId: "rename_modal",
+            method: "setOpen",
+            args: [{ open: true }],
+          },
         },
       ],
     });
@@ -1145,13 +1156,23 @@ function compileReport({
   if (canPublish) {
     menuItems.push({
       link: menuLink("publish", "Publish to the app", "AiOutlineGlobal"),
-      actions: visibilityActions("publish", "shared", visibilityEndpointId, reportPageId),
+      actions: visibilityActions(
+        "publish",
+        "shared",
+        visibilityEndpointId,
+        reportPageId,
+      ),
     });
   }
   if (canUnpublish) {
     menuItems.push({
       link: menuLink("unpublish", "Unpublish", "AiOutlineEyeInvisible"),
-      actions: visibilityActions("unpublish", "private", visibilityEndpointId, reportPageId),
+      actions: visibilityActions(
+        "unpublish",
+        "private",
+        visibilityEndpointId,
+        reportPageId,
+      ),
     });
   }
   menuItems.push({
