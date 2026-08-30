@@ -81,7 +81,8 @@ blocks:
     required: true
     properties:
       title: Organization authority
-      extra: Who may administer this organization — separate from the app roles above, and not implied by them.
+      label:
+        extra: Who may administer this organization — separate from the app roles above, and not implied by them.
       # `member` is the no-authority value, not an empty one: the write refuses
       # an empty tier, so revoking authority writes `member`. Labelled in the
       # app's language rather than BetterAuth's, where "member" reads as a
