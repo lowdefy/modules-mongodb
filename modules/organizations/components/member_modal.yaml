@@ -74,8 +74,8 @@ blocks:
         _ref: components/role_options.yaml
   - id: org_role_divider
     type: Divider
-    properties:
-      margin: 4
+    style:
+      marginBlock: 4
   - id: member_org_role
     type: Selector
     required: true
