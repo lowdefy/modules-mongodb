@@ -74,7 +74,9 @@ _build.if:
           then:
             - $eq:
                 - "$organization_id"
-                - _var: org_expr
+                - _var:
+                    key: org_expr
+                    default: null
         - if:
             _build.eq:
               - _var: shape

@@ -87,7 +87,9 @@
                       - null
                 then:
                   organization_id:
-                    _var: organization_id
+                    _var:
+                      key: organization_id
+                      default: null
                 else: {}
         update:
           # Document-style update: $setOnInsert only, so a matched (invited)
@@ -176,7 +178,9 @@
                         - null
                   then:
                     user_id:
-                      _var: user_id
+                      _var:
+                        key: user_id
+                        default: null
                   else: {}
         options:
           upsert: true
@@ -206,5 +210,7 @@
                   - null
             then:
               organization_id:
-                _var: organization_id
+                _var:
+                  key: organization_id
+                  default: null
             else: {}

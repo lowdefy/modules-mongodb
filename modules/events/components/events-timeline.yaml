@@ -108,7 +108,9 @@ blocks:
           key: reverse
           default: false
       s3GetPolicyRequestId:
-        _var: s3GetPolicyRequestId
+        _var:
+          key: s3GetPolicyRequestId
+          default: null
       contactPageUrl:
         _var:
           key: contact_page_url
