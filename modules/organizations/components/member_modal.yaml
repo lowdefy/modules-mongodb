@@ -70,7 +70,6 @@ blocks:
     type: TagMultipleSelector
     properties:
       title: Roles
-      placeholder: No role
       options:
         _ref: components/role_options.yaml
   - id: org_role_divider
