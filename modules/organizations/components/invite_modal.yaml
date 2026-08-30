@@ -47,7 +47,6 @@ blocks:
     type: TagMultipleSelector
     properties:
       title: Roles
-      placeholder: Choose one or more roles
       options:
         _ref: components/role_options.yaml
   - id: invite_hint

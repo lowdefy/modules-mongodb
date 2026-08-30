@@ -38,7 +38,9 @@ blocks:
       style:
         fontSize: 12
         fontStyle: italic
-  - id: events-timeline
+  # Renamed from `events-timeline`: duplicating the component root's id is a
+  # build error in Lowdefy v8 (block ids are page state keys).
+  - id: events_timeline_list
     type: EventsTimeline
     events:
       onActionClick:
