@@ -8,6 +8,7 @@ _ref:
   module: layout
   component: card
   vars:
+    id: tile_profile
     title: Profile
     header_buttons:
       - id: profile_edit_btn

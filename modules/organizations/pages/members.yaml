@@ -54,6 +54,7 @@ _ref:
           module: layout
           component: card
           vars:
+            id: members_card
             title: Members
             blocks:
               - _ref: components/members_table.yaml
@@ -61,6 +62,7 @@ _ref:
           module: layout
           component: card
           vars:
+            id: invitations_card
             title: Pending invitations
             blocks:
               - _ref: components/invitations_table.yaml

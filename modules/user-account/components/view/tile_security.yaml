@@ -18,6 +18,7 @@ _ref:
   module: layout
   component: card
   vars:
+    id: tile_security
     title: Security
     header_buttons:
       # Verified when user.email_verified; otherwise a resend control

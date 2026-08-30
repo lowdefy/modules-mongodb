@@ -105,6 +105,7 @@ _ref:
                       module: layout
                       component: card
                       vars:
+                        id: contact_detail_card
                         title:
                           _string.concat:
                             - _module.var: label

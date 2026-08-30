@@ -58,7 +58,7 @@ blocks:
           - id: list.$.status_box
             type: Box
             layout:
-              contentAlign: middle
+              align: middle
               gap: 6
             blocks:
               - id: list.$.type
