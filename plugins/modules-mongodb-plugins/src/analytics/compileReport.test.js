@@ -208,6 +208,11 @@ test("compiles the full report to blocks", () => {
   expect(byId.s3.properties.rowData).toEqual({
     __if_none: [{ __state: "sections.s3.rows" }, results[2]],
   });
+  expect(byId.s3.properties.defaultColDef).toEqual({
+    sortable: true,
+    resizable: true,
+    flex: 1,
+  });
 
   // Table columns: plain text column bare, formatted (numeric) column
   // right-aligns and formats via _intl. No tag renderer anywhere.
@@ -300,9 +305,13 @@ test("a section's card holds its block alone, with the head row outside it", () 
     );
   }
 
-  // The download button is an action, not a result, so it is not panelled.
+  // The download run gets its own titled Downloads card rather than the
+  // section's `${id}_card` convention (see "a run of downloads is one card"
+  // below), so it is that wrapper, not the bare button, that sits here.
   expect(byId.s4_card).toBeUndefined();
-  expect(topIds).toContain("s4");
+  expect(byId.s4_downloads.type).toBe("Card");
+  expect(topIds).toContain("s4_downloads");
+  expect(topIds).not.toContain("s4");
 
   // Markdown is the prose that narrates BETWEEN the panels, so it is not one
   // itself — a card around it would read as another result.
@@ -2970,6 +2979,69 @@ describe("layout derivation", () => {
       expect(byId.s2_card.style.marginTop).toBe(gap);
       expect(byId.s3_card.style?.marginTop).toBeUndefined();
       expect(byId.s4_card.style?.marginTop).toBeUndefined();
+    });
+  });
+
+  // A run of downloads leads as one group the same way a run of kpis does: the
+  // whole run compiles to one titled Downloads card, its buttons balanced
+  // across the row(s) at filterSpans(n) rather than each stacking full-width
+  // or wrapping ragged at the page's raw width.
+  describe("a run of downloads is one card", () => {
+    const downloads = (count) =>
+      Array.from({ length: count }, (_, index) => ({
+        type: "download",
+        label: `Download ${index}`,
+        query: ordersByRegion,
+      }));
+    // download sections query client-side on click (querySections excludes
+    // them), so they consume no entry in the resolver's results array.
+    const compileDownloads = (count) => byIdOf(compile(downloads(count), []));
+
+    test("five downloads → one titled card, five buttons at spans [8,8,8,12,12], events unchanged", () => {
+      const byId = compileDownloads(5);
+      const card = byId.s0_downloads;
+      expect(card.type).toBe("Card");
+      expect(card.layout).toEqual({ span: 24 });
+      expect(card.properties.title).toBe("Downloads");
+      expect(card.blocks.map((b) => b.id)).toEqual([
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+      ]);
+      expect(card.blocks.map((b) => b.layout.span)).toEqual([
+        8, 8, 8, 12, 12,
+      ]);
+      card.blocks.forEach((button, index) => {
+        expect(button.type).toBe("Button");
+        expect(button.properties.title).toBe(`Download ${index}`);
+        expect(button.properties.icon).toBe("AiOutlineDownload");
+        const [call, dl] = button.events.onClick;
+        expect(call.type).toBe("CallAPI");
+        expect(call.params.endpointId).toBe(endpointId);
+        expect(call.params.payload).toEqual({ query: ordersByRegion });
+        expect(dl.type).toBe("DownloadCsv");
+        expect(dl.params.data).toEqual({ __api: `${endpointId}.response` });
+        expect(dl.params.filename).toBe(`download-${index}.csv`);
+      });
+    });
+
+    // One idiom, no special case: a lone download still gets the titled card
+    // rather than a bare button at the page's raw width.
+    test("a single download is still one titled card", () => {
+      const byId = compileDownloads(1);
+      const card = byId.s0_downloads;
+      expect(card.type).toBe("Card");
+      expect(card.properties.title).toBe("Downloads");
+      expect(card.blocks).toHaveLength(1);
+      expect(card.blocks[0].layout.span).toBe(24);
+    });
+
+    // The whole run leads as ONE group, so only the card takes the gap.
+    test("the gap leads the card", () => {
+      const byId = compileDownloads(5);
+      expect(byId.s0_downloads.style.marginTop).toBeGreaterThan(0);
     });
   });
 

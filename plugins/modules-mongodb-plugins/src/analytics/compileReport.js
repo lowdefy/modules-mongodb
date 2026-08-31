@@ -385,6 +385,14 @@ function deriveSectionLayout({
       gapGroups.push(run);
       continue;
     }
+    if (run[0].type === "download") {
+      // The whole run compiles to one Downloads card (see downloadsCard), so
+      // it leads as ONE group — the same reason a kpi run does: a run of five
+      // exports is two button rows, and a gap between them would read as two
+      // separate download sections.
+      gapGroups.push(run);
+      continue;
+    }
     if (run[0].type === "chart") {
       let index = 0;
       while (index < run.length) {
@@ -872,6 +880,45 @@ function sectionBox(section, blocks) {
     type: "Box",
     layout: { span: PAIRED_CHART_SPAN },
     blocks,
+  };
+}
+
+// A run of `download` sections compiles to one Card — the only section type
+// whose panel carries its own title, since every other panel is already named
+// by the head row above it and a download has no head row to put one in.
+// Buttons share the run's row(s) at filterSpans(n), the same balancing a run
+// of filters or kpis gets, rather than each stacking full-width or wrapping
+// ragged at the page's raw width.
+function downloadsCard(run, endpointId) {
+  const spans = filterSpans(run.length);
+  return {
+    id: `${run[0].id}_downloads`,
+    type: "Card",
+    layout: { span: GRID_COLUMNS },
+    properties: { title: "Downloads" },
+    blocks: run.map((section, index) => ({
+      id: section.id,
+      type: "Button",
+      layout: { span: spans[index] },
+      properties: { title: section.label, icon: "AiOutlineDownload" },
+      events: {
+        onClick: [
+          {
+            id: `query_${section.id}`,
+            type: "CallAPI",
+            params: { endpointId, payload: { query: section.query } },
+          },
+          {
+            id: `download_${section.id}`,
+            type: "DownloadCsv",
+            params: {
+              data: { __api: `${endpointId}.response` },
+              filename: safeFilename(section.label),
+            },
+          },
+        ],
+      },
+    })),
   };
 }
 
@@ -1851,7 +1898,11 @@ function compileReport({
               columnDefs: section.columns.map((column) =>
                 tableColumnDef(column, rows),
               ),
-              defaultColDef: { sortable: true, resizable: true },
+              // flex fills the card's width whatever the column count — without
+              // it a narrow table left hundreds of pixels of blank card beside
+              // its columns, and a wide one clipped its header mid-word instead
+              // of shrinking to fit.
+              defaultColDef: { sortable: true, resizable: true, flex: 1 },
             },
           }),
         );
@@ -1873,31 +1924,8 @@ function compileReport({
       });
     }
 
-    if (section.type === "download") {
-      out.push({
-        id: section.id,
-        type: "Button",
-        layout: { span: 6 },
-        properties: { title: section.label, icon: "AiOutlineDownload" },
-        events: {
-          onClick: [
-            {
-              id: `query_${section.id}`,
-              type: "CallAPI",
-              params: { endpointId, payload: { query: section.query } },
-            },
-            {
-              id: `download_${section.id}`,
-              type: "DownloadCsv",
-              params: {
-                data: { __api: `${endpointId}.response` },
-                filename: safeFilename(section.label),
-              },
-            },
-          ],
-        },
-      });
-    }
+    // download sections never reach here: a whole run compiles to one
+    // Downloads card in the emit loop below, before sectionBlocks is called.
     return out;
   };
 
@@ -1906,6 +1934,13 @@ function compileReport({
   // section and leads that section's group, so the two are separated by the
   // small row gap while the whole group is pushed off what precedes it.
   for (const group of gapGroups) {
+    // A download run has no filter to interleave (filterBy is not a download
+    // field) and compiles as one card rather than one block per section, so it
+    // bypasses sectionBlocks entirely.
+    if (group[0].type === "download") {
+      bodyBlocks.push(...withTopGap([downloadsCard(group, endpointId)]));
+      continue;
+    }
     const blocks = group.flatMap((section) => [
       ...(filtersByFirstSubscriber.get(section.id) ?? []),
       ...sectionBlocks(section),
