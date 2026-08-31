@@ -59,6 +59,45 @@ test("multi-series bars group by default and stack on stacked: true", async ({
   expect([...stacks][0]).toBeTruthy();
 });
 
+// The drawn width is client-requery surface: the compiled report page sends the
+// width its chart block is laid out at, and the endpoint has to both admit it
+// through payloadSchema and carry it into assembly. Only reachable here — a
+// build check sees neither the schema bound nor the routine's payload read.
+test("the drawn width reaches assembly and decides legend orientation", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await mdb.seed("demo_orders", ORDERS);
+  await ldf.user(USER_A);
+
+  const spec = {
+    chart: "bar",
+    title: "Revenue and units by region",
+    x: "region",
+    y: ["revenue", "units"],
+    query: ordersByRegionTwoMeasures,
+  };
+
+  // The report column can afford the legend column Flint funds out of grid.right.
+  const wide = await callEndpoint(page, "chart-data", { ...spec, width: 1100 });
+  expect(wide.body?.success).toBe(true);
+  expect(wide.response.option.legend.orient).toBe("vertical");
+
+  // The chat panel cannot, so the legend becomes a band above the plot and the
+  // canvas grows by its height.
+  const narrow = await callEndpoint(page, "chart-data", {
+    ...spec,
+    width: 420,
+  });
+  expect(narrow.body?.success).toBe(true);
+  expect(narrow.response.option.legend.orient).toBe("horizontal");
+  expect(narrow.response.option.grid.right).toBeLessThan(
+    wide.response.option.grid.right,
+  );
+  expect(narrow.response.height).toBeGreaterThan(wide.response.height);
+});
+
 test("stacked on a non-bar chart is rejected by spec validation", async ({
   ldf,
   page,

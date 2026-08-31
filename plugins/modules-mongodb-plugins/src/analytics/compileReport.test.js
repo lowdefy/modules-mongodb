@@ -1,4 +1,4 @@
-import compileReport from "./compileReport.js";
+import compileReport, { chartWidthForSpan } from "./compileReport.js";
 import querySections from "./querySections.js";
 import testCatalog from "./testDatasets.js";
 import {
@@ -468,6 +468,11 @@ describe("a filter driving a chart and a table", () => {
       title: "Revenue by Region",
       x: "region",
       y: ["total"],
+      // Assembly decides legend orientation and label rotation from the width,
+      // so the re-query carries the width of the span the section is actually
+      // laid out at — otherwise a filtered chart re-renders for another canvas
+      // than the one the compiled option was built for.
+      width: chartWidthForSpan(byId.s1.layout.span),
       query: ordersByRegion,
       filters: [
         { field: "status", op: "eq", value: { __state: "filter_status" } },

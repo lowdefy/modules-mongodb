@@ -4,7 +4,9 @@ import { assembleECharts } from "flint-chart/echarts";
  * Builds an ECharts option from a chart kind, the declared presentation
  * contract (`x` category column, `y` value columns), and result rows, by
  * handing the rows to Flint's ECharts compiler — which derives label rotation,
- * grid padding, axis types and colours from the actual data.
+ * grid padding, axis types and colours from the actual data — and then rewriting
+ * what Flint decided without the one thing it never consults: the width the
+ * chart will actually be drawn at.
  *
  * The AI never contributes chart config: it names a chart kind, a query and the
  * x/y columns; Flint shapes everything else server-side.
@@ -12,9 +14,20 @@ import { assembleECharts } from "flint-chart/echarts";
 
 // Flint's contract is "pin the plot, we tell you the canvas": `height` is the
 // plot area and axis furniture is added on top of it, so the returned `height`
-// varies with the labels. Width feeds no layout decision, but a `baseSize`
-// missing either field yields `_width: NaN`, so both are always present.
-const BASE_SIZE = { width: 1100, height: 180 };
+// varies with the labels. A `baseSize` missing either field yields
+// `_width: NaN`, so both are always present.
+const BASE_PLOT_HEIGHT = 180;
+
+// Flint derives only two things from `baseSize.width` and both are rewritten
+// below — the absolute bar width and the absolute legend offset — so the
+// caller's width reaches Flint only to keep `baseSize` whole. Every layout
+// decision the width actually drives is made in the post-pass.
+//
+// The fallback is the report column, where most charts are drawn. It is applied
+// with a finite check rather than a default parameter because one caller is an
+// endpoint payload, where an absent key arrives as null and a default parameter
+// would not fire.
+const DEFAULT_WIDTH = 1100;
 
 // A pie is sized differently from an axis chart, on both counts. Flint gives it
 // the same label-driven canvas (280px for the base height above) and then draws
@@ -45,6 +58,34 @@ const OTHER_SLICE = "Other";
 // Rounded at the data end, square at the baseline: a bar grows from its
 // baseline, and rounding that end lifts it off the axis it is measured from.
 const BAR_CAP_RADIUS = [4, 4, 0, 0];
+
+// Where a vertical right-hand legend stops paying for itself. Flint funds that
+// legend out of `grid.right`, which measures 79-163px — a fair trade against the
+// full-width report column, and a third of the canvas on the 420px chat panel.
+// 700 clears the widest narrow surface (a half-width card, ~540px) while staying
+// well under the report column.
+const NARROW_WIDTH = 700;
+
+// A horizontal legend band's row height, and the allowance each entry needs
+// beyond its text for its colour marker and the gap to the next entry.
+const LEGEND_ROW_HEIGHT = 24;
+const LEGEND_ENTRY_PAD = 40;
+
+// With the legend above the plot, `grid.right` no longer funds a legend column —
+// it only has to stop the last x-axis label, which is centred on its tick and so
+// overhangs the plot by half its width, from clipping at the canvas edge.
+const NARROW_PLOT_RIGHT = 38;
+
+// Label geometry for the rotation step, estimated rather than measured: there is
+// no canvas to measure text against server-side. CHAR_W is deliberately
+// generous for the 12px axis label — under-estimating unrotates labels that then
+// overlap each other, which reads worse than the tilt it was avoiding — and
+// LABEL_GAP is the clearance between two neighbouring labels' ends.
+const CHAR_W = 7.5;
+const LABEL_GAP = 8;
+
+// A label tilted 45 degrees takes up cos(45) of its length across the axis.
+const COS_45 = Math.SQRT1_2;
 
 // The eight-slot categorical set every chart draws from, validated against the
 // card surface below for lightness band, chroma floor, CVD separation and
@@ -253,7 +294,84 @@ function styleMark(series, { single, capped }) {
   }
 }
 
-function buildFlintOption({ chart, x, y, rows, stacked }) {
+// Flint stands the legend in a column to the right of the plot and funds it out
+// of `grid.right`. On a narrow canvas that column costs more than the series
+// names are worth, so below NARROW_WIDTH the legend becomes a horizontal band
+// above the plot and the plot takes the width back.
+//
+// Returns the canvas height the band needs. Flint sized `_height` around a
+// legend that cost no vertical space at all, so the band's rows have to be added
+// to the canvas — taken out of the plot instead, a two-row legend would shrink
+// the plot it labels.
+//
+// Charts with no legend (single-series, and every pie — Flint labels slices in
+// place rather than in a legend) are left alone, as is any chart wide enough to
+// afford the column.
+function bandLegend(option, width) {
+  const { legend } = option;
+  if (!legend || width >= NARROW_WIDTH) return 0;
+  const entries = Array.isArray(legend.data) ? legend.data : [];
+  const bandWidth = entries.reduce(
+    (sum, name) => sum + String(name).length * CHAR_W + LEGEND_ENTRY_PAD,
+    0,
+  );
+  const rows = Math.max(1, Math.ceil(bandWidth / width));
+  const band = rows * LEGEND_ROW_HEIGHT;
+  legend.orient = "horizontal";
+  legend.top = 0;
+  legend.left = "center";
+  // Flint anchored the column against the right edge; a centred band must not
+  // also be pinned there, or ECharts resolves the two against each other.
+  delete legend.right;
+  if (option.grid) {
+    option.grid.right = NARROW_PLOT_RIGHT;
+    // Offsetting the grid by the same band that was added to the canvas leaves
+    // the plot area exactly the size Flint sized it.
+    option.grid.top = (option.grid.top ?? 0) + band;
+  }
+  return band;
+}
+
+// Flint picks label rotation from the label list alone — flat only when there are
+// at most 4 categories and none longer than 8 characters, else vertical — and
+// never consults the width. So three 10-character labels with 340px of slot each
+// are stood on end, which inflates `grid.bottom` and pushes the labels into the
+// axis title. Recomputed here against the plot width Flint never saw, in steps
+// of 0 -> 45 -> 90.
+//
+// It only ever relaxes. A label Flint left flat already fits by its own rule, and
+// tilting it on the strength of an estimate could only be wrong; relaxing on that
+// estimate is safe because CHAR_W over-states how wide a label is.
+//
+// `grid.bottom` is deliberately left as Flint sized it: the room a vertical label
+// needed becomes padding under an unrotated one, which is harmless, where
+// tightening it risks clipping the axis title it also has to hold.
+//
+// Scoped to a category axis with its labels in hand. A time axis draws its labels
+// through a formatter, so their text is not knowable here; a value axis is
+// already flat.
+function relaxRotation(option, width) {
+  const axis = option.xAxis;
+  if (axis?.type !== "category" || !Array.isArray(axis.data)) return;
+  const current = axis.axisLabel?.rotate;
+  if (!current || axis.data.length === 0) return;
+  const labels = axis.data.map((value) => String(value));
+  const pxPerCategory =
+    (width - (option.grid?.left ?? 0) - (option.grid?.right ?? 0)) /
+    labels.length;
+  const labelWidth =
+    Math.max(...labels.map((label) => label.length)) * CHAR_W + LABEL_GAP;
+  let rotate = 90;
+  if (labelWidth <= pxPerCategory) {
+    rotate = 0;
+  } else if (labelWidth * COS_45 <= pxPerCategory) {
+    rotate = 45;
+  }
+  if (rotate < current) axis.axisLabel.rotate = rotate;
+}
+
+function buildFlintOption({ chart, x, y, rows, stacked, width }) {
+  const canvasWidth = Number.isFinite(width) ? width : DEFAULT_WIDTH;
   const values = rows ?? [];
   const multi = y.length > 1;
   const xName = humanize(x);
@@ -346,7 +464,11 @@ function buildFlintOption({ chart, x, y, rows, stacked }) {
 
   const option = assembleECharts({
     data: { values: folded },
-    chart_spec: { chartType, encodings, baseSize: BASE_SIZE },
+    chart_spec: {
+      chartType,
+      encodings,
+      baseSize: { width: canvasWidth, height: BASE_PLOT_HEIGHT },
+    },
   });
 
   // Read before the strip walk removes it: this is the canvas Flint sized for
@@ -376,8 +498,12 @@ function buildFlintOption({ chart, x, y, rows, stacked }) {
     delete option.legend.left;
     option.legend.right = 10;
   }
+  // Legend first: the rotation step measures the plot against `grid.right`, which
+  // a banded legend hands back to the plot.
+  const band = bandLegend(option, canvasWidth);
+  relaxRotation(option, canvasWidth);
 
-  return { option, height };
+  return { option, height: height + band };
 }
 
 export default buildFlintOption;

@@ -326,13 +326,13 @@ test("the reserved neutral is not a palette slot", () => {
 // — a flint-chart bump that moves the colour somewhere else fails here, loudly,
 // instead of quietly shipping stock-palette charts.
 describe("flint-chart's pre-rewrite option shape", () => {
-  const assemble = (chartType, encodings, values) =>
+  const assemble = (chartType, encodings, values, width = 1100) =>
     assembleECharts({
       data: { values },
       chart_spec: {
         chartType,
         encodings,
-        baseSize: { width: 1100, height: 180 },
+        baseSize: { width, height: 180 },
       },
     });
 
@@ -350,6 +350,28 @@ describe("flint-chart's pre-rewrite option shape", () => {
       expect(STOCK_HEXES).toContain(option.series[0].itemStyle.color);
     },
   );
+
+  // The rotation override only ever relaxes what Flint decided, so it needs
+  // Flint to still be deciding it: flat at up to 4 categories of up to 8
+  // characters, else vertical, with the canvas width never consulted. A bump
+  // that moves either threshold — or stops emitting a rotation at all — has to
+  // fail here rather than quietly leaving every label as it found it.
+  test.each([
+    [["Apr", "May", "Jun", "Jul"], 0],
+    [["Apr", "May", "Jun", "Jul", "Aug"], 90],
+    [["Alderaan", "Tatooine", "Coruscat", "Dagobahh"], 0],
+    [["Alderaan9", "Tatooine9", "Coruscant", "Dagobahhh"], 90],
+  ])("rotates %p to %i degrees at every canvas width", (labels, rotate) => {
+    for (const width of [420, 1100]) {
+      const option = assemble(
+        "Bar Chart",
+        { x: { field: "Region" }, y: { field: "Revenue" } },
+        labels.map((label, index) => ({ Region: label, Revenue: 100 + index })),
+        width,
+      );
+      expect(option.xAxis.axisLabel.rotate).toBe(rotate);
+    }
+  });
 
   test("a pie declares no series or slice colour and reads option.color", () => {
     const option = assemble(
@@ -558,4 +580,151 @@ test("a pie of exactly seven slices renders as seven, uncapped", () => {
   for (const datum of data) {
     expect(datum.itemStyle?.color).toBeUndefined();
   }
+});
+
+// Width-driven layout: what Flint decided without ever looking at the canvas.
+
+const barSpec = { chart: "bar", x: "region", y: ["revenue"], rows: regionRows };
+const multiBarSpec = {
+  chart: "bar",
+  x: "region",
+  y: ["revenue", "cost"],
+  rows: regionRows,
+};
+
+const labelRows = (labels) =>
+  labels.map((label, index) => ({ region: label, revenue: 100 + index }));
+
+const rotationAt = (labels, width) =>
+  buildFlintOption({
+    chart: "bar",
+    x: "region",
+    y: ["revenue"],
+    rows: labelRows(labels),
+    width,
+  }).option.xAxis.axisLabel.rotate;
+
+// Flint stands a label on end as soon as there is a fifth category or a ninth
+// character, whatever the slot it has. In the report column every one of these
+// has 190px or more of slot — so the whole boundary matrix ends up flat, where
+// before the override half of it was vertical against an inflated grid.
+test.each([
+  [["Apr", "May", "Jun"], 0],
+  [["Apr", "May", "Jun", "Jul"], 0],
+  [["Apr", "May", "Jun", "Jul", "Aug"], 0],
+  [["Alderaan", "Tatooine", "Coruscat", "Dagobahh"], 0],
+  [["Alderaan9", "Tatooine9", "Coruscant", "Dagobahhh"], 0],
+  [
+    ["Qualified", "Discovery", "Proposal", "Negotiation", "Contract", "Legal"],
+    0,
+  ],
+])("labels %p sit at %i degrees in the report column", (labels, rotate) => {
+  expect(rotationAt(labels, 1100)).toBe(rotate);
+});
+
+// The same labels, the same rule, two canvases: 195px of slot each in the report
+// column against 59px in the chat panel.
+test("rotation is recomputed against the width the chart is actually drawn at", () => {
+  const labels = [
+    "Alderaan99",
+    "Tatooine99",
+    "Coruscantt",
+    "Dagobahhhh",
+    "Endorendor",
+  ];
+  expect(rotationAt(labels, 1100)).toBe(0);
+  expect(rotationAt(labels, 420)).toBe(45);
+});
+
+// 45 is a step of its own and not a rounding of 90: a label that fits its slot
+// tilted should be tilted, not stood up. These two straddle it at the panel
+// width — ten characters fit at 45, eleven do not fit at all.
+test("a label that fits only tilted lands on 45, and one that does not lands on 90", () => {
+  expect(
+    rotationAt(
+      ["Alderaan99", "Tatooine99", "Coruscantt", "Dagobahhhh", "Endorendor"],
+      420,
+    ),
+  ).toBe(45);
+  expect(
+    rotationAt(
+      [
+        "Qualified",
+        "Discovery",
+        "Proposal",
+        "Negotiation",
+        "Contract",
+        "Legal",
+      ],
+      420,
+    ),
+  ).toBe(90);
+});
+
+// The override relaxes and never tightens. Flint's flat cases fit by its own
+// rule, and the label width here is an estimate — no canvas to measure against —
+// so a rotation added on the strength of it could only be wrong.
+test("a label Flint left flat is never rotated, however narrow the canvas", () => {
+  for (const width of [200, 420, 1100]) {
+    expect(rotationAt(["Apr", "May", "Jun"], width)).toBe(0);
+  }
+});
+
+// A time axis renders its labels through a formatter, so what will be drawn is
+// not knowable here and its rotation is left as Flint set it.
+test("a temporal axis keeps the rotation Flint gave it", () => {
+  const rotateAt = (width) =>
+    buildFlintOption({
+      chart: "line",
+      x: "month",
+      y: ["revenue"],
+      rows: monthRows,
+      width,
+    }).option.xAxis.axisLabel.rotate;
+  expect(rotateAt(1100)).toBe(rotateAt(420));
+});
+
+test("a narrow canvas bands the legend above the plot and pays for it in height", () => {
+  const wide = buildFlintOption({ ...multiBarSpec, width: 1100 });
+  const narrow = buildFlintOption({ ...multiBarSpec, width: 420 });
+
+  expect(wide.option.legend.orient).toBe("vertical");
+  expect(wide.option.legend.right).toBe(10);
+  expect(wide.option.legend.top).toBe(20);
+
+  expect(narrow.option.legend.orient).toBe("horizontal");
+  expect(narrow.option.legend.top).toBe(0);
+  expect(narrow.option.legend.left).toBe("center");
+  // A centred band pinned to the right edge as well would have ECharts resolve
+  // the two against each other.
+  expect(narrow.option.legend.right).toBeUndefined();
+
+  // Flint funded the legend column out of grid.right; banded, that goes back to
+  // the plot.
+  expect(narrow.option.grid.right).toBeLessThan(wide.option.grid.right);
+  // Flint sized _height around a legend that cost no vertical space, so the band
+  // is added to the canvas and offset in the grid by the same amount — which
+  // leaves the plot area itself exactly the size Flint sized it.
+  const band = narrow.height - wide.height;
+  expect(band).toBeGreaterThan(0);
+  expect(narrow.option.grid.top - wide.option.grid.top).toBe(band);
+});
+
+// Only a legend can cost a band, and Flint gives one to multi-series charts
+// alone — it labels pie slices in place.
+test.each([
+  ["a single-series bar", barSpec],
+  ["a pie", { chart: "pie", x: "region", y: ["revenue"], rows: regionRows }],
+])("%s has no legend to band and no band to pay for", (_, spec) => {
+  const narrow = buildFlintOption({ ...spec, width: 420 });
+  expect(narrow.option.legend).toBeUndefined();
+  expect(narrow.height).toBe(buildFlintOption({ ...spec, width: 1100 }).height);
+});
+
+// One caller is an endpoint payload, where an absent key resolves to null rather
+// than undefined — a default parameter would not fire on it.
+test("a missing or null width lays the chart out for the report column", () => {
+  const column = buildFlintOption({ ...multiBarSpec, width: 1100 });
+  expect(buildFlintOption(multiBarSpec)).toEqual(column);
+  expect(buildFlintOption({ ...multiBarSpec, width: null })).toEqual(column);
 });

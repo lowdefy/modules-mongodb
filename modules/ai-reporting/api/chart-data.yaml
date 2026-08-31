@@ -39,6 +39,17 @@ payloadSchema:
     stacked:
       type: boolean
       description: Bar charts only — stack the value series instead of grouping them.
+    width:
+      type: number
+      minimum: 200
+      maximum: 4000
+      description: >
+        The pixel width the chart block is drawn at, which decides legend
+        orientation and axis label rotation. Untrusted like the rest of this
+        payload and only bounded, not verified: a lied-about width costs nothing
+        but a chart laid out for a canvas it is not on, and the bounds are here
+        so the layout arithmetic stays sane. Omitted, assembly falls back to the
+        full report column.
     query:
       type: object
       description: The collection and pipeline to run.
@@ -126,5 +137,7 @@ routine:
           _state: spec.y
         stacked:
           _state: spec.stacked
+        width:
+          _payload: width
         rows:
           _step: run_query

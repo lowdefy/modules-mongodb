@@ -5,6 +5,16 @@ import validateExportSpec from "./validateExportSpec.js";
 import validateTableSpec from "./validateTableSpec.js";
 import { verifyChartContract, verifyTableContract } from "./verifyContract.js";
 
+// The chat page's result panel is a fixed-width column beside the conversation,
+// and chart assembly lays out for the width it is given. The expand modal is
+// wider but re-uses this option verbatim — it renders the persisted one out of
+// state rather than assembling its own — so an expanded chart wears the panel's
+// layout: a horizontal legend and, where the panel's slots were too tight, a
+// tilted axis label. Both are conservative at the wider size (labels that fit at
+// 420px cannot overlap at 900) and both beat what the modal showed before, which
+// was the same vertical labels the panel had.
+const CHAT_PANEL_WIDTH = 420;
+
 // The hook's :for step results are index-aligned with their specs, but a run
 // whose entries are sparse reaches this function as an object keyed by index
 // instead of an array. Coerced back, so a missing entry stays a hole at its own
@@ -109,6 +119,7 @@ function buildDataParts({
         y,
         rows,
         stacked,
+        width: CHAT_PANEL_WIDTH,
       });
       parts.push({
         type: "data-report-chart",

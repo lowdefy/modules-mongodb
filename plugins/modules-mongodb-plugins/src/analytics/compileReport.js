@@ -138,6 +138,26 @@ const CHAT_LINK_SPAN = 5;
 // The layout engine's column count. A block with no declared span fills the row.
 const GRID_COLUMNS = 24;
 
+// What report.yaml caps the content grid at, and so the widest a section can be
+// drawn. It is the only width a compiled section has to go on: nothing here runs
+// in a browser that could measure the real one.
+const REPORT_CONTENT_WIDTH = 1100;
+
+// The pixel width a section spanning `span` of the grid's columns is drawn at.
+// Chart assembly needs it to decide legend orientation and label rotation, and
+// gets it wrong in only one direction — a slightly over-stated width tilts fewer
+// labels than it should. So the card padding around a chart is not subtracted:
+// it is a couple of percent of the full-width column every chart section spans.
+export function chartWidthForSpan(span) {
+  return Math.round((span / GRID_COLUMNS) * REPORT_CONTENT_WIDTH);
+}
+
+// The span a chart section is laid out at, and the span its assembled width is
+// derived from — one constant because the two have to agree. A chart assembled
+// for one width and laid out at another gets the legend orientation and label
+// rotation of a canvas it is not on.
+const CHART_SECTION_SPAN = GRID_COLUMNS;
+
 // Vertical separation ahead of each section GROUP, on top of the small row gap
 // report.yaml sets on the content area. Two different distances, deliberately: a
 // heading ends up nearer the content it names than the section above it, so it
@@ -363,6 +383,11 @@ function requeryActions({
             x: section.x,
             y: section.y,
             ...(section.stacked ? { stacked: true } : {}),
+            // Re-assembly makes the same width-driven layout decisions the
+            // compiled option was built with, so it has to be told the same
+            // width — left out, a re-query would silently lay the chart out for
+            // the default column instead of the one it is drawn in.
+            width: chartWidthForSpan(CHART_SECTION_SPAN),
             query: section.query,
             filters: boundFilters(section, filterSectionsByField),
           },
@@ -1454,6 +1479,7 @@ function compileReport({
             y: section.y,
             rows,
             stacked: section.stacked,
+            width: chartWidthForSpan(CHART_SECTION_SPAN),
           });
         } catch (error) {
           out.push(...brokenSectionBlocks(section, error.message, brokenCtx));
@@ -1489,7 +1515,7 @@ function compileReport({
         out.push({
           id: section.id,
           type: "EChart",
-          layout: { span: 24 },
+          layout: { span: CHART_SECTION_SPAN },
           properties,
         });
       }
