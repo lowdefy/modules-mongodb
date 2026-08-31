@@ -6,7 +6,11 @@ import {
   REPORT_DECIMALS,
   REPORT_LOCALE,
 } from "./constants.js";
-import buildFlintOption from "./buildFlintOption.js";
+import buildFlintOption, {
+  humanize,
+  PALETTE,
+  pieSliceNames,
+} from "./buildFlintOption.js";
 import { orderedQueries } from "./querySections.js";
 import validateReportSpec, {
   catalogFieldValues,
@@ -366,6 +370,7 @@ function requeryActions({
   filterSectionsByField,
   endpointId,
   chartEndpointId,
+  colors,
 }) {
   const actions = [];
   for (const section of boundSections) {
@@ -388,6 +393,11 @@ function requeryActions({
             // width — left out, a re-query would silently lay the chart out for
             // the default column instead of the one it is drawn in.
             width: chartWidthForSpan(CHART_SECTION_SPAN),
+            // For the same reason, and one more: the map was decided over the
+            // UNFILTERED rows, so it covers names a filtered re-query can only
+            // narrow. Re-derived from whatever the filter left instead, a series
+            // would take the hue of its new rank rather than its own.
+            colors,
             query: section.query,
             filters: boundFilters(section, filterSectionsByField),
           },
@@ -865,6 +875,62 @@ function verifySection(section, rows) {
   }
 }
 
+// Aligns the resolver's per-section step results with querySections() order,
+// which is the only thing that relates the two: a result carries no section id.
+// A missing entry reads as null — the section's AnalyticsPipeline failed inside
+// :try, or the viewer may not read it.
+function rowsBySection(sections, results) {
+  const map = new Map();
+  orderedQueries(sections).forEach((entry, index) => {
+    map.set(entry.id, results?.[index] ?? null);
+  });
+  return map;
+}
+
+// Report-scoped colour identity: one hue per entity name, decided once for the
+// whole report, so an entity is the same colour in every section that names it —
+// a status in a pie and in the stacked bar beside it — rather than taking
+// whichever hue its position in one chart's series list happened to fall on.
+//
+// The union is entity names only: a multi-series chart's series names (its
+// humanized `y` columns) and a pie's slice names (its `x` values, taken as they
+// will be drawn — ranked and capped, the aggregate excluded, since a name the
+// pie folds away needs no hue). Both are names a reader matches from one section
+// to the next; a single-series axis chart's is not, and is left out — see
+// applyPalette.
+//
+// First appearance in spec order wins, and only the first eight names get in.
+// The ninth onward are coloured per chart at assembly from the slots that chart
+// left unused: they lose cross-section stability, which is the whole of what
+// eight hues can buy, but no chart repeats a hue within itself.
+export function assignReportColors({ sections, results }) {
+  const rows = rowsBySection(sections, results);
+  const assigned = new Map();
+  for (const section of sections) {
+    if (section.type !== "chart") continue;
+    // A broken or withheld section has no rows, so a pie's slices are unknowable
+    // and none of its marks will be drawn — it takes no slot rather than
+    // throwing.
+    const sectionRows = rows.get(section.id);
+    if (sectionRows === null || sectionRows === undefined) continue;
+    let names = [];
+    if (section.chart === "pie") {
+      names = pieSliceNames({ x: section.x, y: section.y, rows: sectionRows });
+    } else if (section.y.length > 1) {
+      names = section.y.map(humanize);
+    }
+    for (const name of names) {
+      if (assigned.size >= PALETTE.length) break;
+      const key = String(name);
+      if (assigned.has(key)) continue;
+      assigned.set(key, PALETTE[assigned.size]);
+    }
+  }
+  // Built through a Map so a slice literally named "__proto__" lands as an own
+  // property rather than vanishing into the prototype.
+  return Object.fromEntries(assigned);
+}
+
 // A filter's control block, built once and placed above the first section it
 // drives (its position answers "what does this move"). Construction is identical
 // to any placement: a DateRangeSelector, a Selector/MultipleSelector sourced via
@@ -881,6 +947,7 @@ function filterControlBlock({
   endpointId,
   chartEndpointId,
   filterSectionsByField,
+  colors,
   span,
 }) {
   const onChange = requeryActions({
@@ -888,6 +955,7 @@ function filterControlBlock({
     filterSectionsByField,
     endpointId,
     chartEndpointId,
+    colors,
   });
   // The scope note goes in the label's `extra` — rendered under the control, in
   // the muted `.ant-form-item-extra` line — rather than appended to the title.
@@ -1010,10 +1078,11 @@ function compileReport({
       fail("results must be the resolver's per-section step results.");
     }
   }
-  const rowsBySectionId = new Map();
-  orderedQueries(sections).forEach((entry, index) => {
-    rowsBySectionId.set(entry.id, resultsArray[index] ?? null);
-  });
+  const rowsBySectionId = rowsBySection(sections, resultsArray);
+
+  // Before any section is emitted: every chart's hues come out of one map, so
+  // the pass that builds it has to have seen the whole spec first.
+  const colors = assignReportColors({ sections, results: resultsArray });
 
   const filterSectionsByField = new Map(
     sections.filter((s) => s.type === "filter").map((s) => [s.field, s]),
@@ -1402,6 +1471,7 @@ function compileReport({
           endpointId,
           chartEndpointId,
           filterSectionsByField,
+          colors,
           span: spans[index],
         }),
       ),
@@ -1480,6 +1550,7 @@ function compileReport({
             rows,
             stacked: section.stacked,
             width: chartWidthForSpan(CHART_SECTION_SPAN),
+            colors,
           });
         } catch (error) {
           out.push(...brokenSectionBlocks(section, error.message, brokenCtx));

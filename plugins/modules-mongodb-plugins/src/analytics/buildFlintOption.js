@@ -202,26 +202,81 @@ function capPieSlices(slices, xName, yName) {
   };
 }
 
+// The slice names a pie will actually draw, in draw order and without the
+// aggregate. Exported because the report-scoped colour map has to know a pie's
+// slices before the chart is assembled, and the cap above is the only thing that
+// decides them — a second copy of that ranking at the caller would drift from
+// this one.
+//
+// Keyed on literals rather than the display names the fold uses: this only has
+// to rank rows, and an x column that humanizes onto its y column would collide
+// here on its way to a chart that rejects the spec anyway.
+export function pieSliceNames({ x, y, rows }) {
+  const slices = (rows ?? []).map((row) => ({
+    name: row[x],
+    value: row[y[0]],
+  }));
+  return capPieSlices(slices, "name", "value")
+    .slices.filter((slice) => slice.name !== OTHER_SLICE)
+    .map((slice) => slice.name);
+}
+
 // Flint declares its palette twice — once as `option.color` and again as a
 // concrete hex on every `series[i].itemStyle.color` — and on bar and line the
 // per-series value is the one that paints, so writing `option.color` alone
 // recolours nothing but the legend swatches. Both writes, or neither has any
 // effect. A pie series carries no colour of its own: its slices read
-// `option.color` by index, which is why it is skipped below rather than given a
-// series colour that would paint every slice the same.
+// `option.color` BY INDEX, which is why `option.color` is written in mark order
+// rather than as the palette itself — that index is the only channel a single
+// slice's hue can travel down.
 //
-// Assignment is by series index, so a hue here means only "not the one beside
-// it". All of it lives in this one function so the assignment rule can change
-// without the two-write mechanism moving with it.
-function applyPalette(option) {
-  option.color = PALETTE;
-  if (!Array.isArray(option.series)) return;
-  option.series.forEach((series, index) => {
-    if (series.type === "pie") return;
-    series.itemStyle = {
-      ...series.itemStyle,
-      color: PALETTE[index % PALETTE.length],
-    };
+// `colors` is the report-scoped identity map: a name in it wears the same hue in
+// every section of the report, so a status is one colour across a pie and the
+// stacked bar beside it, and a filter that changes a chart's series count cannot
+// repaint the ones that survive. A name the map does not cover takes a slot left
+// unused in THIS chart, so a chart's own marks stay distinguishable even past
+// the eight hues cross-chart stability has to spend.
+//
+// A single-series bar or line is exempt and takes slot 1 outright: its series
+// name is a measure ("Total Revenue"), an identity it shares with nothing, so a
+// hue of its own would spend one the report's real entities need. A pie is not
+// exempt — it colours per slice, and its slices are entities.
+//
+// All of it lives in this one function so the assignment rule can change without
+// the two-write mechanism moving with it.
+function applyPalette(option, colors) {
+  const series = Array.isArray(option.series) ? option.series : [];
+  const pie = series.some((entry) => entry.type === "pie");
+  if (!pie && series.length === 1) {
+    option.color = [PALETTE[0]];
+    series[0].itemStyle = { ...series[0].itemStyle, color: PALETTE[0] };
+    return;
+  }
+  // Own enumerable keys only. The pie half of the map is keyed on data values,
+  // and indexing the object directly would answer for "constructor".
+  const assigned = new Map(Object.entries(colors ?? {}));
+  const names = pie
+    ? series.flatMap((entry) =>
+        (Array.isArray(entry.data) ? entry.data : []).map(
+          (datum) => datum?.name,
+        ),
+      )
+    : series.map((entry) => entry.name);
+  const identity = names.map((name) => assigned.get(String(name)));
+  const taken = new Set(identity.filter(Boolean));
+  const spare = PALETTE.filter((hex) => !taken.has(hex));
+  let next = 0;
+  // Modulo only once the spare slots run out, which takes more than eight marks
+  // in one chart: past that a chart cannot hold unique hues at all.
+  const resolved = identity.map(
+    (hex, index) => hex ?? spare[next++] ?? PALETTE[index % PALETTE.length],
+  );
+  // A series-less option has no marks to order, and an empty `color` would leave
+  // ECharts with no palette at all.
+  option.color = resolved.length > 0 ? resolved : PALETTE;
+  if (pie) return;
+  series.forEach((entry, index) => {
+    entry.itemStyle = { ...entry.itemStyle, color: resolved[index] };
   });
 }
 
@@ -409,7 +464,7 @@ function alignTypeScale(option) {
   option.grid.left = Math.round(option.grid.left * ratio);
 }
 
-function buildFlintOption({ chart, x, y, rows, stacked, width }) {
+function buildFlintOption({ chart, x, y, rows, stacked, width, colors }) {
   const canvasWidth = Number.isFinite(width) ? width : DEFAULT_WIDTH;
   const values = rows ?? [];
   const multi = y.length > 1;
@@ -517,7 +572,7 @@ function buildFlintOption({ chart, x, y, rows, stacked, width }) {
   // A text element painting the fold key column's name over the top-right of
   // the canvas — series labelling the legend already carries.
   delete option.graphic;
-  applyPalette(option);
+  applyPalette(option, colors);
   if (Array.isArray(option.series)) {
     const single = option.series.length === 1;
     for (const series of option.series) {

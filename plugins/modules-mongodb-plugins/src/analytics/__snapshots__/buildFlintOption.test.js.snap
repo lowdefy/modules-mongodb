@@ -7,12 +7,6 @@ exports[`multi-y bar folds into grouped series 1`] = `
     "color": [
       "#2a78d6",
       "#eb6834",
-      "#1baf7a",
-      "#eda100",
-      "#e87ba4",
-      "#008300",
-      "#4a3aa7",
-      "#e34948",
     ],
     "grid": {
       "bottom": 61,
@@ -128,12 +122,6 @@ exports[`multi-y line folds onto a colour channel 1`] = `
     "color": [
       "#2a78d6",
       "#eb6834",
-      "#1baf7a",
-      "#eda100",
-      "#e87ba4",
-      "#008300",
-      "#4a3aa7",
-      "#e34948",
     ],
     "grid": {
       "bottom": 151,
@@ -278,11 +266,6 @@ exports[`pie encodes the category on colour and the measure on size 1`] = `
       "#2a78d6",
       "#eb6834",
       "#1baf7a",
-      "#eda100",
-      "#e87ba4",
-      "#008300",
-      "#4a3aa7",
-      "#e34948",
     ],
     "series": [
       {
@@ -352,13 +335,6 @@ exports[`single-y bar over a categorical x 1`] = `
   "option": {
     "color": [
       "#2a78d6",
-      "#eb6834",
-      "#1baf7a",
-      "#eda100",
-      "#e87ba4",
-      "#008300",
-      "#4a3aa7",
-      "#e34948",
     ],
     "grid": {
       "bottom": 61,
@@ -440,13 +416,6 @@ exports[`single-y line over a temporal x 1`] = `
   "option": {
     "color": [
       "#2a78d6",
-      "#eb6834",
-      "#1baf7a",
-      "#eda100",
-      "#e87ba4",
-      "#008300",
-      "#4a3aa7",
-      "#e34948",
     ],
     "grid": {
       "bottom": 151,
@@ -560,12 +529,6 @@ exports[`stacked multi-y bar folds into stacked series 1`] = `
     "color": [
       "#2a78d6",
       "#eb6834",
-      "#1baf7a",
-      "#eda100",
-      "#e87ba4",
-      "#008300",
-      "#4a3aa7",
-      "#e34948",
     ],
     "grid": {
       "bottom": 61,

@@ -50,6 +50,21 @@ payloadSchema:
         but a chart laid out for a canvas it is not on, and the bounds are here
         so the layout arithmetic stays sane. Omitted, assembly falls back to the
         full report column.
+    colors:
+      type: object
+      additionalProperties:
+        type: string
+        pattern: "^#[0-9a-fA-F]{6}$"
+      description: >
+        The report's colour identity map, name to hex: the hue each series or
+        pie slice wears in every section of the report that names it. Sent so a
+        re-query repaints nothing — it was decided over the unfiltered rows, and
+        re-deriving it from whatever the filter left would give a series the hue
+        of its new rank. Untrusted like the rest of this payload and, being
+        purely aesthetic, only shape-checked: a lied-about map costs nothing but
+        a differently coloured chart, and the hex pattern is here so the values
+        reach ECharts as colours rather than as arbitrary strings. Omitted,
+        assembly falls back to palette order within each chart.
     query:
       type: object
       description: The collection and pipeline to run.
@@ -139,5 +154,7 @@ routine:
           _state: spec.stacked
         width:
           _payload: width
+        colors:
+          _payload: colors
         rows:
           _step: run_query

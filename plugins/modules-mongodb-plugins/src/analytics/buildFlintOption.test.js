@@ -408,18 +408,123 @@ test.each(specs)(
   "the palette is written both to option.color and per series in a %s of %s by %p (stacked: %s)",
   (chart, x, y, rows, stacked) => {
     const { option } = buildFlintOption({ chart, x, y, rows, stacked });
-    expect(option.color).toEqual(PALETTE);
+    // option.color holds this chart's marks in draw order rather than the whole
+    // palette: a pie slice reads its hue out of it by index, so it is the only
+    // channel a per-slice colour can travel down.
+    const marks =
+      option.series[0].type === "pie"
+        ? option.series[0].data.length
+        : option.series.length;
+    expect(option.color).toHaveLength(marks);
+    expect(PALETTE).toEqual(expect.arrayContaining(option.color));
+    expect(new Set(option.color).size).toBe(marks);
     option.series.forEach((series, index) => {
       if (series.type === "pie") {
-        // A pie slice reads option.color by index; a series colour here would
-        // paint every slice the same.
+        // A series colour here would paint every slice the same.
         expect(series.itemStyle.color).toBeUndefined();
         return;
       }
-      expect(series.itemStyle.color).toBe(PALETTE[index % PALETTE.length]);
+      expect(series.itemStyle.color).toBe(option.color[index]);
     });
   },
 );
+
+// The report-scoped colour map. Its point is cross-section identity — one hue
+// per entity name for the whole report — so what matters here is that a name in
+// the map gets ITS hex whatever position the name holds in this chart's series
+// or slice order, and that names outside the map still come out unique.
+describe("the report colour map", () => {
+  const seriesHexes = (option) =>
+    option.series.map((series) => series.itemStyle.color);
+
+  test.each([
+    ["bar", "region", regionRows],
+    ["line", "month", monthRows],
+  ])("is honoured per series name on a multi-series %s", (chart, x, rows) => {
+    // Deliberately out of palette order: assignment by series index would give
+    // Revenue slot 1 and Cost slot 2, which is what the map has to override.
+    const colors = { Cost: PALETTE[4], Revenue: PALETTE[6] };
+    const { option } = buildFlintOption({
+      chart,
+      x,
+      y: ["revenue", "cost"],
+      rows,
+      colors,
+    });
+    expect(seriesHexes(option)).toEqual([PALETTE[6], PALETTE[4]]);
+    expect(option.color).toEqual([PALETTE[6], PALETTE[4]]);
+  });
+
+  test("is honoured per slice name on a pie", () => {
+    const colors = { East: PALETTE[3], North: PALETTE[7] };
+    const { option } = buildFlintOption({
+      chart: "pie",
+      x: "region",
+      y: ["revenue"],
+      rows: regionRows,
+      colors,
+    });
+    const names = option.series[0].data.map((datum) => datum.name);
+    const hexOf = (name) => option.color[names.indexOf(name)];
+    expect(hexOf("North")).toBe(PALETTE[7]);
+    expect(hexOf("East")).toBe(PALETTE[3]);
+    // South is not in the map, so it takes a slot this chart has not spent.
+    expect([PALETTE[7], PALETTE[3]]).not.toContain(hexOf("South"));
+    expect(PALETTE).toContain(hexOf("South"));
+  });
+
+  test("leaves a single-series axis chart on the first slot", () => {
+    for (const [chart, x, rows] of [
+      ["bar", "region", regionRows],
+      ["line", "month", monthRows],
+    ]) {
+      const { option } = buildFlintOption({
+        chart,
+        x,
+        y: ["revenue"],
+        rows,
+        // A measure name is an identity shared with nothing, so a hue for it
+        // would only spend a slot the report's real entities need.
+        colors: { Revenue: PALETTE[5] },
+      });
+      expect(option.series[0].itemStyle.color).toBe(PALETTE[0]);
+    }
+  });
+
+  test("gives names it does not cover slots this chart has not spent", () => {
+    const colors = { Cost: PALETTE[0] };
+    const { option } = buildFlintOption({
+      chart: "bar",
+      x: "region",
+      y: ["revenue", "cost", "margin"],
+      rows: regionRows.map((row) => ({
+        ...row,
+        margin: row.revenue - row.cost,
+      })),
+      colors,
+    });
+    const hexes = seriesHexes(option);
+    expect(hexes[1]).toBe(PALETTE[0]);
+    expect(new Set(hexes).size).toBe(3);
+  });
+
+  test("does not colour a capped pie's Other slice", () => {
+    const { option } = buildFlintOption({
+      chart: "pie",
+      x: "region",
+      y: ["revenue"],
+      rows: manyRegionRows,
+      // A map naming the aggregate must not turn it into a seventh entity.
+      colors: { R1: PALETTE[2], Other: PALETTE[3] },
+    });
+    const { data } = option.series[0];
+    const names = data.map((datum) => datum.name);
+    const other = data[names.indexOf("Other")];
+    expect(other.itemStyle.color).toBe(NEUTRAL);
+    // The identity slices beside it still read their own hues out of the map.
+    expect(option.color[names.indexOf("R1")]).toBe(PALETTE[2]);
+  });
+});
 
 test("bars are rounded at the data end and square at the baseline", () => {
   for (const stacked of [false, true]) {

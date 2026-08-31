@@ -1,4 +1,8 @@
-import compileReport, { chartWidthForSpan } from "./compileReport.js";
+import compileReport, {
+  assignReportColors,
+  chartWidthForSpan,
+} from "./compileReport.js";
+import { PALETTE } from "./buildFlintOption.js";
 import querySections from "./querySections.js";
 import testCatalog from "./testDatasets.js";
 import {
@@ -473,6 +477,10 @@ describe("a filter driving a chart and a table", () => {
       // laid out at — otherwise a filtered chart re-renders for another canvas
       // than the one the compiled option was built for.
       width: chartWidthForSpan(byId.s1.layout.span),
+      // Empty here: a single-series chart is the one kind that takes no
+      // report-scoped hue (its series name is a measure, not an entity), and
+      // this report holds nothing else that would claim one.
+      colors: {},
       query: ordersByRegion,
       filters: [
         { field: "status", op: "eq", value: { __state: "filter_status" } },
@@ -531,6 +539,198 @@ describe("a filter driving a chart and a table", () => {
     });
     expect(byId.s2.properties.rowData).toEqual({
       __if_none: [{ __state: "sections.s2.rows" }, tableRows],
+    });
+  });
+});
+
+// Hues are report-scoped, not chart-scoped: the same entity has to come out the
+// same colour in every section that names it, so a status is one colour across a
+// pie and the stacked bar beside it. The union of entity names is a multi-series
+// chart's series names plus a pie's slice names, assigned in first-appearance
+// order.
+describe("report-scoped colour identity", () => {
+  const chartSection = (label, x, y, chart = "bar") => ({
+    type: "chart",
+    chart,
+    label,
+    query: ordersByRegion,
+    x,
+    y,
+  });
+  // Unfiltered sections bind the compiled option directly, so the hues are
+  // readable straight off the block.
+  const compile = (sections, results) => {
+    const blocks = compileReport({
+      spec: { title: "T", sections },
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    return Object.fromEntries(blocks.map((block) => [block.id, block]));
+  };
+  const seriesHues = (block) =>
+    Object.fromEntries(
+      block.properties.option.series.map((series) => [
+        series.name,
+        series.itemStyle.color,
+      ]),
+    );
+  // A pie carries no per-series colour: each slice reads option.color by index.
+  const sliceHues = (block) => {
+    const { option } = block.properties;
+    return Object.fromEntries(
+      option.series[0].data.map((datum, index) => [
+        datum.name,
+        option.color[index],
+      ]),
+    );
+  };
+
+  const statusRows = [
+    { region: "EU", done: 4, cancelled: 3, pending: 2 },
+    { region: "US", done: 6, cancelled: 1, pending: 5 },
+  ];
+
+  test("a series name in two sections gets one hue in both", () => {
+    const byId = compile(
+      [
+        chartSection("A", "region", ["done", "cancelled"]),
+        chartSection("B", "region", ["cancelled", "pending"], "line"),
+      ],
+      [statusRows, statusRows],
+    );
+    expect(seriesHues(byId.s0)).toEqual({
+      Done: PALETTE[0],
+      Cancelled: PALETTE[1],
+    });
+    // Cancelled keeps slot 2 rather than taking slot 1 as the first series here.
+    expect(seriesHues(byId.s1)).toEqual({
+      Cancelled: PALETTE[1],
+      Pending: PALETTE[2],
+    });
+  });
+
+  test("a pie slice shares the hue of the series of the same name", () => {
+    const byId = compile(
+      [
+        chartSection("A", "region", ["done", "cancelled"]),
+        chartSection("B", "status", ["count"], "pie"),
+      ],
+      [
+        statusRows,
+        [
+          { status: "Cancelled", count: 4 },
+          { status: "Done", count: 9 },
+        ],
+      ],
+    );
+    const bars = seriesHues(byId.s0);
+    const slices = sliceHues(byId.s1);
+    expect(slices.Done).toBe(bars.Done);
+    expect(slices.Cancelled).toBe(bars.Cancelled);
+    expect(slices.Done).not.toBe(slices.Cancelled);
+  });
+
+  test("a single-series chart takes the first slot and spends none", () => {
+    const byId = compile(
+      [
+        chartSection("A", "region", ["done", "cancelled"]),
+        chartSection("B", "region", ["total"]),
+        chartSection("C", "region", ["pending", "closed"], "line"),
+      ],
+      [
+        statusRows,
+        [{ region: "EU", total: 2500 }],
+        statusRows.map((row) => ({ ...row, closed: row.done })),
+      ],
+    );
+    expect(byId.s1.properties.option.series[0].itemStyle.color).toBe(
+      PALETTE[0],
+    );
+    // Slots 3 and 4, not 4 and 5 — the measure name in between claimed none.
+    expect(seriesHues(byId.s2)).toEqual({
+      Pending: PALETTE[2],
+      Closed: PALETTE[3],
+    });
+  });
+
+  test("names past the eighth are coloured per chart, uniquely within it", () => {
+    const measures = Array.from({ length: 10 }, (_, index) => `m${index + 1}`);
+    const rows = [
+      Object.fromEntries([
+        ["region", "EU"],
+        ...measures.map((measure, index) => [measure, index + 1]),
+      ]),
+    ];
+    const pairs = [0, 2, 4, 6].map((start) =>
+      chartSection(`P${start}`, "region", measures.slice(start, start + 2)),
+    );
+    // Eight names fill the map; this chart re-uses one of them and adds the
+    // ninth and tenth, which the map cannot hold.
+    const overflow = chartSection("Overflow", "region", ["m1", "m9", "m10"]);
+    const sections = [...pairs, overflow];
+    const byId = compile(
+      sections,
+      sections.map(() => rows),
+    );
+    const assigned = assignReportColors({
+      sections: sections.map((section, index) => ({
+        ...section,
+        id: `s${index}`,
+      })),
+      results: sections.map(() => rows),
+    });
+    expect(Object.keys(assigned)).toHaveLength(8);
+    expect(assigned).not.toHaveProperty("M9");
+    expect(assigned).not.toHaveProperty("M10");
+
+    const hues = seriesHues(byId.s4);
+    // M1 keeps its report-wide hue; the two overflow names take slots this
+    // chart has not spent, so nothing in it is drawn twice.
+    expect(hues.M1).toBe(assigned.M1);
+    expect(new Set(Object.values(hues)).size).toBe(3);
+    for (const hue of Object.values(hues)) {
+      expect(PALETTE).toContain(hue);
+    }
+  });
+
+  test("a filtered chart's re-query carries the map", () => {
+    const byId = compile(
+      [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        {
+          ...chartSection("A", "region", ["done", "cancelled"]),
+          filterBy: ["status"],
+        },
+      ],
+      // A filter with no optionsQuery runs nothing, so the results align with
+      // the chart alone.
+      [statusRows],
+    );
+    const [call] = byId.filter_status.events.onChange;
+    // Decided over the unfiltered rows, so a filter that drops a series cannot
+    // repaint the ones that survive.
+    expect(call.params.payload.colors).toEqual({
+      Done: PALETTE[0],
+      Cancelled: PALETTE[1],
+    });
+  });
+
+  test("a section with no rows claims no slot", () => {
+    const byId = compile(
+      [
+        chartSection("Broken", "region", ["done", "cancelled"]),
+        chartSection("B", "region", ["pending", "closed"], "line"),
+      ],
+      [null, statusRows.map((row) => ({ ...row, closed: row.done }))],
+    );
+    // The first section renders as an Alert, so its names are not knowable (a
+    // pie's would not be at all) and the hues start at slot 1 on the survivor.
+    expect(seriesHues(byId.s1)).toEqual({
+      Pending: PALETTE[0],
+      Closed: PALETTE[1],
     });
   });
 });

@@ -98,6 +98,39 @@ test("the drawn width reaches assembly and decides legend orientation", async ({
   expect(narrow.response.height).toBeGreaterThan(wide.response.height);
 });
 
+// The report's colour identity map is the same kind of client-requery surface as
+// the width, and needs the same proof: admitted through payloadSchema (whose
+// additionalProperties hex pattern would reject the whole payload if the map
+// were shaped wrong) and carried into assembly. A build check sees neither.
+test("the report colour map reaches assembly and outranks series order", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await mdb.seed("demo_orders", ORDERS);
+  await ldf.user(USER_A);
+
+  const result = await callEndpoint(page, "chart-data", {
+    chart: "bar",
+    title: "Revenue and units by region",
+    x: "region",
+    y: ["revenue", "units"],
+    query: ordersByRegionTwoMeasures,
+    // Units before Revenue in palette terms, which is the opposite of what
+    // assignment by series index would give — so the hues can only come from
+    // the map.
+    colors: { Units: "#2a78d6", Revenue: "#eb6834" },
+  });
+  expect(result.body?.success).toBe(true);
+  const hues = Object.fromEntries(
+    result.response.option.series.map((series) => [
+      series.name,
+      series.itemStyle.color,
+    ]),
+  );
+  expect(hues).toEqual({ Revenue: "#eb6834", Units: "#2a78d6" });
+});
+
 test("stacked on a non-bar chart is rejected by spec validation", async ({
   ldf,
   page,
