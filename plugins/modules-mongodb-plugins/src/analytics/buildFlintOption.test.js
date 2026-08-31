@@ -1,4 +1,26 @@
-import buildFlintOption from "./buildFlintOption.js";
+import { assembleECharts } from "flint-chart/echarts";
+
+import buildFlintOption, {
+  CARD_SURFACE,
+  NEUTRAL,
+  PALETTE,
+} from "./buildFlintOption.js";
+
+// The palette ECharts ships and Flint pins into every option it assembles. None
+// of these may survive the post-pass — the palette they lose to fails four of
+// the five dataviz checks on the card surface.
+const STOCK_HEXES = [
+  "#5470c6",
+  "#91cc75",
+  "#fac858",
+  "#ee6666",
+  "#73c0de",
+  "#3ba272",
+  "#fc8452",
+  "#9a60b4",
+  "#ea7ccc",
+  "#d48265",
+];
 
 const regionRows = [
   { region: "North", revenue: 1200, cost: 800 },
@@ -290,4 +312,250 @@ test("empty and missing rows assemble without throwing", () => {
       rows: undefined,
     }),
   ).not.toThrow();
+});
+
+test("the reserved neutral is not a palette slot", () => {
+  // An "Other" slice tinted with an identity hue reads as an entity; the point
+  // of the neutral is that it cannot collide with one.
+  expect(PALETTE).not.toContain(NEUTRAL);
+  expect(PALETTE).toHaveLength(8);
+});
+
+// Flint declares its palette twice and the per-series write is the one that
+// paints, so the post-pass has to make both. These assert the shape it rewrites
+// — a flint-chart bump that moves the colour somewhere else fails here, loudly,
+// instead of quietly shipping stock-palette charts.
+describe("flint-chart's pre-rewrite option shape", () => {
+  const assemble = (chartType, encodings, values) =>
+    assembleECharts({
+      data: { values },
+      chart_spec: {
+        chartType,
+        encodings,
+        baseSize: { width: 1100, height: 180 },
+      },
+    });
+
+  test.each([
+    ["Bar Chart", { x: { field: "Region" }, y: { field: "Revenue" } }],
+    ["Line Chart", { x: { field: "Region" }, y: { field: "Revenue" } }],
+  ])(
+    "%s declares a concrete stock hex on series[0].itemStyle.color",
+    (chartType, encodings) => {
+      const option = assemble(chartType, encodings, [
+        { Region: "North", Revenue: 1200 },
+        { Region: "South", Revenue: 900 },
+      ]);
+      expect(option.color).toEqual(expect.arrayContaining(STOCK_HEXES));
+      expect(STOCK_HEXES).toContain(option.series[0].itemStyle.color);
+    },
+  );
+
+  test("a pie declares no series or slice colour and reads option.color", () => {
+    const option = assemble(
+      "Pie Chart",
+      { color: { field: "Region" }, size: { field: "Revenue" } },
+      [
+        { Region: "North", Revenue: 1200 },
+        { Region: "South", Revenue: 900 },
+      ],
+    );
+    expect(option.color).toEqual(expect.arrayContaining(STOCK_HEXES));
+    expect(option.series[0].itemStyle?.color).toBeUndefined();
+    for (const datum of option.series[0].data) {
+      expect(datum.itemStyle?.color).toBeUndefined();
+    }
+  });
+});
+
+// The per-series override differs per kind — bar and line carry one, a pie does
+// not — so a rewrite that only handles one kind leaves the other stock. All
+// three kinds are swept for that reason.
+test.each(specs)(
+  "no stock ECharts hex survives anywhere in a %s option of %s by %p (stacked: %s)",
+  (chart, x, y, rows, stacked) => {
+    const { option } = buildFlintOption({ chart, x, y, rows, stacked });
+    const serialized = JSON.stringify(option).toLowerCase();
+    for (const hex of STOCK_HEXES) {
+      expect(serialized).not.toContain(hex);
+    }
+  },
+);
+
+test.each(specs)(
+  "the palette is written both to option.color and per series in a %s of %s by %p (stacked: %s)",
+  (chart, x, y, rows, stacked) => {
+    const { option } = buildFlintOption({ chart, x, y, rows, stacked });
+    expect(option.color).toEqual(PALETTE);
+    option.series.forEach((series, index) => {
+      if (series.type === "pie") {
+        // A pie slice reads option.color by index; a series colour here would
+        // paint every slice the same.
+        expect(series.itemStyle.color).toBeUndefined();
+        return;
+      }
+      expect(series.itemStyle.color).toBe(PALETTE[index % PALETTE.length]);
+    });
+  },
+);
+
+test("bars are rounded at the data end and square at the baseline", () => {
+  for (const stacked of [false, true]) {
+    const { option } = buildFlintOption({
+      chart: "bar",
+      x: "region",
+      y: ["revenue", "cost"],
+      rows: regionRows,
+      stacked,
+    });
+    for (const series of option.series) {
+      expect(series.itemStyle.borderRadius).toEqual([4, 4, 0, 0]);
+    }
+  }
+});
+
+test("lines are 2px and wear a symbol on their last point only", () => {
+  const { option } = buildFlintOption({
+    chart: "line",
+    x: "month",
+    y: ["revenue", "cost"],
+    rows: monthRows,
+  });
+  for (const series of option.series) {
+    expect(series.lineStyle.width).toBe(2);
+    // Both switches matter: showSymbol false skips symbol drawing entirely, and
+    // showAllSymbol "auto" drops symbols the category-axis interval strategy
+    // skipped — on a crowded axis, the last one.
+    expect(series.showSymbol).toBe(true);
+    expect(series.showAllSymbol).toBe(true);
+    expect(series.symbol).toBe("none");
+    const last = series.data[series.data.length - 1];
+    expect(last.symbol).toBe("circle");
+    expect(last.symbolSize).toBeGreaterThanOrEqual(8);
+    expect(last.itemStyle).toEqual({
+      borderWidth: 2,
+      borderColor: CARD_SURFACE,
+    });
+    // The point's own value is preserved, only re-expressed in object form.
+    expect(last.value).toEqual([
+      "2026-03",
+      series.name === "Revenue" ? 610 : 410,
+    ]);
+    for (const datum of series.data.slice(0, -1)) {
+      expect(datum.symbol).toBeUndefined();
+    }
+  }
+});
+
+test("a single-series line is washed with a gradient of its own hue", () => {
+  const { option } = buildFlintOption({
+    chart: "line",
+    x: "month",
+    y: ["revenue"],
+    rows: monthRows,
+  });
+  const { areaStyle } = option.series[0];
+  expect(areaStyle.color).toEqual({
+    type: "linear",
+    x: 0,
+    y: 0,
+    x2: 0,
+    y2: 1,
+    colorStops: [
+      { offset: 0, color: "rgba(42, 120, 214, 0.18)" },
+      { offset: 1, color: "rgba(42, 120, 214, 0)" },
+    ],
+  });
+});
+
+test("multi-series lines carry no area fill", () => {
+  const { option } = buildFlintOption({
+    chart: "line",
+    x: "month",
+    y: ["revenue", "cost"],
+    rows: monthRows,
+  });
+  for (const series of option.series) {
+    expect(series.areaStyle).toBeUndefined();
+  }
+});
+
+// ECharts' own gradient helpers are class instances, and every option here
+// travels through JSON on its way to being persisted and rendered — a gradient
+// that does not survive that round trip is a silently missing fill.
+test("the gradient area fill survives a JSON round trip", () => {
+  const { option } = buildFlintOption({
+    chart: "line",
+    x: "month",
+    y: ["revenue"],
+    rows: monthRows,
+  });
+  const round = JSON.parse(JSON.stringify(option));
+  expect(round.series[0].areaStyle).toEqual(option.series[0].areaStyle);
+});
+
+test("pie slices are separated by a border in the card colour", () => {
+  const { option } = buildFlintOption({
+    chart: "pie",
+    x: "region",
+    y: ["revenue"],
+    rows: regionRows,
+  });
+  expect(option.series[0].itemStyle.borderWidth).toBe(2);
+  expect(option.series[0].itemStyle.borderColor).toBe(CARD_SURFACE);
+});
+
+const manyRegionRows = Array.from({ length: 20 }, (_, index) => ({
+  region: `R${index + 1}`,
+  // Descending, so the kept six are R1..R6 and the tail is everything after.
+  revenue: (20 - index) * 100,
+}));
+
+test("a pie past the cap keeps six slices and sums the rest into Other", () => {
+  const { option } = buildFlintOption({
+    chart: "pie",
+    x: "region",
+    y: ["revenue"],
+    rows: manyRegionRows,
+  });
+  const { data } = option.series[0];
+  expect(data).toHaveLength(7);
+  expect(data.map((datum) => datum.name)).toEqual([
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "Other",
+  ]);
+  const other = data[6];
+  const tail = manyRegionRows
+    .slice(6)
+    .reduce((sum, row) => sum + row.revenue, 0);
+  expect(other.value).toBe(tail);
+  // The aggregate sits outside the palette on purpose.
+  expect(other.itemStyle.color).toBe(NEUTRAL);
+  expect(PALETTE).not.toContain(other.itemStyle.color);
+  for (const datum of data.slice(0, 6)) {
+    expect(datum.itemStyle?.color).toBeUndefined();
+  }
+});
+
+test("a pie of exactly seven slices renders as seven, uncapped", () => {
+  const sevenRows = manyRegionRows.slice(0, 7);
+  const { option } = buildFlintOption({
+    chart: "pie",
+    x: "region",
+    y: ["revenue"],
+    rows: sevenRows,
+  });
+  const { data } = option.series[0];
+  expect(data).toHaveLength(7);
+  expect(data.map((datum) => datum.name).sort()).toEqual(
+    sevenRows.map((row) => row.region).sort(),
+  );
+  for (const datum of data) {
+    expect(datum.itemStyle?.color).toBeUndefined();
+  }
 });

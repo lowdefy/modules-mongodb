@@ -5,16 +5,14 @@ exports[`multi-y bar folds into grouped series 1`] = `
   "height": 277,
   "option": {
     "color": [
-      "#5470c6",
-      "#91cc75",
-      "#fac858",
-      "#ee6666",
-      "#73c0de",
-      "#3ba272",
-      "#fc8452",
-      "#9a60b4",
-      "#ea7ccc",
-      "#d48265",
+      "#2a78d6",
+      "#eb6834",
+      "#1baf7a",
+      "#eda100",
+      "#e87ba4",
+      "#008300",
+      "#4a3aa7",
+      "#e34948",
     ],
     "grid": {
       "bottom": 61,
@@ -44,7 +42,13 @@ exports[`multi-y bar folds into grouped series 1`] = `
           900,
         ],
         "itemStyle": {
-          "color": "#5470c6",
+          "borderRadius": [
+            4,
+            4,
+            0,
+            0,
+          ],
+          "color": "#2a78d6",
         },
         "name": "Revenue",
         "type": "bar",
@@ -57,7 +61,13 @@ exports[`multi-y bar folds into grouped series 1`] = `
           700,
         ],
         "itemStyle": {
-          "color": "#91cc75",
+          "borderRadius": [
+            4,
+            4,
+            0,
+            0,
+          ],
+          "color": "#eb6834",
         },
         "name": "Cost",
         "type": "bar",
@@ -116,16 +126,14 @@ exports[`multi-y line folds onto a colour channel 1`] = `
   "height": 421,
   "option": {
     "color": [
-      "#5470c6",
-      "#91cc75",
-      "#fac858",
-      "#ee6666",
-      "#73c0de",
-      "#3ba272",
-      "#fc8452",
-      "#9a60b4",
-      "#ea7ccc",
-      "#d48265",
+      "#2a78d6",
+      "#eb6834",
+      "#1baf7a",
+      "#eda100",
+      "#e87ba4",
+      "#008300",
+      "#4a3aa7",
+      "#e34948",
     ],
     "grid": {
       "bottom": 151,
@@ -157,16 +165,28 @@ exports[`multi-y line folds onto a colour channel 1`] = `
             "2026-02",
             650,
           ],
-          [
-            "2026-03",
-            610,
-          ],
+          {
+            "itemStyle": {
+              "borderColor": "#ffffff",
+              "borderWidth": 2,
+            },
+            "symbol": "circle",
+            "symbolSize": 8,
+            "value": [
+              "2026-03",
+              610,
+            ],
+          },
         ],
         "itemStyle": {
-          "color": "#5470c6",
+          "color": "#2a78d6",
+        },
+        "lineStyle": {
+          "width": 2,
         },
         "name": "Revenue",
-        "showSymbol": false,
+        "showAllSymbol": true,
+        "showSymbol": true,
         "symbol": "none",
         "type": "line",
       },
@@ -180,16 +200,28 @@ exports[`multi-y line folds onto a colour channel 1`] = `
             "2026-02",
             320,
           ],
-          [
-            "2026-03",
-            410,
-          ],
+          {
+            "itemStyle": {
+              "borderColor": "#ffffff",
+              "borderWidth": 2,
+            },
+            "symbol": "circle",
+            "symbolSize": 8,
+            "value": [
+              "2026-03",
+              410,
+            ],
+          },
         ],
         "itemStyle": {
-          "color": "#91cc75",
+          "color": "#eb6834",
+        },
+        "lineStyle": {
+          "width": 2,
         },
         "name": "Cost",
-        "showSymbol": false,
+        "showAllSymbol": true,
+        "showSymbol": true,
         "symbol": "none",
         "type": "line",
       },
@@ -243,16 +275,14 @@ exports[`pie encodes the category on colour and the measure on size 1`] = `
   "height": 400,
   "option": {
     "color": [
-      "#5470c6",
-      "#91cc75",
-      "#fac858",
-      "#ee6666",
-      "#73c0de",
-      "#3ba272",
-      "#fc8452",
-      "#9a60b4",
-      "#ea7ccc",
-      "#d48265",
+      "#2a78d6",
+      "#eb6834",
+      "#1baf7a",
+      "#eda100",
+      "#e87ba4",
+      "#008300",
+      "#4a3aa7",
+      "#e34948",
     ],
     "series": [
       {
@@ -283,7 +313,9 @@ exports[`pie encodes the category on colour and the measure on size 1`] = `
           },
         },
         "itemStyle": {
+          "borderColor": "#ffffff",
           "borderRadius": 0,
+          "borderWidth": 2,
         },
         "label": {
           "fontSize": 13,
@@ -319,16 +351,14 @@ exports[`single-y bar over a categorical x 1`] = `
   "height": 277,
   "option": {
     "color": [
-      "#5470c6",
-      "#91cc75",
-      "#fac858",
-      "#ee6666",
-      "#73c0de",
-      "#3ba272",
-      "#fc8452",
-      "#9a60b4",
-      "#ea7ccc",
-      "#d48265",
+      "#2a78d6",
+      "#eb6834",
+      "#1baf7a",
+      "#eda100",
+      "#e87ba4",
+      "#008300",
+      "#4a3aa7",
+      "#e34948",
     ],
     "grid": {
       "bottom": 61,
@@ -345,8 +375,13 @@ exports[`single-y bar over a categorical x 1`] = `
           900,
         ],
         "itemStyle": {
-          "borderRadius": 0,
-          "color": "#5470c6",
+          "borderRadius": [
+            4,
+            4,
+            0,
+            0,
+          ],
+          "color": "#2a78d6",
         },
         "type": "bar",
       },
@@ -404,16 +439,14 @@ exports[`single-y line over a temporal x 1`] = `
   "height": 421,
   "option": {
     "color": [
-      "#5470c6",
-      "#91cc75",
-      "#fac858",
-      "#ee6666",
-      "#73c0de",
-      "#3ba272",
-      "#fc8452",
-      "#9a60b4",
-      "#ea7ccc",
-      "#d48265",
+      "#2a78d6",
+      "#eb6834",
+      "#1baf7a",
+      "#eda100",
+      "#e87ba4",
+      "#008300",
+      "#4a3aa7",
+      "#e34948",
     ],
     "grid": {
       "bottom": 151,
@@ -423,6 +456,25 @@ exports[`single-y line over a temporal x 1`] = `
     },
     "series": [
       {
+        "areaStyle": {
+          "color": {
+            "colorStops": [
+              {
+                "color": "rgba(42, 120, 214, 0.18)",
+                "offset": 0,
+              },
+              {
+                "color": "rgba(42, 120, 214, 0)",
+                "offset": 1,
+              },
+            ],
+            "type": "linear",
+            "x": 0,
+            "x2": 0,
+            "y": 0,
+            "y2": 1,
+          },
+        },
         "data": [
           [
             "2026-01",
@@ -432,15 +484,27 @@ exports[`single-y line over a temporal x 1`] = `
             "2026-02",
             650,
           ],
-          [
-            "2026-03",
-            610,
-          ],
+          {
+            "itemStyle": {
+              "borderColor": "#ffffff",
+              "borderWidth": 2,
+            },
+            "symbol": "circle",
+            "symbolSize": 8,
+            "value": [
+              "2026-03",
+              610,
+            ],
+          },
         ],
         "itemStyle": {
-          "color": "#5470c6",
+          "color": "#2a78d6",
         },
-        "showSymbol": false,
+        "lineStyle": {
+          "width": 2,
+        },
+        "showAllSymbol": true,
+        "showSymbol": true,
         "symbol": "none",
         "type": "line",
       },
@@ -494,16 +558,14 @@ exports[`stacked multi-y bar folds into stacked series 1`] = `
   "height": 277,
   "option": {
     "color": [
-      "#5470c6",
-      "#91cc75",
-      "#fac858",
-      "#ee6666",
-      "#73c0de",
-      "#3ba272",
-      "#fc8452",
-      "#9a60b4",
-      "#ea7ccc",
-      "#d48265",
+      "#2a78d6",
+      "#eb6834",
+      "#1baf7a",
+      "#eda100",
+      "#e87ba4",
+      "#008300",
+      "#4a3aa7",
+      "#e34948",
     ],
     "grid": {
       "bottom": 61,
@@ -532,7 +594,13 @@ exports[`stacked multi-y bar folds into stacked series 1`] = `
           900,
         ],
         "itemStyle": {
-          "color": "#5470c6",
+          "borderRadius": [
+            4,
+            4,
+            0,
+            0,
+          ],
+          "color": "#2a78d6",
         },
         "name": "Revenue",
         "stack": "total",
@@ -546,7 +614,13 @@ exports[`stacked multi-y bar folds into stacked series 1`] = `
           700,
         ],
         "itemStyle": {
-          "color": "#91cc75",
+          "borderRadius": [
+            4,
+            4,
+            0,
+            0,
+          ],
+          "color": "#eb6834",
         },
         "name": "Cost",
         "stack": "total",
