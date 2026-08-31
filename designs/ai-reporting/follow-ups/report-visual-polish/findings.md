@@ -352,3 +352,45 @@ Stated so the design does not promise it:
   KPIs to declare association with a chart section. The weak form (a run of KPIs
   immediately after a chart section renders as a strip under it) is reachable
   from section adjacency alone, and is what the design adopts.
+
+---
+
+## 8. Dynamic fragments nest; the allowlist is a bundling declaration
+
+The cards change introduces the first nesting into compiled output, and a
+comment in `compileReport.js` (`brokenSectionBlocks`: "no wrapping Box — so the
+page's byId lookups reach them") reads as a warning against exactly that. Read
+against the runtime source, the warning does not hold — verified in the
+`@lowdefy/api` and `@lowdefy/build` dists the workspace pins (experimental
+20260814133003):
+
+- **Fragment building recurses.** `resolveDynamicContent` hands the endpoint's
+  `blocks` to `buildDynamicBlocks`, which runs the same per-block build as a
+  static page — `buildBlock` → `moveAreasToSlots` → `buildSubBlocks`, which
+  calls `buildBlock` on every block of every slot
+  (`@lowdefy/build/dist/build/buildPages/buildBlock/buildSubBlocks.js`). A
+  `Card` with children in a compiled fragment is built, id-prefixed, and
+  type-counted exactly like its top-level siblings.
+- **Validation recurses too.** `validateFragment`'s `walkBlocks` descends
+  `block.slots.{name}.blocks` (`@lowdefy/api/dist/routes/page/dynamic/
+validateFragment.js`), so property-schema checks and action-ref checks reach
+  nested blocks. The `MAX_DYNAMIC_DEPTH = 5` limit counts nested **Dynamic**
+  blocks only, not ordinary containers.
+- **Once resolved, nested blocks are ordinary page blocks** — the `Dynamic`
+  component itself is a plain server-filled container
+  (`blocks-basic/dist/blocks/Dynamic/Dynamic.js`), so state binding by block id
+  and `CallMethod` work the way they do on any static page, nesting-agnostic.
+
+So the `compileReport.js` comment is not a platform constraint and should be
+corrected when cards land.
+
+The same reading sharpened what the "allowlist" is. At runtime,
+`buildDynamicBlocks` checks each fragment type for **membership in the app's
+client bundle** (`types.json`) — the error says "not included in the app's
+client bundle. Declare it in the Dynamic block's properties.types"
+(`@lowdefy/build/dist/dynamic/buildDynamicBlocks.js`). `properties.types` is
+the *build-time declaration that forces the bundling*; it is not itself the
+runtime gate. Consequence: a consuming app that uses `Card` anywhere else
+bundles it anyway and masks a missing declaration — the demo can therefore
+never surface this failure, and only a compile-time test that parses
+`pages/report.yaml`'s declared types can (the design's acceptance item 8).

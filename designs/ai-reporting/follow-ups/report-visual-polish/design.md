@@ -79,6 +79,15 @@ the derivation is mechanical, so it cannot drift per report, and it
 **re-computes on every open** — layout follows the data as it grows, instead of
 freezing the shape the data happened to have on the day the report was saved.
 
+The boundary of that claim, stated precisely: **per open, not per interaction.**
+Filtered sections re-query per filter change, but the new option/height/rows
+arrive through state bindings under a block tree that is fixed until the next
+open — spans never move mid-session. That is safe because the first resolve
+runs unfiltered, so the rows that decide "needs width" are a superset of
+anything a filter later shows. If a filter ever gains a default applied at
+first resolve, that superset assumption breaks and the derivation input must be
+revisited.
+
 The agent's intent channel is **section order**, which it already controls: two
 narrow charts placed adjacent pair up; separated by a markdown section, they
 don't.
@@ -102,14 +111,31 @@ Button  span  4                     Button span  4  ┘
 EChart  span 24                     Card   span 24  ── contains the EChart
 ```
 
-The head row stays flat and outside the card — that is the corpus pattern (6 of 7
-client reports put the heading above the card, not inside it), and it keeps
-`sectionHeading` / `sectionDownload` and their span arithmetic untouched.
+The head row stays outside the card — that is the corpus pattern (6 of 7
+client reports put the heading above the card, not inside it). For full-width
+sections it also stays flat, and `sectionHeading` / `sectionDownload` keep their
+span-20/4 arithmetic. **Paired sections are the exception**: a head row is a
+full 24-column wrap line, so two paired cards with flat head rows would each sit
+beside a twelve-column hole. A paired section therefore compiles as a
+**span-12 `Box` containing its own head row and card** — child spans re-base on
+the wrapper, so the 20/4 split survives inside it, and the heading still sits
+above the card.
+
+Nesting inside a `Dynamic` fragment is **verified supported**, not assumed: the
+runtime resolution builds fragments with the same recursive machinery as static
+pages and validates nested slots recursively
+([`findings.md` §8](./findings.md)). A stale comment in `compileReport.js`
+("no wrapping Box — so the page's byId lookups reach them",
+`brokenSectionBlocks`) predates that verification and should be corrected when
+cards land — it is not a platform constraint.
 
 `Card` and `Box` are already idiomatic in this repo (42 and 187 uses). Both must
-join `report.yaml`'s `Dynamic` `properties.types.blocks` allowlist — where **one
-missed type blanks the whole report to the fallback slot**, so this is the single
-highest-risk line in the change.
+join `report.yaml`'s `Dynamic` `properties.types.blocks` list — and the
+verification sharpened what that list is: at runtime the check is membership in
+the **app's client bundle**, and `properties.types` is what forces the bundling
+at build. A consuming app that happens to use `Card` elsewhere masks a missing
+declaration, so the demo can never catch this failure — **only the compile-time
+test in the acceptance bar guards it** (item 8 below).
 
 ### Derivation rules
 
@@ -117,7 +143,7 @@ Spans are on the existing 24-column grid.
 
 | Section run                  | Compiles to                                                                                         |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `kpi` × n                    | One tile row: n cards, spans from `filterSpans(n)` so every wrap line is exactly full                |
+| `kpi` × n                    | One tile row: n cards, balanced spans (`filterSpans` generalized, per-row cap 4) so every wrap line is exactly full |
 | `filter` × n                 | Unchanged grouping (`filterSpans`, ≤ 3 per row), plus a Reset control and **one** shared scope line  |
 | `chart`, needs width         | `span 24`, card                                                                                     |
 | `chart`, doesn't need width  | `span 12`, card — paired 2-up with the next consecutive narrow chart                                 |
@@ -142,7 +168,12 @@ paired ≤ 4-column tables.
 `filterSpans` is reused rather than reinvented for both the tile row and the
 download card: it already solves the exact problem (balanced rows, every wrap
 line exactly full, `24/size` always whole), and its comment documents the bug
-that a ragged trailing line causes in a flat flex flow.
+that a ragged trailing line causes in a flat flex flow. One change it needs: the
+per-row cap is currently the baked-in `FILTERS_PER_ROW = 3`, and `filterSpans(4)`
+with that cap yields a 2 × 2 grid of span-12 tiles — not the 4-up row the deck
+draws and today's span-6 compile produces. The cap becomes a parameter:
+**filters keep 3 per row, KPI tiles cap at 4** (the corpus and deck norm; five
+tiles balance 3 + 2 and six balance 3 + 3, by the same arithmetic).
 
 Promoting a trailing unpaired narrow chart to `span 24` is deliberate: a
 half-width card with twelve empty columns beside it reads as a rendering fault,
@@ -220,11 +251,25 @@ states that deliberately rather than relying on it by luck.
 
 **Colour identity is report-scoped, not chart-scoped.** Today hues are assigned
 by series index within one chart, so `Done` is red in one section and green two
-sections later. Assign slots from the **union of series names across the whole
-report**, in first-appearance order, so a name keeps its hue everywhere. This is
-the data-viz rule "colour follows the entity, never its rank", and it fixes the
-most jarring thing about the current render. Past 8 names, fold the tail to
-`Other` rather than cycling.
+sections later. The rule, with its edges decided:
+
+- **The union covers multi-series names only.** Series names are humanized `y`
+  column names, so a single-series chart's name is its measure ("Total
+  Revenue") — an identity shared with nothing. Single-series charts take a
+  fixed slot (slot 1) and stay out of the union; putting them in would paint
+  each single-series chart a different hue for no identity reason and burn the
+  slots real shared identities need.
+- **Multi-series names assign from the union in first-appearance order**, so a
+  name keeps its hue everywhere — "colour follows the entity, never its rank".
+  This fixes the most jarring thing about the current render.
+- **Past 8 union names, the overflow is assigned per chart** from the same
+  palette (slots unused in that chart first). Names beyond the union lose
+  cross-chart stability — with 8 hues there is no alternative that isn't more
+  hues — but within any one chart slots stay unique. The earlier "fold the
+  tail to Other" is dropped: at report scope the tail names live in different
+  charts with nothing to fold together, and within one bar chart folding
+  series means summing unrelated measures, which this file's own
+  grouped-over-stacked rationale already rejects as meaningless.
 
 **Mark styling** — verified JSON-safe ([`findings.md` §3](./findings.md)):
 rounded bar caps (`itemStyle.borderRadius: [4, 4, 0, 0]`), 2px lines with an
@@ -236,10 +281,26 @@ and JSON persistence.
 **Legend orientation follows available width**, which turns the current defect
 into the rule:
 
-- `span 12` → horizontal band above the plot; `grid.right` reclaimed.
+- `span 12` → horizontal band above the plot; `grid.right` reclaimed. A
+  horizontal legend adds height Flint never budgeted (its `_height` was sized
+  for a right-hand legend), so the post-pass adds the band's height to the
+  canvas it returns.
 - `span 24` → Flint's vertical right legend is _correct_ here, and `grid.right`
   (measured 79–163px, sized to the longest series name) is paying for something
-  the reader gets.
+  the reader gets. (The flint-charts design records legend-right as the fix for
+  the absolute-`legend.left` defect; the conditional supersession at span 12
+  gets a note there when this lands.)
+
+**Both width-aware rules need a width input `buildFlintOption` does not have**
+(`BASE_SIZE` is a constant today), threaded through every caller:
+
+- `compileReport` passes the width the derived span gives.
+- `api/chart-data.yaml` re-assembles the option per filter change, and its
+  payload is untrusted client input — the section's width joins its
+  `payloadSchema`, bounded to sane values (a lied-about width is only
+  aesthetic, but the schema admits it deliberately).
+- The chat result card and the expand modal pass their own widths (~420px
+  panel; modal width) instead of inheriting the 1100px constant.
 
 **Label rotation.** Flint's rule, read off its source
 ([`findings.md` §5](./findings.md)): `rotate: 0` only when there are **≤ 4
@@ -263,9 +324,16 @@ into an unreadable mat).
 Flint leaves unset — `textStyle.fontFamily` (the app's sans stack; `textStyle`
 is `undefined` today, so every chart's type is visibly different from the text
 around it), `axisLabel.fontSize` 10 → 12, axis line / split-line / label
-colours, legend and tooltip text styling, `backgroundColor: transparent`. One
-file, three `properties.theme` references; compiled options stay free of font
-names and axis colours.
+colours, legend and tooltip text styling, `backgroundColor: transparent`.
+Compiled options stay free of font names and axis colours.
+
+How the one file reaches its three sites differs, and only two are `_ref`s: the
+chat card and expand modal reference it directly from module YAML.
+`compileReport` is plugin JS and cannot `_ref` module YAML, so
+`api/resolve-report.yaml` loads the theme and passes it as a `compileReport`
+parameter, which embeds it as `properties.theme` on each compiled chart block.
+Filter re-queries then need nothing: `chart-data` swaps only the option under
+the block, and the theme set at compile time keeps applying.
 
 One consequence worth stating: chat chart **parts persist the compiled option**,
 so palette changes reach old chat cards only via the theme — which the palette
@@ -334,6 +402,13 @@ failures at once — the 2-column table with 600px of blank white, and the
 7. `ldf:b` clean, and the report still resolves: the `Dynamic` `types` allowlist
    is the failure mode to watch, since a missed block type blanks the whole
    report rather than one section.
+8. A unit test compiles a spec exercising every section shape (including the
+   broken-section and owner-recovery branches) and asserts every emitted block,
+   action, and operator type is declared in `pages/report.yaml`'s `Dynamic`
+   `properties.types` — parsing the YAML in the test so the two can never
+   drift. This is the only guard that works everywhere: at runtime the check is
+   against the app's client bundle, so a consuming app that uses `Card`
+   elsewhere masks a missing declaration and the demo can never surface it.
 
 Mechanical gates run per phase: `ldf:b` and `pnpm e2e` — the chart-data and
 report-render specs already assert compiled-option shape and section rendering,
@@ -358,8 +433,10 @@ with screenshots at PR review, not build-gate steps.
 ## Risks
 
 - **The `Dynamic` allowlist.** `Card`/`Box` joining `types.blocks` is the one
-  change that can blank a whole report; it lands alone (step 3 below) so the
-  failure is attributable.
+  change that can blank a whole report — and the demo cannot catch the miss,
+  because the runtime check is bundle membership and the demo bundles `Card`
+  anyway ([`findings.md` §8](./findings.md)). It lands alone (step 3 below) so
+  a failure is attributable, and acceptance item 8 is the standing guard.
 - **Flint version drift.** The post-pass rewrites an option shape
   `flint-chart@0.5.0` produces; the dependency is pinned exactly, and the
   post-pass tests assert the pre-rewrite shape so a bump fails loudly, not
