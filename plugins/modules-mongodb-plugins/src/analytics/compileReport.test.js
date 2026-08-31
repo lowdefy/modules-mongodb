@@ -163,6 +163,9 @@ test("compiles the full report to blocks", () => {
   // private survives to be persisted or re-read as an operator.
   expect(byId.s1.type).toBe("EChart");
   expect(byId.s1.properties.title).toBeUndefined();
+  // No theme param passed in — the key must be absent, not undefined-valued,
+  // so a caller that predates theming sees exactly the same shape it always did.
+  expect("theme" in byId.s1.properties).toBe(false);
   expect(byId.s1_heading.properties.content).toBe("Revenue by Region");
   expect(typeof byId.s1.properties.height).toBe("number");
   expect(byId.s1.properties.option.dataset).toBeUndefined();
@@ -237,6 +240,24 @@ test("compiles the full report to blocks", () => {
   expect(dl.type).toBe("DownloadCsv");
   expect(dl.params.filename).toBe("download-csv.csv");
   expect(dl.params.data).toEqual({ __api: `${endpointId}.response` });
+});
+
+test("an optional theme is set verbatim on every chart section's properties.theme", () => {
+  const theme = { backgroundColor: "transparent" };
+  const blocks = compileReport({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+    theme,
+  });
+  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  expect(byId.s1.properties.theme).toBe(theme);
+  // Non-chart sections carry no theme key — it is a chart-only property.
+  expect("theme" in byId.s0.properties).toBe(false);
+  expect("theme" in byId.s3.properties).toBe(false);
 });
 
 test("failed sections render as Alert cards while the rest render", () => {

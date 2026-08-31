@@ -213,3 +213,9 @@ routine:
               else: false
           resolvedAt:
             _date: now
+          # The chat card and expand modal never pass through compileReport, so
+          # this theme object is the only styling vehicle that reaches them
+          # too — loaded here and threaded through as data because compileReport
+          # is plugin JS and cannot _ref module YAML itself.
+          theme:
+            _ref: defaults/chart_theme.yaml

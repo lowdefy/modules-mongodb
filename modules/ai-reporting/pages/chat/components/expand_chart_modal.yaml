@@ -30,6 +30,8 @@ blocks:
           - 300
       option:
         _state: expanded_chart.option
+      theme:
+        _ref: defaults/chart_theme.yaml
   # The option is a snapshot of the turn that produced it, so the expanded view
   # dates itself exactly as the card does. A leaf, so `visible:` is safe; parts
   # written before `created` existed render with no date line rather than a

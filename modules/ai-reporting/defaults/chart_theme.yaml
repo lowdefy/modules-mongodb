@@ -1,0 +1,59 @@
+# The ECharts theme shared by every chart surface: compiled report chart
+# blocks, the chat result card and its expand modal. ECharts merges a theme
+# UNDER the option, so this can only carry what Flint leaves unset —
+# typography and axis chrome. It must never carry a `color` palette or any
+# per-series styling: buildFlintOption pins those directly into the option,
+# where they win over anything here, so a palette added to this file would
+# compile and then silently do nothing.
+#
+# Light mode only — dark is out of scope until the app has a dark mode.
+backgroundColor: transparent
+textStyle:
+  fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+categoryAxis:
+  axisLabel:
+    fontSize: 12
+    color: rgba(0, 0, 0, 0.65)
+  axisLine:
+    lineStyle:
+      color: rgba(0, 0, 0, 0.25)
+  splitLine:
+    lineStyle:
+      color: rgba(0, 0, 0, 0.08)
+  nameTextStyle:
+    fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+    color: rgba(0, 0, 0, 0.65)
+valueAxis:
+  axisLabel:
+    fontSize: 12
+    color: rgba(0, 0, 0, 0.65)
+  axisLine:
+    lineStyle:
+      color: rgba(0, 0, 0, 0.25)
+  splitLine:
+    lineStyle:
+      color: rgba(0, 0, 0, 0.08)
+  nameTextStyle:
+    fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+    color: rgba(0, 0, 0, 0.65)
+timeAxis:
+  axisLabel:
+    fontSize: 12
+    color: rgba(0, 0, 0, 0.65)
+  axisLine:
+    lineStyle:
+      color: rgba(0, 0, 0, 0.25)
+  splitLine:
+    lineStyle:
+      color: rgba(0, 0, 0, 0.08)
+  nameTextStyle:
+    fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+    color: rgba(0, 0, 0, 0.65)
+legend:
+  textStyle:
+    fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+    color: rgba(0, 0, 0, 0.65)
+tooltip:
+  textStyle:
+    fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+    color: rgba(0, 0, 0, 0.65)

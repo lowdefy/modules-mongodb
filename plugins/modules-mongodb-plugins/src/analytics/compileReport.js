@@ -55,6 +55,13 @@ import {
  *                included or left out HERE rather than gated by a `_user`
  *                operator in compiled output. Absent reads as false, which
  *                matches an unset share_roles: nothing can be published.
+ *   theme      — optional ECharts theme object, set verbatim as every emitted
+ *                chart section's `properties.theme`. Carries only typography
+ *                and axis chrome, never a palette: ECharts merges a theme
+ *                under the option, and buildFlintOption already pins colours
+ *                into it, so a palette here would never show. Omitted
+ *                entirely (not just falsy) when absent, matching every caller
+ *                that predates this parameter.
  *
  * The contract is verified against the actual rows per section: a missing
  * column key or a non-numeric y/KPI value renders that one section as an Alert
@@ -943,6 +950,7 @@ function compileReport({
   is_favourite,
   can_share,
   conversation_id,
+  theme,
 }) {
   if (typeof endpointId !== "string" || endpointId === "") {
     fail("endpointId (the query-data endpoint) is required.");
@@ -1473,6 +1481,11 @@ function compileReport({
                   ],
                 },
               };
+        // A filtered re-query swaps option/height only (see chart-data), so a
+        // theme set here at compile time keeps applying across refetches.
+        if (theme !== undefined) {
+          properties.theme = theme;
+        }
         out.push({
           id: section.id,
           type: "EChart",
