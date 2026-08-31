@@ -236,6 +236,33 @@ const TWO_GROUP_SECTIONS = [
   },
 ];
 
+// Two adjacent charts, both narrow (two types, one series each), so layout
+// derivation pairs them into half-width Box wrappers. The same query drawn two
+// ways — the counts, and their shares — which is the whole of what makes the two
+// sections pair: neither needs the full column.
+const PAIRED_CHART_SECTIONS = [
+  {
+    id: "s0",
+    type: "chart",
+    chart: "bar",
+    label: "Activities by type",
+    query: activitiesByType,
+    x: "type",
+    y: ["activities"],
+    filterBy: [],
+  },
+  {
+    id: "s1",
+    type: "chart",
+    chart: "pie",
+    label: "Share by type",
+    query: activitiesByType,
+    x: "type",
+    y: ["activities"],
+    filterBy: [],
+  },
+];
+
 // A filter over one bound KPI — the smallest report that proves the re-query
 // path: select a type, the KPI's count narrows. The KPI query counts every
 // activity; the bound filter prepends a `$match` on `type`, so the count drops
@@ -434,6 +461,46 @@ test.describe("report page render", () => {
     await expect(
       page.getByText("Also filters: Activities by channel", { exact: true }),
     ).toBeVisible();
+  });
+
+  // Layout derivation, through the real stack: two adjacent narrow charts each
+  // compile into a half-width Box holding their own head row and card. Worth a
+  // browser for two reasons the compiler's own tests cannot cover — the Box is a
+  // container type, and one the Dynamic block does not declare blanks the WHOLE
+  // report rather than one section; and side-by-side is a claim about rendered
+  // geometry, which only a rendered page can answer.
+  test("two adjacent narrow charts render side by side", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-paired-charts",
+        title: "Paired charts",
+        owner: HOLDER,
+        sections: PAIRED_CHART_SECTIONS,
+      }),
+    ]);
+
+    await ldf.user(HOLDER);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-paired-charts");
+    // First: the whole-report failure mode, so a regression over the wrapper
+    // reads as "the report blanked" rather than as a missing heading.
+    await expect(page.getByText("Report not found")).toBeHidden();
+
+    const first = page.getByRole("heading", { name: "Activities by type" });
+    const second = page.getByRole("heading", { name: "Share by type" });
+    await expect(first).toBeVisible();
+    await expect(second).toBeVisible();
+
+    // The heads sit on one line, the second to the right of the first — which is
+    // only true if each section's head row re-based inside its own wrapper.
+    // Flat, the two headings would each take a full-width line of their own.
+    const a = await first.boundingBox();
+    const b = await second.boundingBox();
+    expect(Math.abs(a.y - b.y)).toBeLessThan(a.height);
+    expect(b.x).toBeGreaterThan(a.x + a.width);
   });
 });
 

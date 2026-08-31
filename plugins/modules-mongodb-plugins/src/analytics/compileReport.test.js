@@ -1,6 +1,7 @@
 import compileReport, {
   assignReportColors,
   chartWidthForSpan,
+  needsWidth,
 } from "./compileReport.js";
 import { PALETTE } from "./buildFlintOption.js";
 import querySections from "./querySections.js";
@@ -166,10 +167,11 @@ test("compiles the full report to blocks", () => {
 
   // Every data section is a Card of its own, carrying the section's span, with
   // the section's block inside it under the unchanged section id. A kpi has no
-  // head row, so its card is the whole section.
+  // head row, so its card is the whole section — and this one is a tile row of
+  // ONE (the chart below it breaks the run), so the row it fills is the column.
   const kpiCard = blocks.find((b) => b.id === "s0_card");
   expect(kpiCard.type).toBe("Card");
-  expect(kpiCard.layout).toEqual({ span: 6 });
+  expect(kpiCard.layout).toEqual({ span: 24 });
   expect(kpiCard.blocks).toEqual([byId.s0]);
   // The span lives on the card alone — a span on both would be two sources for
   // one number, and the next layout change would only move one of them.
@@ -2647,4 +2649,352 @@ describe("withheld vs broken failed sections", () => {
     // Broken → owner recoveries present.
     expect(byId.s0_drop).toBeDefined();
   });
+});
+
+// Layout is derived on every open from the section's type, its position in its
+// run of same-type neighbours, and the shape of the rows the resolve returned —
+// never from anything the agent authored. A run is what the derivation is
+// computed over, and section ORDER is the author's only channel into it: two
+// narrow charts placed adjacent pair up, the same two with a section between
+// them do not.
+describe("layout derivation", () => {
+  const chartSection = (
+    id,
+    { x = "region", y = ["total"], chart = "bar" },
+  ) => ({
+    type: "chart",
+    chart,
+    label: `Chart ${id}`,
+    query: ordersByRegion,
+    x,
+    y,
+  });
+  // Two categories, one series, no dates — narrow on every trigger.
+  const narrowRows = [
+    { region: "EU", total: 2500 },
+    { region: "US", total: 1700 },
+  ];
+  const compile = (sections, results, extra = {}) =>
+    compileReport({
+      spec: { title: "T", sections },
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+      ...extra,
+    });
+
+  // The pair, in full: each section keeps its own head row and card, wrapped in
+  // a half-width Box so the two sit side by side. A flat span-12 card would put
+  // each heading on a full-width line of its own beside a twelve-column hole —
+  // a head row is a whole wrap line — which is why the wrapper is a container
+  // and not just a narrower card.
+  test("two adjacent narrow charts pair into half-width boxes, each holding its own head row and card", () => {
+    const blocks = compile(
+      [chartSection("a", {}), chartSection("b", {})],
+      [narrowRows, narrowRows],
+    );
+    const topIds = blocks.map((b) => b.id);
+    expect(topIds).toContain("s0_box");
+    expect(topIds).toContain("s1_box");
+    // The sections' own blocks are inside the wrappers, not beside them.
+    expect(topIds).not.toContain("s0_heading");
+    expect(topIds).not.toContain("s0_card");
+
+    for (const id of ["s0", "s1"]) {
+      const box = blocks.find((b) => b.id === `${id}_box`);
+      expect(box.type).toBe("Box");
+      expect(box.layout).toEqual({ span: 12 });
+      // Child spans re-base against the wrapper, so the head row's 20/4 split
+      // divides the half-width line and the card fills it.
+      expect(box.blocks.map((b) => [b.id, b.layout.span])).toEqual([
+        [`${id}_heading`, 20],
+        [`${id}_download`, 4],
+        [`${id}_card`, 24],
+      ]);
+      expect(box.blocks[2].type).toBe("Card");
+      expect(box.blocks[2].blocks[0].id).toBe(id);
+    }
+
+    // The two boxes are one wrap line, so both take the section gap — and
+    // nothing inside them does, or a heading would part from its ⤓.
+    const gap = blocks.find((b) => b.id === "s0_box").style.marginTop;
+    expect(gap).toBeGreaterThan(0);
+    expect(blocks.find((b) => b.id === "s1_box").style.marginTop).toBe(gap);
+    const byId = byIdOf(blocks);
+    expect(byId.s0_heading.style?.marginTop).toBeUndefined();
+    expect(byId.s0_card.style?.marginTop).toBeUndefined();
+  });
+
+  // Assembly is told the width of the span the section is drawn at, so a paired
+  // chart lays its legend and labels out for half a column rather than for a
+  // canvas twice the one it is on.
+  test("a paired chart is assembled for half the column", () => {
+    const byId = byIdOf(
+      compile(
+        [chartSection("a", { y: ["total", "tax"] }), chartSection("b", {})],
+        [
+          [
+            { region: "EU", total: 2500, tax: 250 },
+            { region: "US", total: 1700, tax: 170 },
+          ],
+          narrowRows,
+        ],
+      ),
+    );
+    const wide = byIdOf(
+      compile(
+        [chartSection("a", { y: ["total", "tax"] })],
+        [
+          [
+            { region: "EU", total: 2500, tax: 250 },
+            { region: "US", total: 1700, tax: 170 },
+          ],
+        ],
+      ),
+    );
+    expect(chartWidthForSpan(12)).toBeLessThan(chartWidthForSpan(24));
+    // The compiled option carries the assembly decisions rather than the width,
+    // so the proof is that the pair's legend is laid out the way a narrow canvas
+    // lays one out — a horizontal band — where the full column funds a
+    // right-hand column for it.
+    expect(byId.s0.properties.option.legend.orient).toBe("horizontal");
+    expect(wide.s0.properties.option.legend.orient).toBe("vertical");
+  });
+
+  // The re-query has to be told the same width the compiled option was built
+  // for: spans do not move mid-session, so the span decided at this open is the
+  // span the re-queried option lands in.
+  test("a paired chart's re-query carries the half-column width", () => {
+    const blocks = compile(
+      [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        { ...chartSection("a", {}), filterBy: ["status"] },
+        chartSection("b", {}),
+      ],
+      [narrowRows, narrowRows],
+    );
+    const byId = byIdOf(blocks);
+    expect(byId.s1_box.layout.span).toBe(12);
+    const [call] = byId.filter_status.events.onChange;
+    expect(call.params.payload.width).toBe(chartWidthForSpan(12));
+  });
+
+  // A narrow chart with no partner is not left half-width: a card beside an
+  // empty half column reads as a rendering fault, not as a decision.
+  test.each([
+    ["its neighbour needs the width", { y: ["a", "b", "c", "d", "e"] }],
+    ["it trails the run", undefined],
+  ])(
+    "a narrow chart that cannot pair takes the whole column (%s)",
+    (_, next) => {
+      const wideRows = [
+        { region: "EU", a: 1, b: 2, c: 3, d: 4, e: 5 },
+        { region: "US", a: 5, b: 4, c: 3, d: 2, e: 1 },
+      ];
+      const sections = [chartSection("a", {})];
+      if (next) sections.push(chartSection("b", next));
+      const blocks = compile(
+        sections,
+        next ? [narrowRows, wideRows] : [narrowRows],
+      );
+      const byId = byIdOf(blocks);
+      expect(byId.s0_box).toBeUndefined();
+      expect(byId.s0_card.layout).toEqual({ span: 24 });
+      // Flat, so the head row leads the section as it always did.
+      expect(blocks.map((b) => b.id)).toContain("s0_heading");
+      if (next) expect(byId.s1_card.layout).toEqual({ span: 24 });
+    },
+  );
+
+  // Order is the intent channel: a section of any other type between two charts
+  // separates them, so prose between two narrow charts keeps both full width.
+  test("markdown between two narrow charts breaks the run", () => {
+    const byId = byIdOf(
+      compile(
+        [
+          chartSection("a", {}),
+          { type: "markdown", content: "## Notes" },
+          chartSection("c", {}),
+        ],
+        [narrowRows, narrowRows],
+      ),
+    );
+    expect(byId.s0_box).toBeUndefined();
+    expect(byId.s2_box).toBeUndefined();
+    expect(byId.s0_card.layout).toEqual({ span: 24 });
+    expect(byId.s2_card.layout).toEqual({ span: 24 });
+  });
+
+  // Each trigger on its own is enough. Asserted through the pairing that would
+  // otherwise happen: the partner is a chart that is narrow on every count, so
+  // the only reason either can end up full width is the trigger under test.
+  describe("needsWidth", () => {
+    const dayRows = [
+      { day: new Date("2026-01-01T00:00:00Z"), total: 1 },
+      { day: new Date("2026-01-02T00:00:00Z"), total: 2 },
+    ];
+    const nineRows = Array.from({ length: 9 }, (_, index) => ({
+      region: `R${index + 1}`,
+      total: (9 - index) * 100,
+    }));
+    const fiveSeriesRows = [
+      { region: "EU", a: 1, b: 2, c: 3, d: 4, e: 5 },
+      { region: "US", a: 5, b: 4, c: 3, d: 2, e: 1 },
+    ];
+
+    test.each([
+      ["a temporal x axis", chartSection("t", { x: "day" }), dayRows],
+      ["more than eight distinct categories", chartSection("n", {}), nineRows],
+      [
+        "more than four series",
+        chartSection("s", { y: ["a", "b", "c", "d", "e"] }),
+        fiveSeriesRows,
+      ],
+    ])("%s forces the whole column", (_, section, rows) => {
+      expect(needsWidth(section, rows)).toBe(true);
+      const byId = byIdOf(
+        compile([section, chartSection("b", {})], [rows, narrowRows]),
+      );
+      expect(byId.s0_box).toBeUndefined();
+      expect(byId.s0_card.layout).toEqual({ span: 24 });
+      expect(byId.s1_card.layout).toEqual({ span: 24 });
+    });
+
+    // A year read off a $group is a number, and Flint types an all-numeric
+    // column quantitative rather than temporal — so it draws a category axis and
+    // the column stays narrow. Mirrored here rather than guessed at, because the
+    // consequence has to match what gets drawn.
+    test("a numeric x axis is not temporal", () => {
+      const yearRows = [
+        { year: 2025, total: 1 },
+        { year: 2026, total: 2 },
+      ];
+      expect(needsWidth(chartSection("y", { x: "year" }), yearRows)).toBe(
+        false,
+      );
+    });
+
+    // A pie has no axis to label, no legend column to fund and a radius that
+    // fills whatever square it is given, so it pairs however many rows it
+    // summarises — and assembly still folds the tail into Other.
+    test("a pie stays narrow at twenty slices, and still caps at six plus Other", () => {
+      const pieRows = Array.from({ length: 20 }, (_, index) => ({
+        status: `S${index + 1}`,
+        total: (20 - index) * 100,
+      }));
+      const pie = chartSection("p", { x: "status", chart: "pie" });
+      expect(needsWidth(pie, pieRows)).toBe(false);
+      const byId = byIdOf(
+        compile([pie, chartSection("b", {})], [pieRows, narrowRows]),
+      );
+      expect(byId.s0_box.layout).toEqual({ span: 12 });
+      expect(byId.s1_box.layout).toEqual({ span: 12 });
+      const slices = byId.s0.properties.option.series[0].data;
+      expect(slices).toHaveLength(7);
+      expect(slices[6].name).toBe("Other");
+    });
+
+    // A section with no rows renders an Alert, which has no business in a
+    // half-column hole — and there is no data to judge in any case.
+    test("a section with no rows reads as needing the width and never pairs", () => {
+      expect(needsWidth(chartSection("a", {}), null)).toBe(true);
+      const byId = byIdOf(
+        compile(
+          [chartSection("a", {}), chartSection("b", {})],
+          [null, narrowRows],
+        ),
+      );
+      expect(byId.s0.type).toBe("Alert");
+      expect(byId.s0_box).toBeUndefined();
+      expect(byId.s1_box).toBeUndefined();
+      expect(byId.s1_card.layout).toEqual({ span: 24 });
+    });
+  });
+
+  // Adjacent kpis are one tile row, balanced so every wrap line it takes is
+  // exactly full — four to a line rather than the filters' three, since a label
+  // over a number still reads at a quarter of the column where a select showing
+  // its selection does not.
+  describe("a run of kpis is one tile row", () => {
+    const kpis = (count) =>
+      Array.from({ length: count }, (_, index) => ({
+        type: "kpi",
+        label: `K${index}`,
+        query: orderTotal,
+        valueKey: "total",
+      }));
+    const compileKpis = (count) => {
+      const sections = kpis(count);
+      return byIdOf(
+        compile(
+          sections,
+          sections.map(() => [{ total: 1 }]),
+        ),
+      );
+    };
+
+    test.each([
+      [1, [24]],
+      [2, [12, 12]],
+      [3, [8, 8, 8]],
+      [4, [6, 6, 6, 6]],
+      [5, [8, 8, 8, 12, 12]],
+      [6, [8, 8, 8, 8, 8, 8]],
+    ])("%i kpis → spans %j", (count, expected) => {
+      const byId = compileKpis(count);
+      expect(
+        expected.map((_, index) => byId[`s${index}_card`].layout.span),
+      ).toEqual(expected);
+    });
+
+    // Every tile keeps its own card: the row is a row of panels, not one panel
+    // holding several numbers.
+    test("each tile keeps its own card", () => {
+      const byId = compileKpis(4);
+      for (const index of [0, 1, 2, 3]) {
+        expect(byId[`s${index}_card`].type).toBe("Card");
+        expect(byId[`s${index}_card`].blocks[0].type).toBe("Statistic");
+      }
+    });
+
+    // The whole run leads as ONE group, so the gap stamps its first line only: a
+    // run of five is two lines of tiles, and a second gap between them would
+    // read as two sections of numbers.
+    test("the gap leads the tile row's first line only", () => {
+      const byId = compileKpis(5);
+      const gap = byId.s0_card.style.marginTop;
+      expect(gap).toBeGreaterThan(0);
+      expect(byId.s1_card.style.marginTop).toBe(gap);
+      expect(byId.s2_card.style.marginTop).toBe(gap);
+      expect(byId.s3_card.style?.marginTop).toBeUndefined();
+      expect(byId.s4_card.style?.marginTop).toBeUndefined();
+    });
+  });
+
+  // A table is full width whatever it holds: half a column of AgGrid is a
+  // horizontal-scroll trap, and two adjacent tables are two rows, not a pair.
+  test.each([[1], [2], [8]])(
+    "a table spans the column at %i column(s)",
+    (columnCount) => {
+      const columns = Array.from({ length: columnCount }, (_, index) => ({
+        key: `c${index}`,
+        label: `C${index}`,
+      }));
+      const row = Object.fromEntries(columns.map((c) => [c.key, 1]));
+      const byId = byIdOf(
+        compile(
+          [
+            { type: "table", label: "One", query: ordersByRegion, columns },
+            { type: "table", label: "Two", query: ordersByRegion, columns },
+          ],
+          [[row], [row]],
+        ),
+      );
+      expect(byId.s0_card.layout).toEqual({ span: 24 });
+      expect(byId.s1_card.layout).toEqual({ span: 24 });
+      expect(byId.s0_box).toBeUndefined();
+    },
+  );
 });

@@ -147,20 +147,37 @@ const GRID_COLUMNS = 24;
 // in a browser that could measure the real one.
 const REPORT_CONTENT_WIDTH = 1100;
 
-// The pixel width a section spanning `span` of the grid's columns is drawn at.
-// Chart assembly needs it to decide legend orientation and label rotation, and
-// gets it wrong in only one direction — a slightly over-stated width tilts fewer
-// labels than it should. So the card padding around a chart is not subtracted:
-// it is a couple of percent of the full-width column every chart section spans.
+// The horizontal room a section's card takes out of its span before the canvas
+// inside it starts: the card body's padding on both sides, plus the gap to the
+// card beside it on the same wrap line. Estimated, not measured — nothing here
+// runs in a browser — from antd's 24px card body padding and the content area's
+// row gap.
+//
+// Deducted at every span, including the full-width one where there is no
+// neighbour to gap against, because the error it guards runs one way only: chart
+// assembly reads the width to decide legend orientation and label rotation, and
+// an OVER-stated width leaves labels untilted that then collide, which reads
+// worse than the tilt it skipped. At the full column the deduction is a couple
+// of percent; at half of it, twice the share — which is what makes it worth
+// taking off at all.
+const CARD_HORIZONTAL_CHROME = 64;
+
+// The pixel width a chart laid out at `span` of the grid's columns is drawn at —
+// the width its assembly has to be told, because a chart assembled for one width
+// and laid out at another gets the legend orientation and label rotation of a
+// canvas it is not on.
 export function chartWidthForSpan(span) {
-  return Math.round((span / GRID_COLUMNS) * REPORT_CONTENT_WIDTH);
+  return (
+    Math.round((span / GRID_COLUMNS) * REPORT_CONTENT_WIDTH) -
+    CARD_HORIZONTAL_CHROME
+  );
 }
 
-// The span a chart section is laid out at, and the span its assembled width is
-// derived from — one constant because the two have to agree. A chart assembled
-// for one width and laid out at another gets the legend orientation and label
-// rotation of a canvas it is not on.
-const CHART_SECTION_SPAN = GRID_COLUMNS;
+// Two charts to a wrap line, so half the grid each. Half the column also sits
+// well under the width at which Flint funds a right-hand legend column instead
+// of a horizontal band (NARROW_WIDTH in buildFlintOption), which is what keeps a
+// paired chart spending its width on the plot rather than on its legend.
+const PAIRED_CHART_SPAN = GRID_COLUMNS / 2;
 
 // Vertical separation ahead of each section GROUP, on top of the small row gap
 // report.yaml sets on the content area. Two different distances, deliberately: a
@@ -174,7 +191,10 @@ const SECTION_TOP_GAP = 16;
 // "row" is a wrap line, not a container — so a margin on one block alone drops
 // its row-mates out of line with it: a heading would part from its ⤓, and the
 // first filter of a shared row from the filters beside it. A section's card is
-// its own wrap line, so it never takes the gap when a head row precedes it.
+// its own wrap line, so it never takes the gap when a head row precedes it, and
+// a pair of half-width chart boxes is ONE line — both boxes take the gap, and
+// nothing inside either of them does, since only the group's own blocks are
+// walked.
 //
 // The group is whatever leads the section: its pending filter controls when it
 // has any, otherwise its head row or its Alert. Anchoring on the group rather
@@ -218,7 +238,12 @@ function filterStateKey(field) {
 // different sections must not be pulled together (see the report-page design).
 const FILTERS_PER_ROW = 3;
 
-// One span per filter in the group, distributed so EVERY wrap line the group
+// A row of KPI tiles takes four rather than three: a tile is a label over a
+// number, which still reads at a quarter of the column where a select showing
+// its selection does not.
+const KPIS_PER_ROW = 4;
+
+// One span per block in the group, distributed so EVERY wrap line the group
 // occupies is exactly full. A ragged trailing line is not cosmetic here: all
 // compiled blocks are siblings in one wrapping flex area, so the 16 columns left
 // over after a fourth filter are columns the following section flows into — a
@@ -228,10 +253,10 @@ const FILTERS_PER_ROW = 3;
 //
 // Rows are balanced rather than greedy — four filters are 2+2, not 3+1 — so no
 // filter stretches alone across the page while its neighbours sit at a third of
-// it. Balancing also holds every row to three or fewer, which is what keeps
-// 24/size a whole number of columns.
-function filterSpans(groupSize) {
-  const rows = Math.ceil(groupSize / FILTERS_PER_ROW);
+// it. Balancing also holds every row to `perRow` or fewer, which is what keeps
+// 24/size a whole number of columns: every cap the callers pass divides 24.
+function filterSpans(groupSize, perRow = FILTERS_PER_ROW) {
+  const rows = Math.ceil(groupSize / perRow);
   const base = Math.floor(groupSize / rows);
   const longRows = groupSize % rows;
   const spans = [];
@@ -240,6 +265,164 @@ function filterSpans(groupSize) {
     for (let i = 0; i < size; i += 1) spans.push(GRID_COLUMNS / size);
   }
   return spans;
+}
+
+// Maximal sequences of adjacent same-type sections, in spec order — the unit
+// layout is derived over: n adjacent kpis are one tile row, two adjacent narrow
+// charts are one pair.
+//
+// Section ORDER is the author's only channel into this, and the spec says
+// nothing else about layout: two charts placed adjacent pair up, and the same
+// two with a section of any other type between them do not. Adjacency is
+// therefore read off the spec exactly as written — filter sections included,
+// even though a filter emits nothing at its own position: the control it emits
+// above its first subscriber may be precisely what renders between the two.
+function groupRuns(sections) {
+  const runs = [];
+  for (const section of sections) {
+    const run = runs[runs.length - 1];
+    if (run && run[0].type === section.type) run.push(section);
+    else runs.push([section]);
+  }
+  return runs;
+}
+
+// Past these, half a column stops working: a ninth distinct x label tilts and
+// then collides with its neighbours, and a fifth series funds a legend wider
+// than the plot left beside it.
+const MAX_NARROW_CATEGORIES = 8;
+const MAX_NARROW_SERIES = 4;
+
+// Date.parse is far too permissive in V8 — "FY 2018" parses — so a date-like
+// string has to start with a digit or a month name to count, the same
+// restriction Flint imposes.
+const MONTH_PREFIX = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i;
+
+// Whether Flint will type this column of x values temporal. Mirrored from
+// flint-chart's data-driven inference rather than guessed at, because the
+// consequence has to match what gets DRAWN: Flint tests numeric before temporal,
+// so an all-numeric column — "2024" strings included — is quantitative and gets
+// a category axis, while a column whose every present value is a Date or a
+// date-like string gets the time axis whose dense ticks are what need the room.
+function isTemporalAxis(values) {
+  const present = values.filter(
+    (value) => value !== null && value !== undefined,
+  );
+  if (present.length === 0) return false;
+  if (
+    present.every((value) => !(value instanceof Date) && !Number.isNaN(+value))
+  ) {
+    return false;
+  }
+  return present.every((value) => {
+    if (value instanceof Date) return !Number.isNaN(value.getTime());
+    if (typeof value !== "string") return false;
+    const trimmed = value.trim();
+    return (
+      (/^\d/.test(trimmed) || MONTH_PREFIX.test(trimmed)) &&
+      !Number.isNaN(Date.parse(trimmed))
+    );
+  });
+}
+
+// Whether a chart section needs the whole column, judged from the rows the
+// compiler already holds. Three triggers, each a way for half a column to become
+// unreadable: a temporal x axis, more than eight distinct categories, or more
+// than four series.
+//
+// A pie has none of them — no axis to label, a slice count capped at seven by
+// assembly, and a radius that fills whatever square it is given — so a pie is
+// always narrow enough to pair, however many rows it summarises.
+//
+// A section with no rows is broken or withheld: it renders an Alert, which has
+// no business sitting in a half-column hole, and there is no data to judge
+// anyway. It reads as needing the width.
+export function needsWidth(section, rows) {
+  if (!Array.isArray(rows)) return true;
+  if (section.chart === "pie") return false;
+  if ((section.y ?? []).length > MAX_NARROW_SERIES) return true;
+  const values = rows.map((row) => row?.[section.x]);
+  if (isTemporalAxis(values)) return true;
+  // Keyed by String so two equal dates count once, and so a mixed column cannot
+  // over-count by object identity.
+  return new Set(values.map(String)).size > MAX_NARROW_CATEGORIES;
+}
+
+// Layout is derived here, on every open, from three things and nothing else: the
+// section's type, its position in its run, and the shape of the data the resolve
+// returned. None of it is stored in the spec — the agent authors no widths — so a
+// report follows its data as that grows rather than keeping the shape the data
+// had the day it was saved.
+//
+// The input is the FIRST, UNFILTERED resolve. Its rows are a superset of
+// anything a filter can later narrow them to, so a chart wide enough for all of
+// them stays wide enough for a subset, and a filter re-query swaps only
+// options/rows/heights through state bindings under a block tree that does not
+// move again until the next open. A filter that gained a DEFAULT applied at that
+// first resolve would break the superset assumption, and the derivation input
+// would have to be revisited.
+//
+// Returns the span each kpi/chart section is laid out at (with `boxed` for a
+// chart that is half of a pair), and the groups the section gap leads: one
+// section, except where derivation put several on one wrap line — a pair of
+// charts, a row of KPI tiles — which lead as one.
+function deriveSectionLayout({
+  sections,
+  rowsBySectionId,
+  filtersByFirstSubscriber,
+}) {
+  const spanBySection = new Map();
+  const gapGroups = [];
+  for (const run of groupRuns(sections)) {
+    if (run[0].type === "kpi") {
+      // One tile row for the whole run, balanced so every wrap line it takes is
+      // exactly full. It leads as ONE group: a run of five tiles is two lines,
+      // and a second gap between them would read as two sections of numbers.
+      const spans = filterSpans(run.length, KPIS_PER_ROW);
+      run.forEach((section, index) =>
+        spanBySection.set(section.id, { span: spans[index] }),
+      );
+      gapGroups.push(run);
+      continue;
+    }
+    if (run[0].type === "chart") {
+      let index = 0;
+      while (index < run.length) {
+        const section = run[index];
+        const next = run[index + 1];
+        if (
+          !needsWidth(section, rowsBySectionId.get(section.id)) &&
+          next !== undefined &&
+          !needsWidth(next, rowsBySectionId.get(next.id)) &&
+          // A filter control anchored on the SECOND of the two renders between
+          // them, breaking the wrap line they were paired for and stranding the
+          // first beside a twelve-column hole. Both take the full width instead.
+          !filtersByFirstSubscriber.has(next.id)
+        ) {
+          spanBySection.set(section.id, {
+            span: PAIRED_CHART_SPAN,
+            boxed: true,
+          });
+          spanBySection.set(next.id, { span: PAIRED_CHART_SPAN, boxed: true });
+          gapGroups.push([section, next]);
+          index += 2;
+          continue;
+        }
+        // Alone on its line: a chart that needs the width, or a narrow one with
+        // nothing to pair with. It takes the whole column rather than staying
+        // half of one — a half-width card beside an empty half reads as a
+        // rendering fault, not as a decision.
+        spanBySection.set(section.id, { span: GRID_COLUMNS });
+        gapGroups.push([section]);
+        index += 1;
+      }
+      continue;
+    }
+    // Everything else is full width, one section to a line: a half-width AgGrid
+    // is a horizontal-scroll trap, and prose reads across the column.
+    for (const section of run) gapGroups.push([section]);
+  }
+  return { spanBySection, gapGroups };
 }
 
 function safeFilename(label) {
@@ -372,6 +555,7 @@ function requeryActions({
   endpointId,
   chartEndpointId,
   colors,
+  spanBySection,
 }) {
   const actions = [];
   for (const section of boundSections) {
@@ -391,9 +575,12 @@ function requeryActions({
             ...(section.stacked ? { stacked: true } : {}),
             // Re-assembly makes the same width-driven layout decisions the
             // compiled option was built with, so it has to be told the same
-            // width — left out, a re-query would silently lay the chart out for
-            // the default column instead of the one it is drawn in.
-            width: chartWidthForSpan(CHART_SECTION_SPAN),
+            // width — the DERIVED span's, not the full column's: a paired chart
+            // re-queried at 24 columns would come back laid out for a canvas
+            // twice the one it is drawn on. Spans do not move mid-session, so
+            // the span decided at this open is the span the re-query will land
+            // in.
+            width: chartWidthForSpan(spanBySection.get(section.id).span),
             // For the same reason, and one more: the map was decided over the
             // UNFILTERED rows, so it covers names a filtered re-query can only
             // narrow. Re-derived from whatever the filter left instead, a series
@@ -669,6 +856,22 @@ function sectionCard(section, span, block) {
     type: "Card",
     layout: { span },
     blocks: [block],
+  };
+}
+
+// A paired chart's WHOLE section — head row and card — inside a half-width
+// wrapper, so the two of a pair sit side by side. It has to be a container and
+// not merely a narrower card: a head row is a full 24-column wrap line, so two
+// paired sections with flat head rows would each put their heading on a line of
+// its own beside a twelve-column hole. Nested, the child spans re-base against
+// the wrapper (`--lf-span` does not inherit), so the 20/4 heading-and-⤓ split
+// still divides this half-width line and the heading still sits above the card.
+function sectionBox(section, blocks) {
+  return {
+    id: `${section.id}_box`,
+    type: "Box",
+    layout: { span: PAIRED_CHART_SPAN },
+    blocks,
   };
 }
 
@@ -972,6 +1175,7 @@ function filterControlBlock({
   chartEndpointId,
   filterSectionsByField,
   colors,
+  spanBySection,
   span,
 }) {
   const onChange = requeryActions({
@@ -980,6 +1184,7 @@ function filterControlBlock({
     endpointId,
     chartEndpointId,
     colors,
+    spanBySection,
   });
   // The scope note goes in the label's `extra` — rendered under the control, in
   // the muted `.ant-form-item-extra` line — rather than appended to the title.
@@ -1480,6 +1685,15 @@ function compileReport({
     list.push({ filter, boundSections });
     filtersByFirstSubscriber.set(anchor.id, list);
   }
+  // Between the two filter passes: the anchors are known (a pair of charts will
+  // not form across a control anchored on the second of them), and the spans a
+  // chart's re-query has to carry are not yet needed.
+  const { spanBySection, gapGroups } = deriveSectionLayout({
+    sections,
+    rowsBySectionId,
+    filtersByFirstSubscriber,
+  });
+
   for (const [anchorId, group] of filtersByFirstSubscriber) {
     const spans = filterSpans(group.length);
     filtersByFirstSubscriber.set(
@@ -1496,6 +1710,7 @@ function compileReport({
           chartEndpointId,
           filterSectionsByField,
           colors,
+          spanBySection,
           span: spans[index],
         }),
       ),
@@ -1552,8 +1767,10 @@ function compileReport({
         if (display.style === "currency") {
           properties.prefix = `${seps.symbol} `;
         }
+        // The tile's share of its run's row, so n adjacent kpis read as one row
+        // of numbers rather than as n sections that happen to be narrow.
         out.push(
-          sectionCard(section, 6, {
+          sectionCard(section, spanBySection.get(section.id).span, {
             id: section.id,
             type: "Statistic",
             properties,
@@ -1562,6 +1779,7 @@ function compileReport({
       }
 
       if (section.type === "chart") {
+        const { span, boxed } = spanBySection.get(section.id);
         // Assembly reads the rows: it inlines them and sizes the canvas to the
         // labels it lays out, and it rejects a spec it cannot render — so a
         // throw here degrades this one section rather than the report, the way
@@ -1574,15 +1792,13 @@ function compileReport({
             y: section.y,
             rows,
             stacked: section.stacked,
-            width: chartWidthForSpan(CHART_SECTION_SPAN),
+            width: chartWidthForSpan(span),
             colors,
           });
         } catch (error) {
           out.push(...brokenSectionBlocks(section, error.message, brokenCtx));
           return out;
         }
-        out.push(sectionHeading(section, rows));
-        out.push(sectionDownload(section, endpointId));
         // Both keys move together: the re-assembled option's height belongs to
         // the labels in it, so binding one without the other would draw new
         // data at the old canvas size.
@@ -1608,13 +1824,18 @@ function compileReport({
         if (theme !== undefined) {
           properties.theme = theme;
         }
-        out.push(
-          sectionCard(section, CHART_SECTION_SPAN, {
+        const parts = [
+          sectionHeading(section, rows),
+          sectionDownload(section, endpointId),
+          // Inside a box the card re-bases against the wrapper, so it fills the
+          // half-width line rather than taking half of it again.
+          sectionCard(section, boxed ? GRID_COLUMNS : span, {
             id: section.id,
             type: "EChart",
             properties,
           }),
-        );
+        ];
+        out.push(...(boxed ? [sectionBox(section, parts)] : parts));
       }
 
       if (section.type === "table") {
@@ -1680,15 +1901,16 @@ function compileReport({
     return out;
   };
 
-  for (const section of sections) {
-    // A filter renders directly above its first subscribing section, and leads
-    // that section's group — so the two are separated by the small row gap and
-    // the whole group is pushed off what precedes it.
-    const group = [
+  // Emitted a gap group at a time — one section, or the several derivation put
+  // on a single wrap line. A filter renders directly above its first subscribing
+  // section and leads that section's group, so the two are separated by the
+  // small row gap while the whole group is pushed off what precedes it.
+  for (const group of gapGroups) {
+    const blocks = group.flatMap((section) => [
       ...(filtersByFirstSubscriber.get(section.id) ?? []),
       ...sectionBlocks(section),
-    ];
-    if (group.length > 0) bodyBlocks.push(...withTopGap(group));
+    ]);
+    if (blocks.length > 0) bodyBlocks.push(...withTopGap(blocks));
   }
 
   return [...header, ...bodyBlocks];

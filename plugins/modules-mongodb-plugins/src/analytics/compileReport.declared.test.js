@@ -107,7 +107,10 @@ function collect(blocks) {
 // filter per control — select, daterange and multiselect (the __state/__api
 // re-query path) — with the multiselect sourcing its options from a query so the
 // MultipleSelector branch is actually emitted, an unbound section (inlined
-// rows), a download (DownloadCsv), and markdown.
+// rows), a download (DownloadCsv), and markdown. The two charts are adjacent and
+// both narrow, so layout derivation pairs them and the Box wrapper is emitted
+// too — the second container type, and the one whose nesting the walk below has
+// to descend two levels for.
 //
 // Every control must appear here: this test is the only guard on the block-type
 // declaration, and a control the fixture never emits is a control whose type
@@ -169,6 +172,17 @@ const spec = {
       filterBy: ["status", "region"],
     },
     {
+      type: "chart",
+      chart: "line",
+      label: "Tax by region",
+      query: {
+        collection: "demo_orders",
+        pipeline: [{ $group: { _id: "$region", tax: { $sum: "$tax" } } }],
+      },
+      x: "region",
+      y: ["tax"],
+    },
+    {
       type: "table",
       label: "Orders",
       query: {
@@ -196,11 +210,12 @@ const spec = {
 };
 
 // Aligned to orderedQueries, which interleaves the multiselect's options query
-// at its section's position — ahead of the kpi, chart and table.
+// at its section's position — ahead of the kpi, the two charts and the table.
 const results = [
   [{ region: "EU", name: "EU" }],
   [{ total: 10 }],
   [{ region: "EU", total: 10 }],
+  [{ region: "EU", tax: 1 }],
   [{ region: "EU", total: 10 }],
 ];
 
@@ -227,12 +242,10 @@ test("every type compileReport emits is declared on the report page's Dynamic bl
   );
 
   // The wrapper types, named rather than left to the undeclared check below: a
-  // refactor that stopped emitting cards would still pass that check while
+  // refactor that stopped emitting them would still pass that check while
   // quietly reducing this test's nesting coverage to nothing.
   expect(used.blocks.has("Card")).toBe(true);
-  // Box is declared for the grouping wrapper but nothing emits one yet, so the
-  // guard on it is that the declaration survives — not that it is used.
-  expect(declared.blocks).toContain("Box");
+  expect(used.blocks.has("Box")).toBe(true);
 
   const undeclared = {
     blocks: [...used.blocks].filter((t) => !declared.blocks.includes(t)),
