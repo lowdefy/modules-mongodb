@@ -7,8 +7,9 @@
 //   npm install echarts@^6 flint-chart@0.5.0
 //   node probe.mjs
 //
-// Verified with echarts 6.1.0 (the workspace ships 6.0.0, same major) and
-// flint-chart 0.5.0 — the exact version the plugins package pins.
+// Verified with echarts 6.1.0 standalone and re-run against the workspace's own
+// echarts 6.0.0 + flint-chart 0.5.0 dists (identical results) — the exact
+// versions the plugins package pins.
 import * as echarts from 'echarts';
 const { assembleECharts } = await import('flint-chart/echarts');
 
@@ -49,8 +50,11 @@ const c2opt = JSON.parse(JSON.stringify(base)); c2opt.series[0].itemStyle = { bo
 const c2 = render(c2opt, 'mod');
 console.log('C2 bar borderRadius renders (path present):', /<path/.test(c2));
 
-// D: flint axisLabel.rotate — short vs long labels, few vs many categories
-for (const [name, labels] of [ ['3 short', ['Apr', 'May', 'Jun']], ['6 short', ['Apr','May','Jun','Jul','Aug','Sep']], ['6 long', ['Qualified','Discovery','Proposal','Negotiation','Contract','Legal']] ]) {
+// D: flint axisLabel.rotate — the rule is in flint's source (dist/echarts/index.cjs:
+// EC_BAR_SHORT_CATEGORY_COUNT = 4, EC_BAR_SHORT_CATEGORY_LABEL_LEN = 8): rotate is 0
+// iff count <= 4 AND maxLen <= 8, else 90; canvas width is never consulted. The cases
+// below cross both boundaries so a version bump that moves either threshold fails loudly.
+for (const [name, labels] of [ ['3 short', ['Apr', 'May', 'Jun']], ['4 short (count boundary, expect 0)', ['Apr', 'May', 'Jun', 'Jul']], ['5 short (count 5 > 4, expect 90)', ['Apr', 'May', 'Jun', 'Jul', 'Aug']], ['4 x 8-char (len boundary, expect 0)', ['Alderaan', 'Tatooine', 'Coruscat', 'Dagobahh']], ['4 x 9-char (len 9 > 8, expect 90)', ['Alderaan9', 'Tatooine9', 'Coruscant', 'Dagobahhh']], ['6 short', ['Apr','May','Jun','Jul','Aug','Sep']], ['6 long', ['Qualified','Discovery','Proposal','Negotiation','Contract','Legal']] ]) {
   const rows = labels.map((l, i) => ({ Stage: l, Amount: 100 + i }));
   const opt = assembleECharts({ data: { values: rows }, chart_spec: { chartType: 'Bar Chart', encodings: { x: { field: 'Stage' }, y: { field: 'Amount' } }, baseSize: { width: 1100, height: 180 } } });
   console.log('D rotate,', name, ':', opt.xAxis.axisLabel?.rotate, '· grid.bottom:', opt.grid?.bottom, '· _height:', opt._height);

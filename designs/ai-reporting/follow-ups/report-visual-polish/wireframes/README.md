@@ -1,8 +1,12 @@
-# Report layout wireframes
+# Report layout wireframes (exploratory)
 
-Aspirational targets for report presentation — step 1 of the candidate approach
-in [`../design.md`](../design.md): "what good looks like", independent of what
-the renderer produces today. Published as an editable design canvas:
+> **Non-normative.** These boards are an exploratory pass at "what good looks
+> like", kept as context. The design's **acceptance target is the deck** —
+> [`../wireframes.html`](../wireframes.html) — and the settled decisions live in
+> [`../design.md`](../design.md). Where a board and the design disagree, the
+> design wins; the disagreements are annotated below.
+
+Published as an editable design canvas:
 
 **https://claude.ai/code/artifact/7f337cc2-8e48-4460-8980-985af20e457a**
 
@@ -11,40 +15,51 @@ The `.dc.html` files here are the canvas source (one file per artboard,
 so the markup is readable directly even though the files don't render
 standalone. Sample data is fictional.
 
-## The three archetypes
+## The four boards
 
-| Artboard              | Archetype                                                                                                                                        |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Main.dc.html`        | **Dashboard** — filter row, KPI band, 7/5 chart-grid row, full-width trend line, table, download footer.                                          |
-| `Narrative.dc.html`   | **Narrative report** — markdown-led single column on a centered paper surface: prose, hero KPI, numbered figures, compact table.                  |
-| `Operations.dc.html`  | **Dense operational view** — compact header, divider-strip KPIs, small-multiples strip, dense urgency-sorted table.                               |
-| `ChartTheme.dc.html`  | **Chart theme spec** — the same compiled chart on light and dark surfaces, plus the verified split of where each styling decision lives.          |
+| Artboard             | What it explored                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Main.dc.html`       | **Dashboard** — filter row, KPI band, 7/5 chart-grid row, full-width trend line, table, download footer.                                    |
+| `Narrative.dc.html`  | **Narrative report** — markdown-led single column on a centered paper surface: prose, hero KPI, numbered figures, compact table.            |
+| `Operations.dc.html` | **Dense operational view** — compact header, divider-strip KPIs, small-multiples strip, dense urgency-sorted table.                         |
+| `ChartTheme.dc.html` | **Chart theme spec** — the same compiled chart on light and dark surfaces, plus the verified split of where each styling decision lives.    |
 
-## Grounding
+The three layout boards were drawn as *archetypes*; the settled design rejects
+archetypes (and any agent layout input) in favour of **one universal layout
+derived from the section list** — their compositions remain reachable through
+section ordering, except the elements flagged below.
 
-Every element maps to the existing section vocabulary (`kpi`, `chart`,
-`table`, `filter`, `markdown`, `download`) and respects the presentation
-contract (value-descending bars, humanized labels, legend on multi-series,
-numeric right-alignment, max 3 filters per row) — **except** two flagged
-proposals for the design pass:
+## Flagged proposals — outcomes
 
-- **Side-by-side section widths** (the dashboard's 7/5 chart row, paired
-  KPIs in the narrative). Today's renderer stacks query sections vertically;
-  only KPI tiles and filters share rows.
+The boards surfaced elements nothing existing could express. Each was resolved
+in [`../design.md`](../design.md):
+
+- **Side-by-side section widths** (the dashboard's 7/5 chart row) — the need is
+  real (5 of 7 client reports pair small charts) and is met **derived, not
+  authored**: narrow charts pair 2-up mechanically. The proposed
+  `width: full | half` spec key was **rejected** — it freezes layout at save
+  time while derived layout re-computes per open; see the design's Rejected
+  section. The narrative board's *hero KPI* falls with it (no corpus or
+  production instance; `width` is the named escape hatch if one appears).
 - **KPI delta captions and tile sparklines** (`+12% vs Q2`, the mini trend
-  line). The KPI contract today is label + `valueKey` + `format`; each needs
-  either a spec addition or a second query.
-- **Status ink in table cells** (the operations board's amber overdue
-  counts). Table columns render plain text today.
+  line) — **rejected in inert form**: an agent-written caption drifts from the
+  value it annotates as data and filters move. The bar for any future caption:
+  tied to data and refreshing with it, i.e. the computed form — a spec design
+  of its own.
+- **Status ink in table cells** (the operations board's amber overdue counts) —
+  **stays out**: "no enum-tag styling" is a standing presentation-contract
+  decision; a cell-styling key deserves its own design.
 
-Series palettes pass the colorblind-separation / lightness / contrast
-checks against their surfaces: light `#0b7a5c · #8c5bb0 · #b0722a · #3f6fae`
-on `#fcfcfb`; dark `#22a57f · #a374cc · #bc8a34 · #5b95d6` on `#191f1d`.
+The boards' series palette (light `#0b7a5c · #8c5bb0 · #b0722a · #3f6fae` on
+`#fcfcfb`, dark `#22a57f · #a374cc · #bc8a34 · #5b95d6` on `#191f1d`) passed the
+validator on its own surfaces but is **superseded** by the 8-slot data-viz
+reference palette the design adopts — validated on the repo's actual card
+surfaces and wide enough for the > 4-series charts stacked status data produces.
 
-## ECharts theming — verified split
+## ECharts theming — verified split (adopted)
 
-Facts checked against real code (`@lowdefy/blocks-echarts` 5.5.1,
-`flint-chart` 0.5.0 probed directly):
+This board's finding carried into the design unchanged (now recorded with the
+probe evidence in [`../findings.md` §3](../findings.md)):
 
 - **The `EChart` block accepts a full theme object** via `properties.theme`
   — its constructor calls `registerTheme('custom_theme_<blockId>', theme)`
@@ -57,6 +72,6 @@ Facts checked against real code (`@lowdefy/blocks-echarts` 5.5.1,
   styling (bar `borderRadius`, line width/symbols, area gradient, pie slice
   gaps) belong in `buildFlintOption`'s existing post-pass — it already
   rewrites `barWidth`, pie radius and legend position — while one shared
-  theme object (e.g. `defaults/chart_theme.yaml`) carries typography, axis
+  theme object (`defaults/chart_theme.yaml`) carries typography, axis
   chrome, tooltip and legend text for every `EChart` the module renders
   (report sections, chat cards, the expand modal).

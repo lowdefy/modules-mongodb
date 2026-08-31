@@ -1,367 +1,408 @@
 # Report visual polish
 
+> **Status: settled.** Two independent passes settled this design from the same
+> draft — one grounding it in a rendered report, a client-report corpus and the
+> data-viz validator, the other in code-anchored probes of the ECharts theme
+> layer — and this file is their reconciliation. The four open questions the
+> draft carried are resolved against measured evidence in
+> [`findings.md`](./findings.md); nothing below rests on an assumption about
+> Flint, the block layer, or the app theme.
+
 The open engine and `flint-chart` rendering make reports _correct_ and
-_consistent_, but "consistent" is not the same as "good-looking". A saved
-report today is a vertical stack of bare `Statistic` tiles, stock-ECharts
-charts, and full-width tables with the module's default spacing. This design
-raises the visual quality of what the module renders — chart styling, section
-chrome, layout — to something that reads as a designed dashboard rather than a
-dump of sections, **without changing what the agent authors**: the section
-vocabulary and presentation contract stay as they are, except for two small,
-argued additions (`width`, `caption`) in the last phase.
+_consistent_, but "consistent" is not the same as "good-looking". A saved report
+today is a vertical stack of bare KPI numbers, tables, and compiled charts on the
+page plane, with no containers, no comparison, and the stock ECharts palette. The
+goal here is to raise the visual quality of what the module renders to something
+that reads as a designed report rather than a dump of sections — **without
+changing what the agent authors**: the section vocabulary and presentation
+contract stay exactly as they are.
 
-The target is the [wireframe deck](wireframes/README.md) (published as an
-editable canvas — link in that README): a KPI-band + chart-grid dashboard, a
-markdown-led narrative report, a dense operational view, and a chart-theme
-spec board. Relates to the [`ux/`](../../ux/design.md) wireframes (chat +
-save-report flow) and the [`flint-charts`](../../flint-charts/design.md)
-design (which made chart appearance compiled, not authored) — this is the
-visual-quality follow-up to both.
+Relates to the [`ux/`](../../ux/design.md) wireframes (which framed the chat +
+save-report flow) and the [`flint-charts`](../../flint-charts/design.md) design
+(which made chart appearance compiled, not authored). This is the visual-quality
+follow-up to both.
 
-## Proposed change
+Inputs: a rendered 9-section report from the demo app, seven manually-built
+client reports read for pattern (see [`findings.md` §6](./findings.md)), the
+repo's data-viz guidance, and two probe passes ([`findings.md`](./findings.md),
+[`probe.mjs`](./probe.mjs)). The design target is the deck in
+[`wireframes.html`](./wireframes.html) — normative, judged section by section at
+acceptance. The [`wireframes/`](./wireframes/README.md) canvas boards are kept as
+**exploratory context**, not a target: they explored archetype layouts and two
+spec additions this design rejects (see below).
 
-Three phases, ordered by value over risk. Each lands independently and is
-useful alone; later phases assume earlier ones only for visual coherence.
+## Goal
 
-**Phase 1 — the chart pass.** No spec change, no agent change.
+A report that a reader can scan in one screen and trust — grounded in what
+`compileReport` can actually emit from the section vocabulary the agent already
+has, with no new agent surface.
 
-1. Extend `buildFlintOption`'s existing post-pass (it already rewrites
-   `barWidth`, pie radius, and legend position) to own chart appearance:
-   replace the pinned stock palette with the module palette, delete per-series
-   `itemStyle.color` so the palette assigns by series order, rounded bar caps
-   (`itemStyle.borderRadius: [4, 4, 0, 0]`), 2px lines with an end-point
-   symbol, a gradient `areaStyle` under single-series lines, pie slice gaps
-   (`borderWidth: 2, borderColor: <surface>`), and label unrotation where
-   horizontal labels fit (see decisions).
-2. Add one shared ECharts **theme object** — `defaults/chart_theme.yaml` —
-   set as `properties.theme` on every `EChart` the module renders: compiled
-   report chart blocks, the chat result card, and the expand modal. The theme
-   carries what flint leaves unset: `textStyle.fontFamily`, axis line /
-   split-line / label colors, legend and tooltip text styling,
-   `backgroundColor: transparent`.
+## Where the styling lives
 
-**Phase 2 — report chrome.** No spec change. `compileReport` styling only,
-via the block-level `style:` key the compiled blocks already support:
+Resolved. **The module owns nearly all of it.** Three vehicles carry this work:
+`compileReport.js` for structure, `buildFlintOption.js`'s post-pass for
+everything inside a chart the option pins, and one shared **ECharts theme
+object** for what Flint leaves unset. Flint owns only the data→geometry mapping,
+and its output is a plain mutable object we already post-process. The full layer
+map — including the one thing that is genuinely not ours, the consuming app's
+`colorPrimary` — is [`findings.md` §1](./findings.md).
 
-3. KPI tiles: card treatment (surface, hairline border, radius), mono
-   uppercase label, larger numeral.
-4. Section head rows: heading scale and weight, the ⤓ kept quiet; section
-   rhythm via the existing `SECTION_TOP_GAP` and the `Dynamic` gap.
-5. Table and download row polish within `AgGridBalham` / `Button` properties.
+The theme/option split is forced, not stylistic
+([`findings.md` §3](./findings.md)): ECharts applies a theme _under_ the option,
+and Flint pins the palette both as `option.color` and per-series, so **palette
+and mark styling must be compiled server-side**, while **typography and axis
+chrome ride the theme object** — one file
+(`modules/ai-reporting/defaults/chart_theme.yaml`), set as `properties.theme` on
+all three `EChart` render sites: the compiled report chart blocks, the chat
+result card, and the expand modal. The latter two never pass through
+`compileReport`, so the theme is the only vehicle that reaches them — and a
+future theme change re-skins every surface without touching persisted options.
 
-**Phase 3 — two spec additions.** The only contract changes, each driven by a
-wireframe element nothing existing can express:
+The corollary matters: **this design needs nothing from upstream and nothing
+from the app theme.** It is not blocked, and it must not assume a particular
+primary colour.
 
-6. **`width: full | half`** on `chart` and `kpi` sections. `chart` defaults
-   `full` (today's behaviour), `half` compiles to span 12 so two half charts
-   share a row. `kpi` defaults `half` — misnamed for a tile but consistent;
-   see decisions — keeping today's span-6 tile, while `full` compiles the
-   narrative board's hero treatment (span 24, centered, larger numeral).
-7. **`caption`** on `kpi` sections: an inert, length-capped display string
-   rendered under the value (`128 of 376 closed`). No computation — the agent
-   writes it from the rows it already saw.
-8. Teach the agent both keys in `reporting-assistant.yaml`, regenerate docs,
-   extend the demo seeded report and e2e.
+## The design
 
-## Why this, and why now
+### One universal layout, derived from the section list
 
-The wireframes forced the gap list into the open. Sorted by what fixes the
-most for the least surface: almost everything ugly about today's output is
-chart styling and tile chrome — both fixable behind the existing contract, in
-code paths that already post-process (`buildFlintOption`) or already emit
-styled blocks (`compileReport`). Only two wireframe elements are genuinely
-inexpressible (side-by-side charts, a KPI hero/caption), so only those touch
-the spec, the validator, and the agent's vocabulary. Doing the phases in this
-order means the risky part (new authoring surface) comes last and smallest,
-and the module looks substantially better after a change that cannot break a
-single saved report spec.
+The agent emits an ordered list of typed sections and contributes no layout. That
+stays true. **Layout is a pure function of section type, run position, and data
+shape** — the compiler derives it, and there is nothing new for the agent to get
+wrong.
 
-## Current state
+No archetype field, no `layout:` key, no `width:` key, no density toggle.
+Rejected because each adds a decision the agent or the saver would have to make
+correctly — see [Rejected](#rejected) for the full argument against `width`,
+which one of the two passes had proposed. This is the "one correct way" call:
+the derivation is mechanical, so it cannot drift per report, and it
+**re-computes on every open** — layout follows the data as it grows, instead of
+freezing the shape the data happened to have on the day the report was saved.
 
-- `plugins/modules-mongodb-plugins/src/analytics/compileReport.js` — KPI →
-  `Statistic` at `layout: { span: 6 }` (:1431); chart, table, markdown, Alert
-  → span 24; download → `Button` span 6 (:1519); section head = `Title` span
-  20 + CSV button span 4; `GRID_COLUMNS = 24` (:132); `SECTION_TOP_GAP`
-  stamped on each group's first wrap line (:134-149); `tableHeight()` sizes
-  the AgGrid wrapper to its rows (:170).
-- `buildFlintOption.js` — hands rows to `assembleECharts`, then a post-pass
-  strips private keys and functions, deletes `series[].barWidth`, converts pie
-  radius to a percentage, and pins the legend right (:80-200). The assembled
-  option **pins the stock ECharts palette** (top-level
-  `color: ["#5470c6", …]`) and a per-series `itemStyle.color`.
-- `@lowdefy/blocks-echarts` 5.5.1, `EChart.js` — the block accepts a full
-  theme **object**: its constructor calls
-  `registerTheme("custom_theme_" + blockId, properties.theme)` and passes that
-  name to `echarts-for-react`. Three render sites: the compiled report chart
-  block, `pages/chat/components/chat_workspace.yaml` (:842), and
-  `expand_chart_modal.yaml` (:25).
-- `modules/ai-reporting/pages/report.yaml` — the report renders through a
-  `Dynamic` block with a types allowlist (`Title`, `Paragraph`, `Statistic`,
-  `EChart`, `AgGridBalham`, selectors, `Button`, `Alert`, `Markdown`,
-  `DropdownMenu`); one missed type blanks the whole report. Content column is
-  1100px; the `Dynamic` layout gap is `[12, 8]`.
-- Blocks in this codebase carry block-level `style:` (used throughout
-  `chat_workspace.yaml`), so compiled blocks can be styled without app-theme
-  changes.
-- `docs/ai-reporting/reference/presentation-contract.md` — chart appearance is
-  compiled, not authored; height follows content; tables have no enum-tag
-  styling (deliberate).
+The agent's intent channel is **section order**, which it already controls: two
+narrow charts placed adjacent pair up; separated by a markdown section, they
+don't.
 
-## Verified findings
+A _run_ is a maximal sequence of adjacent same-type sections in spec order.
+`compileReport` already walks sections in order; runs are the only new concept.
 
-Run against real packages (`echarts` 6.1.0 SSR — the workspace ships 6.0.0,
-same major — `flint-chart` 0.5.0,
-`@lowdefy/blocks-echarts` 5.5.1 source) — see [`probe.mjs`](probe.mjs):
+### The load-bearing change: sections become cards
 
-| # | Claim | Result |
-| - | ----- | ------ |
-| A | A registered theme's palette applies when the option pins nothing | ✅ |
-| B | A top-level `option.color` overrides the theme palette | ✅ |
-| B2 | Per-series `itemStyle.color` overrides both | ✅ |
-| C | A linear-gradient **object** (`{ type: "linear", colorStops }`) survives the option's JSON round-trip and renders | ✅ |
-| C2 | Bar `itemStyle.borderRadius` renders from plain JSON | ✅ |
-| D | flint sets `xAxis.axisLabel.rotate: 90` from **6 categories up**, even for 3-character labels (`Apr`–`Sep`); 3 categories stay at 0. `grid.bottom` and `_height` grow with rotated label length | ✅ |
+Today every compiled block is a **sibling in one wrapping flex area** — the
+"rows" are wrap lines, not containers, which is why `withTopGap` stamps its
+margin on a group's first wrap line and why `filterSpans` must fill every line
+exactly. Introducing cards means introducing the first real nesting into compiled
+output:
 
-A, B and B2 together are the merge rule that shapes phase 1: ECharts applies a
-theme _under_ the option, so the palette swap **must** happen server-side in
-the compile pass — a theme alone cannot recolor flint's output. C and C2 mean
-the gradient and rounded-cap styling need no functions and survive
-`strip()`'s function removal and persistence as JSON. D is the concrete
-ugliness the unrotation rule targets.
-
-## Key decisions and rationale
-
-### Restyle in the compiler's post-pass, not a new authoring surface
-
-The presentation contract's promise is "the AI never contributes chart
-config" — a chart names a kind, a query, and x/y columns, and everything
-visual is derived. Polish must keep that promise: every phase-1 change lands
-in `buildFlintOption` after assembly, exactly where `barWidth`, pie radius and
-legend position are already corrected, so the authoring contract, the
-validator, and every persisted spec are untouched. The alternative — chart
-styling keys in the spec — would hand the agent a vocabulary it will misuse
-and the module a compatibility surface it owes forever, to express decisions
-the module can make once, correctly, for every chart.
-
-### The merge rule decides the palette/theme split
-
-Verified above: a theme merges under the option, and flint pins both the
-palette and per-series colors. So the split is forced, not stylistic —
-**palette and mark styling are compiled** (post-pass: replace `option.color`,
-delete `series[].itemStyle.color`, add mark styling), and **typography and
-axis chrome ride the theme object**, which is the right home for them anyway:
-they are per-surface concerns shared by all three render sites, including
-chat charts that never pass through `compileReport`. One theme file, three
-`properties.theme` references; compiled options stay free of font names and
-axis colors, so a future theme change re-skins persisted reports without
-touching their stored parts.
-
-One consequence worth stating: chat chart **parts persist the compiled
-option** (a reopened conversation shows the option snapshotted at the turn
-that produced it). Palette changes therefore reach old chat cards only via
-the theme… which the palette deliberately does not ride. Accepted: old chat
-snapshots keep the palette of their day, exactly as they keep their numbers;
-saved reports re-compile per open and always get the current look.
-
-### The palette is validated and fixed-order
-
-Light surface: `#0b7a5c · #8c5bb0 · #b0722a · #3f6fae` — passes
-colorblind-separation (worst adjacent pair ΔE 12.2 deutan), lightness-band,
-chroma and contrast checks against the `#fcfcfb` surface (validator output in
-the wireframes README; a dark-surface variant is validated there too but dark
-mode is a non-goal). Colors assign to series in fixed order — flint already
-orders folded series by the declared `y` columns, so series color follows the
-declared column, not its rank in the data.
-
-### Unrotate labels only when they fit
-
-Rotated-90° month names are the stock output's worst tell (finding D). The
-post-pass unrotates (`rotate: 0`) only when every category label fits its
-slot — estimated as `maxLabelChars × ~7px ≤ plotWidth / categoryCount` at the
-compiled font size — and otherwise steps to 30°, keeping 90° as the fallback
-for genuinely long labels. Conservative on purpose: an over-eager unrotation
-overlaps labels, which is worse than the tilt. flint sized `grid.bottom` and
-the canvas for rotated labels; horizontal labels need less, so the surplus is
-harmless padding rather than clipping. The one uncertainty — the pixel-width
-estimate has no canvas to measure against server-side — is why the rule keys
-on character count with a generous per-char width, and why the e2e chart
-assertions gate the change.
-
-### `width` is the smallest layout vocabulary that draws the wireframes
-
-The dashboard needs two charts on one row; the narrative needs one hero KPI.
-Both are one enum on two section types:
-
-- `chart`: `width: full` (default — today's behaviour) `| half` → span 12.
-  Two consecutive `half` charts share a wrap line; an odd `half` chart simply
-  takes half the row and the next section wraps — no pairing logic, no
-  validation that halves come in twos. The layout engine's wrap lines already
-  handle every arrangement, and forbidding an odd half would be a restriction
-  guarding against something harmless.
-- `kpi`: `width: half` (default — today's span-6 tile) `| full` → span 24,
-  centered, hero-scale numeral. The names stay `full`/`half` across both
-  types — one enum to learn — even though a "half" KPI is actually a quarter
-  row; the enum names the *intent* (share a row / own the row), not the span
-  arithmetic.
-
-The known caveat, stated rather than solved: **chart height follows content**
-(the contract is explicit), so two paired charts will usually have ragged
-bottoms. Accepted for this design — the wrap line top-aligns them, and the
-wireframes' 7/5 split is approximated by 12/12 rather than adding a span
-free-for-all. If ragged rows read badly in practice, a follow-up can pin
-paired plot heights; designing that now would be speculation.
-
-Not taken: arbitrary spans (`width: 7`), section grouping/rows in the spec,
-and `width` on `table`/`markdown`/`download` (no wireframe element needs
-them; a half-width AgGrid is a horizontal-scroll trap).
-
-### `caption` is an inert string, not a computed delta
-
-The wireframes' `+34% vs Q2` caption is genuinely useful and genuinely cheap
-**as display data**: the agent has just run the queries, knows the comparison,
-and can write the sentence. A `caption` is therefore the same kind of thing as
-`label` — length-capped, no query grammar, zero security surface, rendered in
-the tile's muted line. What it is _not_ is computed: a `compareQuery` per KPI
-would add a pipeline per tile per report open and a second contract to verify,
-for a number the agent can already state. If live-updating deltas become a
-concrete need (a filtered KPI's caption goes stale when the filter moves —
-today's captions describe the unfiltered resolve, and the tile re-queries but
-the caption doesn't), that is its own design; the caption key doesn't foreclose
-it.
-
-### What deliberately stays plain
-
-- **Tables keep text-only cells.** The ops wireframe's amber overdue ink
-  reads well, but "no enum-tag styling" is a standing contract decision; a
-  `severity` hint would be the first cell-styling key and deserves its own
-  argument with its own design, not a rider here.
-- **No KPI sparklines.** Each needs a trend query per tile per open —
-  resolve-time cost for decoration. The wireframes flag them as aspirational.
-- **No dark mode.** The theme object makes it _possible_ later (swap the
-  file), but the app has no dark theme to match; building one for charts
-  alone is speculative surface.
-- **No markdown typography overhaul.** Phase 2 may set measure and size on
-  the `Markdown` block's `style:`; the narrative board's drop cap needs
-  stylesheet-level CSS (`::first-letter`) and is a nice-to-have, not
-  load-bearing — the narrative layout works without it.
-
-### Where styling lives — the resolved map
-
-The draft's central open question, now answered layer by layer:
-
-| Layer | Owner | Vehicle |
-| ----- | ----- | ------- |
-| Series palette, mark styling (bar caps, line width, gradients, pie gaps), label rotation | module, server | `buildFlintOption` post-pass — compiled into the persisted/shipped option |
-| Chart typography, axis/split lines, legend & tooltip chrome | module, client | one theme object, `properties.theme` on all three `EChart` sites |
-| KPI tile, section head, table, download chrome | module, server | block `style:` + properties in `compileReport` |
-| Page column, breadcrumb, gaps between wrap lines | module, static | `pages/report.yaml` (`content_width: 1100`, `Dynamic` gap) |
-| Base fonts, antd tokens | host app | app theme — the module styles on top, never against |
-
-### Acceptance bar
-
-Per phase, side-by-side against the named wireframe board — dashboard for
-phases 1/3, narrative for the hero/caption, ops for density — judged at PR
-review with screenshots from a real dev run (`/r:dev-test`), not by the
-sandbox. Mechanical gates: `ldf:b`, `pnpm e2e` (the chart-data and
-report-render specs already assert compiled-option shape and section
-rendering; phase 1 updates their expectations deliberately, in the same
-change). "Looks good" stays a human call, but it is a call against a specific
-board, not taste.
-
-## Wire format
-
-Phase 3 additions, both optional, both inert display data:
-
-```yaml
-sections:
-  - type: chart
-    chart: bar
-    width: half            # full (default) | half
-    query: { ... }
-    x: stage
-    y: [amount]
-
-  - type: kpi
-    label: Won this quarter
-    width: full            # half (default) | full — full is the hero tile
-    caption: 110% of target · 128 deals   # length-capped inert string
-    valueKey: total
-    format: { style: currency }
-    query: { ... }
+```
+before (flat siblings)              after (nested)
+──────────────────────              ──────────────────────
+Title   span 20                     Title  span 20  ┐ head row, still flat
+Button  span  4                     Button span  4  ┘
+EChart  span 24                     Card   span 24  ── contains the EChart
 ```
 
-Validation: `width` rejected outside `chart`/`kpi` and outside the enum;
-`caption` rejected outside `kpi`, capped at the same length as `label`. Both
-join the section allowed-key lists so misspellings reject with the key list
-named, per the report-filters precedent.
+The head row stays flat and outside the card — that is the corpus pattern (6 of 7
+client reports put the heading above the card, not inside it), and it keeps
+`sectionHeading` / `sectionDownload` and their span arithmetic untouched.
 
-## Files changed (anticipated)
+`Card` and `Box` are already idiomatic in this repo (42 and 187 uses). Both must
+join `report.yaml`'s `Dynamic` `properties.types.blocks` allowlist — where **one
+missed type blanks the whole report to the fallback slot**, so this is the single
+highest-risk line in the change.
 
-- `plugins/modules-mongodb-plugins/src/analytics/buildFlintOption.js` — the
-  phase-1 post-pass (+ tests).
-- `plugins/modules-mongodb-plugins/src/analytics/constants.js` — palette,
-  caps for `caption`.
-- `modules/ai-reporting/defaults/chart_theme.yaml` — new; referenced from
-  `compileReport`'s chart block, `chat_workspace.yaml`, `expand_chart_modal.yaml`.
-- `compileReport.js` — phase-2 block styles; phase-3 `width`/`caption`/hero
-  compilation (+ tests).
-- `validateReportSpec.js` — phase-3 keys (+ tests).
-- `modules/ai-reporting/agents/reporting-assistant.yaml` and
-  `api/generate-report.yaml` — phase-3 vocabulary.
-- `docs/ai-reporting/reference/presentation-contract.md` + `pnpm docs:gen`.
-- `apps/demo` seeded example report + `apps/demo/e2e/ai-reporting/*` —
-  expectations per phase.
+### Derivation rules
 
-## Resolved questions
+Spans are on the existing 24-column grid.
 
-All four of the draft's open questions:
+| Section run                  | Compiles to                                                                                         |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `kpi` × n                    | One tile row: n cards, spans from `filterSpans(n)` so every wrap line is exactly full                |
+| `filter` × n                 | Unchanged grouping (`filterSpans`, ≤ 3 per row), plus a Reset control and **one** shared scope line  |
+| `chart`, needs width         | `span 24`, card                                                                                     |
+| `chart`, doesn't need width  | `span 12`, card — paired 2-up with the next consecutive narrow chart                                 |
+| trailing unpaired narrow     | promoted to `span 24`                                                                               |
+| `table`                      | always `span 24`, card — tables never pair                                                          |
+| `download` × n               | One "Downloads" card, `span 24`, buttons inside at `filterSpans(n)`                                  |
+| `markdown`                   | `span 24`, **no card** — prose narrates between cards rather than sitting in one                     |
 
-- **Where does styling live?** Resolved — see the map above and the verified
-  findings that force the palette/theme split.
-- **Layout responsiveness.** Spans are fixed fractions of the 1100px column;
-  wrap lines do not collapse on narrow viewports. Accepted: the report page is
-  a desktop document (the column cap exists for measure, not adaptivity), and
-  no concrete mobile need exists. Revisit only when one does.
-- **Scope of autonomy.** Phases land as ordinary reviewed PRs with the
-  mechanical gates above; visual acceptance is the human side-by-side at
-  review. No live-dev-server agent loop — the e2e suite plus screenshots
-  cover what the sandbox can and cannot do respectively.
-- **One design or two?** One. The wireframes showed chart styling and layout
-  are separable in *implementation* (the phases) but one target in
-  *acceptance* — splitting the design would duplicate the current-state map
-  and the merge-rule findings both halves need.
+**"Needs width"** is decided from data the compiler already holds (`rows`, `x`,
+`y`, `chart`, `stacked`):
 
-## Non-goals
+- a temporal x-axis, or
+- more than 8 categories, or
+- more than 4 series.
 
-Computed KPI deltas / `compareQuery`, KPI sparklines, table cell styling
-(severity ink), dark mode, arbitrary section spans or row grouping, drop-cap
-markdown typography, restyling AgGrid beyond its properties, and any change to
-what the agent may query.
+A `pie` never needs width. Narrow charts pair; **tables never do** — a
+half-width AgGrid is a horizontal-scroll trap, so even a 2-column table takes
+the full row and lets `flex: 1` (below) spend the width on its columns. This is
+a deliberate simplification adopted from the second pass; an earlier draft
+paired ≤ 4-column tables.
+
+`filterSpans` is reused rather than reinvented for both the tile row and the
+download card: it already solves the exact problem (balanced rows, every wrap
+line exactly full, `24/size` always whole), and its comment documents the bug
+that a ragged trailing line causes in a flat flex flow.
+
+Promoting a trailing unpaired narrow chart to `span 24` is deliberate: a
+half-width card with twelve empty columns beside it reads as a rendering fault,
+which is worse than a slightly over-wide chart.
+
+### KPI tiles
+
+Each tile is a card: **label → value**, equal height from the card rather than
+from the `Statistic`'s self-sizing (which is why the current row's labels sit at
+different heights). Units belong on the number — `25.0` becomes `25.0%` from the
+contract `format`, which already carries the descriptor.
+
+**No delta, no sparkline, no caption.** Deltas and sparklines are what the
+corpus does best and both are
+[genuinely unreachable](./findings.md#7-what-remains-genuinely-unreachable): a
+`kpi` section is one query returning one scalar, and a delta needs a second
+resolved value for a shifted window that no part of the spec, `querySections`,
+or the resolve path can express. An **inert** agent-written caption was proposed
+as the cheap substitute and rejected — see [Rejected](#rejected). All of it is a
+spec change, not a polish change, and pretending otherwise here would produce a
+tile design that cannot be filled.
+
+### The filter bar
+
+Keep the grouping. Fix the text. `filterControlBlock` puts
+`Also filters: <every other bound section>` in each control's label `extra`; the
+code's reasoning is sound for one filter and does not survive the common case —
+four filters each driving six sections renders **four near-identical three-line
+grey paragraphs**, about 250px, more than any chart on the page.
+
+Replacement: when every filter in a run drives the same section set, emit **one**
+scope line under the bar. When they differ, keep the per-control note only on the
+controls that actually differ. Plus a Reset, which 4 of 7 client reports carry and
+the module has no equivalent of.
+
+### Downloads
+
+A run of `download` sections currently compiles to `span 6` Buttons at the page
+bottom, wrapping 4 + 1 ragged, under no heading — and the report therefore
+carries two unrelated download idioms, since chart and table sections already put
+a `⤓` in their own head row. Group the run into one titled card. The `⤓`-in-the-
+head-row idiom stays as-is and becomes the only one a reader has to learn for
+per-section export.
+
+### Chart internals
+
+Split across the two vehicles the merge rule forces
+([`findings.md` §3](./findings.md)):
+
+**In `buildFlintOption`'s post-pass** — which already strips private keys,
+overrides `barWidth`, moves the legend, and pins pie geometry, so the rewrite
+point exists and is established practice in the file:
+
+**Palette.** Replace the stock ECharts default, which
+[fails four of five validator checks](./findings.md#4-the-palette-flint-ships-fails-the-reference-palette-passes)
+on the real light card surface — including a normal-vision ΔE of 13.9 between
+slots 2 and 3, meaning they are hard to tell apart _before_ colour-vision
+deficiency is considered. Adopt the data-viz reference categorical palette,
+validated against this repo's actual surfaces (`#ffffff` light, `#141414` dark):
+both modes pass every check. (One pass had derived a bespoke 4-colour palette,
+validated on its own surfaces — superseded by the 8-slot reference palette,
+which covers the > 4-series charts stacked status data actually produces.
+Re-validate against the final card surface at implementation.)
+
+Two writes, not one: Flint declares the palette as `option.color` **and** as a
+concrete hex on each `series[i].itemStyle.color`, and the per-series value wins on
+bar and line. Setting `option.color` alone is a silent no-op there. A test should
+assert **no stock hex survives anywhere in the option tree** — this is the kind of
+half-fix that looks right in a diff and is wrong on screen.
+
+The light-mode contrast WARN is not dismissable; it obligates visible labels or a
+table view. A compiled report discharges it on both counts — every multi-series
+chart carries a legend, and every chart section carries a `⤓` — and the design
+states that deliberately rather than relying on it by luck.
+
+**Colour identity is report-scoped, not chart-scoped.** Today hues are assigned
+by series index within one chart, so `Done` is red in one section and green two
+sections later. Assign slots from the **union of series names across the whole
+report**, in first-appearance order, so a name keeps its hue everywhere. This is
+the data-viz rule "colour follows the entity, never its rank", and it fixes the
+most jarring thing about the current render. Past 8 names, fold the tail to
+`Other` rather than cycling.
+
+**Mark styling** — verified JSON-safe ([`findings.md` §3](./findings.md)):
+rounded bar caps (`itemStyle.borderRadius: [4, 4, 0, 0]`), 2px lines with an
+end-point symbol, a gradient `areaStyle` under single-series lines (a plain
+`{ type: "linear", colorStops }` object — no functions needed), and pie slice
+gaps (`borderWidth: 2, borderColor: <surface>`). All of it survives `strip()`
+and JSON persistence.
+
+**Legend orientation follows available width**, which turns the current defect
+into the rule:
+
+- `span 12` → horizontal band above the plot; `grid.right` reclaimed.
+- `span 24` → Flint's vertical right legend is _correct_ here, and `grid.right`
+  (measured 79–163px, sized to the longest series name) is paying for something
+  the reader gets.
+
+**Label rotation.** Flint's rule, read off its source
+([`findings.md` §5](./findings.md)): `rotate: 0` only when there are **≤ 4
+categories and the longest label is ≤ 8 characters**, otherwise 90 — and the
+available width is never consulted, so three 10-character labels with ~340px of
+room each are set vertically, and a needless rotation also inflates
+`grid.bottom` (61 → 91) and total height (277 → 307) and then collides with the
+axis title `nameGap: 25` places beneath it. Override: compute available px per
+category from the plot width the span actually gives (a conservative per-char
+width estimate — there is no canvas to measure against server-side), and step
+0 → 45 → 90. Flint only emits 0 or 90; 45 is the missing middle. Conservative on
+purpose: an over-eager unrotation overlaps labels, which is worse than the tilt;
+Flint sized `grid.bottom` for rotated labels, so the surplus after unrotation is
+harmless padding rather than clipping. The e2e chart assertions gate this.
+
+**Pie slices cap at 6 + Other**, matching the data-viz rule and the corpus's
+worst failure (two client pies with ~20 slices each, leader labels overlapping
+into an unreadable mat).
+
+**In the shared theme object** (`defaults/chart_theme.yaml`, new): everything
+Flint leaves unset — `textStyle.fontFamily` (the app's sans stack; `textStyle`
+is `undefined` today, so every chart's type is visibly different from the text
+around it), `axisLabel.fontSize` 10 → 12, axis line / split-line / label
+colours, legend and tooltip text styling, `backgroundColor: transparent`. One
+file, three `properties.theme` references; compiled options stay free of font
+names and axis colours.
+
+One consequence worth stating: chat chart **parts persist the compiled option**,
+so palette changes reach old chat cards only via the theme — which the palette
+deliberately does not ride. Accepted: old chat snapshots keep the palette of
+their day, exactly as they keep their numbers; saved reports re-compile per open
+and always get the current look.
+
+**Tables.** `defaultColDef` gains `flex: 1`. This one change fixes both current
+failures at once — the 2-column table with 600px of blank white, and the
+6-column table clipped mid-header at the right edge.
+
+## Rejected
+
+- **`width: full | half` on sections (agent-authored layout).** Proposed by one
+  of the two passes; rejected on three grounds. (1) A `width` freezes at save
+  time while derived layout **re-computes per open** — the chart that tolerated
+  `half` at 5 categories is unreadable at 14, and nobody edits the spec to fix
+  it, whereas the derived rule promotes it the day it needs the room. (2) For
+  the agent to use `width` well, the prompt must teach it when a chart tolerates
+  half width — which is the derived heuristic rewritten as prose for an LLM to
+  apply probabilistically instead of implemented once, deterministically.
+  Ordering is already the agent's intent channel. (3) The asymmetry: adding
+  `width` to a derived-layout compiler later is a backwards-compatible one-liner
+  (key present → skip derivation); removing it once saved specs carry it is a
+  breaking change that will never happen. **`width` is therefore the named
+  escape hatch** if a concrete need for a pinned layout (e.g. a hero KPI — no
+  corpus or production instance today) ever surfaces — deliberately not built
+  ahead of one.
+- **An inert `caption` on KPI tiles** (an agent-written display string,
+  `110% of target · 128 deals`). Proposed as the cheap 80% of the corpus's
+  delta pattern; rejected because it freezes at save time while the tile's
+  value re-resolves per open and moves with filters — the caption drifts from
+  the number it annotates. The bar for any future caption: **tied to data and
+  refreshing when the data changes**, i.e. the computed form, which is a spec
+  change (a second resolved query per tile) and its own design.
+- **Layout archetypes / a density toggle.** New surface, new failure mode,
+  speculative. Covered above.
+- **Dual y-axes**, which 3 corpus charts use. It is the data-viz skill's #1 named
+  chart mistake; `CHART_TYPES` cannot express it and must not learn to.
+- **Styling anything from `colorPrimary`.** It belongs to the consuming app.
+- **Per-tile deltas and sparklines.** Unreachable from a one-scalar `kpi`
+  section; a spec change, tracked separately if wanted.
+- **Table cell styling (status ink).** The ops canvas board's amber overdue
+  counts read well, but "no enum-tag styling" is a standing presentation-
+  contract decision; a `severity` hint would be the first cell-styling key and
+  deserves its own argument in its own design, not a rider here.
+- **Editing `docs/` to match this design.** `docs/` is the source of truth for
+  consumer-observable behaviour; it gets updated _from_ the implementation, at
+  the end, not ahead of it.
+
+## Acceptance bar
+
+"Looks good" is not the bar. These are:
+
+1. `validate_palette.js` passes on both modes against `#ffffff` / `#141414`.
+2. A test asserts no stock ECharts hex survives in any assembled option, on all
+   three chart kinds — bar, line, pie — since the per-series override differs
+   between them.
+3. The demo's 9-section report drops from **7810px** to under ~4000px of scroll,
+   with no section rendering smaller than its data needs.
+4. Zero axis-label ↔ axis-title collisions across the demo report; zero clipped
+   or under-filled table columns.
+5. A series name that appears in more than one section has the same hue in both.
+6. Side-by-side against [`wireframes.html`](./wireframes.html), section by
+   section — not a subjective call.
+7. `ldf:b` clean, and the report still resolves: the `Dynamic` `types` allowlist
+   is the failure mode to watch, since a missed block type blanks the whole
+   report rather than one section.
+
+Mechanical gates run per phase: `ldf:b` and `pnpm e2e` — the chart-data and
+report-render specs already assert compiled-option shape and section rendering,
+and each phase updates their expectations deliberately, in the same change.
+(3)–(6) need a running app with data, so they are `/r:dev-test` steps judged
+with screenshots at PR review, not build-gate steps.
+
+## Out of scope
+
+- KPI deltas, sparklines, captions, and chart-associated stat strips in their
+  strong form — all need spec changes
+  ([`findings.md` §7](./findings.md)).
+- The reports list, the chat panel, and the save-report sheet. Chart internals
+  changes reach the chat panel because it shares `buildFlintOption` and the
+  theme object, and that is intended — its 420px panel benefits from the same
+  rotation and legend fixes — but its layout is not touched here.
+- Dark mode. The theme object makes it _possible_ later (swap the file), but
+  the app has no dark theme to match; the dark palette is validated so the door
+  stays open, not because anything ships.
+- `docs/ai-reporting` updates, which follow the implementation.
 
 ## Risks
 
-- **flint version drift.** The post-pass rewrites an option shape flint 0.5.0
-  produces; the dependency is pinned exactly, and the post-pass tests assert
-  the pre-rewrite shape so a bump fails loudly, not silently.
+- **The `Dynamic` allowlist.** `Card`/`Box` joining `types.blocks` is the one
+  change that can blank a whole report; it lands alone (step 3 below) so the
+  failure is attributable.
+- **Flint version drift.** The post-pass rewrites an option shape
+  `flint-chart@0.5.0` produces; the dependency is pinned exactly, and the
+  post-pass tests assert the pre-rewrite shape so a bump fails loudly, not
+  silently.
 - **Unrotation overlap.** A too-generous fit estimate overlaps labels.
-  Mitigated by the conservative char-width rule, the 30° intermediate step,
-  and e2e updates in the same change.
-- **Theme/option interplay per chart type.** The merge rule is verified for
-  the general case; a per-type surprise (e.g. pie label colors) shows up in
-  the side-by-side and is contained to the theme file.
-- **Agent misuse of `width`.** An odd `half` or a hero mid-list renders
-  harmlessly (wrap lines), so the failure mode is aesthetic, not broken —
-  and the prompt shows the intended patterns.
-- **Ragged paired charts.** Accepted above; the follow-up (pinned paired
-  heights) is named but not built.
+  Mitigated by the conservative char-width rule, the 45° intermediate step, and
+  e2e updates in the same change.
+- **Theme/option interplay per chart type.** The merge rule is verified for the
+  general case; a per-type surprise (e.g. pie label colours) shows up in the
+  side-by-side and is contained to the theme file.
+- **Ragged paired charts.** Chart height follows content (the contract is
+  explicit), so two paired narrow charts can have ragged bottoms. Accepted: the
+  wrap line top-aligns them, and pairing already requires both to be narrow. If
+  ragged rows read badly in practice, a follow-up can pin paired plot heights;
+  designing that now would be speculation.
+
+## Shape of the work
+
+Roughly, and in dependency order — `/r2:decompose` owns the real split. Steps
+1–2 are the chart pass (no structural change, improves the chat panel on its
+own); 3–6 are structure and chrome.
+
+1. `buildFlintOption` chart internals (palette + two-write override, mark
+   styling, legend, rotation, pie cap) **plus** the shared theme object wired to
+   all three `EChart` sites — self-contained, testable without the block layer.
+2. Report-scoped colour identity, which needs a report-wide pass over series
+   names before per-section assembly.
+3. Cards + the `Dynamic` types allowlist — the risky structural change, alone.
+4. Derivation rules (runs, pairing, spans) on top of cards.
+5. Filter bar text, downloads card, table `flex`.
+6. Demo consumer exercising a report that hits every rule (a paired narrow pair,
+   a wide temporal chart, a capped pie, a 6-column table, a download run), then
+   docs.
 
 ## Related
 
-- [Wireframe deck](wireframes/README.md) — the acceptance target; the
-  chart-theme board draws the palette/theme split.
-- [`probe.mjs`](probe.mjs) — the verification probe behind the findings table.
-- [`flint-charts`](../../flint-charts/design.md) — established compiled-not-
-  authored chart appearance and the post-pass precedent.
-- [`report-filters`](../../report-filters/design.md) — the allowed-key-list
-  validation precedent phase 3 follows.
+- [`findings.md`](./findings.md) — the measured evidence: layer map, defect
+  list, palette validation, rotation rule, corpus census.
+- [`probe.mjs`](./probe.mjs) — re-runnable probes behind the theme-merge,
+  JSON-safety and rotation findings.
+- [`wireframes.html`](./wireframes.html) — the normative acceptance deck.
+- [`wireframes/`](./wireframes/README.md) — exploratory canvas boards from the
+  parallel pass; non-normative.
+- [`flint-charts`](../../flint-charts/design.md) — established
+  compiled-not-authored chart appearance and the post-pass precedent.
 - [`ux/`](../../ux/design.md) — the original chat + save-report wireframes.
