@@ -94,7 +94,7 @@ All in `compileReport.js` (+ tests):
     `[8,8,8,8,8,8]`; filters unchanged at cap 3.
   - Tables span 24 regardless of column count.
   - Paired sections' requery payloads carry the span-12 width.
-- `reportBlockTypes.test.js` still passes (a spec in it must now exercise the
+- `compileReport.declared.test.js` still passes (a spec in it must now exercise the
   paired branch — extend it).
 - Plugin build; `pnpm ldf:b`; `pnpm e2e` green — `report-render.spec.js` /
   `formatted-report.spec.js` layout expectations updated in the same change.
@@ -103,7 +103,7 @@ All in `compileReport.js` (+ tests):
 
 - `plugins/modules-mongodb-plugins/src/analytics/compileReport.js` — modify
 - `plugins/modules-mongodb-plugins/src/analytics/compileReport.test.js` — modify
-- `plugins/modules-mongodb-plugins/src/analytics/reportBlockTypes.test.js` — modify
+- `plugins/modules-mongodb-plugins/src/analytics/compileReport.declared.test.js` — modify
 - `apps/demo/e2e/ai-reporting/report-render.spec.js`, `formatted-report.spec.js` — update expectations
 
 ## Notes

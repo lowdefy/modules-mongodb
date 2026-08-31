@@ -53,7 +53,7 @@ All in `compileReport.js` (+ tests):
     note.
   - Reset block present per group; its actions clear the group's state keys
     and re-query every bound section.
-- `reportBlockTypes.test.js` still passes (Reset emits only declared types).
+- `compileReport.declared.test.js` still passes (Reset emits only declared types).
 - Plugin build; `pnpm ldf:b`; `pnpm e2e` green — the `report-render.spec.js`
   filter cases (`FILTER_KPI_SECTIONS`) updated in the same change, including a
   behavioural assertion: apply a filter, Reset, and the bound KPI shows its

@@ -42,7 +42,7 @@ All in `compileReport.js` (+ tests):
   - A single download section → still one titled card (one idiom, no special
     case).
   - Table `defaultColDef` includes `flex: 1`.
-- `reportBlockTypes.test.js` still passes (extend its spec with a download
+- `compileReport.declared.test.js` still passes (extend its spec with a download
   run if task 5's doesn't already exercise one).
 - Plugin build; `pnpm ldf:b`; `pnpm e2e` green — `formatted-report.spec.js` /
   `report-render.spec.js` expectations updated in the same change.
