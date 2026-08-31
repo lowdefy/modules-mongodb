@@ -48,7 +48,9 @@ _build.switch:
                       default: false
                   then: null
                   else:
-                    _var: title
+                    _var:
+                      key: title
+                      default: null
             layout:
               gap: 16
             # An `extra` slot renders the card header even when it is empty, so
