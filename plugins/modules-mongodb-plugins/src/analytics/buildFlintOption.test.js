@@ -728,3 +728,84 @@ test("a missing or null width lays the chart out for the report column", () => {
   expect(buildFlintOption(multiBarSpec)).toEqual(column);
   expect(buildFlintOption({ ...multiBarSpec, width: null })).toEqual(column);
 });
+
+// Flint pins its own type sizes into the option, and ECharts merges a theme
+// under an option — so the theme file's sizes are outranked and the post-pass
+// has to re-apply them. These pin that: a chart's type must not render a size
+// smaller than the page around it.
+describe("the theme's type scale survives Flint's pinned sizes", () => {
+  test("axis labels, axis names and legend text are raised to the theme's sizes", () => {
+    const { option } = buildFlintOption({
+      chart: "line",
+      x: "month",
+      y: ["revenue", "cost"],
+      rows: [
+        { month: "2026-01", revenue: 100, cost: 80 },
+        { month: "2026-02", revenue: 120, cost: 90 },
+      ],
+    });
+    expect(option.xAxis.axisLabel.fontSize).toBe(12);
+    expect(option.xAxis.nameTextStyle.fontSize).toBe(12);
+    expect(option.yAxis.axisLabel.fontSize).toBe(12);
+    expect(option.yAxis.nameTextStyle.fontSize).toBe(12);
+    expect(option.legend.textStyle.fontSize).toBe(12);
+  });
+
+  test("a rotated axis's gutters grow with the type that sits in them", () => {
+    const rows = Array.from({ length: 12 }, (_, index) => ({
+      region: `Region name ${index}`,
+      revenue: 100 + index,
+    }));
+    const flint = assembleECharts({
+      data: {
+        values: rows.map((row) => ({
+          Region: row.region,
+          Revenue: row.revenue,
+        })),
+      },
+      chart_spec: {
+        chartType: "Bar Chart",
+        encodings: { x: { field: "Region" }, y: { field: "Revenue" } },
+        baseSize: { width: 1100, height: 180 },
+      },
+    });
+    const { option } = buildFlintOption({
+      chart: "bar",
+      x: "region",
+      y: ["revenue"],
+      rows,
+    });
+    // Still rotated at this label length, so the gutter Flint sized for 10px
+    // labels has to fund 12px ones.
+    expect(option.xAxis.axisLabel.rotate).toBeGreaterThan(0);
+    expect(option.grid.bottom).toBeGreaterThan(flint.grid.bottom);
+    expect(option.grid.left).toBeGreaterThan(flint.grid.left);
+  });
+
+  test("an unrotated axis keeps the bottom gutter Flint sized", () => {
+    const flint = assembleECharts({
+      data: {
+        values: [
+          { Region: "North", Revenue: 1200 },
+          { Region: "South", Revenue: 900 },
+        ],
+      },
+      chart_spec: {
+        chartType: "Bar Chart",
+        encodings: { x: { field: "Region" }, y: { field: "Revenue" } },
+        baseSize: { width: 1100, height: 180 },
+      },
+    });
+    const { option } = buildFlintOption({
+      chart: "bar",
+      x: "region",
+      y: ["revenue"],
+      rows: [
+        { region: "North", revenue: 1200 },
+        { region: "South", revenue: 900 },
+      ],
+    });
+    expect(option.xAxis.axisLabel.rotate).toBe(0);
+    expect(option.grid.bottom).toBe(flint.grid.bottom);
+  });
+});

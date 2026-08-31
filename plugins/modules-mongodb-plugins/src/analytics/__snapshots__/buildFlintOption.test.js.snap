@@ -16,7 +16,7 @@ exports[`multi-y bar folds into grouped series 1`] = `
     ],
     "grid": {
       "bottom": 61,
-      "left": 86,
+      "left": 103,
       "right": 107,
       "top": 36,
     },
@@ -81,7 +81,7 @@ exports[`multi-y bar folds into grouped series 1`] = `
     },
     "xAxis": {
       "axisLabel": {
-        "fontSize": 10,
+        "fontSize": 12,
         "rotate": 0,
       },
       "axisLine": {
@@ -100,19 +100,19 @@ exports[`multi-y bar folds into grouped series 1`] = `
       "nameGap": 25,
       "nameLocation": "middle",
       "nameTextStyle": {
-        "fontSize": 10,
+        "fontSize": 12,
       },
       "type": "category",
     },
     "yAxis": {
       "axisLabel": {
-        "fontSize": 10,
+        "fontSize": 12,
       },
       "name": "Value",
       "nameGap": 45,
       "nameLocation": "middle",
       "nameTextStyle": {
-        "fontSize": 10,
+        "fontSize": 12,
       },
       "scale": false,
       "type": "value",
@@ -150,7 +150,7 @@ exports[`multi-y line folds onto a colour channel 1`] = `
       "orient": "vertical",
       "right": 10,
       "textStyle": {
-        "fontSize": 11,
+        "fontSize": 12,
       },
       "top": 20,
     },
@@ -362,7 +362,7 @@ exports[`single-y bar over a categorical x 1`] = `
     ],
     "grid": {
       "bottom": 61,
-      "left": 86,
+      "left": 103,
       "right": 38,
       "top": 36,
     },
@@ -394,7 +394,7 @@ exports[`single-y bar over a categorical x 1`] = `
     },
     "xAxis": {
       "axisLabel": {
-        "fontSize": 10,
+        "fontSize": 12,
         "rotate": 0,
       },
       "axisLine": {
@@ -413,19 +413,19 @@ exports[`single-y bar over a categorical x 1`] = `
       "nameGap": 25,
       "nameLocation": "middle",
       "nameTextStyle": {
-        "fontSize": 10,
+        "fontSize": 12,
       },
       "type": "category",
     },
     "yAxis": {
       "axisLabel": {
-        "fontSize": 10,
+        "fontSize": 12,
       },
       "name": "Revenue",
       "nameGap": 45,
       "nameLocation": "middle",
       "nameTextStyle": {
-        "fontSize": 10,
+        "fontSize": 12,
       },
       "scale": false,
       "type": "value",
@@ -569,7 +569,7 @@ exports[`stacked multi-y bar folds into stacked series 1`] = `
     ],
     "grid": {
       "bottom": 61,
-      "left": 86,
+      "left": 103,
       "right": 107,
       "top": 36,
     },
@@ -635,7 +635,7 @@ exports[`stacked multi-y bar folds into stacked series 1`] = `
     },
     "xAxis": {
       "axisLabel": {
-        "fontSize": 10,
+        "fontSize": 12,
         "rotate": 0,
       },
       "axisLine": {
@@ -654,19 +654,19 @@ exports[`stacked multi-y bar folds into stacked series 1`] = `
       "nameGap": 25,
       "nameLocation": "middle",
       "nameTextStyle": {
-        "fontSize": 10,
+        "fontSize": 12,
       },
       "type": "category",
     },
     "yAxis": {
       "axisLabel": {
-        "fontSize": 10,
+        "fontSize": 12,
       },
       "name": "Value",
       "nameGap": 45,
       "nameLocation": "middle",
       "nameTextStyle": {
-        "fontSize": 10,
+        "fontSize": 12,
       },
       "scale": false,
       "type": "value",

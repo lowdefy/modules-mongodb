@@ -87,6 +87,14 @@ const LABEL_GAP = 8;
 // A label tilted 45 degrees takes up cos(45) of its length across the axis.
 const COS_45 = Math.SQRT1_2;
 
+// The chart theme's type sizes. They have to be re-applied here because Flint
+// pins its own smaller sizes into the option (10px axis labels and names, 11px
+// legend), and ECharts merges a theme UNDER an option — so a size set in the
+// theme file is silently outranked and every chart renders type a size smaller
+// than the text around it.
+const AXIS_TYPE_SIZE = 12;
+const LEGEND_TYPE_SIZE = 12;
+
 // The eight-slot categorical set every chart draws from, validated against the
 // card surface below for lightness band, chroma floor, CVD separation and
 // normal-vision separation. The stock ECharts palette fails four of those five
@@ -370,6 +378,37 @@ function relaxRotation(option, width) {
   if (rotate < current) axis.axisLabel.rotate = rotate;
 }
 
+// Raises the type sizes Flint pinned to the theme's, and pays for the extra
+// pixels out of the gutter each grown label sits in: Flint sized `grid.bottom`
+// for a rotated label a size smaller, and `grid.left` for a shorter y-axis
+// number, so both are scaled by the same ratio the type grew. Over-padding a
+// gutter costs a little plot area; under-padding it clips the label.
+//
+// Only ever grows. A size Flint already set at or above the theme's is left
+// alone, and so is the gutter that funds it.
+function alignTypeScale(option) {
+  let ratio = 1;
+  for (const axis of [option.xAxis, option.yAxis]) {
+    if (!axis) continue;
+    for (const key of ["axisLabel", "nameTextStyle"]) {
+      const style = axis[key];
+      if (!style || !(style.fontSize < AXIS_TYPE_SIZE)) continue;
+      ratio = Math.max(ratio, AXIS_TYPE_SIZE / style.fontSize);
+      style.fontSize = AXIS_TYPE_SIZE;
+    }
+  }
+  if (option.legend?.textStyle?.fontSize < LEGEND_TYPE_SIZE) {
+    option.legend.textStyle.fontSize = LEGEND_TYPE_SIZE;
+  }
+  if (ratio === 1 || !option.grid) return;
+  // A flat x-axis label grows across its category slot, not down into the
+  // gutter, so an unrotated axis needs nothing here.
+  if (option.xAxis?.axisLabel?.rotate) {
+    option.grid.bottom = Math.round(option.grid.bottom * ratio);
+  }
+  option.grid.left = Math.round(option.grid.left * ratio);
+}
+
 function buildFlintOption({ chart, x, y, rows, stacked, width }) {
   const canvasWidth = Number.isFinite(width) ? width : DEFAULT_WIDTH;
   const values = rows ?? [];
@@ -502,6 +541,8 @@ function buildFlintOption({ chart, x, y, rows, stacked, width }) {
   // a banded legend hands back to the plot.
   const band = bandLegend(option, canvasWidth);
   relaxRotation(option, canvasWidth);
+  // After rotation: a label relaxed to flat no longer needs a taller gutter.
+  alignTypeScale(option);
 
   return { option, height: height + band };
 }
