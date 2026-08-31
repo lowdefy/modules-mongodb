@@ -43,6 +43,13 @@ _ref:
             _module.endpointId: resolve-report
           types:
             blocks:
+              # Section containers. A kpi, chart or table section compiles into
+              # a Card carrying that section's span, and Box wraps sections that
+              # share a laid-out row. A container type missing from this list
+              # blanks the WHOLE report, not the one section inside it, so both
+              # are declared together.
+              - Card
+              - Box
               - Title
               - Paragraph
               - Statistic

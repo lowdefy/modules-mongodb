@@ -169,11 +169,12 @@ const CHART_SECTION_SPAN = GRID_COLUMNS;
 // separate sections leaves the heading equidistant, belonging to neither.
 const SECTION_TOP_GAP = 16;
 
-// Stamp the gap on the group's FIRST WRAP LINE, not on its first block. Every
-// compiled block is a sibling in one wrapping flex area — the "rows" are wrap
-// lines, not nested containers — so a margin on one block alone drops its
-// row-mates out of line with it: a heading would part from its ⤓, and the first
-// filter of a shared row from the filters beside it.
+// Stamp the gap on the group's FIRST WRAP LINE, not on its first block. The
+// blocks a group is made of sit side by side in one wrapping flex area — a
+// "row" is a wrap line, not a container — so a margin on one block alone drops
+// its row-mates out of line with it: a heading would part from its ⤓, and the
+// first filter of a shared row from the filters beside it. A section's card is
+// its own wrap line, so it never takes the gap when a head row precedes it.
 //
 // The group is whatever leads the section: its pending filter controls when it
 // has any, otherwise its head row or its Alert. Anchoring on the group rather
@@ -651,6 +652,26 @@ function filterOptions({ filter, sections, catalog, roles, rows }) {
   return capped(catalogOptions() ?? [], MAX_FILTER_OPTIONS);
 }
 
+// A section's own block sits inside a Card of its own — the container that
+// makes a report read as a stack of panels rather than bare numbers and grids
+// on the page plane. The span rides on the CARD, not the block inside it: the
+// card is what the layout places, and a span in both would be two sources for
+// one number. The id convention is load-bearing the other way round — the inner
+// block keeps the section id that every state binding, re-query and chart
+// assembly already names, and the wrapper takes `${id}_card`.
+//
+// `blocks` is the slots.content shorthand, as on the header's DropdownMenu — a
+// resolved fragment is built by the same recursive walk as a static page, so it
+// nests the same way.
+function sectionCard(section, span, block) {
+  return {
+    id: `${section.id}_card`,
+    type: "Card",
+    layout: { span },
+    blocks: [block],
+  };
+}
+
 // EChart and AgGridBalham have no `title` property (their schemas set
 // additionalProperties: false), so a section's label renders as a preceding
 // Title block — the same pattern the chat results panel uses for charts.
@@ -704,8 +725,11 @@ function failedSectionBlock(section, description) {
 // is gated server-side, so hiding them from a non-owner only spares them a dead
 // button — it is not the authorization. A non-owner keeps the Alert, which names
 // the owner who can fix it (when known) and offers nothing to click. Blocks stay
-// flat siblings of the Alert — no wrapping Box — so the page's byId lookups reach
-// them.
+// flat siblings of the Alert rather than sharing a container: a failure is not a
+// panel of content, and each recovery is a full-width row of its own. Nesting is
+// available here — a resolved fragment builds with the same recursive machinery
+// as a static page, which is how every healthy section gets its card — so this
+// flat shape is a layout choice and nothing more.
 function brokenSectionBlocks(
   section,
   description,
@@ -1528,12 +1552,13 @@ function compileReport({
         if (display.style === "currency") {
           properties.prefix = `${seps.symbol} `;
         }
-        out.push({
-          id: section.id,
-          type: "Statistic",
-          layout: { span: 6 },
-          properties,
-        });
+        out.push(
+          sectionCard(section, 6, {
+            id: section.id,
+            type: "Statistic",
+            properties,
+          }),
+        );
       }
 
       if (section.type === "chart") {
@@ -1583,36 +1608,41 @@ function compileReport({
         if (theme !== undefined) {
           properties.theme = theme;
         }
-        out.push({
-          id: section.id,
-          type: "EChart",
-          layout: { span: CHART_SECTION_SPAN },
-          properties,
-        });
+        out.push(
+          sectionCard(section, CHART_SECTION_SPAN, {
+            id: section.id,
+            type: "EChart",
+            properties,
+          }),
+        );
       }
 
       if (section.type === "table") {
         out.push(sectionHeading(section, rows));
         out.push(sectionDownload(section, endpointId));
-        out.push({
-          id: section.id,
-          type: "AgGridBalham",
-          layout: { span: 24 },
-          properties: {
-            height: tableHeight(rows),
-            rowData: dataBinding(section, rows),
-            columnDefs: section.columns.map((column) =>
-              tableColumnDef(column, rows),
-            ),
-            defaultColDef: { sortable: true, resizable: true },
-          },
-        });
+        out.push(
+          sectionCard(section, 24, {
+            id: section.id,
+            type: "AgGridBalham",
+            properties: {
+              height: tableHeight(rows),
+              rowData: dataBinding(section, rows),
+              columnDefs: section.columns.map((column) =>
+                tableColumnDef(column, rows),
+              ),
+              defaultColDef: { sortable: true, resizable: true },
+            },
+          }),
+        );
       }
     }
 
     // Filter sections emit no block at their own position — their control was
     // placed above its first subscribing section in the interleave pass above.
 
+    // No card: prose is what narrates BETWEEN the panels, so putting it in one
+    // of its own would read as another result rather than as the text around
+    // them.
     if (section.type === "markdown") {
       out.push({
         id: section.id,

@@ -11,6 +11,16 @@ import {
   PIPELINE_RESULT_CAP,
 } from "./constants.js";
 
+// A kpi/chart/table section's own block sits inside its `${id}_card` wrapper, so
+// an id lookup has to descend into it. Most assertions here are about the block
+// itself and not where in the tree it sits; the wrappers are asserted on their
+// own, and anything about POSITION keeps working on the top-level list, where a
+// card occupies its section's place.
+const flatten = (blocks) =>
+  (blocks ?? []).flatMap((block) => [block, ...flatten(block.blocks)]);
+const byIdOf = (blocks) =>
+  Object.fromEntries(flatten(blocks).map((block) => [block.id, block]));
+
 const roles = ["analyst"];
 const endpointId = "ai-reporting/query-data";
 const chartEndpointId = "ai-reporting/chart-data";
@@ -134,7 +144,7 @@ test("a filter's optionsQuery entry interleaved between data sections keeps each
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s0.properties.value).toEqual({
     __if_none: [{ __state: "sections.s0.rows.0.total" }, 111],
   });
@@ -150,9 +160,21 @@ test("compiles the full report to blocks", () => {
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
 
   expect(byId.report_title.properties.content).toBe("Q2 Revenue by Region");
+
+  // Every data section is a Card of its own, carrying the section's span, with
+  // the section's block inside it under the unchanged section id. A kpi has no
+  // head row, so its card is the whole section.
+  const kpiCard = blocks.find((b) => b.id === "s0_card");
+  expect(kpiCard.type).toBe("Card");
+  expect(kpiCard.layout).toEqual({ span: 6 });
+  expect(kpiCard.blocks).toEqual([byId.s0]);
+  // The span lives on the card alone — a span on both would be two sources for
+  // one number, and the next layout change would only move one of them.
+  expect(byId.s0.layout).toBeUndefined();
+  expect(blocks.find((b) => b.id === "s0")).toBeUndefined();
 
   // KPI: unfiltered → value inlined. ZAR currency contract → 2 decimals and a
   // rand prefix, separators from the en-ZA locale.
@@ -246,6 +268,79 @@ test("compiles the full report to blocks", () => {
   expect(dl.params.data).toEqual({ __api: `${endpointId}.response` });
 });
 
+// The card is the section's container; the section's HEAD row is not in it. A
+// heading inside the card would be a card title by another name, and the corpus
+// of hand-built reports puts the heading above the panel it names.
+test("a section's card holds its block alone, with the head row outside it", () => {
+  const blocks = compileReport({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+  });
+  const byId = byIdOf(blocks);
+  const topIds = blocks.map((b) => b.id);
+
+  for (const [id, span, type] of [
+    ["s1", 24, "EChart"],
+    ["s3", 24, "AgGridBalham"],
+  ]) {
+    const card = byId[`${id}_card`];
+    expect(card.type).toBe("Card");
+    expect(card.layout).toEqual({ span });
+    expect(card.blocks).toEqual([byId[id]]);
+    expect(byId[id].type).toBe(type);
+    // heading, ⤓, then the card — the head row leads, outside the panel.
+    expect(topIds.indexOf(`${id}_card`)).toBe(
+      topIds.indexOf(`${id}_download`) + 1,
+    );
+  }
+
+  // The download button is an action, not a result, so it is not panelled.
+  expect(byId.s4_card).toBeUndefined();
+  expect(topIds).toContain("s4");
+
+  // Markdown is the prose that narrates BETWEEN the panels, so it is not one
+  // itself — a card around it would read as another result.
+  const prose = compileReport({
+    spec: {
+      title: "T",
+      sections: [{ type: "markdown", content: "## Notes" }],
+    },
+    results: [],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+  });
+  expect(byIdOf(prose).s0.type).toBe("Markdown");
+  expect(byIdOf(prose).s0_card).toBeUndefined();
+});
+
+// A failure is not a panel of content: the Alert and the recoveries stay flat
+// siblings, so a broken section reads as an interruption of the stack of cards
+// rather than as another card in it.
+test("a broken section gets no card", () => {
+  const blocks = compileReport({
+    spec,
+    results: [results[0], undefined, results[2]],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+    is_owner: true,
+    conversation_id: "conv-1",
+  });
+  const byId = byIdOf(blocks);
+  expect(byId.s1.type).toBe("Alert");
+  expect(byId.s1_card).toBeUndefined();
+  expect(blocks.map((b) => b.id)).toEqual(
+    expect.arrayContaining(["s1", "s1_fix_in_chat", "s1_drop"]),
+  );
+});
+
 test("an optional theme is set verbatim on every chart section's properties.theme", () => {
   const theme = { backgroundColor: "transparent" };
   const blocks = compileReport({
@@ -257,7 +352,7 @@ test("an optional theme is set verbatim on every chart section's properties.them
     chartEndpointId,
     theme,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s1.properties.theme).toBe(theme);
   // Non-chart sections carry no theme key — it is a chart-only property.
   expect("theme" in byId.s0.properties).toBe(false);
@@ -274,7 +369,7 @@ test("failed sections render as Alert cards while the rest render", () => {
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s1.type).toBe("Alert");
   expect(byId.s1.properties.message).toBe("Revenue by Region");
   expect(byId.s0.type).toBe("Statistic");
@@ -291,7 +386,7 @@ test("a contract mismatch (missing column) renders that section as an Alert card
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s0.type).toBe("Alert");
   expect(byId.s0.properties.description).toMatch(
     /column "total" is not present/,
@@ -313,7 +408,7 @@ test("a non-numeric chart y column renders that section as an Alert card", () =>
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s1.type).toBe("Alert");
   expect(byId.s1.properties.description).toMatch(/must be numeric/);
 });
@@ -332,7 +427,7 @@ test("zero rows and null value cells render normally (no verification failure)",
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s0.type).toBe("Statistic");
   expect(byId.s0.properties.value).toBe(0);
   expect(byId.s1.type).toBe("EChart");
@@ -348,7 +443,7 @@ test("normalizes object-shaped (sparse step) results", () => {
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s0.type).toBe("Statistic");
   expect(byId.s1.type).toBe("Alert");
 });
@@ -399,7 +494,7 @@ test("kpi bound to a filter defers its value through state", () => {
     endpointId,
     chartEndpointId,
   });
-  const kpi = blocks.find((b) => b.id === "s1");
+  const kpi = flatten(blocks).find((b) => b.id === "s1");
   expect(kpi.properties.value).toEqual({
     __if_none: [{ __state: "sections.s1.rows.0.total" }, 10],
   });
@@ -446,7 +541,7 @@ describe("a filter driving a chart and a table", () => {
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   const onChange = byId.filter_status.events.onChange;
 
   test("the chart binds option and height, each falling back to the resolve-time value", () => {
@@ -476,7 +571,7 @@ describe("a filter driving a chart and a table", () => {
       // so the re-query carries the width of the span the section is actually
       // laid out at — otherwise a filtered chart re-renders for another canvas
       // than the one the compiled option was built for.
-      width: chartWidthForSpan(byId.s1.layout.span),
+      width: chartWidthForSpan(byId.s1_card.layout.span),
       // Empty here: a single-series chart is the one kind that takes no
       // report-scoped hue (its series name is a measure, not an entity), and
       // this report holds nothing else that would claim one.
@@ -516,7 +611,7 @@ describe("a filter driving a chart and a table", () => {
       endpointId,
       chartEndpointId,
     });
-    const stackedById = Object.fromEntries(stackedBlocks.map((b) => [b.id, b]));
+    const stackedById = byIdOf(stackedBlocks);
     const option = stackedById.s1.properties.option.__if_none[1];
     const stacks = new Set(option.series.map((series) => series.stack));
     expect(stacks.size).toBe(1);
@@ -568,7 +663,7 @@ describe("report-scoped colour identity", () => {
       endpointId,
       chartEndpointId,
     });
-    return Object.fromEntries(blocks.map((block) => [block.id, block]));
+    return byIdOf(blocks);
   };
   const seriesHues = (block) =>
     Object.fromEntries(
@@ -764,7 +859,7 @@ test("a chart whose assembly throws renders an Alert while its siblings compile"
   jest.dontMock("./buildFlintOption.js");
   jest.resetModules();
 
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s1.type).toBe("Alert");
   expect(byId.s1.properties.message).toBe("Revenue by Region");
   expect(byId.s1.properties.description).toMatch(/Flint rejected this chart/);
@@ -806,7 +901,7 @@ test("an unusable KPI currency degrades that section to an Alert, not the report
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s0.type).toBe("Alert");
   expect(byId.s0.properties.description).toMatch(/unusable number format/);
   // The rest of the report still renders.
@@ -840,7 +935,7 @@ test("an unusable locale on a table column degrades that section to an Alert", (
     endpointId,
     chartEndpointId,
   });
-  const section = blocks.find((b) => b.id === "s0");
+  const section = flatten(blocks).find((b) => b.id === "s0");
   expect(section.type).toBe("Alert");
   expect(section.properties.description).toMatch(
     /Column "total" has an unusable number format/,
@@ -912,7 +1007,7 @@ describe("unformatted numeric columns", () => {
       chartEndpointId,
     });
     return Object.fromEntries(
-      blocks
+      flatten(blocks)
         .find((b) => b.id === "s0")
         .properties.columnDefs.map((c) => [c.field, c]),
     );
@@ -1045,7 +1140,7 @@ describe("provenance line", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
 
     // s1 chart, s3 table → downloads; s0 kpi → none.
     expect(byId.s0_download).toBeUndefined();
@@ -1074,7 +1169,7 @@ describe("provenance line", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
 
     for (const id of ["s1", "s3"]) {
       expect(byId[`${id}_heading`].layout.span).toBe(20);
@@ -1088,11 +1183,12 @@ describe("provenance line", () => {
     expect(ids.indexOf("s3_download")).toBe(ids.indexOf("s3_heading") + 1);
   });
 
-  // Every compiled block is a sibling in one wrapping flex area, so a "row" is
+  // A section's blocks sit side by side in one wrapping flex area, so a "row" is
   // only a row by virtue of its spans — a top margin on one block alone would
   // drop its row-mates out of line with it. The gap therefore leads the section
   // GROUP, a whole wrap line at a time: the head row when nothing precedes it,
-  // the filter controls when they do.
+  // the filter controls when they do. A full-width card is its own wrap line
+  // behind that head row, so it must not take the gap as well.
   test("the top margin leads a section's group, a whole row at a time", () => {
     const blocks = compileReport({
       spec,
@@ -1102,13 +1198,19 @@ describe("provenance line", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
 
     // s1 has no filter above it, so its own head row leads the group and both
     // blocks carry the gap.
     const gap = byId.s1_heading.style.marginTop;
     expect(gap).toBeGreaterThan(0);
     expect(byId.s1_download.style.marginTop).toBe(gap);
+    // The card fills the line under the head row, so the gap is already spent.
+    expect(byId.s1_card.style?.marginTop).toBeUndefined();
+    // A kpi has no head row, so its card leads the group and takes the gap —
+    // and the Statistic inside it must not, or it would push off its own card.
+    expect(byId.s0_card.style.marginTop).toBe(gap);
+    expect(byId.s0.style?.marginTop).toBeUndefined();
     // The margin rides alongside the right-alignment style, not over it.
     expect(byId.s1_download.style.marginLeft).toBe("auto");
 
@@ -1120,6 +1222,7 @@ describe("provenance line", () => {
     expect(byId.filter_status.style.marginTop).toBe(gap);
     expect(byId.s3_heading.style?.marginTop).toBeUndefined();
     expect(byId.s3_download.style.marginTop).toBeUndefined();
+    expect(byId.s3_card.style?.marginTop).toBeUndefined();
     expect(byId.s3_download.style.marginLeft).toBe("auto");
   });
 
@@ -1138,15 +1241,18 @@ describe("provenance line", () => {
         },
       ],
     };
-    const height = (rows) =>
-      compileReport({
+    const height = (rows) => {
+      const blocks = compileReport({
         spec: tableOnly,
         results: [rows],
         catalog: testCatalog,
         roles,
         endpointId,
         chartEndpointId,
-      }).find((b) => b.type === "AgGridBalham").properties.height;
+      });
+      return flatten(blocks).find((b) => b.type === "AgGridBalham").properties
+        .height;
+    };
 
     expect(height([])).toBe(120);
     expect(height(Array(5).fill({ region: "EU", total: 1 }))).toBe(174);
@@ -1213,7 +1319,7 @@ describe("filter controls", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
     return { blocks, byId, filters: byId };
   };
 
@@ -1497,7 +1603,7 @@ describe("filter controls", () => {
     // Denied → an Alert keyed by the filter section id (s0); allowed → the
     // Selector keyed by filter_status.
     const compile = (viewerRoles) => {
-      const byId = Object.fromEntries(
+      const byId = byIdOf(
         compileReport({
           spec,
           results: [null, tableRows],
@@ -1505,7 +1611,7 @@ describe("filter controls", () => {
           roles: viewerRoles,
           endpointId,
           chartEndpointId,
-        }).map((b) => [b.id, b]),
+        }),
       );
       return byId.filter_status ?? byId.s0;
     };
@@ -1557,12 +1663,12 @@ describe("filter placement", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
     const idx = idxIn(blocks);
     // status drives the kpi (s0); region drives the table (s3). Each sits
     // directly above its own group, neither divorced at the top.
     expect(byId.report_filters).toBeUndefined();
-    expect(idx("filter_status")).toBe(idx("s0") - 1);
+    expect(idx("filter_status")).toBe(idx("s0_card") - 1);
     expect(idx("filter_region")).toBe(idx("s3_heading") - 1);
     expect(idx("filter_status")).toBeGreaterThan(idx("report_title"));
     // Single-bound: position carries it, so no scope label.
@@ -1599,12 +1705,12 @@ describe("filter placement", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
     const idx = idxIn(blocks);
     // ids: s0 filter, s1 kpi, s2 table. Bound to both — emitted exactly once,
     // above the first subscriber (the kpi), and labelled with the other (table).
     expect(blocks.filter((b) => b.id === "filter_status")).toHaveLength(1);
-    expect(idx("filter_status")).toBe(idx("s1") - 1);
+    expect(idx("filter_status")).toBe(idx("s1_card") - 1);
     // The scope note is the label's `extra` — under the control — and the title
     // stays the plain label, so a filter naming several sections cannot wrap its
     // title and push its input out of line with the control beside it.
@@ -1814,7 +1920,7 @@ describe("filter placement", () => {
         endpointId,
         chartEndpointId,
       });
-      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      const byId = byIdOf(blocks);
       const gaps = fields.map((f) => byId[`filter_${f}`].style?.marginTop);
       expect(gaps.slice(0, leading).every((g) => g > 0)).toBe(true);
       expect(new Set(gaps.slice(0, leading)).size).toBe(1);
@@ -1861,7 +1967,7 @@ describe("filter placement", () => {
         endpointId,
         chartEndpointId,
       });
-      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      const byId = byIdOf(blocks);
       expect(byId.filter_status.layout.span).toBe(12);
       expect(byId.filter_region.layout.span).toBe(12);
       expect(byId.filter_channel.layout.span).toBe(24);
@@ -1905,7 +2011,7 @@ describe("filter placement", () => {
         endpointId,
         chartEndpointId,
       });
-      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      const byId = byIdOf(blocks);
       expect(byId.s0.type).toBe("Alert");
       expect(byId.s0.layout.span).toBe(12);
       expect(byId.filter_status.layout.span).toBe(12);
@@ -1945,7 +2051,7 @@ describe("owner-only affordances", () => {
   const brokenResults = [results[0], undefined, results[2]];
 
   const compile = (extra) =>
-    Object.fromEntries(
+    byIdOf(
       compileReport({
         spec,
         results: brokenResults,
@@ -1955,7 +2061,7 @@ describe("owner-only affordances", () => {
         chartEndpointId,
         owner,
         ...extra,
-      }).map((b) => [b.id, b]),
+      }),
     );
 
   test("owner + linked report: Continue-in-chat in the header, Fix + Drop on the broken section", () => {
@@ -2014,7 +2120,7 @@ describe("owner-only affordances", () => {
       is_owner: false,
       conversation_id: "conv-1",
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
 
     expect(byId.report_continue_in_chat).toBeUndefined();
     expect(byId.s1_fix_in_chat).toBeUndefined();
@@ -2370,7 +2476,7 @@ describe("withheld vs broken failed sections", () => {
   };
 
   const compile = (spec, extra) =>
-    Object.fromEntries(
+    byIdOf(
       compileReport({
         spec,
         results: [null],
@@ -2379,7 +2485,7 @@ describe("withheld vs broken failed sections", () => {
         chartEndpointId,
         owner,
         ...extra,
-      }).map((b) => [b.id, b]),
+      }),
     );
 
   test("a viewer lacking the role gets the withheld Alert — no recoveries, no collection or role named", () => {
@@ -2450,7 +2556,7 @@ describe("withheld vs broken failed sections", () => {
       ],
     };
     const classify = (viewerRoles) =>
-      Object.fromEntries(
+      byIdOf(
         compileReport({
           spec: joinedSpec,
           results: [null],
@@ -2461,7 +2567,7 @@ describe("withheld vs broken failed sections", () => {
           owner,
           is_owner: true,
           conversation_id: "conv-1",
-        }).map((b) => [b.id, b]),
+        }),
       );
 
     test("holding only one of the two roles is withheld, not broken", () => {
@@ -2493,7 +2599,7 @@ describe("withheld vs broken failed sections", () => {
       is_owner: true,
       conversation_id: "conv-1",
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
 
     expect(byId.s0.properties.description).toBe(
       "You don't have access to the data in this section.",

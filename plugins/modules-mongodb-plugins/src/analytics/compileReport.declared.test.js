@@ -77,6 +77,11 @@ function collect(blocks) {
     }
   };
 
+  // Children reach the check through whichever container shape they are in:
+  // `blocks` (the content-slot shorthand the compiler uses), or an explicit
+  // `areas`/`slots` map. A child the walk misses is a block type this test
+  // silently stops covering, which is the one failure the whole file exists to
+  // prevent.
   const walkBlocks = (list) => {
     for (const block of list ?? []) {
       if (block?.type) found.blocks.add(block.type);
@@ -84,6 +89,12 @@ function collect(blocks) {
       walkValue(block?.properties);
       walkValue(block?.events);
       walkBlocks(block?.blocks);
+      for (const area of Object.values(block?.areas ?? {})) {
+        walkBlocks(area?.blocks);
+      }
+      for (const slot of Object.values(block?.slots ?? {})) {
+        walkBlocks(slot?.blocks);
+      }
     }
   };
 
@@ -214,6 +225,14 @@ test("every type compileReport emits is declared on the report page's Dynamic bl
       "_if_none",
     ]),
   );
+
+  // The wrapper types, named rather than left to the undeclared check below: a
+  // refactor that stopped emitting cards would still pass that check while
+  // quietly reducing this test's nesting coverage to nothing.
+  expect(used.blocks.has("Card")).toBe(true);
+  // Box is declared for the grouping wrapper but nothing emits one yet, so the
+  // guard on it is that the declaration survives — not that it is used.
+  expect(declared.blocks).toContain("Box");
 
   const undeclared = {
     blocks: [...used.blocks].filter((t) => !declared.blocks.includes(t)),
