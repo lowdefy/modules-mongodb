@@ -23,7 +23,9 @@ type:
 properties:
   _build.object.assign:
     - title:
-        _var: title
+        _var:
+          key: title
+          default: null
       breadcrumb:
         list:
           _var:
@@ -241,7 +243,9 @@ blocks:
                         default: null
                     - null
                 then:
-                  _var: title_block
+                  _var:
+                    key: title_block
+                    default: null
                 else:
                   _build.if:
                     test:
@@ -255,7 +259,9 @@ blocks:
                           path: ../shared/layout/title-block.yaml
                           vars:
                             title:
-                              _var: title
+                              _var:
+                                key: title
+                                default: null
                             doc:
                               _var:
                                 key: doc

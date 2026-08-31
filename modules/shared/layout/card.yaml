@@ -67,7 +67,9 @@ _build.switch:
                 else:
                   extra:
                     blocks:
-                      _var: header_buttons
+                      _var:
+                        key: header_buttons
+                        default: null
             blocks:
               _var:
                 key: blocks
