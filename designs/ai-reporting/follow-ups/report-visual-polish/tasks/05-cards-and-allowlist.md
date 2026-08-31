@@ -34,7 +34,8 @@ to the allowlist alongside `Card` so the allowlist changes once.
     `id: section.id` unchanged.
   - `Card` and `Box` declared in `report.yaml`'s `Dynamic`
     `properties.types.blocks`.
-  - The drift test file (extended by later tasks as they emit new shapes).
+  - The extended `compileReport.declared.test.js` drift guard (later tasks
+    extend it further as they emit new shapes).
 
 ## Task
 
@@ -61,25 +62,25 @@ to the allowlist alongside `Card` so the allowlist changes once.
    walks wrap lines by accumulated span, and a span-24 card is its own wrap
    line after the head row — assert the gap lands on the head row, not the
    card.
-5. **The drift test** (design acceptance item 8) — new
-   `plugins/modules-mongodb-plugins/src/analytics/reportBlockTypes.test.js`:
-   - Compile specs exercising **every section shape**, including the
-     broken-section branch, the withheld branch, owner-recovery controls, a
-     filter group, a download run, and markdown.
-   - Recursively walk every emitted block (children under `blocks` and
-     `areas.*.blocks`), collecting block `type`s, event action `type`s, and
-     operator names (keys starting `__`, up to the first `.`).
-   - Parse `modules/ai-reporting/pages/report.yaml` with `js-yaml` (already a
-     plugin dependency) — resolve the path relative to the repo root so the
-     test never drifts from the file the app ships — and assert every
-     collected type is declared under the `Dynamic` block's
-     `properties.types` (blocks / actions / operators lists as present in the
-     file).
+5. **The drift test** (design acceptance item 8) **already exists** — extend
+   it, do not write a second one.
+   `plugins/modules-mongodb-plugins/src/analytics/compileReport.declared.test.js`
+   already parses `report.yaml` with `js-yaml`, walks the compiled output, and
+   asserts every emitted block / action / operator type is declared on the
+   `Dynamic` block; its fixture covers all three filter controls, both format
+   paths, markdown, a download, and the broken-section `Alert`. Two changes:
+   - Its `walkBlocks` recurses `block.blocks` only. Cards and Boxes must be
+     walked whichever shape `compileReport` emits — add `block.areas?.*.blocks`
+     recursion so a child inside an `areas.content.blocks` card can never
+     escape the check.
+   - Add an assertion naming the new wrapper types explicitly (`Card`, `Box` in
+     `used.blocks`), so a future refactor that stops emitting cards fails here
+     rather than silently reducing the test's coverage to nothing.
 
 ## Acceptance Criteria
 
-- `reportBlockTypes.test.js` passes — and **fails** if `Card` is removed from
-  `report.yaml` (verify once by hand, don't commit the failing state).
+- `compileReport.declared.test.js` passes — and **fails** if `Card` is removed
+  from `report.yaml` (verify once by hand, don't commit the failing state).
 - `compileReport.test.js` updated: wrapper shape (`${section.id}_card` around
   an unchanged inner block), state bindings intact for filtered sections.
 - Plugin build; `pnpm ldf:b` clean; `pnpm e2e` green — `report-render.spec.js`
@@ -92,7 +93,7 @@ to the allowlist alongside `Card` so the allowlist changes once.
 - `modules/ai-reporting/pages/report.yaml` — modify
 - `plugins/modules-mongodb-plugins/src/analytics/compileReport.js` — modify
 - `plugins/modules-mongodb-plugins/src/analytics/compileReport.test.js` — modify
-- `plugins/modules-mongodb-plugins/src/analytics/reportBlockTypes.test.js` — create
+- `plugins/modules-mongodb-plugins/src/analytics/compileReport.declared.test.js` — modify
 - `apps/demo/e2e/ai-reporting/report-render.spec.js`, `formatted-report.spec.js` — update expectations
 
 ## Notes
