@@ -253,12 +253,20 @@ states that deliberately rather than relying on it by luck.
 by series index within one chart, so `Done` is red in one section and green two
 sections later. The rule, with its edges decided:
 
-- **The union covers multi-series names only.** Series names are humanized `y`
-  column names, so a single-series chart's name is its measure ("Total
-  Revenue") — an identity shared with nothing. Single-series charts take a
+- **The union covers multi-series names and pie slice names.** Series names
+  are humanized `y` column names; pie slice names are the `x` values — and
+  both are entity names (a `Done / Cancelled` pie beside a stacked bar keyed
+  on the same statuses is exactly the cross-section identity case). A
+  single-series **axis** chart's name is its measure ("Total Revenue") — an
+  identity shared with nothing — so single-series bar/line charts take a
   fixed slot (slot 1) and stay out of the union; putting them in would paint
-  each single-series chart a different hue for no identity reason and burn the
-  slots real shared identities need.
+  each one a different hue for no identity reason and burn the slots real
+  shared identities need. Pies are exempt from that single-series rule: a pie
+  colours per *slice* from `option.color` in slice order (it has no
+  per-series colour), so each slice takes its union slot, and the capped
+  "Other" slice (from the 6 + Other rule) always takes a **reserved
+  muted/neutral colour**, never a categorical slot — an "Other" wearing a
+  vivid identity hue reads as an entity it isn't.
 - **Multi-series names assign from the union in first-appearance order**, so a
   name keeps its hue everywhere — "colour follows the entity, never its rank".
   This fixes the most jarring thing about the current render.
@@ -299,8 +307,17 @@ into the rule:
   payload is untrusted client input — the section's width joins its
   `payloadSchema`, bounded to sane values (a lied-about width is only
   aesthetic, but the schema admits it deliberately).
-- The chat result card and the expand modal pass their own widths (~420px
-  panel; modal width) instead of inheriting the 1100px constant.
+- The chat path assembles **once**, at turn end, at the panel's ~420px — and
+  that one option serves two surfaces, because the expand modal renders the
+  persisted part option straight from state
+  (`expand_chart_modal.yaml`: `option: { _state: expanded_chart.option }`);
+  there is no assembly call at expand time to pass a second width to.
+  Accepted consequence: the modal inherits the panel's more aggressive
+  rotation, so an expanded chart can show rotated labels it would not need at
+  three times the width — conservative, never overlapping, and strictly no
+  worse than today. If that grates in practice, expand-time re-assembly (a
+  `chart-data`-style call at the modal's width) is the named follow-up —
+  real scope, not acquired quietly here.
 
 **Label rotation.** Flint's rule, read off its source
 ([`findings.md` §5](./findings.md)): `rotate: 0` only when there are **≤ 4
@@ -396,7 +413,9 @@ failures at once — the 2-column table with 600px of blank white, and the
    with no section rendering smaller than its data needs.
 4. Zero axis-label ↔ axis-title collisions across the demo report; zero clipped
    or under-filled table columns.
-5. A series name that appears in more than one section has the same hue in both.
+5. A series or pie-slice name that appears in more than one section has the
+   same hue in both; a capped "Other" slice is neutral, never a categorical
+   hue.
 6. Side-by-side against [`wireframes.html`](./wireframes.html), section by
    section — not a subjective call.
 7. `ldf:b` clean, and the report still resolves: the `Dynamic` `types` allowlist
