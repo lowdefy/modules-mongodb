@@ -106,13 +106,18 @@ routine:
     type: MongoDBDeleteMany
     connectionId: reporting-reports
     properties:
+      # Matched on the _id alone, which already carries the seeder's user id and
+      # so can only ever name their own copy. An owner clause on top of it reads
+      # as a safety belt and is really a trap: a document that predates the
+      # current owner shape — or one an interrupted insert left half-written —
+      # stops matching, survives the clear, and then collides with the insert as
+      # a duplicate-key error that names an index rather than the stale document
+      # causing it. The seed's whole promise is that re-running it works.
       filter:
         _id:
           _string.concat:
             - "example-orders-report-"
             - _user: id
-        owner.user_id:
-          _user: id
   # The validator is what makes this seed a working reference for the insert
   # shape rather than a divergent second one: the store holds its output, so a
   # raw-seeded report would be a document in the old shape. It also throws on a
