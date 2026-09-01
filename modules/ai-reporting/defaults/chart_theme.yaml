@@ -76,6 +76,24 @@ timeAxis:
     fontFamily: *font
     color:
       _var: ink
+# A pie's slice labels need inking here, separately, because they are text
+# ATTACHED to the sector path — and for attached text ECharts deliberately
+# SKIPS the global textStyle above (label/labelStyle.js, the `isAttached`
+# branch: "text may be on a path"). What it falls back to is zrender's
+# auto-contrast for outside text, which reads the chart's own background:
+# `getOutsideFill` ends at a literal '#000', and `getOutsideStroke` composites
+# the background, which this theme sets `transparent` — alpha 0, so it
+# composites to white. Every slice label therefore drew black with a white
+# halo, on a light card and a dark one alike.
+#
+# An explicit fill is enough to switch the halo off (zrender only applies its
+# default stroke while the fill is also its own default), but `textBorderWidth`
+# says so outright rather than resting on that coupling.
+pie:
+  label:
+    color:
+      _var: ink
+    textBorderWidth: 0
 legend:
   textStyle:
     fontFamily: *font
