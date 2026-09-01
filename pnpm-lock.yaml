@@ -9,6 +9,9 @@ overrides:
 
 packageExtensionsChecksum: sha256-pA6UuAchL6SmdqYAfbxTiJm2Q0HvAb5lT+imHFmW5E0=
 
+patchedDependencies:
+  '@lowdefy/blocks-echarts@0.0.0-experimental-20260814133003': 91e393c23452a10cd76590e4f3b1864b0a643a8e0c86b9513f6f46f26109f471
+
 importers:
 
   .:
