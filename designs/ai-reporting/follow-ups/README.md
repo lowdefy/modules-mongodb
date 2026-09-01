@@ -1,16 +1,20 @@
 # Reporting follow-ups (backlog)
 
-Ideas captured for the reporting module after the open-engine work, not yet
-scheduled or fully designed. Each has a **draft** `design.md` — a starting
-sketch and a set of open questions, not a settled plan. Treat them as the input
-to a proper `/r2:discover` pass, not as ready-to-build specs.
+Ideas captured for the reporting module after the open-engine work. Unless an
+entry below says otherwise, each has a **draft** `design.md` — a starting sketch
+and a set of open questions, not a settled plan. Treat those as the input to a
+proper `/r2:discover` pass, not as ready-to-build specs.
 
 Captured 2026-08-18, off `feat/reporting-open-engine`.
 
 1. **[Report visual polish](./report-visual-polish/design.md)** — make the
-   rendered reports look good. Produce wireframes of strong report layouts, then
-   run a design pass with Fable using the lowdefy-docs MCP + the wireframes to
-   propose concrete ways to improve what the module renders.
+   rendered reports look good. **No longer a draft:** settled 31 Aug 2026 as the
+   reconciliation of two independent passes, against measured evidence
+   ([`findings.md`](./report-visual-polish/findings.md), re-runnable in
+   [`probe.mjs`](./report-visual-polish/probe.mjs)) and a normative target deck
+   ([`wireframes.html`](./report-visual-polish/wireframes.html); the
+   [`wireframes/`](./report-visual-polish/wireframes/README.md) canvas boards
+   are exploratory context). Ready for `/r2:decompose`.
 2. **[Report-data MCP](./report-data-mcp/design.md)** — an MCP server that lets a
    user reference a saved report and pull its resolved data into their own agent,
    to build a presentation or anything else from it.

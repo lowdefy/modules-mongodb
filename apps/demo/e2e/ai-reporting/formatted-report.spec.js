@@ -176,4 +176,18 @@ test("a saved report with a formatted table column renders", async ({
   // to throw. paid = 1234.50 + 4000 = 5234.50; pending = 250.25.
   await expect(page.getByText("$5,234.50")).toBeVisible();
   await expect(page.getByText("$250.25")).toBeVisible();
+
+  // A KPI renders inside a card of its own. An undeclared container type blanks
+  // the WHOLE report rather than dropping one panel — so the containers are
+  // worth asserting here, through the real resolve → build → render stack, and
+  // not just off the compiler's output. The page's own chrome is a Box, so every
+  // .ant-card on it is a compiled section card. These sections are a kpi and a
+  // table, so no paired-chart Box wraps either of them; report-render covers
+  // that container.
+  const cards = page.locator(".ant-card");
+  await expect(cards.filter({ hasText: "5,484.75" })).toHaveCount(1);
+  // The table is the exception: the grid draws its own frame, so nothing wraps
+  // it. Asserted on the rendered page because a card here would be a visible
+  // second border, not just an extra node in the compiler's output.
+  await expect(cards.filter({ hasText: "$5,234.50" })).toHaveCount(0);
 });

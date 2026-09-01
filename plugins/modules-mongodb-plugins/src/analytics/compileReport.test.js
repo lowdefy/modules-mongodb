@@ -1,4 +1,9 @@
-import compileReport from "./compileReport.js";
+import compileReport, {
+  assignReportColors,
+  chartWidthForSpan,
+  needsWidth,
+} from "./compileReport.js";
+import { PALETTE } from "./buildFlintOption.js";
 import querySections from "./querySections.js";
 import testCatalog from "./testDatasets.js";
 import {
@@ -6,6 +11,16 @@ import {
   MAX_QUERY_FILTER_OPTIONS,
   PIPELINE_RESULT_CAP,
 } from "./constants.js";
+
+// A kpi/chart/table section's own block sits inside its `${id}_card` wrapper, so
+// an id lookup has to descend into it. Most assertions here are about the block
+// itself and not where in the tree it sits; the wrappers are asserted on their
+// own, and anything about POSITION keeps working on the top-level list, where a
+// card occupies its section's place.
+const flatten = (blocks) =>
+  (blocks ?? []).flatMap((block) => [block, ...flatten(block.blocks)]);
+const byIdOf = (blocks) =>
+  Object.fromEntries(flatten(blocks).map((block) => [block.id, block]));
 
 const roles = ["analyst"];
 const endpointId = "ai-reporting/query-data";
@@ -130,7 +145,7 @@ test("a filter's optionsQuery entry interleaved between data sections keeps each
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s0.properties.value).toEqual({
     __if_none: [{ __state: "sections.s0.rows.0.total" }, 111],
   });
@@ -146,9 +161,22 @@ test("compiles the full report to blocks", () => {
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
 
   expect(byId.report_title.properties.content).toBe("Q2 Revenue by Region");
+
+  // Every data section is a Card of its own, carrying the section's span, with
+  // the section's block inside it under the unchanged section id. A kpi has no
+  // head row, so its card is the whole section — and this one is a tile row of
+  // ONE (the chart below it breaks the run), so the row it fills is the column.
+  const kpiCard = blocks.find((b) => b.id === "s0_card");
+  expect(kpiCard.type).toBe("Card");
+  expect(kpiCard.layout).toEqual({ span: 24 });
+  expect(kpiCard.blocks).toEqual([byId.s0]);
+  // The span lives on the card alone — a span on both would be two sources for
+  // one number, and the next layout change would only move one of them.
+  expect(byId.s0.layout).toBeUndefined();
+  expect(blocks.find((b) => b.id === "s0")).toBeUndefined();
 
   // KPI: unfiltered → value inlined. ZAR currency contract → 2 decimals and a
   // rand prefix, separators from the en-ZA locale.
@@ -163,6 +191,9 @@ test("compiles the full report to blocks", () => {
   // private survives to be persisted or re-read as an operator.
   expect(byId.s1.type).toBe("EChart");
   expect(byId.s1.properties.title).toBeUndefined();
+  // No theme param passed in — the key must be absent, not undefined-valued,
+  // so a caller that predates theming sees exactly the same shape it always did.
+  expect("theme" in byId.s1.properties).toBe(false);
   expect(byId.s1_heading.properties.content).toBe("Revenue by Region");
   expect(typeof byId.s1.properties.height).toBe("number");
   expect(byId.s1.properties.option.dataset).toBeUndefined();
@@ -176,6 +207,11 @@ test("compiles the full report to blocks", () => {
   expect(byId.s3.type).toBe("AgGridBalham");
   expect(byId.s3.properties.rowData).toEqual({
     __if_none: [{ __state: "sections.s3.rows" }, results[2]],
+  });
+  expect(byId.s3.properties.defaultColDef).toEqual({
+    sortable: true,
+    resizable: true,
+    flex: 1,
   });
 
   // Table columns: plain text column bare, formatted (numeric) column
@@ -203,10 +239,13 @@ test("compiles the full report to blocks", () => {
 
   // Filter control: rendered inline directly above its one bound section (s3,
   // the table), options from catalog values. No report_filters Box exists, and
-  // a single-bound filter carries no scope label — its position says it all.
+  // a single-bound filter has no scope to state — its position says it all — so
+  // the group closes on its Reset alone, between the control and the section.
   expect(byId.report_filters).toBeUndefined();
   const idx = (id) => blocks.findIndex((b) => b.id === id);
-  expect(idx("filter_status")).toBe(idx("s3_heading") - 1);
+  expect(byId.filters_s3_scope).toBeUndefined();
+  expect(idx("filter_status")).toBe(idx("filters_s3_reset") - 1);
+  expect(idx("filters_s3_reset")).toBe(idx("s3_heading") - 1);
   const filter = byId.filter_status;
   expect(filter.type).toBe("Selector");
   expect(filter.layout).toEqual({ span: 24 });
@@ -239,6 +278,152 @@ test("compiles the full report to blocks", () => {
   expect(dl.params.data).toEqual({ __api: `${endpointId}.response` });
 });
 
+// The card is the section's container; the section's HEAD row is not in it. A
+// heading inside the card would be a card title by another name, and the corpus
+// of hand-built reports puts the heading above the panel it names.
+test("a section's card holds its block alone, with the head row outside it", () => {
+  const blocks = compileReport({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+  });
+  const byId = byIdOf(blocks);
+  const topIds = blocks.map((b) => b.id);
+
+  for (const [id, span, type] of [["s1", 24, "EChart"]]) {
+    const card = byId[`${id}_card`];
+    expect(card.type).toBe("Card");
+    expect(card.layout).toEqual({ span });
+    expect(card.blocks).toEqual([byId[id]]);
+    expect(byId[id].type).toBe(type);
+    // heading, ⤓, then the card — the head row leads, outside the panel.
+    expect(topIds.indexOf(`${id}_card`)).toBe(
+      topIds.indexOf(`${id}_download`) + 1,
+    );
+  }
+
+  // A table takes no card — the grid is its own panel — so the grid itself sits
+  // where the card would have, directly under the head row.
+  expect(byId.s3_card).toBeUndefined();
+  expect(byId.s3.type).toBe("AgGridBalham");
+  expect(byId.s3.layout).toEqual({ span: 24 });
+  expect(topIds.indexOf("s3")).toBe(topIds.indexOf("s3_download") + 1);
+
+  // The download run gets its own titled Downloads card rather than the
+  // section's `${id}_card` convention (see "a run of downloads is one card"
+  // below), so it is that wrapper, not the bare button, that sits here.
+  expect(byId.s4_card).toBeUndefined();
+  expect(byId.s4_downloads.type).toBe("Card");
+  expect(topIds).toContain("s4_downloads");
+  expect(topIds).not.toContain("s4");
+
+  // Markdown is the prose that narrates BETWEEN the panels, so it is not one
+  // itself — a card around it would read as another result.
+  const prose = compileReport({
+    spec: {
+      title: "T",
+      sections: [{ type: "markdown", content: "## Notes" }],
+    },
+    results: [],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+  });
+  expect(byIdOf(prose).s0.type).toBe("Markdown");
+  expect(byIdOf(prose).s0_card).toBeUndefined();
+});
+
+// A failure is not a panel of content: the Alert and the recoveries stay flat
+// siblings, so a broken section reads as an interruption of the stack of cards
+// rather than as another card in it.
+test("a broken section gets no card", () => {
+  const blocks = compileReport({
+    spec,
+    results: [results[0], undefined, results[2]],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+    is_owner: true,
+    conversation_id: "conv-1",
+  });
+  const byId = byIdOf(blocks);
+  expect(byId.s1.type).toBe("Alert");
+  expect(byId.s1_card).toBeUndefined();
+  expect(blocks.map((b) => b.id)).toEqual(
+    expect.arrayContaining(["s1", "s1_fix_in_chat", "s1_drop"]),
+  );
+});
+
+// The choice between the two themes belongs to the browser, not to this
+// function: the ink a chart's labels need depends on whether the card behind it
+// is antd's light one or its dark one, `_media` is a client operator, and this
+// runs server-side inside the resolve. So both themes are emitted behind the
+// operator and resolved per render — which is also what lets a reader toggle
+// dark mode and have the charts re-ink without re-resolving the report.
+test("both themes ride every chart section behind an _if on dark mode", () => {
+  const theme = {
+    light: { textStyle: { color: "rgba(0, 0, 0, 0.65)" } },
+    dark: { textStyle: { color: "rgba(255, 255, 255, 0.65)" } },
+  };
+  const blocks = compileReport({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+    theme,
+  });
+  const byId = byIdOf(blocks);
+  expect(byId.s1.properties.theme).toEqual({
+    __if: {
+      test: { __media: "darkMode" },
+      then: theme.dark,
+      else: theme.light,
+    },
+  });
+  // Verbatim, both of them: a theme this function edited would drift from the
+  // one the chat page refs out of the same two files.
+  expect(byId.s1.properties.theme.__if.then).toBe(theme.dark);
+  expect(byId.s1.properties.theme.__if.else).toBe(theme.light);
+  // Non-chart sections carry no theme key — it is a chart-only property.
+  expect("theme" in byId.s0.properties).toBe(false);
+  expect("theme" in byId.s3.properties).toBe(false);
+});
+
+// Both operators the switch is built from have to be in report.yaml's
+// `types.operators`, or Dynamic drops the property and every chart falls back to
+// ECharts' own near-black ink — invisible on a dark card, which is the bug this
+// whole mechanism exists to fix. Asserted as a literal list so adding an
+// operator to the emitted expression fails here until the page allows it.
+test("the theme switch uses only _if and _media", () => {
+  const blocks = compileReport({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+    theme: { light: {}, dark: {} },
+  });
+  const operators = new Set();
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (node === null || typeof node !== "object") return;
+    for (const [key, value] of Object.entries(node)) {
+      if (key.startsWith("__")) operators.add(`_${key.replace(/^__/, "")}`);
+      walk(value);
+    }
+  };
+  walk(byIdOf(blocks).s1.properties.theme);
+  expect([...operators].sort()).toEqual(["_if", "_media"]);
+});
+
 test("failed sections render as Alert cards while the rest render", () => {
   const sparseResults = [results[0], undefined, results[2]];
   const blocks = compileReport({
@@ -249,7 +434,7 @@ test("failed sections render as Alert cards while the rest render", () => {
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s1.type).toBe("Alert");
   expect(byId.s1.properties.message).toBe("Revenue by Region");
   expect(byId.s0.type).toBe("Statistic");
@@ -266,7 +451,7 @@ test("a contract mismatch (missing column) renders that section as an Alert card
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s0.type).toBe("Alert");
   expect(byId.s0.properties.description).toMatch(
     /column "total" is not present/,
@@ -288,7 +473,7 @@ test("a non-numeric chart y column renders that section as an Alert card", () =>
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s1.type).toBe("Alert");
   expect(byId.s1.properties.description).toMatch(/must be numeric/);
 });
@@ -307,7 +492,7 @@ test("zero rows and null value cells render normally (no verification failure)",
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s0.type).toBe("Statistic");
   expect(byId.s0.properties.value).toBe(0);
   expect(byId.s1.type).toBe("EChart");
@@ -323,7 +508,7 @@ test("normalizes object-shaped (sparse step) results", () => {
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s0.type).toBe("Statistic");
   expect(byId.s1.type).toBe("Alert");
 });
@@ -374,7 +559,7 @@ test("kpi bound to a filter defers its value through state", () => {
     endpointId,
     chartEndpointId,
   });
-  const kpi = blocks.find((b) => b.id === "s1");
+  const kpi = flatten(blocks).find((b) => b.id === "s1");
   expect(kpi.properties.value).toEqual({
     __if_none: [{ __state: "sections.s1.rows.0.total" }, 10],
   });
@@ -421,7 +606,7 @@ describe("a filter driving a chart and a table", () => {
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   const onChange = byId.filter_status.events.onChange;
 
   test("the chart binds option and height, each falling back to the resolve-time value", () => {
@@ -447,6 +632,15 @@ describe("a filter driving a chart and a table", () => {
       title: "Revenue by Region",
       x: "region",
       y: ["total"],
+      // Assembly decides legend orientation and label rotation from the width,
+      // so the re-query carries the width of the span the section is actually
+      // laid out at — otherwise a filtered chart re-renders for another canvas
+      // than the one the compiled option was built for.
+      width: chartWidthForSpan(byId.s1_card.layout.span),
+      // Empty here: a single-series chart is the one kind that takes no
+      // report-scoped hue (its series name is a measure, not an entity), and
+      // this report holds nothing else that would claim one.
+      colors: {},
       query: ordersByRegion,
       filters: [
         { field: "status", op: "eq", value: { __state: "filter_status" } },
@@ -482,7 +676,7 @@ describe("a filter driving a chart and a table", () => {
       endpointId,
       chartEndpointId,
     });
-    const stackedById = Object.fromEntries(stackedBlocks.map((b) => [b.id, b]));
+    const stackedById = byIdOf(stackedBlocks);
     const option = stackedById.s1.properties.option.__if_none[1];
     const stacks = new Set(option.series.map((series) => series.stack));
     expect(stacks.size).toBe(1);
@@ -505,6 +699,198 @@ describe("a filter driving a chart and a table", () => {
     });
     expect(byId.s2.properties.rowData).toEqual({
       __if_none: [{ __state: "sections.s2.rows" }, tableRows],
+    });
+  });
+});
+
+// Hues are report-scoped, not chart-scoped: the same entity has to come out the
+// same colour in every section that names it, so a status is one colour across a
+// pie and the stacked bar beside it. The union of entity names is a multi-series
+// chart's series names plus a pie's slice names, assigned in first-appearance
+// order.
+describe("report-scoped colour identity", () => {
+  const chartSection = (label, x, y, chart = "bar") => ({
+    type: "chart",
+    chart,
+    label,
+    query: ordersByRegion,
+    x,
+    y,
+  });
+  // Unfiltered sections bind the compiled option directly, so the hues are
+  // readable straight off the block.
+  const compile = (sections, results) => {
+    const blocks = compileReport({
+      spec: { title: "T", sections },
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    return byIdOf(blocks);
+  };
+  const seriesHues = (block) =>
+    Object.fromEntries(
+      block.properties.option.series.map((series) => [
+        series.name,
+        series.itemStyle.color,
+      ]),
+    );
+  // A pie carries no per-series colour: each slice reads option.color by index.
+  const sliceHues = (block) => {
+    const { option } = block.properties;
+    return Object.fromEntries(
+      option.series[0].data.map((datum, index) => [
+        datum.name,
+        option.color[index],
+      ]),
+    );
+  };
+
+  const statusRows = [
+    { region: "EU", done: 4, cancelled: 3, pending: 2 },
+    { region: "US", done: 6, cancelled: 1, pending: 5 },
+  ];
+
+  test("a series name in two sections gets one hue in both", () => {
+    const byId = compile(
+      [
+        chartSection("A", "region", ["done", "cancelled"]),
+        chartSection("B", "region", ["cancelled", "pending"], "line"),
+      ],
+      [statusRows, statusRows],
+    );
+    expect(seriesHues(byId.s0)).toEqual({
+      Done: PALETTE[0],
+      Cancelled: PALETTE[1],
+    });
+    // Cancelled keeps slot 2 rather than taking slot 1 as the first series here.
+    expect(seriesHues(byId.s1)).toEqual({
+      Cancelled: PALETTE[1],
+      Pending: PALETTE[2],
+    });
+  });
+
+  test("a pie slice shares the hue of the series of the same name", () => {
+    const byId = compile(
+      [
+        chartSection("A", "region", ["done", "cancelled"]),
+        chartSection("B", "status", ["count"], "pie"),
+      ],
+      [
+        statusRows,
+        [
+          { status: "Cancelled", count: 4 },
+          { status: "Done", count: 9 },
+        ],
+      ],
+    );
+    const bars = seriesHues(byId.s0);
+    const slices = sliceHues(byId.s1);
+    expect(slices.Done).toBe(bars.Done);
+    expect(slices.Cancelled).toBe(bars.Cancelled);
+    expect(slices.Done).not.toBe(slices.Cancelled);
+  });
+
+  test("a single-series chart takes the first slot and spends none", () => {
+    const byId = compile(
+      [
+        chartSection("A", "region", ["done", "cancelled"]),
+        chartSection("B", "region", ["total"]),
+        chartSection("C", "region", ["pending", "closed"], "line"),
+      ],
+      [
+        statusRows,
+        [{ region: "EU", total: 2500 }],
+        statusRows.map((row) => ({ ...row, closed: row.done })),
+      ],
+    );
+    expect(byId.s1.properties.option.series[0].itemStyle.color).toBe(
+      PALETTE[0],
+    );
+    // Slots 3 and 4, not 4 and 5 — the measure name in between claimed none.
+    expect(seriesHues(byId.s2)).toEqual({
+      Pending: PALETTE[2],
+      Closed: PALETTE[3],
+    });
+  });
+
+  test("names past the eighth are coloured per chart, uniquely within it", () => {
+    const measures = Array.from({ length: 10 }, (_, index) => `m${index + 1}`);
+    const rows = [
+      Object.fromEntries([
+        ["region", "EU"],
+        ...measures.map((measure, index) => [measure, index + 1]),
+      ]),
+    ];
+    const pairs = [0, 2, 4, 6].map((start) =>
+      chartSection(`P${start}`, "region", measures.slice(start, start + 2)),
+    );
+    // Eight names fill the map; this chart re-uses one of them and adds the
+    // ninth and tenth, which the map cannot hold.
+    const overflow = chartSection("Overflow", "region", ["m1", "m9", "m10"]);
+    const sections = [...pairs, overflow];
+    const byId = compile(
+      sections,
+      sections.map(() => rows),
+    );
+    const assigned = assignReportColors({
+      sections: sections.map((section, index) => ({
+        ...section,
+        id: `s${index}`,
+      })),
+      results: sections.map(() => rows),
+    });
+    expect(Object.keys(assigned)).toHaveLength(8);
+    expect(assigned).not.toHaveProperty("M9");
+    expect(assigned).not.toHaveProperty("M10");
+
+    const hues = seriesHues(byId.s4);
+    // M1 keeps its report-wide hue; the two overflow names take slots this
+    // chart has not spent, so nothing in it is drawn twice.
+    expect(hues.M1).toBe(assigned.M1);
+    expect(new Set(Object.values(hues)).size).toBe(3);
+    for (const hue of Object.values(hues)) {
+      expect(PALETTE).toContain(hue);
+    }
+  });
+
+  test("a filtered chart's re-query carries the map", () => {
+    const byId = compile(
+      [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        {
+          ...chartSection("A", "region", ["done", "cancelled"]),
+          filterBy: ["status"],
+        },
+      ],
+      // A filter with no optionsQuery runs nothing, so the results align with
+      // the chart alone.
+      [statusRows],
+    );
+    const [call] = byId.filter_status.events.onChange;
+    // Decided over the unfiltered rows, so a filter that drops a series cannot
+    // repaint the ones that survive.
+    expect(call.params.payload.colors).toEqual({
+      Done: PALETTE[0],
+      Cancelled: PALETTE[1],
+    });
+  });
+
+  test("a section with no rows claims no slot", () => {
+    const byId = compile(
+      [
+        chartSection("Broken", "region", ["done", "cancelled"]),
+        chartSection("B", "region", ["pending", "closed"], "line"),
+      ],
+      [null, statusRows.map((row) => ({ ...row, closed: row.done }))],
+    );
+    // The first section renders as an Alert, so its names are not knowable (a
+    // pie's would not be at all) and the hues start at slot 1 on the survivor.
+    expect(seriesHues(byId.s1)).toEqual({
+      Pending: PALETTE[0],
+      Closed: PALETTE[1],
     });
   });
 });
@@ -538,7 +924,7 @@ test("a chart whose assembly throws renders an Alert while its siblings compile"
   jest.dontMock("./buildFlintOption.js");
   jest.resetModules();
 
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s1.type).toBe("Alert");
   expect(byId.s1.properties.message).toBe("Revenue by Region");
   expect(byId.s1.properties.description).toMatch(/Flint rejected this chart/);
@@ -580,7 +966,7 @@ test("an unusable KPI currency degrades that section to an Alert, not the report
     endpointId,
     chartEndpointId,
   });
-  const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+  const byId = byIdOf(blocks);
   expect(byId.s0.type).toBe("Alert");
   expect(byId.s0.properties.description).toMatch(/unusable number format/);
   // The rest of the report still renders.
@@ -614,7 +1000,7 @@ test("an unusable locale on a table column degrades that section to an Alert", (
     endpointId,
     chartEndpointId,
   });
-  const section = blocks.find((b) => b.id === "s0");
+  const section = flatten(blocks).find((b) => b.id === "s0");
   expect(section.type).toBe("Alert");
   expect(section.properties.description).toMatch(
     /Column "total" has an unusable number format/,
@@ -686,7 +1072,7 @@ describe("unformatted numeric columns", () => {
       chartEndpointId,
     });
     return Object.fromEntries(
-      blocks
+      flatten(blocks)
         .find((b) => b.id === "s0")
         .properties.columnDefs.map((c) => [c.field, c]),
     );
@@ -819,7 +1205,7 @@ describe("provenance line", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
 
     // s1 chart, s3 table → downloads; s0 kpi → none.
     expect(byId.s0_download).toBeUndefined();
@@ -848,7 +1234,7 @@ describe("provenance line", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
 
     for (const id of ["s1", "s3"]) {
       expect(byId[`${id}_heading`].layout.span).toBe(20);
@@ -862,11 +1248,12 @@ describe("provenance line", () => {
     expect(ids.indexOf("s3_download")).toBe(ids.indexOf("s3_heading") + 1);
   });
 
-  // Every compiled block is a sibling in one wrapping flex area, so a "row" is
+  // A section's blocks sit side by side in one wrapping flex area, so a "row" is
   // only a row by virtue of its spans — a top margin on one block alone would
   // drop its row-mates out of line with it. The gap therefore leads the section
   // GROUP, a whole wrap line at a time: the head row when nothing precedes it,
-  // the filter controls when they do.
+  // the filter controls when they do. A full-width card is its own wrap line
+  // behind that head row, so it must not take the gap as well.
   test("the top margin leads a section's group, a whole row at a time", () => {
     const blocks = compileReport({
       spec,
@@ -876,13 +1263,19 @@ describe("provenance line", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
 
     // s1 has no filter above it, so its own head row leads the group and both
     // blocks carry the gap.
     const gap = byId.s1_heading.style.marginTop;
     expect(gap).toBeGreaterThan(0);
     expect(byId.s1_download.style.marginTop).toBe(gap);
+    // The card fills the line under the head row, so the gap is already spent.
+    expect(byId.s1_card.style?.marginTop).toBeUndefined();
+    // A kpi has no head row, so its card leads the group and takes the gap —
+    // and the Statistic inside it must not, or it would push off its own card.
+    expect(byId.s0_card.style.marginTop).toBe(gap);
+    expect(byId.s0.style?.marginTop).toBeUndefined();
     // The margin rides alongside the right-alignment style, not over it.
     expect(byId.s1_download.style.marginLeft).toBe("auto");
 
@@ -894,6 +1287,8 @@ describe("provenance line", () => {
     expect(byId.filter_status.style.marginTop).toBe(gap);
     expect(byId.s3_heading.style?.marginTop).toBeUndefined();
     expect(byId.s3_download.style.marginTop).toBeUndefined();
+    // s3 is a table, so the grid itself is the line under the head row.
+    expect(byId.s3.style?.marginTop).toBeUndefined();
     expect(byId.s3_download.style.marginLeft).toBe("auto");
   });
 
@@ -912,15 +1307,18 @@ describe("provenance line", () => {
         },
       ],
     };
-    const height = (rows) =>
-      compileReport({
+    const height = (rows) => {
+      const blocks = compileReport({
         spec: tableOnly,
         results: [rows],
         catalog: testCatalog,
         roles,
         endpointId,
         chartEndpointId,
-      }).find((b) => b.type === "AgGridBalham").properties.height;
+      });
+      return flatten(blocks).find((b) => b.type === "AgGridBalham").properties
+        .height;
+    };
 
     expect(height([])).toBe(120);
     expect(height(Array(5).fill({ region: "EU", total: 1 }))).toBe(174);
@@ -987,7 +1385,7 @@ describe("filter controls", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
     return { blocks, byId, filters: byId };
   };
 
@@ -1271,7 +1669,7 @@ describe("filter controls", () => {
     // Denied → an Alert keyed by the filter section id (s0); allowed → the
     // Selector keyed by filter_status.
     const compile = (viewerRoles) => {
-      const byId = Object.fromEntries(
+      const byId = byIdOf(
         compileReport({
           spec,
           results: [null, tableRows],
@@ -1279,7 +1677,7 @@ describe("filter controls", () => {
           roles: viewerRoles,
           endpointId,
           chartEndpointId,
-        }).map((b) => [b.id, b]),
+        }),
       );
       return byId.filter_status ?? byId.s0;
     };
@@ -1331,20 +1729,35 @@ describe("filter placement", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
     const idx = idxIn(blocks);
     // status drives the kpi (s0); region drives the table (s3). Each sits
-    // directly above its own group, neither divorced at the top.
+    // directly above its own group, neither divorced at the top, and each group
+    // closes on its own Reset before the section it leads.
     expect(byId.report_filters).toBeUndefined();
-    expect(idx("filter_status")).toBe(idx("s0") - 1);
-    expect(idx("filter_region")).toBe(idx("s3_heading") - 1);
+    expect(idx("filter_status")).toBe(idx("filters_s0_reset") - 1);
+    expect(idx("filters_s0_reset")).toBe(idx("s0_card") - 1);
+    expect(idx("filter_region")).toBe(idx("filters_s3_reset") - 1);
+    expect(idx("filters_s3_reset")).toBe(idx("s3_heading") - 1);
     expect(idx("filter_status")).toBeGreaterThan(idx("report_title"));
-    // Single-bound: position carries it, so no scope label.
+    // Single-bound: position carries it, so no scope note in either place.
     expect(byId.filter_status.properties.title).toBe("Status");
     expect(byId.filter_region.properties.title).toBe("Region");
+    expect(byId.filter_status.properties.label).toBeUndefined();
+    expect(byId.filter_region.properties.label).toBeUndefined();
+    // Reset is per group too: a group clears its own filter and the sections it
+    // drives, and nothing of the group beside it.
+    expect(byId.filters_s0_reset.events.onClick[0].params).toEqual({
+      filter_status: null,
+      "sections.s0.rows": null,
+    });
+    expect(byId.filters_s3_reset.events.onClick[0].params).toEqual({
+      filter_region: null,
+      "sections.s3.rows": null,
+    });
   });
 
-  test("a filter bound to more than one section renders once above the first, labelled with the others", () => {
+  test("a filter bound to more than one section renders once above the first, its scope stated under the group", () => {
     const spec = {
       title: "T",
       sections: [
@@ -1373,18 +1786,24 @@ describe("filter placement", () => {
       endpointId,
       chartEndpointId,
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
     const idx = idxIn(blocks);
     // ids: s0 filter, s1 kpi, s2 table. Bound to both — emitted exactly once,
-    // above the first subscriber (the kpi), and labelled with the other (table).
+    // above the first subscriber (the kpi), with the group's closing line
+    // between it and that section.
     expect(blocks.filter((b) => b.id === "filter_status")).toHaveLength(1);
-    expect(idx("filter_status")).toBe(idx("s1") - 1);
-    // The scope note is the label's `extra` — under the control — and the title
-    // stays the plain label, so a filter naming several sections cannot wrap its
-    // title and push its input out of line with the control beside it.
+    expect(idx("filter_status")).toBe(idx("filters_s1_scope") - 1);
+    expect(idx("filters_s1_reset")).toBe(idx("s1_card") - 1);
+    // The scope is stated once under the group rather than on the control, in a
+    // muted line of its own. The title stays the plain label either way, so a
+    // filter naming several sections cannot wrap its title and push its input
+    // out of line with the control beside it. A group of one states its scope
+    // the way a group of four does: one place to read it at every group size.
     expect(byId.filter_status.properties.title).toBe("Status");
-    expect(byId.filter_status.properties.label).toEqual({
-      extra: "Also filters: Orders",
+    expect(byId.filter_status.properties.label).toBeUndefined();
+    expect(byId.filters_s1_scope).toMatchObject({
+      type: "Paragraph",
+      properties: { content: "Also filters: Orders", type: "secondary" },
     });
   });
 
@@ -1417,8 +1836,9 @@ describe("filter placement", () => {
     expect(control.properties.label).toBeUndefined();
   });
 
-  // The truncation note stays on the title while the scope note sits in extra:
-  // one says what this control offers, the other what it moves.
+  // The truncation note stays on the control's title while the scope goes to the
+  // group's line: one says what this control offers, the other what the group
+  // moves. Two different subjects, so they cannot share a place.
   test("a truncated options list and a scope note occupy different places", () => {
     const rows = Array.from(
       { length: MAX_QUERY_FILTER_OPTIONS + 1 },
@@ -1466,11 +1886,15 @@ describe("filter placement", () => {
       endpointId,
       chartEndpointId,
     });
-    const control = blocks.find((b) => b.id === "filter_company_id");
+    const byId = byIdOf(blocks);
+    const control = byId.filter_company_id;
     expect(control.properties.title).toBe(
       `Companies — first ${MAX_QUERY_FILTER_OPTIONS}`,
     );
-    expect(control.properties.label).toEqual({ extra: "Also filters: Orders" });
+    expect(control.properties.label).toBeUndefined();
+    expect(byId.filters_s1_scope.properties.content).toBe(
+      "Also filters: Orders",
+    );
   });
 
   // A filter with no first subscriber has no position to occupy. The old top row
@@ -1588,7 +2012,7 @@ describe("filter placement", () => {
         endpointId,
         chartEndpointId,
       });
-      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      const byId = byIdOf(blocks);
       const gaps = fields.map((f) => byId[`filter_${f}`].style?.marginTop);
       expect(gaps.slice(0, leading).every((g) => g > 0)).toBe(true);
       expect(new Set(gaps.slice(0, leading)).size).toBe(1);
@@ -1635,7 +2059,7 @@ describe("filter placement", () => {
         endpointId,
         chartEndpointId,
       });
-      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      const byId = byIdOf(blocks);
       expect(byId.filter_status.layout.span).toBe(12);
       expect(byId.filter_region.layout.span).toBe(12);
       expect(byId.filter_channel.layout.span).toBe(24);
@@ -1679,10 +2103,211 @@ describe("filter placement", () => {
         endpointId,
         chartEndpointId,
       });
-      const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+      const byId = byIdOf(blocks);
       expect(byId.s0.type).toBe("Alert");
       expect(byId.s0.layout.span).toBe(12);
       expect(byId.filter_status.layout.span).toBe(12);
+    });
+  });
+
+  // What closes a filter group: the scope its controls share, said once, and a
+  // Reset that puts the sections they drive back to the report as it opened. Both
+  // belong to the GROUP — one sentence and one button however many controls it
+  // holds — which is the whole of why they exist: four filters over six sections
+  // rendered the same three-line note four times, more vertical space than any
+  // chart on the page.
+  describe("a filter group's closing line", () => {
+    const select = (field) => ({
+      type: "filter",
+      control: "select",
+      field,
+      label: field,
+    });
+    const kpi = (label, filterBy) => ({
+      type: "kpi",
+      label,
+      query: orderTotal,
+      valueKey: "total",
+      filterBy,
+    });
+    const table = (label, filterBy) => ({
+      type: "table",
+      label,
+      query: ordersByRegion,
+      columns: [{ key: "region" }],
+      filterBy,
+    });
+    const chart = (label, filterBy) => ({
+      type: "chart",
+      chart: "bar",
+      label,
+      query: ordersByRegion,
+      x: "region",
+      y: ["total"],
+      filterBy,
+    });
+    const compile = (sections, results) =>
+      byIdOf(
+        compileReport({
+          spec: { title: "T", sections },
+          results,
+          catalog: testCatalog,
+          roles,
+          endpointId,
+          chartEndpointId,
+        }),
+      );
+    const notes = (byId, fields) =>
+      fields.map((field) => byId[`filter_${field}`].properties.label);
+
+    // Every control drives the same two sections, so every per-control note
+    // would have read identically. One line says it for all of them.
+    test("filters over the same sections state their scope once, not per control", () => {
+      const byId = compile(
+        [
+          select("status"),
+          select("region"),
+          kpi("Revenue", ["status", "region"]),
+          table("Orders", ["status", "region"]),
+        ],
+        [[{ total: 5 }], tableRows],
+      );
+      expect(notes(byId, ["status", "region"])).toEqual([undefined, undefined]);
+      expect(byId.filters_s2_scope.type).toBe("Paragraph");
+      expect(byId.filters_s2_scope.properties).toEqual({
+        content: "Also filters: Orders",
+        type: "secondary",
+      });
+    });
+
+    // The most common set gets the line; the odd one out cannot be spoken for by
+    // it, so it keeps a note of its own — and only it does.
+    test("a control whose scope differs from its group's keeps its own note", () => {
+      const byId = compile(
+        [
+          select("status"),
+          select("region"),
+          select("category"),
+          kpi("Revenue", ["status", "region", "category"]),
+          table("Orders", ["status", "region"]),
+          table("Regions", ["category"]),
+        ],
+        [[{ total: 5 }], tableRows, tableRows],
+      );
+      expect(byId.filters_s3_scope.properties.content).toBe(
+        "Also filters: Orders",
+      );
+      expect(notes(byId, ["status", "region", "category"])).toEqual([
+        undefined,
+        undefined,
+        { extra: "Also filters: Regions" },
+      ]);
+    });
+
+    // No set is more common than any other, so there is nothing for a shared
+    // line to say: n distinct scopes are already shortest as n notes.
+    test("all scopes distinct keeps every per-control note and states none", () => {
+      const byId = compile(
+        [
+          select("status"),
+          select("region"),
+          kpi("Revenue", ["status", "region"]),
+          table("Orders", ["status"]),
+          table("Regions", ["region"]),
+        ],
+        [[{ total: 5 }], tableRows, tableRows],
+      );
+      expect(byId.filters_s2_scope).toBeUndefined();
+      expect(notes(byId, ["status", "region"])).toEqual([
+        { extra: "Also filters: Orders" },
+        { extra: "Also filters: Regions" },
+      ]);
+    });
+
+    // Reset clears every key a filter change can have written — the group's own
+    // control keys, and the section keys per type — which is what makes clearing
+    // enough on its own: each section binding falls back to the value the first,
+    // unfiltered resolve inlined, so an empty key IS the unfiltered data.
+    test("Reset clears the group's filter keys and every bound section's keys", () => {
+      const byId = compile(
+        [
+          select("status"),
+          select("region"),
+          kpi("Revenue", ["status", "region"]),
+          chart("By region", ["region"]),
+          table("Orders", ["status"]),
+        ],
+        [[{ total: 5 }], tableRows, tableRows],
+      );
+      const [reset] = byId.filters_s2_reset.events.onClick;
+      expect(byId.filters_s2_reset.type).toBe("Button");
+      expect(byId.filters_s2_reset.properties.title).toBe("Reset");
+      expect(reset.type).toBe("SetState");
+      // The union of what the group's filters drive, wider than any one
+      // control's: status alone would leave the chart showing filtered data.
+      expect(reset.params).toEqual({
+        filter_status: null,
+        filter_region: null,
+        "sections.s2.rows": null,
+        "sections.s3.option": null,
+        "sections.s3.height": null,
+        "sections.s4.rows": null,
+      });
+      // The invariant behind those keys, asserted against the re-query that
+      // writes them: a key a filter change can write and Reset does not clear is
+      // a section still showing filtered data after a Reset.
+      const written = new Set();
+      for (const field of ["status", "region"]) {
+        for (const action of byId[`filter_${field}`].events.onChange) {
+          if (action.type === "SetState") {
+            Object.keys(action.params).forEach((key) => written.add(key));
+          }
+        }
+      }
+      expect(new Set(Object.keys(reset.params))).toEqual(
+        new Set([...written, "filter_status", "filter_region"]),
+      );
+    });
+
+    // The arithmetic filterSpans exists for, applied to what follows the
+    // controls: a ragged closing line leaves columns the next section flows up
+    // into, which is how filters and KPIs came to share a line.
+    test("the closing line fills exactly 24 columns, with or without a scope line", () => {
+      const both = compile(
+        [
+          select("status"),
+          select("region"),
+          kpi("Revenue", ["status", "region"]),
+          table("Orders", ["status", "region"]),
+        ],
+        [[{ total: 5 }], tableRows],
+      );
+      expect(both.filters_s2_scope.layout.span).toBe(20);
+      expect(both.filters_s2_reset.layout.span).toBe(4);
+      expect(
+        both.filters_s2_scope.layout.span + both.filters_s2_reset.layout.span,
+      ).toBe(24);
+
+      // Nothing to state, so Reset takes the whole line rather than a quarter of
+      // it and leaving three quarters open.
+      const alone = compile(
+        [select("status"), kpi("Revenue", ["status"])],
+        [[{ total: 5 }]],
+      );
+      expect(alone.filters_s1_scope).toBeUndefined();
+      expect(alone.filters_s1_reset.layout.span).toBe(24);
+    });
+
+    // Nothing to put back: the section the group drives failed its resolve, so
+    // it renders an Alert that reads no state at all.
+    test("no Reset when the group's filters bind nothing that resolved", () => {
+      const byId = compile(
+        [select("status"), kpi("Revenue", ["status"])],
+        [null],
+      );
+      expect(byId.s1.type).toBe("Alert");
+      expect(byId.filters_s1_reset).toBeUndefined();
+      expect(byId.filter_status.layout.span).toBe(24);
     });
   });
 
@@ -1719,7 +2344,7 @@ describe("owner-only affordances", () => {
   const brokenResults = [results[0], undefined, results[2]];
 
   const compile = (extra) =>
-    Object.fromEntries(
+    byIdOf(
       compileReport({
         spec,
         results: brokenResults,
@@ -1729,7 +2354,7 @@ describe("owner-only affordances", () => {
         chartEndpointId,
         owner,
         ...extra,
-      }).map((b) => [b.id, b]),
+      }),
     );
 
   test("owner + linked report: Continue-in-chat in the header, Fix + Drop on the broken section", () => {
@@ -1788,7 +2413,7 @@ describe("owner-only affordances", () => {
       is_owner: false,
       conversation_id: "conv-1",
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
 
     expect(byId.report_continue_in_chat).toBeUndefined();
     expect(byId.s1_fix_in_chat).toBeUndefined();
@@ -2144,7 +2769,7 @@ describe("withheld vs broken failed sections", () => {
   };
 
   const compile = (spec, extra) =>
-    Object.fromEntries(
+    byIdOf(
       compileReport({
         spec,
         results: [null],
@@ -2153,7 +2778,7 @@ describe("withheld vs broken failed sections", () => {
         chartEndpointId,
         owner,
         ...extra,
-      }).map((b) => [b.id, b]),
+      }),
     );
 
   test("a viewer lacking the role gets the withheld Alert — no recoveries, no collection or role named", () => {
@@ -2224,7 +2849,7 @@ describe("withheld vs broken failed sections", () => {
       ],
     };
     const classify = (viewerRoles) =>
-      Object.fromEntries(
+      byIdOf(
         compileReport({
           spec: joinedSpec,
           results: [null],
@@ -2235,7 +2860,7 @@ describe("withheld vs broken failed sections", () => {
           owner,
           is_owner: true,
           conversation_id: "conv-1",
-        }).map((b) => [b.id, b]),
+        }),
       );
 
     test("holding only one of the two roles is withheld, not broken", () => {
@@ -2267,7 +2892,7 @@ describe("withheld vs broken failed sections", () => {
       is_owner: true,
       conversation_id: "conv-1",
     });
-    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    const byId = byIdOf(blocks);
 
     expect(byId.s0.properties.description).toBe(
       "You don't have access to the data in this section.",
@@ -2314,5 +2939,540 @@ describe("withheld vs broken failed sections", () => {
     expect(byId.s0.properties.description).not.toContain("access to the data");
     // Broken → owner recoveries present.
     expect(byId.s0_drop).toBeDefined();
+  });
+});
+
+// Layout is derived on every open from the section's type, its position in its
+// run of same-type neighbours, and the shape of the rows the resolve returned —
+// never from anything the agent authored. A run is what the derivation is
+// computed over, and section ORDER is the author's only channel into it: two
+// narrow charts placed adjacent pair up, the same two with a section between
+// them do not.
+describe("layout derivation", () => {
+  const chartSection = (
+    id,
+    { x = "region", y = ["total"], chart = "bar" },
+  ) => ({
+    type: "chart",
+    chart,
+    label: `Chart ${id}`,
+    query: ordersByRegion,
+    x,
+    y,
+  });
+  // Two categories, one series, no dates — narrow on every trigger.
+  const narrowRows = [
+    { region: "EU", total: 2500 },
+    { region: "US", total: 1700 },
+  ];
+  const compile = (sections, results, extra = {}) =>
+    compileReport({
+      spec: { title: "T", sections },
+      results,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+      ...extra,
+    });
+
+  // The pair, in full: each section keeps its own head row and card, wrapped in
+  // a half-width Box so the two sit side by side. A flat span-12 card would put
+  // each heading on a full-width line of its own beside a twelve-column hole —
+  // a head row is a whole wrap line — which is why the wrapper is a container
+  // and not just a narrower card.
+  test("two adjacent narrow charts pair into half-width boxes, each holding its own head row and card", () => {
+    const blocks = compile(
+      [chartSection("a", {}), chartSection("b", {})],
+      [narrowRows, narrowRows],
+    );
+    const topIds = blocks.map((b) => b.id);
+    expect(topIds).toContain("s0_box");
+    expect(topIds).toContain("s1_box");
+    // The sections' own blocks are inside the wrappers, not beside them.
+    expect(topIds).not.toContain("s0_heading");
+    expect(topIds).not.toContain("s0_card");
+
+    for (const id of ["s0", "s1"]) {
+      const box = blocks.find((b) => b.id === `${id}_box`);
+      expect(box.type).toBe("Box");
+      expect(box.layout).toEqual({ span: 12 });
+      // Child spans re-base against the wrapper, so the head row's 20/4 split
+      // divides the half-width line and the card fills it.
+      expect(box.blocks.map((b) => [b.id, b.layout.span])).toEqual([
+        [`${id}_heading`, 20],
+        [`${id}_download`, 4],
+        [`${id}_card`, 24],
+      ]);
+      expect(box.blocks[2].type).toBe("Card");
+      expect(box.blocks[2].blocks[0].id).toBe(id);
+    }
+
+    // The two boxes are one wrap line, so both take the section gap — and
+    // nothing inside them does, or a heading would part from its ⤓.
+    const gap = blocks.find((b) => b.id === "s0_box").style.marginTop;
+    expect(gap).toBeGreaterThan(0);
+    expect(blocks.find((b) => b.id === "s1_box").style.marginTop).toBe(gap);
+    const byId = byIdOf(blocks);
+    expect(byId.s0_heading.style?.marginTop).toBeUndefined();
+    expect(byId.s0_card.style?.marginTop).toBeUndefined();
+  });
+
+  // Assembly is told the width of the span the section is drawn at, so a paired
+  // chart lays its legend and labels out for half a column rather than for a
+  // canvas twice the one it is on.
+  test("a paired chart is assembled for half the column", () => {
+    const byId = byIdOf(
+      compile(
+        [chartSection("a", { y: ["total", "tax"] }), chartSection("b", {})],
+        [
+          [
+            { region: "EU", total: 2500, tax: 250 },
+            { region: "US", total: 1700, tax: 170 },
+          ],
+          narrowRows,
+        ],
+      ),
+    );
+    const wide = byIdOf(
+      compile(
+        [chartSection("a", { y: ["total", "tax"] })],
+        [
+          [
+            { region: "EU", total: 2500, tax: 250 },
+            { region: "US", total: 1700, tax: 170 },
+          ],
+        ],
+      ),
+    );
+    expect(chartWidthForSpan(12)).toBeLessThan(chartWidthForSpan(24));
+    // The compiled option carries the assembly decisions rather than the width,
+    // so the proof is that the pair's legend is laid out the way a narrow canvas
+    // lays one out — a horizontal band — where the full column funds a
+    // right-hand column for it.
+    expect(byId.s0.properties.option.legend.orient).toBe("horizontal");
+    expect(wide.s0.properties.option.legend.orient).toBe("vertical");
+  });
+
+  // The re-query has to be told the same width the compiled option was built
+  // for: spans do not move mid-session, so the span decided at this open is the
+  // span the re-queried option lands in.
+  test("a paired chart's re-query carries the half-column width", () => {
+    const blocks = compile(
+      [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        { ...chartSection("a", {}), filterBy: ["status"] },
+        chartSection("b", {}),
+      ],
+      [narrowRows, narrowRows],
+    );
+    const byId = byIdOf(blocks);
+    expect(byId.s1_box.layout.span).toBe(12);
+    const [call] = byId.filter_status.events.onChange;
+    expect(call.params.payload.width).toBe(chartWidthForSpan(12));
+  });
+
+  // A narrow chart with no partner is not left half-width: a card beside an
+  // empty half column reads as a rendering fault, not as a decision.
+  test.each([
+    ["its neighbour needs the width", { y: ["a", "b", "c", "d", "e"] }],
+    ["it trails the run", undefined],
+  ])(
+    "a narrow chart that cannot pair takes the whole column (%s)",
+    (_, next) => {
+      const wideRows = [
+        { region: "EU", a: 1, b: 2, c: 3, d: 4, e: 5 },
+        { region: "US", a: 5, b: 4, c: 3, d: 2, e: 1 },
+      ];
+      const sections = [chartSection("a", {})];
+      if (next) sections.push(chartSection("b", next));
+      const blocks = compile(
+        sections,
+        next ? [narrowRows, wideRows] : [narrowRows],
+      );
+      const byId = byIdOf(blocks);
+      expect(byId.s0_box).toBeUndefined();
+      expect(byId.s0_card.layout).toEqual({ span: 24 });
+      // Flat, so the head row leads the section as it always did.
+      expect(blocks.map((b) => b.id)).toContain("s0_heading");
+      if (next) expect(byId.s1_card.layout).toEqual({ span: 24 });
+    },
+  );
+
+  // Order is the intent channel: a section of any other type between two charts
+  // separates them, so prose between two narrow charts keeps both full width.
+  test("markdown between two narrow charts breaks the run", () => {
+    const byId = byIdOf(
+      compile(
+        [
+          chartSection("a", {}),
+          { type: "markdown", content: "## Notes" },
+          chartSection("c", {}),
+        ],
+        [narrowRows, narrowRows],
+      ),
+    );
+    expect(byId.s0_box).toBeUndefined();
+    expect(byId.s2_box).toBeUndefined();
+    expect(byId.s0_card.layout).toEqual({ span: 24 });
+    expect(byId.s2_card.layout).toEqual({ span: 24 });
+  });
+
+  // Each trigger on its own is enough. Asserted through the pairing that would
+  // otherwise happen: the partner is a chart that is narrow on every count, so
+  // the only reason either can end up full width is the trigger under test.
+  describe("needsWidth", () => {
+    const dayRows = [
+      { day: new Date("2026-01-01T00:00:00Z"), total: 1 },
+      { day: new Date("2026-01-02T00:00:00Z"), total: 2 },
+    ];
+    const nineRows = Array.from({ length: 9 }, (_, index) => ({
+      region: `R${index + 1}`,
+      total: (9 - index) * 100,
+    }));
+    const fiveSeriesRows = [
+      { region: "EU", a: 1, b: 2, c: 3, d: 4, e: 5 },
+      { region: "US", a: 5, b: 4, c: 3, d: 2, e: 1 },
+    ];
+
+    test.each([
+      ["a temporal x axis", chartSection("t", { x: "day" }), dayRows],
+      ["more than eight distinct categories", chartSection("n", {}), nineRows],
+      [
+        "more than four series",
+        chartSection("s", { y: ["a", "b", "c", "d", "e"] }),
+        fiveSeriesRows,
+      ],
+    ])("%s forces the whole column", (_, section, rows) => {
+      expect(needsWidth(section, rows)).toBe(true);
+      const byId = byIdOf(
+        compile([section, chartSection("b", {})], [rows, narrowRows]),
+      );
+      expect(byId.s0_box).toBeUndefined();
+      expect(byId.s0_card.layout).toEqual({ span: 24 });
+      expect(byId.s1_card.layout).toEqual({ span: 24 });
+    });
+
+    // A year read off a $group is a number, and Flint types an all-numeric
+    // column quantitative rather than temporal — so it draws a category axis and
+    // the column stays narrow. Mirrored here rather than guessed at, because the
+    // consequence has to match what gets drawn.
+    test("a numeric x axis is not temporal", () => {
+      const yearRows = [
+        { year: 2025, total: 1 },
+        { year: 2026, total: 2 },
+      ];
+      expect(needsWidth(chartSection("y", { x: "year" }), yearRows)).toBe(
+        false,
+      );
+    });
+
+    // A pie has no axis to label, no legend column to fund and a radius that
+    // fills whatever square it is given, so it pairs however many rows it
+    // summarises — and assembly still folds the tail into Other.
+    test("a pie stays narrow at twenty slices, and still caps at six plus Other", () => {
+      const pieRows = Array.from({ length: 20 }, (_, index) => ({
+        status: `S${index + 1}`,
+        total: (20 - index) * 100,
+      }));
+      const pie = chartSection("p", { x: "status", chart: "pie" });
+      expect(needsWidth(pie, pieRows)).toBe(false);
+      const byId = byIdOf(
+        compile([pie, chartSection("b", {})], [pieRows, narrowRows]),
+      );
+      expect(byId.s0_box.layout).toEqual({ span: 12 });
+      expect(byId.s1_box.layout).toEqual({ span: 12 });
+      const slices = byId.s0.properties.option.series[0].data;
+      expect(slices).toHaveLength(7);
+      expect(slices[6].name).toBe("Other");
+    });
+
+    // A section with no rows renders an Alert, which has no business in a
+    // half-column hole — and there is no data to judge in any case.
+    test("a section with no rows reads as needing the width and never pairs", () => {
+      expect(needsWidth(chartSection("a", {}), null)).toBe(true);
+      const byId = byIdOf(
+        compile(
+          [chartSection("a", {}), chartSection("b", {})],
+          [null, narrowRows],
+        ),
+      );
+      expect(byId.s0.type).toBe("Alert");
+      expect(byId.s0_box).toBeUndefined();
+      expect(byId.s1_box).toBeUndefined();
+      expect(byId.s1_card.layout).toEqual({ span: 24 });
+    });
+  });
+
+  // Adjacent kpis are one tile row, balanced so every wrap line it takes is
+  // exactly full — four to a line rather than the filters' three, since a label
+  // over a number still reads at a quarter of the column where a select showing
+  // its selection does not.
+  describe("a run of kpis is one tile row", () => {
+    const kpis = (count) =>
+      Array.from({ length: count }, (_, index) => ({
+        type: "kpi",
+        label: `K${index}`,
+        query: orderTotal,
+        valueKey: "total",
+      }));
+    const compileKpis = (count) => {
+      const sections = kpis(count);
+      return byIdOf(
+        compile(
+          sections,
+          sections.map(() => [{ total: 1 }]),
+        ),
+      );
+    };
+
+    test.each([
+      [1, [24]],
+      [2, [12, 12]],
+      [3, [8, 8, 8]],
+      [4, [6, 6, 6, 6]],
+      [5, [8, 8, 8, 12, 12]],
+      [6, [8, 8, 8, 8, 8, 8]],
+    ])("%i kpis → spans %j", (count, expected) => {
+      const byId = compileKpis(count);
+      expect(
+        expected.map((_, index) => byId[`s${index}_card`].layout.span),
+      ).toEqual(expected);
+    });
+
+    // Every tile keeps its own card: the row is a row of panels, not one panel
+    // holding several numbers.
+    test("each tile keeps its own card", () => {
+      const byId = compileKpis(4);
+      for (const index of [0, 1, 2, 3]) {
+        expect(byId[`s${index}_card`].type).toBe("Card");
+        expect(byId[`s${index}_card`].blocks[0].type).toBe("Statistic");
+      }
+    });
+
+    // The whole run leads as ONE group, so the gap stamps its first line only: a
+    // run of five is two lines of tiles, and a second gap between them would
+    // read as two sections of numbers.
+    test("the gap leads the tile row's first line only", () => {
+      const byId = compileKpis(5);
+      const gap = byId.s0_card.style.marginTop;
+      expect(gap).toBeGreaterThan(0);
+      expect(byId.s1_card.style.marginTop).toBe(gap);
+      expect(byId.s2_card.style.marginTop).toBe(gap);
+      expect(byId.s3_card.style?.marginTop).toBeUndefined();
+      expect(byId.s4_card.style?.marginTop).toBeUndefined();
+    });
+  });
+
+  // A run of downloads leads as one group the same way a run of kpis does: the
+  // whole run compiles to one titled Downloads card, its buttons balanced
+  // across the row(s) at filterSpans(n) rather than each stacking full-width
+  // or wrapping ragged at the page's raw width.
+  describe("a run of downloads is one card", () => {
+    const downloads = (count) =>
+      Array.from({ length: count }, (_, index) => ({
+        type: "download",
+        label: `Download ${index}`,
+        query: ordersByRegion,
+      }));
+    // download sections query client-side on click (querySections excludes
+    // them), so they consume no entry in the resolver's results array.
+    const compileDownloads = (count) => byIdOf(compile(downloads(count), []));
+
+    test("five downloads → one titled card, five buttons at spans [8,8,8,12,12], events unchanged", () => {
+      const byId = compileDownloads(5);
+      const card = byId.s0_downloads;
+      expect(card.type).toBe("Card");
+      expect(card.layout).toEqual({ span: 24 });
+      expect(card.properties.title).toBe("Downloads");
+      expect(card.blocks.map((b) => b.id)).toEqual([
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+      ]);
+      expect(card.blocks.map((b) => b.layout.span)).toEqual([8, 8, 8, 12, 12]);
+      card.blocks.forEach((button, index) => {
+        expect(button.type).toBe("Button");
+        expect(button.properties.title).toBe(`Download ${index}`);
+        expect(button.properties.icon).toBe("AiOutlineDownload");
+        const [call, dl] = button.events.onClick;
+        expect(call.type).toBe("CallAPI");
+        expect(call.params.endpointId).toBe(endpointId);
+        expect(call.params.payload).toEqual({ query: ordersByRegion });
+        expect(dl.type).toBe("DownloadCsv");
+        expect(dl.params.data).toEqual({ __api: `${endpointId}.response` });
+        expect(dl.params.filename).toBe(`download-${index}.csv`);
+      });
+    });
+
+    // One idiom, no special case: a lone download still gets the titled card
+    // rather than a bare button at the page's raw width.
+    test("a single download is still one titled card", () => {
+      const byId = compileDownloads(1);
+      const card = byId.s0_downloads;
+      expect(card.type).toBe("Card");
+      expect(card.properties.title).toBe("Downloads");
+      expect(card.blocks).toHaveLength(1);
+      expect(card.blocks[0].layout.span).toBe(24);
+    });
+
+    // The whole run leads as ONE group, so only the card takes the gap.
+    test("the gap leads the card", () => {
+      const byId = compileDownloads(5);
+      expect(byId.s0_downloads.style.marginTop).toBeGreaterThan(0);
+    });
+  });
+
+  // A table is full width whatever it holds: half a column of AgGrid is a
+  // horizontal-scroll trap, and two adjacent tables are two rows, not a pair.
+  test.each([[1], [2], [8]])(
+    "a table spans the column at %i column(s)",
+    (columnCount) => {
+      const columns = Array.from({ length: columnCount }, (_, index) => ({
+        key: `c${index}`,
+        label: `C${index}`,
+      }));
+      const row = Object.fromEntries(columns.map((c) => [c.key, 1]));
+      const byId = byIdOf(
+        compile(
+          [
+            { type: "table", label: "One", query: ordersByRegion, columns },
+            { type: "table", label: "Two", query: ordersByRegion, columns },
+          ],
+          [[row], [row]],
+        ),
+      );
+      expect(byId.s0.layout).toEqual({ span: 24 });
+      expect(byId.s1.layout).toEqual({ span: 24 });
+      expect(byId.s0_box).toBeUndefined();
+    },
+  );
+});
+
+test("a table has no card of its own; every other section does", () => {
+  const blocks = compileReport({
+    spec: {
+      title: "Padding",
+      sections: [
+        {
+          type: "table",
+          label: "Orders",
+          query: { collection: "demo_orders", pipeline: [] },
+          columns: [{ key: "region", label: "Region" }],
+        },
+        {
+          type: "kpi",
+          label: "Count",
+          query: { collection: "demo_orders", pipeline: [] },
+          valueKey: "total",
+        },
+      ],
+    },
+    results: [[{ region: "North" }], [{ total: 3 }]],
+    catalog: testCatalog,
+    roles: ["analyst"],
+    endpointId: "ai-reporting/query-data",
+    chartEndpointId: "ai-reporting/chart-data",
+  });
+  const byId = byIdOf(blocks);
+  // A grid draws its own border, header band and row rules, so a card around it
+  // is a second frame holding nothing the first doesn't.
+  expect(byId.s0_card).toBeUndefined();
+  expect(blocks.map((block) => block.id)).toContain("s0");
+  // The KPI beside it has no edge of its own and keeps its panel.
+  expect(byId.s1_card.type).toBe("Card");
+  expect(byId.s1_card.blocks).toEqual([byId.s1]);
+});
+
+describe("a pair of charts lines up", () => {
+  // Two narrow charts that pair, with label sets that size their canvases
+  // differently: four short labels stay flat, five long ones rotate and buy
+  // extra room below the plot.
+  const pairSpec = (filterBy = []) => ({
+    title: "Pair",
+    sections: [
+      ...(filterBy.length > 0
+        ? [{ type: "filter", control: "select", field: "region", label: "R" }]
+        : []),
+      {
+        type: "chart",
+        chart: "bar",
+        label: "Short labels",
+        query: { collection: "demo_orders", pipeline: [] },
+        x: "region",
+        y: ["revenue"],
+        filterBy,
+      },
+      {
+        type: "chart",
+        chart: "bar",
+        label: "Long labels",
+        query: { collection: "demo_orders", pipeline: [] },
+        x: "region",
+        y: ["revenue"],
+      },
+    ],
+  });
+  const shortRows = [
+    { region: "North", revenue: 10 },
+    { region: "East", revenue: 20 },
+  ];
+  const longRows = [
+    { region: "Northern territory one", revenue: 10 },
+    { region: "Eastern territory two", revenue: 20 },
+    { region: "Southern territory three", revenue: 30 },
+    { region: "Western territory four", revenue: 40 },
+    { region: "Central territory five", revenue: 50 },
+  ];
+  const compile = (spec, results) =>
+    byIdOf(
+      compileReport({
+        spec,
+        results,
+        catalog: testCatalog,
+        roles: ["analyst"],
+        endpointId: "ai-reporting/query-data",
+        chartEndpointId: "ai-reporting/chart-data",
+      }),
+    );
+
+  test("both take the taller canvas, so their cards end level", () => {
+    const byId = compile(pairSpec(), [shortRows, longRows]);
+    const first = byId.s0.properties.height;
+    const second = byId.s1.properties.height;
+    expect(typeof first).toBe("number");
+    expect(first).toBe(second);
+    // The taller of the two is what they share — the shorter chart grows into
+    // the extra room rather than the taller one being cropped to fit.
+    const alone = compile(
+      {
+        title: "Alone",
+        sections: [
+          {
+            type: "chart",
+            chart: "bar",
+            label: "Long labels",
+            query: { collection: "demo_orders", pipeline: [] },
+            x: "region",
+            y: ["revenue"],
+          },
+        ],
+      },
+      [longRows],
+    );
+    expect(first).toBe(alone.s0.properties.height);
+  });
+
+  test("a filtered member keeps the pinned height and still swaps its option", () => {
+    // A select filter sources its options from the catalog, so it consumes no
+    // result slot: the two charts are still results[0] and results[1].
+    const byId = compile(pairSpec(["region"]), [shortRows, longRows]);
+    // s1 is the filtered chart: its option is bound to state, its height is not
+    // — a re-query must not knock the pair out of alignment.
+    expect(byId.s1.properties.height).toBe(byId.s2.properties.height);
+    expect(typeof byId.s1.properties.height).toBe("number");
+    expect(byId.s1.properties.option.__if_none).toBeDefined();
   });
 });

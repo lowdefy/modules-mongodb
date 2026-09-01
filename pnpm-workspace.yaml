@@ -15,11 +15,11 @@ packages:
 overrides:
   dayjs: 1.11.20
 
-# No patchedDependencies: the three patches this branch carried (ai-utils
-# generateMessageId, blocks-antd-x setInput + two-track welcome, blocks-aggrid
-# menu cell + cell-renderer identity) all landed upstream and shipped in the
-# 0.0.0-experimental-20260814133003 build, verified present in the published
-# dist, so the patches were dropped on that bump.
+# patchedDependencies at the bottom of this file carries one patch. An earlier
+# three — ai-utils generateMessageId, blocks-antd-x setInput + two-track
+# welcome, blocks-aggrid menu cell + cell-renderer identity — all landed
+# upstream and shipped in the 0.0.0-experimental-20260814133003 build, verified
+# present in the published dist, so those were dropped on that bump.
 
 # These pnpm keys live here, not under a "pnpm" key in package.json: pnpm 10+
 # no longer reads that key and silently ignores it — it only warns.
@@ -82,3 +82,31 @@ minimumReleaseAgeExclude:
   - "@lowdefy/connection-ai-gateway@0.0.0-experimental-20260814133003"
   - "@lowdefy/connection-mongodb@0.0.0-experimental-20260814133003"
   - "@lowdefy/docs-content@0.0.0-experimental-20260814133003"
+
+# blocks-echarts registered the theme object under a name derived from blockId,
+# did it once in the EChart constructor, and handed ECharts that constant name.
+# echarts-for-react re-inits only when the theme NAME changes, so a theme that
+# changed after mount — an app dark-mode toggle re-resolving `_media: darkMode`
+# — never reached ECharts, and charts kept their first-render colours until a
+# page reload. The patch drops the registration and swaps the theme on the live
+# instance instead: ECharts 6's setTheme re-applies a theme to the existing model
+# and repaints, so charts re-ink with no dispose and no flash. The theme prop
+# handed to echarts-for-react is deliberately held stable — it deep-compares that
+# prop and would dispose + re-init on every change, which is the thing setTheme
+# avoids. Drop this once the fix lands upstream. ai-reporting report and chat
+# charts depend on it.
+#
+# Submitted upstream as lowdefy/lowdefy#2358 (v6) and #2359 (develop). When
+# either ships in a release this repo bumps to, delete the patch, this block and
+# allowUnusedPatches. `pnpm check:patches` fails the build if the bump happens
+# without that, since the patch would silently stop applying.
+# The patched packages arrive through the build-generated .lowdefy/server
+# manifest, not through any tracked package.json, so on a clean checkout pnpm
+# sees the patch match nothing and fails the install (ERR_PNPM_UNUSED_PATCH).
+# This downgrades that to a warning. `pnpm check:patches` restores the loud
+# failure for the case that actually matters — a Lowdefy bump leaving the patch
+# stranded on an old version — which the warning alone would let pass silently.
+allowUnusedPatches: true
+
+patchedDependencies:
+  "@lowdefy/blocks-echarts@0.0.0-experimental-20260814133003": patches/@lowdefy__blocks-echarts@0.0.0-experimental-20260814133003.patch
