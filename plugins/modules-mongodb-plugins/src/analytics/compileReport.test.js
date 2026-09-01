@@ -293,10 +293,7 @@ test("a section's card holds its block alone, with the head row outside it", () 
   const byId = byIdOf(blocks);
   const topIds = blocks.map((b) => b.id);
 
-  for (const [id, span, type] of [
-    ["s1", 24, "EChart"],
-    ["s3", 24, "AgGridBalham"],
-  ]) {
+  for (const [id, span, type] of [["s1", 24, "EChart"]]) {
     const card = byId[`${id}_card`];
     expect(card.type).toBe("Card");
     expect(card.layout).toEqual({ span });
@@ -307,6 +304,13 @@ test("a section's card holds its block alone, with the head row outside it", () 
       topIds.indexOf(`${id}_download`) + 1,
     );
   }
+
+  // A table takes no card — the grid is its own panel — so the grid itself sits
+  // where the card would have, directly under the head row.
+  expect(byId.s3_card).toBeUndefined();
+  expect(byId.s3.type).toBe("AgGridBalham");
+  expect(byId.s3.layout).toEqual({ span: 24 });
+  expect(topIds.indexOf("s3")).toBe(topIds.indexOf("s3_download") + 1);
 
   // The download run gets its own titled Downloads card rather than the
   // section's `${id}_card` convention (see "a run of downloads is one card"
@@ -1236,7 +1240,8 @@ describe("provenance line", () => {
     expect(byId.filter_status.style.marginTop).toBe(gap);
     expect(byId.s3_heading.style?.marginTop).toBeUndefined();
     expect(byId.s3_download.style.marginTop).toBeUndefined();
-    expect(byId.s3_card.style?.marginTop).toBeUndefined();
+    // s3 is a table, so the grid itself is the line under the head row.
+    expect(byId.s3.style?.marginTop).toBeUndefined();
     expect(byId.s3_download.style.marginLeft).toBe("auto");
   });
 
@@ -3292,14 +3297,14 @@ describe("layout derivation", () => {
           [[row], [row]],
         ),
       );
-      expect(byId.s0_card.layout).toEqual({ span: 24 });
-      expect(byId.s1_card.layout).toEqual({ span: 24 });
+      expect(byId.s0.layout).toEqual({ span: 24 });
+      expect(byId.s1.layout).toEqual({ span: 24 });
       expect(byId.s0_box).toBeUndefined();
     },
   );
 });
 
-test("a table's card is flush, and every other card keeps its padding", () => {
+test("a table has no card of its own; every other section does", () => {
   const blocks = compileReport({
     spec: {
       title: "Padding",
@@ -3325,13 +3330,13 @@ test("a table's card is flush, and every other card keeps its padding", () => {
     chartEndpointId: "ai-reporting/chart-data",
   });
   const byId = byIdOf(blocks);
-  // A grid brings its own border and header band; padding around it would frame
-  // an already-framed thing.
-  expect(byId.s0_card.styles).toEqual({
-    element: { overflow: "hidden" },
-    body: { padding: 0 },
-  });
-  expect(byId.s1_card.styles).toBeUndefined();
+  // A grid draws its own border, header band and row rules, so a card around it
+  // is a second frame holding nothing the first doesn't.
+  expect(byId.s0_card).toBeUndefined();
+  expect(blocks.map((block) => block.id)).toContain("s0");
+  // The KPI beside it has no edge of its own and keeps its panel.
+  expect(byId.s1_card.type).toBe("Card");
+  expect(byId.s1_card.blocks).toEqual([byId.s1]);
 });
 
 describe("a pair of charts lines up", () => {

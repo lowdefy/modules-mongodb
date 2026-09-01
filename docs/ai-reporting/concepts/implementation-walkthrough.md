@@ -341,8 +341,11 @@ old pooled filter row required is gone.
   narrow them to, so a chart wide enough for all of them stays wide enough for a
   subset — a filter that gained a resolve-time DEFAULT would break that
   assumption and the derivation input would have to be revisited.
-- **Every section but markdown renders inside a card** (`sectionCard`,
-  `${id}_card`). The span rides on the CARD, not on the block inside it: the card
+- **Every section but table and markdown renders inside a card** (`sectionCard`,
+  `${id}_card`). Those two draw their own frame or need none: a grid brings a
+  border, header band and row rules, so a card around it is a second frame
+  holding nothing the first doesn't, and prose is what goes between the panels.
+  The span rides on the CARD, not on the block inside it: the card
   is what the layout places, and a span in both would be two sources for one
   decision. Inside a `${id}_box` the card re-bases against the wrapper
   (`--lf-span` does not inherit), so it fills the half-width line rather than

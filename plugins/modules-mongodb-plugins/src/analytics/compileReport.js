@@ -854,8 +854,10 @@ function filterOptions({ filter, sections, catalog, roles, rows }) {
 }
 
 // A section's own block sits inside a Card of its own — the container that
-// makes a report read as a stack of panels rather than bare numbers and grids
-// on the page plane. The span rides on the CARD, not the block inside it: the
+// makes a report read as a stack of panels rather than bare numbers on the page
+// plane. Two section types bring their own frame and take no card: a table (the
+// grid draws one) and markdown (prose is what goes between the panels). The
+// span rides on the CARD, not the block inside it: the
 // card is what the layout places, and a span in both would be two sources for
 // one number. The id convention is load-bearing the other way round — the inner
 // block keeps the section id that every state binding, re-query and chart
@@ -864,20 +866,11 @@ function filterOptions({ filter, sections, catalog, roles, rows }) {
 // `blocks` is the slots.content shorthand, as on the header's DropdownMenu — a
 // resolved fragment is built by the same recursive walk as a static page, so it
 // nests the same way.
-function sectionCard(section, span, block, { flush = false } = {}) {
+function sectionCard(section, span, block) {
   return {
     id: `${section.id}_card`,
     type: "Card",
     layout: { span },
-    // A grid draws its own frame — a header band, row rules and a border — so
-    // inside a padded card it reads as a box in a box with a gutter between the
-    // two. Flush, the card's border is the only frame and the rows reach its
-    // edge; `overflow: hidden` is what makes the grid's square corners take the
-    // card's rounded ones. Everything else keeps the padding: a chart canvas and
-    // a Statistic have no edge of their own to collide with.
-    ...(flush
-      ? { styles: { element: { overflow: "hidden" }, body: { padding: 0 } } }
-      : {}),
     blocks: [block],
   };
 }
@@ -2079,29 +2072,26 @@ function compileReport({
       if (section.type === "table") {
         out.push(sectionHeading(section, rows));
         out.push(sectionDownload(section, endpointId));
-        out.push(
-          sectionCard(
-            section,
-            24,
-            {
-              id: section.id,
-              type: "AgGridBalham",
-              properties: {
-                height: tableHeight(rows),
-                rowData: dataBinding(section, rows),
-                columnDefs: section.columns.map((column) =>
-                  tableColumnDef(column, rows),
-                ),
-                // flex fills the card's width whatever the column count — without
-                // it a narrow table left hundreds of pixels of blank card beside
-                // its columns, and a wide one clipped its header mid-word instead
-                // of shrinking to fit.
-                defaultColDef: { sortable: true, resizable: true, flex: 1 },
-              },
-            },
-            { flush: true },
-          ),
-        );
+        // No card: a grid already draws the panel — a header band, row rules and
+        // a border on all four sides — so a card around it is a second frame
+        // holding nothing the first doesn't. The grid IS this section's panel.
+        out.push({
+          id: section.id,
+          type: "AgGridBalham",
+          layout: { span: GRID_COLUMNS },
+          properties: {
+            height: tableHeight(rows),
+            rowData: dataBinding(section, rows),
+            columnDefs: section.columns.map((column) =>
+              tableColumnDef(column, rows),
+            ),
+            // flex fills the report column whatever the column count — without
+            // it a narrow table left hundreds of pixels of blank space beside
+            // its columns, and a wide one clipped its header mid-word instead
+            // of shrinking to fit.
+            defaultColDef: { sortable: true, resizable: true, flex: 1 },
+          },
+        });
       }
     }
 

@@ -97,6 +97,13 @@ A _run_ is a maximal sequence of adjacent same-type sections in spec order.
 
 ### The load-bearing change: sections become cards
 
+> **Amended after the first rendered pass.** A table takes no card. A grid draws
+> its own panel — border on four sides, a header band, row rules — so a card
+> around it is a second frame holding nothing the first doesn't; the intermediate
+> "flush card" (zero body padding, `overflow: hidden`) still left two borders a
+> hair apart. Tables and markdown are now the two types that compile to a bare
+> block, for the same underlying reason: neither needs a frame drawn for it.
+
 Today every compiled block is a **sibling in one wrapping flex area** — the
 "rows" are wrap lines, not containers, which is why `withTopGap` stamps its
 margin on a group's first wrap line and why `filterSpans` must fill every line
@@ -147,8 +154,8 @@ Spans are on the existing 24-column grid.
 | `filter` × n                 | Unchanged grouping (`filterSpans`, ≤ 3 per row), plus a Reset control and **one** shared scope line  |
 | `chart`, needs width         | `span 24`, card                                                                                     |
 | `chart`, doesn't need width  | `span 12`, card — paired 2-up with the next consecutive narrow chart                                 |
-| trailing unpaired narrow     | promoted to `span 24`                                                                               |
-| `table`                      | always `span 24`, card — tables never pair                                                          |
+| any unpaired narrow chart    | promoted to `span 24`                                                                               |
+| `table`                      | always `span 24`, **no card** — the grid draws its own frame; tables never pair                      |
 | `download` × n               | One "Downloads" card, `span 24`, buttons inside at `filterSpans(n)`                                  |
 | `markdown`                   | `span 24`, **no card** — prose narrates between cards rather than sitting in one                     |
 

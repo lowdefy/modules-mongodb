@@ -77,11 +77,11 @@ A spec carries no widths, no card boundaries and no row breaks — there is no l
 | `chart` needing width                    | Full width, one to a line                                                                                            |
 | two adjacent narrow charts               | A pair, half the width each, side by side                                                                            |
 | a narrow chart with nothing to pair with | Promoted to full width — never half a line beside an empty half                                                      |
-| `table`                                  | Always full width; columns flex to fill it, whatever the column count                                                |
+| `table`                                  | Always full width, in **no** card — the grid draws its own frame; columns flex to fill it, whatever the column count  |
 | `download` × n                           | **One** card titled _Downloads_, with a button per section                                                           |
-| `markdown`                               | Full width, and the one section type with **no** card — prose narrates between the panels rather than sitting in one |
+| `markdown`                               | Full width, and no card either — prose narrates between the panels rather than sitting in one                        |
 
-Every other section renders in a card, with its label above it.
+Every other section renders in a card, with its label above it. The two that don't are the two that need no frame drawn for them: a grid brings its own border, header band and row rules, and prose belongs on the page plane between the panels.
 
 **A chart needs the full width when its own rows say so** — when the `x` column reads as temporal (dates, `2026-01`-style month strings), when it has more than eight distinct categories, or when it carries more than four `y` series. Past those, half a column stops working: a ninth category label tilts and then collides with its neighbours, and a fifth series funds a legend wider than the plot left beside it. A **pie** never needs the width, however many rows it summarises — it has no axis to label and fills whatever square it is given, so a pie is always a candidate to pair.
 
