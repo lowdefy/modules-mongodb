@@ -338,11 +338,14 @@ test.describe("report page render", () => {
     // the three seeded activities, and the control it came from goes back to
     // empty — a Reset that left "call" standing beside a count of 3 would read
     // as a broken filter rather than a cleared one.
-    const selection = page.locator(".ant-select-selection-item");
-    await expect(selection).toHaveText("call");
+    // The Selector renders its own value markup rather than antd's: the chosen
+    // label sits in `.ant-select-content`, which carries `-has-value` only while
+    // there is one — so the emptied control is the absence of that class, not
+    // empty text in it.
+    await expect(page.locator(".ant-select-content")).toContainText("call");
     await page.getByRole("button", { name: "Reset" }).click();
     await expect(kpiValue).toHaveText("3");
-    await expect(selection).toHaveCount(0);
+    await expect(page.locator(".ant-select-content-has-value")).toHaveCount(0);
   });
 
   test("a broken section shows the owner recoveries; a non-owner sees only the alert", async ({
