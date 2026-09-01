@@ -1864,6 +1864,57 @@ function compileReport({
     filtersByFirstSubscriber,
   });
 
+  // Assembly is memoised because a paired chart has to know its neighbour's
+  // canvas height before either of them is emitted, and assembling twice would
+  // mean building the same option twice per open. A section that throws caches
+  // its error, so the failure degrades that one section exactly as it would have
+  // in the emit loop.
+  const assembledCharts = new Map();
+  const assembleChart = (section) => {
+    if (!assembledCharts.has(section.id)) {
+      try {
+        assembledCharts.set(section.id, {
+          assembled: buildFlintOption({
+            chart: section.chart,
+            x: section.x,
+            y: section.y,
+            rows: rowsBySectionId.get(section.id),
+            stacked: section.stacked,
+            width: chartWidthForSpan(spanBySection.get(section.id).span),
+            colors,
+          }),
+        });
+      } catch (error) {
+        assembledCharts.set(section.id, { error: error.message });
+      }
+    }
+    return assembledCharts.get(section.id);
+  };
+
+  // Two charts sharing a wrap line take the taller one's canvas. Height follows
+  // content — rotated labels and a legend band each buy their own room — so a
+  // pair left to itself ends up with ragged bottoms and reads as a rendering
+  // fault rather than as two views of one row. The shorter chart's plot grows
+  // into the extra height instead of sitting above dead space, because the
+  // option positions its grid from the canvas edges rather than at a fixed
+  // plot size.
+  //
+  // Pinned, not bound: the pair's height is decided here and a filtered
+  // re-query does not move it. That cannot clip, because the first resolve is
+  // unfiltered — a filter can only narrow the rows, and fewer categories never
+  // need more room than the height decided over all of them.
+  const pairHeightById = new Map();
+  for (const group of gapGroups) {
+    if (group.length !== 2) continue;
+    if (!group.every((s) => spanBySection.get(s.id)?.boxed)) continue;
+    const heights = group
+      .map((s) => assembleChart(s).assembled?.height)
+      .filter((h) => typeof h === "number");
+    if (heights.length !== 2) continue;
+    const tallest = Math.max(...heights);
+    for (const section of group) pairHeightById.set(section.id, tallest);
+  }
+
   for (const [anchorId, group] of filtersByFirstSubscriber) {
     const spans = filterSpans(group.length);
     // Decided once for the whole group: which scope the closing line states, and
@@ -1975,27 +2026,23 @@ function compileReport({
         // labels it lays out, and it rejects a spec it cannot render — so a
         // throw here degrades this one section rather than the report, the way
         // a contract mismatch does.
-        let assembled;
-        try {
-          assembled = buildFlintOption({
-            chart: section.chart,
-            x: section.x,
-            y: section.y,
-            rows,
-            stacked: section.stacked,
-            width: chartWidthForSpan(span),
-            colors,
-          });
-        } catch (error) {
-          out.push(...brokenSectionBlocks(section, error.message, brokenCtx));
+        const { assembled, error } = assembleChart(section);
+        if (error !== undefined) {
+          out.push(...brokenSectionBlocks(section, error, brokenCtx));
           return out;
         }
-        // Both keys move together: the re-assembled option's height belongs to
-        // the labels in it, so binding one without the other would draw new
-        // data at the old canvas size.
+        // A paired chart wears its pair's height so the two line up; anything
+        // else is sized by its own labels.
+        const pinned = pairHeightById.get(section.id);
+        const height = pinned ?? assembled.height;
+        // Option and height move together where height is the chart's own: the
+        // re-assembled option's height belongs to the labels in it, so binding
+        // one without the other would draw new data at the old canvas size. A
+        // pinned pair height is the exception and stays put, so a re-query
+        // cannot break the pair's alignment.
         const properties =
           (section.filterBy ?? []).length === 0
-            ? { height: assembled.height, option: assembled.option }
+            ? { height, option: assembled.option }
             : {
                 option: {
                   __if_none: [
@@ -2003,7 +2050,7 @@ function compileReport({
                     assembled.option,
                   ],
                 },
-                height: {
+                height: pinned ?? {
                   __if_none: [
                     { __state: `sections.${section.id}.height` },
                     assembled.height,

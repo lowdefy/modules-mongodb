@@ -3333,3 +3333,94 @@ test("a table's card is flush, and every other card keeps its padding", () => {
   });
   expect(byId.s1_card.styles).toBeUndefined();
 });
+
+describe("a pair of charts lines up", () => {
+  // Two narrow charts that pair, with label sets that size their canvases
+  // differently: four short labels stay flat, five long ones rotate and buy
+  // extra room below the plot.
+  const pairSpec = (filterBy = []) => ({
+    title: "Pair",
+    sections: [
+      ...(filterBy.length > 0
+        ? [{ type: "filter", control: "select", field: "region", label: "R" }]
+        : []),
+      {
+        type: "chart",
+        chart: "bar",
+        label: "Short labels",
+        query: { collection: "demo_orders", pipeline: [] },
+        x: "region",
+        y: ["revenue"],
+        filterBy,
+      },
+      {
+        type: "chart",
+        chart: "bar",
+        label: "Long labels",
+        query: { collection: "demo_orders", pipeline: [] },
+        x: "region",
+        y: ["revenue"],
+      },
+    ],
+  });
+  const shortRows = [
+    { region: "North", revenue: 10 },
+    { region: "East", revenue: 20 },
+  ];
+  const longRows = [
+    { region: "Northern territory one", revenue: 10 },
+    { region: "Eastern territory two", revenue: 20 },
+    { region: "Southern territory three", revenue: 30 },
+    { region: "Western territory four", revenue: 40 },
+    { region: "Central territory five", revenue: 50 },
+  ];
+  const compile = (spec, results) =>
+    byIdOf(
+      compileReport({
+        spec,
+        results,
+        catalog: testCatalog,
+        roles: ["analyst"],
+        endpointId: "ai-reporting/query-data",
+        chartEndpointId: "ai-reporting/chart-data",
+      }),
+    );
+
+  test("both take the taller canvas, so their cards end level", () => {
+    const byId = compile(pairSpec(), [shortRows, longRows]);
+    const first = byId.s0.properties.height;
+    const second = byId.s1.properties.height;
+    expect(typeof first).toBe("number");
+    expect(first).toBe(second);
+    // The taller of the two is what they share — the shorter chart grows into
+    // the extra room rather than the taller one being cropped to fit.
+    const alone = compile(
+      {
+        title: "Alone",
+        sections: [
+          {
+            type: "chart",
+            chart: "bar",
+            label: "Long labels",
+            query: { collection: "demo_orders", pipeline: [] },
+            x: "region",
+            y: ["revenue"],
+          },
+        ],
+      },
+      [longRows],
+    );
+    expect(first).toBe(alone.s0.properties.height);
+  });
+
+  test("a filtered member keeps the pinned height and still swaps its option", () => {
+    // A select filter sources its options from the catalog, so it consumes no
+    // result slot: the two charts are still results[0] and results[1].
+    const byId = compile(pairSpec(["region"]), [shortRows, longRows]);
+    // s1 is the filtered chart: its option is bound to state, its height is not
+    // — a re-query must not knock the pair out of alignment.
+    expect(byId.s1.properties.height).toBe(byId.s2.properties.height);
+    expect(typeof byId.s1.properties.height).toBe("number");
+    expect(byId.s1.properties.option.__if_none).toBeDefined();
+  });
+});
