@@ -160,11 +160,26 @@ onFinish hook (`agents/reporting-assistant.yaml:167-170`):
    the declared `x`/`y` against the _actual_ rows: keys present, y-columns
    numeric. This is the check that cannot be static, since an arbitrary
    pipeline's output shape is unknown.
-4. `buildFlintOption.js:46-104` shapes the option by handing the rows to Flint's
+4. `buildFlintOption.js` shapes the option by handing the rows to Flint's
    ECharts compiler, which derives label rotation, grid padding, axis types and
-   colours from the data, and reports the canvas height its layout needs. The AI
-   contributes a kind, a query and two column names; every other line of chart
-   config is server-authored.
+   colours from the data, and reports the canvas height its layout needs — then
+   runs a post-pass over what Flint produced. The post-pass is where the
+   repo-owned appearance lives: the validated eight-slot `PALETTE` written **both**
+   as `option.color` and onto every `series[i].itemStyle.color` (Flint declares
+   its palette twice and the per-series value is the one that paints on bar and
+   line, so both writes or neither has any effect); mark styling — bar cap radius,
+   2px lines with a dot on the last point, a gradient wash under a single series,
+   pie slice borders in the card colour; the pie slice cap (top six by value plus
+   a neutral `Other`, the one mark deliberately outside the palette); the
+   report-scoped `colors` identity map, which outranks series order; and a
+   re-application of the shared theme's type sizes over the ones Flint pins into
+   the option. The **drawn width** is threaded in (`width`), because a chart
+   assembled for one width and laid out at another gets the legend orientation
+   and label rotation of a canvas it is not on: below `NARROW_WIDTH` the legend
+   becomes a horizontal band and the canvas grows by its height, and label
+   rotation relaxes 0 → 45 → 90 from the real plot width. The AI contributes a
+   kind, a query and two column names; every other line of chart config is
+   server-authored.
 5. L91-118 — pushes the parts onto the conversation doc as `data_parts` (`upsert:
 false` — the prior hook owns doc creation), then L119-125 returns them as
    `dataParts` — the framework's own stream key, not a field this module names.
@@ -307,6 +322,38 @@ old pooled filter row required is gone.
 - `verifySection` (L595-607) checks the declared contract against real rows; a
   mismatch is caught and rendered through the same `brokenSectionBlocks` path — a
   graceful _rendering_ failure, never a safety one.
+- **Layout is derived here, per open, and stored nowhere.** `deriveSectionLayout`
+  reads three things — the section's type, its position in its run
+  (`groupRuns`: maximal sequences of adjacent same-type sections, in spec order),
+  and the rows the resolve returned — and returns the span each kpi/chart section
+  takes plus the groups the section gap leads. Adjacency is read off the spec
+  including `filter` sections, even though a filter emits nothing at its own
+  position: the control it emits above its first subscriber may be exactly what
+  renders between two charts. `needsWidth(section, rows)` decides a chart's span
+  from its own data — a temporal x axis (`isTemporalAxis`, mirrored from
+  flint-chart's inference so the decision matches what gets DRAWN), more than
+  eight distinct categories, or more than four series; a pie never needs it. Two
+  adjacent narrow charts pair into `${id}_box` wrappers at span 12 (unless a
+  filter anchors on the SECOND of them, which would break the wrap line they were
+  paired for); an unpaired narrow chart is promoted to span 24. KPI runs take
+  `filterSpans(n, KPIS_PER_ROW)` so every wrap line is exactly full. The input is
+  the FIRST, UNFILTERED resolve: its rows are a superset of anything a filter can
+  narrow them to, so a chart wide enough for all of them stays wide enough for a
+  subset — a filter that gained a resolve-time DEFAULT would break that
+  assumption and the derivation input would have to be revisited.
+- **Every section but markdown renders inside a card** (`sectionCard`,
+  `${id}_card`). The span rides on the CARD, not on the block inside it: the card
+  is what the layout places, and a span in both would be two sources for one
+  decision. Inside a `${id}_box` the card re-bases against the wrapper
+  (`--lf-span` does not inherit), so it fills the half-width line rather than
+  taking half of it again. `Card` and `Box` are both in `report.yaml`'s `Dynamic`
+  `properties.types.blocks` — `compileReport.declared.test.js` is the drift guard
+  that keeps that list honest, because one missed type blanks the WHOLE report.
+- **A `download` run compiles to one card, not one block per section**
+  (`downloadsCard`, `${firstSection.id}_downloads`): a titled _Downloads_ card at
+  span 24 with the run's buttons inside it at `filterSpans(n)`. It bypasses
+  `sectionBlocks` entirely in the emit loop, and the run leads as ONE gap group —
+  the same reason a kpi run does.
 - KPI → `Statistic` (L1005), with separators resolved at compile time via
   `Intl.NumberFormat.formatToParts` (`intlSeparators`, L277) so the native
   Statistic formatting matches the table's runtime `_intl` output.
@@ -407,17 +454,30 @@ old pooled filter row required is gone.
   drives: stamped on the heading instead, a control sat one small row gap under
   the _previous_ section and a full `SECTION_TOP_GAP` above its own.
 - Each filter's control is emitted once, immediately above the first section (in
-  spec order) whose `filterBy` names its field (L828-857) — not pooled in a top
-  row. A filter driving more than one section names the others in its label's
-  `extra` — the muted `.ant-form-item-extra` line **under** the control, not
-  appended to the title (`filterControlBlock`, L615-670). Inline, a filter naming
-  three sections wrapped its title over two lines and pushed its input out of
-  alignment with the control beside it. A filter bound to one section gets no
-  `extra` at all, so nothing renders. The options-truncation note (`— first N`)
-  stays on the **title**: it says what the control offers, where the scope note
-  says what it moves. All three control types spread `properties.label` into
-  their `Label` wrapper, so one shape covers `Selector`, `MultipleSelector` and
-  `DateRangeSelector`.
+  spec order) whose `filterBy` names its field — not pooled in a top row. All
+  three control types spread `properties.label` into their `Label` wrapper, so one
+  shape covers `Selector`, `MultipleSelector` and `DateRangeSelector`. The
+  options-truncation note (`— first N`) sits on the **title**: it says what the
+  control offers, where the scope note says what it moves.
+- A filter group closes on **one** line, not one line per control
+  (`filterGroupFooter`). Four filters over six sections rendered four identical
+  three-line notes — more vertical space than any chart on the page — for the
+  same sentence four times. `sharedScopeKey` picks the bound-section set the
+  group states once (`Also filters: …`, a muted `Paragraph`): the most common set
+  wins and its controls drop their own note, a control whose set differs keeps
+  one in its label's `extra` because a shared line cannot speak for it, and
+  nothing wins when every set is distinct. A group of one shares with itself, so
+  scope is written in one place at every group size; where position answers for
+  every control (`boundSections.length < 2`), there is no note and the closing
+  line is the Reset alone.
+- **Reset clears state and stops there** — it fires no query. Every section
+  binding is an `__if_none` over its state key and the value the first,
+  unfiltered resolve inlined, so clearing the key IS the unfiltered data as of
+  the timestamp the header states, which a fresh query would silently move. It
+  takes `RESET_SPAN` (4) at the end of the closing line, leaving the rest to the
+  shared note — the same 20/4 split a section's head row uses, and for the same
+  reason: an action shrunk to its content needs a cell to be pushed to the right
+  of, not a share of the width.
 - Controls anchored above the **same** section share a row, at most
   `FILTERS_PER_ROW` (3) of them, and `filterSpans` distributes the group so every
   wrap line it occupies is exactly full — four controls are two rows of two, not

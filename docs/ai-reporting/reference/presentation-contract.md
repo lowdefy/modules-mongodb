@@ -3,7 +3,15 @@ title: The presentation contract
 module: ai-reporting
 type: reference
 concepts:
-  [presentation-contract, charts, kpi, tables, number-format, filter-binding]
+  [
+    presentation-contract,
+    charts,
+    kpi,
+    tables,
+    number-format,
+    filter-binding,
+    derived-layout,
+  ]
 ---
 
 # The presentation contract
@@ -57,6 +65,38 @@ format:
 
 The agent copies these from the catalog's per-field [display hints](catalog.md#display-hints-are-prompt-material-not-enforcement) so a field formats the same everywhere it appears. When a descriptor omits a field, the renderer defaults to `en-US` / `USD` / 2 decimals. Only the shape is validated — formatting is applied at compile time, never enforced against the data.
 
+## Layout is derived, not authored
+
+A spec carries no widths, no card boundaries and no row breaks — there is no layout vocabulary to author. Placement is derived at **every open**, from three things and nothing else: the section's `type`, its position among adjacent sections of the same type, and the shape of the rows that open's queries returned. None of it is stored, so a report follows its data as that grows rather than keeping the shape the data had the day it was saved.
+
+**Section order is the only channel an author has into layout.** Two charts placed next to each other may pair onto one line; the same two with a section of any other type between them will not. Adjacency is read off the spec exactly as written — a `markdown` section between two charts separates their runs, and so does a `filter`, whose control may be exactly what renders between them.
+
+| A run of…                                | renders as                                                                                                           |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `kpi` × n                                | One row of tiles, at most four to a line, balanced so every line is full — five tiles are 3 + 2, not 4 + 1           |
+| `chart` needing width                    | Full width, one to a line                                                                                            |
+| two adjacent narrow charts               | A pair, half the width each, side by side                                                                            |
+| a narrow chart with nothing to pair with | Promoted to full width — never half a line beside an empty half                                                      |
+| `table`                                  | Always full width; columns flex to fill it, whatever the column count                                                |
+| `download` × n                           | **One** card titled _Downloads_, with a button per section                                                           |
+| `markdown`                               | Full width, and the one section type with **no** card — prose narrates between the panels rather than sitting in one |
+
+Every other section renders in a card, with its label above it.
+
+**A chart needs the full width when its own rows say so** — when the `x` column reads as temporal (dates, `2026-01`-style month strings), when it has more than eight distinct categories, or when it carries more than four `y` series. Past those, half a column stops working: a ninth category label tilts and then collides with its neighbours, and a fifth series funds a legend wider than the plot left beside it. A **pie** never needs the width, however many rows it summarises — it has no axis to label and fills whatever square it is given, so a pie is always a candidate to pair.
+
+A section that failed to resolve reads as needing the width too: its Alert has no business sitting in a half-column hole.
+
+### Pies cap at seven slices
+
+A pie over more than seven rows draws the **top six by value** and folds everything after them into a single `Other`. Past seven, slices are thinner than their own labels and the picture stops being a summary. `Other` is painted a neutral grey and is deliberately **outside** the palette — an aggregate wearing an identity hue reads as one more entity beside the six it stands in for.
+
+### Colours are report-scoped
+
+A series or slice **name** wears one hue across every section of the report that names it: a category is the same colour in the pie and in the stacked bar beside it. The map is decided over the first, unfiltered resolve, so a filter that changes a chart's ranking cannot repaint the series that survive. Eight names get that cross-section stability; names past the eighth are coloured per chart from the slots that chart left unused, so no chart ever repeats a hue within itself. Charts also share one typographic and axis theme, so two charts in one report look like two views of one report.
+
+Nothing here is derived from the consuming app's `colorPrimary`: these are data marks, and a brand hue is not a data hue.
+
 ## Verification against actual rows
 
 Because the contract can't be checked statically, it is verified once rows are in hand — at turn end for chat charts, and at report-view time for KPI/chart/table sections:
@@ -84,6 +124,15 @@ A saved report can carry `filter` sections that other sections subscribe to via 
 `match` only makes sense on `multiselect`; `all` is meant for a field that holds an **array** (every selected value must appear in it). The engine doesn't check the catalog's declared field `type` before choosing the op — catalog types are prompt material for the agent, never enforcement — so `all` on a scalar field is not rejected; it just behaves like "the field equals one of the values, and you happened to pick one," since a scalar can't contain more than one of them at once.
 
 **An empty multi-select means no constraint**, not "match nothing": clearing the control widens the bound sections back to their unfiltered rows, the same as never touching the control at all.
+
+### What a filter group renders
+
+A control does not sit in a top row. It compiles **inline, directly above the first section (in spec order) that subscribes to it** — so a report over three collections shows three groups of controls, each next to what it scopes. Controls anchored above the **same** section share a row, at most three of them, and their widths are balanced so every line the group takes is full.
+
+Each group closes on one line of its own:
+
+- **One shared scope note.** Where the group's controls drive the same set of sections, that scope is stated **once** — `Also filters: {the sections beyond the one the group sits above}` — rather than once per control. A control whose set differs keeps a note of its own beside the shared line, because a shared line cannot speak for it. Where position already answers for every control (each drives only the section it sits above), there is no note at all.
+- **A Reset.** It clears the group's controls and returns the sections they drive to the values the report opened with. It runs no query: every bound section falls back to the rows the first resolve inlined, so Reset restores the report **as of the timestamp the header states** rather than as of now — which a fresh query would silently move.
 
 ### Options: three sources, in precedence order
 

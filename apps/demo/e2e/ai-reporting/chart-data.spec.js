@@ -131,6 +131,69 @@ test("the report colour map reaches assembly and outranks series order", async (
   expect(hues).toEqual({ Revenue: "#eb6834", Units: "#2a78d6" });
 });
 
+// The pie slice cap, through the real endpoint. A pie is the one chart whose
+// mark colours travel down `option.color` BY INDEX rather than on the series, and
+// the capped aggregate is the one mark that has to sit outside the palette — so
+// what actually gets drawn is only observable in the assembled option, and only
+// the endpoint assembles it.
+test("a pie past the slice cap draws six slices and a neutral Other", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  // Nine categories with descending revenue, so the six kept are unambiguous and
+  // the tail is everything after them.
+  await mdb.seed(
+    "demo_orders",
+    Array.from({ length: 9 }, (_, index) => ({
+      _id: `p${index}`,
+      region: "EU",
+      category: `Cat ${index + 1}`,
+      total: (9 - index) * 100,
+      quantity: 1,
+    })),
+  );
+  await ldf.user(USER_A);
+
+  const result = await callEndpoint(page, "chart-data", {
+    chart: "pie",
+    title: "Revenue share by category",
+    x: "category",
+    y: ["revenue"],
+    query: {
+      collection: "demo_orders",
+      pipeline: [
+        { $group: { _id: "$category", revenue: { $sum: "$total" } } },
+        { $project: { _id: 0, category: "$_id", revenue: 1 } },
+        { $sort: { revenue: -1 } },
+      ],
+    },
+    // The identity map covers a kept slice and names the aggregate too — the
+    // aggregate must ignore it, or an "Other" wearing an identity hue reads as a
+    // seventh entity beside the six it stands in for.
+    colors: { "Cat 1": "#1baf7a", Other: "#eb6834" },
+  });
+  expect(result.body?.success).toBe(true);
+
+  const { data } = result.response.option.series[0];
+  expect(data).toHaveLength(7);
+  const names = data.map((datum) => datum.name);
+  expect(names.slice(0, 6)).toEqual([
+    "Cat 1",
+    "Cat 2",
+    "Cat 3",
+    "Cat 4",
+    "Cat 5",
+    "Cat 6",
+  ]);
+  expect(names[6]).toBe("Other");
+  // The tail of three: 300 + 200 + 100.
+  expect(data[6].value).toBe(600);
+  expect(data[6].itemStyle.color).toBe("#8c8c8c");
+  // A kept slice reads its hue out of the map, by its index in option.color.
+  expect(result.response.option.color[names.indexOf("Cat 1")]).toBe("#1baf7a");
+});
+
 test("stacked on a non-bar chart is rejected by spec validation", async ({
   ldf,
   page,
