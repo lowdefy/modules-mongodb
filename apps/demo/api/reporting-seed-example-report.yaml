@@ -22,12 +22,15 @@
 #     only to sections that count DOCUMENTS (activities, contacts) rather than
 #     unwinding the filtered array;
 #   - filter co-location: each control compiles inline directly above the first
-#     section it drives (not into a shared top row), and when it drives more than
-#     one section a muted "Also filters: …" note renders under the control naming
-#     the others (the label's `extra`, not a suffix on the title). So the
-#     Region and Created controls sit above the orders sections, the two activity
-#     filters above the activities sections, and the contacts filter above the
-#     contacts sections — three visible groups, each next to what it scopes.
+#     section it drives (not into a shared top row). So the Region and Created
+#     controls sit above the orders sections, the two activity filters above the
+#     activities sections, and the contacts filter above the contacts sections —
+#     three visible groups, each next to what it scopes;
+#   - the filter bar each group closes on: the controls of all three groups drive
+#     identical section sets, so each group states its scope ONCE in a muted
+#     "Also filters: …" line under its controls rather than once per control, and
+#     each carries a Reset that returns the sections it drives to the report as
+#     it opened;
 #   - a currency-formatted KPI and table column sourced from the catalog's
 #     demo_orders.total display hint (format: currency USD);
 #   - a pipeline-backed bar chart with an x/y presentation contract;

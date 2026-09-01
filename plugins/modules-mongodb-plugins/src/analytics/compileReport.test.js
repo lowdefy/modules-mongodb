@@ -239,10 +239,13 @@ test("compiles the full report to blocks", () => {
 
   // Filter control: rendered inline directly above its one bound section (s3,
   // the table), options from catalog values. No report_filters Box exists, and
-  // a single-bound filter carries no scope label — its position says it all.
+  // a single-bound filter has no scope to state — its position says it all — so
+  // the group closes on its Reset alone, between the control and the section.
   expect(byId.report_filters).toBeUndefined();
   const idx = (id) => blocks.findIndex((b) => b.id === id);
-  expect(idx("filter_status")).toBe(idx("s3_heading") - 1);
+  expect(byId.filters_s3_scope).toBeUndefined();
+  expect(idx("filter_status")).toBe(idx("filters_s3_reset") - 1);
+  expect(idx("filters_s3_reset")).toBe(idx("s3_heading") - 1);
   const filter = byId.filter_status;
   expect(filter.type).toBe("Selector");
   expect(filter.layout).toEqual({ span: 24 });
@@ -1677,17 +1680,32 @@ describe("filter placement", () => {
     const byId = byIdOf(blocks);
     const idx = idxIn(blocks);
     // status drives the kpi (s0); region drives the table (s3). Each sits
-    // directly above its own group, neither divorced at the top.
+    // directly above its own group, neither divorced at the top, and each group
+    // closes on its own Reset before the section it leads.
     expect(byId.report_filters).toBeUndefined();
-    expect(idx("filter_status")).toBe(idx("s0_card") - 1);
-    expect(idx("filter_region")).toBe(idx("s3_heading") - 1);
+    expect(idx("filter_status")).toBe(idx("filters_s0_reset") - 1);
+    expect(idx("filters_s0_reset")).toBe(idx("s0_card") - 1);
+    expect(idx("filter_region")).toBe(idx("filters_s3_reset") - 1);
+    expect(idx("filters_s3_reset")).toBe(idx("s3_heading") - 1);
     expect(idx("filter_status")).toBeGreaterThan(idx("report_title"));
-    // Single-bound: position carries it, so no scope label.
+    // Single-bound: position carries it, so no scope note in either place.
     expect(byId.filter_status.properties.title).toBe("Status");
     expect(byId.filter_region.properties.title).toBe("Region");
+    expect(byId.filter_status.properties.label).toBeUndefined();
+    expect(byId.filter_region.properties.label).toBeUndefined();
+    // Reset is per group too: a group clears its own filter and the sections it
+    // drives, and nothing of the group beside it.
+    expect(byId.filters_s0_reset.events.onClick[0].params).toEqual({
+      filter_status: null,
+      "sections.s0.rows": null,
+    });
+    expect(byId.filters_s3_reset.events.onClick[0].params).toEqual({
+      filter_region: null,
+      "sections.s3.rows": null,
+    });
   });
 
-  test("a filter bound to more than one section renders once above the first, labelled with the others", () => {
+  test("a filter bound to more than one section renders once above the first, its scope stated under the group", () => {
     const spec = {
       title: "T",
       sections: [
@@ -1719,15 +1737,21 @@ describe("filter placement", () => {
     const byId = byIdOf(blocks);
     const idx = idxIn(blocks);
     // ids: s0 filter, s1 kpi, s2 table. Bound to both — emitted exactly once,
-    // above the first subscriber (the kpi), and labelled with the other (table).
+    // above the first subscriber (the kpi), with the group's closing line
+    // between it and that section.
     expect(blocks.filter((b) => b.id === "filter_status")).toHaveLength(1);
-    expect(idx("filter_status")).toBe(idx("s1_card") - 1);
-    // The scope note is the label's `extra` — under the control — and the title
-    // stays the plain label, so a filter naming several sections cannot wrap its
-    // title and push its input out of line with the control beside it.
+    expect(idx("filter_status")).toBe(idx("filters_s1_scope") - 1);
+    expect(idx("filters_s1_reset")).toBe(idx("s1_card") - 1);
+    // The scope is stated once under the group rather than on the control, in a
+    // muted line of its own. The title stays the plain label either way, so a
+    // filter naming several sections cannot wrap its title and push its input
+    // out of line with the control beside it. A group of one states its scope
+    // the way a group of four does: one place to read it at every group size.
     expect(byId.filter_status.properties.title).toBe("Status");
-    expect(byId.filter_status.properties.label).toEqual({
-      extra: "Also filters: Orders",
+    expect(byId.filter_status.properties.label).toBeUndefined();
+    expect(byId.filters_s1_scope).toMatchObject({
+      type: "Paragraph",
+      properties: { content: "Also filters: Orders", type: "secondary" },
     });
   });
 
@@ -1760,8 +1784,9 @@ describe("filter placement", () => {
     expect(control.properties.label).toBeUndefined();
   });
 
-  // The truncation note stays on the title while the scope note sits in extra:
-  // one says what this control offers, the other what it moves.
+  // The truncation note stays on the control's title while the scope goes to the
+  // group's line: one says what this control offers, the other what the group
+  // moves. Two different subjects, so they cannot share a place.
   test("a truncated options list and a scope note occupy different places", () => {
     const rows = Array.from(
       { length: MAX_QUERY_FILTER_OPTIONS + 1 },
@@ -1809,11 +1834,15 @@ describe("filter placement", () => {
       endpointId,
       chartEndpointId,
     });
-    const control = blocks.find((b) => b.id === "filter_company_id");
+    const byId = byIdOf(blocks);
+    const control = byId.filter_company_id;
     expect(control.properties.title).toBe(
       `Companies — first ${MAX_QUERY_FILTER_OPTIONS}`,
     );
-    expect(control.properties.label).toEqual({ extra: "Also filters: Orders" });
+    expect(control.properties.label).toBeUndefined();
+    expect(byId.filters_s1_scope.properties.content).toBe(
+      "Also filters: Orders",
+    );
   });
 
   // A filter with no first subscriber has no position to occupy. The old top row
@@ -2026,6 +2055,207 @@ describe("filter placement", () => {
       expect(byId.s0.type).toBe("Alert");
       expect(byId.s0.layout.span).toBe(12);
       expect(byId.filter_status.layout.span).toBe(12);
+    });
+  });
+
+  // What closes a filter group: the scope its controls share, said once, and a
+  // Reset that puts the sections they drive back to the report as it opened. Both
+  // belong to the GROUP — one sentence and one button however many controls it
+  // holds — which is the whole of why they exist: four filters over six sections
+  // rendered the same three-line note four times, more vertical space than any
+  // chart on the page.
+  describe("a filter group's closing line", () => {
+    const select = (field) => ({
+      type: "filter",
+      control: "select",
+      field,
+      label: field,
+    });
+    const kpi = (label, filterBy) => ({
+      type: "kpi",
+      label,
+      query: orderTotal,
+      valueKey: "total",
+      filterBy,
+    });
+    const table = (label, filterBy) => ({
+      type: "table",
+      label,
+      query: ordersByRegion,
+      columns: [{ key: "region" }],
+      filterBy,
+    });
+    const chart = (label, filterBy) => ({
+      type: "chart",
+      chart: "bar",
+      label,
+      query: ordersByRegion,
+      x: "region",
+      y: ["total"],
+      filterBy,
+    });
+    const compile = (sections, results) =>
+      byIdOf(
+        compileReport({
+          spec: { title: "T", sections },
+          results,
+          catalog: testCatalog,
+          roles,
+          endpointId,
+          chartEndpointId,
+        }),
+      );
+    const notes = (byId, fields) =>
+      fields.map((field) => byId[`filter_${field}`].properties.label);
+
+    // Every control drives the same two sections, so every per-control note
+    // would have read identically. One line says it for all of them.
+    test("filters over the same sections state their scope once, not per control", () => {
+      const byId = compile(
+        [
+          select("status"),
+          select("region"),
+          kpi("Revenue", ["status", "region"]),
+          table("Orders", ["status", "region"]),
+        ],
+        [[{ total: 5 }], tableRows],
+      );
+      expect(notes(byId, ["status", "region"])).toEqual([undefined, undefined]);
+      expect(byId.filters_s2_scope.type).toBe("Paragraph");
+      expect(byId.filters_s2_scope.properties).toEqual({
+        content: "Also filters: Orders",
+        type: "secondary",
+      });
+    });
+
+    // The most common set gets the line; the odd one out cannot be spoken for by
+    // it, so it keeps a note of its own — and only it does.
+    test("a control whose scope differs from its group's keeps its own note", () => {
+      const byId = compile(
+        [
+          select("status"),
+          select("region"),
+          select("category"),
+          kpi("Revenue", ["status", "region", "category"]),
+          table("Orders", ["status", "region"]),
+          table("Regions", ["category"]),
+        ],
+        [[{ total: 5 }], tableRows, tableRows],
+      );
+      expect(byId.filters_s3_scope.properties.content).toBe(
+        "Also filters: Orders",
+      );
+      expect(notes(byId, ["status", "region", "category"])).toEqual([
+        undefined,
+        undefined,
+        { extra: "Also filters: Regions" },
+      ]);
+    });
+
+    // No set is more common than any other, so there is nothing for a shared
+    // line to say: n distinct scopes are already shortest as n notes.
+    test("all scopes distinct keeps every per-control note and states none", () => {
+      const byId = compile(
+        [
+          select("status"),
+          select("region"),
+          kpi("Revenue", ["status", "region"]),
+          table("Orders", ["status"]),
+          table("Regions", ["region"]),
+        ],
+        [[{ total: 5 }], tableRows, tableRows],
+      );
+      expect(byId.filters_s2_scope).toBeUndefined();
+      expect(notes(byId, ["status", "region"])).toEqual([
+        { extra: "Also filters: Orders" },
+        { extra: "Also filters: Regions" },
+      ]);
+    });
+
+    // Reset clears every key a filter change can have written — the group's own
+    // control keys, and the section keys per type — which is what makes clearing
+    // enough on its own: each section binding falls back to the value the first,
+    // unfiltered resolve inlined, so an empty key IS the unfiltered data.
+    test("Reset clears the group's filter keys and every bound section's keys", () => {
+      const byId = compile(
+        [
+          select("status"),
+          select("region"),
+          kpi("Revenue", ["status", "region"]),
+          chart("By region", ["region"]),
+          table("Orders", ["status"]),
+        ],
+        [[{ total: 5 }], tableRows, tableRows],
+      );
+      const [reset] = byId.filters_s2_reset.events.onClick;
+      expect(byId.filters_s2_reset.type).toBe("Button");
+      expect(byId.filters_s2_reset.properties.title).toBe("Reset");
+      expect(reset.type).toBe("SetState");
+      // The union of what the group's filters drive, wider than any one
+      // control's: status alone would leave the chart showing filtered data.
+      expect(reset.params).toEqual({
+        filter_status: null,
+        filter_region: null,
+        "sections.s2.rows": null,
+        "sections.s3.option": null,
+        "sections.s3.height": null,
+        "sections.s4.rows": null,
+      });
+      // The invariant behind those keys, asserted against the re-query that
+      // writes them: a key a filter change can write and Reset does not clear is
+      // a section still showing filtered data after a Reset.
+      const written = new Set();
+      for (const field of ["status", "region"]) {
+        for (const action of byId[`filter_${field}`].events.onChange) {
+          if (action.type === "SetState") {
+            Object.keys(action.params).forEach((key) => written.add(key));
+          }
+        }
+      }
+      expect(new Set(Object.keys(reset.params))).toEqual(
+        new Set([...written, "filter_status", "filter_region"]),
+      );
+    });
+
+    // The arithmetic filterSpans exists for, applied to what follows the
+    // controls: a ragged closing line leaves columns the next section flows up
+    // into, which is how filters and KPIs came to share a line.
+    test("the closing line fills exactly 24 columns, with or without a scope line", () => {
+      const both = compile(
+        [
+          select("status"),
+          select("region"),
+          kpi("Revenue", ["status", "region"]),
+          table("Orders", ["status", "region"]),
+        ],
+        [[{ total: 5 }], tableRows],
+      );
+      expect(both.filters_s2_scope.layout.span).toBe(20);
+      expect(both.filters_s2_reset.layout.span).toBe(4);
+      expect(
+        both.filters_s2_scope.layout.span + both.filters_s2_reset.layout.span,
+      ).toBe(24);
+
+      // Nothing to state, so Reset takes the whole line rather than a quarter of
+      // it and leaving three quarters open.
+      const alone = compile(
+        [select("status"), kpi("Revenue", ["status"])],
+        [[{ total: 5 }]],
+      );
+      expect(alone.filters_s1_scope).toBeUndefined();
+      expect(alone.filters_s1_reset.layout.span).toBe(24);
+    });
+
+    // Nothing to put back: the section the group drives failed its resolve, so
+    // it renders an Alert that reads no state at all.
+    test("no Reset when the group's filters bind nothing that resolved", () => {
+      const byId = compile(
+        [select("status"), kpi("Revenue", ["status"])],
+        [null],
+      );
+      expect(byId.s1.type).toBe("Alert");
+      expect(byId.filters_s1_reset).toBeUndefined();
+      expect(byId.filter_status.layout.span).toBe(24);
     });
   });
 

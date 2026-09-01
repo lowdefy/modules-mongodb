@@ -243,6 +243,12 @@ const FILTERS_PER_ROW = 3;
 // its selection does not.
 const KPIS_PER_ROW = 4;
 
+// The cell a filter group's Reset takes at the end of its closing line, leaving
+// the rest to the shared scope note. The same 20/4 split a section's head row
+// uses for its heading and its ⤓, for the same reason: an action shrunk to its
+// content needs a cell to be pushed to the right of, not a share of the width.
+const RESET_SPAN = 4;
+
 // One span per block in the group, distributed so EVERY wrap line the group
 // occupies is exactly full. A ragged trailing line is not cosmetic here: all
 // compiled blocks are siblings in one wrapping flex area, so the 16 columns left
@@ -1205,12 +1211,124 @@ export function assignReportColors({ sections, results }) {
   return Object.fromEntries(assigned);
 }
 
+// The sections a filter moves BEYOND the one it sits above — position answers
+// for that one. Undefined when position answers for all of them: an empty note
+// would still reserve the line under the control.
+function scopeNote(boundSections) {
+  if (boundSections.length < 2) return undefined;
+  return `Also filters: ${boundSections
+    .slice(1)
+    .map((s) => s.label)
+    .join(", ")}`;
+}
+
+// A filter's bound-section set, as a comparable key. Every filter in a group
+// shares its first subscriber — that is what grouped them — so the sets differ
+// only past the anchor, and two filters driving the same sections key alike
+// because boundSections is always read off the spec in spec order.
+function scopeKey(boundSections) {
+  return boundSections.map((s) => s.id).join("\u0000");
+}
+
+// Which bound-section set, if any, a filter group states ONCE under its controls
+// rather than once per control. Four filters over six sections rendered four
+// identical three-line notes — more vertical space than any chart on the page —
+// for the same sentence four times.
+//
+// The most common set wins and its controls drop their own note; a control whose
+// set differs keeps one, because a shared line cannot speak for it. Nothing wins
+// when every set is distinct: n notes are already the shortest way to say n
+// different scopes. A group of one shares with itself, so a lone filter's note
+// becomes the line too — scope is written in one place at every group size.
+function sharedScopeKey(group) {
+  const counts = new Map();
+  for (const { boundSections } of group) {
+    const key = scopeKey(boundSections);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  let winner = null;
+  for (const [key, count] of counts) {
+    if (winner === null || count > counts.get(winner)) winner = key;
+  }
+  if (winner === null) return null;
+  const count = counts.get(winner);
+  return count === group.length || count > 1 ? winner : null;
+}
+
+// Reset clears state and stops there. It does not re-query: every section
+// binding is an __if_none over its state key and the value the first, unfiltered
+// resolve inlined, so clearing the key IS the unfiltered data — and it is that
+// data exactly, as of the timestamp the header's "Data as of" line states, which
+// a fresh unfiltered query would silently move on.
+//
+// The section keys are the ones a re-query WOULD have written, per type, since
+// those are the only ones a filter change can leave behind. They have to be
+// cleared here rather than left to the controls: SetState fires no onChange, so
+// emptying a control does not run its own re-query.
+function filterResetAction(anchorId, group, boundUnion) {
+  const params = {};
+  for (const { filter } of group) params[filterStateKey(filter.field)] = null;
+  for (const section of boundUnion) {
+    if (section.type === "chart") {
+      params[`sections.${section.id}.option`] = null;
+      params[`sections.${section.id}.height`] = null;
+    } else {
+      params[`sections.${section.id}.rows`] = null;
+    }
+  }
+  return { id: `reset_${anchorId}`, type: "SetState", params };
+}
+
+// What closes a filter group: the scope its controls share, said once, and the
+// Reset that puts every section they drive back to the report as it opened.
+//
+// The spans are arithmetic, not decoration. filterSpans fills the controls' wrap
+// lines exactly because leftover columns are columns the next section flows up
+// into — so whatever follows the controls has to fill a line too. These two
+// share one, 20 + 4, and whichever of them is alone takes all 24. Reset shrinks
+// to its content and pushes right inside its cell, so it lands at the end of the
+// group's last line at either span.
+function filterGroupFooter({
+  anchorId,
+  group,
+  boundUnion,
+  note,
+  rowsBySectionId,
+}) {
+  // Nothing to put back: every section these filters drive failed its resolve,
+  // so each renders an Alert that reads no state and would re-query on no
+  // change. The controls degrade the same way when their options cannot be
+  // sourced, and a Reset for a report with nothing to reset is a dead control.
+  const resettable = boundUnion.some(
+    (section) => rowsBySectionId.get(section.id) != null,
+  );
+  const blocks = [];
+  if (note) {
+    blocks.push({
+      id: `filters_${anchorId}_scope`,
+      type: "Paragraph",
+      layout: { span: resettable ? GRID_COLUMNS - RESET_SPAN : GRID_COLUMNS },
+      properties: { content: note, type: "secondary" },
+    });
+  }
+  if (resettable) {
+    blocks.push({
+      id: `filters_${anchorId}_reset`,
+      type: "Button",
+      layout: { span: note ? RESET_SPAN : GRID_COLUMNS },
+      style: RIGHT_IN_CELL,
+      properties: { title: "Reset", type: "text", size: "small" },
+      events: { onClick: [filterResetAction(anchorId, group, boundUnion)] },
+    });
+  }
+  return blocks;
+}
+
 // A filter's control block, built once and placed above the first section it
 // drives (its position answers "what does this move"). Construction is identical
 // to any placement: a DateRangeSelector, a Selector/MultipleSelector sourced via
 // filterOptions, or — when no usable options exist — the same Alert a broken
-// section renders. When the filter drives more than one section it sits above
-// only the first, so it names the others; bound to one, position says it.
+// section renders.
 function filterControlBlock({
   section,
   boundSections,
@@ -1224,6 +1342,7 @@ function filterControlBlock({
   colors,
   spanBySection,
   span,
+  showScope,
 }) {
   const onChange = requeryActions({
     boundSections,
@@ -1233,23 +1352,18 @@ function filterControlBlock({
     colors,
     spanBySection,
   });
-  // The scope note goes in the label's `extra` — rendered under the control, in
-  // the muted `.ant-form-item-extra` line — rather than appended to the title.
-  // Inline, a filter naming three other sections wrapped its title over two
-  // lines and pushed its input out of alignment with the control beside it,
-  // which is worse now that filters share a row. It is also secondary
-  // information: the label answers "what is this", the note "what else does it
-  // move". Undefined when the filter drives one section, and `showExtra` is
-  // false for an absent extra, so nothing renders. All three control types
-  // spread `properties.label` into their Label wrapper, so this reaches the same
-  // place on each.
-  const scopeExtra =
-    boundSections.length > 1
-      ? `Also filters: ${boundSections
-          .slice(1)
-          .map((s) => s.label)
-          .join(", ")}`
-      : undefined;
+  // A note only this control needs — its scope differs from the one its group
+  // states below, or it is the only thing that would say it. It goes in the
+  // label's `extra`, rendered under the control in the muted
+  // `.ant-form-item-extra` line, rather than appended to the title: inline, a
+  // filter naming three other sections wrapped its title over two lines and
+  // pushed its input out of alignment with the control beside it. It is also
+  // secondary information — the label answers "what is this", the note "what
+  // else does it move". `showExtra` is false for an absent extra, so nothing
+  // renders when there is nothing to say. All three control types spread
+  // `properties.label` into their Label wrapper, so this reaches the same place
+  // on each.
+  const scopeExtra = showScope ? scopeNote(boundSections) : undefined;
   const label = scopeExtra ? { extra: scopeExtra } : undefined;
 
   // The span is the group's, not 24: controls anchored above the same section
@@ -1743,25 +1857,46 @@ function compileReport({
 
   for (const [anchorId, group] of filtersByFirstSubscriber) {
     const spans = filterSpans(group.length);
-    filtersByFirstSubscriber.set(
-      anchorId,
-      group.map(({ filter, boundSections }, index) =>
-        filterControlBlock({
-          section: filter,
-          boundSections,
-          sections,
-          catalog,
-          roles,
-          rows: rowsBySectionId.get(filter.id),
-          endpointId,
-          chartEndpointId,
-          filterSectionsByField,
-          colors,
-          spanBySection,
-          span: spans[index],
-        }),
-      ),
+    // Decided once for the whole group: which scope the closing line states, and
+    // therefore which controls have nothing of their own left to say.
+    const sharedKey = sharedScopeKey(group);
+    const shared = group.find(
+      ({ boundSections }) => scopeKey(boundSections) === sharedKey,
     );
+    const sharedNote = shared ? scopeNote(shared.boundSections) : undefined;
+    // Every section any filter in the group drives, in spec order — what Reset
+    // has to put back, which is wider than any one control's bound set.
+    const fields = new Set(group.map(({ filter }) => filter.field));
+    const boundUnion = sections.filter((section) =>
+      (section.filterBy ?? []).some((field) => fields.has(field)),
+    );
+    const blocks = group.map(({ filter, boundSections }, index) =>
+      filterControlBlock({
+        section: filter,
+        boundSections,
+        sections,
+        catalog,
+        roles,
+        rows: rowsBySectionId.get(filter.id),
+        endpointId,
+        chartEndpointId,
+        filterSectionsByField,
+        colors,
+        spanBySection,
+        span: spans[index],
+        showScope: scopeKey(boundSections) !== sharedKey,
+      }),
+    );
+    blocks.push(
+      ...filterGroupFooter({
+        anchorId,
+        group,
+        boundUnion,
+        note: sharedNote,
+        rowsBySectionId,
+      }),
+    );
+    filtersByFirstSubscriber.set(anchorId, blocks);
   }
 
   // One section's own blocks, returned rather than pushed so the caller can

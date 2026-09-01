@@ -264,9 +264,11 @@ const PAIRED_CHART_SECTIONS = [
 ];
 
 // A filter over one bound KPI — the smallest report that proves the re-query
-// path: select a type, the KPI's count narrows. The KPI query counts every
-// activity; the bound filter prepends a `$match` on `type`, so the count drops
-// from the three seeded activities to the two of the chosen type.
+// path, and the round trip back: select a type and the KPI's count narrows,
+// Reset and it returns. The KPI query counts every activity; the bound filter
+// prepends a `$match` on `type`, so the count drops from the three seeded
+// activities to the two of the chosen type. One filter over one section, so the
+// group states no scope — its closing line is the Reset alone.
 const FILTER_KPI_SECTIONS = [
   {
     id: "s0",
@@ -295,7 +297,7 @@ test.describe("report page render", () => {
     await mdb.seed("demo_activities", ACTIVITIES);
   });
 
-  test("changing a filter re-queries and updates the section it drives", async ({
+  test("changing a filter re-queries the section it drives, and Reset returns it", async ({
     ldf,
     page,
     mdb,
@@ -327,6 +329,20 @@ test.describe("report page render", () => {
     // the type value; "call" is unique on the page while the menu is open.
     await page.getByText("call", { exact: true }).click();
     await expect(kpiValue).toHaveText("2");
+
+    // Reset clears state and stops there — no second query. Every section
+    // binding is an `_if_none` over its state key and the value the FIRST,
+    // unfiltered resolve inlined, so an empty key is the unfiltered data as of
+    // the timestamp the header states, which a fresh query would silently move.
+    // The claim is therefore about both halves at once: the number goes back to
+    // the three seeded activities, and the control it came from goes back to
+    // empty — a Reset that left "call" standing beside a count of 3 would read
+    // as a broken filter rather than a cleared one.
+    const selection = page.locator(".ant-select-selection-item");
+    await expect(selection).toHaveText("call");
+    await page.getByRole("button", { name: "Reset" }).click();
+    await expect(kpiValue).toHaveText("3");
+    await expect(selection).toHaveCount(0);
   });
 
   test("a broken section shows the owner recoveries; a non-owner sees only the alert", async ({
@@ -442,13 +458,13 @@ test.describe("report page render", () => {
     await ldf.goto("/ai-reporting/report?report_id=e2e-two-groups");
     await expect(page.getByText("Report not found")).toBeHidden();
 
-    // Each control names its own scope, and because each drives more than one
-    // section it also carries a scope note. The note is the label's `extra` —
-    // a separate muted line under the control, NOT a parenthetical appended to
-    // the title (appending it wrapped the title and pushed the input out of
-    // alignment with the control beside it in the row). It names the sections
-    // beyond the one the control is anchored above, so each filter names the
-    // second of its two.
+    // Each control names itself, and each group states its scope once in a muted
+    // line under its controls — NOT as a parenthetical appended to the title
+    // (appending it wrapped the title and pushed the input out of alignment with
+    // the control beside it in the row). The line names the sections beyond the
+    // one the group is anchored above, so each of these single-control groups
+    // names the second of its two. Each group also closes on a Reset, so both
+    // are on the page at once, one per group.
     await expect(
       page.getByText("Activity type", { exact: true }),
     ).toBeVisible();
@@ -461,6 +477,7 @@ test.describe("report page render", () => {
     await expect(
       page.getByText("Also filters: Activities by channel", { exact: true }),
     ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reset" })).toHaveCount(2);
   });
 
   // Layout derivation, through the real stack: two adjacent narrow charts each
