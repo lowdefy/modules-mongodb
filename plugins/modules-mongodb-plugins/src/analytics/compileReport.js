@@ -864,11 +864,20 @@ function filterOptions({ filter, sections, catalog, roles, rows }) {
 // `blocks` is the slots.content shorthand, as on the header's DropdownMenu — a
 // resolved fragment is built by the same recursive walk as a static page, so it
 // nests the same way.
-function sectionCard(section, span, block) {
+function sectionCard(section, span, block, { flush = false } = {}) {
   return {
     id: `${section.id}_card`,
     type: "Card",
     layout: { span },
+    // A grid draws its own frame — a header band, row rules and a border — so
+    // inside a padded card it reads as a box in a box with a gutter between the
+    // two. Flush, the card's border is the only frame and the rows reach its
+    // edge; `overflow: hidden` is what makes the grid's square corners take the
+    // card's rounded ones. Everything else keeps the padding: a chart canvas and
+    // a Statistic have no edge of their own to collide with.
+    ...(flush
+      ? { styles: { element: { overflow: "hidden" }, body: { padding: 0 } } }
+      : {}),
     blocks: [block],
   };
 }
@@ -2024,22 +2033,27 @@ function compileReport({
         out.push(sectionHeading(section, rows));
         out.push(sectionDownload(section, endpointId));
         out.push(
-          sectionCard(section, 24, {
-            id: section.id,
-            type: "AgGridBalham",
-            properties: {
-              height: tableHeight(rows),
-              rowData: dataBinding(section, rows),
-              columnDefs: section.columns.map((column) =>
-                tableColumnDef(column, rows),
-              ),
-              // flex fills the card's width whatever the column count — without
-              // it a narrow table left hundreds of pixels of blank card beside
-              // its columns, and a wide one clipped its header mid-word instead
-              // of shrinking to fit.
-              defaultColDef: { sortable: true, resizable: true, flex: 1 },
+          sectionCard(
+            section,
+            24,
+            {
+              id: section.id,
+              type: "AgGridBalham",
+              properties: {
+                height: tableHeight(rows),
+                rowData: dataBinding(section, rows),
+                columnDefs: section.columns.map((column) =>
+                  tableColumnDef(column, rows),
+                ),
+                // flex fills the card's width whatever the column count — without
+                // it a narrow table left hundreds of pixels of blank card beside
+                // its columns, and a wide one clipped its header mid-word instead
+                // of shrinking to fit.
+                defaultColDef: { sortable: true, resizable: true, flex: 1 },
+              },
             },
-          }),
+            { flush: true },
+          ),
         );
       }
     }

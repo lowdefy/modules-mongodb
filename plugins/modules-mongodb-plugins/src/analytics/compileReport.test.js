@@ -3240,9 +3240,7 @@ describe("layout derivation", () => {
         "s3",
         "s4",
       ]);
-      expect(card.blocks.map((b) => b.layout.span)).toEqual([
-        8, 8, 8, 12, 12,
-      ]);
+      expect(card.blocks.map((b) => b.layout.span)).toEqual([8, 8, 8, 12, 12]);
       card.blocks.forEach((button, index) => {
         expect(button.type).toBe("Button");
         expect(button.properties.title).toBe(`Download ${index}`);
@@ -3299,4 +3297,39 @@ describe("layout derivation", () => {
       expect(byId.s0_box).toBeUndefined();
     },
   );
+});
+
+test("a table's card is flush, and every other card keeps its padding", () => {
+  const blocks = compileReport({
+    spec: {
+      title: "Padding",
+      sections: [
+        {
+          type: "table",
+          label: "Orders",
+          query: { collection: "demo_orders", pipeline: [] },
+          columns: [{ key: "region", label: "Region" }],
+        },
+        {
+          type: "kpi",
+          label: "Count",
+          query: { collection: "demo_orders", pipeline: [] },
+          valueKey: "total",
+        },
+      ],
+    },
+    results: [[{ region: "North" }], [{ total: 3 }]],
+    catalog: testCatalog,
+    roles: ["analyst"],
+    endpointId: "ai-reporting/query-data",
+    chartEndpointId: "ai-reporting/chart-data",
+  });
+  const byId = byIdOf(blocks);
+  // A grid brings its own border and header band; padding around it would frame
+  // an already-framed thing.
+  expect(byId.s0_card.styles).toEqual({
+    element: { overflow: "hidden" },
+    body: { padding: 0 },
+  });
+  expect(byId.s1_card.styles).toBeUndefined();
 });
