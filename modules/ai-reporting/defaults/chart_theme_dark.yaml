@@ -1,0 +1,14 @@
+# Chart chrome on antd's dark card (#1f1f1f). The same .65 ink inverted lands at
+# 7.69:1 — the mirror of light mode's 7.00:1, rather than a grey chosen to
+# survive both grounds, which would have cost light mode more than it bought
+# dark (the best single grey is ~4:1 on each, down from 7:1).
+#
+# The lines are lifted a little rather than mirrored exactly: an 0.08 white
+# split line on #1f1f1f is fainter than an 0.08 black one on #ffffff, because
+# the dark card is further from black than the light one is from white.
+_ref:
+  path: defaults/chart_theme.yaml
+  vars:
+    ink: rgba(255, 255, 255, 0.65)
+    axis: rgba(255, 255, 255, 0.30)
+    split: rgba(255, 255, 255, 0.12)

@@ -213,9 +213,19 @@ routine:
               else: false
           resolvedAt:
             _date: now
-          # The chat card and expand modal never pass through compileReport, so
-          # this theme object is the only styling vehicle that reaches them
-          # too — loaded here and threaded through as data because compileReport
-          # is plugin JS and cannot _ref module YAML itself.
+          # Both themes, as plain data, because the choice between them cannot
+          # be made here: `_media` is a CLIENT operator, so a `_if` on dark mode
+          # written into this routine would be evaluated server-side, where
+          # there is no viewport to ask. compileReport emits the switch into the
+          # chart block instead, where the browser resolves it per render — so a
+          # reader toggling dark mode re-inks the charts without a re-resolve.
+          #
+          # Loaded here rather than by compileReport because compileReport is
+          # plugin JS and cannot _ref module YAML itself. (The chat card and
+          # expand modal never pass through compileReport at all; they _ref the
+          # same two files directly and make the same choice in page config.)
           theme:
-            _ref: defaults/chart_theme.yaml
+            light:
+              _ref: defaults/chart_theme_light.yaml
+            dark:
+              _ref: defaults/chart_theme_dark.yaml

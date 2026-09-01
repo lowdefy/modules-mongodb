@@ -245,6 +245,31 @@ validated on its own surfaces — superseded by the 8-slot reference palette,
 which covers the > 4-series charts stacked status data actually produces.
 Re-validate against the final card surface at implementation.)
 
+> **Amended after the first rendered pass.** The palette being dark-validated
+> made this design read as though charts were dark-ready. They were not: the
+> palette is only the series colours. The **chrome** — axis labels, axis titles,
+> legend text, tooltips, and a pie's slice labels — shipped a single light-mode
+> ink, `rgba(0, 0, 0, 0.65)`, which is 7.00:1 on the light card and **1.19:1**
+> on the dark one: not a faint label, an absent one. Two consequences the design
+> should have drawn out and did not:
+>
+> 1. **The ink cannot be chosen server-side.** `_media` is a client operator, so
+>    the resolve cannot know the mode. Both themes are therefore emitted into
+>    every chart block behind an `_if` on `_media: darkMode`, resolved per
+>    render — which is strictly better than a per-open decision would have been,
+>    since a reader toggling the mode re-inks the charts with no re-resolve. It
+>    costs two operators (`_if`, `_media`) in report.yaml's Dynamic allowlist
+>    and a theme object per mode per chart section. A single ground-independent
+>    grey was rejected: the best one is ~4:1 against both surfaces, so it would
+>    have spent light mode's 7:1 to half-fix dark.
+> 2. **No assembled option may paint the card's colour**, which the pie slice
+>    gaps and the line endpoint ring both did (`borderColor: #ffffff`). The
+>    option is compiled once and read in either mode, so a surface-coloured mark
+>    is a white line on a black card half the time. The pie now takes a real
+>    `padAngle` gap, which shows whatever is actually behind it; the endpoint
+>    ring is dropped. `CARD_SURFACE` survives only as the record of what the
+>    palette was validated against, and is painted nowhere.
+
 Two writes, not one: Flint declares the palette as `option.color` **and** as a
 concrete hex on each `series[i].itemStyle.color`, and the per-series value wins on
 bar and line. Setting `option.color` alone is a silent no-op there. A test should

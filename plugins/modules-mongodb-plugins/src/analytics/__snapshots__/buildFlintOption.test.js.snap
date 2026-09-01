@@ -154,10 +154,6 @@ exports[`multi-y line folds onto a colour channel 1`] = `
             650,
           ],
           {
-            "itemStyle": {
-              "borderColor": "#ffffff",
-              "borderWidth": 2,
-            },
             "symbol": "circle",
             "symbolSize": 8,
             "value": [
@@ -189,10 +185,6 @@ exports[`multi-y line folds onto a colour channel 1`] = `
             320,
           ],
           {
-            "itemStyle": {
-              "borderColor": "#ffffff",
-              "borderWidth": 2,
-            },
             "symbol": "circle",
             "symbolSize": 8,
             "value": [
@@ -296,9 +288,7 @@ exports[`pie encodes the category on colour and the measure on size 1`] = `
           },
         },
         "itemStyle": {
-          "borderColor": "#ffffff",
           "borderRadius": 0,
-          "borderWidth": 2,
         },
         "label": {
           "fontSize": 13,
@@ -315,6 +305,7 @@ exports[`pie encodes the category on colour and the measure on size 1`] = `
           "length2": 14,
           "show": true,
         },
+        "padAngle": 2,
         "radius": [
           "0%",
           "70%",
@@ -454,10 +445,6 @@ exports[`single-y line over a temporal x 1`] = `
             650,
           ],
           {
-            "itemStyle": {
-              "borderColor": "#ffffff",
-              "borderWidth": 2,
-            },
             "symbol": "circle",
             "symbolSize": 8,
             "value": [

@@ -6,54 +6,83 @@
 # where they win over anything here, so a palette added to this file would
 # compile and then silently do nothing.
 #
-# Light mode only — dark is out of scope until the app has a dark mode.
+# Every ink is a var because the app has a dark mode and a chart drawn on a
+# near-black card needs the inverse of the one drawn on white — `rgba(0,0,0,.65)`
+# on antd's dark card is 1.19:1, which is not a faint label but an absent one.
+# Instantiated by chart_theme_light.yaml and chart_theme_dark.yaml; nothing
+# refs this file directly.
+#
+#   ink   — text: axis labels, axis titles, legend entries, tooltip, and any
+#           text the option leaves uncoloured (a pie's slice labels)
+#   axis  — the axis line itself
+#   split — the grid lines across the plot
 backgroundColor: transparent
+# `color` here, not just a font family: ECharts falls back to this for text an
+# option colours nowhere else, which is what a pie's slice labels are — Flint
+# sizes and formats them but never inks them, so before this they took ECharts'
+# own near-black default and vanished on a dark card.
 textStyle:
-  fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+  fontFamily: &font -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+  color:
+    _var: ink
 categoryAxis:
   axisLabel:
     fontSize: 12
-    color: rgba(0, 0, 0, 0.65)
+    color:
+      _var: ink
   axisLine:
     lineStyle:
-      color: rgba(0, 0, 0, 0.25)
+      color:
+        _var: axis
   splitLine:
     lineStyle:
-      color: rgba(0, 0, 0, 0.08)
+      color:
+        _var: split
   nameTextStyle:
-    fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
-    color: rgba(0, 0, 0, 0.65)
+    fontFamily: *font
+    color:
+      _var: ink
 valueAxis:
   axisLabel:
     fontSize: 12
-    color: rgba(0, 0, 0, 0.65)
+    color:
+      _var: ink
   axisLine:
     lineStyle:
-      color: rgba(0, 0, 0, 0.25)
+      color:
+        _var: axis
   splitLine:
     lineStyle:
-      color: rgba(0, 0, 0, 0.08)
+      color:
+        _var: split
   nameTextStyle:
-    fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
-    color: rgba(0, 0, 0, 0.65)
+    fontFamily: *font
+    color:
+      _var: ink
 timeAxis:
   axisLabel:
     fontSize: 12
-    color: rgba(0, 0, 0, 0.65)
+    color:
+      _var: ink
   axisLine:
     lineStyle:
-      color: rgba(0, 0, 0, 0.25)
+      color:
+        _var: axis
   splitLine:
     lineStyle:
-      color: rgba(0, 0, 0, 0.08)
+      color:
+        _var: split
   nameTextStyle:
-    fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
-    color: rgba(0, 0, 0, 0.65)
+    fontFamily: *font
+    color:
+      _var: ink
 legend:
   textStyle:
-    fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
-    color: rgba(0, 0, 0, 0.65)
+    fontFamily: *font
+    color:
+      _var: ink
 tooltip:
   textStyle:
-    fontFamily: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
-    color: rgba(0, 0, 0, 0.65)
+    fontFamily: *font
+    color:
+      _var: ink

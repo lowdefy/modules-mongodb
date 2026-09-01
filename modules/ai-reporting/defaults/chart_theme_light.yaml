@@ -1,0 +1,7 @@
+# Chart chrome on antd's light card (#ffffff). Axis labels land at 7.00:1.
+_ref:
+  path: defaults/chart_theme.yaml
+  vars:
+    ink: rgba(0, 0, 0, 0.65)
+    axis: rgba(0, 0, 0, 0.25)
+    split: rgba(0, 0, 0, 0.08)

@@ -359,8 +359,17 @@ test("a broken section gets no card", () => {
   );
 });
 
-test("an optional theme is set verbatim on every chart section's properties.theme", () => {
-  const theme = { backgroundColor: "transparent" };
+// The choice between the two themes belongs to the browser, not to this
+// function: the ink a chart's labels need depends on whether the card behind it
+// is antd's light one or its dark one, `_media` is a client operator, and this
+// runs server-side inside the resolve. So both themes are emitted behind the
+// operator and resolved per render — which is also what lets a reader toggle
+// dark mode and have the charts re-ink without re-resolving the report.
+test("both themes ride every chart section behind an _if on dark mode", () => {
+  const theme = {
+    light: { textStyle: { color: "rgba(0, 0, 0, 0.65)" } },
+    dark: { textStyle: { color: "rgba(255, 255, 255, 0.65)" } },
+  };
   const blocks = compileReport({
     spec,
     results,
@@ -371,10 +380,48 @@ test("an optional theme is set verbatim on every chart section's properties.them
     theme,
   });
   const byId = byIdOf(blocks);
-  expect(byId.s1.properties.theme).toBe(theme);
+  expect(byId.s1.properties.theme).toEqual({
+    __if: {
+      test: { __media: "darkMode" },
+      then: theme.dark,
+      else: theme.light,
+    },
+  });
+  // Verbatim, both of them: a theme this function edited would drift from the
+  // one the chat page refs out of the same two files.
+  expect(byId.s1.properties.theme.__if.then).toBe(theme.dark);
+  expect(byId.s1.properties.theme.__if.else).toBe(theme.light);
   // Non-chart sections carry no theme key — it is a chart-only property.
   expect("theme" in byId.s0.properties).toBe(false);
   expect("theme" in byId.s3.properties).toBe(false);
+});
+
+// Both operators the switch is built from have to be in report.yaml's
+// `types.operators`, or Dynamic drops the property and every chart falls back to
+// ECharts' own near-black ink — invisible on a dark card, which is the bug this
+// whole mechanism exists to fix. Asserted as a literal list so adding an
+// operator to the emitted expression fails here until the page allows it.
+test("the theme switch uses only _if and _media", () => {
+  const blocks = compileReport({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+    theme: { light: {}, dark: {} },
+  });
+  const operators = new Set();
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (node === null || typeof node !== "object") return;
+    for (const [key, value] of Object.entries(node)) {
+      if (key.startsWith("__")) operators.add(`_${key.replace(/^__/, "")}`);
+      walk(value);
+    }
+  };
+  walk(byIdOf(blocks).s1.properties.theme);
+  expect([...operators].sort()).toEqual(["_if", "_media"]);
 });
 
 test("failed sections render as Alert cards while the rest render", () => {

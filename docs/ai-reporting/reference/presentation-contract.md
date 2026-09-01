@@ -95,6 +95,12 @@ A pie over more than seven rows draws the **top six by value** and folds everyth
 
 A series or slice **name** wears one hue across every section of the report that names it: a category is the same colour in the pie and in the stacked bar beside it. The map is decided over the first, unfiltered resolve, so a filter that changes a chart's ranking cannot repaint the series that survive. Eight names get that cross-section stability; names past the eighth are coloured per chart from the slots that chart left unused, so no chart ever repeats a hue within itself. Charts also share one typographic and axis theme, so two charts in one report look like two views of one report.
 
+**For a name to agree across two sections, the two sections have to spell it the same way.** A chart's series names are its `y` column names *humanized* (`in_review` → `In Review`); a pie's slice names are its `x` values, used verbatim. So a pie over a `status` column agrees with a stacked bar broken down by status only where each pivoted column humanizes back onto the value it stands for — `$sum` the status into a column named `in_review`, not `review_stage`, and not `in_review_total`. Where they don't match, both charts still read correctly on their own; they simply don't agree with each other, and nothing reports it.
+
+### Charts follow the app's dark mode
+
+Axis labels, axis titles, legend entries, tooltips and pie slice labels are inked from the reader's colour mode, resolved in the browser each time the chart draws — so toggling dark mode re-inks every chart on an open report without re-running its queries. Series colours do not change: the palette is validated against both the light card and the dark one, so an entity keeps its hue in either mode. Nothing in a chart is painted in the colour of the card behind it — a pie's slice gaps are real angular gaps rather than white borders — because a saved report's charts are compiled once, server-side, and read in whichever mode the reader happens to be in.
+
 Nothing here is derived from the consuming app's `colorPrimary`: these are data marks, and a brand hue is not a data hue.
 
 ## Verification against actual rows

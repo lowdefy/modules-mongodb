@@ -127,10 +127,21 @@ export const PALETTE = [
 // six it stands in for.
 export const NEUTRAL = "#8c8c8c";
 
-// The card the charts are drawn on. Pie slice gaps are painted in it (ECharts
-// has no gap — a border the colour of what is behind the slice is one), and it
-// is the surface PALETTE is validated against.
+// The surface PALETTE was validated against — recorded so a future palette
+// change is re-checked against the same ground, and NEVER painted. Nothing in an
+// assembled option may carry the surface colour: the option is compiled
+// server-side and persisted, while the card under it is #ffffff or #1f1f1f
+// depending on a dark mode only the browser knows, so a mark painted in this
+// colour is a white line on a black card half the time. Where a mark needs to
+// read as a gap, it takes a real gap (see the pie's padAngle) rather than a
+// border in the colour of what it hopes is behind it.
 export const CARD_SURFACE = "#ffffff";
+
+// The angular gap between pie slices, in degrees. A real gap, showing the card
+// through, because ECharts computes it in the layout — so it is correct on any
+// ground, where the 2px border in CARD_SURFACE it replaces was correct only on
+// white.
+const PIE_PAD_ANGLE = 2;
 
 // Column names for the wide → long fold that renders multiple `y` columns as
 // sibling series. Flint's own multi-`y` route (an array `y`, or
@@ -361,9 +372,6 @@ function styleMark(series, { single, capped }) {
         value: series.data[series.data.length - 1],
         symbol: "circle",
         symbolSize: 8,
-        // A ring in the card colour keeps the dot readable where it lands on
-        // top of another series' line.
-        itemStyle: { borderWidth: 2, borderColor: CARD_SURFACE },
       };
     }
     if (single) series.areaStyle = { color: wash(series.itemStyle.color) };
@@ -373,11 +381,9 @@ function styleMark(series, { single, capped }) {
     // Flint's radius is [inner, outer]; only the outer is baseSize-absolute,
     // and the inner ("0%") is what keeps this a pie rather than a donut.
     series.radius = ["0%", PIE_RADIUS];
-    series.itemStyle = {
-      ...series.itemStyle,
-      borderWidth: 2,
-      borderColor: CARD_SURFACE,
-    };
+    // ECharts has no slice gap in itemStyle; padAngle is the gap, and it shows
+    // whatever card is behind the pie rather than a colour guessed at assembly.
+    series.padAngle = PIE_PAD_ANGLE;
     // The capped tail is an aggregate, not an entity. Per-datum because a pie
     // takes its slice colours from `option.color` by index, so this is the only
     // place one slice can be told to sit outside the palette.

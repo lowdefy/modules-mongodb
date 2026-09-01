@@ -59,13 +59,14 @@ import {
  *                included or left out HERE rather than gated by a `_user`
  *                operator in compiled output. Absent reads as false, which
  *                matches an unset share_roles: nothing can be published.
- *   theme      — optional ECharts theme object, set verbatim as every emitted
- *                chart section's `properties.theme`. Carries only typography
- *                and axis chrome, never a palette: ECharts merges a theme
- *                under the option, and buildFlintOption already pins colours
- *                into it, so a palette here would never show. Omitted
- *                entirely (not just falsy) when absent, matching every caller
- *                that predates this parameter.
+ *   theme      — optional `{ light, dark }` pair of ECharts theme objects. Each
+ *                carries only typography and axis chrome, never a palette:
+ *                ECharts merges a theme under the option, and buildFlintOption
+ *                already pins colours into it, so a palette here would never
+ *                show. Both are emitted into every chart section behind an
+ *                `_if` on `_media: darkMode` — see themeSwitch for why the
+ *                choice cannot be made here. Omitted entirely (not just falsy)
+ *                when absent, matching every caller that predates it.
  *
  * The contract is verified against the actual rows per section: a missing
  * column key or a non-numeric y/KPI value renders that one section as an Alert
@@ -851,6 +852,31 @@ function filterOptions({ filter, sections, catalog, roles, rows }) {
   // source has always rendered (validateReportSpec rejects that combination at
   // save time, where the catalog is present).
   return capped(catalogOptions() ?? [], MAX_FILTER_OPTIONS);
+}
+
+// Both themes travel to the browser and the browser picks. It has to be this
+// way round: the ink a chart's labels need depends on the card the chart is
+// drawn on, `_media` is a CLIENT operator, and this function runs server-side
+// inside the resolve — so a choice made here would be made blind. Emitted as an
+// operator instead, it resolves per render, which also means toggling dark mode
+// re-inks every chart on the page without re-resolving the report.
+//
+// The doubled payload is a theme object per mode per chart section, around a
+// kilobyte each. Rejected the alternative of one ground-independent grey: the
+// best single ink is ~4:1 against both surfaces, where a per-mode ink is 7:1
+// against each, so it would have spent light mode's contrast to half-fix dark.
+//
+// `_if`/`_media` are allowlisted in report.yaml's `types.operators`; the leading
+// underscore doubles because Dynamic collapses `__x` back to `_x` on resolve.
+function themeSwitch(theme) {
+  if (theme === undefined) return undefined;
+  return {
+    __if: {
+      test: { __media: "darkMode" },
+      then: theme.dark,
+      else: theme.light,
+    },
+  };
 }
 
 // A section's own block sits inside a Card of its own — the container that
@@ -2052,8 +2078,9 @@ function compileReport({
               };
         // A filtered re-query swaps option/height only (see chart-data), so a
         // theme set here at compile time keeps applying across refetches.
-        if (theme !== undefined) {
-          properties.theme = theme;
+        const chartTheme = themeSwitch(theme);
+        if (chartTheme !== undefined) {
+          properties.theme = chartTheme;
         }
         const parts = [
           sectionHeading(section, rows),

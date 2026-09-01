@@ -612,10 +612,9 @@ test("lines are 2px and wear a symbol on their last point only", () => {
     const last = series.data[series.data.length - 1];
     expect(last.symbol).toBe("circle");
     expect(last.symbolSize).toBeGreaterThanOrEqual(8);
-    expect(last.itemStyle).toEqual({
-      borderWidth: 2,
-      borderColor: CARD_SURFACE,
-    });
+    // No ring: a ring can only be drawn in the colour of the card behind it,
+    // and that colour is not knowable here — see the pie test below.
+    expect(last.itemStyle).toBeUndefined();
     // The point's own value is preserved, only re-expressed in object form.
     expect(last.value).toEqual([
       "2026-03",
@@ -674,15 +673,35 @@ test("the gradient area fill survives a JSON round trip", () => {
   expect(round.series[0].areaStyle).toEqual(option.series[0].areaStyle);
 });
 
-test("pie slices are separated by a border in the card colour", () => {
+// The option is compiled server-side and persisted; the card under it is light
+// or dark by a mode only the browser knows. So nothing assembled here may carry
+// the surface colour — a slice gap painted #ffffff is a white line on a dark
+// card. padAngle is a real gap that shows whatever is actually behind the pie.
+test("pie slices are separated by a real gap, in no colour at all", () => {
   const { option } = buildFlintOption({
     chart: "pie",
     x: "region",
     y: ["revenue"],
     rows: regionRows,
   });
-  expect(option.series[0].itemStyle.borderWidth).toBe(2);
-  expect(option.series[0].itemStyle.borderColor).toBe(CARD_SURFACE);
+  expect(option.series[0].padAngle).toBeGreaterThan(0);
+  expect(option.series[0].itemStyle?.borderColor).toBeUndefined();
+});
+
+// The guard the two assertions above exist for, stated once over every kind: no
+// assembled option paints the card's colour anywhere, so a chart cannot be
+// correct in one mode and wrong in the other.
+test.each([
+  ["bar", { chart: "bar", x: "region", y: ["revenue"], rows: regionRows }],
+  ["line", { chart: "line", x: "region", y: ["revenue"], rows: regionRows }],
+  ["pie", { chart: "pie", x: "region", y: ["revenue"], rows: regionRows }],
+  [
+    "multi-series bar",
+    { chart: "bar", x: "region", y: ["revenue", "cost"], rows: regionRows },
+  ],
+])("a %s option paints the card surface nowhere", (_kind, args) => {
+  const { option } = buildFlintOption(args);
+  expect(JSON.stringify(option)).not.toContain(CARD_SURFACE);
 });
 
 const manyRegionRows = Array.from({ length: 20 }, (_, index) => ({
