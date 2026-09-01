@@ -99,7 +99,7 @@ A series or slice **name** wears one hue across every section of the report that
 
 ### Charts follow the app's dark mode
 
-Axis labels, axis titles, legend entries, tooltips and pie slice labels are inked from the reader's colour mode, resolved in the browser each time the chart draws — so toggling dark mode re-inks every chart on an open report without re-running its queries. Series colours do not change: the palette is validated against both the light card and the dark one, so an entity keeps its hue in either mode. Nothing in a chart is painted in the colour of the card behind it — a pie's slice gaps are real angular gaps rather than white borders — because a saved report's charts are compiled once, server-side, and read in whichever mode the reader happens to be in.
+Axis labels, axis titles, legend entries, tooltips and pie slice labels are inked from the reader's colour mode, resolved in the browser each time the chart draws — so toggling dark mode re-inks every chart on an open report without re-running its queries. Series colours do not change: the palette is validated against both the light card and the dark one, so an entity keeps its hue in either mode. A saved report's charts are compiled once, server-side, and read in whichever mode the reader happens to be in — so nothing a chart is *assembled* with may be painted in the colour of the card behind it. The one mark that needs that colour, the border that separates a pie's slices, is inked from the mode alongside the text.
 
 Nothing here is derived from the consuming app's `colorPrimary`: these are data marks, and a brand hue is not a data hue.
 

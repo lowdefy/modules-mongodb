@@ -674,18 +674,23 @@ test("the gradient area fill survives a JSON round trip", () => {
 });
 
 // The option is compiled server-side and persisted; the card under it is light
-// or dark by a mode only the browser knows. So nothing assembled here may carry
-// the surface colour — a slice gap painted #ffffff is a white line on a dark
-// card. padAngle is a real gap that shows whatever is actually behind the pie.
-test("pie slices are separated by a real gap, in no colour at all", () => {
+// or dark by a mode only the browser knows. A pie's slice gaps are a border in
+// that card's colour, so assembly must leave them alone entirely and let the
+// theme ink them per mode — asserted here so a well-meaning default put back on
+// the series would fail rather than ship a white line on a dark card.
+test("assembly leaves a pie's slice separation to the theme", () => {
   const { option } = buildFlintOption({
     chart: "pie",
     x: "region",
     y: ["revenue"],
     rows: regionRows,
   });
-  expect(option.series[0].padAngle).toBeGreaterThan(0);
   expect(option.series[0].itemStyle?.borderColor).toBeUndefined();
+  expect(option.series[0].itemStyle?.borderWidth).toBeUndefined();
+  // Not padAngle either: a real angular gap needs no colour, but it insets each
+  // sector's straight edges, so a pie with no inner radius stops meeting at its
+  // centre and reads as skewed.
+  expect(option.series[0].padAngle).toBeUndefined();
 });
 
 // The guard the two assertions above exist for, stated once over every kind: no

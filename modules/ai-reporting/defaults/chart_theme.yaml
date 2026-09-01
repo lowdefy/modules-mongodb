@@ -94,6 +94,18 @@ pie:
     color:
       _var: ink
     textBorderWidth: 0
+  # ECharts draws no gap between slices; a border in the colour of the card
+  # behind them is one. It has to be inked here rather than at assembly for the
+  # same reason the text does — the card is #ffffff or #1f1f1f depending on a
+  # mode only the browser knows. (A real angular gap via `padAngle` would need
+  # no colour at all, and was rejected: it insets each sector's straight edges,
+  # so a pie with no inner radius stops meeting at its centre and reads as
+  # skewed.) The Other slice's own itemStyle sets only `color`, so it keeps this
+  # border.
+  itemStyle:
+    borderWidth: 2
+    borderColor:
+      _var: surface
 legend:
   textStyle:
     fontFamily: *font

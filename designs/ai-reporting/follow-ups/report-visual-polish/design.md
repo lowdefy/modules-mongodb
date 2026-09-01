@@ -265,10 +265,15 @@ Re-validate against the final card surface at implementation.)
 > 2. **No assembled option may paint the card's colour**, which the pie slice
 >    gaps and the line endpoint ring both did (`borderColor: #ffffff`). The
 >    option is compiled once and read in either mode, so a surface-coloured mark
->    is a white line on a black card half the time. The pie now takes a real
->    `padAngle` gap, which shows whatever is actually behind it; the endpoint
->    ring is dropped. `CARD_SURFACE` survives only as the record of what the
->    palette was validated against, and is painted nowhere.
+>    is a white line on a black card half the time. The endpoint ring is
+>    dropped. The pie's slice gaps, which genuinely need the surface colour,
+>    move to the theme's `pie.itemStyle` and are inked per mode with the text —
+>    a theme merges into a series by its subType, so it can reach a mark, not
+>    just chrome. `padAngle` was tried first, a real angular gap needing no
+>    colour at all, and rejected once rendered: it insets each sector's straight
+>    edges, so a pie with no inner radius stops meeting at its centre and reads
+>    as skewed. `CARD_SURFACE` survives only as the record of what the palette
+>    was validated against, and assembly paints it nowhere.
 
 Two writes, not one: Flint declares the palette as `option.color` **and** as a
 concrete hex on each `series[i].itemStyle.color`, and the per-series value wins on

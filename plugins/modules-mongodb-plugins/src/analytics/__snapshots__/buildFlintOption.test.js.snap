@@ -305,7 +305,6 @@ exports[`pie encodes the category on colour and the measure on size 1`] = `
           "length2": 14,
           "show": true,
         },
-        "padAngle": 2,
         "radius": [
           "0%",
           "70%",

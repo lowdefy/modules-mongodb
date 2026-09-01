@@ -132,16 +132,10 @@ export const NEUTRAL = "#8c8c8c";
 // assembled option may carry the surface colour: the option is compiled
 // server-side and persisted, while the card under it is #ffffff or #1f1f1f
 // depending on a dark mode only the browser knows, so a mark painted in this
-// colour is a white line on a black card half the time. Where a mark needs to
-// read as a gap, it takes a real gap (see the pie's padAngle) rather than a
-// border in the colour of what it hopes is behind it.
+// colour is a white line on a black card half the time. Where a mark has to be
+// painted in the surface — a pie's slice gaps are a border in it — that mark is
+// styled from the theme, which is chosen per mode in the browser.
 export const CARD_SURFACE = "#ffffff";
-
-// The angular gap between pie slices, in degrees. A real gap, showing the card
-// through, because ECharts computes it in the layout — so it is correct on any
-// ground, where the 2px border in CARD_SURFACE it replaces was correct only on
-// white.
-const PIE_PAD_ANGLE = 2;
 
 // Column names for the wide → long fold that renders multiple `y` columns as
 // sibling series. Flint's own multi-`y` route (an array `y`, or
@@ -381,9 +375,12 @@ function styleMark(series, { single, capped }) {
     // Flint's radius is [inner, outer]; only the outer is baseSize-absolute,
     // and the inner ("0%") is what keeps this a pie rather than a donut.
     series.radius = ["0%", PIE_RADIUS];
-    // ECharts has no slice gap in itemStyle; padAngle is the gap, and it shows
-    // whatever card is behind the pie rather than a colour guessed at assembly.
-    series.padAngle = PIE_PAD_ANGLE;
+    // Slice separation is NOT set here. It is a border in the colour of the card
+    // behind the pie, which only the browser knows, so it comes from the theme's
+    // `pie.itemStyle` per mode. padAngle was tried instead — a real angular gap
+    // needing no colour at all — and rejected on sight: it insets each sector's
+    // straight edges, so on a pie with no inner radius the slices stop meeting
+    // at the centre and the pie reads as skewed.
     // The capped tail is an aggregate, not an entity. Per-datum because a pie
     // takes its slice colours from `option.color` by index, so this is the only
     // place one slice can be told to sit outside the palette.
