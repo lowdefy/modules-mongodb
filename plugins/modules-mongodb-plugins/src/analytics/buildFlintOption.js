@@ -300,6 +300,39 @@ function wash(hex) {
   };
 }
 
+// A stack's cap belongs to the bar, not to each segment of it. Rounded on every
+// segment, the interior boundaries pinch — a square-bottomed segment sits on a
+// rounded top, showing two slivers of card at the join — so the segments go
+// square and the cap moves to the datum that ends the stack. Chosen per
+// category, not per series: the series drawn last can be zero in a given
+// category, and the corner has to land on a segment that is actually there.
+function capStackTops(allSeries) {
+  const stacks = new Map();
+  for (const series of allSeries) {
+    if (series.type !== "bar" || !series.stack) continue;
+    if (!Array.isArray(series.data)) continue;
+    stacks.set(series.stack, [...(stacks.get(series.stack) ?? []), series]);
+  }
+  for (const members of stacks.values()) {
+    // One member is a bar, not a stack — it keeps the series-level cap.
+    if (members.length < 2) continue;
+    for (const series of members) {
+      series.itemStyle = { ...series.itemStyle, borderRadius: 0 };
+    }
+    const categories = Math.max(...members.map((series) => series.data.length));
+    for (let index = 0; index < categories; index += 1) {
+      // Only a positive segment can top the stack; a negative one grows the
+      // other way, where these corners would round the axis end.
+      const top = members.findLast((series) => series.data[index] > 0);
+      if (!top) continue;
+      top.data[index] = {
+        value: top.data[index],
+        itemStyle: { borderRadius: BAR_CAP_RADIUS },
+      };
+    }
+  }
+}
+
 // Mark styling, applied after the palette so a mark can read its own hue.
 // Everything set here is plain data for the same reason `wash` is.
 function styleMark(series, { single, capped }) {
@@ -584,6 +617,7 @@ function buildFlintOption({ chart, x, y, rows, stacked, width, colors }) {
       delete series.barWidth;
       styleMark(series, { single, capped: pieCapped });
     }
+    capStackTops(option.series);
   }
   // Same defect on the folded line template: its legend sits at an absolute
   // left offset derived from baseSize.width, off-canvas on a narrow panel.

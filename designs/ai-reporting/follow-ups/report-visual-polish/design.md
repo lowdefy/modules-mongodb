@@ -280,7 +280,11 @@ sections later. The rule, with its edges decided:
   grouped-over-stacked rationale already rejects as meaningless.
 
 **Mark styling** — verified JSON-safe ([`findings.md` §3](./findings.md)):
-rounded bar caps (`itemStyle.borderRadius: [4, 4, 0, 0]`), 2px lines with an
+rounded bar caps (`itemStyle.borderRadius: [4, 4, 0, 0]`) — once per bar, not
+per segment: in a stacked bar the segments are square and the cap goes on the
+datum that ends the stack, chosen per category so a series that is zero there
+doesn't take a corner nothing draws (rounding every segment pinches the
+interior joins, which read as wrong on screen) — 2px lines with an
 end-point symbol, a gradient `areaStyle` under single-series lines (a plain
 `{ type: "linear", colorStops }` object — no functions needed), and pie slice
 gaps (`borderWidth: 2, borderColor: <surface>`). All of it survives `strip()`

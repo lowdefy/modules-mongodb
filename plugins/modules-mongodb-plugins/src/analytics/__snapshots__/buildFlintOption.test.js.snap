@@ -557,12 +557,7 @@ exports[`stacked multi-y bar folds into stacked series 1`] = `
           900,
         ],
         "itemStyle": {
-          "borderRadius": [
-            4,
-            4,
-            0,
-            0,
-          ],
+          "borderRadius": 0,
           "color": "#2a78d6",
         },
         "name": "Revenue",
@@ -572,17 +567,42 @@ exports[`stacked multi-y bar folds into stacked series 1`] = `
       {
         "barCategoryGap": "10%",
         "data": [
-          800,
-          400,
-          700,
+          {
+            "itemStyle": {
+              "borderRadius": [
+                4,
+                4,
+                0,
+                0,
+              ],
+            },
+            "value": 800,
+          },
+          {
+            "itemStyle": {
+              "borderRadius": [
+                4,
+                4,
+                0,
+                0,
+              ],
+            },
+            "value": 400,
+          },
+          {
+            "itemStyle": {
+              "borderRadius": [
+                4,
+                4,
+                0,
+                0,
+              ],
+            },
+            "value": 700,
+          },
         ],
         "itemStyle": {
-          "borderRadius": [
-            4,
-            4,
-            0,
-            0,
-          ],
+          "borderRadius": 0,
           "color": "#eb6834",
         },
         "name": "Cost",

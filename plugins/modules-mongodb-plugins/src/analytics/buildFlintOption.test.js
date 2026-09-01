@@ -527,18 +527,71 @@ describe("the report colour map", () => {
 });
 
 test("bars are rounded at the data end and square at the baseline", () => {
-  for (const stacked of [false, true]) {
+  for (const y of [["revenue"], ["revenue", "cost"]]) {
     const { option } = buildFlintOption({
       chart: "bar",
       x: "region",
-      y: ["revenue", "cost"],
+      y,
       rows: regionRows,
-      stacked,
     });
     for (const series of option.series) {
       expect(series.itemStyle.borderRadius).toEqual([4, 4, 0, 0]);
     }
   }
+});
+
+describe("a stacked bar is capped once", () => {
+  test("the segments are square and the top of the stack carries the cap", () => {
+    const { option } = buildFlintOption({
+      chart: "bar",
+      x: "region",
+      y: ["revenue", "cost"],
+      rows: regionRows,
+      stacked: true,
+    });
+    const [lower, top] = option.series;
+    // Rounding each segment pinches every interior boundary.
+    expect(lower.itemStyle.borderRadius).toBe(0);
+    expect(top.itemStyle.borderRadius).toBe(0);
+    for (const datum of lower.data) {
+      expect(datum).toEqual(expect.any(Number));
+    }
+    for (const [index, datum] of top.data.entries()) {
+      expect(datum.itemStyle.borderRadius).toEqual([4, 4, 0, 0]);
+      // The value is preserved, only re-expressed in object form — read against
+      // the axis, since Flint orders the categories by total, not by row.
+      const region = option.xAxis.data[index];
+      expect(datum.value).toBe(
+        regionRows.find((row) => row.region === region).cost,
+      );
+    }
+    // The per-datum style overrides only the corner it names; the series keeps
+    // its palette hue.
+    expect(top.itemStyle.color).toBe(PALETTE[1]);
+  });
+
+  test("the cap falls to the last segment a category actually draws", () => {
+    const rows = [
+      { region: "R1", revenue: 400, cost: 0 },
+      { region: "R2", revenue: 300, cost: 120 },
+    ];
+    const { option } = buildFlintOption({
+      chart: "bar",
+      x: "region",
+      y: ["revenue", "cost"],
+      rows,
+      stacked: true,
+    });
+    const [lower, top] = option.series;
+    const r1 = option.xAxis.data.indexOf("R1");
+    const r2 = option.xAxis.data.indexOf("R2");
+    // R1 has no cost segment, so its revenue segment is the one on top.
+    expect(lower.data[r1].itemStyle.borderRadius).toEqual([4, 4, 0, 0]);
+    expect(top.data[r1]).toBe(0);
+    // R2 stacks both, so the cap stays where the legend order puts it.
+    expect(lower.data[r2]).toEqual(expect.any(Number));
+    expect(top.data[r2].itemStyle.borderRadius).toEqual([4, 4, 0, 0]);
+  });
 });
 
 test("lines are 2px and wear a symbol on their last point only", () => {
