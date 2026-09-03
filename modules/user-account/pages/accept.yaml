@@ -1,13 +1,30 @@
 # Accept-invitation page, task 15. Serves authPages.acceptInvitation. Public,
 # thin, engine-trusting (Decision 4): its job is session-ensuring + one client
-# call. Four renders via `accept_view` (nosession | signedin | member | expired).
+# call. Renders via `accept_view` (nosession | signedin | member | invalid |
+# link_expired | withdrawn | wrong_email).
 #
 # The invitation is read natively (get_invitation) by the invitationId query
-# parameter, display only (org / inviter / invited email / status). Render
-# selection: no invitation -> expired; no session -> nosession; status accepted
-# -> member; status not pending or email mismatch -> expired; else signedin.
-# BetterAuth's AcceptInvitation enforces the session-email <-> invitation-email
-# match and expiry itself, so a slipped-through mismatch still fails safely.
+# parameter, display only (org / inviter / invited email / status / expiry).
+# Render selection: no invitation row -> invalid; no session -> nosession;
+# status accepted -> member; status rejected/canceled -> withdrawn; status
+# pending but past expires_at -> link_expired; email mismatch -> wrong_email;
+# else signedin. BetterAuth's AcceptInvitation still enforces the
+# session-email <-> invitation-email match and expiry itself server-side, so a
+# slipped-through mismatch fails safely — but this page's OWN pre-check was
+# stricter than BetterAuth's: a raw, case-sensitive string compare rejected an
+# otherwise-valid invite whenever the invitee's account email differed only in
+# case/whitespace from what the admin typed (BetterAuth lowercases the
+# invitation's stored email at creation, but never touches the invitee's
+# account email — an existing account created with any other casing would
+# never match). Both sides are now normalized (trim + lower-case) before
+# comparing, matching BetterAuth's own `.toLowerCase()` check. In the field
+# this surfaced as an invite the invitee swore was valid failing silently:
+# server logs showed only get_invitation 200s and no AcceptInvitation attempts
+# at all — the reject happened here, before the accept button ever became
+# reachable.
+#
+# Each rejecting view is logged server-side (best-effort, non-blocking) via
+# log-invitation-rejection so a report can be traced without reproducing it.
 _ref:
   module: layout
   component: auth-page
@@ -53,7 +70,7 @@ _ref:
                           _eq:
                             - _state: invite
                             - null
-                        then: expired
+                        then: invalid
                       - if:
                           _eq:
                             - _user: id
@@ -65,16 +82,79 @@ _ref:
                             - accepted
                         then: member
                       - if:
-                          _ne:
-                            - _state: invite.status
-                            - pending
-                        then: expired
+                          _or:
+                            - _eq:
+                                - _state: invite.status
+                                - rejected
+                            - _eq:
+                                - _state: invite.status
+                                - canceled
+                        then: withdrawn
+                      - if:
+                          _and:
+                            - _eq:
+                                - _state: invite.status
+                                - pending
+                            - _lt:
+                                - _state: invite.expires_at
+                                - _date: now
+                        then: link_expired
+                      # Normalized (trim + lower-case) comparison — see the
+                      # header note. BetterAuth's own accept-invitation check
+                      # is case-insensitive; this page's used to be a raw
+                      # strict compare and rejected a matching, existing
+                      # account whose stored email differed only in case.
                       - if:
                           _ne:
-                            - _state: invite.email
-                            - _user: email
-                        then: expired
+                            - _string.toLowerCase:
+                                _string.trim:
+                                  _state: invite.email
+                            - _string.toLowerCase:
+                                _string.trim:
+                                  _user: email
+                        then: wrong_email
                     default: signedin
+      # Best-effort diagnostic: one server-side log line naming which guard
+      # rejected the attempt, so a "can't be used" report is traceable
+      # without reproducing it. Runs on onInitAsync (not onInit) and
+      # wrapped in try/catch so a logging hiccup never blocks or errors the
+      # page — onInit is not a valid nesting point for try/catch (it is only
+      # valid as an event's whole value, per the events-and-actions schema).
+      # log-invitation-rejection is an AUTHENTICATED endpoint (not public), so
+      # only the three views that structurally require a session (they come
+      # after the nosession branch in select_accept_view) are logged;
+      # `invalid` is skipped since it can occur with no session at all and
+      # the call would just fail closed there.
+      onInitAsync:
+        try:
+          - :if:
+              _or:
+                - _eq:
+                    - _state: accept_view
+                    - link_expired
+                - _eq:
+                    - _state: accept_view
+                    - withdrawn
+                - _eq:
+                    - _state: accept_view
+                    - wrong_email
+            :then:
+              - id: log_rejection
+                type: CallAPI
+                messages:
+                  error: false
+                params:
+                  endpointId: user-account/log-invitation-rejection
+                  payload:
+                    invitationId:
+                      _url_query: invitationId
+                    reason:
+                      _state: accept_view
+                    invitedEmail:
+                      _state: invite.email
+                    callerEmail:
+                      _user: email
+        catch: []
     blocks:
       # ---- No session, offer login / signup ----
       - id: accept_title_nosession
@@ -292,10 +372,11 @@ _ref:
                 params:
                   invitationId:
                     _url_query: invitationId
-              # Refresh the client's _user BEFORE routing. The accept just gave
-              # this session its organization; without the refresh the router
-              # still reads awaiting_organization from the stale client user and
-              # bounces straight back to the awaiting page.
+              # LOCAL FORK: refresh the client's _user BEFORE routing. The
+              # accept just gave this session its organization; without the
+              # refresh the router still reads awaiting_organization from the
+              # stale client user and bounces straight back to the awaiting
+              # page — the accept/awaiting ping-pong.
               - id: refresh_session_after_accept
                 type: UpdateSession
               - id: accept_enter_app
@@ -303,10 +384,10 @@ _ref:
                 params:
                   home: true
             catch:
-              # A retry against an invitation THIS caller already consumed (an
-              # interrupted first accept) fails "not found" even though they are
-              # in. Re-read the invitation: consumed by them → refresh the
-              # session and enter; anything else is a real error.
+              # LOCAL FORK: a retry against an invitation THIS caller already
+              # consumed (an interrupted first accept) fails "not found" even
+              # though they are in. Re-read the invitation: consumed by them →
+              # refresh the session and enter; anything else is a real error.
               - id: refetch_invitation_after_error
                 type: Request
                 params: get_invitation
@@ -387,13 +468,13 @@ _ref:
           title: This link is missing its invitation
           subTitle: Open the invitation link from your email. It carries the reference this page needs.
 
-      # ---- Expired / mismatch ----
-      - id: accept_expired
+      # ---- No usable data (invitation row not found) ----
+      - id: accept_invalid
         type: Result
         visible:
           _eq:
             - _state: accept_view
-            - expired
+            - invalid
         properties:
           icon:
             name: AiOutlineClockCircle
@@ -401,3 +482,84 @@ _ref:
           status: warning
           title: This invitation can't be used
           subTitle: This invitation may have expired, already been used, or been sent to a different email address. Ask whoever invited you for a new one.
+
+      # ---- Past its expiry date (status still pending) ----
+      - id: accept_link_expired
+        type: Result
+        visible:
+          _eq:
+            - _state: accept_view
+            - link_expired
+        properties:
+          icon:
+            name: AiOutlineClockCircle
+            color: "var(--ant-color-warning)"
+          status: warning
+          title: This invitation has expired
+          subTitle:
+            _nunjucks:
+              template: Ask {{ inviter }} to send you a new invitation.
+              on:
+                inviter:
+                  _if_none:
+                    - _state: invite.inviter_name
+                    - whoever invited you
+
+      # ---- Withdrawn (canceled by the org, or declined) ----
+      - id: accept_withdrawn
+        type: Result
+        visible:
+          _eq:
+            - _state: accept_view
+            - withdrawn
+        properties:
+          icon:
+            name: AiOutlineClockCircle
+            color: "var(--ant-color-warning)"
+          status: warning
+          title: This invitation was withdrawn
+          subTitle:
+            _nunjucks:
+              template: Ask {{ inviter }} to send you a new invitation.
+              on:
+                inviter:
+                  _if_none:
+                    - _state: invite.inviter_name
+                    - whoever invited you
+
+      # ---- Signed in as the wrong account ----
+      - id: accept_wrong_email
+        type: Result
+        visible:
+          _eq:
+            - _state: accept_view
+            - wrong_email
+        properties:
+          icon:
+            name: AiOutlineClockCircle
+            color: "var(--ant-color-warning)"
+          status: warning
+          title: This invitation is for a different address
+          subTitle:
+            _nunjucks:
+              template: You're signed in as {{ callerEmail }}, but this invitation was sent to {{ invitedEmail }}. Sign out, then open the invitation link again to accept with the invited address.
+              on:
+                callerEmail:
+                  _user: email
+                invitedEmail:
+                  _state: invite.email
+      - id: accept_wrong_email_signout
+        type: Button
+        visible:
+          _eq:
+            - _state: accept_view
+            - wrong_email
+        properties:
+          title: Sign out
+          block: true
+          size: large
+          variant: outlined
+        events:
+          onClick:
+            - id: wrong_email_logout
+              type: Logout
