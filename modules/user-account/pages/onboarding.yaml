@@ -24,6 +24,10 @@ _ref:
           params:
             profile:
               _user: profile
+            # Seeded false, not left undefined: `visible` hides a block only
+            # when it evaluates to exactly false, so an unseeded flag would
+            # show BOTH the Add button and the "Passkey added" tag on load.
+            passkey_registered: false
         - _ref: ../shared/profile/avatar-picker-seed.yaml
     blocks:
       _build.array.concat:
@@ -51,6 +55,86 @@ _ref:
                 _module.var: fields.show_honorific
         # ---- Deployment-configured profile field blocks ----
         - _module.var: fields.profile
+        # ---- Optional passkey (deployment-gated on auth.passkey.enabled) ----
+        # Offered, never required: a first-login nudge to register a passkey
+        # while the user is already setting things up. Same PasskeyRegister
+        # chain as the Security tile / two-factor-enrol (registered flag tells
+        # the catch whether the passkey itself failed or only the trailing
+        # state write). Declining is just "Save and continue" below; passkeys
+        # stay manageable later from the account Security tile.
+        - _build.if:
+            test:
+              _build.authConfig: passkey.enabled
+            then:
+              - id: onboarding_passkey
+                type: Box
+                style:
+                  marginTop: 8
+                  padding: 12px 14px
+                  border: 1px solid var(--ant-color-border-secondary)
+                  borderRadius: 8
+                  background: var(--ant-color-fill-quaternary)
+                layout:
+                  direction: row
+                  align: middle
+                  justify: space-between
+                  gap: 12
+                blocks:
+                  - id: onboarding_passkey_copy
+                    type: Html
+                    layout:
+                      flex: 1 1 auto
+                    properties:
+                      html: |
+                        <div style="font-size:13px; color:var(--ant-color-text);">Would you like to add a passkey?</div>
+                        <div style="font-size:12px; color:var(--ant-color-text-tertiary);">Sign in next time with your fingerprint, face or device PIN instead of waiting for an email link. Optional — you can add one later under your account's Security settings.</div>
+                  - id: onboarding_passkey_add_btn
+                    type: Button
+                    visible:
+                      _not:
+                        _state: passkey_registered
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Add passkey
+                      icon: AiOutlineKey
+                      variant: outlined
+                    events:
+                      onClick:
+                        try:
+                          - id: reset_onboarding_passkey_registered
+                            type: SetState
+                            params:
+                              passkey_registered: false
+                          - id: onboarding_passkey_register
+                            type: PasskeyRegister
+                            messages:
+                              loading: Waiting for your authenticator…
+                              success: Passkey added.
+                              error: false
+                          - id: mark_onboarding_passkey_registered
+                            type: SetState
+                            params:
+                              passkey_registered: true
+                        catch:
+                          - id: onboarding_passkey_error
+                            type: DisplayMessage
+                            skip:
+                              _state: passkey_registered
+                            params:
+                              status: error
+                              content: Couldn't add a passkey. Your device may have cancelled the request.
+                  - id: onboarding_passkey_done
+                    type: Tag
+                    visible:
+                      _state: passkey_registered
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      color: green
+                      icon: AiOutlineCheck
+                      title: Passkey added
+            else: []
         # ---- Submit ----
         - # Validate the required fields, save the profile subtree with the
           # onboarding-complete marker, refresh the caller's session so the

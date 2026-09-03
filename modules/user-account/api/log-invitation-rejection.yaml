@@ -1,0 +1,28 @@
+# log-invitation-rejection — best-effort diagnostic for the accept page: one
+# server-side log line naming which guard rejected an invitation-accept
+# attempt, so a "this invitation can't be used" report is traceable without
+# reproducing it. Authenticated (not public): the caller only reaches this
+# from link_expired/withdrawn/wrong_email, all of which require a session
+# (they sit after the nosession branch in select_accept_view).
+#
+# Payload: { invitationId, reason, invitedEmail, callerEmail }
+id: log-invitation-rejection
+type: Api
+routine:
+  - :return:
+      logged:
+        _log:
+          _string.format:
+            template: >-
+              invitation-accept rejected: reason={reason}
+              invitationId={invitationId} invitedEmail={invitedEmail}
+              callerEmail={callerEmail}
+            on:
+              reason:
+                _payload: reason
+              invitationId:
+                _payload: invitationId
+              invitedEmail:
+                _payload: invitedEmail
+              callerEmail:
+                _payload: callerEmail
