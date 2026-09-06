@@ -744,6 +744,15 @@ _ref:
             test:
               _build.authConfig: passkey.enabled
             then:
+              # Gated on a well-formed email: passkey itself is a
+              # discoverable-credential ceremony that needs no email, but the
+              # gate makes sure the member has identified themselves before
+              # the prompt, and the address is at hand for the magic-link
+              # fallback if the authenticator cancels. The button stays
+              # clickable either way (an antd-disabled Button dropped inside
+              # a block-width layout no longer stretches full width); an
+              # invalid email short-circuits the click with an inline notice
+              # instead of starting the ceremony.
               - id: login_passkey
                 type: Button
                 visible:
@@ -761,8 +770,23 @@ _ref:
                   variant: outlined
                 events:
                   onClick:
-                    - id: passkey_signin
-                      type: PasskeySignIn
+                    - :if:
+                        _not:
+                          _regex:
+                            pattern: '^[^\s@]+@[^\s@]+\.[^\s@]+$'
+                            on:
+                              _if_none:
+                                - _state: email
+                                - ""
+                      :then:
+                        - id: login_passkey_email_required
+                          type: DisplayMessage
+                          params:
+                            status: warning
+                            content: Enter your email address above first.
+                      :else:
+                        - id: passkey_signin
+                          type: PasskeySignIn
             else: []
 
         # --- Link-sent result (magic-link). The send returns { status: true }

@@ -103,6 +103,7 @@ connections:
 api:
   - _ref: api/update-profile.yaml
   - _ref: api/ensure-contact-on-signup.yaml
+  - _ref: api/log-invitation-rejection.yaml
 
 pages:
   _build.array.concat:
@@ -244,6 +245,11 @@ exports:
       description: Update the caller's contact profile and re-denormalize onto their session user.
     - id: ensure-contact-on-signup
       description: Merge-on-signup hook endpoint. Ensures the caller has a contact in the session's organization.
+    - id: log-invitation-rejection
+      description: >-
+        Best-effort server-side log line naming which guard rejected an
+        invitation-accept attempt. Authenticated (not public) — the
+        rejecting views it logs from all require a session.
   components:
     - id: profile-avatar
       description: Avatar config for the PageHeaderMenu profile. User image with first-letter fallback.
