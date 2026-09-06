@@ -1,0 +1,47 @@
+id: rename-thread
+type: Api
+description: >
+  Renames a thread. Ownership-scoped to the session user, so a user can only
+  rename their own.
+payloadSchema:
+  type: object
+  required:
+    - conversationId
+    - title
+  additionalProperties: false
+  properties:
+    conversationId:
+      type: string
+    title:
+      type: string
+      minLength: 1
+      maxLength: 120
+routine:
+  - id: rename
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: ai_assistant_threads
+    properties:
+      # Zero matches is the NORMAL case here, not a failure: a new thread is
+      # minted client-side and its row is only created on the first message, so
+      # renaming before sending anything targets a doc that does not exist yet.
+      # Nothing is lost — save-thread carries ai_title with the first message,
+      # so the rename lands then. (It also stops a wrong conversationId being an
+      # existence oracle; the user_id filter already blocks the write itself.)
+      disableNoMatchError: true
+      filter:
+        conversationId:
+          _payload: conversationId
+        user_id:
+          _user: id
+      update:
+        $set:
+          title:
+            _payload: title
+          updated:
+            _date: now
+  - :return:
+      conversationId:
+        _payload: conversationId
+      title:
+        _payload: title

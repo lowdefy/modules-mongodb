@@ -1,0 +1,96 @@
+# Copy a readable report into one the caller owns.
+#
+# This is the escape hatch that makes read-only comfortable for a non-owner:
+# rather than a request-access dance, copy a shared report and change it freely.
+# The copy is always private and owned by the copier; the original is untouched.
+#
+# Readable-report check, not owner — the same predicate resolve-report and
+# set-report-favourite use.
+#
+# The spec is NOT re-validated on this path. The source document already holds
+# validateReportSpec's output, and re-validating would let an unrelated catalog
+# change block a duplicate — the same argument that keeps the catalog out of
+# remove-report-section. The copy's spec is proven valid by the copy resolving.
+id: duplicate-report
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to duplicate a report.
+  - id: load_source
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      query:
+        _id:
+          _payload: report_id
+        deleted.timestamp:
+          $exists: false
+        $or:
+          - owner.user_id:
+              _user: id
+          - visibility: shared
+  - :if:
+      _eq:
+        - _step: load_source
+        - null
+    :then:
+      - :reject: Report not found.
+  - id: insert_copy
+    type: MongoDBInsertOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      doc:
+        _id:
+          _uuid: true
+        # The COPIER, not the original owner. The copy gets its own created stamp
+        # for the same reason in reverse: inheriting one would put the original
+        # author's name on the copier's provenance line.
+        owner:
+          _ref: defaults/owner.yaml
+        title:
+          _step: load_source.title
+        description:
+          _step: load_source.description
+        # Copied verbatim, section ids included — the ids are durable identities,
+        # so a copy that re-derived them would break any reference to a section.
+        spec:
+          _step: load_source.spec
+        # COPIED rather than stamped with the current constant. The copy carries
+        # the original's spec verbatim, so labelling an older spec as the current
+        # grammar would reintroduce exactly the "no way to tell which grammar this
+        # was written against" problem the field exists to prevent — at the one
+        # endpoint that clones a spec instead of authoring one.
+        spec_version:
+          _step: load_source.spec_version
+        visibility: private
+        # Reset, not inherited: a favourite is one user's marker and the copy is a
+        # different report.
+        favourite_of: []
+        # Never inherited, and this is confidentiality rather than tidiness. The
+        # copier owns the copy, so the report page's owner-only "Continue in chat"
+        # would render and point at the ORIGINAL author's conversation — the
+        # transcript that page is explicit about not exposing.
+        conversation_id: null
+        deleted: null
+        created:
+          _ref: defaults/change_stamp.yaml
+        updated:
+          _ref: defaults/change_stamp.yaml
+  # Same shape generate-report returns, so a caller can navigate straight to the
+  # copy without knowing which endpoint produced it.
+  - :return:
+      ok: true
+      report_id:
+        _step: insert_copy.insertedId
+      url:
+        _string.concat:
+          - "/"
+          - _module.id: true
+          - "/report?report_id="
+          - _step: insert_copy.insertedId

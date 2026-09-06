@@ -1,5 +1,142 @@
 # @lowdefy/modules-mongodb-activities
 
+## 0.36.0
+
+## 0.35.0
+
+## 0.34.0
+
+## 0.33.0
+
+## 0.32.1
+
+## 0.32.0
+
+## 0.31.1
+
+## 0.31.0
+
+## 0.30.0
+
+## 0.29.0
+
+## 0.28.0
+
+## 0.27.0
+
+## 0.26.0
+
+## 0.25.1
+
+## 0.25.0
+
+## 0.24.0
+
+### Minor Changes
+
+- [#152](https://github.com/lowdefy/modules-mongodb/pull/152) [`dafe769`](https://github.com/lowdefy/modules-mongodb/commit/dafe769046677977e20f367018edb8d397dd543c) Thanks [@Yianni99](https://github.com/Yianni99)! - **Activities** — `open_capture` and `capture_activity` in `mode: page` now carry `prefill.attributes` and `prefill.references` through to the new-activity page, where attributes merge over the page's own defaults exactly as they do in the capture modal. Previously both keys were dropped on the navigate path, so a deep-linked activity was created with no `references` and therefore unattached to the host entity it was logged against.
+
+  This is the route a host page takes when it wants its own capture entry point: a page cannot embed a second `capture_activity`, because `form_activity` hardcodes the contacts selector's request id and two instances collide. The demo's deal workspace has a "Log site visit" button showing the pattern.
+
+  Consumer guidance added alongside it: prefer a field's own `requests` over `form_requests` where the field must appear on every surface — `form_requests` are page-only, so a field relying on them is silently absent from the capture modal — and never `visible`-gate a field that writes into `references`, since hiding a block deletes its state and would discard the host's prefilled link.
+
+## 0.23.1
+
+## 0.23.0
+
+### Minor Changes
+
+- [#147](https://github.com/lowdefy/modules-mongodb/pull/147) [`28e48ec`](https://github.com/lowdefy/modules-mongodb/commit/28e48ec6db7026d5d3cf647f6ef945c2d77777dc) Thanks [@Yianni99](https://github.com/Yianni99)! - deals: rework the workspace layout, and key workflow form data by workflow type
+
+  **Breaking (config):** `get_selected_deal` now exposes workflow form data as
+  `workflows.{workflow_type}.{action_type}.{field}`. It was
+  `workflows.{action_type}.{field}`.
+
+  The request no longer joins one workflow — it joins **all** of the deal's
+  workflows and keys their form data by workflow type, so a deal carrying a
+  chained lifecycle exposes every workflow's form data rather than only the one
+  matching the `workflow_type` var.
+
+  A stale read **fails silently**: `workflows.volumes.annual_volume` simply
+  resolves to null, so any `$ifNull` or `_if_none` fallback behind it takes over
+  and the wrong value renders with no error anywhere. There is no build failure to
+  catch this. Grep your config for `workflows.` reads — the likely sites are
+  `request_stages.get_selected_deal` stages and any tile injected through
+  `components.info_grid_slots` — and insert the workflow-type key. A host stage
+  that builds its own `workflows` field from its own `$lookup` is unaffected.
+
+  Two notes on the keying. Action types are namespaced per workflow by the engine,
+  which enforces uniqueness only _within_ a workflow, so a flat merge keyed by
+  action type would silently truncate a legal config — hence the workflow-type
+  key. And the key is the workflow _type_, not the instance: a deal carrying two
+  workflows of the same type exposes only one of them.
+
+  **Info-grid tile order changed.** Blocks injected through
+  `components.info_grid_slots` now render **before** the built-in People and Files
+  tiles, where they previously appended after them. No var was renamed and no host
+  config needs changing, but the rendered order shifts. Tiles are span-12, so the
+  row pairing depends on how many are injected: with two, the injected pair takes
+  the first row and People/Files the second.
+
+  Layout and presentation:
+
+  - The deal detail panel's open actions and open tasks are now **one merged
+    list**, ordered overdue tasks → open actions → upcoming tasks, under a single
+    "Actions" heading, two per row and paginated at four per page. They were two
+    half-width columns with a heading and an empty state each. Tasks and workflow
+    actions are both docs in the same `actions` collection, so one heading covers
+    both, and there is now one empty state judged on the whole list. Ownership is
+    unchanged — `workflows` still resolves actions and `activities` still owns the
+    task query; only the rendering moved to the consumer, because a merged row
+    needs per-row events (an action navigates, a task opens a modal).
+  - `activities/open-tasks` gains two vars, both defaulted so existing consumers
+    are unaffected. `render: false` fetches and seeds `open_tasks` without drawing
+    any cards, for a host that renders the rows itself; `on_loaded` runs an action
+    list once that seeding completes. `render` is applied at build time, because
+    the card list _is_ `open_tasks` — hiding it would delete the state it seeds.
+  - The related-deals strip is bounded by pagination: two per row, four per page,
+    with the deal name ellipsised to one line and the lookup returning 10 rather
+    than 20. Previously up to twenty content-width cards wrapped into several
+    ragged rows and pushed the timeline tabs below the fold.
+  - The workspace columns are evened to 12/12; the pipeline column was previously
+    narrower than the detail column beside it.
+  - The deals list panel gains a "New deal" button in its header and a chevron
+    that collapses the panel to a fixed 36px rail, widening the workspace. The rail
+    is a fixed width rather than a grid share, so it stays sized to its chevron
+    instead of tracking the viewport — which also means it applies at every width,
+    including below 768px where the expanded panel is full width.
+  - The deal topbar's action bar now shrinks, so its buttons wrap to a second line
+    on a narrow screen instead of spilling the topbar and giving the page a
+    horizontal scrollbar. The bar could not shrink before; collapsing the panel on
+    a ~375px phone is what made it overflow.
+  - The workflow card's header keeps its natural height when the workflows are
+    expanded. It was a flex item being squeezed by the growing body, losing ~11px —
+    enough to clip a two-line title.
+  - Card numbers flagged `round: true` in `card_fields` render at two decimal
+    places on both the list-page card and the workspace panel card. Both
+    previously rendered through Nunjucks `round`, which rounds to whole numbers
+    (12.6 → 13) and cannot pad trailing zeros.
+
+  `button_new_deal` gained `size` and `visible` vars, both defaulted to preserve
+  its current rendering on the deals list page.
+
+  activities: comment-only corrections, no behaviour change. `capture_activity`'s
+  docblock documented five `prefill` keys where the component has always supported
+  seven, omitting `attributes` and `references`, and did not record that those two
+  apply in `mode: modal` only. `open-tasks` described itself as composing with
+  `open-actions` into one row, which stopped being true once the deals panel
+  stacked them.
+
+## 0.22.0
+
+## 0.21.0
+
+## 0.20.0
+
+## 0.19.0
+
+## 0.18.0
+
 ## 0.17.0
 
 ## 0.16.0

@@ -134,11 +134,20 @@ function collectMarkdownFiles() {
   const rootReadme = join(ROOT, "README.md");
   if (existsSync(rootReadme)) files.push(rootReadme);
 
+  // Recursive: every install snippet a consumer copies lives at
+  // docs/{module}/index.md, one level down, so a flat read of docs/ reaches
+  // only the root landing page and leaves every module page pinned to whatever
+  // version it was written against.
   if (existsSync(DOCS_DIR) && statSync(DOCS_DIR).isDirectory()) {
-    for (const entry of readdirSync(DOCS_DIR)) {
-      if (!entry.endsWith(".md")) continue;
-      files.push(join(DOCS_DIR, entry));
-    }
+    const walk = (dir) => {
+      for (const entry of readdirSync(dir)) {
+        if (entry.startsWith(".") || entry === "node_modules") continue;
+        const path = join(dir, entry);
+        if (statSync(path).isDirectory()) walk(path);
+        else if (entry.endsWith(".md")) files.push(path);
+      }
+    };
+    walk(DOCS_DIR);
   }
 
   for (const entry of readdirSync(MODULES_DIR)) {

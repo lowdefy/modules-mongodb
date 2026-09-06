@@ -14,6 +14,11 @@ vars:
   options:
     type: array
     default: []
+  # Alternative options source: an enum map (slug -> { title, color, icon }).
+  # Ignored when `options` is supplied.
+  enum:
+    type: object
+    default: {}
   extra:
     type: string
     required: false
@@ -48,10 +53,19 @@ config:
         _var:
           key: label_disabled
           default: false
+    # `options` wins when supplied; otherwise the enum map is converted.
     options:
       _var:
         key: options
-        default: []
+        default:
+          _ref:
+            path: components/fields/helpers/enum_options.yaml
+            key: config
+            vars:
+              enum:
+                _var:
+                  key: enum
+                  default: {}
   events:
     onChange:
       _var:

@@ -1,5 +1,28 @@
 # Form custom-component seam
 
+> **Deviation note (superseded detail).** This design settled the raw-inline-block
+> shape as `{ id, type, properties }` — authoring the block `id` directly, as "the
+> same convention library components use". That was reasoned entirely against the
+> **block tree**, and missed the second consumer of the authored `form:` array:
+> Part 46's `form_meta` projection (`makeWorkflowsConfig.js` `METADATA_FIELDS`),
+> which records only `component`/`key`/`required`/`title`/`validate`, and which
+> `GetWorkflowAction` uses as an **allowlist** over the stored `form_data` slice
+> (D8). A raw entry with a bare `id` and no `key` therefore has no `form_meta`
+> entry at all: its value saves, but is never read back — no prefill on re-edit,
+> and absent from the overview and review views. This design does not mention
+> `form_meta`, `form_data`, or `GetWorkflowAction`; Part 46 predates it.
+>
+> **Superseded by:** raw entries now use the library's authoring vocabulary —
+> `makeActionsForm.substituteRawBlock` maps `key` → `id` and strips `key`/`title`
+> before the node reaches the page tree, so one authored `key` feeds both the
+> block tree and `form_meta`. Writing both `key` and `id` is an error. The
+> two-way split below is also now a three-way one: the same mapping is what makes
+> **consumer-supplied field components** work — an app-owned file emitting a form
+> entry, `_ref`'d from the app-side workflow config (which resolves in app
+> context, so it is not subject to the package-root escape constraint noted
+> below). Current contract: `docs/workflows/reference/form-components.md`
+> §Custom components.
+
 The workflows form-builder (`makeActionsForm`) currently advertises three ways to put a field in an action `form:` block: a bare library-component name, a raw inline Lowdefy block, and a namespaced `component: <plugin>:<name>` "custom component". The namespaced path is documented as the official way to add an app-specific field, but it is dead code — it emits an invalid block, has never rendered, and structurally cannot. This design removes that path and re-documents raw inline blocks as the real escape hatch, leaving two honest ways to define a field: the curated library, and a raw block for everything else.
 
 ## Proposed change

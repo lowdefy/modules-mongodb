@@ -11,6 +11,9 @@ vars:
   required:
     type: boolean
     default: false
+  label_span:
+    type: number
+    default: 0
   hideAddButton:
     type: boolean
     default: false
@@ -34,6 +37,17 @@ config:
     _var:
       key: visible
       default: true
+  layout:
+    span:
+      _subtract:
+        - 24
+        - _var:
+            key: label_span
+            default: 0
+    push:
+      _var:
+        key: label_span
+        default: 0
   validate:
     _build.if:
       test:

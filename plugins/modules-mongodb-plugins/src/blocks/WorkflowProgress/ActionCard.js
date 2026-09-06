@@ -24,9 +24,6 @@ const ActionCard = ({
     html: notRequired ? `<strike>${action?.message}</strike>` : action?.message,
     methods,
   });
-  const dot = (
-    <span className="wp-button-dot" style={{ background: cfg.titleColor }} />
-  );
   const style = {
     background: cfg.color,
     borderColor: cfg.borderColor,
@@ -52,7 +49,6 @@ const ActionCard = ({
   if (linkDisabled) {
     inner = (
       <span className={className} style={style}>
-        {dot}
         {messageHtml}
       </span>
     );
@@ -67,7 +63,6 @@ const ActionCard = ({
           methods.triggerEvent({ name: "onActionClick", event: { action } });
         }}
       >
-        {dot}
         {messageHtml}
       </a>
     );
@@ -81,7 +76,6 @@ const ActionCard = ({
         input={action?.link?.input}
         newTab={action?.link?.newTab ?? false}
       >
-        {dot}
         {messageHtml}
       </Link>
     );

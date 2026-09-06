@@ -36,10 +36,12 @@ _ref:
                   _url_query: workflow_id
             - label:
                 _state: group.title
-    # Eyebrow names the entity this workflow hangs off ("{type}: {name}", e.g.
-    # "Company: Acme Corp") — same data as the breadcrumb trail, above the title.
+    # Eyebrow names the entity this workflow hangs off ("Company: Acme Corp");
+    # the subtitle underneath adds its id, linked to the record.
     type:
       _ref: components/overview-entity-eyebrow.yaml
+    description:
+      _ref: components/overview-entity-subtitle.yaml
     status:
       _state: group.status
     status_enum:
@@ -47,6 +49,63 @@ _ref:
     loading:
       _not:
         _state: group
+    # Expand/collapse-all lives in the title bar's right-hand actions slot: it is
+    # a page-scoped control (it rewrites the whole collapse_map in one SetState),
+    # and putting it here spends the empty right edge instead of a dedicated
+    # toolbar row above the cards.
+    page_actions:
+      - id: collapse_all_toggle
+        type: Button
+        layout:
+          # Without an explicit flex a block falls into the 24-span column grid
+          # (flex 0 0 100%) rather than sizing to its label.
+          flex: 0 0 auto
+        properties:
+          type: default
+          size: small
+          title:
+            _js:
+              args:
+                acts:
+                  _state: actions_list
+                map:
+                  _state: collapse_map
+              fn: |
+                const acts = args.acts || [];
+                const ids = acts.map((a) => (a.key ? a.type + '.' + a.key : a.type));
+                const map = args.map || {};
+                const allExpanded = ids.length > 0 && ids.every((id) => map[id]);
+                return allExpanded ? 'Collapse all' : 'Expand all';
+        events:
+          onClick:
+            - id: toggle_all
+              type: SetState
+              params:
+                collapse_map:
+                  _js:
+                    args:
+                      acts:
+                        _state: actions_list
+                      map:
+                        _state: collapse_map
+                    fn: |
+                      const acts = args.acts || [];
+                      const ids = acts.map((a) => (a.key ? a.type + '.' + a.key : a.type));
+                      const map = args.map || {};
+                      const allExpanded = ids.length > 0 && ids.every((id) => map[id]);
+                      if (allExpanded) return {};
+                      const next = {};
+                      for (const id of ids) next[id] = true;
+                      return next;
+    # Presigned S3 GET, so file fields inside the action cards download rather
+    # than rendering "No files available" (DataDescriptions needs the policy
+    # request id). Instantiated id: download_policy_group_overview.
+    requests:
+      - _ref:
+          module: files
+          component: download-policy
+          vars:
+            block_id: group_overview
     events:
       onMount:
         # workflow_id + group_id presence guard.
@@ -111,54 +170,6 @@ _ref:
           vars:
             summary:
               _state: group.summary
-      # Outside the List, so it writes the whole collapse_map in one SetState.
-      - id: collapse_toolbar
-        type: Box
-        layout:
-          justify: flex-end
-        blocks:
-          - id: collapse_all_toggle
-            type: Button
-            layout:
-              flex: 0 0 auto
-            properties:
-              type: text
-              size: small
-              title:
-                _js:
-                  args:
-                    acts:
-                      _state: actions_list
-                    map:
-                      _state: collapse_map
-                  fn: |
-                    const acts = args.acts || [];
-                    const ids = acts.map((a) => (a.key ? a.type + '.' + a.key : a.type));
-                    const map = args.map || {};
-                    const allExpanded = ids.length > 0 && ids.every((id) => map[id]);
-                    return allExpanded ? 'Collapse all' : 'Expand all';
-            events:
-              onClick:
-                - id: toggle_all
-                  type: SetState
-                  params:
-                    collapse_map:
-                      _js:
-                        args:
-                          acts:
-                            _state: actions_list
-                          map:
-                            _state: collapse_map
-                        fn: |
-                          const acts = args.acts || [];
-                          const ids = acts.map((a) => (a.key ? a.type + '.' + a.key : a.type));
-                          const map = args.map || {};
-                          const allExpanded = ids.length > 0 && ids.every((id) => map[id]);
-                          if (allExpanded) return {};
-                          const next = {};
-                          for (const id of ids) next[id] = true;
-                          return next;
-
       # Card gap rides the `.element` CSS slot — blocks-basic List merges it into
       # its item flex-container; layout.gap only reaches blocks within a card.
       - id: actions_list
@@ -170,244 +181,9 @@ _ref:
           .element:
             gap: 8px
         blocks:
-          - id: actions_list.$.card
-            type: Card
-            layout:
-              gap: 16
-            blocks:
-              - id: actions_list.$.header
-                type: Box
-                layout:
-                  gap: 8
-                  selfAlign: middle
-                  # Layout default is flex-wrap: wrap — nowrap holds the row.
-                  wrap: nowrap
-                blocks:
-                  - id: actions_list.$.collapse_toggle
-                    type: Button
-                    layout:
-                      flex: 0 0 auto
-                    properties:
-                      type: text
-                      hideTitle: true
-                      icon:
-                        _if:
-                          test:
-                            _get:
-                              from:
-                                _state: collapse_map
-                              key:
-                                _if:
-                                  test:
-                                    _ne:
-                                      - _state: actions_list.$.key
-                                      - null
-                                  then:
-                                    _string.concat:
-                                      - _state: actions_list.$.type
-                                      - .
-                                      - _state: actions_list.$.key
-                                  else:
-                                    _state: actions_list.$.type
-                              default: false
-                          then: AiOutlineUp
-                          else: AiOutlineDown
-                    events:
-                      onClick:
-                        - id: actions_list.$.toggle
-                          type: SetState
-                          params:
-                            collapse_map:
-                              _js:
-                                args:
-                                  id:
-                                    _if:
-                                      test:
-                                        _ne:
-                                          - _state: actions_list.$.key
-                                          - null
-                                      then:
-                                        _string.concat:
-                                          - _state: actions_list.$.type
-                                          - .
-                                          - _state: actions_list.$.key
-                                      else:
-                                        _state: actions_list.$.type
-                                  map:
-                                    _state: collapse_map
-                                fn: |
-                                  const map = { ...(args.map || {}) };
-                                  const id = args.id;
-                                  map[id] = !map[id];
-                                  return map;
-                  - id: actions_list.$.title_row
-                    type: Box
-                    layout:
-                      gap: 8
-                      selfAlign: middle
-                      flex: 1 1 0
-                    blocks:
-                      - id: actions_list.$.title_row
-                        type: Box
-                        layout:
-                          gap: 8
-                          selfAlign: middle
-                        blocks:
-                          - id: actions_list.$.status_badge
-                            type: Tag
-                            layout:
-                              flex: 0 0 auto
-                            properties:
-                              color:
-                                _get:
-                                  from:
-                                    _ref: components/action_statuses.yaml
-                                  key:
-                                    _string.concat:
-                                      - _state: actions_list.$.status
-                                      - .titleColor
-                              title:
-                                _get:
-                                  from:
-                                    _ref: components/action_statuses.yaml
-                                  key:
-                                    _string.concat:
-                                      - _state: actions_list.$.status
-                                      - .title
-                          - id: actions_list.$.message
-                            layout:
-                              flex: 1 1 auto
-                            type: Paragraph
-                            properties:
-                              content:
-                                _state: actions_list.$.message
-                          - id: actions_list.$.link_button
-                            type: Button
-                            layout:
-                              flex: 0 0 auto
-                            visible:
-                              _ne:
-                                - _state: actions_list.$.link
-                                - null
-                            properties:
-                              title:
-                                _if_none:
-                                  - _state: actions_list.$.link.title
-                                  - Open
-                              type: link
-                            events:
-                              onClick:
-                                - id: actions_list.$.link
-                                  type: Link
-                                  params:
-                                    _state: actions_list.$.link
-              - id: actions_list.$.body_empty
-                type: Html
-                visible:
-                  _and:
-                    - _get:
-                        from:
-                          _state: collapse_map
-                        key:
-                          _if:
-                            test:
-                              _ne:
-                                - _state: actions_list.$.key
-                                - null
-                            then:
-                              _string.concat:
-                                - _state: actions_list.$.type
-                                - .
-                                - _state: actions_list.$.key
-                            else:
-                              _state: actions_list.$.type
-                    - _eq:
-                        - _get:
-                            from:
-                              _state: workflow.form_data
-                            key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: actions_list.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: actions_list.$.type
-                                    - .
-                                    - _state: actions_list.$.key
-                                else:
-                                  _state: actions_list.$.type
-                            default: null
-                        - null
-                properties:
-                  html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
-              - id: actions_list.$.body_dataview
-                type: DataDescriptions
-                visible:
-                  _and:
-                    - _get:
-                        from:
-                          _state: collapse_map
-                        key:
-                          _if:
-                            test:
-                              _ne:
-                                - _state: actions_list.$.key
-                                - null
-                            then:
-                              _string.concat:
-                                - _state: actions_list.$.type
-                                - .
-                                - _state: actions_list.$.key
-                            else:
-                              _state: actions_list.$.type
-                    - _ne:
-                        - _get:
-                            from:
-                              _state: workflow.form_data
-                            key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: actions_list.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: actions_list.$.type
-                                    - .
-                                    - _state: actions_list.$.key
-                                else:
-                                  _state: actions_list.$.type
-                            default: null
-                        - null
-                properties:
-                  formConfig:
-                    _array.concat:
-                      - _if_none:
-                          - _state: actions_list.$.form_meta.form
-                          - []
-                      - _if_none:
-                          - _state: actions_list.$.form_meta.form_review
-                          - []
-                  data:
-                    form:
-                      _get:
-                        from:
-                          _state: workflow.form_data
-                        key:
-                          _if:
-                            test:
-                              _ne:
-                                - _state: actions_list.$.key
-                                - null
-                            then:
-                              _string.concat:
-                                - _state: actions_list.$.type
-                                - .
-                                - _state: actions_list.$.key
-                            else:
-                              _state: actions_list.$.type
-                        default: null
-                    workflow:
-                      _state: workflow
+          # One collapsible, status-tinted card per action.
+          - _ref:
+              path: components/overview-action-card.yaml
+              vars:
+                prefix: actions_list.$
+                s3_get_policy_request_id: download_policy_group_overview

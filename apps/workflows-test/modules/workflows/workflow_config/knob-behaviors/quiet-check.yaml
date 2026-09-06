@@ -1,0 +1,23 @@
+# A check action that opts out of the optional comment box (Part 73).
+#
+# Paired with loud-check.yaml, which leaves show_comment at its default. Both are
+# check actions in the SAME workflow, so both render on the one shared
+# `knob-behaviors-action` page — the case that proves the flag is honoured per
+# action rather than baked per page.
+type: quiet-check
+kind: check
+action_group: knob-group
+sort_order: 20
+show_comment: false
+description: Check action with show_comment false — no comment box.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Mark this started, then submit.
+  done:
+    test:
+      message: Done.

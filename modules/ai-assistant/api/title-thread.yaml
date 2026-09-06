@@ -1,0 +1,85 @@
+id: title-thread
+type: Api
+description: >
+  Names a thread from its FIRST EXCHANGE — the opening question AND the reply —
+  and persists the result.
+
+  Why not the agent's own generateTitle: that titles from the opening message
+  alone, and where a panel offers suggestion prompts the opening message is one
+  of a handful of canned strings, so every thread comes out with the same name,
+  describing the question rather than the subject. The subject is in the reply.
+
+  Best-effort and ownership-scoped: the model call swallows its own failures and
+  returns title null, and the write is filtered on the session user. On a null
+  title nothing is written and the caller keeps the provisional title it is
+  already showing — a cosmetic call must never be the reason a thread has no
+  name.
+payloadSchema:
+  type: object
+  required:
+    - conversationId
+    - prompt
+    - reply
+  additionalProperties: false
+  properties:
+    conversationId:
+      type: string
+    prompt:
+      type: string
+    reply:
+      type: string
+    context:
+      type: string
+routine:
+  - id: generate_title
+    type: GenerateChatTitle
+    connectionId:
+      _module.connectionId: ai_assistant_text
+    properties:
+      disableNoMatchError: true
+      model:
+        _module.var: title_model
+      # Low: this runs once per thread on a cosmetic path, where latency matters
+      # more than depth.
+      reasoningEffort: low
+      domain:
+        _module.var: title_domain
+      prompt:
+        _payload: prompt
+      reply:
+        _payload: reply
+      context:
+        _payload: context
+
+  - :if:
+      _eq:
+        - _step: generate_title.title
+        - null
+    :then:
+      - :return:
+          title: null
+
+  - id: persist_title
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: ai_assistant_threads
+    properties:
+      # Same reasoning as rename-thread, and doubly so: this is a cosmetic pass
+      # running after save-thread in the same chain. If that save did not land,
+      # a title write throwing on top of it helps nobody.
+      disableNoMatchError: true
+      filter:
+        conversationId:
+          _payload: conversationId
+        user_id:
+          _user: id
+      update:
+        $set:
+          title:
+            _step: generate_title.title
+          updated:
+            _date: now
+
+  - :return:
+      title:
+        _step: generate_title.title

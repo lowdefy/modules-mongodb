@@ -182,6 +182,17 @@ routine:
                         - $ifNull:
                             - _payload: attributes
                             - {}
+                    # The verbatim copy, merged like attributes so omitted keys
+                    # survive. create-activity writes this and the flattened form
+                    # below; without it the nested copy drifts on every update.
+                    references:
+                      $mergeObjects:
+                        - $ifNull:
+                            - "$$ROOT.references"
+                            - {}
+                        - $ifNull:
+                            - _payload: references
+                            - {}
                     updated:
                       _ref:
                         module: events

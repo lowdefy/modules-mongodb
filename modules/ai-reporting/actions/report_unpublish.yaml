@@ -1,0 +1,21 @@
+# The mirror of report_publish.yaml — see the note there for why the seed is
+# written alongside the call rather than left to after_write, and for the second
+# implementation the report page's compiled menu carries.
+#
+# Vars:
+#   after_write — actions to run once the write has persisted.
+_build.array.concat:
+  - - id: report_unpublish_call
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: set-report-visibility
+        payload:
+          report_id:
+            _state: selected_report._id
+          visibility: private
+    - id: report_unpublish_seed
+      type: SetState
+      params:
+        selected_report.visibility: private
+  - _var: after_write

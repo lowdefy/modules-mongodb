@@ -1,0 +1,68 @@
+# Workflow actions (from `entity_workflows`) merged with adhoc tasks (from
+# `open_tasks`), ordered overdue tasks -> open actions -> upcoming tasks. A
+# separate fragment because `compute_open_items` needs it twice, for the full
+# list and for the first page.
+_js:
+  args:
+    - _ref:
+        module: workflows
+        component: action_statuses
+  fn: |
+    const statuses = args[0] || {};
+    // The same terminal set the engine's deriveGroupStatus treats as closed.
+    const TERMINAL = ['done', 'not-required'];
+    const items = [];
+
+    const wfs = state('entity_workflows') || [];
+    for (const wf of wfs) {
+      for (const g of (wf.groups || [])) {
+        for (const act of (g.actions || [])) {
+          if (TERMINAL.includes(act.status)) continue;
+          const sc = statuses[act.status] || {};
+          const border = sc.borderColor || 'var(--ant-color-primary-border)';
+          // Kept structured for the Link action's `pageId`, not flattened to a
+          // path: `url` prepends https:// to anything without a colon.
+          const link = act.link && act.link.pageId ? act.link : null;
+          items.push({
+            row: 'action',
+            sort: 1,
+            label: g.title || wf.title || 'Action',
+            label_color: sc.titleColor || 'var(--ant-color-primary)',
+            body: act.message || '',
+            border: border,
+            border_style: 'solid',
+            border_left: '1px solid ' + border,
+            background: 'color-mix(in srgb, ' + border + ' 18%, transparent)',
+            link_page_id: link ? link.pageId : null,
+            link_url_query: link ? link.urlQuery || {} : null,
+            due_date: null,
+            task: null,
+          });
+        }
+      }
+    }
+
+    const tasks = state('open_tasks') || [];
+    for (const t of tasks) {
+      const border = t.overdue
+        ? 'var(--ant-color-error-border)'
+        : 'var(--ant-color-warning-border)';
+      items.push({
+        row: 'task',
+        sort: t.overdue ? 0 : 2,
+        label: t.overdue ? 'Overdue Task' : 'Task',
+        label_color: t.overdue ? 'var(--ant-color-error)' : 'var(--ant-color-warning)',
+        body: t.title || '',
+        border: border,
+        border_style: 'dashed',
+        border_left: '4px solid ' + border,
+        background: 'var(--ant-color-bg-container)',
+        link_page_id: null,
+        link_url_query: null,
+        due_date: t.due_date || null,
+        task: t,
+      });
+    }
+
+    // Relies on a stable sort to keep due-date and workflow order within buckets.
+    return items.sort(function (a, b) { return a.sort - b.sort; });

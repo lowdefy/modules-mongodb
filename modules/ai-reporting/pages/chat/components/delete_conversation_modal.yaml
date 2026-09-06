@@ -1,0 +1,51 @@
+# Delete confirmation, opened by the rail's kebab menu with
+# CallMethod(setOpen, { open: true }) once onMenuClick has seeded the target row.
+# The delete is soft and there is no restore, so the confirm names the
+# conversation it is about to remove.
+#
+# Never hidden with `visible:` — see rename_conversation_modal.yaml.
+id: delete_conversation_modal
+type: Modal
+properties:
+  title: Delete conversation
+  okText: Delete
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    _build.array.concat:
+      - - id: delete_conversation
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: delete-conversation
+            payload:
+              conversationId:
+                _state: menu_conversation_id
+      - _ref: pages/chat/actions/refresh_conversations.yaml
+      - # Deleting the conversation on screen has to move the page off it.
+        # Otherwise the transcript stays open on a conversation the rail no
+        # longer lists, and the next turn saves its messages onto the deleted
+        # document — where nothing can reach them again.
+        - :if:
+            _eq:
+              - _state: menu_conversation_id
+              - _state: conversationId
+          :then:
+            _ref: pages/chat/actions/new_conversation.yaml
+        # The deleted row is gone from the refetched list, so a term that only
+        # matched it would leave the rail filtered to nothing.
+        - id: clear_conversation_search
+          type: SetState
+          params:
+            conversation_search: null
+blocks:
+  - id: delete_conversation_confirm
+    type: Paragraph
+    properties:
+      content:
+        _nunjucks:
+          template: Delete "{{ title }}"? This cannot be undone.
+          on:
+            title:
+              _state: menu_conversation_title

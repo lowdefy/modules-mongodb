@@ -1,0 +1,24 @@
+# Seed the related-deals strip and reset it to page 1. `related_deals_all` holds
+# every deal the lookup returned (capped at 10 there); `related_deals` holds the
+# rendered page. The pagination block's own state is reset too — see
+# `compute_open_items.yaml` for why that is not redundant.
+id: compute_related_deals
+type: SetState
+params:
+  related_deals_all:
+    _if_none:
+      - _request: get_selected_deal.0.related_deals
+      - []
+  related_deals:
+    _mql.aggregate:
+      on:
+        _if_none:
+          - _request: get_selected_deal.0.related_deals
+          - []
+      pipeline:
+        - $limit: 4
+  related_deals_page: 1
+  related_deals_pagination:
+    current: 1
+    pageSize: 4
+    skip: 0

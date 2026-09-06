@@ -1,0 +1,56 @@
+# rename-thread.yaml — the header title's onChange: persist the new title for the
+# OPEN thread and patch its label in the list locally (no refetch).
+#
+# Three steps, because the TitleInput has already written the raw input to
+# state.ai_title by the time this runs (it calls setValue before triggering
+# onChange). Step 1 normalises that in place; steps 2 and 3 act on the result.
+- id: ai_normalise_title
+  type: SetState
+  params:
+    # Trim, and treat a cleared field as a slip rather than an instruction — antd
+    # hands back '' and a nameless thread is not a thing anyone wants. Fall back
+    # to the label the list still holds (unchanged until step 3).
+    ai_title:
+      _js:
+        fn: |
+          const v = (event('value') || '').trim();
+          if (v) return v;
+          const id = state('ai_conversation_id');
+          const entry = (state('ai_threads') || []).find((c) => c.key === id);
+          return (entry && entry.label) || 'New chat';
+        args: {}
+
+# One test covers BOTH no-op cases, because step 1 left ai_title equal to the
+# list's label in each: a cleared field (restored), and an edit committed without
+# a change (open the editor, press Enter). The list is patched in step 3 and so
+# still holds the OLD label here.
+- id: ai_persist_rename
+  type: CallAPI
+  skip: &unchanged
+    _js:
+      fn: |
+        const id = state('ai_conversation_id');
+        const entry = (state('ai_threads') || []).find((c) => c.key === id);
+        return ((entry && entry.label) || 'New chat') === state('ai_title');
+      args: {}
+  params:
+    endpointId:
+      _module.endpointId: rename-thread
+    payload:
+      conversationId:
+        _state: ai_conversation_id
+      title:
+        _state: ai_title
+
+- id: ai_patch_rename_label
+  type: SetState
+  skip: *unchanged
+  params:
+    ai_threads:
+      _js:
+        fn: |
+          const id = state('ai_conversation_id');
+          const title = state('ai_title');
+          return (state('ai_threads') || []).map(
+            (c) => (c.key === id ? { ...c, label: title } : c));
+        args: {}

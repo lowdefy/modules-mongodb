@@ -1,0 +1,140 @@
+# The chat -> report link, surfaced at the top of the results panel: the reports
+# this conversation has produced, each a row that opens the report page. Rows come
+# from get-conversation-results' `saved_reports` on conversation select, and for a
+# just-saved report from the save-sheet refresh and the agent's live
+# `data-report-saved` part. Absent — not an empty "0 reports" — when the
+# conversation produced nothing. A distinct "kept" band above the panel's live
+# "current" result cards.
+id: saved_from_chat
+type: Box
+layout:
+  gap: 8
+# Unmount when empty — this section holds no input blocks, so dropping state on
+# hide is safe (unlike the panel container, which hides with CSS `display` to
+# preserve its cards' selection state). Guard the length with `_if_none` so a
+# cleared/unset `saved_reports` (null) tests as empty rather than erroring.
+visible:
+  _gt:
+    - _array.length:
+        _if_none:
+          - _state: saved_reports
+          - []
+    - 0
+blocks:
+  - id: saved_from_chat_header
+    type: Title
+    properties:
+      level: 5
+      content:
+        _nunjucks:
+          template: "Reports from this chat ({{ n }})"
+          on:
+            n:
+              _array.length:
+                _if_none:
+                  - _state: saved_reports
+                  - []
+      style:
+        marginBottom: 0
+  # A List's id IS its state key, so this binds to the `saved_reports` state
+  # array the same way the panel's charts/tables/downloads Lists bind to theirs.
+  # The gap rides the List element itself (see the charts List note in chat.yaml).
+  - id: saved_reports
+    type: List
+    properties:
+      direction: column
+      wrap: nowrap
+      style:
+        gap: 8px
+    blocks:
+      # A compact row, not a full card — the reports-list card is the ceiling, not
+      # the target. Bordered like the panel's result cards but lighter, so it
+      # reads as "kept" beside the "current" ones.
+      - id: saved_reports.$.card
+        type: Box
+        layout:
+          gap: 12
+          wrap: nowrap
+          align: middle
+        style:
+          padding: 12px
+          borderRadius: 8px
+          background: var(--ant-color-bg-container)
+          border: 1px solid var(--ant-color-border-secondary)
+        blocks:
+          - id: saved_reports.$.body
+            type: Box
+            layout:
+              flex: 1 1 auto
+              gap: 4
+            blocks:
+              - id: saved_reports.$.title
+                type: Title
+                properties:
+                  content:
+                    _state: saved_reports.$.title
+                  level: 5
+                  style:
+                    marginBottom: 0
+              - id: saved_reports.$.meta
+                type: Box
+                layout:
+                  gap: 8
+                  wrap: nowrap
+                  align: middle
+                blocks:
+                  - id: saved_reports.$.visibility
+                    type: Tag
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title:
+                        _state: saved_reports.$.visibility
+                      color:
+                        _if:
+                          test:
+                            _eq:
+                              - _state: saved_reports.$.visibility
+                              - shared
+                          then: blue
+                          else: default
+                  # `created`, not `updated`, is the saved-when — a later rename or
+                  # republish must never restate when the report was saved.
+                  - id: saved_reports.$.saved_when
+                    type: Paragraph
+                    properties:
+                      content:
+                        _nunjucks:
+                          template: "saved {{ d }}"
+                          on:
+                            d:
+                              _dayjs:
+                                - _state: saved_reports.$.created.timestamp
+                                - format: D MMMM
+                      style:
+                        fontSize: 12px
+                        color: var(--ant-color-text-secondary)
+                        marginBottom: 0
+          # A Link, never the raw `url` string create-report returns (that is
+          # treated as external) — the same in-app navigation the reports-list row
+          # and the save sheet use.
+          - id: saved_reports.$.open
+            type: Button
+            layout:
+              flex: 0 0 auto
+              selfAlign: middle
+            properties:
+              title: Open
+              icon: AiOutlineFileText
+              type: default
+              size: small
+            events:
+              onClick:
+                - id: open_saved_report
+                  type: Link
+                  params:
+                    pageId:
+                      _module.pageId: report
+                    urlQuery:
+                      report_id:
+                        _state: saved_reports.$._id

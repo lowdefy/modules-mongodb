@@ -174,22 +174,16 @@
   :global(.wp-button) {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 16px;
-    border-radius: 6px;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 5px;
     border: 1px solid;
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1.3;
     text-decoration: none;
     cursor: pointer;
     /* Grow with the label; keep it on one line so short buttons stay tidy. */
     white-space: nowrap;
-  }
-  :global(.wp-button-dot) {
-    flex: none;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
   }
   :global(.wp-button:hover) {
     filter: brightness(0.96);

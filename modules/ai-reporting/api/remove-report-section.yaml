@@ -1,0 +1,160 @@
+# Drop one section from a report. Owner-only, and the only spec write in the
+# module.
+#
+# It cannot be a $pull. validateReportSpec enforces filter bindings in both
+# directions — every filter section must be bound by at least one section, and no
+# section may name a filter field the report does not have — so a naive removal
+# produces a document its own validator rejects, which breaks the report on the
+# NEXT resolve rather than at the moment of the edit. Hence the cascade below,
+# and the revalidation before the write: that is what turns a cascade bug into a
+# rejected call instead of a report that fails to open.
+#
+# It cascades silently rather than refusing. The alternative is rejecting with
+# "unbind the filter first", and the person clicking Remove has never seen a
+# spec, has no concept of a binding, and no way to act on that message.
+#
+# Server-side because the client never holds the spec: resolve-report returns
+# compiled blocks, not the spec, so "post the spec minus one section" would mean
+# shipping every pipeline to the browser for one edit action. It is narrow rather
+# than a general set-report-spec for the same reason — nothing else needs one,
+# and a general spec writer would be a third author of report specs beside the
+# agent and the save sheet.
+#
+# The payload names a section by id, not position. Section ids are assigned once
+# by validateReportSpec and persisted, so an id names one section for the life of
+# the report — which removes the whole class of stale-position bug rather than
+# guarding it. A double-click sends the same id twice: the first call removes that
+# section, the second finds nothing to remove and is rejected. Nothing slides into
+# a slot, because there are no slots.
+id: remove-report-section
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to change a report.
+  - id: load_report
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      query:
+        _id:
+          _payload: report_id
+        owner.user_id:
+          _user: id
+        deleted.timestamp:
+          $exists: false
+  - :if:
+      _eq:
+        - _step: load_report
+        - null
+    :then:
+      - :reject: Report not found.
+  # The cascade is list manipulation over an array of objects, which is the case
+  # this repo's operators-first preference carves out for _js. The two rules are
+  # kept visibly separate because they fire on different removals and each one
+  # alone leaves a spec the validator rejects.
+  - :set_state:
+      removal:
+        _js: |
+          const sections = step('load_report.spec.sections') || [];
+          const sectionId = payload('section_id');
+          const target = sections.find((s) => s.id === sectionId);
+          if (!target) return { found: false, empty: false, sections: [] };
+
+          let surviving = sections.filter((s) => s.id !== sectionId);
+
+          // Rule 1 — removing a FILTER strips its field from everything that
+          // named it. Without this, every remaining section listing that field
+          // fails validation.
+          if (target.type === 'filter') {
+            surviving = surviving.map((s) =>
+              (s.filterBy || []).includes(target.field)
+                ? { ...s, filterBy: s.filterBy.filter((f) => f !== target.field) }
+                : s,
+            );
+          }
+
+          // Rule 2 — a filter nothing binds any more goes too, because the
+          // validator requires every filter to be bound by at least one section.
+          // Computed over the survivors, so it catches both a filter orphaned by
+          // removing the last section bound to it and one orphaned by rule 1.
+          // One pass is enough: a filter section carries no filterBy of its own,
+          // so removing a filter can never orphan another filter.
+          const bound = new Set();
+          surviving.forEach((s) => (s.filterBy || []).forEach((f) => bound.add(f)));
+          surviving = surviving.filter(
+            (s) => s.type !== 'filter' || bound.has(s.field),
+          );
+
+          // Emptiness is decided here rather than by an operator downstream:
+          // there is no _array.length, and the array is already in hand.
+          return { found: true, empty: surviving.length === 0, sections: surviving };
+  # The double-click case and the never-existed case in one. The message names the
+  # state rather than the cause, because both look identical to the caller.
+  - :if:
+      _eq:
+        - _state: removal.found
+        - false
+    :then:
+      - :reject: That section is no longer on this report.
+  # The one refusal this endpoint has, and unlike "unbind the filter first" it
+  # names a choice the user can act on. The cascade makes zero sections easy to
+  # reach rather than obscure: a report of one chart plus the filter driving it
+  # collapses in a single click, because dropping the chart orphans the filter and
+  # rule 2 takes it too. Relaxing the validator's non-empty requirement instead
+  # would loosen an invariant every spec writer shares so that one endpoint can
+  # skip a guard.
+  - :if:
+      _eq:
+        - _state: removal.empty
+        - true
+    :then:
+      - :reject: >
+          That is the only section left on this report — delete the report
+          instead.
+  # No catalog, deliberately, and the same posture resolve-report takes. With it,
+  # every pipeline goes through validatePipeline AND a select/multiselect filter
+  # must have an options source — so a filter whose only options source was
+  # catalog enum values for a field the app has since stopped declaring would make
+  # the drop fail with `filter "region" has no options`, a refusal about something
+  # other than the section being dropped. AnalyticsPipeline gates every pipeline
+  # per viewer at resolve regardless, so the catalog buys this endpoint nothing.
+  - :set_state:
+      validated:
+        _analytics.validateReportSpec:
+          spec:
+            title:
+              _step: load_report.title
+            description:
+              _step: load_report.description
+            sections:
+              _state: removal.sections
+          roles:
+            _user: roles
+  - id: write_spec
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      filter:
+        _id:
+          _payload: report_id
+        owner.user_id:
+          _user: id
+        deleted.timestamp:
+          $exists: false
+      update:
+        $set:
+          spec:
+            sections:
+              _state: validated.sections
+          # Stamped, unlike visibility / favourite / restore — this changes what
+          # the report is.
+          updated:
+            _ref: defaults/change_stamp.yaml
+  - :return:
+      ok: true

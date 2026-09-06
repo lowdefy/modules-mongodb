@@ -93,6 +93,14 @@
               "component": {
                 "type": "string",
                 "description": "Component hint for type detection (e.g., 'selector', 'date_selector', 'contact_selector_number_required'). Helps DataView determine the correct rendering type."
+              },
+              "itemTitle": {
+                "type": "string",
+                "description": "For array fields with a nested form: a Nunjucks template rendered against each array item (its fields are the template context, plus `_index` — the item's 0-based position), producing the item's collapsible card title as HTML (e.g. '<b>{{ name }}</b> — {{ locations | length }} sites'). Falls back to 'Item N' when absent or when the render is empty."
+              },
+              "enum": {
+                "type": "object",
+                "description": "Selector enum map as authored (slug -> { title, color, icon }). Used to display the stored value's title, colour and icon instead of the raw value."
               }
             }
           }

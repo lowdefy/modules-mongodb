@@ -1780,6 +1780,33 @@ test("makeWorkflowsConfig: form_meta recurses into controlled_list structural co
   });
 });
 
+test("makeWorkflowsConfig: form_meta carries itemTitle on controlled_list", () => {
+  const withItemTitle = {
+    type: "install",
+    kind: "form",
+    form: [
+      {
+        component: "controlled_list",
+        key: "form.devices",
+        title: "Devices",
+        itemTitle: "<b>{{ name }}</b>",
+        form: [
+          {
+            component: "text_input",
+            key: "form.devices.$.name",
+            title: "Device name",
+          },
+        ],
+      },
+    ],
+  };
+  const wf = workflowWithFormActions(withItemTitle);
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [wf, deviceInstallationStub],
+  });
+  expect(out.actions[0].form_meta.form[0].itemTitle).toBe("<b>{{ name }}</b>");
+});
+
 test("makeWorkflowsConfig: check-kind action has no form_meta", () => {
   const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
   expect("form_meta" in out.actions[0]).toBe(false);
@@ -2448,6 +2475,60 @@ test("makeWorkflowsConfig: non-string description throws, action named", () => {
   ).toThrow(/do-it/);
 });
 
+// ── Part 73: show_comment presence flag ──────────────────────────────────────
+// Carried onto the blob so GetWorkflowAction can resolve it for the shared check
+// surfaces, which have no build-time action identity.
+
+function showCommentWorkflow(show_comment, kind = "form") {
+  return {
+    ...validWorkflow,
+    actions: [
+      {
+        type: "do-it",
+        kind,
+        ...(kind === "form" ? { form: [{ id: "x", type: "TextInput" }] } : {}),
+        ...(show_comment !== undefined ? { show_comment } : {}),
+      },
+    ],
+  };
+}
+
+test("makeWorkflowsConfig: show_comment false is carried onto the action config", () => {
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [showCommentWorkflow(false)],
+  });
+  expect(out.actions[0].show_comment).toBe(false);
+});
+
+test("makeWorkflowsConfig: show_comment omitted is absent from the config", () => {
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [showCommentWorkflow(undefined)],
+  });
+  expect("show_comment" in out.actions[0]).toBe(false);
+});
+
+test("makeWorkflowsConfig: show_comment false is carried on a check-kind action", () => {
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [showCommentWorkflow(false, "check")],
+  });
+  expect(out.actions[0].show_comment).toBe(false);
+});
+
+test("makeWorkflowsConfig: non-boolean show_comment (string) throws, action named", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [showCommentWorkflow("false")] }),
+  ).toThrow(/show_comment must be a boolean/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [showCommentWorkflow("false")] }),
+  ).toThrow(/do-it/);
+});
+
+test("makeWorkflowsConfig: non-boolean show_comment (number) throws on a check action too", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [showCommentWorkflow(0, "check")] }),
+  ).toThrow(/show_comment must be a boolean/);
+});
+
 // Part 50: denormalised sort indices attached to each action config entry.
 test("makeWorkflowsConfig: attaches decl_index and group_index onto each action config entry", () => {
   const workflow = {
@@ -2514,4 +2595,34 @@ test("makeWorkflowsConfig: decl_index/group_index default to -1 group when a wor
     decl_index: 0,
     group_index: -1,
   });
+});
+
+test("makeWorkflowsConfig: accepts page_layout wide", () => {
+  const workflow = { ...validWorkflow, page_layout: "wide" };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [workflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: accepts page_layout standard", () => {
+  const workflow = { ...validWorkflow, page_layout: "standard" };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [workflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: accepts a workflow with no page_layout", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [validWorkflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: rejects an unrecognized page_layout value", () => {
+  const workflow = { ...validWorkflow, page_layout: "wode" };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /invalid page_layout "wode" \(expected one of: standard, wide\)/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /onboarding/,
+  );
 });

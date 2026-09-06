@@ -17,7 +17,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `sider_open_blocks` | array | `[]` |  | Blocks rendered in the PageSidebarLayout siderOpen slot (below the menu when expanded). Only used when page_type is 'sidebar'. |
 | `sider_closed_blocks` | array | `[]` |  | Blocks rendered in the PageSidebarLayout siderClosed slot (shown when collapsed). Only used when page_type is 'sidebar'. |
 | `sider_storage_key` | string | `layout-sider` |  | localStorage key suffix for sider collapsed-state persistence. Produces key 'lf-{sider_storage_key}-open'. Ignored for page_type 'header-menu' (no sider to persist). |
-| `menu` | object |  |  | Menu config passed to the page block, to override the menu for this module entry. When omitted, the page block falls back to the app's "default" menu (_menu default). |
+| `menu` | object |  |  | Menu config passed to the page block. When unset, the page falls back to the app's "default" menu (resolved client-side via `_menu`). |
 | `header` | object | `{}` |  | Page block header properties: { theme, contentStyle } |
 | `global_blocks` | array | `[]` |  | Blocks appended after the consumer content on EVERY page that uses the page component — for app-wide floating widgets (an assistant launcher, a help beacon). Pair with `global_requests` for any requests they need and `global_events.onInit` for their state contract. |
 | `global_requests` | array | `[]` |  | Requests declared on every page for `global_blocks` to use. Unlike `header_extra.requests` these are NOT auto-fired on mount — they are on-demand (e.g. upload/download policies a block calls itself). |

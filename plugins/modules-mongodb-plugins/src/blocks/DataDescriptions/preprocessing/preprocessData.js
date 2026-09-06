@@ -10,7 +10,12 @@ function collectGroups(sections) {
     const children = nested.length > 0 ? collectGroups(nested) : [];
 
     if (fields.length > 0 || children.length > 0) {
-      groups.push({ title: section.title || null, fields, children });
+      groups.push({
+        title: section.title || null,
+        fields,
+        children,
+        isListItem: section.isListItem === true,
+      });
     }
   }
   return groups;

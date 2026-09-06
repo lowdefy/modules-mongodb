@@ -1,0 +1,20 @@
+# Load the whole current scope and hand it to the grid. Shared by the mount, the
+# scope selector's onChange, and every row mutation — a scope is low hundreds of
+# reports at most, so a refetch is one cheap call and always reflects the server's
+# truth (sort tier, favourite state, counts) rather than a hand-patched node.
+- id: load_reports
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: list-reports
+    payload:
+      scope:
+        _state: scope
+- id: set_reports
+  type: SetState
+  params:
+    reports:
+      _api:
+        _build.string.concat:
+          - _module.endpointId: list-reports
+          - ".response.reports"

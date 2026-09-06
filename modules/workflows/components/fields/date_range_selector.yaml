@@ -50,6 +50,10 @@ config:
     _var:
       key: required
       default: false
+  visible:
+    _var:
+      key: visible
+      default: true
   properties:
     title:
       _var: title

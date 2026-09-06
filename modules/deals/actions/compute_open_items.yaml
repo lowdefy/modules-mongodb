@@ -1,0 +1,21 @@
+# Recompute the merged list and reset to page 1. Referenced from every site that
+# seeds `entity_workflows` or `open_tasks`, since the merge derives from both.
+# The pagination block's own state is reset as well as `open_items_page`:
+# Pagination is an input block, so its displayed page comes from that, not from
+# `properties.current`.
+id: compute_open_items
+type: SetState
+params:
+  open_items_all:
+    _ref: actions/open_items_merge.yaml
+  open_items:
+    _mql.aggregate:
+      on:
+        _ref: actions/open_items_merge.yaml
+      pipeline:
+        - $limit: 4
+  open_items_page: 1
+  open_items_pagination:
+    current: 1
+    pageSize: 4
+    skip: 0

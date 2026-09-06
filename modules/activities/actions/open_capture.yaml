@@ -13,11 +13,14 @@
 # `open_capture` = navigate. See decisions.md §8.
 #
 # Vars (all optional):
-#   prefill — { type, title, contacts, company_ids }
-#             Forwarded as URL query params. `description` is NOT
-#             URL-prefillable (Tiptap rich-text HTML doesn't round-trip
-#             through URL params cleanly — see design.md "Capture
-#             entry points → pageId: new query params").
+#   prefill — { type, title, contacts, company_ids, attributes, references }
+#             Forwarded as URL query params. `attributes` merges over the
+#             page's seeded defaults (today's date, 45 min, Sent);
+#             `references` is what attaches the activity to a host entity
+#             (e.g. `deal_ids`). `description` is NOT URL-prefillable
+#             (Tiptap rich-text HTML doesn't round-trip through URL params
+#             cleanly — see design.md "Capture entry points → pageId: new
+#             query params").
 #
 # Example consumer usage:
 #   events:
@@ -31,6 +34,9 @@
 #             contacts:
 #               - contact_id:
 #                   _url_query: _id
+#             references:
+#               deal_ids:
+#                 - _url_query: _id
 - id: open_capture
   type: Link
   params:
@@ -45,3 +51,7 @@
         _var: prefill.contacts
       company_ids:
         _var: prefill.company_ids
+      attributes:
+        _var: prefill.attributes
+      references:
+        _var: prefill.references

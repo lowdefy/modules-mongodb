@@ -1,5 +1,5 @@
 name: Layout
-version: 0.17.0
+version: 0.36.0
 description: Page layout module supporting three page block variants — PageHeaderMenu (top header + inline menu, default), PageSiderMenu (top header + collapsible sider), and PageSidebarLayout (full-height sider) — selected via the page_type var.
 
 dependencies:
@@ -71,9 +71,8 @@ vars:
   menu:
     type: object
     description: >-
-      Menu config passed to the page block, to override the menu for this
-      module entry. When omitted, the page block falls back to the app's
-      "default" menu (_menu default).
+      Menu config passed to the page block. When unset, the page falls back to
+      the app's "default" menu (resolved client-side via `_menu`).
   header:
     type: object
     default: {}
@@ -187,7 +186,15 @@ vars:
 exports:
   components:
     - id: page
-      description: Page layout wrapper with title bar, header/sider slots, menu, and content area. Selects PageHeaderMenu, PageSiderMenu, or PageSidebarLayout based on the page_type var.
+      description: >-
+        Page layout wrapper with title bar, header/sider slots, menu, and content
+        area. Selects PageHeaderMenu, PageSiderMenu, or PageSidebarLayout based on
+        the page_type var. Pass `full_bleed: true` for a page whose content is the
+        whole content area: it zeroes the content padding, applies the top offset
+        the selected page type needs, and publishes the remaining height as the
+        CSS custom property `--layout-content-height` for the content to size off
+        (read it with a `100dvh` fallback). A full-bleed page will usually also
+        want `hide_title: true`, `hide_footer: true` and no breadcrumbs.
     - id: card
       description: Standard content card layout with optional back button and footer
     - id: floating-actions

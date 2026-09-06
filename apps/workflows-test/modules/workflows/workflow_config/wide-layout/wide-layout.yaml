@@ -1,0 +1,36 @@
+# wide-layout — exercises the opt-in wide action-page layout. With
+# `page_layout: wide`, this workflow's action pages render the wide variant: the
+# left panel is workflow-progress (not the step list), the form takes the full
+# width, and the record's Details +
+# History move into a right-side drawer opened from a header button. It declares
+# an `entity_view.slot` so the Details-in-drawer path is exercised too. Target of
+# wide-layout.spec.js.
+type: wide-layout
+title: Wide layout
+page_layout: wide
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
+
+# Rendered as the Details section; in the wide layout it lands inside the drawer.
+entity_view:
+  slot:
+    - id: wide_details_field
+      type: Paragraph
+      properties:
+        content: Reference details for this thing.
+
+starting_actions:
+  - type: wide-form
+    status: action-required
+
+action_groups:
+  - id: main
+    title: Main
+    icon: AiOutlineForm
+
+actions:
+  - _ref: modules/workflows/workflow_config/wide-layout/wide-form.yaml

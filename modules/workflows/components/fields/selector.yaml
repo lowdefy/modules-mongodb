@@ -14,6 +14,11 @@ vars:
   options:
     type: array
     default: []
+  # Alternative options source: an enum map (slug -> { title, color, icon }).
+  # Ignored when `options` is supplied.
+  enum:
+    type: object
+    default: {}
   extra:
     type: string
     default: null
@@ -23,6 +28,9 @@ vars:
   label_span:
     type: number
     required: false
+  disabled:
+    type: boolean
+    default: false
   on_change:
     type: array
     default: []
@@ -40,12 +48,20 @@ config:
       key: required
       default: false
   properties:
+    disabled:
+      _var:
+        key: disabled
+        default: false
     label:
       _build.object.assign:
         - inline:
             _var:
               key: label_inline
               default: false
+          extra:
+            _var:
+              key: extra
+              default: null
         - _build.if:
             test:
               _build.ne:
@@ -60,14 +76,19 @@ config:
             else: {}
     title:
       _var: title
+    # `options` wins when supplied; otherwise the enum map is converted.
     options:
       _var:
         key: options
-        default: []
-    extra:
-      _var:
-        key: extra
-        default: null
+        default:
+          _ref:
+            path: components/fields/helpers/enum_options.yaml
+            key: config
+            vars:
+              enum:
+                _var:
+                  key: enum
+                  default: {}
   events:
     onChange:
       _var:

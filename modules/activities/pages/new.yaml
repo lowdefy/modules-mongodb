@@ -66,12 +66,17 @@ _ref:
                 - _if_none:
                     - _url_query: company_ids
                     - []
-            # Seed defaults so the tabbed form opens populated.
+            # Seed defaults so the tabbed form opens populated; a caller's
+            # urlQuery attributes win.
             attributes:
-              date:
-                _date: now
-              duration: 45 min
-              direction: Sent
+              _object.assign:
+                - date:
+                    _date: now
+                  duration: 45 min
+                  direction: Sent
+                - _if_none:
+                    - _url_query: attributes
+                    - {}
             agenda_topics: []
             # Init companies' cycle-check state keys so the company-selector
             # request (get_companies_for_selector) doesn't fire ConfigWarning
@@ -79,7 +84,10 @@ _ref:
             # — the selector's `_if_none` defaults already handle null/empty.
             cycle_check_self_id: null
             cycle_check_ids: []
-            references: {}
+            references:
+              _if_none:
+                - _url_query: references
+                - {}
             # Read by the skip conditions on the post-create tail (reset +
             # navigate) — a `hooks.on_created` action can set it true to
             # take over navigation.

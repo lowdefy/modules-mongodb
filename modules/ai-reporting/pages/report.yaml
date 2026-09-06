@@ -1,0 +1,143 @@
+# The report renderer: a Dynamic block resolved server-side by resolve-report.
+# Wrapped in layout's page so the report opens inside the app's chrome (sider,
+# menu, profile) like every other page. hide_title is set because the compiled
+# report emits its own Title section — a layout title bar would just repeat a
+# generic "Report" above it. The breadcrumb is the only way back to the list
+# from here, since the report's own title carries no link.
+#
+# The compiled output's block/action/operator types must be declared in
+# properties.types so they ship in the client bundle. The fallback slot covers
+# whole-report failures (missing report, unauthorized user); per-section
+# failures render as Alert cards inside the compiled report.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: report
+    hide_title: true
+    # The same 1100px column the reports list uses. Uncapped, the provenance and
+    # description lines ran the full viewport width, and a chart's categories
+    # spread across it — measure is what makes a report read as a document.
+    content_width: 1100
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Reports
+        pageId:
+          _module.pageId: reports-list
+    blocks:
+      - id: report_dynamic
+        type: Dynamic
+        # gap on a block's layout is the CONTENT area's gap, not this block's own
+        # placement — it separates the compiled blocks from each other. The grid
+        # defaults to 0, so without an x gap the filters that share a row would
+        # touch. The y gap is the SMALL one: it spaces a heading off the chart or
+        # table it names, while compileReport's SECTION_TOP_GAP adds the larger
+        # distance ahead of each head row — so a heading sits nearer its own
+        # content than the section above it. The server spreads slots.content when
+        # it injects the resolved blocks, so this survives resolution.
+        layout:
+          gap: [12, 8]
+        properties:
+          endpointId:
+            _module.endpointId: resolve-report
+          types:
+            blocks:
+              - Title
+              - Paragraph
+              - Statistic
+              - EChart
+              - AgGridBalham
+              - Selector
+              - MultipleSelector
+              - DateRangeSelector
+              - Button
+              - Alert
+              - Markdown
+              # The header's ⋯ is a DropdownMenu wrapping its trigger Button — a
+              # dropdown owns the block that opens it, so it cannot live in this
+              # page's static config the way the modals below do. See
+              # compileReport's report_menu for what that costs.
+              - DropdownMenu
+            actions:
+              - CallAPI
+              - SetState
+              - DownloadCsv
+              # Owner-only affordances navigate in-app: Continue-in-chat and
+              # Fix-in-chat open the source conversation, Drop re-opens the
+              # report after removing a section (compileReport brokenSectionBlocks
+              # / the header control).
+              - Link
+              # The header's ⋯ items open the rename Modal and the delete
+              # ConfirmModal, which stay STATIC config on this page — so the menu
+              # itself is compiled but the two writes behind it are not, and their
+              # block types (Modal, TextInput, TextArea, ConfirmModal) stay out of
+              # this allowlist, where one missed type blanks the whole report.
+              - CallMethod
+            operators:
+              - _state
+              - _api
+              - _if_none
+              # Drop reads the report id from the page URL (the same value
+              # resolve-report loads the report from) for its remove-report-section
+              # call and the re-navigation that refreshes the page.
+              - _url_query
+              # The header's ⋯ fires one onClick for the whole menu, carrying the
+              # clicked item's key, so each item's actions are guarded by
+              # `skip: {_ne: [{_event: key}, <item>]}`.
+              - _event
+              - _ne
+              # A table column carrying a `format` descriptor compiles to a
+              # `__function` cell renderer wrapping `___intl.numberFormat` over
+              # `___args` (compileReport numericCellRenderer). Dynamic resolution
+              # collapses each operator's leading underscores to one and rejects any
+              # type not declared here — so an undeclared _intl fails the WHOLE
+              # report to the fallback slot, not just the column. Keep these three
+              # in step with numericCellRenderer.
+              - _function
+              - _intl
+              - _args
+        slots:
+          fallback:
+            blocks:
+              - id: report_missing
+                type: Result
+                properties:
+                  status: 404
+                  title: Report not found
+                  subTitle: This report couldn't be loaded
+
+      # The two writes the header's ⋯ hands off to. They stay static config, and
+      # siblings of the Dynamic block rather than inside it: their state survives a
+      # re-resolve, and none of their block types has to join the allowlist above.
+      # Everything else the menu does (publish, unpublish, duplicate) is compiled
+      # with the menu — see compileReport's report_menu.
+      #
+      # `after_write` re-navigates rather than refetching: the report is a
+      # server-resolved Dynamic block with no client refetch, so re-opening the
+      # page is what re-renders a new title. The same mechanism the ★, the
+      # compiled menu's publish/unpublish and Drop-a-section use.
+      - _ref:
+          path: components/report_rename_modal.yaml
+          vars:
+            after_write:
+              - id: reload_after_rename
+                type: Link
+                params:
+                  pageId:
+                    _module.pageId: report
+                  urlQuery:
+                    report_id:
+                      _url_query: report_id
+      - _ref:
+          path: components/report_delete_modal.yaml
+          vars:
+            # Unlike the list, this page cannot stay: it is rendering a report
+            # that no longer resolves, and re-navigating would land on the
+            # not-found fallback.
+            after_delete:
+              - id: to_list_after_delete
+                type: Link
+                params:
+                  pageId:
+                    _module.pageId: reports-list

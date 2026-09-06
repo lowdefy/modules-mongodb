@@ -34,6 +34,8 @@ plugins:
     version: 1.1.4
   - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
+  - name: "@lowdefy/connection-ai-gateway"
+    version: 0.0.0-experimental-20260813120102
 
 auth:
   secret:
@@ -183,6 +185,13 @@ connections:
       databaseUri:
         _secret: MONGODB_URI
       collection: user-contacts
+  # Model connection for the demo-assistant agent (ai-assistant module demo).
+  # Build needs no key; the secret is only read at runtime.
+  - id: ai_gateway
+    type: AIGateway
+    properties:
+      apiKey:
+        _secret: AI_GATEWAY_API_KEY
   # Sales-pipeline workflow entity connection — the `deals` id the deals module's
   # GetEntityWorkflows queries match on (module r/w the collection via deals-collection).
   - id: deals
@@ -197,8 +206,71 @@ connections:
         meta:
           user:
             _user: true
+  # Write side of the reporting demo dataset — seeded by reporting-seed-orders.
+  # The reporting module reads the same collection through reporting-analytics
+  # (below), which its reporting-data connection is remapped to.
+  - id: demo-orders
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: demo_orders
+      write: true
+  # The reporting module's own connections default to REPORTING_MONGODB_URI /
+  # REPORTING_DATA_MONGODB_URI so an app can keep reporting storage and its
+  # analytics source on separate databases. The demo has one database, so we
+  # remap all three module connections (on the reporting module entry) to these
+  # MONGODB_URI-backed connections instead of introducing new secrets.
+  - id: reporting-reports # module reports-store — saved report specs
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: report_layouts
+      write: true
+  - id: reporting-conversations # module conversations-store — chat conversations
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: conversations
+      write: true
+  - id: reporting-analytics # module reporting-data — read-only analytics source
+    type: ReportingData
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      # The module binds the collections catalog on its own reporting-data
+      # connection via _module.var, but remapping reporting-data onto this
+      # app connection replaces that definition — so the catalog must be bound
+      # here too, or validatePipeline gets no catalog and rejects every
+      # collection. Same file the module var references (modules/ai-reporting/
+      # catalog.yaml), so the two can't drift.
+      catalog:
+        _ref: modules/ai-reporting/catalog.yaml
 
-api: []
+api:
+  - _ref: api/reporting-seed-orders.yaml
+  - _ref: api/reporting-seed-example-report.yaml
+  - _ref: api/reporting-seed-ownership.yaml
+  - _ref: api/reporting-seed-conversations.yaml
+
+agents:
+  # The agent behind the ai-assistant module demo. The module brings the chat
+  # shell and thread lifecycle; the agent — model, prompt, tools — is the app's.
+  - id: demo-assistant
+    type: AIGatewayAgent
+    connectionId: ai_gateway
+    properties:
+      model: anthropic/claude-haiku-4-5
+      maxSteps: 4
+      instructions: >-
+        You are the assistant in the Lowdefy modules-mongodb demo app. Answer
+        briefly and concretely. The repo ships reusable Lowdefy modules backed
+        by MongoDB: layout, events, files, notifications, user-account,
+        user-admin, contacts, companies, activities, deals, workflows,
+        release-notes, and this ai-assistant. You have no tools; when asked
+        about specifics you cannot know, say so and point at the repo docs.
 
 pages:
   - _ref: pages/router.yaml
@@ -206,6 +278,8 @@ pages:
   - _ref: pages/user-components-demo.yaml
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml
+  - _ref: pages/assistant-demo.yaml
+  - _ref: pages/reporting/reporting-demo.yaml
   - _ref: pages/files/files-demo.yaml
   - _ref: pages/quote-builder.yaml
   - _ref: pages/start-company-setup.yaml

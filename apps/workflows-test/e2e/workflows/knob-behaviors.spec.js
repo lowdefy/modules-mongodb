@@ -2,6 +2,8 @@ import { test, expect } from "../fixtures.js";
 
 // Covers the per-action UI knobs:
 //   - show_comment: false           -> free-form comment box hidden on edit
+//                                      (form pages, and per action on the one
+//                                       shared check page — Part 73)
 //   - pages.edit.validate_on_draft   -> Save Draft validates the form first
 //   - form.capped max_length         -> native TextInput maxLength cap
 //   - overview-page collapsible actions + Expand/Collapse-all toggle
@@ -97,6 +99,50 @@ test("the default action still shows the comment box", async ({
     `/workflows/form-lifecycle-reviewed-form-edit?action_id=${actionId}`,
   );
   await expect(page.locator("#comment")).toHaveCount(1);
+});
+
+test("show_comment is honoured per check action on the one shared check page", async ({
+  ldf,
+  mdb,
+  page,
+  workflow,
+}) => {
+  // Part 73. quiet-check and loud-check are both check actions in the same
+  // workflow, so they share the single `knob-behaviors-action` page — the flag
+  // cannot be baked at build time and must be read off the GetWorkflowAction
+  // envelope. Both are asserted on that one page to prove per-action gating.
+  const thingId = "thing-check-comment";
+  const workflowId = await seedAndStart(
+    ldf,
+    mdb,
+    workflow,
+    "knob-behaviors",
+    thingId,
+  );
+
+  // The check-surface comment input binds `current_action.comment` (not
+  // `comment`, which is the form pages' path).
+  const comment = page.locator('[id="current_action.comment"]');
+
+  // A freshly-started (action-required) editable action opens the surface
+  // directly in edit mode — the mode where the optional comment would otherwise
+  // render — so `button_submit` being visible is the edit-mode marker (no
+  // view→edit `button_edit` step exists in this state). show_comment: false must
+  // keep the box hidden here regardless.
+  const quiet = await actionByType(mdb, workflowId, "quiet-check");
+  await ldf.goto(
+    `/workflows/knob-behaviors-action?action_id=${quiet._id.toString()}`,
+  );
+  await expect(page.locator("#button_submit")).toBeVisible();
+  await expect(comment).toBeHidden();
+
+  // Default (flag omitted) → the box renders in the same edit mode on the same page.
+  const loud = await actionByType(mdb, workflowId, "loud-check");
+  await ldf.goto(
+    `/workflows/knob-behaviors-action?action_id=${loud._id.toString()}`,
+  );
+  await expect(page.locator("#button_submit")).toBeVisible();
+  await expect(comment).toBeVisible();
 });
 
 test("the overview page starts collapsed and the expand/collapse-all toggle shows and hides every action body", async ({

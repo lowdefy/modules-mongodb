@@ -174,7 +174,7 @@ and leaves the change stamp alone.
 # lowdefy.yaml
 modules:
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v1.0.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.36.0"
     vars:
       fields:
         show_honorific: true

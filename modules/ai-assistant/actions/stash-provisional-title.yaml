@@ -1,0 +1,32 @@
+# stash-provisional-title.yaml — the instantly-shown thread name, derived from the first
+# user message. Used on both save paths (send and reply-complete), so a thread persisted
+# before its answer arrives is still named after the question rather than "New chat".
+#
+# Keeps a real title already on the thread — a resumed thread's saved title, or one the
+# generated pass has set — so re-deriving never clobbers it. The fallback is often a canned
+# suggestion prompt and so a poor name, but it is instant, and it means a thread is never
+# stranded as "New chat" if generation fails.
+id: ai_stash_provisional_title
+type: SetState
+params:
+  ai_title:
+    _js:
+      fn: |
+        const id = state('ai_conversation_id');
+        const entry = (state('ai_threads') || []).find((c) => c.key === id);
+        const current = (entry && entry.label) || null;
+        if (current && current !== 'New chat') return current;
+        const msgs = event('messages') || [];
+        const firstUser = msgs.find((m) => m.role === 'user');
+        let text = '';
+        if (firstUser) {
+          text = (firstUser.parts || [])
+            .filter((p) => p.type === 'text')
+            .map((p) => p.text)
+            .join(' ');
+          if (!text && typeof firstUser.content === 'string') text = firstUser.content;
+        }
+        text = (text || '').replace(/\s+/g, ' ').trim();
+        if (!text) return current || 'New chat';
+        return text.length > 48 ? text.slice(0, 48).trim() + '…' : text;
+      args: {}

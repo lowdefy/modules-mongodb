@@ -15,7 +15,7 @@
 */
 
 import React, { useState, useMemo } from "react";
-import { Timeline, Modal, Badge, Tooltip, Card, Button } from "antd";
+import { Timeline, Modal, Tooltip, Card, Button } from "antd";
 import { withBlockDefaults } from "@lowdefy/block-utils";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration.js";
@@ -451,23 +451,18 @@ function EventAction({
             flexWrap: "wrap",
           }}
         >
-          <Badge
-            color={statusConf.titleColor || "#999"}
-            text={
-              <span
-                dangerouslySetInnerHTML={{
-                  __html: sanitize(
-                    action.message || statusConf.title || action.status,
-                  ),
-                }}
-                // Use the fixed-dark status accent for the text, matching the
-                // fixed-light `statusConf.color` card background. Without it the
-                // span inherits the theme text color, which is light in dark mode
-                // → light-on-light (invisible). titleColor is undefined for an
-                // unknown status → inherits, the correct fallback.
-                style={{ fontSize: 13, color: statusConf.titleColor }}
-              />
-            }
+          <span
+            dangerouslySetInnerHTML={{
+              __html: sanitize(
+                action.message || statusConf.title || action.status,
+              ),
+            }}
+            // Use the fixed-dark status accent for the text, matching the
+            // fixed-light `statusConf.color` card background. Without it the
+            // span inherits the theme text color, which is light in dark mode
+            // → light-on-light (invisible). titleColor is undefined for an
+            // unknown status → inherits, the correct fallback.
+            style={{ fontSize: 13, color: statusConf.titleColor }}
           />
           {affordance}
         </div>

@@ -24,15 +24,25 @@ export default {
   ...config,
   globalSetup: "@lowdefy/community-plugin-e2e-mdb/setup",
   globalTeardown: "@lowdefy/community-plugin-e2e-mdb/teardown",
-  // `lowdefy build --server e2e` fails the auth config check unless NEXTAUTH_SECRET
-  // is set. The e2e server uses cookie-based mock auth, so the value is build-only —
+  // The `mdb` fixture's teardown wipes EVERY collection in the database, not
+  // just the ones the test seeded — it lists collections and deleteMany({})s
+  // each. Every worker shares that one database (configureMdb sets a single
+  // port + db name, and the served app boots against a single MONGODB_URI), so
+  // under `fullyParallel` one test's teardown deletes another test's data
+  // mid-flight: the page loads, its read returns nothing, and the spec fails on
+  // a `toBeVisible` that can never pass. Pin to a single worker so the shared DB
+  // has one writer. Same reasoning (and same settings) as apps/workflows-test.
+  workers: 1,
+  fullyParallel: false,
+  // `lowdefy build --server e2e` fails the auth config check unless AUTH_SECRET
+  // is set (Auth.js v5 reads AUTH_SECRET; the v4 NEXTAUTH_SECRET is not read at
+  // all). The e2e server uses cookie-based mock auth, so the value is build-only —
   // mirror the `ldf:b` script and respect a real secret if one is already exported.
   webServer: {
     ...config.webServer,
     env: {
       ...process.env,
-      NEXTAUTH_SECRET:
-        process.env.NEXTAUTH_SECRET || "build-only-not-a-real-secret",
+      AUTH_SECRET: process.env.AUTH_SECRET || "build-only-not-a-real-secret",
     },
   },
 };

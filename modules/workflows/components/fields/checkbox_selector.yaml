@@ -11,12 +11,31 @@ vars:
   required:
     type: boolean
     default: false
+  validate:
+    type: array
+    default: []
   options:
     type: array
     default: []
+  # Alternative options source: an enum map (slug -> { title, color, icon }).
+  # Ignored when `options` is supplied.
+  enum:
+    type: object
+    default: {}
   extra:
     type: string
     required: false
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
+  direction:
+    type: string
+    # Defaulted, not left unset: an unsupplied var resolves to null, and antd
+    # Space falls back to horizontal only on undefined.
+    default: horizontal
   on_change:
     type: array
     default: []
@@ -25,6 +44,28 @@ config:
   id:
     _var: key
   type: CheckboxSelector
+  validate:
+    _build.array.concat:
+      - _var:
+          key: validate
+          default: []
+      - _build.if:
+          test:
+            _build.eq:
+              - _var:
+                  key: required
+                  default: false
+              - true
+          then:
+            - message: This field is required.
+              status: error
+              pass:
+                _gt:
+                  - _array.length:
+                      _state:
+                        _var: key
+                  - 0
+          else: []
   visible:
     _var:
       key: visible
@@ -37,15 +78,43 @@ config:
     title:
       _var: title
     label:
-      span: 12
-      align: right
-      colon: false
-      extra:
-        _var: extra
+      _build.object.assign:
+        - inline:
+            _var:
+              key: label_inline
+              default: false
+          colon: false
+          extra:
+            _var: extra
+        - _build.if:
+            test:
+              _build.ne:
+                - _var:
+                    key: label_span
+                    default: null
+                - null
+            then:
+              span:
+                _var: label_span
+              align: right
+            else: {}
+    # `options` wins when supplied; otherwise the enum map is converted.
     options:
       _var:
         key: options
-        default: []
+        default:
+          _ref:
+            path: components/fields/helpers/enum_options.yaml
+            key: config
+            vars:
+              enum:
+                _var:
+                  key: enum
+                  default: {}
+    direction:
+      _var:
+        key: direction
+        default: horizontal
   events:
     onChange:
       _var:

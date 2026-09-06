@@ -1,0 +1,24 @@
+# Any reader's path to a version they control — a private copy they own.
+#
+# after_duplicate is separate from the after_write the publish actions take
+# because the copy is a DIFFERENT report, so "refresh what you are looking at" is
+# the wrong answer on the report page: it re-renders the original and the copy is
+# invisible. The list can stay put (the new row appears in its Mine scope); the
+# report page opens the copy in a new tab.
+#
+# The report page runs its own copy of this, compiled (compileReport's report_menu,
+# `menu_duplicate_call`) — see report_publish.yaml for why a compiled menu cannot
+# share these files, and what that obliges.
+#
+# Vars:
+#   after_duplicate — actions to run once the copy exists.
+_build.array.concat:
+  - - id: report_duplicate_call
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: duplicate-report
+        payload:
+          report_id:
+            _state: selected_report._id
+  - _var: after_duplicate

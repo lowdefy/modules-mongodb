@@ -1,0 +1,506 @@
+/* FloatingPanel — Intercom-style launcher + corner panel.
+   Global block styles as a CSS Module. :global(...) keeps class names unhashed
+   (the block references them as plain strings and consumers target the fp-*
+   opt-in classes); Next/Turbopack rejects both a plain global .css import and
+   the :global block form, so selectors are wrapped per-rule.
+
+   Own-DOM styling only (no antd internals except the opt-in slot classes):
+   themed through antd CSS variables so light and dark both work without a
+   second palette here.
+
+   Sizing contract, set as custom properties on .fp-root by the block:
+     --fp-bottom / --fp-side   offset from the anchored corner
+     --fp-width / --fp-width-expanded / --fp-height
+   and published by the block onto .fp-body for children to size against:
+     --fp-body-height */
+@layer components {
+  :global(.fp-root) {
+    position: fixed;
+    inset: 0;
+    /* 1100, not 1000. antd stacks popups above its 1000 base — select and
+       dropdown menus at ~1050, tooltips at ~1070 — so a panel at 1000 has the
+       page's own open dropdowns painting straight over it. Above the whole
+       popup layer is the only value that holds.
+
+       The consequence: a portaled popup opened INSIDE the panel needs a
+       z-index above this one. If you add a Tooltip, Select or Popover to a
+       slot, give it one explicitly. */
+    z-index: 1100;
+    /* The wrapper covers the viewport so the panel can be positioned against
+       it, but must never intercept a click meant for the page. Only the panel
+       and the launcher opt back in. */
+    pointer-events: none;
+  }
+
+  /* ── Launcher ─────────────────────────────────────────────────────────── */
+
+  :global(.fp-launcher) {
+    position: absolute;
+    bottom: var(--fp-bottom, 24px);
+    right: var(--fp-side, 24px);
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 56px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 999px;
+    background: var(--ant-color-primary, #1677ff);
+    color: #fff;
+    cursor: pointer;
+    /* Two shadows: a tight contact shadow to seat it on the page, and a wide
+       soft one for lift. One shadow alone reads as either flat or floaty. */
+    box-shadow:
+      0 2px 6px rgba(20, 26, 40, 0.18),
+      0 12px 28px -6px rgba(20, 26, 40, 0.28);
+    transition:
+      transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.22s ease,
+      background 0.18s ease;
+  }
+  :global(.fp-root[data-placement="bottom-left"] .fp-launcher) {
+    right: auto;
+    left: var(--fp-side, 24px);
+    flex-direction: row-reverse;
+  }
+
+  :global(.fp-launcher:hover) {
+    transform: translateY(-2px);
+    box-shadow:
+      0 2px 6px rgba(20, 26, 40, 0.2),
+      0 18px 36px -8px rgba(20, 26, 40, 0.34);
+  }
+  :global(.fp-launcher:active) {
+    transform: translateY(0) scale(0.97);
+  }
+  :global(.fp-launcher:focus-visible) {
+    outline: 2px solid var(--ant-color-primary, #1677ff);
+    outline-offset: 3px;
+  }
+
+  :global(.fp-launcher-icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    /* The glyph swaps between bubble (closed) and chevron-down (open). Do NOT
+       add a rotation on top of the swap — it was tried, and it turned the
+       already-correct chevron upside down, so the open state pointed back at
+       the panel instead of away from it. */
+  }
+
+  :global(.fp-launcher-label) {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    padding-left: 12px;
+    white-space: nowrap;
+  }
+
+  :global(.fp-badge) {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--ant-color-error, #ff4d4f);
+    /* Ring in the launcher's own colour, so the badge reads as sitting ON the
+       button in either mode rather than punching a hole through it. */
+    border: 2px solid var(--ant-color-primary, #1677ff);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+  }
+
+  /* ── Panel ────────────────────────────────────────────────────────────── */
+
+  :global(.fp-panel) {
+    position: absolute;
+    /* Clears the 56px launcher plus a 16px gap. */
+    bottom: calc(var(--fp-bottom, 24px) + 72px);
+    right: var(--fp-side, 24px);
+    pointer-events: auto;
+
+    display: flex;
+    flex-direction: column;
+    width: var(--fp-width, 400px);
+    max-width: calc(100vw - (var(--fp-side, 24px) * 2));
+    height: var(--fp-height, 620px);
+    /* Never taller than the room actually available above the launcher. dvh,
+       not vh, so a mobile browser's collapsing address bar does not push the
+       footer off the bottom. */
+    max-height: calc(100dvh - var(--fp-bottom, 24px) - 96px);
+
+    /* colorBgElevated, not colorBgContainer. They are the same surface in
+       light mode, but antd's dark algorithm lifts the elevated one above the
+       page — which is how a floating panel reads as floating in the dark,
+       where the drop shadows below contribute almost nothing. The border does
+       the rest: colorBorderSecondary flips to a light translucent in dark
+       mode. */
+    background: var(
+      --ant-color-bg-elevated,
+      var(--ant-color-bg-container, #fff)
+    );
+    border: 1px solid var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow:
+      0 2px 8px rgba(20, 26, 40, 0.1),
+      0 24px 60px -12px rgba(20, 26, 40, 0.3);
+
+    transform-origin: bottom right;
+    transition:
+      opacity 0.2s ease,
+      transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+      width 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+      visibility 0s linear 0.26s;
+  }
+  :global(.fp-root[data-placement="bottom-left"] .fp-panel) {
+    right: auto;
+    left: var(--fp-side, 24px);
+    transform-origin: bottom left;
+  }
+
+  :global(.fp-panel[data-expanded="true"]) {
+    width: var(--fp-width-expanded, 720px);
+  }
+
+  /* Closed: hidden but still laid out, so the body keeps reporting its height
+     (see --fp-body-height) and children keep their scroll position. */
+  :global(.fp-panel[data-open="false"]) {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px) scale(0.96);
+    pointer-events: none;
+  }
+  :global(.fp-panel[data-open="true"]) {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0s;
+  }
+  :global(.fp-panel:focus) {
+    outline: none;
+  }
+
+  /* ── Header ───────────────────────────────────────────────────────────── */
+
+  :global(.fp-header) {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 10px 12px 14px;
+    border-bottom: 1px solid
+      var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
+    /* A hair of tint separates the chrome from the body without a second
+       surface colour — the panel still reads as one object. */
+    background: linear-gradient(
+      to bottom,
+      color-mix(
+        in srgb,
+        var(--ant-color-primary, #1677ff) 7%,
+        var(--ant-color-bg-elevated, var(--ant-color-bg-container, #fff))
+      ),
+      var(--ant-color-bg-elevated, var(--ant-color-bg-container, #fff))
+    );
+  }
+
+  :global(.fp-avatar) {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--ant-color-primary, #1677ff);
+    color: #fff;
+  }
+
+  :global(.fp-identity) {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  :global(.fp-title) {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--ant-color-text, #1a2744);
+    /* Picks up an app display face when one is defined, so the panel belongs
+       to the same type system as the pages behind it. */
+    font-family: var(--fp-font-display, inherit);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :global(.fp-subtitle) {
+    font-size: 11.5px;
+    line-height: 1.3;
+    color: var(--ant-color-text-tertiary, #8c8c8c);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* App-supplied header actions. Separated from the window controls by a
+     hairline: they are both 28px ghost icons, so without it four glyphs read
+     as one group and "new chat" sits next to "close panel" with nothing to say
+     they do different kinds of thing. */
+  :global(.fp-header-extra) {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: 4px;
+    padding-right: 6px;
+    border-right: 1px solid
+      var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
+  }
+
+  :global(.fp-controls) {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  :global(.fp-ctl) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ant-color-text-tertiary, #8c8c8c);
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  :global(.fp-ctl:hover) {
+    background: var(--ant-color-fill-tertiary, rgba(20, 26, 40, 0.06));
+    color: var(--ant-color-text, #1a2744);
+  }
+  :global(.fp-ctl:focus-visible) {
+    outline: 2px solid var(--ant-color-primary, #1677ff);
+    outline-offset: -1px;
+  }
+
+  /* ── Toolbar ──────────────────────────────────────────────────────────── */
+  /* Deliberately NOT tinted like the header. The header is the panel's chrome
+     — who you are talking to, and the window controls. This band names the
+     content below it, so it sits on the body's surface and is separated from
+     it by one hairline. Tinting it would have made two chrome bands stacked,
+     and pushed the content a long way down the panel. */
+  :global(.fp-toolbar) {
+    flex: 0 0 auto;
+    padding: 9px 14px;
+    border-bottom: 1px solid
+      var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
+  }
+
+  /* ── Opt-in classes for slot content ──────────────────────────────────────
+     Consumers put their own blocks in the header and toolbar slots, and a
+     Lowdefy MODULE cannot ship a stylesheet — so the two looks those slots
+     need live here, behind names the consumer opts into per block. Not applied
+     to every button in the slots: `toolbar` is documented as a place for a
+     filter row too, and silently shrinking a labelled button to 28px would be
+     a nasty surprise.
+
+     .fp-icon-btn — an icon-only chrome button matching the built-in
+     expand/close controls. Put it on the WRAPPER (a Tooltip, say), not the
+     button, so the rules also flatten the layout wrapper's margin.
+
+     The label is VISUALLY hidden, not removed: dropping the text leaves a
+     <button> with no accessible name at all, which for a Delete control is not
+     acceptable. The clip-path idiom keeps the word in the accessibility tree
+     and out of the layout; pair it with a tooltip for sighted users. */
+  :global(.fp-panel .fp-icon-btn),
+  :global(.fp-panel .fp-icon-btn) > div {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 !important;
+  }
+  :global(.fp-panel .fp-icon-btn .ant-btn) {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 8px;
+    color: var(--ant-color-text-tertiary);
+  }
+  :global(.fp-panel .fp-icon-btn .ant-btn:hover) {
+    background: var(--ant-color-fill-tertiary);
+    color: var(--ant-color-text);
+  }
+  :global(.fp-panel .fp-icon-btn .ant-btn-dangerous:hover) {
+    color: var(--ant-color-error);
+  }
+  :global(.fp-panel .fp-icon-btn .ant-btn-icon) {
+    margin-inline-end: 0 !important;
+    font-size: 15px;
+    line-height: 0;
+  }
+  /* Everything in the button that is NOT the icon — i.e. the label span. */
+  :global(.fp-panel .fp-icon-btn .ant-btn > :not(.ant-btn-icon)) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  /* .fp-title-row — a row holding an editable antd Typography title. antd
+     draws the edit affordance in its default link blue, which is off-brand in
+     most apps and the loudest thing in a quiet band. Mute it to a hint. */
+  :global(.fp-title-row .ant-typography-edit) {
+    color: var(--ant-color-text-tertiary);
+    margin-inline-start: 8px;
+  }
+  :global(.fp-title-row .ant-typography-edit:hover),
+  :global(.fp-title-row .ant-typography-edit:focus-visible) {
+    color: var(--ant-color-primary);
+  }
+
+  /* .fp-chat — a chat block filling the panel body or an embedded container.
+     Scrolls its message/welcome area inside its own bounded height, rather
+     than letting tall welcome content (title + suggestion prompts) push the
+     composer off the bottom. Two levels because `class` lands on the element
+     for some blocks and on Lowdefy's wrapper for others; overflow-y on the one
+     that turns out not to need it is harmless. */
+  :global(.fp-chat) > div:first-child,
+  :global(.fp-chat) > div > div:first-child {
+    overflow-y: auto;
+  }
+  /* Drop the avatar gutters inside the PANEL only. Ant X puts a 40px avatar
+     plus a gap beside every message, on both sides — roughly 20% of a 420px
+     panel spent on two icons that repeat down the whole thread. The role
+     header already says who is speaking, so nothing is lost but width. An
+     embedded chat has the room, so it keeps the block's own display. */
+  :global(.fp-panel .fp-chat .ant-bubble-avatar) {
+    display: none;
+  }
+  :global(.fp-panel .fp-chat .ant-bubble) {
+    gap: 0;
+  }
+
+  /* Speaker chips. With the avatars gone the two roles were told apart only by
+     alignment and by a plain grey role name — too quiet to scan a thread by.
+     A chip on the existing header line puts the colour back without spending
+     any horizontal room, which is the whole reason the avatar column went.
+
+     Ant X marks the root with -start (assistant) / -end (user), and the block
+     renders the role name as an <h5> in the header slot. The h5 carries an
+     inline margin:0, so vertical spacing has to come from the header
+     wrapper. */
+  :global(.fp-panel .fp-chat .ant-bubble-header) {
+    margin-bottom: 5px;
+  }
+  :global(.fp-panel .fp-chat .ant-bubble-header h5) {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1.6;
+    letter-spacing: 0.04em;
+  }
+  /* Assistant — brand colour. antd ships primary / primary-bg as a contrast
+     pair and flips both with the theme, so this holds in light and dark. */
+  :global(.fp-panel .fp-chat .ant-bubble-start .ant-bubble-header h5) {
+    background: var(--ant-color-primary-bg);
+    color: var(--ant-color-primary);
+  }
+  /* User — neutral. The person typing does not need a brand colour, and two
+     coloured chips would compete down the length of the thread. */
+  :global(.fp-panel .fp-chat .ant-bubble-end .ant-bubble-header h5) {
+    background: var(--ant-color-fill-secondary);
+    color: var(--ant-color-text-secondary);
+  }
+
+  /* ── Body + footer ────────────────────────────────────────────────────── */
+
+  :global(.fp-body) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain; /* scrolling the panel must not scroll the page */
+    /* Tight horizontally on purpose: the body's job is to hold a conversation,
+       and every px of side padding comes off the line length of the longest
+       thing in the panel. */
+    padding: 12px 10px;
+  }
+
+  :global(.fp-footer) {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    border-top: 1px solid
+      var(--ant-color-border-secondary, rgba(20, 26, 40, 0.08));
+    background: var(
+      --ant-color-bg-elevated,
+      var(--ant-color-bg-container, #fff)
+    );
+  }
+
+  /* ── Small viewports ──────────────────────────────────────────────────── */
+  /* Below 640px a corner panel is just a cramped page. Become a sheet: full
+     width, anchored to the bottom, top corners kept rounded so it still reads
+     as a layer over the page rather than a new screen. The launcher stays put
+     — it is how you dismiss the sheet. */
+  @media (max-width: 640px) {
+    :global(.fp-panel),
+    :global(.fp-root[data-placement="bottom-left"] .fp-panel) {
+      left: 8px;
+      right: 8px;
+      bottom: calc(var(--fp-bottom, 24px) + 68px);
+      width: auto;
+      max-width: none;
+      height: auto;
+      top: 8px;
+      max-height: none;
+      transform-origin: bottom center;
+    }
+    :global(.fp-panel[data-expanded="true"]) {
+      width: auto;
+    }
+    :global(.fp-launcher-label) {
+      display: none;
+    }
+  }
+
+  /* ── Reduced motion ───────────────────────────────────────────────────── */
+  /* Position and opacity still change (the panel has to appear), but nothing
+     travels or scales. */
+  @media (prefers-reduced-motion: reduce) {
+    :global(.fp-panel),
+    :global(.fp-launcher),
+    :global(.fp-launcher-icon) {
+      transition-property: opacity, visibility;
+      transition-duration: 0.01ms;
+    }
+    :global(.fp-panel[data-open="false"]) {
+      transform: none;
+    }
+    :global(.fp-launcher:hover),
+    :global(.fp-launcher:active) {
+      transform: none;
+    }
+  }
+}

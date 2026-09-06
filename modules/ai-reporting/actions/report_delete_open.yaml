@@ -1,0 +1,10 @@
+# Hand off to the delete confirm, which reads the same `selected_report` the
+# caller seeded. Deleting is the one action with its own follow-up (the confirm
+# modal takes after_delete), so nothing here runs after the open.
+- id: report_delete_open
+  type: CallMethod
+  params:
+    blockId: delete_confirm_modal
+    method: setOpen
+    args:
+      - open: true

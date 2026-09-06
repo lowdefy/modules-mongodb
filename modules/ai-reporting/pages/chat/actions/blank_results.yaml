@@ -1,0 +1,19 @@
+# Every state key that holds one conversation's output, blanked. Both switch
+# paths merge this into their own `SetState` params — `new_conversation` (New
+# chat, terminal: nothing reads afterwards) and `load_conversation`'s
+# `select_conversation` (a loading state the fresh read fills in).
+#
+# One list, because a key that survives a switch shows the previous
+# conversation's output against the incoming one, and a build cannot see a key
+# missing from a `SetState`. `saved_reports` is why this file exists: it arrived
+# with the chat -> report band, was added to the load path only, and left the
+# reports of the chat you came from listed above an empty transcript.
+#
+# `[]` and never null, so length tests and the Lists bound to these keys never
+# see a null — between the blank and a read resolving, or permanently on a new
+# conversation.
+messages: []
+charts: []
+tables: []
+downloads: []
+saved_reports: []

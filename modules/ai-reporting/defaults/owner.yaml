@@ -1,0 +1,17 @@
+# Who a report or conversation belongs to.
+#
+# A named reference rather than a bare id, following the same shape as
+# `deals.salesperson` — the id is the authorization key every scope filter
+# matches on, and the name is carried so a list or a report header can say
+# "Published by …" without a lookup back to the user collection.
+#
+# Deliberately NOT the `created` change stamp, even though the two hold the same
+# person on insert. `created` is a historical fact written once with
+# $setOnInsert; ownership is current state. Authorizing off the stamp would mean
+# ownership could never move without rewriting the audit record, and would make
+# `created.user` load-bearing for authorization while `updated.user` beside it is
+# not — a distinction nothing in the document would signal.
+user_id:
+  _user: id
+name:
+  _user: profile.name

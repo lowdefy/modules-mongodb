@@ -1,0 +1,40 @@
+# Shared enum -> selector options conversion. Every options-taking selector in
+# the field library uses this as the default for its `options` var, so an author
+# can drive any selector from an enum map (`slug -> { title, color, icon }`)
+# instead of writing `[{ label, value }]` pairs by hand.
+#
+# Emitted shape is what the antd selector blocks actually read: `label` / `value`
+# on every block, top-level `color` for the selected-value tint, and `tag.icon`
+# for MultipleSelector's tag rendering. `tag` is only emitted when the enum entry
+# has an icon — MultipleSelector switches to custom tag rendering whenever `tag`
+# is truthy, so an empty object would restyle tags for icon-less enums.
+#
+# `_mql.aggregate` is a runtime operator, so an operator-valued enum
+# (`_global: enums.x`, `_module.var: y`) resolves before conversion.
+# `$objectToArray` preserves the authored key order.
+vars:
+  enum:
+    type: object
+    default: {}
+
+config:
+  _mql.aggregate:
+    - - _var:
+          key: enum
+          default: {}
+    - - $project:
+          items:
+            $objectToArray: $$ROOT
+      - $unwind:
+          path: $items
+      - $project:
+          label: $items.v.title
+          value: $items.k
+          color: $items.v.color
+          tag:
+            $cond:
+              - $ifNull:
+                  - $items.v.icon
+                  - false
+              - icon: $items.v.icon
+              - $$REMOVE

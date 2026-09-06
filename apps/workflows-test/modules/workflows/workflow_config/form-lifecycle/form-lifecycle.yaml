@@ -21,6 +21,25 @@ entity:
   page_id: thing-view
   id_query_key: _id
   title: Thing
+  # Resolves the instance name (Part 26) so the breadcrumb and the overview
+  # title bar read "Thing · Acme Widget" rather than the bare type label. This
+  # is the only place in the suite that exercises the entity.data routine.
+  data:
+    routine:
+      - id: load_thing
+        type: MongoDBAggregation
+        connectionId: things-collection
+        payload:
+          entity_id:
+            _payload: entity_id
+        properties:
+          pipeline:
+            - $match:
+                _id:
+                  _payload: entity_id
+      - ":return":
+          name:
+            _step: load_thing.0.title
 
 starting_actions:
   - type: reviewed-form

@@ -382,6 +382,28 @@ test("makeActionPages: universal_fields_required never appears in output", () =>
   );
 });
 
+// ── Part 73: show_comment normalization on action_config ─────────────────────
+// Normalized to a concrete boolean here so the templates gate with a bare
+// `_var` and the default lives in one build-time site (kept in lock-step with
+// GetWorkflowAction's read-time default for the shared check surfaces).
+
+test("makeActionPages: show_comment omitted → true on action_config", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction])],
+    app_name: APP,
+  });
+  expect(pages[0]._ref.vars.action_config.show_comment).toBe(true);
+});
+
+test("makeActionPages: show_comment false → false on action_config", () => {
+  const action = { ...qualifyAction, show_comment: false };
+  const pages = makeActionPages(null, {
+    workflows: [workflow([action])],
+    app_name: APP,
+  });
+  expect(pages[0]._ref.vars.action_config.show_comment).toBe(false);
+});
+
 // ── Part 56 Task 10: workspace vars on form pages ────────────────────────────
 
 test("makeActionPages: form pages carry connection_id from workflow.entity.connection_id", () => {
@@ -533,6 +555,8 @@ test("makeActionPages: the action page targets templates/action.yaml.njk with th
     entity_view_slot: slot,
     list_page_id: "",
     list_title: "",
+    left_variant: "steps",
+    history_in_drawer: false,
   });
 });
 
@@ -601,4 +625,46 @@ test("makeActionPages: a custom-only workflow emits the single shared action pag
   });
 
   expect(pages.map((p) => p.id)).toEqual(["onboarding-action"]);
+});
+
+test("makeActionPages: page_layout wide derives left_variant progress + history_in_drawer true on every emitted page", () => {
+  const wf = { ...workflow([sendQuoteAction]), page_layout: "wide" };
+  const pages = makeActionPages(null, { workflows: [wf], app_name: APP });
+
+  expect(pages.length).toBeGreaterThan(0);
+  for (const page of pages) {
+    expect(page._ref.vars.left_variant).toBe("progress");
+    expect(page._ref.vars.history_in_drawer).toBe(true);
+  }
+});
+
+test("makeActionPages: page_layout standard derives left_variant steps + history_in_drawer false", () => {
+  const wf = { ...workflow([sendQuoteAction]), page_layout: "standard" };
+  const pages = makeActionPages(null, { workflows: [wf], app_name: APP });
+
+  for (const page of pages) {
+    expect(page._ref.vars.left_variant).toBe("steps");
+    expect(page._ref.vars.history_in_drawer).toBe(false);
+  }
+});
+
+test("makeActionPages: absent page_layout defaults to steps + no drawer (unchanged behavior)", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([sendQuoteAction])],
+    app_name: APP,
+  });
+
+  for (const page of pages) {
+    expect(page._ref.vars.left_variant).toBe("steps");
+    expect(page._ref.vars.history_in_drawer).toBe(false);
+  }
+});
+
+test("makeActionPages: the per-workflow check page carries the derived layout vars", () => {
+  const wf = { ...workflow([scheduleFollowupAction]), page_layout: "wide" };
+  const [checkPage] = makeActionPages(null, { workflows: [wf], app_name: APP });
+
+  expect(checkPage.id).toBe("onboarding-action");
+  expect(checkPage._ref.vars.left_variant).toBe("progress");
+  expect(checkPage._ref.vars.history_in_drawer).toBe(true);
 });
