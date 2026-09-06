@@ -220,8 +220,6 @@ secrets:
       app remaps the ai connection to its own provider connection.
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^3"
   - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.36.0"
   # The `ai` connection (AIGateway) and the reporting assistant (AIGatewayAgent)
@@ -231,7 +229,7 @@ plugins:
   # name, and a module-scoped endpoint id contains `/`, which the provider's
   # tool-name pattern rejects with a 400 on every chat turn.
   - name: "@lowdefy/connection-ai-gateway"
-    version: 0.0.0-experimental-20260814133003
+    version: 0.0.0-experimental-20260906143808
 
 connections:
   - _ref: connections/reports-store.yaml

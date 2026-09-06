@@ -17,24 +17,24 @@ concepts:
 
 Master list of every secret read by modules in this repo. Bucket names, keys, and connection strings live in secrets so they stay out of version control.
 
-| Secret                       | Modules         | Used for                                                                  |
-| ---------------------------- | --------------- | ------------------------------------------------------------------------- |
-| `MONGODB_URI`                | every module    | MongoDB connection string                                                 |
-| `NOTIFICATIONS_SMTP_PASS`    | `notifications` | SMTP password for notification emails                                     |
-| `SENDGRID_API_KEY`           | `notifications` | SendGrid API key for notification emails                                  |
-| `FILES_S3_ACCESS_KEY_ID`     | `files`         | AWS access key for the file storage bucket                                |
-| `FILES_S3_SECRET_ACCESS_KEY` | `files`         | AWS secret access key for the file storage bucket                         |
-| `FILES_S3_BUCKET`            | `files`         | Private S3 bucket for file uploads                                        |
-| `FILES_S3_BUCKET_PUB`        | `files`         | Public S3 bucket for files served without auth                            |
-| `AUTH_SECRET`                | auth engine     | BetterAuth session/token signing secret                                   |
-| `AUTH_FROM_ADDRESS`          | auth engine     | From address on auth emails (verify, reset, magic-link, invite)           |
-| `SMTP_HOST`                  | auth engine     | SMTP host for auth email delivery                                         |
-| `SMTP_PORT`                  | auth engine     | SMTP port                                                                 |
-| `SMTP_SECURE`                | auth engine     | `"true"` for implicit TLS (e.g. port 465), else `"false"`                 |
-| `SMTP_USER`                  | auth engine     | SMTP username (SendGrid: `apikey`)                                        |
-| `SMTP_PASS`                  | auth engine     | SMTP password / provider API key                                          |
-| `GOOGLE_CLIENT_ID`           | auth engine     | Google OAuth client id — only when the Google provider is configured      |
-| `GOOGLE_CLIENT_SECRET`       | auth engine     | Google OAuth client secret — only when the Google provider is configured  |
+| Secret                       | Modules                        | Used for                                                                                                             |
+| ---------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `MONGODB_URI`                | every module                   | MongoDB connection string                                                                                            |
+| `NOTIFICATIONS_SMTP_PASS`    | `notifications`                | SMTP password for notification emails                                                                                |
+| `SENDGRID_API_KEY`           | `notifications`                | SendGrid API key for notification emails                                                                             |
+| `FILES_S3_ACCESS_KEY_ID`     | `files`                        | AWS access key for the file storage bucket                                                                           |
+| `FILES_S3_SECRET_ACCESS_KEY` | `files`                        | AWS secret access key for the file storage bucket                                                                    |
+| `FILES_S3_BUCKET`            | `files`                        | Private S3 bucket for file uploads                                                                                   |
+| `FILES_S3_BUCKET_PUB`        | `files`                        | Public S3 bucket for files served without auth                                                                       |
+| `AUTH_SECRET`                | auth engine                    | BetterAuth session/token signing secret                                                                              |
+| `AUTH_FROM_ADDRESS`          | auth engine                    | From address on auth emails (verify, reset, magic-link, invite)                                                      |
+| `SMTP_HOST`                  | auth engine                    | SMTP host for auth email delivery                                                                                    |
+| `SMTP_PORT`                  | auth engine                    | SMTP port                                                                                                            |
+| `SMTP_SECURE`                | auth engine                    | `"true"` for implicit TLS (e.g. port 465), else `"false"`                                                            |
+| `SMTP_USER`                  | auth engine                    | SMTP username (SendGrid: `apikey`)                                                                                   |
+| `SMTP_PASS`                  | auth engine                    | SMTP password / provider API key                                                                                     |
+| `GOOGLE_CLIENT_ID`           | auth engine                    | Google OAuth client id — only when the Google provider is configured                                                 |
+| `GOOGLE_CLIENT_SECRET`       | auth engine                    | Google OAuth client secret — only when the Google provider is configured                                             |
 | `REPORTING_MONGODB_URI`      | `ai-reporting`                 | MongoDB URI for saved reports and chat conversations                                                                 |
 | `REPORTING_DATA_MONGODB_URI` | `ai-reporting`                 | MongoDB URI the reporting engine queries — **read-only user**                                                        |
 | `AI_GATEWAY_API_KEY`         | `ai-assistant`, `ai-reporting` | Vercel AI Gateway key — the thread-titling call and the reporting agent (skip where the `ai` connection is remapped) |

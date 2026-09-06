@@ -308,8 +308,6 @@ secrets:
       exercised while generate_titles is on.
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
-    version: '^3'
   # FloatingPanel (the launcher + panel block) and the AiText connection
   # (the titling call) both ship here.
   - name: '@lowdefy/modules-mongodb-plugins'

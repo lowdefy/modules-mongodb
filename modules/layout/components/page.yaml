@@ -181,14 +181,47 @@ requests:
         key: requests
         default: []
 events:
+  # Module-entry global init runs AFTER the page's own — its state is set by
+  # the time a global widget's state contract runs. A page may author onInit
+  # in the { try, catch } form; the global actions then join its try list.
+  # Build-time operators evaluate every branch, so the list the globals are
+  # appended to is picked first — each concat below only ever sees an array.
   onInit:
-    _build.array.concat:
-      - _var:
-          key: events.onInit
-          default: []
-      # Module-entry global init, AFTER the page's own — its state is set by
-      # the time a global widget's state contract runs.
-      - _module.var: global_events.onInit
+    _build.if:
+      test:
+        _build.type:
+          type: array
+          on:
+            _var:
+              key: events.onInit
+              default: []
+      then:
+        _build.array.concat:
+          - _build.if:
+              test:
+                _build.type:
+                  type: array
+                  on:
+                    _var:
+                      key: events.onInit
+                      default: []
+              then:
+                _var:
+                  key: events.onInit
+                  default: []
+              else: []
+          - _module.var: global_events.onInit
+      else:
+        try:
+          _build.array.concat:
+            - _var:
+                key: events.onInit.try
+                default: []
+            - _module.var: global_events.onInit
+        catch:
+          _var:
+            key: events.onInit.catch
+            default: []
   onInitAsync:
     _var:
       key: events.onInitAsync

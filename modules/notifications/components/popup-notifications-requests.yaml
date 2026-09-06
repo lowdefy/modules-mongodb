@@ -7,7 +7,7 @@
     _module.connectionId: notifications-collection
   payload:
     app_name:
-      _module.var: app_name
+      _build.app: slug
   properties:
     pipeline:
       - $match:
@@ -30,7 +30,7 @@
     popup_id:
       _state: popup_id
     app_name:
-      _module.var: app_name
+      _build.app: slug
   properties:
     disableNoMatchError: true
     filter:

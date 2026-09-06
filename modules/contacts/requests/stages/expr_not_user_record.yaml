@@ -3,7 +3,7 @@
 # get_contacts_for_selector and get_role_contacts_for_selector whenever that
 # var is anything other than `none`.
 #
-#   this-app  a user of THIS app only (apps.<app_name>.is_user). A contact who
+#   this-app  a user of THIS app only (apps.<slug>.is_user). A contact who
 #             is a user of a sibling app sharing the collection still lists.
 #   any-app   a user of ANY app (any apps.*.is_user). For apps that treat a
 #             user record as a user record regardless of which app owns it.
@@ -46,7 +46,7 @@ _build.switch:
                     $eq:
                       - "$$this.v.is_user"
                       - true
-  # this-app. `app_name` is build-time, so the field path resolves to a literal
+  # this-app. The app slug is build-time, so the field path resolves to a literal
   # string before Mongo sees it. A runtime dot-notation key is not expressible
   # as a `$match` key, which is why this is an expression rather than
   # `apps.<app>.is_user: { $ne: true }` — the same reason
@@ -56,7 +56,7 @@ _build.switch:
       - $ifNull:
           - _string.concat:
               - "$apps."
-              - _module.var: app_name
+              - _build.app: slug
               - ".is_user"
           - false
       - true

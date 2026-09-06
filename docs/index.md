@@ -26,10 +26,10 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [contacts](../modules/contacts/README.md)           | Contact management — list, detail, edit, create, selector                                                            |
 | [companies](../modules/companies/README.md)         | Company management — list, detail, edit, create, selector                                                            |
 | [activities](../modules/activities/README.md)       | CRM activities — calls, meetings, emails logged against contacts and companies                                       |
-| [ai-assistant](../modules/ai-assistant/README.md)   | Agent chat with persisted, per-user threads — docked corner panel or embedded in a page                     |
+| [ai-assistant](../modules/ai-assistant/README.md)   | Agent chat with persisted, per-user threads — docked corner panel or embedded in a page                              |
 | [workflows](../modules/workflows/README.md)         | Multi-workflow engine — declare workflow YAML, render entity action lists, FSM-driven lifecycle transitions          |
 | [release-notes](../modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page                                                                        |
-| [ai-reporting](../modules/ai-reporting/README.md)   | AI chat over your data — open query engine, charts, CSV exports, saved reports                              |
+| [ai-reporting](../modules/ai-reporting/README.md)   | AI chat over your data — open query engine, charts, CSV exports, saved reports                                       |
 
 ## Dependency graph
 
