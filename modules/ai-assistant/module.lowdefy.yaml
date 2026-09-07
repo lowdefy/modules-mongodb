@@ -143,6 +143,23 @@ vars:
       Actions run for each custom data part the agent streams, on the chat block's
       onDataPart. Filter on the part type: the module does not, so every part reaches
       these actions.
+  feedback_values:
+    type: object
+    default: {}
+    description: >-
+      Ratings already stored for the OPEN thread, keyed by message id, each `like` or
+      `dislike` — the block's own vocabulary, as `on_feedback` reports it.
+
+      The chat block persists no rating, so without this a reload or a thread switch
+      shows every message unrated even where the app recorded it, which reads as a lost
+      write rather than a display gap. Storing remains the app's job; this only hands
+      back what it stored. A rating clicked during the visit takes precedence, so the
+      thumb still responds immediately.
+
+      Rebuild it for the thread being opened, on both seams that open one: `on_panel_open`
+      for the thread the panel resumes on arrival, and `on_thread_change` for every switch
+      after that. Wiring only the second leaves the thumbs missing on the thread the user
+      lands on and appearing once they switch.
   on_feedback:
     type: array
     default: []
@@ -150,14 +167,35 @@ vars:
       Actions run when the user rates a message, on the chat block's onFeedback. Only
       reachable when the feedback action is enabled through `message_display`; leaving
       this empty while enabling that control renders a button that does nothing.
+  on_panel_open:
+    type: array
+    default: []
+    description: >-
+      Actions run when the `panel` opens, after `enter` has resumed the thread. The
+      mount-time counterpart to `on_thread_change`: that one covers every later switch,
+      this one covers the first sight of a thread in a visit.
+
+      Only the panel has an open moment. The `embedded` shell has none, so a page using
+      it splices its own actions after the `enter` component directly — this var is not
+      run there, and wiring both would be the double-fire `on_thread_change` avoids.
+
+      For state the consumer derives from the open conversation and hands back to the
+      chat — ratings already stored for its messages, a references panel. Without it such
+      state is only ever built when the user switches threads, so the thread the panel
+      resumes on open is the one case it is missing.
+
+      Runs inside the panel's own try/catch, so a rejection here clears ai_loading rather
+      than leaving the panel spinning. Read the thread from `_state: ai_conversation_id`,
+      committed before these actions run.
   on_thread_change:
     type: array
     default: []
     description: >-
       Actions run whenever the ACTIVE thread changes by a user action — opening one
-      from the thread list, or starting a new chat. Not run by `enter`: a page splices
-      its own actions after `enter` directly, and firing both would run them twice on
-      the first visit.
+      from the thread list, or starting a new chat. Not run by `enter`, so it does not
+      cover the thread resumed on arrival: the panel has `on_panel_open` for that, and a
+      page using `embedded` splices its own actions after the `enter` component. Firing
+      on `enter` as well would run them twice on the first visit.
 
       For anything the consumer derives from the open conversation and renders outside
       the chat — a references panel, filters keyed to the current answer. Without it

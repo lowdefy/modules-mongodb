@@ -159,7 +159,8 @@ The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` 
 | `on_user_message` | `onUserMessage` | The app's own record of what was asked. Runs after the module has persisted the thread, so a thread id is already stored by this point. |
 | `on_data_part` | `onDataPart` | Custom data parts the agent streams. Filter on the part type yourself; every part arrives here. |
 | `on_feedback` | `onFeedback` | Ratings from the feedback control. |
-| `on_thread_change` | — | The active thread changed by a user action: a thread opened from the list, or a new chat started. Not fired by `enter`, which a page splices its own actions after directly. Re-derive anything you render outside the chat from the open conversation; read the new thread from `ai_conversation_id`, not the event. |
+| `on_panel_open` | — | The `panel` opened, after `enter` has resumed the thread. The mount-time half of `on_thread_change`: it covers the thread the panel arrives on, which no other seam sees. Panel only — `embedded` has no open moment, so a page using it splices its own actions after `enter`. |
+| `on_thread_change` | — | The active thread changed by a user action: a thread opened from the list, or a new chat started. Not fired by `enter`, so it does not cover the thread resumed on arrival — see `on_panel_open`. Re-derive anything you render outside the chat from the open conversation; read the new thread from `ai_conversation_id`, not the event. |
 | `on_link_click` | `onLinkClick` | A link clicked inside a message, as `{ href, text }`. Open an in-app target in place instead of navigating out of the conversation. Wiring it turns interception on for the whole message, so an href you do not recognise navigates nowhere — handle the fall-through. Modified and non-primary clicks are never delivered, so open-in-new-tab keeps working. |
 
 Each event brings its own `_event` payload from the chat block, and they do not agree on field names — `onBeforeSend` gives you `{ text, files, messages, switches }`, so a rule about what the user typed reads `_event: text`, not `content`. Reading a field the event does not carry yields null silently, which in a `skip` reads as "skip this action" — a gate written against the wrong field does not error, it just never fires. Worth a check against the block's reference when writing one.
@@ -177,6 +178,21 @@ on_feedback:
       payload:
         rating:
           _event: rating
+```
+
+Recording it is only half of it. The chat block persists no rating, so a reload or a
+thread switch shows the message unrated again even though the app stored it. Hand back
+what you stored through `feedback_values`, keyed by message id and in the block's own
+`like`/`dislike` vocabulary.
+
+Rebuild it for the thread being opened, on **both** seams that open one: `on_panel_open`
+for the thread the panel resumes on arrival, and `on_thread_change` for every switch
+after that. Wiring only the second is the easy mistake — thumbs come back when the user
+changes thread and are missing on the one they land on:
+
+```yaml
+feedback_values:
+  _state: stored_ratings_for_thread
 ```
 
 A quota gate, for contrast, refuses the send outright:
