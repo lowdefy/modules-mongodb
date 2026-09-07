@@ -156,7 +156,10 @@ vars:
       back what it stored. A rating clicked during the visit takes precedence, so the
       thumb still responds immediately.
 
-      Rebuild it for the thread being opened — `on_thread_change` is the seam for that.
+      Rebuild it for the thread being opened, on both seams that open one: `on_panel_open`
+      for the thread the panel resumes on arrival, and `on_thread_change` for every switch
+      after that. Wiring only the second leaves the thumbs missing on the thread the user
+      lands on and appearing once they switch.
   on_feedback:
     type: array
     default: []
