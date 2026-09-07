@@ -1,5 +1,6 @@
 ---
 "@lowdefy/modules-mongodb-ai-assistant": minor
+"@lowdefy/modules-mongodb-plugins": patch
 ---
 
 ai-assistant: add a `feedback_values` var so stored ratings come back
@@ -14,5 +15,8 @@ gap, as far as the user could tell.
 still responds immediately. Rebuild the map for the thread being opened — `on_thread_change`
 is the seam for that.
 
-Requires a Lowdefy build carrying the AgentChat `feedbackValues` property; on an older
-build the property is ignored and nothing changes.
+Requires Lowdefy 5.6.0, the release carrying the AgentChat `feedbackValues` property; on
+an older build the property is ignored and nothing changes. The plugin package's Lowdefy
+peer range now accepts `5.6.0` and no longer accepts
+`0.0.0-experimental-20260827105525` — that build predates the property, so it was only
+ever the pre-release stand-in for this release.
