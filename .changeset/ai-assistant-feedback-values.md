@@ -12,8 +12,15 @@ gap, as far as the user could tell.
 
 `feedback_values` takes a map of message id to `like` or `dislike`, in the same vocabulary
 `on_feedback` reports. A rating clicked during the visit takes precedence, so the thumb
-still responds immediately. Rebuild the map for the thread being opened — `on_thread_change`
-is the seam for that.
+still responds immediately.
+
+Rebuild the map for the thread being opened, on both seams that open one. `on_thread_change`
+covers every switch, and a new `on_panel_open` var covers the thread the `panel` resumes when
+it opens — which nothing could see before, because `enter` runs inside the panel and no
+consumer actions followed it. Wiring only `on_thread_change` leaves the thumbs missing on the
+thread the user lands on and appearing once they switch, which is the confusing half-state.
+The `embedded` shell still has no open moment: a page using it splices its own actions after
+the `enter` component, as before.
 
 Requires Lowdefy 5.6.0, the release carrying the AgentChat `feedbackValues` property; on
 an older build the property is ignored and nothing changes. The plugin package's Lowdefy
