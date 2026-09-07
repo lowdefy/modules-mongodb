@@ -21,12 +21,12 @@ import testCatalog from "./testDatasets.js";
 //
 // So assert the invariant directly: everything the compiler can emit must be
 // declared on the block. This is the compile-side half; the render-side half is
-// the e2e spec in apps/demo/e2e/reporting.
+// the e2e spec in apps/demo/e2e/ai-reporting.
 
 const here = dirname(fileURLToPath(import.meta.url));
 const reportPage = loadYaml(
   readFileSync(
-    resolve(here, "../../../../modules/reporting/pages/report.yaml"),
+    resolve(here, "../../../../modules/ai-reporting/pages/report.yaml"),
     "utf8",
   ),
 );
@@ -199,8 +199,8 @@ test("every type compileReport emits is declared on the report page's Dynamic bl
     results,
     catalog: testCatalog,
     roles: ["analyst"],
-    endpointId: "reporting/query-data",
-    chartEndpointId: "reporting/chart-data",
+    endpointId: "ai-reporting/query-data",
+    chartEndpointId: "ai-reporting/chart-data",
   });
   const used = collect(blocks);
 
@@ -245,8 +245,8 @@ test("the failed-section Alert path emits only declared types", () => {
     results: [[{ present: 1 }]],
     catalog: testCatalog,
     roles: ["analyst"],
-    endpointId: "reporting/query-data",
-    chartEndpointId: "reporting/chart-data",
+    endpointId: "ai-reporting/query-data",
+    chartEndpointId: "ai-reporting/chart-data",
   });
   const used = collect(blocks);
   expect(used.blocks.has("Alert")).toBe(true);

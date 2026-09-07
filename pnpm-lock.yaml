@@ -77,6 +77,8 @@ importers:
 
   modules/ai-assistant: {}
 
+  modules/ai-reporting: {}
+
   modules/companies: {}
 
   modules/contacts: {}
@@ -92,8 +94,6 @@ importers:
   modules/notifications: {}
 
   modules/release-notes: {}
-
-  modules/reporting: {}
 
   modules/user-account: {}
 

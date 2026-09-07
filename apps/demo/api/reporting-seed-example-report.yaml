@@ -428,7 +428,7 @@ routine:
                         total: 1
                         quantity: 1
           catalog:
-            _ref: modules/reporting/catalog.yaml
+            _ref: modules/ai-reporting/catalog.yaml
           roles:
             _user: roles
   - id: insert_report
@@ -494,5 +494,5 @@ routine:
           - _user: id
       url:
         _string.concat:
-          - "/reporting/report?report_id=example-orders-report-"
+          - "/ai-reporting/report?report_id=example-orders-report-"
           - _user: id

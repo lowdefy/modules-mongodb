@@ -14,22 +14,22 @@ concepts:
 
 Master list of every secret read by modules in this repo. Bucket names, keys, and connection strings live in secrets so they stay out of version control.
 
-| Secret                       | Modules                     | Used for                                                                                                             |
-| ---------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `MONGODB_URI`                | every module                | MongoDB connection string                                                                                            |
-| `FILES_S3_ACCESS_KEY_ID`     | `files`                     | AWS access key for the file storage bucket                                                                           |
-| `FILES_S3_SECRET_ACCESS_KEY` | `files`                     | AWS secret access key for the file storage bucket                                                                    |
-| `FILES_S3_BUCKET`            | `files`                     | Private S3 bucket for file uploads                                                                                   |
-| `FILES_S3_BUCKET_PUB`        | `files`                     | Public S3 bucket for files served without auth                                                                       |
-| `REPORTING_MONGODB_URI`      | `reporting`                 | MongoDB URI for saved reports and chat conversations                                                                 |
-| `REPORTING_DATA_MONGODB_URI` | `reporting`                 | MongoDB URI the reporting engine queries — **read-only user**                                                        |
-| `AI_GATEWAY_API_KEY`         | `ai-assistant`, `reporting` | Vercel AI Gateway key — the thread-titling call and the reporting agent (skip where the `ai` connection is remapped) |
+| Secret                       | Modules                        | Used for                                                                                                             |
+| ---------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `MONGODB_URI`                | every module                   | MongoDB connection string                                                                                            |
+| `FILES_S3_ACCESS_KEY_ID`     | `files`                        | AWS access key for the file storage bucket                                                                           |
+| `FILES_S3_SECRET_ACCESS_KEY` | `files`                        | AWS secret access key for the file storage bucket                                                                    |
+| `FILES_S3_BUCKET`            | `files`                        | Private S3 bucket for file uploads                                                                                   |
+| `FILES_S3_BUCKET_PUB`        | `files`                        | Public S3 bucket for files served without auth                                                                       |
+| `REPORTING_MONGODB_URI`      | `ai-reporting`                 | MongoDB URI for saved reports and chat conversations                                                                 |
+| `REPORTING_DATA_MONGODB_URI` | `ai-reporting`                 | MongoDB URI the reporting engine queries — **read-only user**                                                        |
+| `AI_GATEWAY_API_KEY`         | `ai-assistant`, `ai-reporting` | Vercel AI Gateway key — the thread-titling call and the reporting agent (skip where the `ai` connection is remapped) |
 
 Email/SMTP and other transport secrets are not used by any module here — `notifications.send_routine` is a configurable routine on the consuming app and uses whatever secrets that routine requires.
 
 ## By category
 
-**MongoDB.** Every module declares `MONGODB_URI`. A single connection serves the whole app — modules don't need separate URIs. The `reporting` module is the exception: it keeps its storage (`REPORTING_MONGODB_URI`) separate from the data it queries (`REPORTING_DATA_MONGODB_URI`) so the latter can be provisioned as a **read-only principal** — see below.
+**MongoDB.** Every module declares `MONGODB_URI`. A single connection serves the whole app — modules don't need separate URIs. The `ai-reporting` module is the exception: it keeps its storage (`REPORTING_MONGODB_URI`) separate from the data it queries (`REPORTING_DATA_MONGODB_URI`) so the latter can be provisioned as a **read-only principal** — see below.
 
 **File storage (S3).** Used by `files`. Two buckets: a private one (signed URLs, default for new uploads) and a public one (for assets served without auth).
 
@@ -41,9 +41,9 @@ Email/SMTP and other transport secrets are not used by any module here — `noti
 
 ## Read-only reporting principal (`REPORTING_DATA_MONGODB_URI`)
 
-The reporting module's [open query engine](../reporting/concepts/open-query-engine.md) executes AI-authored MongoDB aggregation pipelines. Its **second, independent safety layer** (the first is the pipeline validator) is the database principal it connects as: `REPORTING_DATA_MONGODB_URI` must point at a MongoDB user granted **only** the `read` role on the reporting database. This is a **deployment change, not a code change** — the `ReportingData` connection (`modules/reporting/connections/reporting-data.yaml`) resolves its `databaseUri` from this secret via `_secret`, so repointing the secret at a read-only user is all that is required.
+The `ai-reporting` module's [open query engine](../ai-reporting/concepts/open-query-engine.md) executes AI-authored MongoDB aggregation pipelines. Its **second, independent safety layer** (the first is the pipeline validator) is the database principal it connects as: `REPORTING_DATA_MONGODB_URI` must point at a MongoDB user granted **only** the `read` role on the reporting database. This is a **deployment change, not a code change** — the `ReportingData` connection (`modules/ai-reporting/connections/reporting-data.yaml`) resolves its `databaseUri` from this secret via `_secret`, so repointing the secret at a read-only user is all that is required.
 
-The secret name is declared in `modules/reporting/module.lowdefy.yaml`.
+The secret name is declared in `modules/ai-reporting/module.lowdefy.yaml`.
 
 ### Provisioning the principal
 

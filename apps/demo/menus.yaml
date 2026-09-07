@@ -35,7 +35,7 @@
           type: MenuLink
           pageId:
             _module.pageId:
-              module: reporting
+              module: ai-reporting
               id: chat
           properties:
             title: Chat
@@ -44,7 +44,7 @@
           type: MenuLink
           pageId:
             _module.pageId:
-              module: reporting
+              module: ai-reporting
               id: reports-list
           properties:
             title: Saved reports

@@ -18,7 +18,7 @@
     "e2e:ui": "playwright test --ui --config=e2e/playwright.config.js",
     "e2e:server": "lowdefy build --server e2e && lowdefy start --port 3101 --log-level warn",
     "reporting:seed": "infisical run --env=dev --path=/apps/demo -- node scripts/seed-reporting-domain.mjs",
-    "reporting:catalog": "infisical run --env=dev --path=/apps/demo -- sh -c 'LOWDEFY_SECRET_REPORTING_DATA_MONGODB_URI=\"$LOWDEFY_SECRET_MONGODB_URI\" lowdefy-reporting-catalog --include \"demo_*\" --out modules/reporting/catalog.draft.yaml'"
+    "reporting:catalog": "infisical run --env=dev --path=/apps/demo -- sh -c 'LOWDEFY_SECRET_REPORTING_DATA_MONGODB_URI=\"$LOWDEFY_SECRET_MONGODB_URI\" lowdefy-reporting-catalog --include \"demo_*\" --out modules/ai-reporting/catalog.draft.yaml'"
   },
   "dependencies": {
     "lowdefy": "0.0.0-experimental-20260814133003"

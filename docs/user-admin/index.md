@@ -28,7 +28,7 @@ Add `user-admin` when an app needs operator-facing user management — inviting 
 # lowdefy.yaml
 modules:
   - id: user-admin
-    source: "github:lowdefy/modules-mongodb/modules/user-admin@v0.35.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-admin@v0.36.0"
     vars:
       app_name: my-app
       app_title: Team

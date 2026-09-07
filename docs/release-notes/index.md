@@ -24,7 +24,7 @@ Add `release-notes` when an app needs a changelog or release-notes page. This is
 # lowdefy.yaml
 modules:
   - id: release-notes
-    source: "github:lowdefy/modules-mongodb/modules/release-notes@v0.35.0"
+    source: "github:lowdefy/modules-mongodb/modules/release-notes@v0.36.0"
     vars:
       content:
         _ref: ../../CHANGELOG.md

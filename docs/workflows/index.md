@@ -32,7 +32,7 @@ Add `workflows` when an app needs multi-step business processes on any entity �
 # lowdefy.yaml
 modules:
   - id: workflows
-    source: "github:lowdefy/modules-mongodb/modules/workflows@v0.35.0"
+    source: "github:lowdefy/modules-mongodb/modules/workflows@v0.36.0"
     vars:
       workflows_config:
         _ref: workflow_config/workflows.yaml
@@ -77,6 +77,7 @@ See [`apps/demo/modules/workflows/vars.yaml`](../../apps/demo/modules/workflows/
 - [Track a child workflow](how-to/track-a-child-workflow.md) — tracker actions, `start_link`, `parent_action_id`
 - [Instanced actions](how-to/instanced-actions.md) — keyed actions, `key` field, per-instance spawning
 - [Write a hook](how-to/write-a-hook.md) — inline routines, `pre`/`post` phases, the `:return` shape
+- [Migrate from a legacy workflow engine](how-to/migrate-from-a-legacy-workflow-engine.md) — map a hand-rolled, app-embedded engine onto the module
 
 ## Shared idioms
 
