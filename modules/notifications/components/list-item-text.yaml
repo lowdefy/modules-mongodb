@@ -1,0 +1,27 @@
+id: list.$.text
+type: Html
+layout:
+  flex: 1 1 0
+style:
+  minWidth: 0
+properties:
+  html:
+    _nunjucks:
+      # The framework's derived preview is a hard 140-character cut of the
+      # message; finish it with an ellipsis when it ends mid-sentence.
+      template: |
+        <div class="notification-item__title{% if unread %} notification-item__title--unread{% endif %}">{{ title }}</div>
+        {% if description %}
+        {% set cut = description.length >= 140 and description[description.length - 1] not in '.!?…' %}
+        <div class="notification-item__desc">{{ description }}{% if cut %}…{% endif %}</div>
+        {% endif %}
+      on:
+        title:
+          _state: list.$.title
+        unread:
+          _not:
+            _state: list.$.read
+        description:
+          _if_none:
+            - _state: list.$.description
+            - _state: list.$.preview
