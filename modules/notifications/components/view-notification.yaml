@@ -43,18 +43,24 @@ blocks:
       title: Notification Details
   - id: notification_details
     type: Html
-    style:
-      marginBottom: 2em
+    class:
+      .element: notification-email
     properties:
       html:
-        # body is the rendered HTML on both record shapes; fall back to the
-        # pipeline records' plain text if body is ever absent.
-        _if_none:
-          - _get:
-              key: body
-              from:
-                _var: notification
-          - _get:
-              key: text
-              from:
-                _var: notification
+        # The stylesheet trails the document: the HTML parser hoists a leading
+        # <style> into <head>, which the block's sanitizer discards with it.
+        _string.concat:
+          # body is the rendered HTML on both record shapes; fall back to the
+          # pipeline records' plain text if body is ever absent.
+          - _if_none:
+              - _get:
+                  key: body
+                  from:
+                    _var: notification
+              - _get:
+                  key: text
+                  from:
+                    _var: notification
+          - "<style>"
+          - _ref: components/notification-email.css
+          - "</style>"
