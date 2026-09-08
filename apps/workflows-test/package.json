@@ -13,7 +13,8 @@
     "e2e:server": "lowdefy build --server e2e && lowdefy start --port 3001 --log-level warn"
   },
   "dependencies": {
-    "lowdefy": "0.0.0-experimental-20260908103554"
+    "lowdefy": "0.0.0-experimental-20260908103554",
+    "@lowdefy/plugin-better-auth": "0.0.0-experimental-20260908103554"
   },
   "devDependencies": {
     "@lowdefy/e2e-utils": "0.0.0-experimental-20260908103554",
