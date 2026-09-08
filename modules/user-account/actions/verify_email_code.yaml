@@ -1,0 +1,65 @@
+# The email-code verify chain, `_ref`'d by both the "Sign in with code" button's
+# onClick and the code field's onPressEnter so click and Enter run the identical
+# sequence. Reads the address the send was made to (`magic_link_sent_email`), the
+# key both the login and signup "check your email" renders store it under.
+#
+# EmailOtpVerify signs the caller in and the engine navigates to the resolved
+# callbackUrl. A 2FA-enrolled user gets no session but a `twoFactorRedirect`
+# outcome instead, routed to the two-factor page carrying the inbound
+# `?callbackUrl=` — the same shape as the password path.
+try:
+  # `messages.error: false` suppresses the break-condition toast so a blank code
+  # surfaces only as the inline field error.
+  - id: validate_otp
+    type: Validate
+    messages:
+      error: false
+    params: otp
+  - id: verify_email_code
+    type: EmailOtpVerify
+    messages:
+      error: false
+    params:
+      email:
+        _state: magic_link_sent_email
+      otp:
+        _state: otp
+      callbackUrl:
+        _if:
+          test:
+            _ne:
+              - _url_query: callbackUrl
+              - null
+          then:
+            url:
+              _url_query: callbackUrl
+          else:
+            home: true
+  - :if:
+      _eq:
+        - _actions: verify_email_code.response.twoFactorRedirect
+        - true
+    :then:
+      - id: go_two_factor_from_code
+        type: Link
+        params:
+          pageId:
+            _module.pageId: two-factor
+          urlQuery:
+            callbackUrl:
+              _url_query: callbackUrl
+catch:
+  # This catch also receives the Validate break condition. Only a genuinely
+  # rejected code should toast: an empty field breaks at Validate and already
+  # shows its inline error, so the toast is skipped while `otp` is unset.
+  - id: toast_email_code_error
+    type: DisplayMessage
+    skip:
+      _eq:
+        - _if_none:
+            - _state: otp
+            - ""
+        - ""
+    params:
+      status: error
+      content: That code is wrong or has expired. Check the email and try again, or request a new link.

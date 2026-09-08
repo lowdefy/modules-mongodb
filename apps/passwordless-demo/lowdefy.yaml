@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260906143808
+lowdefy: 0.0.0-experimental-20260908113207
 name: Passwordless Demo App
 slug: passwordless-demo
 
@@ -45,6 +45,10 @@ auth:
   magicLink:
     enabled: true
     expiresIn: 1800
+  # Email codes alongside the link: one send, one email carrying both, so this
+  # app exercises the code branch of the passwordless "check your email" render.
+  emailOTP:
+    enabled: true
   # Auth emails (magic-link, verify, invite) send through the `auth-smtp` SMTP
   # connection (see connections below): the runtime resolves it by connectionId
   # at send time and the connection owns from/transport/filter.

@@ -1,0 +1,91 @@
+# Magic-link landing page. Serves authPages.magicLink: with that role set the
+# sign-in email links here, carrying `?token=` and the callback targets, instead
+# of linking straight at the verify endpoint. `MagicLinkVerify` reads them off
+# the query and performs the navigation to that endpoint.
+#
+# The indirection exists because corporate mail security (Defender Safe Links,
+# Proofpoint, Mimecast) GETs every link in a message at delivery, and the verify
+# endpoint consumes its single-use token on the first GET — so the link is spent
+# before the recipient opens it and they land on INVALID_TOKEN. A click is the
+# one signal a prefetch cannot produce, so the verify MUST hang off `onClick`:
+# never `onInit`/`onMount`, and never an auto-redirect of any kind, since a
+# JS-executing scanner would consume the token exactly as the endpoint GET does.
+#
+# A token that is genuinely expired or already used still fails at the endpoint
+# and lands on authPages.error (the login page) with `?error=INVALID_TOKEN`,
+# which renders there as the retryable "Link expired" notice.
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: magic-link
+    title: ""
+    blocks:
+      - id: magic_link_title
+        type: Title
+        properties:
+          content: Finish signing in
+          level: 3
+      # A landing reached without a token can never verify — a truncated or
+      # rewritten link, or the page visited directly — so the lead and the
+      # button give way to the notice below.
+      - id: magic_link_lead
+        type: Html
+        visible:
+          _ne:
+            - _url_query: token
+            - null
+        properties:
+          html: You've opened your sign-in link. One click finishes signing you in.
+        style:
+          marginTop: -8
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+      - id: magic_link_verify
+        type: Button
+        visible:
+          _ne:
+            - _url_query: token
+            - null
+        properties:
+          title: Sign in
+          block: true
+          size: large
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            # No params: the action reads the token and the callback
+            # destinations off this page's own query.
+            - id: verify_magic_link
+              type: MagicLinkVerify
+
+      - id: magic_link_incomplete
+        type: Alert
+        visible:
+          _eq:
+            - _url_query: token
+            - null
+        properties:
+          type: warning
+          showIcon: true
+          message: This sign-in link is incomplete
+          description: Open the link from your email again, or request a new one.
+      - id: magic_link_back_to_login
+        type: Button
+        visible:
+          _eq:
+            - _url_query: token
+            - null
+        properties:
+          title: Back to sign in
+          block: true
+          variant: link
+          color: primary
+        events:
+          onClick:
+            - id: magic_link_go_login
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: login

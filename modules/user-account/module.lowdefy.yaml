@@ -111,6 +111,7 @@ pages:
       - _ref: pages/forgot-password.yaml
       - _ref: pages/reset-password.yaml
       - _ref: pages/verify-email.yaml
+      - _ref: pages/magic-link.yaml
       - _ref: pages/two-factor.yaml
       - _ref: pages/accept.yaml
       - _ref: pages/logout.yaml
@@ -164,6 +165,12 @@ auth:
     forgotPassword: forgot-password
     resetPassword: reset-password
     verifyEmail: verify-email
+    # Landing page for the emailed sign-in link. With this role set the engine
+    # links the email here instead of at the verify endpoint, so a mail-security
+    # prefetch cannot consume the single-use token; the page verifies on a click.
+    # A role page is auto-public, and a deployment with magic link off simply
+    # never links to it.
+    magicLink: magic-link
     # No dedicated error page: the login page serves the error role,
     # rendering the failure as a login-page state (Decision 2).
     error: login
@@ -213,6 +220,8 @@ exports:
       description: Set a new password from a reset link.
     - id: verify-email
       description: Post-signup "check your email" prompt and the emailed-link landing.
+    - id: magic-link
+      description: Landing page for the emailed sign-in link; verifies the token on a click (the authPages.magicLink target).
     - id: two-factor
       description: Two-factor (TOTP / backup code) sign-in challenge; module-internal routing.
     - id: accept

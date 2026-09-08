@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260906143808
+lowdefy: 0.0.0-experimental-20260908113207
 name: Module Demo App
 slug: demo
 
@@ -35,7 +35,7 @@ plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
   - name: "@lowdefy/connection-ai-gateway"
-    version: 0.0.0-experimental-20260906143808
+    version: 0.0.0-experimental-20260908113207
 
 auth:
   secret:

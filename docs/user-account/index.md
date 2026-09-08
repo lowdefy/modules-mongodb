@@ -10,6 +10,8 @@ concepts:
     write-pathways,
     onboarding,
     magic-link,
+    magic-link-landing,
+    email-otp,
     passwordless,
     two-factor-required,
     two_factor_enrolled,
@@ -22,7 +24,7 @@ The **self-service auth surface for one app**, rebuilt on the BetterAuth-based
 auth engine. One package, two page families:
 
 - **Public auth pages** — login, signup, forgot / reset password, verify email,
-  two-factor challenge, accept invitation, logout. This module **is** the app's
+  magic-link landing, two-factor challenge, accept invitation, logout. This module **is** the app's
   auth-pages module: the build points `auth.authPages.*` at these pages.
 - **The signed-in account workspace** — a single `view` page with section-scoped
   tiles (profile, security, sessions), plus a chrome-less `onboarding` page for
@@ -57,6 +59,12 @@ operator console). Both run against the same `contact` / `user` / `member` /
 - **Password + verification flows** — `forgot-password`, `reset-password`, and
   `verify-email` (one page, two renders: the post-signup "check your email"
   prompt and the emailed-link landing).
+- **Magic-link landing** (`magic-link` page) — the `authPages.magicLink` target.
+  The emailed sign-in link opens here and verifies on a button click, so a
+  corporate mail scanner prefetching the link cannot consume its single-use
+  token. With `auth.emailOTP.enabled` the same email also carries a code, and the
+  "check your email" render takes it. See
+  [Auth methods](concepts/auth-methods.md#the-link-lands-on-a-page-not-the-verify-endpoint).
 - **Accept invitation** (`accept` page) — public, takes `?invitationId=…`, serves
   the `authPages.acceptInvitation` role so the invitation email's accept link
   targets it. Ensures a session, then fires one `AcceptInvitation` client action.
