@@ -1,0 +1,35 @@
+# Icon, colour and type label of a notification record ({ icon, color, title }).
+# Resolution: the type's enums.event_types entry → a bell in a palette colour
+# chosen deterministically from the type, so types nobody configured still
+# tell apart. Palette entries are Ant Design preset tokens with the
+# default hex as fallback, so they follow the app theme and dark mode.
+# Vars: record — operator resolving to the record (e.g. _state: list.$).
+_js:
+  args:
+    record:
+      _var: record
+    types:
+      _global: enums.event_types
+  fn: |
+    const record = args.record || {};
+    const type = record.type ?? record.event_type ?? '';
+    const entry = (args.types || {})[type] || {};
+    const palette = [
+      'var(--ant-blue-6, #1677ff)',
+      'var(--ant-green-6, #52c41a)',
+      'var(--ant-gold-6, #faad14)',
+      'var(--ant-purple-6, #722ed1)',
+      'var(--ant-cyan-6, #13c2c2)',
+      'var(--ant-magenta-6, #eb2f96)',
+      'var(--ant-volcano-6, #fa541c)',
+      'var(--ant-geekblue-6, #2f54eb)',
+      'var(--ant-orange-6, #fa8c16)',
+      'var(--ant-lime-6, #a0d911)',
+    ];
+    let hash = 0;
+    for (const ch of String(type)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+    return {
+      icon: entry.icon ?? 'AiOutlineBell',
+      color: entry.color ?? palette[hash % palette.length],
+      title: entry.title ?? null,
+    };

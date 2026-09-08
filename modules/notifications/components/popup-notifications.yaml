@@ -48,23 +48,25 @@ blocks:
             layout:
               flex: 0 1 auto
             properties:
-              name:
-                _global:
-                  key:
-                    _string.concat:
-                      - enums.event_types.
-                      - _state: popup_notifications.$.event_type
-                      - .icon
-                  default: AiOutlineBell
               size: 34
+              name:
+                _get:
+                  key: icon
+                  from:
+                    _ref:
+                      path: components/notification-appearance.yaml
+                      vars:
+                        record:
+                          _state: popup_notifications.$
               color:
-                _global:
-                  key:
-                    _string.concat:
-                      - enums.event_types.
-                      - _state: popup_notifications.$.event_type
-                      - .color
-                  default: "#8c8c8c"
+                _get:
+                  key: color
+                  from:
+                    _ref:
+                      path: components/notification-appearance.yaml
+                      vars:
+                        record:
+                          _state: popup_notifications.$
           - id: popup_notifications.$.body
             type: Box
             layout:

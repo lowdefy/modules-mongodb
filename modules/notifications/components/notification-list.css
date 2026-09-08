@@ -1,0 +1,84 @@
+/* Inbox list rows. Every colour, radius and shadow comes from the app's Ant
+   Design tokens, so the list follows each consuming app's theme (and its dark
+   mode) without per-app overrides. The row's selected/unselected border and
+   background are inline on the block (operator-driven), the rest lives here. */
+
+.notification-item {
+  padding: 12px 14px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg, 8px);
+  background: var(--ant-color-bg-container);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.notification-item:hover {
+  border-color: var(--ant-color-primary-border-hover, var(--ant-color-primary));
+  box-shadow: var(--ant-box-shadow-tertiary);
+}
+
+.notification-item__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+}
+
+.notification-item__title {
+  font-size: var(--ant-font-size, 14px);
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--ant-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-item__title--unread {
+  font-weight: 600;
+}
+
+.notification-item__desc {
+  margin-top: 2px;
+  font-size: var(--ant-font-size, 14px);
+  line-height: 20px;
+  color: var(--ant-color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notification-item__meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: var(--ant-font-size-sm, 12px);
+  line-height: 22px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.notification-item__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ant-color-primary);
+}
+
+.notification-chip {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: var(--ant-font-size-sm, 12px);
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+}

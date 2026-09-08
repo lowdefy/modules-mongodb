@@ -4,6 +4,16 @@ loading:
   _not:
     _request: get_notifications
 blocks:
+  # Row styles ride in a trailing <style> (a leading one is hoisted into <head>
+  # and dropped by the sanitiser). Token-driven, see the stylesheet.
+  - id: list_styles
+    type: Html
+    properties:
+      html:
+        _string.concat:
+          - "<span></span><style>"
+          - _ref: components/notification-list.css
+          - "</style>"
   - id: list_none
     type: Result
     visible:
@@ -12,9 +22,9 @@ blocks:
         - 0
     properties:
       icon:
-        name: AiOutlineContainer
-        color: "#d9d9d9"
-      subTitle: No matching notifications. Change filter to view more.
+        name: AiOutlineInbox
+        color: var(--ant-color-text-quaternary)
+      subTitle: No matching notifications. Change the filter to view more.
   - id: list
     type: List
     visible:
@@ -22,99 +32,4 @@ blocks:
         - _request: get_notifications.0.notifications.length
         - 0
     blocks:
-      - id: list.$.card
-        type: Card
-        properties:
-          size: small
-          style:
-            boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
-            border:
-              _if:
-                test:
-                  _eq:
-                    - _state: list.$._id
-                    - _state: selected_id
-                then: 2px solid var(--ant-color-primary)
-                else: 2px solid var(--ant-color-border-secondary)
-        style:
-          margin: 4
-        events:
-          onClick:
-            _build.array.concat:
-              - - id: set_url_query
-                  type: Link
-                  params:
-                    pageId:
-                      _module.pageId: all
-                    urlQuery:
-                      _id:
-                        _state: list.$._id
-              - _ref:
-                  path: actions/set-selected.yaml
-                  vars:
-                    selected_id:
-                      _state: list.$._id
-        blocks:
-          - id: list.$.status_box
-            type: Box
-            layout:
-              contentAlign: middle
-              gap: 6
-            blocks:
-              - id: list.$.type
-                type: Html
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  html:
-                    _nunjucks:
-                      template: |
-                        {% if status %}<div style="font-size: 0.7rem; background: {{ status.color }}; padding: 6px; border-radius: 4px; color: white; min-width: 80px; text-align: center"><b>{{ status.title | safe }}</b></div>{% endif %}
-                      on:
-                        status:
-                          _global:
-                            _string.concat:
-                              - enums.event_types.
-                              # Legacy records store event_type; pipeline
-                              # records store type.
-                              - _if_none:
-                                  - _state: list.$.event_type
-                                  - _state: list.$.type
-              - id: list.$.time_ago
-                type: Html
-                layout:
-                  flex: 1 1 auto
-                properties:
-                  html:
-                    _nunjucks:
-                      template: |
-                        <div style="text-align: middle; font-size: 12px;">Received {{ time_ago }} ago</div>
-                      on:
-                        time_ago:
-                          _dayjs.humanizeDuration:
-                            on:
-                              _subtract:
-                                - _date.valueOf:
-                                    _date: now
-                                - _date.valueOf:
-                                    _state: list.$.created.timestamp
-                            withSuffix: false
-              - id: list.$.body
-                type: Html
-                properties:
-                  html:
-                    _nunjucks:
-                      template: |
-                        <div><b>{{ notification.title | safe }}</b></div>
-                        <div style="color: var(--ant-color-text-secondary);">{{ description | safe }}</div>
-                      on:
-                        notification:
-                          _state: list.$
-                        # Legacy records store description; lowdefy framework
-                        # notification records store preview.
-                        description:
-                          _if_none:
-                            - _state: list.$.description
-                            - _if_none:
-                                - _state: list.$.preview
-                                - ''
+      - _ref: components/list-notification-item.yaml

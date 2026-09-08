@@ -7,54 +7,48 @@ blocks:
       html:
         _nunjucks:
           template: |
-            <div style="display: flex; gap: 1em;">
-              <div style="flex: 0 1 auto;">
-              {% if status %}
-                <div style="font-size: 0.7rem; background: {{ status.color }}; padding: 6px; border-radius: 4px; color: white; min-width: 80px; text-align: center; margin-top: 8px;">
-                  <b>{{ status.title | safe }}</b>
-                </div>
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+              <div style="flex: 1 1 auto; min-width: 0;">
+                <h3 style="margin: 0; font-size: 16px; line-height: 24px;">{{ notification.title }}</h3>
+                <div style="font-size: 12px; line-height: 20px; color: var(--ant-color-text-tertiary);">Received {{ notification.created.timestamp | date('D MMM YYYY, HH:mm') }}</div>
+              </div>
+              {% if appearance.title %}
+              <div style="flex: 0 0 auto; padding: 0 8px; border-radius: 999px; font-size: 12px; line-height: 20px; font-weight: 500; white-space: nowrap; color: {{ appearance.color }}; background: color-mix(in srgb, {{ appearance.color }} 12%, transparent);">{{ appearance.title }}</div>
               {% endif %}
-              </div>
-              <div style="flex: 1 1 auto; width: 100%;">
-                <h3 style="margin: 0;">{{ notification.title | safe }}</h3>
-                <p><small style="color: var(--ant-color-text-secondary);">Received on {{ notification.created.timestamp | date('D MMM YYYY') }}</small></p>
-              </div>
             </div>
           on:
             notification:
               _var: notification
-            status:
-              _global:
-                _string.concat:
-                  - enums.event_types.
-                  # Legacy records store event_type; pipeline records store type.
-                  - _if_none:
-                      - _get:
-                          key: event_type
-                          from:
-                            _var: notification
-                      - _get:
-                          key: type
-                          from:
-                            _var: notification
+            appearance:
+              _ref:
+                path: components/notification-appearance.yaml
+                vars:
+                  record:
+                    _var: notification
   - id: divider
     type: Divider
     properties:
       title: Notification Details
   - id: notification_details
     type: Html
-    style:
-      marginBottom: 2em
+    class:
+      .element: notification-email
     properties:
       html:
-        # body is the rendered HTML on both record shapes; fall back to the
-        # pipeline records' plain text if body is ever absent.
-        _if_none:
-          - _get:
-              key: body
-              from:
-                _var: notification
-          - _get:
-              key: text
-              from:
-                _var: notification
+        # The stylesheet trails the document: the HTML parser hoists a leading
+        # <style> into <head>, which the block's sanitizer discards with it.
+        _string.concat:
+          # body is the rendered HTML on both record shapes; fall back to the
+          # pipeline records' plain text if body is ever absent.
+          - _if_none:
+              - _get:
+                  key: body
+                  from:
+                    _var: notification
+              - _get:
+                  key: text
+                  from:
+                    _var: notification
+          - "<style>"
+          - _ref: components/notification-email.css
+          - "</style>"

@@ -1,0 +1,31 @@
+id: list.$.meta
+type: Html
+layout:
+  flex: 0 0 auto
+style:
+  textAlign: right
+properties:
+  html:
+    _nunjucks:
+      template: |
+        <div class="notification-item__meta"><span>{{ time_ago }} ago</span>{% if unread %}<span class="notification-item__dot"></span>{% endif %}</div>
+        {% if appearance.title %}<div class="notification-chip" style="color: {{ appearance.color }}; background: color-mix(in srgb, {{ appearance.color }} 12%, transparent);">{{ appearance.title }}</div>{% endif %}
+      on:
+        unread:
+          _not:
+            _state: list.$.read
+        time_ago:
+          _dayjs.humanizeDuration:
+            on:
+              _subtract:
+                - _date.valueOf:
+                    _date: now
+                - _date.valueOf:
+                    _state: list.$.created.timestamp
+            withSuffix: false
+        appearance:
+          _ref:
+            path: components/notification-appearance.yaml
+            vars:
+              record:
+                _state: list.$

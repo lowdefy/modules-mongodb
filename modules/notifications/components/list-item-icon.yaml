@@ -1,0 +1,40 @@
+# Type icon in a circle tinted with the notification's colour
+# (components/notification-appearance.yaml).
+id: list.$.icon
+type: Icon
+layout:
+  flex: 0 0 auto
+class: notification-item__icon
+style:
+  background:
+    _string.concat:
+      - "color-mix(in srgb, "
+      - _get:
+          key: color
+          from:
+            _ref:
+              path: components/notification-appearance.yaml
+              vars:
+                record:
+                  _state: list.$
+      - " 12%, transparent)"
+properties:
+  size: 18
+  name:
+    _get:
+      key: icon
+      from:
+        _ref:
+          path: components/notification-appearance.yaml
+          vars:
+            record:
+              _state: list.$
+  color:
+    _get:
+      key: color
+      from:
+        _ref:
+          path: components/notification-appearance.yaml
+          vars:
+            record:
+              _state: list.$

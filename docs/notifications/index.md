@@ -132,6 +132,10 @@ The pipeline writes this shape; the inbox, bell, and link pages read it. Everyth
 
 Legacy (Lambda-era) records coalesce on read: the inbox falls back `description ?? preview`, badges and filters match `event_type ?? type`, and the link page falls back to the top-level `links.button` target.
 
+**Appearance.** Icon and colour resolve per type: the type's `enums.event_types` entry (`icon`, `color`, and the `title` shown as a chip), else a bell in a palette colour picked deterministically from the type — so types nobody configured still look different from each other, and follow the app theme. Give each notification type an entry in the app's event types to choose its icon and colour. The toast uses the same resolution.
+
+The inbox list shows one row per record — the resolved icon in a circle tinted with the colour, title, a two-line ellipsised `preview` (or legacy `description`), time received, an unread dot — styled from the app's Ant Design tokens. The detail panel renders `body` with the email chrome removed — the framework's canvas, card, logo header, signature and footer are hidden and the remaining content (message, metadata, quote, actions, button) takes the app's typography — so a stored email reads as an in-app message under the title and date the panel already shows. The email itself is unchanged.
+
 ## Required indexes
 
 The pipeline's no-double-send guarantee depends on a unique partial index on `key` — **without it duplicate inserts succeed and the dedup does not exist**. The module cannot create indexes; create it with the app's index tooling (e.g. splice-actions):
