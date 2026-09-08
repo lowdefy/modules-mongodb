@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260908103554
+lowdefy: 0.0.0-experimental-20260908113207
 name: Module Demo App
 slug: demo
 
@@ -35,7 +35,7 @@ plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
   - name: "@lowdefy/connection-ai-gateway"
-    version: 0.0.0-experimental-20260908103554
+    version: 0.0.0-experimental-20260908113207
 
 auth:
   secret:
@@ -92,11 +92,6 @@ auth:
   # one repeats the value below rather than inheriting it. Other module reads
   # scope on the policy-portable `_user: organization_id`, so the same modules
   # serve `apps/tenant-demo`.
-  # Landing page for the emailed sign-in link (user-account's magic-link page):
-  # the email links here instead of at the verify endpoint, so a mail-security
-  # prefetch cannot spend the single-use token; the page verifies on a click.
-  authPages:
-    magicLink: /user-account/magic-link
   organizations:
     policy: pinned
     org: demo

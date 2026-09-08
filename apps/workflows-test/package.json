@@ -13,11 +13,11 @@
     "e2e:server": "lowdefy build --server e2e && lowdefy start --port 3001 --log-level warn"
   },
   "dependencies": {
-    "lowdefy": "0.0.0-experimental-20260908103554",
-    "@lowdefy/plugin-better-auth": "0.0.0-experimental-20260908103554"
+    "lowdefy": "0.0.0-experimental-20260908113207",
+    "@lowdefy/plugin-better-auth": "0.0.0-experimental-20260908113207"
   },
   "devDependencies": {
-    "@lowdefy/e2e-utils": "0.0.0-experimental-20260908103554",
+    "@lowdefy/e2e-utils": "0.0.0-experimental-20260908113207",
     "@playwright/test": "^1.50.0",
     "@lowdefy/community-plugin-e2e-mdb": "latest"
   }

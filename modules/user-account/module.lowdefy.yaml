@@ -165,12 +165,12 @@ auth:
     forgotPassword: forgot-password
     resetPassword: reset-password
     verifyEmail: verify-email
-    # The magic-link landing page (pages/magic-link.yaml) is NOT declared here:
-    # the framework's module-manifest role list does not accept `magicLink`
-    # (lowdefy/lowdefy#2377 adds it), so the app sets the role itself -
-    # `auth.authPages.magicLink: /user-account/magic-link` - which makes the page
-    # public and points the sign-in email at it. Move the role here once the
-    # pinned release accepts it.
+    # Landing page for the emailed sign-in link. With this role set the engine
+    # links the email here instead of at the verify endpoint, so a mail-security
+    # prefetch cannot consume the single-use token; the page verifies on a click.
+    # A role page is auto-public, and a deployment with magic link off simply
+    # never links to it.
+    magicLink: magic-link
     # No dedicated error page: the login page serves the error role,
     # rendering the failure as a login-page state (Decision 2).
     error: login

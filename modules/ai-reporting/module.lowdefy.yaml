@@ -229,7 +229,7 @@ plugins:
   # name, and a module-scoped endpoint id contains `/`, which the provider's
   # tool-name pattern rejects with a 400 on every chat turn.
   - name: "@lowdefy/connection-ai-gateway"
-    version: 0.0.0-experimental-20260908103554
+    version: 0.0.0-experimental-20260908113207
 
 connections:
   - _ref: connections/reports-store.yaml
