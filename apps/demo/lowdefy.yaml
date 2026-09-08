@@ -92,6 +92,11 @@ auth:
   # one repeats the value below rather than inheriting it. Other module reads
   # scope on the policy-portable `_user: organization_id`, so the same modules
   # serve `apps/tenant-demo`.
+  # Landing page for the emailed sign-in link (user-account's magic-link page):
+  # the email links here instead of at the verify endpoint, so a mail-security
+  # prefetch cannot spend the single-use token; the page verifies on a click.
+  authPages:
+    magicLink: /user-account/magic-link
   organizations:
     policy: pinned
     org: demo

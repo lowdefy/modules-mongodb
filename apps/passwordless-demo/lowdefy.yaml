@@ -65,6 +65,10 @@ auth:
   # passwordless — sign-in and sign-up collapse into one email → link action).
   authPages:
     signUp: /user-account/login
+    # Landing page for the emailed sign-in link (user-account's magic-link page):
+    # the email links here instead of at the verify endpoint, so a mail-security
+    # prefetch cannot spend the single-use token; the page verifies on a click.
+    magicLink: /user-account/magic-link
   organizations:
     policy: pinned
     org: passwordless-demo

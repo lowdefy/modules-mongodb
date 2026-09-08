@@ -114,9 +114,9 @@ login page — so an **expired or already-used link** returns to login with
 
 ### The link lands on a page, not the verify endpoint
 
-The module contributes a **`magic-link` landing page** under the
-`authPages.magicLink` role, so the emailed link opens that page (carrying the
-token and the callback targets) rather than the verify endpoint. The page shows
+The module ships a **`magic-link` landing page**; the app points the
+`authPages.magicLink` role at it, so the emailed link opens that page (carrying
+the token and the callback targets) rather than the verify endpoint. The page shows
 one **Sign in** button, and only that click verifies the token.
 
 The indirection exists because corporate mail security — Defender Safe Links,
@@ -127,8 +127,17 @@ and they land on `INVALID_TOKEN`. **Nothing on the landing page verifies
 automatically** — no redirect, no on-load action — because a scanner that runs
 JavaScript would consume the token just as the endpoint fetch does.
 
-The app configures nothing: the role is contributed by the module, and a
-deployment with `magicLink.enabled: false` simply never links to the page. A
+The app sets the role (the framework's module-manifest role list does not yet
+accept `magicLink`; the module will declare it once it does):
+
+```yaml
+auth:
+  authPages:
+    magicLink: /user-account/magic-link
+```
+
+A role page is public without a session, and a deployment with
+`magicLink.enabled: false` simply never links to the page. A
 token that is genuinely expired or already used still fails at the endpoint and
 lands on the login page's retryable "Link expired" notice, as before.
 

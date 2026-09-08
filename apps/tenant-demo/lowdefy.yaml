@@ -100,6 +100,11 @@ auth:
   # there is nothing to weld. Per-org administration here is the organizations
   # module (self-serve, session-scoped); an operator console for a tenant
   # deployment awaits its own design (org-aware-modules Decision 6).
+  # Landing page for the emailed sign-in link (user-account's magic-link page):
+  # the email links here instead of at the verify endpoint, so a mail-security
+  # prefetch cannot spend the single-use token; the page verifies on a click.
+  authPages:
+    magicLink: /user-account/magic-link
   organizations:
     policy: tenant
   # Authored role catalog (role-catalog design) — the single source of truth for
