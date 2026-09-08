@@ -12,27 +12,19 @@ blocks:
                 <h3 style="margin: 0; font-size: 16px; line-height: 24px;">{{ notification.title }}</h3>
                 <div style="font-size: 12px; line-height: 20px; color: var(--ant-color-text-tertiary);">Received {{ notification.created.timestamp | date('D MMM YYYY, HH:mm') }}</div>
               </div>
-              {% if status %}
-              <div style="flex: 0 0 auto; padding: 0 8px; border-radius: 999px; font-size: 12px; line-height: 20px; font-weight: 500; white-space: nowrap; color: {{ status.color }}; background: color-mix(in srgb, {{ status.color }} 12%, transparent);">{{ status.title }}</div>
+              {% if appearance.title %}
+              <div style="flex: 0 0 auto; padding: 0 8px; border-radius: 999px; font-size: 12px; line-height: 20px; font-weight: 500; white-space: nowrap; color: {{ appearance.color }}; background: color-mix(in srgb, {{ appearance.color }} 12%, transparent);">{{ appearance.title }}</div>
               {% endif %}
             </div>
           on:
             notification:
               _var: notification
-            status:
-              _global:
-                _string.concat:
-                  - enums.event_types.
-                  # Legacy records store event_type; pipeline records store type.
-                  - _if_none:
-                      - _get:
-                          key: event_type
-                          from:
-                            _var: notification
-                      - _get:
-                          key: type
-                          from:
-                            _var: notification
+            appearance:
+              _ref:
+                path: components/notification-appearance.yaml
+                vars:
+                  record:
+                    _var: notification
   - id: divider
     type: Divider
     properties:

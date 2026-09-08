@@ -9,7 +9,7 @@ properties:
     _nunjucks:
       template: |
         <div class="notification-item__meta"><span>{{ time_ago }} ago</span>{% if unread %}<span class="notification-item__dot"></span>{% endif %}</div>
-        {% if status %}<div class="notification-chip" style="color: {{ status.color }}; background: color-mix(in srgb, {{ status.color }} 12%, transparent);">{{ status.title }}</div>{% endif %}
+        {% if appearance.title %}<div class="notification-chip" style="color: {{ appearance.color }}; background: color-mix(in srgb, {{ appearance.color }} 12%, transparent);">{{ appearance.title }}</div>{% endif %}
       on:
         unread:
           _not:
@@ -23,10 +23,9 @@ properties:
                 - _date.valueOf:
                     _state: list.$.created.timestamp
             withSuffix: false
-        status:
-          _global:
-            _string.concat:
-              - enums.event_types.
-              - _if_none:
-                  - _state: list.$.event_type
-                  - _state: list.$.type
+        appearance:
+          _ref:
+            path: components/notification-appearance.yaml
+            vars:
+              record:
+                _state: list.$

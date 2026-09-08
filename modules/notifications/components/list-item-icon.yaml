@@ -1,5 +1,5 @@
-# Type icon in a tinted circle — icon and colour from enums.event_types,
-# a bell in the secondary text colour when the type has no entry.
+# Type icon in a circle tinted with the notification's colour
+# (components/notification-appearance.yaml).
 id: list.$.icon
 type: Icon
 layout:
@@ -9,23 +9,32 @@ style:
   background:
     _string.concat:
       - "color-mix(in srgb, "
-      - _ref:
-          path: components/list-item-type-lookup.yaml
-          vars:
-            key: color
-            default: var(--ant-color-text-secondary)
+      - _get:
+          key: color
+          from:
+            _ref:
+              path: components/notification-appearance.yaml
+              vars:
+                record:
+                  _state: list.$
       - " 12%, transparent)"
 properties:
   size: 18
   name:
-    _ref:
-      path: components/list-item-type-lookup.yaml
-      vars:
-        key: icon
-        default: AiOutlineBell
+    _get:
+      key: icon
+      from:
+        _ref:
+          path: components/notification-appearance.yaml
+          vars:
+            record:
+              _state: list.$
   color:
-    _ref:
-      path: components/list-item-type-lookup.yaml
-      vars:
-        key: color
-        default: var(--ant-color-text-secondary)
+    _get:
+      key: color
+      from:
+        _ref:
+          path: components/notification-appearance.yaml
+          vars:
+            record:
+              _state: list.$
