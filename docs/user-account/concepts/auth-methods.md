@@ -13,6 +13,8 @@ concepts:
     two-factor-required,
     two_factor_enrolled,
     magic-link,
+    magic-link-landing,
+    email-otp,
     passwordless,
   ]
 ---
@@ -33,6 +35,7 @@ through `_build.authConfig`:
 | ------------------------------ | ----------------------------------------------------------------------------- |
 | `emailAndPassword.enabled`     | Password form (login + signup) and change-password / reset flows              |
 | `magicLink.enabled`            | Magic-link send (email → "send me a link"); passwordless when password is off |
+| `emailOTP.enabled`             | A sign-in code in the same email, entered on the "check your email" render    |
 | `passkey.enabled`              | Passkey button (login) and passkey management (workspace)                     |
 | `twoFactor.enabled`            | 2FA enrolment in the Security tile                                            |
 | `twoFactor.trustDevice`        | The "trust this device 30 days" switch on the 2FA challenge (off ⇒ hidden)    |
@@ -108,6 +111,52 @@ The send carries the two verify-callback targets the module owns:
 The error callback is left to the engine default — `authPages.error`, i.e. the
 login page — so an **expired or already-used link** returns to login with
 `?error=INVALID_TOKEN` (see the error table below).
+
+### The link lands on a page, not the verify endpoint
+
+The module contributes a **`magic-link` landing page** under the
+`authPages.magicLink` role, so the emailed link opens that page (carrying the
+token and the callback targets) rather than the verify endpoint. The page shows
+one **Sign in** button, and only that click verifies the token.
+
+The indirection exists because corporate mail security — Defender Safe Links,
+Proofpoint, Mimecast — fetches every link in a message at delivery, and the
+verify endpoint consumes its single-use token on the first fetch. Without the
+landing page a scanned invitation is spent before the recipient ever opens it,
+and they land on `INVALID_TOKEN`. **Nothing on the landing page verifies
+automatically** — no redirect, no on-load action — because a scanner that runs
+JavaScript would consume the token just as the endpoint fetch does.
+
+The app configures nothing: the role is contributed by the module, and a
+deployment with `magicLink.enabled: false` simply never links to the page. A
+token that is genuinely expired or already used still fails at the endpoint and
+lands on the login page's retryable "Link expired" notice, as before.
+
+## Email codes: `auth.emailOTP.enabled`
+
+Set `auth.emailOTP.enabled: true` alongside magic link and the one send produces
+**one email carrying both the link and a short code**. The "check your email"
+render on login (and signup) then also offers a code box and a **Sign in with
+code** button, for the reader whose mail client strips the link, who is reading
+mail on another device, or who simply prefers typing six digits.
+
+```yaml
+auth:
+  magicLink:
+    enabled: true
+  emailOTP:
+    enabled: true # otpLength, expiresIn and allowedAttempts have engine defaults
+```
+
+There is no second send affordance: **Resend link** re-sends the same combined
+email, and the code follows the link's fate — a fresh send invalidates the
+previous code. A code that is wrong or expired surfaces as a message on the
+same screen, leaving the code box and the resend in place. A 2FA-enrolled user
+who signs in with a code is routed to the two-factor challenge exactly as the
+password and link paths are.
+
+Enabling `emailOTP` without `magicLink` is not a shape this module renders — the
+code box lives on the link-sent render, which only the magic-link send reaches.
 
 ## Passwordless-primary: sign-up collapses into sign-in
 
