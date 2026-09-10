@@ -30,6 +30,15 @@ test("the ⋯ opens as a dropdown, and the owner sees every item they may use", 
 
   await ldf.user(USER_A);
   await ldf.goto("/ai-reporting/report?report_id=e2e-menu-own");
+
+  // The trigger's icon is compiled, not static, so the build only bundles it if
+  // the page declares it (report.yaml `icons`). Unbundled, Lowdefy renders the
+  // exclamation-circle fallback — the same clickable button, wrong glyph — which
+  // is why this is asserted on the icon's own accessible name and not on the
+  // click below succeeding.
+  await expect(
+    page.locator("#report_menu_trigger").getByRole("img", { name: "ellipsis" }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "My report" })).toBeVisible();
 
   await page.locator("#report_menu_trigger").click();
@@ -141,9 +150,9 @@ test("Publish makes the report shared, from the compiled item", async ({
   await expect(async () => {
     await page.keyboard.press("Escape");
     await page.locator("#report_menu_trigger").click();
-    await expect(
-      page.getByRole("menuitem", { name: "Unpublish" }),
-    ).toBeVisible({ timeout: 1000 });
+    await expect(page.getByRole("menuitem", { name: "Unpublish" })).toBeVisible(
+      { timeout: 1000 },
+    );
   }).toPass();
 
   const doc = await mdb

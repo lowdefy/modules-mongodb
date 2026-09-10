@@ -6,6 +6,20 @@
 # so they cannot drift from the set `load_conversation` blanks — merged with
 # `_build.object.assign` at build time, which leaves the runtime `_uuid` alone
 # (`_uuid` is not a build operator, so it survives to evaluate per click).
+#
+# Stop first: a reply still streaming into the conversation being left would
+# otherwise keep appending to the transcript after the id has changed under it.
+# AgentChat clears its messages on a conversationId change but does not abort
+# the stream, so the abort is ours.
+- id: stop_stream
+  type: CallMethod
+  params:
+    blockId: chat
+    method: stop
+# A new conversation has nothing to load, so it is never in the loading state —
+# set explicitly, because New chat clicked mid-load must take the skeleton down
+# with the conversation it belonged to (that read's response is stale against
+# the new id and is dropped without ever lowering the flag itself).
 - id: new_conversation
   type: SetState
   params:
@@ -13,3 +27,4 @@
       - _ref: pages/chat/actions/blank_results.yaml
       - conversationId:
           _uuid: true
+        loading_conversation: false

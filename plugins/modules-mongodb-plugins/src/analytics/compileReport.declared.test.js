@@ -33,8 +33,18 @@ const reportPage = loadYaml(
 
 // report.yaml is a `_ref` into layout's `page` component, so its blocks live
 // under the ref's vars, not at the document root.
-const declared = reportPage._ref.vars.blocks.find((b) => b.type === "Dynamic")
-  .properties.types;
+const dynamicProperties = reportPage._ref.vars.blocks.find(
+  (b) => b.type === "Dynamic",
+).properties;
+const declared = dynamicProperties.types;
+
+// Icons are the same class of problem with a quieter failure. The build collects
+// icon imports by scanning the STATIC page config for icon names, so an icon only
+// the compiled output names is bundled only if the consuming app happens to use
+// it elsewhere — and renders as the exclamation-circle fallback otherwise. The
+// report page lists compileReport's icons in `properties.icons` (unread by the
+// block, present for the scan); this is the guard that the list is complete.
+const declaredIcons = dynamicProperties.icons;
 
 // Dynamic collapses an operator's leading underscores to one before checking
 // membership, so `__state`, `___intl.numberFormat` and `_intl` are all `_intl`-
@@ -58,15 +68,37 @@ function operatorName(value) {
   return null;
 }
 
+// An `icon` is either the bare name or `{ name, ... }`. Anything else under an
+// `icon` key (an operator, say) is not a static name and is left to the operator
+// walk.
+function iconName(value) {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && typeof value.name === "string") {
+    return value.name;
+  }
+  return null;
+}
+
 function collect(blocks) {
-  const found = { blocks: new Set(), actions: new Set(), operators: new Set() };
+  const found = {
+    blocks: new Set(),
+    actions: new Set(),
+    operators: new Set(),
+    icons: new Set(),
+  };
 
   const walkValue = (value) => {
     if (Array.isArray(value)) return value.forEach(walkValue);
     if (value === null || typeof value !== "object") return;
     const op = operatorName(value);
     if (op) found.operators.add(op);
-    for (const v of Object.values(value)) walkValue(v);
+    for (const [k, v] of Object.entries(value)) {
+      if (k === "icon") {
+        const icon = iconName(v);
+        if (icon) found.icons.add(icon);
+      }
+      walkValue(v);
+    }
   };
 
   const walkActions = (events) => {
@@ -256,6 +288,59 @@ test("every type compileReport emits is declared on the report page's Dynamic bl
   };
 
   expect(undeclared).toEqual({ blocks: [], actions: [], operators: [] });
+});
+
+// The header compiles for every viewer, and which icons it carries depends on
+// the viewer: the ★ is AiFillStar or AiOutlineStar by `is_favourite`, and the ⋯
+// menu's items (Rename, Publish, Unpublish, Duplicate, Delete) follow
+// `is_owner`, `visibility` and `can_share`. Compile the header under every
+// branch that changes an icon, so a list that covers one viewer's header but
+// not another's fails here rather than on the reader's screen.
+test("every icon compileReport emits is listed on the report page's Dynamic block", () => {
+  const usedIcons = new Set();
+  const viewers = [
+    {
+      is_owner: true,
+      is_favourite: true,
+      visibility: "private",
+      can_share: true,
+    },
+    {
+      is_owner: true,
+      is_favourite: false,
+      visibility: "shared",
+      can_share: true,
+    },
+    {
+      is_owner: false,
+      is_favourite: false,
+      visibility: "shared",
+      can_share: false,
+    },
+  ];
+  for (const viewer of viewers) {
+    const blocks = compileReport({
+      spec,
+      results,
+      catalog: testCatalog,
+      roles: ["analyst"],
+      endpointId: "ai-reporting/query-data",
+      chartEndpointId: "ai-reporting/chat-data",
+      conversation_id: "conv-1",
+      ...viewer,
+    });
+    for (const icon of collect(blocks).icons) usedIcons.add(icon);
+  }
+
+  // The two the issue was about, named so a refactor that stopped emitting them
+  // does not quietly shrink this test's coverage.
+  expect(usedIcons.has("AiOutlineEllipsis")).toBe(true);
+  expect(usedIcons.has("AiFillStar")).toBe(true);
+
+  expect([...usedIcons].filter((i) => !declaredIcons.includes(i))).toEqual([]);
+  // And nothing stale: an icon listed but never emitted is a name the bundle
+  // carries for nothing.
+  expect([...declaredIcons].filter((i) => !usedIcons.has(i))).toEqual([]);
 });
 
 // A section that fails verification compiles to an Alert instead of its normal

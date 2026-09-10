@@ -74,29 +74,23 @@ _ref:
                 - _lt:
                     - _media: width
                     - 1280
+      # Only the rail's list. The deep-link restore (a `conversation_id` in the
+      # URL) is the workspace root's own onMountAsync, in chat_workspace.yaml: it
+      # is a `try`/`catch` pair, and the page component folds this list into its
+      # own array of mount actions, which has no room for the object form.
       onMountAsync:
-        _build.array.concat:
-          - - id: load_conversations
-              type: CallAPI
-              params:
-                endpointId:
-                  _module.endpointId: list-conversations
-            - id: set_conversations
-              type: SetState
-              params:
-                conversations:
-                  _api:
-                    _build.string.concat:
-                      - _module.endpointId: list-conversations
-                      - ".response"
-          # Restore the deep-linked conversation — the same sequence the rail runs
-          # when a row is clicked, so a link lands on the transcript and results
-          # panel a click would give. Every step skips when the URL names no
-          # conversation, which is the ordinary case.
-          - _ref:
-              path: pages/chat/actions/load_conversation.yaml
-              vars:
-                conversation_key:
-                  _url_query: conversation_id
+        - id: load_conversations
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: list-conversations
+        - id: set_conversations
+          type: SetState
+          params:
+            conversations:
+              _api:
+                _build.string.concat:
+                  - _module.endpointId: list-conversations
+                  - ".response"
     blocks:
       - _ref: pages/chat/components/chat_workspace.yaml

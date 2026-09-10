@@ -41,6 +41,26 @@ _ref:
         properties:
           endpointId:
             _module.endpointId: resolve-report
+          # Every icon compileReport emits. The Dynamic block does not read this
+          # property — it exists for the BUILD. Lowdefy collects icon imports by
+          # scanning the static page config for icon names, and the compiled
+          # header, section ⤓ buttons and ⋯ menu only exist at runtime, so an
+          # icon named nowhere else in the consuming app ships as the
+          # exclamation-circle fallback (the ⋯ was the one that surfaced).
+          # Listing them here puts them in the bundle wherever the module is
+          # used. compileReport.declared.test.js asserts this list covers every
+          # `icon:` the compiler can emit, the same way it does for `types`.
+          icons:
+            - AiFillStar
+            - AiOutlineCopy
+            - AiOutlineDelete
+            - AiOutlineDownload
+            - AiOutlineEdit
+            - AiOutlineEllipsis
+            - AiOutlineEyeInvisible
+            - AiOutlineGlobal
+            - AiOutlineMessage
+            - AiOutlineStar
           types:
             blocks:
               # Section containers. A kpi, chart or table section compiles into

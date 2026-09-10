@@ -1,7 +1,8 @@
 # The chat workspace — the three-column conversational surface (conversations
 # rail, AgentChat, results panel) plus each side's collapsed strip. Extracted from
 # the chat page so that page stays a thin layout wrapper; every block, id, state
-# key and event here is unchanged from when this was the page root.
+# key and event here is unchanged from when this was the page root, except the
+# deep-link restore, which mounts here (see the root block's events).
 #
 # Pinned to the content area's height so the page never scrolls as a whole. That
 # height is --layout-content-height, published by layout's page component under
@@ -32,6 +33,26 @@ layout:
   # wider than the space left over would drop the results panel onto a second
   # line instead of narrowing the middle.
   wrap: nowrap
+events:
+  # Restore the deep-linked conversation — the `conversation_id` a
+  # Continue-in-chat / Fix-in-chat link puts in the URL — with the same sequence
+  # the rail runs when a row is clicked, so a link lands on the transcript and
+  # results panel a click would give. Every step skips when the URL names no
+  # conversation, which is the ordinary case.
+  #
+  # On this block rather than the page: the shared action is a `try`/`catch`
+  # pair (its loading skeleton has to come down if the read throws), and the
+  # layout page component folds the page's mount actions into an array of its
+  # own, which cannot carry the object form. Every block fires onMountAsync, and
+  # this one is the workspace, so this is where the workspace's restore lives.
+  # The page's onInit has already seeded `conversationId` from the URL by the
+  # time this fires, so AgentChat never sees the id change under it.
+  onMountAsync:
+    _ref:
+      path: pages/chat/actions/load_conversation.yaml
+      vars:
+        conversation_key:
+          _url_query: conversation_id
 blocks:
   # The rail's collapsed form. `AgentConversations` has no collapsed mode of its
   # own and is hidden with its column, so the strip has to re-offer New chat
@@ -257,13 +278,34 @@ blocks:
                 args:
                   - open: true
           # Shared with the page's mount, which opens the conversation a
-          # Continue-in-chat link names in the URL.
+          # Continue-in-chat link names in the URL. Object form because the
+          # shared action is a `try`/`catch` pair (see load_conversation.yaml);
+          # the stop is this caller's own — the mount has no stream to abort.
           onSelect:
-            _ref:
-              path: pages/chat/actions/load_conversation.yaml
-              vars:
-                conversation_key:
-                  _event: key
+            try:
+              _build.array.concat:
+                # A reply still streaming into the conversation being left would
+                # keep appending to the transcript after the id changed under it:
+                # AgentChat clears its messages on a conversationId change but
+                # does not abort the stream. So abort it before switching.
+                - - id: stop_stream
+                    type: CallMethod
+                    params:
+                      blockId: chat
+                      method: stop
+                - _ref:
+                    path: pages/chat/actions/load_conversation.yaml
+                    key: try
+                    vars:
+                      conversation_key:
+                        _event: key
+            catch:
+              _ref:
+                path: pages/chat/actions/load_conversation.yaml
+                key: catch
+                vars:
+                  conversation_key:
+                    _event: key
       # The rail's kebab menu opens these. Each leaves only an empty placeholder
       # div in the column — antd portals the dialog itself to the document body
       # — so they add no chrome to the rail.
@@ -299,8 +341,47 @@ blocks:
                 _not:
                   _global: reporting_panel_collapsed
     blocks:
+      # The transcript's loading state: shown in the chat's place while a
+      # conversation selected from the rail (or named in the URL) is being read,
+      # so the switch reads as "loading" rather than as an empty chat. Sized like
+      # the chat block below, since that block's explicit height is what drives
+      # the row's height and this stands in for it. No input blocks, so
+      # `visible:` (unmount) is safe.
+      - id: chat_loading
+        type: Box
+        visible:
+          _eq:
+            - _state: loading_conversation
+            - true
+        layout:
+          flex: 1 1 auto
+        style:
+          height: var(--layout-content-height, 100dvh)
+          maxWidth: 620px
+          margin: 0 auto
+          padding: 32px 16px
+          boxSizing: border-box
+        blocks:
+          - id: chat_loading_skeleton
+            type: Skeleton
+            properties:
+              height: 240
       - id: chat
         type: AgentChat
+        # Hidden with CSS while loading, never `visible:` — unmounting AgentChat
+        # would drop its useChat instance and re-key the transport. Hiding takes
+        # the composer with it, so a message cannot be sent into a conversation
+        # whose transcript has not landed: a send then would persist the new
+        # message under a transcript AgentChat has yet to sync.
+        style:
+          display:
+            _if:
+              test:
+                _eq:
+                  - _state: loading_conversation
+                  - true
+              then: none
+              else: null
         properties:
           agentId:
             _module.agentId: reporting-assistant
@@ -350,16 +431,39 @@ blocks:
                   _module.var: welcome.report_label
                 prompts:
                   _module.var: welcome.report_starters
-          # A persistent follow-up chip, shown below the transcript whenever the
-          # agent is idle. Clicking SENDS the label as a message (not fills the
-          # composer like a welcome starter), so the label is written as the
-          # request itself — it drives the agent's generate_report route, the
-          # guided complement to ticking cards in the panel. The description is
-          # chip subtext only; the block drops any icon.
+          # A follow-up chip, shown below the transcript whenever the agent is
+          # idle and the conversation has not yet produced a report. Clicking
+          # SENDS the label as a message (not fills the composer like a welcome
+          # starter), so the label is written as the request itself — it drives
+          # the agent's generate_report route, the guided complement to ticking
+          # cards in the panel. The description is chip subtext only; the block
+          # drops any icon.
+          #
+          # Gone once a report exists: left up, it kept offering to create one
+          # under a conversation that already had, which read as noise and as an
+          # invitation to save a duplicate. The panel's "Reports from this chat"
+          # rows carry the affordance from then on, and the composer still
+          # reaches generate_report for a second report. Not replaced by an
+          # "update the report" chip — the agent has no tool that edits a saved
+          # report, so that chip would send a request it cannot fulfil. Same
+          # signal saved_from_chat renders from, so the two flip together, and
+          # instantly: the agent's data-report-saved part and the save sheet both
+          # land in `saved_reports` without a reload. The block re-reads this
+          # property each render, so `_if` here is all the wiring it takes.
           suggestions:
-            - key: create_report
-              label: Turn this conversation into a report
-              description: The assistant drafts a saved report from what you've explored
+            _if:
+              test:
+                _gt:
+                  - _array.length:
+                      _if_none:
+                        - _state: saved_reports
+                        - []
+                  - 0
+              then: []
+              else:
+                - key: create_report
+                  label: Turn this conversation into a report
+                  description: The assistant drafts a saved report from what you've explored
         events:
           onDataPart:
             - id: append_chart
@@ -507,6 +611,28 @@ blocks:
                     reporting_panel_collapsed:
                       _not:
                         _global: reporting_panel_collapsed
+      # The panel's loading state, in the results' place while a selected
+      # conversation is being read: the result arrays are blanked for the
+      # switch, so without this the panel reads "Nothing here yet" for a
+      # conversation that may be full of results. Two rows of skeleton, roughly
+      # a card each.
+      - id: results_loading
+        type: Box
+        visible:
+          _eq:
+            - _state: loading_conversation
+            - true
+        layout:
+          gap: 16
+        blocks:
+          - id: results_loading_first
+            type: Skeleton
+            properties:
+              height: 120
+          - id: results_loading_second
+            type: Skeleton
+            properties:
+              height: 120
       # The reports this conversation has produced, above the scope tabs so a
       # returning user sees what the chat is durably worth before its live
       # results. Absent when the conversation produced nothing.
@@ -667,10 +793,15 @@ blocks:
       # when nothing has landed yet. The per-section "No charts / No tables / No
       # downloads" lines below are scoped to their own tabs, so the All tab
       # never stacks three of them or sandwiches a lone table between two.
+      # Never while a conversation is loading: the arrays are blank then by
+      # design, and the skeleton above is what stands in for them.
       - id: results_explainer
         type: Paragraph
         visible:
           _and:
+            - _ne:
+                - _state: loading_conversation
+                - true
             - _eq:
                 - _array.length:
                     _array.concat:
