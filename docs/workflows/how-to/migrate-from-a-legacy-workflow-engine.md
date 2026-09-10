@@ -101,7 +101,7 @@ Replace the `workflows.yaml` registry with the module entry in `lowdefy.yaml` an
 # lowdefy.yaml
 modules:
   - id: workflows
-    source: "github:lowdefy/modules-mongodb/modules/workflows@v0.38.0"
+    source: "github:lowdefy/modules-mongodb/modules/workflows@v0.39.0"
     vars:
       workflows_config:
         _ref: workflow_config/workflows.yaml
