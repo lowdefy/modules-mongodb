@@ -1,0 +1,161 @@
+id: popup_notifications
+type: List
+visible:
+  _and:
+    - _gt:
+        - _state: popup_notifications.length
+        - 0
+    # Don't stack toasts on top of the full inbox page.
+    - _ne:
+        - _location: pageId
+        - _module.pageId: all
+style:
+  .element:
+    display: flex
+    flexDirection: column-reverse
+    gap: 8
+    position: fixed
+    zIndex: 9999
+    top: 0
+    right: 0
+    minWidth: 200
+    maxWidth: 500
+    minHeight: 100
+    maxHeight: 100vh
+    overflowY: scroll
+blocks:
+  - id: popup_notifications.$.card
+    type: Card
+    visible:
+      _not:
+        _state: popup_notifications.$.hide
+    layout:
+      gap: 8
+    style:
+      .element:
+        paddingLeft: 12
+        paddingRight: 12
+        paddingTop: 12
+        marginTop: 12
+        marginRight: 12
+        border: "2px solid #c2c7d2"
+    blocks:
+      - id: container
+        type: Box
+        blocks:
+          - id: popup_notifications.$.status_icon
+            type: Icon
+            layout:
+              flex: 0 1 auto
+            properties:
+              name:
+                _global:
+                  key:
+                    _string.concat:
+                      - enums.event_types.
+                      - _state: popup_notifications.$.event_type
+                      - .icon
+                  default: AiOutlineBell
+              size: 34
+              color:
+                _global:
+                  key:
+                    _string.concat:
+                      - enums.event_types.
+                      - _state: popup_notifications.$.event_type
+                      - .color
+                  default: "#8c8c8c"
+          - id: popup_notifications.$.body
+            type: Box
+            layout:
+              gap: 8
+              flex: 1 1 auto
+            style:
+              maxWidth: 80%
+              marginLeft: 6
+            blocks:
+              - id: popup_notifications.$.description
+                type: Html
+                style:
+                  .element:
+                    whiteSpace: pre-wrap
+                properties:
+                  html:
+                    _string.concat:
+                      - '<h5 style="font-size: 13px">'
+                      - _state: popup_notifications.$.title
+                      - "</h5>"
+                      - _state: popup_notifications.$.description
+              - id: divider
+                type: Divider
+                style:
+                  .element:
+                    margin: 4
+      - id: popup_notification.$.created_date
+        type: Html
+        layout:
+          flex: 0 1 auto
+        properties:
+          html:
+            _nunjucks:
+              template: <span class="secondary">Sent on {{ timestamp | date('D MMM YYYY h:mm A') }}</span>
+              on:
+                _state: popup_notifications.$.created
+      - id: popup_notifications.$.actions
+        type: Box
+        layout:
+          flex: 1 1 auto
+          gap: 8
+        blocks:
+          # Optional deep-link button — only when the notification carries links.button.
+          - id: popup_notifications.$.button
+            type: Button
+            layout:
+              flex: 1 1 auto
+            style:
+              textAlign: right
+            properties:
+              title: Acknowledge
+              type: default
+            events:
+              onClick:
+                - id: set_popup_read_state
+                  type: SetState
+                  params:
+                    popup_id:
+                      _state: popup_notifications.$._id
+                    popup_notifications.$.hide: true
+                - id: set_popup_read
+                  type: Request
+                  params: set_popup_read
+          - id: popup_notifications.$.link_button
+            type: Button
+            layout:
+              flex: 0 1 auto
+            visible:
+              _ne:
+                - _state:
+                    key: popup_notifications.$.links.button.pageId
+                    default: null
+                - null
+            properties:
+              title: View
+            events:
+              onClick:
+                # Opening the target also acknowledges the popup (marks read).
+                - id: set_popup_read_state
+                  type: SetState
+                  params:
+                    popup_id:
+                      _state: popup_notifications.$._id
+                    popup_notifications.$.hide: true
+                - id: set_popup_read
+                  type: Request
+                  params: set_popup_read
+                - id: link_to_target
+                  type: Link
+                  params:
+                    pageId:
+                      _state: popup_notifications.$.links.button.pageId
+                    urlQuery:
+                      _state: popup_notifications.$.links.button.urlQuery

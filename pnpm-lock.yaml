@@ -42,7 +42,7 @@ importers:
     dependencies:
       lowdefy:
         specifier: 6.0.0
-        version: 6.0.0(debug@4.4.3)(rollup@3.29.5)
+        version: 6.0.0(rollup@3.29.5)
     devDependencies:
       '@lowdefy/community-plugin-e2e-mdb':
         specifier: latest
@@ -419,22 +419,22 @@ importers:
         specifier: ^3.0.133
         version: 3.0.179(zod@4.4.3)
       '@lowdefy/block-utils':
-        specifier: 5.5.1 || 6.0.0
+        specifier: 5.5.1 || 5.6.0 || 6.0.0
         version: 6.0.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd':
-        specifier: 5.5.1 || 6.0.0
+        specifier: 5.5.1 || 5.6.0 || 6.0.0
         version: 6.0.0(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-basic':
-        specifier: 5.5.1 || 6.0.0
+        specifier: 5.5.1 || 5.6.0 || 6.0.0
         version: 6.0.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-mongodb':
         specifier: ^3
         version: 3.0.0(next@15.5.22(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/helpers':
-        specifier: 5.5.1 || 6.0.0
-        version: 6.0.0
+        specifier: 5.5.1 || 5.6.0 || 6.0.0
+        version: 5.5.1
       '@lowdefy/nunjucks':
-        specifier: 5.5.1 || 6.0.0
+        specifier: 5.5.1 || 5.6.0 || 6.0.0
         version: 6.0.0
       '@lowdefy/plugin-aws':
         specifier: '>=4.0.0'
@@ -6556,12 +6556,8 @@ packages:
     resolution: {integrity: sha512-FfR8sjd4em2T6fb3I2MwAJU7HWVMr9zba+enmQeeWFfCbm+UOC/0X4DS8XtpUTMwWMGbjKYP7xjfNekzyGmB3A==}
     engines: {node: ^10 || ^12 || >=14}
 
-  postcss@8.5.26:
-    resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
-    engines: {node: ^10 || ^12 || >=14}
-
-  postcss@8.5.6:
-    resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
+  postcss@8.5.28:
+    resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
     engines: {node: ^10 || ^12 || >=14}
 
   preact-render-to-string@5.2.6:
@@ -7352,8 +7348,8 @@ packages:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
 
-  tinykeys@3.0.0:
-    resolution: {integrity: sha512-nazawuGv5zx6MuDfDY0rmfXjuOGhD5XU2z0GLURQ1nzl0RUe9OuCJq+0u8xxJZINHe+mr7nw8PWYYZ9WhMFujw==}
+  tinykeys@3.1.0:
+    resolution: {integrity: sha512-LyQgmvqSSCBzK6PJjDy1kJWlanBVY0LFnJtte3AzJfdoijCZ+nDWjT0GvJAoHI+LUiBGpQQfvRrRNmValIZQiw==}
 
   tippy.js@6.3.7:
     resolution: {integrity: sha512-E1d3oP2emgJ9dRQZdf3Kkn0qJgI6ZLpyS5z6ZkY1DF3kaQaBsGZsndEpHwx+eC+tYM41HaSNvNtLx8tU57FzTQ==}
@@ -9717,7 +9713,7 @@ snapshots:
       dayjs: 1.11.20
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      tinykeys: 3.0.0
+      tinykeys: 3.1.0
     transitivePeerDependencies:
       - date-fns
       - luxon
@@ -9736,7 +9732,7 @@ snapshots:
       dayjs: 1.11.20
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      tinykeys: 3.0.0
+      tinykeys: 3.1.0
     transitivePeerDependencies:
       - date-fns
       - luxon
@@ -9842,7 +9838,7 @@ snapshots:
   '@lowdefy/connection-axios-http@6.0.0':
     dependencies:
       '@lowdefy/helpers': 6.0.0
-      axios: 1.15.2(debug@4.4.3)
+      axios: 1.15.2
     transitivePeerDependencies:
       - debug
 
@@ -11266,7 +11262,7 @@ snapshots:
       '@alloc/quick-lru': 5.3.0
       '@tailwindcss/node': 4.2.1
       '@tailwindcss/oxide': 4.2.1
-      postcss: 8.5.6
+      postcss: 8.5.28
       tailwindcss: 4.2.1
 
   '@tailwindcss/postcss@4.3.1':
@@ -12177,7 +12173,7 @@ snapshots:
     dependencies:
       possible-typed-array-names: 1.1.0
 
-  axios@1.15.2(debug@4.4.3):
+  axios@1.15.2:
     dependencies:
       follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.5
@@ -14672,14 +14668,14 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  lowdefy@6.0.0(debug@4.4.3)(rollup@3.29.5):
+  lowdefy@6.0.0(rollup@3.29.5):
     dependencies:
       '@lowdefy/errors': 6.0.0
       '@lowdefy/helpers': 6.0.0
       '@lowdefy/logger': 6.0.0
       '@lowdefy/node-utils': 6.0.0
       '@vercel/nft': 1.10.2(rollup@3.29.5)
-      axios: 1.15.2(debug@4.4.3)
+      axios: 1.15.2
       commander: 14.0.3
       decompress: 4.2.1
       decompress-targz: 4.1.1
@@ -15590,13 +15586,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postcss@8.5.26:
-    dependencies:
-      nanoid: 3.3.18
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
-
-  postcss@8.5.6:
+  postcss@8.5.28:
     dependencies:
       nanoid: 3.3.18
       picocolors: 1.1.1
@@ -16521,7 +16511,7 @@ snapshots:
       fdir: 6.5.0(picomatch@4.0.5)
       picomatch: 4.0.5
 
-  tinykeys@3.0.0: {}
+  tinykeys@3.1.0: {}
 
   tippy.js@6.3.7:
     dependencies:
@@ -16701,7 +16691,7 @@ snapshots:
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.5
-      postcss: 8.5.26
+      postcss: 8.5.28
       rolldown: 1.0.3
       tinyglobby: 0.2.17
     optionalDependencies:

@@ -49,7 +49,13 @@ events:
   # on the freshly minted blank thread, which is usable.
   onOpen:
     try:
-      _ref: actions/enter.yaml
+      # Both elements are action LISTS, so concat splices them into one chain — enter.yaml
+      # is a list, not a single action. Consumer actions run after the resume and inside
+      # the try: they read the thread `enter` just resolved, and a rejection there has to
+      # clear ai_loading like any other or the panel spins forever.
+      _build.array.concat:
+        - _ref: actions/enter.yaml
+        - _module.var: on_panel_open
     catch:
       - id: ai_end_loading_on_error
         type: SetState
