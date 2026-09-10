@@ -42,7 +42,7 @@ importers:
     dependencies:
       lowdefy:
         specifier: 6.0.0
-        version: 6.0.0(rollup@3.29.5)
+        version: 6.0.0(debug@4.4.3)(rollup@3.29.5)
     devDependencies:
       '@lowdefy/community-plugin-e2e-mdb':
         specifier: latest
@@ -9838,7 +9838,7 @@ snapshots:
   '@lowdefy/connection-axios-http@6.0.0':
     dependencies:
       '@lowdefy/helpers': 6.0.0
-      axios: 1.15.2
+      axios: 1.15.2(debug@4.4.3)
     transitivePeerDependencies:
       - debug
 
@@ -12173,7 +12173,7 @@ snapshots:
     dependencies:
       possible-typed-array-names: 1.1.0
 
-  axios@1.15.2:
+  axios@1.15.2(debug@4.4.3):
     dependencies:
       follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.5
@@ -14668,14 +14668,14 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  lowdefy@6.0.0(rollup@3.29.5):
+  lowdefy@6.0.0(debug@4.4.3)(rollup@3.29.5):
     dependencies:
       '@lowdefy/errors': 6.0.0
       '@lowdefy/helpers': 6.0.0
       '@lowdefy/logger': 6.0.0
       '@lowdefy/node-utils': 6.0.0
       '@vercel/nft': 1.10.2(rollup@3.29.5)
-      axios: 1.15.2
+      axios: 1.15.2(debug@4.4.3)
       commander: 14.0.3
       decompress: 4.2.1
       decompress-targz: 4.1.1
