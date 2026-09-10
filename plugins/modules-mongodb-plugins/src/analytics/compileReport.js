@@ -1620,7 +1620,10 @@ function compileReport({
     properties: {
       title: "AI summary",
       icon: "AiOutlineBulb",
-      type: "link",
+      // A bordered button, unlike the text-styled ★, ⋯ and chat link: this is
+      // the header's one call to action, and as a link it read as another
+      // navigation.
+      type: "default",
       size: "small",
     },
     events: {
