@@ -1340,18 +1340,33 @@ function sharedScopeKey(group) {
 // those are the only ones a filter change can leave behind. They have to be
 // cleared here rather than left to the controls: SetState fires no onChange, so
 // emptying a control does not run its own re-query.
-function filterResetAction(anchorId, group, boundUnion, aiSummary) {
+function filterResetAction({
+  anchorId,
+  group,
+  boundUnion,
+  filterSectionsByField,
+  aiSummary,
+}) {
   const params = {};
-  for (const { filter } of group) {
-    params[filterStateKey(filter.field)] = null;
-    // Reset changes what is on screen as surely as a selection does, so the
-    // summary's record of this group's values is cleared with the controls and
-    // any summary on screen is marked stale. Per-field nulls rather than the
-    // live-read map the onChange writes: SetState evaluates its params before
-    // it writes, so a deferred read here would capture the values being reset.
-    if (aiSummary) params[`summary.filter_values.${filter.field}`] = null;
+  const resetFields = new Set(group.map(({ filter }) => filter.field));
+  for (const field of resetFields) {
+    params[filterStateKey(field)] = null;
   }
-  if (aiSummary) params["summary.stale"] = true;
+  // Reset changes what is on screen as surely as a selection does, so the
+  // summary's record of this group's values is cleared with the controls and
+  // any summary on screen is marked stale. The whole map is rewritten, as the
+  // onChange does, because the map is keyed by the field STRING: a dot-path
+  // `summary.filter_values.<field>` would nest a dotted field (owner.user_id)
+  // beside the literal key and leave its old value for the next Generate. The
+  // group's own fields are literal nulls rather than live reads: SetState
+  // evaluates its params before it writes, so a deferred read of a field being
+  // reset would capture the value on its way out.
+  if (aiSummary) {
+    const values = summaryFilterValues(filterSectionsByField);
+    for (const field of resetFields) values[field] = null;
+    params["summary.filter_values"] = values;
+    params["summary.stale"] = true;
+  }
   for (const section of boundUnion) {
     if (section.type === "chart") {
       params[`sections.${section.id}.option`] = null;
@@ -1378,6 +1393,7 @@ function filterGroupFooter({
   boundUnion,
   note,
   rowsBySectionId,
+  filterSectionsByField,
   aiSummary,
 }) {
   // Nothing to put back: every section these filters drive failed its resolve,
@@ -1404,7 +1420,15 @@ function filterGroupFooter({
       style: RIGHT_IN_CELL,
       properties: { title: "Reset", type: "text", size: "small" },
       events: {
-        onClick: [filterResetAction(anchorId, group, boundUnion, aiSummary)],
+        onClick: [
+          filterResetAction({
+            anchorId,
+            group,
+            boundUnion,
+            filterSectionsByField,
+            aiSummary,
+          }),
+        ],
       },
     });
   }
@@ -2089,6 +2113,7 @@ function compileReport({
         boundUnion,
         note: sharedNote,
         rowsBySectionId,
+        filterSectionsByField,
         aiSummary: Boolean(ai_summary),
       }),
     );

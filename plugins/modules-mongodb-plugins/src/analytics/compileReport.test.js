@@ -2256,15 +2256,16 @@ describe("filter placement", () => {
         "sections.s4.rows": null,
         // Reset moves the numbers too, so the AI summary's record of this
         // group's values goes with the controls and a shown summary is stale.
-        "summary.filter_values.status": null,
-        "summary.filter_values.region": null,
+        // The whole map, keyed by field string like the onChange writes it,
+        // with this group's fields as literal nulls.
+        "summary.filter_values": { status: null, region: null },
         "summary.stale": true,
       });
       // The invariant behind those keys, asserted against the re-query that
       // writes them: a key a filter change can write and Reset does not clear is
       // a section still showing filtered data after a Reset. The summary keys
       // are asserted literally above — onChange writes the whole map with live
-      // reads, Reset nulls the group's fields one by one.
+      // reads, Reset rewrites it with the group's fields nulled.
       const written = new Set();
       for (const field of ["status", "region"]) {
         for (const action of byId[`filter_${field}`].events.onChange) {
@@ -2280,6 +2281,31 @@ describe("filter placement", () => {
           Object.keys(reset.params).filter((k) => !k.startsWith("summary.")),
         ),
       ).toEqual(new Set([...written, "filter_status", "filter_region"]));
+    });
+
+    // Two groups, one with a dotted field: Reset on one group nulls only its own
+    // fields and keeps a live read for the other group's, in the same
+    // string-keyed map the onChange writes. A dot-path per field would have
+    // nested `owner.user_id` beside the literal key and left the old value for
+    // the next Generate.
+    test("Reset rewrites the summary map: its own fields null, the other group's a live read, dotted fields kept as one key", () => {
+      const byId = compile(
+        [
+          select("owner.user_id"),
+          select("region"),
+          kpi("Revenue", ["owner.user_id"]),
+          table("Orders", ["region"]),
+        ],
+        [[{ total: 5 }], tableRows],
+      );
+      const [reset] = byId.filters_s2_reset.events.onClick;
+      expect(reset.params["summary.filter_values"]).toEqual({
+        "owner.user_id": null,
+        region: { __state: "filter_region" },
+      });
+      expect(Object.keys(reset.params)).not.toContainEqual(
+        expect.stringMatching(/^summary\.filter_values\./),
+      );
     });
 
     // The arithmetic filterSpans exists for, applied to what follows the
