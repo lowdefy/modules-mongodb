@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures.js";
-import { REPORTS, callEndpoint } from "./helpers.js";
+import { REPORTS, callAppEndpoint, callEndpoint } from "./helpers.js";
 
 // The report page's compiled surface — the blocks compileReport emits at resolve
 // time: the broken vs withheld alert variants, the owner-only recovery
@@ -236,10 +236,84 @@ const TWO_GROUP_SECTIONS = [
   },
 ];
 
+// Two adjacent charts, both narrow (two types, one series each), so layout
+// derivation pairs them into half-width Box wrappers. The same query drawn two
+// ways — the counts, and their shares — which is the whole of what makes the two
+// sections pair: neither needs the full column.
+const PAIRED_CHART_SECTIONS = [
+  {
+    id: "s0",
+    type: "chart",
+    chart: "bar",
+    label: "Activities by type",
+    query: activitiesByType,
+    x: "type",
+    y: ["activities"],
+    filterBy: [],
+  },
+  {
+    id: "s1",
+    type: "chart",
+    chart: "pie",
+    label: "Share by type",
+    query: activitiesByType,
+    x: "type",
+    y: ["activities"],
+    filterBy: [],
+  },
+];
+
+// The same two narrow charts with prose between them. Adjacency is read off the
+// spec exactly as written, so this is one run of one chart, a markdown, and
+// another run of one — neither pairs, and each unpaired narrow chart is promoted
+// to the full column rather than left as half of a line. Section ORDER is the
+// author's only channel into layout, so this is the claim that the channel works
+// in both directions.
+const SPLIT_CHART_SECTIONS = [
+  PAIRED_CHART_SECTIONS[0],
+  { id: "s1", type: "markdown", content: "### Shares" },
+  { ...PAIRED_CHART_SECTIONS[1], id: "s2" },
+];
+
+// Four adjacent KPIs, which is the tile-row cap: one wrap line, a quarter of the
+// column each. n adjacent KPIs are one row of numbers rather than n sections that
+// happen to be narrow, and four is where the row stops widening.
+const KPI_ROW_SECTIONS = ["Calls", "Meetings", "Emails", "Notes"].map(
+  (label, index) => ({
+    id: `s${index}`,
+    type: "kpi",
+    label,
+    query: activityCount,
+    valueKey: "activities",
+    format: { style: "decimal", decimals: 0 },
+    filterBy: [],
+  }),
+);
+
+// Two adjacent downloads. A run of exports is one place to go for the raw rows,
+// so the whole run compiles into a single titled Downloads card with a button
+// each, sharing one row — not two sections that happen to be buttons.
+const DOWNLOAD_RUN_SECTIONS = [
+  {
+    id: "s0",
+    type: "download",
+    label: "Download activities CSV",
+    query: activitiesByType,
+  },
+  {
+    id: "s1",
+    type: "download",
+    label: "Download counts CSV",
+    query: activityCount,
+  },
+];
+
 // A filter over one bound KPI — the smallest report that proves the re-query
-// path: select a type, the KPI's count narrows. The KPI query counts every
-// activity; the bound filter prepends a `$match` on `type`, so the count drops
-// from the three seeded activities to the two of the chosen type.
+// path, and the round trip back: select a type and the KPI's count narrows,
+// Reset and it returns. The KPI query counts every activity; the bound filter
+// prepends a `$match` on `type`, so the count drops from the three seeded
+// activities to the two of the chosen type. One filter over one section, so the
+// group states no scope — its closing line is the Reset alone.
 const FILTER_KPI_SECTIONS = [
   {
     id: "s0",
@@ -268,7 +342,7 @@ test.describe("report page render", () => {
     await mdb.seed("demo_activities", ACTIVITIES);
   });
 
-  test("changing a filter re-queries and updates the section it drives", async ({
+  test("changing a filter re-queries the section it drives, and Reset returns it", async ({
     ldf,
     page,
     mdb,
@@ -300,6 +374,23 @@ test.describe("report page render", () => {
     // the type value; "call" is unique on the page while the menu is open.
     await page.getByText("call", { exact: true }).click();
     await expect(kpiValue).toHaveText("2");
+
+    // Reset clears state and stops there — no second query. Every section
+    // binding is an `_if_none` over its state key and the value the FIRST,
+    // unfiltered resolve inlined, so an empty key is the unfiltered data as of
+    // the timestamp the header states, which a fresh query would silently move.
+    // The claim is therefore about both halves at once: the number goes back to
+    // the three seeded activities, and the control it came from goes back to
+    // empty — a Reset that left "call" standing beside a count of 3 would read
+    // as a broken filter rather than a cleared one.
+    // The Selector renders its own value markup rather than antd's: the chosen
+    // label sits in `.ant-select-content`, which carries `-has-value` only while
+    // there is one — so the emptied control is the absence of that class, not
+    // empty text in it.
+    await expect(page.locator(".ant-select-content")).toContainText("call");
+    await page.getByRole("button", { name: "Reset" }).click();
+    await expect(kpiValue).toHaveText("3");
+    await expect(page.locator(".ant-select-content-has-value")).toHaveCount(0);
   });
 
   test("a broken section shows the owner recoveries; a non-owner sees only the alert", async ({
@@ -415,13 +506,13 @@ test.describe("report page render", () => {
     await ldf.goto("/ai-reporting/report?report_id=e2e-two-groups");
     await expect(page.getByText("Report not found")).toBeHidden();
 
-    // Each control names its own scope, and because each drives more than one
-    // section it also carries a scope note. The note is the label's `extra` —
-    // a separate muted line under the control, NOT a parenthetical appended to
-    // the title (appending it wrapped the title and pushed the input out of
-    // alignment with the control beside it in the row). It names the sections
-    // beyond the one the control is anchored above, so each filter names the
-    // second of its two.
+    // Each control names itself, and each group states its scope once in a muted
+    // line under its controls — NOT as a parenthetical appended to the title
+    // (appending it wrapped the title and pushed the input out of alignment with
+    // the control beside it in the row). The line names the sections beyond the
+    // one the group is anchored above, so each of these single-control groups
+    // names the second of its two. Each group also closes on a Reset, so both
+    // are on the page at once, one per group.
     await expect(
       page.getByText("Activity type", { exact: true }),
     ).toBeVisible();
@@ -434,6 +525,276 @@ test.describe("report page render", () => {
     await expect(
       page.getByText("Also filters: Activities by channel", { exact: true }),
     ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reset" })).toHaveCount(2);
+  });
+
+  // Layout derivation, through the real stack: two adjacent narrow charts each
+  // compile into a half-width Box holding their own head row and card. Worth a
+  // browser for two reasons the compiler's own tests cannot cover — the Box is a
+  // container type, and one the Dynamic block does not declare blanks the WHOLE
+  // report rather than one section; and side-by-side is a claim about rendered
+  // geometry, which only a rendered page can answer.
+  test("two adjacent narrow charts render side by side", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-paired-charts",
+        title: "Paired charts",
+        owner: HOLDER,
+        sections: PAIRED_CHART_SECTIONS,
+      }),
+    ]);
+
+    await ldf.user(HOLDER);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-paired-charts");
+    // First: the whole-report failure mode, so a regression over the wrapper
+    // reads as "the report blanked" rather than as a missing heading.
+    await expect(page.getByText("Report not found")).toBeHidden();
+
+    const first = page.getByRole("heading", { name: "Activities by type" });
+    const second = page.getByRole("heading", { name: "Share by type" });
+    await expect(first).toBeVisible();
+    await expect(second).toBeVisible();
+
+    // The heads sit on one line, the second to the right of the first — which is
+    // only true if each section's head row re-based inside its own wrapper.
+    // Flat, the two headings would each take a full-width line of their own.
+    const a = await first.boundingBox();
+    const b = await second.boundingBox();
+    expect(Math.abs(a.y - b.y)).toBeLessThan(a.height);
+    expect(b.x).toBeGreaterThan(a.x + a.width);
+  });
+
+  // The other direction of the same claim: prose between two narrow charts
+  // separates their runs, so they do not pair. Asserted alongside the pairing
+  // test because a derivation that paired everything narrow would pass that one
+  // and fail this one, and a derivation that paired nothing would do the reverse.
+  test("markdown between two narrow charts keeps both at full width", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-split-charts",
+        title: "Split charts",
+        owner: HOLDER,
+        sections: SPLIT_CHART_SECTIONS,
+      }),
+    ]);
+
+    await ldf.user(HOLDER);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-split-charts");
+    await expect(page.getByText("Report not found")).toBeHidden();
+
+    const first = page.getByRole("heading", { name: "Activities by type" });
+    const second = page.getByRole("heading", { name: "Share by type" });
+    await expect(first).toBeVisible();
+    await expect(second).toBeVisible();
+
+    const a = await first.boundingBox();
+    const b = await second.boundingBox();
+    // Stacked, not side by side — and the second starts at the same left edge as
+    // the first, which is what "promoted to the full column" looks like. A pair
+    // would put the second one half a column to the right.
+    expect(b.y).toBeGreaterThan(a.y + a.height);
+    expect(Math.abs(b.x - a.x)).toBeLessThan(2);
+  });
+
+  test("a run of four KPIs renders as one row of tiles", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-kpi-row",
+        title: "KPI row",
+        owner: HOLDER,
+        sections: KPI_ROW_SECTIONS,
+      }),
+    ]);
+
+    await ldf.user(HOLDER);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-kpi-row");
+    await expect(page.getByText("Report not found")).toBeHidden();
+
+    const tiles = page.locator(".ant-statistic-content-value");
+    await expect(tiles).toHaveCount(4);
+
+    const boxes = [];
+    for (let index = 0; index < 4; index += 1) {
+      boxes.push(await tiles.nth(index).boundingBox());
+    }
+    // One wrap line: every tile shares the first one's baseline, and each sits to
+    // the right of the last. Four sections each taking a full row would stack.
+    for (const box of boxes.slice(1)) {
+      expect(Math.abs(box.y - boxes[0].y)).toBeLessThan(boxes[0].height);
+    }
+    for (let index = 1; index < boxes.length; index += 1) {
+      expect(boxes[index].x).toBeGreaterThan(boxes[index - 1].x);
+    }
+  });
+
+  test("a run of two downloads renders as one Downloads card", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-download-run",
+        title: "Download run",
+        owner: HOLDER,
+        sections: DOWNLOAD_RUN_SECTIONS,
+      }),
+    ]);
+
+    await ldf.user(HOLDER);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-download-run");
+    await expect(page.getByText("Report not found")).toBeHidden();
+
+    // One card for the run, not one per section — so the title appears once
+    // however many exports the run holds.
+    await expect(page.getByText("Downloads", { exact: true })).toHaveCount(1);
+
+    const first = page.getByRole("button", { name: "Download activities CSV" });
+    const second = page.getByRole("button", { name: "Download counts CSV" });
+    await expect(first).toBeVisible();
+    await expect(second).toBeVisible();
+
+    // Both buttons share the card's row at half the width each, which is the
+    // same balancing a filter group takes.
+    const a = await first.boundingBox();
+    const b = await second.boundingBox();
+    expect(Math.abs(a.y - b.y)).toBeLessThan(a.height);
+    expect(b.x).toBeGreaterThan(a.x + a.width);
+  });
+});
+
+// ── The seeded demo report (guards the spec file itself) ─────────────────
+
+// The demo's seeded example report, driven end to end. It is the one report that
+// exercises every row of the layout-derivation table, and it is the only thing
+// here that guards the SPEC FILE itself: `lowdefy build` compiles the YAML but
+// never runs validateReportSpec, so a spec that breaks a validator rule — the
+// section cap, a display-name collision — builds clean and fails only when
+// somebody presses the button.
+test.describe("the seeded example report", () => {
+  // demo_orders comes from its own seed routine rather than a literal fixture:
+  // the derivation reads the DATA (eight categories, ten quantities, nine
+  // months), so a hand-written handful of orders would derive a different layout
+  // from the one the demo shows.
+  const COMPANIES = [1, 2, 3, 4, 5].map((n) => ({
+    _id: `C-000${n}`,
+    name: `Company ${n}`,
+  }));
+  const CONTACTS = ["Smith", "Jones", "Patel"].map((family, index) => ({
+    _id: `U-000${index + 1}`,
+    profile: { family_name: family, name: `Person ${index + 1}` },
+    global_attributes: { company_ids: [`C-000${index + 1}`] },
+  }));
+  const SEED_ACTIVITIES = ["call", "meeting", "email", "note"].map(
+    (type, index) => ({
+      _id: `A-000${index + 1}`,
+      type,
+      title: `${type} one`,
+      company_ids: [`C-000${index + 1}`],
+      source: { channel: "manual" },
+      status: [{ stage: "open" }],
+    }),
+  );
+
+  test("validates, opens, and derives the layout it is written for", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    await mdb.seed("demo_companies", COMPANIES);
+    await mdb.seed("demo_contacts", CONTACTS);
+    await mdb.seed("demo_activities", SEED_ACTIVITIES);
+
+    await ldf.user(HOLDER);
+    // App-level routines, so no module entry segment in the path.
+    const orders = await callAppEndpoint(page, "reporting-seed-orders", {});
+    expect(orders.body?.success).toBe(true);
+
+    const seeded = await callAppEndpoint(
+      page,
+      "reporting-seed-example-report",
+      {},
+    );
+    // A validator rejection surfaces as a routine error, not a :reject:, so this
+    // is the assertion that the stored spec is legal.
+    expect(seeded.body?.success).toBe(true);
+    expect(seeded.response?.ok).toBe(true);
+
+    await ldf.goto(
+      `/ai-reporting/report?report_id=${seeded.response.report_id}`,
+    );
+    await expect(page.getByText("Report not found")).toBeHidden();
+    // No section degraded: every pipeline resolved and every contract matched
+    // the rows the seed data produces.
+    await expect(
+      page.getByText("This section failed to load", { exact: false }),
+    ).toBeHidden();
+
+    // The four headline KPIs are one tile row; the two that follow further down
+    // are their own runs, so six tiles across three rows.
+    const tiles = page.locator(".ant-statistic-content-value");
+    await expect(tiles).toHaveCount(6);
+    const headline = [];
+    for (let index = 0; index < 4; index += 1) {
+      headline.push(await tiles.nth(index).boundingBox());
+    }
+    for (const box of headline.slice(1)) {
+      expect(Math.abs(box.y - headline[0].y)).toBeLessThan(headline[0].height);
+    }
+
+    // The narrow bar and the pie pair into half-width boxes; the status chart
+    // after the markdown does not pair and takes the full column. Exact names —
+    // "Revenue by region" is a prefix of "Revenue by region and category".
+    const paired = page.getByRole("heading", {
+      name: "Revenue by region",
+      exact: true,
+    });
+    const pie = page.getByRole("heading", {
+      name: "Revenue share by category",
+      exact: true,
+    });
+    const promoted = page.getByRole("heading", {
+      name: "Orders by status",
+      exact: true,
+    });
+    const pairedBox = await paired.boundingBox();
+    const pieBox = await pie.boundingBox();
+    const promotedBox = await promoted.boundingBox();
+    expect(Math.abs(pairedBox.y - pieBox.y)).toBeLessThan(pairedBox.height);
+    expect(pieBox.x).toBeGreaterThan(pairedBox.x + pairedBox.width);
+    expect(promotedBox.y).toBeGreaterThan(pieBox.y);
+    expect(Math.abs(promotedBox.x - pairedBox.x)).toBeLessThan(2);
+
+    // The two downloads are one card.
+    await expect(page.getByText("Downloads", { exact: true })).toHaveCount(1);
+    await expect(
+      page.getByRole("button", { name: "Download orders CSV" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Download activities CSV" }),
+    ).toBeVisible();
+
+    // The orders filter group states its shared scope once, and Channel — which
+    // moves only the four KPIs — keeps a note of its own beside it. Three
+    // groups, so three Resets.
+    await expect(
+      page.getByText("Also filters: Orders, Units sold, Average order value", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reset" })).toHaveCount(3);
   });
 });
 

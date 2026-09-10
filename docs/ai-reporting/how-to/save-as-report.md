@@ -49,7 +49,7 @@ The sheet can only assemble what the conversation rendered as a tickable card, a
 
 ### Authoring filters
 
-The **Filters** section adds a filter from a field in the report's data — a control that renders at the top of the saved report and scopes every section built on a collection that has that field. You author only the filter's _definition_; its selectable values resolve live when the report opens and are never previewed in the sheet.
+The **Filters** section adds a filter from a field in the report's data — a control that renders in the saved report directly above the first section it scopes, and scopes every section built on a collection that has that field. You author only the filter's _definition_; its selectable values resolve live when the report opens and are never previewed in the sheet.
 
 Only fields the picker can complete are offered, drawn from the collections your chosen sections query:
 

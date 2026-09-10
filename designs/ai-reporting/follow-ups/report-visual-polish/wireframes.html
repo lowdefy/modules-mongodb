@@ -1,0 +1,1214 @@
+<title>Report Visual Polish</title>
+
+<!--
+  Wireframe deck for the report-visual-polish design. Published as an Artifact
+  during design; this is the archived copy. The chrome tokens continue the
+  reporting deck series (designs/ai-reporting/ux/wireframes.html); the --v1..--v8
+  series tokens are the data-viz reference categorical palette, light and dark
+  steps, and are the palette the design actually adopts — see findings.md §4.
+-->
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --ground: #eef1ef;
+    --surface: #fcfcfb;
+    --surface-2: #f4f7f5;
+    --surface-3: #eaefec;
+    --ink: #151c1a;
+    --ink-2: #3d4a46;
+    --muted: #6b7873;
+    --rule: #d3dad6;
+    --rule-2: #e4e9e6;
+    --accent: #0b7a5c;
+    --accent-ink: #085f48;
+    --accent-soft: #e2efea;
+    --new: #b0722a;
+    --new-soft: #f6ecdd;
+    --bad: #a33232;
+    --bad-soft: #f8e6e4;
+    --shadow: 0 14px 30px -24px rgba(10, 30, 24, 0.55);
+    --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, ui-serif, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, ui-sans-serif, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    /* data-viz reference categorical palette — light steps */
+    --v1: #2a78d6; --v2: #eb6834; --v3: #1baf7a; --v4: #eda100;
+    --v5: #e87ba4; --v6: #008300; --v7: #4a3aa7; --v8: #e34948;
+    /* the stock ECharts palette Flint ships today, for the before/after */
+    --o1: #5470c6; --o2: #91cc75; --o3: #fac858; --o4: #ee6666;
+    --o5: #73c0de; --o6: #3ba272; --o7: #fc8452; --o8: #9a60b4;
+    /* chart chrome */
+    --plot: #ffffff;
+    --grid-line: #e1e0d9;
+    --axis: #c3c2b7;
+    --axis-ink: #898781;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101413;
+      --surface: #191f1d;
+      --surface-2: #202725;
+      --surface-3: #262e2b;
+      --ink: #e7ece9;
+      --ink-2: #bcc7c2;
+      --muted: #8b9994;
+      --rule: #2d3532;
+      --rule-2: #232a28;
+      --accent: #22a57f;
+      --accent-ink: #56c4a2;
+      --accent-soft: #123028;
+      --new: #bc8a34;
+      --new-soft: #2c2315;
+      --bad: #d98b84;
+      --bad-soft: #2e1c1a;
+      --shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.9);
+      --v1: #3987e5; --v2: #d95926; --v3: #199e70; --v4: #c98500;
+      --v5: #d55181; --v6: #008300; --v7: #9085e9; --v8: #e66767;
+      --plot: #141414;
+      --grid-line: #2c2c2a;
+      --axis: #383835;
+      --axis-ink: #898781;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101413;
+    --surface: #191f1d;
+    --surface-2: #202725;
+    --surface-3: #262e2b;
+    --ink: #e7ece9;
+    --ink-2: #bcc7c2;
+    --muted: #8b9994;
+    --rule: #2d3532;
+    --rule-2: #232a28;
+    --accent: #22a57f;
+    --accent-ink: #56c4a2;
+    --accent-soft: #123028;
+    --new: #bc8a34;
+    --new-soft: #2c2315;
+    --bad: #d98b84;
+    --bad-soft: #2e1c1a;
+    --shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.9);
+    --v1: #3987e5; --v2: #d95926; --v3: #199e70; --v4: #c98500;
+    --v5: #d55181; --v6: #008300; --v7: #9085e9; --v8: #e66767;
+    --plot: #141414;
+    --grid-line: #2c2c2a;
+    --axis: #383835;
+    --axis-ink: #898781;
+  }
+
+  /* ── Shell ──────────────────────────────────────────────────────────── */
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .deck-head {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px;
+    padding: 11px 28px;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .deck-head b {
+    font-family: var(--display); font-size: 15px; font-weight: 600; letter-spacing: 0.01em;
+  }
+  .deck-nav {
+    display: flex; flex-wrap: wrap; gap: 2px 14px; margin-left: auto;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+  }
+  .deck-nav a {
+    color: var(--muted); text-decoration: none;
+    border-bottom: 1px solid transparent; padding-bottom: 1px;
+  }
+  .deck-nav a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px 96px; }
+
+  /* ── Opening ────────────────────────────────────────────────────────── */
+  .open { display: grid; gap: 22px; padding: 60px 0 30px; border-bottom: 1px solid var(--rule); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); margin: 0;
+  }
+  .open h1 {
+    font-family: var(--display); font-weight: 600;
+    font-size: clamp(30px, 4.6vw, 47px); line-height: 1.08; letter-spacing: -0.015em;
+    text-wrap: balance; margin: 0; max-width: 24ch;
+  }
+  .lede { max-width: 64ch; font-size: 17px; color: var(--ink-2); margin: 0; }
+  .lede em { font-style: normal; color: var(--ink); box-shadow: inset 0 -0.45em 0 var(--accent-soft); }
+
+  .jobs {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px; margin-top: 6px;
+  }
+  .job {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 16px 18px; display: grid; gap: 6px; align-content: start;
+  }
+  .job h3 { font-family: var(--display); font-size: 19px; font-weight: 600; margin: 0; }
+  .job p { margin: 0; font-size: 14px; color: var(--ink-2); }
+  .job .said {
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+    border-top: 1px dashed var(--rule); padding-top: 8px; margin-top: 2px;
+  }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted); align-items: center;
+  }
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px;
+    border-radius: 3px; border: 1px solid var(--rule);
+    background: var(--surface-2); color: var(--muted); white-space: nowrap;
+  }
+  .tag.is-new {
+    border-color: color-mix(in srgb, var(--new) 45%, transparent);
+    background: var(--new-soft); color: var(--new);
+  }
+  .tag.is-now {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: var(--accent-soft); color: var(--accent-ink);
+  }
+  .tag.is-bad {
+    border-color: color-mix(in srgb, var(--bad) 45%, transparent);
+    background: var(--bad-soft); color: var(--bad);
+  }
+
+  /* ── Plates ─────────────────────────────────────────────────────────── */
+  .plate { padding: 54px 0 10px; border-bottom: 1px solid var(--rule); display: grid; gap: 20px; }
+  .plate-head { display: grid; gap: 7px; }
+  .plate-head .kicker {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .plate-head .kicker b { color: var(--accent); font-weight: 600; }
+  .plate-head h2 {
+    font-family: var(--display); font-size: clamp(23px, 2.9vw, 30px);
+    font-weight: 600; letter-spacing: -0.01em; margin: 0; text-wrap: balance;
+  }
+  .plate-head p { margin: 0; max-width: 68ch; color: var(--ink-2); }
+
+  .scrollx { overflow-x: auto; border-radius: 7px; }
+  .frame {
+    min-width: 940px; background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 7px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .frame.narrow { min-width: 720px; }
+  .frame-chrome {
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+    background: var(--surface-3); border-bottom: 1px solid var(--rule);
+  }
+  .frame-chrome .dots { display: flex; gap: 5px; }
+  .frame-chrome .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--rule); display: block; }
+  .frame-chrome .url {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 2px 9px;
+  }
+
+  .c {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; flex: 0 0 15px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-family: var(--mono);
+    font-size: 9px; font-weight: 600; line-height: 1; vertical-align: 2px; margin: 0 0 0 5px;
+  }
+  .c.n { background: var(--new); }
+  .c.b { background: var(--bad); }
+
+  .notes {
+    list-style: none; margin: 0; padding: 0; display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(285px, 1fr)); gap: 12px 26px;
+  }
+  .notes li {
+    display: grid; grid-template-columns: 15px 1fr; gap: 10px; align-items: start;
+    font-size: 13.5px; line-height: 1.5; color: var(--ink-2);
+  }
+  .notes li > .c { margin: 3px 0 0; }
+  .notes b { color: var(--ink); font-weight: 600; }
+  .notes code, .impl code, .plate-head code, .rules code, .lede code {
+    font-family: var(--mono); font-size: 0.86em; background: var(--surface-2);
+    border: 1px solid var(--rule-2); border-radius: 3px; padding: 0.5px 4px;
+  }
+
+  /* ── Mock report primitives ─────────────────────────────────────────── */
+  .m-page {
+    background: var(--surface-2); padding: 22px 26px 26px;
+    display: grid; gap: 0; font-size: 12.5px;
+  }
+  .m-page.bare { background: var(--surface); }
+  .m-crumb { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-bottom: 12px; }
+  .m-title {
+    display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;
+  }
+  .m-title h3 {
+    font-family: var(--display); font-size: 21px; font-weight: 600; margin: 0;
+    letter-spacing: -0.01em; flex: 1 1 380px; text-wrap: balance;
+  }
+  .m-title .acts { display: flex; align-items: center; gap: 12px; font-size: 11.5px; color: var(--accent-ink); }
+  .m-sub { color: var(--ink-2); margin: 7px 0 0; max-width: 80ch; font-size: 12.5px; }
+  .m-prov { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin: 8px 0 0; }
+
+  /* a compiled section: head row above, card below */
+  .m-sec { margin-top: 22px; }
+  .m-head {
+    display: flex; align-items: baseline; gap: 10px; margin-bottom: 7px;
+  }
+  .m-head h4 {
+    margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.005em; flex: 1;
+  }
+  .m-head .dl { font-size: 12px; color: var(--muted); }
+  .m-card {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 14px;
+  }
+  .m-card.pad0 { padding: 0; overflow: hidden; }
+  .m-row { display: grid; gap: 16px; }
+  .m-row.two { grid-template-columns: 1fr 1fr; }
+  .m-row.three { grid-template-columns: repeat(3, 1fr); }
+  .m-row.four { grid-template-columns: repeat(4, 1fr); }
+
+  /* KPI tile */
+  .m-tile {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 6px;
+    padding: 12px 14px; display: grid; gap: 2px; align-content: start;
+  }
+  .m-tile .lab { font-size: 11px; color: var(--muted); letter-spacing: 0.01em; }
+  .m-tile .val {
+    font-size: 25px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* filter bar */
+  .m-filters {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 6px;
+    padding: 12px 14px; display: grid; gap: 9px;
+  }
+  .m-fgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: end; }
+  .m-field { display: grid; gap: 4px; }
+  .m-field .lab { font-size: 11px; color: var(--muted); }
+  .m-input {
+    border: 1px solid var(--rule); border-radius: 4px; background: var(--surface-2);
+    padding: 5px 9px; font-size: 11.5px; color: var(--muted);
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .m-input.filled { color: var(--ink); background: var(--surface); }
+  .m-scope { font-size: 11px; color: var(--muted); border-top: 1px dashed var(--rule); padding-top: 8px; }
+  .m-reset {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent-ink); border: 1px solid var(--rule);
+    background: var(--surface-2); border-radius: 4px; padding: 5px 10px; white-space: nowrap;
+  }
+
+  /* table mock */
+  .m-tbl { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .m-tbl th, .m-tbl td {
+    text-align: right; padding: 6px 12px; border-bottom: 1px solid var(--rule-2);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .m-tbl th:first-child, .m-tbl td:first-child { text-align: left; }
+  .m-tbl th {
+    background: var(--surface-2); font-weight: 600; color: var(--ink-2);
+    font-size: 10.5px; letter-spacing: 0.02em;
+  }
+  .m-tbl tr:last-child td { border-bottom: none; }
+
+  /* buttons */
+  .m-btn {
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--rule));
+    background: var(--accent-soft); color: var(--accent-ink);
+    border-radius: 4px; padding: 6px 11px; font-size: 11.5px; text-align: center; white-space: nowrap;
+  }
+
+  /* ── Chart mocks ────────────────────────────────────────────────────── */
+  .ch { display: grid; gap: 8px; }
+  .ch-legend {
+    display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 10.5px; color: var(--ink-2);
+  }
+  .ch-legend.right { flex-direction: column; gap: 6px; }
+  .ch-legend i {
+    width: 9px; height: 9px; border-radius: 2px; display: inline-block;
+    margin-right: 5px; vertical-align: -1px;
+  }
+  .ch-plot {
+    position: relative; display: grid; grid-template-columns: auto 1fr;
+    gap: 0 7px; align-items: stretch;
+  }
+  .ch-yax {
+    display: grid; align-content: space-between; justify-items: end;
+    font-size: 10px; color: var(--axis-ink); font-variant-numeric: tabular-nums;
+    padding-bottom: 15px;
+  }
+  .ch-area { display: grid; grid-template-rows: 1fr auto; min-width: 0; }
+  .ch-bars {
+    position: relative; display: flex; align-items: flex-end; gap: 2px;
+    border-left: 1px solid var(--axis); border-bottom: 1px solid var(--axis);
+    padding: 0 6px;
+  }
+  .ch-bars::before {
+    content: ""; position: absolute; inset: 0 0 0 1px; pointer-events: none;
+    background: repeating-linear-gradient(
+      to top, transparent 0, transparent calc(25% - 1px),
+      var(--grid-line) calc(25% - 1px), var(--grid-line) 25%);
+  }
+  .ch-grp { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; min-width: 0; }
+  .ch-grp.side { flex-direction: row; align-items: flex-end; gap: 2px; }
+  .ch-grp.side > span { flex: 1; }
+  .ch-grp > span { display: block; border-radius: 0; }
+  .ch-grp > span:first-child { border-radius: 3px 3px 0 0; }
+  .ch-grp.side > span { border-radius: 3px 3px 0 0; }
+  .ch-xax {
+    display: flex; padding: 4px 6px 0; font-size: 10px; color: var(--axis-ink);
+  }
+  .ch-xax > span { flex: 1; text-align: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ch-xax.rot > span {
+    writing-mode: vertical-rl; height: 62px; text-align: left; margin: 0 auto;
+  }
+  .ch-name { font-size: 10px; color: var(--axis-ink); text-align: center; padding-top: 2px; }
+
+  /* swatch strips for the palette plate */
+  .sw { display: flex; border-radius: 4px; overflow: hidden; border: 1px solid var(--rule); }
+  .sw i { display: block; height: 34px; flex: 1; }
+  .verdict {
+    display: grid; gap: 4px; font-family: var(--mono); font-size: 11px; margin: 0; padding: 0; list-style: none;
+  }
+  .verdict li { display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: start; color: var(--ink-2); }
+  .verdict .pass { color: var(--accent-ink); font-weight: 600; }
+  .verdict .fail { color: var(--bad); font-weight: 600; }
+  .verdict .warn { color: var(--new); font-weight: 600; }
+
+  /* comparison pair */
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pane {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 6px;
+    padding: 14px; display: grid; gap: 10px; align-content: start;
+  }
+  .pane > h5 {
+    margin: 0; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .pane.is-bad { border-color: color-mix(in srgb, var(--bad) 30%, var(--rule)); }
+  .pane.is-good { border-color: color-mix(in srgb, var(--accent) 30%, var(--rule)); }
+
+  /* derivation rules table */
+  .rules { overflow-x: auto; }
+  .rules table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  .rules th, .rules td {
+    text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top;
+  }
+  .rules th {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); font-weight: 600;
+  }
+  .rules td:first-child { white-space: nowrap; font-family: var(--mono); font-size: 11.5px; }
+  .rules tr:last-child td { border-bottom: none; }
+  .span {
+    display: inline-block; font-family: var(--mono); font-size: 10px;
+    background: var(--accent-soft); color: var(--accent-ink);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-radius: 3px; padding: 1px 5px; white-space: nowrap;
+  }
+
+  /* grid ribbon showing 24 columns */
+  .ribbon { display: flex; gap: 2px; margin-top: 4px; }
+  .ribbon i {
+    height: 6px; flex: 1; background: var(--rule); border-radius: 1px; display: block;
+  }
+  .ribbon i.on { background: var(--accent); }
+
+  /* impl */
+  .impl { padding: 54px 0 0; display: grid; gap: 18px; }
+  .impl h2 {
+    font-family: var(--display); font-size: clamp(23px, 2.9vw, 30px);
+    font-weight: 600; margin: 0; letter-spacing: -0.01em;
+  }
+  .impl table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 620px; }
+  .impl th, .impl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  .impl th {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); font-weight: 600;
+  }
+  .impl td:first-child { white-space: nowrap; }
+  .impl tr:last-child td { border-bottom: none; }
+  .foot {
+    margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    display: grid; gap: 4px;
+  }
+
+  @media (max-width: 760px) {
+    .pair, .m-row.two, .m-row.three, .m-row.four { grid-template-columns: 1fr; }
+    .wrap { padding: 0 16px 72px; }
+    .deck-head { padding: 10px 16px; }
+  }
+</style>
+
+<header class="deck-head">
+  <b>Report visual polish</b>
+  <span class="tag">designs/ai-reporting/follow-ups · normative target</span>
+  <nav class="deck-nav">
+    <a href="#before">1 · today</a>
+    <a href="#after">2 · target</a>
+    <a href="#derive">3 · derivation</a>
+    <a href="#anatomy">4 · anatomy</a>
+    <a href="#charts">5 · charts</a>
+    <a href="#impl">asks</a>
+  </nav>
+</header>
+
+<div class="wrap">
+
+  <section class="open">
+    <p class="eyebrow">modules/ai-reporting · report renderer · settled 31 Aug 2026</p>
+    <h1>The data is right. The page is unfinished.</h1>
+    <p class="lede">
+      A saved report today is nine bare blocks on a flat plane: no containers, no
+      comparison, tables that either clip or run half-empty, and the stock ECharts
+      palette — which <em>fails four of five accessibility checks</em> on the surface it
+      actually renders on. None of that is a chart problem. It is layout and chrome,
+      and the module owns almost all of it.
+    </p>
+    <div class="jobs">
+      <div class="job">
+        <h3>Structure</h3>
+        <p>Cards, a tile row, 2-up pairing, a filter bar that fits — all derived from the section list the agent already emits.</p>
+        <p class="said">compileReport.js</p>
+      </div>
+      <div class="job">
+        <h3>Chart internals</h3>
+        <p>A validated palette written twice, a legend that follows available width, rotation that accounts for it, and the app's own type.</p>
+        <p class="said">buildFlintOption.js</p>
+      </div>
+      <div class="job">
+        <h3>Not reachable yet</h3>
+        <p>Deltas and sparklines are what the client corpus does best and what a one-scalar <code>kpi</code> section cannot express. Named, not promised.</p>
+        <p class="said">a spec change, not a polish change</p>
+      </div>
+    </div>
+    <p class="legend">
+      <span><span class="tag is-now">ships today</span> already in the compiler</span>
+      <span><span class="tag is-new">new</span> this design adds it</span>
+      <span><span class="tag is-bad">defect</span> measured on the current render</span>
+    </p>
+  </section>
+
+  <!-- ── PLATE 1 ─────────────────────────────────────────────────────── -->
+  <section class="plate" id="before">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 1</b> <span>/ai-reporting/report — as it renders now</span> <span class="tag is-bad">7810px of scroll</span></p>
+      <h2>Nine sections, no page</h2>
+      <p>
+        Traced from a rendered 9-section report in the demo app. Every callout below is a
+        measurement, not an impression. The whole report is one wrapping flex area — the
+        "rows" are wrap lines, and nothing is inside anything.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <span class="url">localhost:3000/ai-reporting/report?report_id=56a3f17e…</span>
+        </div>
+        <div class="m-page bare">
+          <p class="m-crumb">⌂ / Reports</p>
+          <div class="m-title">
+            <h3>Executive Performance Dashboard — Sales, Activities &amp; Workflows</h3>
+            <span class="acts">💬 Continue in chat &nbsp; ☆ &nbsp; ⋯</span>
+          </div>
+          <p class="m-sub">Comprehensive business analytics covering revenue performance, customer engagement, workflow operations, and team workload across all regions and channels.</p>
+          <p class="m-prov">Made by Johann Möller on 13 August 2026 · Last edited 13 August 2026 · Data as of 28 August 2026 at 14:08</p>
+
+          <!-- filters: the repeated scope notes -->
+          <div class="m-sec">
+            <div class="m-row two">
+              <div class="m-field">
+                <span class="lab">Region :</span>
+                <div class="m-input"><span>Select items</span><span>⌄</span></div>
+                <p class="m-scope" style="border:none;padding:0;margin:0">Also filters: Total Orders, Revenue by Region &amp; Channel, Monthly Revenue Trend by Category, Order Volume by Status, Regional Performance Metrics, Channel Performance Analysis, Category Performance Breakdown <span class="c b">1</span></p>
+              </div>
+              <div class="m-field">
+                <span class="lab">Category :</span>
+                <div class="m-input"><span>Select items</span><span>⌄</span></div>
+                <p class="m-scope" style="border:none;padding:0;margin:0">Also filters: Total Orders, Revenue by Region &amp; Channel, Monthly Revenue Trend by Category, Order Volume by Status, Regional Performance Metrics, Channel Performance Analysis, Category Performance Breakdown</p>
+              </div>
+              <div class="m-field">
+                <span class="lab">Sales Channel :</span>
+                <div class="m-input"><span>Select items</span><span>⌄</span></div>
+                <p class="m-scope" style="border:none;padding:0;margin:0">Also filters: Total Orders, Revenue by Region &amp; Channel, Monthly Revenue Trend by Category, Order Volume by Status, Regional Performance Metrics, Channel Performance Analysis, Category Performance Breakdown</p>
+              </div>
+              <div class="m-field">
+                <span class="lab">Order Date Range :</span>
+                <div class="m-input"><span>Start date &nbsp;~&nbsp; End date</span><span>🗓</span></div>
+                <p class="m-scope" style="border:none;padding:0;margin:0">Also filters: Total Orders, Revenue by Region &amp; Channel, Monthly Revenue Trend by Category, Order Volume by Status, Regional Performance Metrics, Channel Performance Analysis, Category Performance Breakdown</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI row, misaligned -->
+          <div class="m-sec">
+            <div class="m-row four" style="align-items:start">
+              <div style="display:grid;gap:0">
+                <span style="font-size:11px;color:var(--muted)">Total Revenue</span>
+                <span style="font-size:23px;font-weight:500;font-variant-numeric:tabular-nums">$ 44,690.00</span>
+              </div>
+              <div style="display:grid;gap:0;padding-top:16px">
+                <span style="font-size:11px;color:var(--muted)">Total Orders</span>
+                <span style="font-size:23px;font-weight:500;font-variant-numeric:tabular-nums">90</span>
+              </div>
+              <div style="display:grid;gap:0;padding-top:16px">
+                <span style="font-size:11px;color:var(--muted)">Open Tasks</span>
+                <span style="font-size:23px;font-weight:500;font-variant-numeric:tabular-nums">22</span>
+              </div>
+              <div style="display:grid;gap:0;padding-top:16px">
+                <span style="font-size:11px;color:var(--muted)">Workflow Completion Rate <span class="c b">2</span></span>
+                <span style="font-size:23px;font-weight:500;font-variant-numeric:tabular-nums">25.0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- full-width chart with right-gutter legend -->
+          <div class="m-sec">
+            <div class="m-head"><h4>Revenue by Region &amp; Channel <span class="c b">3</span></h4><span class="dl">⤓</span></div>
+            <div class="ch" style="display:grid;grid-template-columns:1fr 150px;gap:14px;align-items:start">
+              <div class="ch-plot">
+                <div class="ch-yax" style="height:150px"><span>15,000</span><span>9,000</span><span>3,000</span><span>0</span></div>
+                <div class="ch-area">
+                  <div class="ch-bars" style="height:150px">
+                    <div class="ch-grp"><span style="background:var(--o3);height:38%"></span><span style="background:var(--o2);height:26%"></span><span style="background:var(--o1);height:36%"></span></div>
+                    <div class="ch-grp"><span style="background:var(--o3);height:62%"></span><span style="background:var(--o1);height:38%"></span></div>
+                    <div class="ch-grp"><span style="background:var(--o3);height:32%"></span><span style="background:var(--o2);height:47%"></span></div>
+                    <div class="ch-grp"><span style="background:var(--o2);height:36%"></span><span style="background:var(--o1);height:41%"></span></div>
+                  </div>
+                  <div class="ch-xax"><span>North</span><span>East</span><span>South</span><span>West</span></div>
+                  <p class="ch-name">Region</p>
+                </div>
+              </div>
+              <div class="ch-legend right">
+                <span><i style="background:var(--o1)"></i>Online</span>
+                <span><i style="background:var(--o2)"></i>Retail</span>
+                <span><i style="background:var(--o3)"></i>Partner</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- pie in a huge canvas -->
+          <div class="m-sec">
+            <div class="m-head"><h4>Order Volume by Status <span class="c b">4</span></h4><span class="dl">⤓</span></div>
+            <div style="height:190px;display:grid;place-items:center">
+              <div style="width:150px;height:150px;border-radius:50%;background:conic-gradient(var(--o1) 0 25%, var(--o6) 25% 50%, var(--o3) 50% 75%, var(--o4) 75% 100%)"></div>
+            </div>
+          </div>
+
+          <!-- under-filled table -->
+          <div class="m-sec">
+            <div class="m-head"><h4>Top Assignees by Workload <span class="c b">5</span></h4><span class="dl">⤓</span></div>
+            <div style="border:1px solid var(--rule);border-radius:2px;overflow:hidden">
+              <table class="m-tbl" style="width:38%">
+                <tr><th>Assignee</th><th>Open Tasks</th></tr>
+                <tr><td>Eve Diaz</td><td>4</td></tr>
+                <tr><td>Cara Patel</td><td>4</td></tr>
+                <tr><td>Ava Smith</td><td>4</td></tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- clipped table -->
+          <div class="m-sec">
+            <div class="m-head"><h4>Channel Performance Analysis <span class="c b">6</span></h4><span class="dl">⤓</span></div>
+            <div style="border:1px solid var(--rule);border-radius:2px;overflow:hidden">
+              <table class="m-tbl">
+                <tr><th>Channel</th><th>Total Revenue</th><th>Orders</th><th>Units</th><th>Avg Order Value</th><th style="opacity:.45">A</th></tr>
+                <tr><td>online</td><td>$15,370.00</td><td>30</td><td>160</td><td>$512.33</td><td style="opacity:.45">…</td></tr>
+                <tr><td>partner</td><td>$14,740.00</td><td>30</td><td>160</td><td>$491.33</td><td style="opacity:.45">…</td></tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- rotated labels -->
+          <div class="m-sec">
+            <div class="m-head"><h4>Workflow Actions by Type &amp; Stage <span class="c b">7</span></h4><span class="dl">⤓</span></div>
+            <div class="ch" style="display:grid;grid-template-columns:1fr 150px;gap:14px;align-items:start">
+              <div class="ch-plot">
+                <div class="ch-yax" style="height:130px;padding-bottom:78px"><span>12</span><span>8</span><span>4</span><span>0</span></div>
+                <div class="ch-area">
+                  <div class="ch-bars" style="height:130px">
+                    <div class="ch-grp"><span style="background:var(--o4);height:33%"></span><span style="background:var(--o2);height:25%"></span><span style="background:var(--o1);height:33%"></span></div>
+                    <div class="ch-grp"><span style="background:var(--o4);height:25%"></span><span style="background:var(--o2);height:25%"></span><span style="background:var(--o1);height:33%"></span></div>
+                    <div class="ch-grp"><span style="background:var(--o4);height:33%"></span><span style="background:var(--o2);height:33%"></span><span style="background:var(--o1);height:25%"></span></div>
+                  </div>
+                  <div class="ch-xax rot"><span>onboarding</span><span>renewal</span><span>support</span></div>
+                  <p class="ch-name" style="margin-top:-46px">Workflow Type</p>
+                </div>
+              </div>
+              <div class="ch-legend right">
+                <span><i style="background:var(--o1)"></i>Action Required</span>
+                <span><i style="background:var(--o6)"></i>In Progress</span>
+                <span><i style="background:var(--o3)"></i>In Review</span>
+                <span><i style="background:var(--o4)"></i>Done</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- orphaned downloads -->
+          <div class="m-sec">
+            <div class="m-row four" style="gap:10px">
+              <span class="m-btn" style="background:#7c3aed14;border-color:#7c3aed55;color:#7c3aed">⤓ Download Sales Detail</span>
+              <span class="m-btn" style="background:#7c3aed14;border-color:#7c3aed55;color:#7c3aed">⤓ Download Activity Log</span>
+              <span class="m-btn" style="background:#7c3aed14;border-color:#7c3aed55;color:#7c3aed">⤓ Download Workflow Actions</span>
+              <span class="m-btn" style="background:#7c3aed14;border-color:#7c3aed55;color:#7c3aed">⤓ Download Team Workload</span>
+            </div>
+            <div class="m-row four" style="gap:10px;margin-top:10px">
+              <span class="m-btn" style="background:#7c3aed14;border-color:#7c3aed55;color:#7c3aed">⤓ Download Regional Summary <span class="c b">8</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c b">1</span><span><b>Four filters, four near-identical grey paragraphs.</b> <code>filterControlBlock</code> puts every other bound section in the label's <code>extra</code>. Sound for one filter; at four × six sections it costs ~250px — more than any chart on the page.</span></li>
+      <li><span class="c b">2</span><span><b>No units, no comparison, no shared baseline.</b> <code>25.0</code> is a percentage. The four <code>Statistic</code> blocks self-size, so the tallest value pushes its own label ~16px above its neighbours' and the row reads as four fragments.</span></li>
+      <li><span class="c b">3</span><span><b>The legend owns a dead gutter.</b> Flint reserves <code>grid.right</code> for its vertical legend — measured 79–163px, sized to the longest series name. At full width that is fine; the problem is it is the <em>only</em> option today.</span></li>
+      <li><span class="c b">4</span><span><b>A 4-slice pie in 1100 × 400px.</b> Every chart and table is <code>span 24</code>. Nine sections × full width is 7810px of scroll for data that fits in a third of it.</span></li>
+      <li><span class="c b">5</span><span><b>Two columns in an 1100px table</b> — ~600px of blank white, because table width is not derived from column count.</span></li>
+      <li><span class="c b">6</span><span><b>…and a six-column table clipped mid-header.</b> Same rule, opposite failure. One <code>flex: 1</code> on <code>defaultColDef</code> fixes both.</span></li>
+      <li><span class="c b">7</span><span><b>Rotation ignores available width.</b> Flint's rule (read off its source): <code>rotate: 0</code> only at ≤ 4 categories <em>and</em> ≤ 8-char labels, else 90 — width is never consulted, so three ten-character labels with ~340px of room each get <code>rotate: 90</code>, byte-identical at 1100px and 520px canvas. It also inflates <code>grid.bottom</code> 61→91 and then collides with the axis title <code>nameGap: 25</code> puts beneath it.</span></li>
+      <li><span class="c b">8</span><span><b>Downloads stranded at the bottom,</b> 4 + 1 ragged, under no heading — a second download idiom in a report that already puts <code>⤓</code> in each section's head row.</span></li>
+    </ol>
+  </section>
+
+  <!-- ── PLATE 2 ─────────────────────────────────────────────────────── -->
+  <section class="plate" id="after">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 2</b> <span>the same report, same sections</span> <span class="tag is-new">target</span></p>
+      <h2>Same data, same section list, a page</h2>
+      <p>
+        Nothing here needs a new section type or a new agent capability — this is the
+        identical spec from Plate 1 run through the derivation rules. Cards give the
+        report figure and ground; pairing gives it back two thirds of its height.
+      </p>
+    </div>
+
+    <div class="scrollx">
+      <div class="frame">
+        <div class="frame-chrome">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <span class="url">localhost:3000/ai-reporting/report?report_id=56a3f17e…</span>
+        </div>
+        <div class="m-page">
+          <p class="m-crumb">⌂ / Reports</p>
+          <div class="m-title">
+            <h3>Executive Performance Dashboard <span class="c">1</span></h3>
+            <span class="acts">💬 Continue in chat &nbsp; ★ &nbsp; ⋯</span>
+          </div>
+          <p class="m-sub">Comprehensive business analytics covering revenue performance, customer engagement, workflow operations, and team workload across all regions and channels.</p>
+          <p class="m-prov">Made by Johann Möller on 13 Aug 2026 · Last edited 13 Aug 2026 · Data as of 28 Aug 2026, 14:08</p>
+
+          <!-- filter bar -->
+          <div class="m-sec">
+            <div class="m-filters">
+              <div class="m-fgrid">
+                <div class="m-field"><span class="lab">Region</span><div class="m-input"><span>All regions</span><span>⌄</span></div></div>
+                <div class="m-field"><span class="lab">Category</span><div class="m-input"><span>All categories</span><span>⌄</span></div></div>
+                <div class="m-field"><span class="lab">Sales channel</span><div class="m-input"><span>All channels</span><span>⌄</span></div></div>
+                <div class="m-field"><span class="lab">Order date</span><div class="m-input filled"><span>1 Jul – 28 Aug 2026</span><span>🗓</span></div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <p class="m-scope" style="flex:1;border:none;padding:0;margin:0">All four filters move every section below. <span class="c">2</span></p>
+                <span class="m-reset">⊘ Reset</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- tile row -->
+          <div class="m-sec">
+            <div class="m-row four">
+              <div class="m-tile"><span class="lab">Total revenue</span><span class="val">$44,690</span></div>
+              <div class="m-tile"><span class="lab">Total orders</span><span class="val">90</span></div>
+              <div class="m-tile"><span class="lab">Open tasks</span><span class="val">22</span></div>
+              <div class="m-tile"><span class="lab">Workflow completion</span><span class="val">25.0%<span class="c">3</span></span></div>
+            </div>
+          </div>
+
+          <!-- wide chart: temporal -->
+          <div class="m-sec">
+            <div class="m-head"><h4>Monthly revenue trend by category</h4><span class="dl">⤓</span></div>
+            <div class="m-card">
+              <div class="ch">
+                <div class="ch-legend">
+                  <span><i style="background:var(--v1)"></i>Electronics</span>
+                  <span><i style="background:var(--v2)"></i>Clothing</span>
+                  <span><i style="background:var(--v3)"></i>Home</span>
+                  <span><i style="background:var(--v4)"></i>Toys</span>
+                  <span><i style="background:var(--v5)"></i>Sports</span>
+                </div>
+                <div class="ch-plot">
+                  <div class="ch-yax" style="height:132px"><span>3,000</span><span>2,000</span><span>1,000</span><span>0</span></div>
+                  <div class="ch-area">
+                    <div class="ch-bars" style="height:132px;padding:0">
+                      <svg viewBox="0 0 600 132" preserveAspectRatio="none" style="width:100%;height:132px;display:block" aria-label="Monthly revenue trend by category">
+                        <polyline fill="none" stroke="var(--v1)" stroke-width="2" vector-effect="non-scaling-stroke" points="10,96 76,42 142,58 208,88 274,30 340,74 406,52 472,60 538,44 592,38"/>
+                        <polyline fill="none" stroke="var(--v2)" stroke-width="2" vector-effect="non-scaling-stroke" points="10,110 76,84 142,96 208,66 274,102 340,78 406,92 472,70 538,86 592,74"/>
+                        <polyline fill="none" stroke="var(--v3)" stroke-width="2" vector-effect="non-scaling-stroke" points="10,74 76,102 142,66 208,110 274,58 340,96 406,64 472,104 538,62 592,90"/>
+                        <polyline fill="none" stroke="var(--v4)" stroke-width="2" vector-effect="non-scaling-stroke" points="10,58 76,66 142,110 208,44 274,84 340,50 406,106 472,48 538,100 592,56"/>
+                        <polyline fill="none" stroke="var(--v5)" stroke-width="2" vector-effect="non-scaling-stroke" points="10,120 76,112 142,80 208,100 274,70 340,112 406,78 472,94 538,74 592,108"/>
+                      </svg>
+                    </div>
+                    <div class="ch-xax"><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2-up: narrow bar + pie -->
+          <div class="m-row two m-sec">
+            <div>
+              <div class="m-head"><h4>Revenue by region &amp; channel <span class="c">4</span></h4><span class="dl">⤓</span></div>
+              <div class="m-card">
+                <div class="ch">
+                  <div class="ch-legend">
+                    <span><i style="background:var(--v1)"></i>Online</span>
+                    <span><i style="background:var(--v2)"></i>Retail</span>
+                    <span><i style="background:var(--v3)"></i>Partner</span>
+                  </div>
+                  <div class="ch-plot">
+                    <div class="ch-yax" style="height:126px"><span>15k</span><span>9k</span><span>3k</span><span>0</span></div>
+                    <div class="ch-area">
+                      <div class="ch-bars" style="height:126px">
+                        <div class="ch-grp"><span style="background:var(--v3);height:36%"></span><span style="background:var(--v2);height:26%"></span><span style="background:var(--v1);height:34%"></span></div>
+                        <div class="ch-grp"><span style="background:var(--v3);height:58%"></span><span style="background:var(--v1);height:36%"></span></div>
+                        <div class="ch-grp"><span style="background:var(--v3);height:30%"></span><span style="background:var(--v2);height:45%"></span></div>
+                        <div class="ch-grp"><span style="background:var(--v2);height:34%"></span><span style="background:var(--v1);height:39%"></span></div>
+                      </div>
+                      <div class="ch-xax"><span>North</span><span>East</span><span>South</span><span>West</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="m-head"><h4>Order volume by status</h4><span class="dl">⤓</span></div>
+              <div class="m-card">
+                <div class="ch">
+                  <div class="ch-legend">
+                    <span><i style="background:var(--v1)"></i>Cancelled 25%</span>
+                    <span><i style="background:var(--v2)"></i>Paid 25%</span>
+                    <span><i style="background:var(--v3)"></i>Pending 25%</span>
+                    <span><i style="background:var(--v4)"></i>Shipped 25%</span>
+                  </div>
+                  <div style="height:126px;display:grid;place-items:center">
+                    <div style="width:122px;height:122px;border-radius:50%;background:conic-gradient(var(--v1) 0 25%, var(--v2) 25% 50%, var(--v3) 50% 75%, var(--v4) 75% 100%)"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- tables never pair: full width, flex-distributed columns -->
+          <div class="m-sec">
+            <div class="m-head"><h4>Top assignees by workload <span class="c">5</span></h4><span class="dl">⤓</span></div>
+            <div class="m-card pad0">
+              <table class="m-tbl">
+                <tr><th>Assignee</th><th>Open tasks</th></tr>
+                <tr><td>Eve Diaz</td><td>4</td></tr>
+                <tr><td>Cara Patel</td><td>4</td></tr>
+                <tr><td>Ava Smith</td><td>4</td></tr>
+                <tr><td>Ben Jones</td><td>4</td></tr>
+              </table>
+            </div>
+          </div>
+          <div class="m-sec">
+            <div class="m-head"><h4>Workflow type summary</h4><span class="dl">⤓</span></div>
+            <div class="m-card pad0">
+              <table class="m-tbl">
+                <tr><th>Type</th><th>Open</th><th>Done</th><th>Rate</th></tr>
+                <tr><td>onboarding</td><td>7</td><td>4</td><td>26.7%</td></tr>
+                <tr><td>renewal</td><td>8</td><td>3</td><td>20.0%</td></tr>
+                <tr><td>support</td><td>7</td><td>4</td><td>28.6%</td></tr>
+                <tr><td>—</td><td>22</td><td>11</td><td>25.0%</td></tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- wide table -->
+          <div class="m-sec">
+            <div class="m-head"><h4>Channel performance analysis</h4><span class="dl">⤓</span></div>
+            <div class="m-card pad0">
+              <table class="m-tbl">
+                <tr><th>Channel</th><th>Total revenue</th><th>Orders</th><th>Units</th><th>Avg order value</th><th>Avg units / order</th></tr>
+                <tr><td>online</td><td>$15,370.00</td><td>30</td><td>160</td><td>$512.33</td><td>5.33</td></tr>
+                <tr><td>partner</td><td>$14,740.00</td><td>30</td><td>160</td><td>$491.33</td><td>5.33</td></tr>
+                <tr><td>retail</td><td>$14,580.00</td><td>30</td><td>170</td><td>$486.00</td><td>5.67</td></tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- narrow bar, unpaired → promoted to full width, vertical legend -->
+          <div class="m-sec">
+            <div class="m-head"><h4>Workflow actions by type &amp; stage <span class="c">6</span></h4><span class="dl">⤓</span></div>
+            <div class="m-card">
+              <div class="ch" style="display:grid;grid-template-columns:1fr 160px;gap:16px;align-items:start">
+                <div class="ch-plot">
+                  <div class="ch-yax" style="height:132px"><span>12</span><span>8</span><span>4</span><span>0</span></div>
+                  <div class="ch-area">
+                    <div class="ch-bars" style="height:132px">
+                      <div class="ch-grp"><span style="background:var(--v4);height:33%"></span><span style="background:var(--v3);height:25%"></span><span style="background:var(--v1);height:33%"></span></div>
+                      <div class="ch-grp"><span style="background:var(--v4);height:25%"></span><span style="background:var(--v3);height:25%"></span><span style="background:var(--v1);height:33%"></span></div>
+                      <div class="ch-grp"><span style="background:var(--v4);height:33%"></span><span style="background:var(--v3);height:33%"></span><span style="background:var(--v1);height:25%"></span></div>
+                    </div>
+                    <div class="ch-xax"><span>onboarding</span><span>renewal</span><span>support</span></div>
+                    <p class="ch-name">Workflow type</p>
+                  </div>
+                </div>
+                <div class="ch-legend right">
+                  <span><i style="background:var(--v1)"></i>Action Required</span>
+                  <span><i style="background:var(--v2)"></i>In Progress</span>
+                  <span><i style="background:var(--v3)"></i>In Review</span>
+                  <span><i style="background:var(--v4)"></i>Done <span class="c">7</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- downloads card -->
+          <div class="m-sec">
+            <div class="m-head"><h4>Downloads <span class="c">8</span></h4></div>
+            <div class="m-card">
+              <div class="m-row three" style="gap:10px">
+                <span class="m-btn">⤓ Sales detail</span>
+                <span class="m-btn">⤓ Activity log</span>
+                <span class="m-btn">⤓ Workflow actions</span>
+              </div>
+              <div class="m-row two" style="gap:10px;margin-top:10px">
+                <span class="m-btn">⤓ Team workload</span>
+                <span class="m-btn">⤓ Regional summary</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c">1</span><span><b>The header is already right</b> — title, description, provenance, ★, ⋯, Continue in chat. Nothing in this design touches it. The long title is the agent's, not the renderer's.</span></li>
+      <li><span class="c">2</span><span><b>One scope line, not four.</b> When every filter in a run drives the same sections, say it once. When they differ, keep the note only on the controls that actually differ — plus a Reset, which 4 of 7 client reports carry and the module has no equivalent of.</span></li>
+      <li><span class="c">3</span><span><b>Tiles are cards, so the row is a row.</b> Equal height comes from the card, not from <code>Statistic</code>'s self-sizing. The unit comes from the contract <code>format</code> the section already carries.</span></li>
+      <li><span class="c">4</span><span><b>Narrow charts pair 2-up</b> at <code>span 12</code> — each paired section a <code>Box</code> holding its own head row and card. "Narrow" is decided from data the compiler already holds: no temporal axis, ≤ 8 categories, ≤ 4 series. A pie is never wide.</span></li>
+      <li><span class="c">5</span><span><b>Tables never pair — always full width.</b> A half-width AgGrid is a horizontal-scroll trap; instead <code>flex: 1</code> spends the row on the columns, so no blank white and no clipping.</span></li>
+      <li><span class="c">6</span><span><b>A trailing unpaired narrow section is promoted to full width.</b> A half-width card with twelve empty columns beside it reads as a rendering fault, which is worse than a slightly over-wide chart.</span></li>
+      <li><span class="c">7</span><span><b>Legend orientation follows available width.</b> At <code>span 12</code>, horizontal above the plot. At <code>span 24</code>, Flint's vertical right legend is <em>correct</em> — the gutter now buys something.</span></li>
+      <li><span class="c">8</span><span><b>A download run becomes one titled card.</b> The <code>⤓</code>-in-the-head-row stays the only per-section export idiom a reader has to learn.</span></li>
+    </ol>
+  </section>
+
+  <!-- ── PLATE 3 ─────────────────────────────────────────────────────── -->
+  <section class="plate" id="derive">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 3</b> <span>section list → layout</span> <span class="tag is-new">the whole mechanism</span></p>
+      <h2>Layout is a function, not a choice</h2>
+      <p>
+        The agent emits an ordered list of typed sections and contributes no layout — that
+        stays true. There is no archetype field, no <code>layout:</code> key, no density
+        toggle. A <em>run</em> is a maximal sequence of adjacent same-type sections;
+        <code>compileReport</code> already walks sections in order, so runs are the only new
+        concept. Spans are on the existing 24-column grid.
+      </p>
+    </div>
+
+    <div class="rules">
+      <table>
+        <tr>
+          <th>Section run</th>
+          <th>Compiles to</th>
+          <th style="width:190px">Grid</th>
+        </tr>
+        <tr>
+          <td>kpi × 4</td>
+          <td>One tile row — spans from <code>filterSpans(n)</code>, so every wrap line is exactly full. Reused, not reinvented: it already solves balanced rows and whole-number columns.</td>
+          <td>
+            <span class="span">6 · 6 · 6 · 6</span>
+            <div class="ribbon"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </td>
+        </tr>
+        <tr>
+          <td>kpi × 5</td>
+          <td>Balanced 3 + 2, never greedy 3 + 1 + ragged — a ragged trailing line lets the next section flow into the leftover columns.</td>
+          <td><span class="span">8·8·8 / 12·12</span></td>
+        </tr>
+        <tr>
+          <td>filter × n</td>
+          <td>Unchanged grouping (≤ 3 per row) plus a Reset and one shared scope line.</td>
+          <td><span class="span">24 / n</span></td>
+        </tr>
+        <tr>
+          <td>chart — needs width</td>
+          <td>Full-width card. <b>Needs width</b> = temporal x-axis, <b>or</b> &gt; 8 categories, <b>or</b> &gt; 4 series.</td>
+          <td><span class="span">24</span></td>
+        </tr>
+        <tr>
+          <td>chart — narrow</td>
+          <td>Half-width card, paired 2-up with the next consecutive narrow chart. A <code>pie</code> is never wide.</td>
+          <td><span class="span">12 + 12</span></td>
+        </tr>
+        <tr>
+          <td>table</td>
+          <td>Always a full-width card, <code>flex: 1</code> columns — tables never pair; a half-width AgGrid is a horizontal-scroll trap.</td>
+          <td><span class="span">24</span></td>
+        </tr>
+        <tr>
+          <td>trailing unpaired</td>
+          <td>Promoted to full width rather than left beside a hole.</td>
+          <td><span class="span">12 → 24</span></td>
+        </tr>
+        <tr>
+          <td>download × n</td>
+          <td>One "Downloads" card; buttons inside at <code>filterSpans(n)</code>.</td>
+          <td><span class="span">24</span></td>
+        </tr>
+        <tr>
+          <td>markdown</td>
+          <td>Full width, <b>no card</b> — prose narrates between cards rather than sitting in one.</td>
+          <td><span class="span">24</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c n">1</span><span><b>Why not archetypes.</b> Each adds a decision the agent or the saver has to make correctly, and three layouts is three code paths owed forever for a benefit nobody has asked for. The derivation is mechanical, so it cannot drift per report.</span></li>
+      <li><span class="c n">2</span><span><b>Why the head row stays outside the card.</b> 6 of 7 client reports put the heading above the card. Full-width sections keep the flat span-20/span-4 head row; a <em>paired</em> section wraps its head row and card in a span-12 <code>Box</code> (child spans re-base inside it), since a flat head row is a full wrap line and would leave each paired card beside a twelve-column hole.</span></li>
+      <li><span class="c n">3</span><span><b>The risky line.</b> <code>Card</code> and <code>Box</code> must join <code>report.yaml</code>'s <code>Dynamic</code> <code>types.blocks</code> declaration — it forces the client bundling; the runtime check is bundle membership, so an app using <code>Card</code> elsewhere masks a miss and only the compile-time types test catches it. One missed type blanks the <em>whole</em> report to the fallback slot rather than one section.</span></li>
+    </ol>
+  </section>
+
+  <!-- ── PLATE 4 ─────────────────────────────────────────────────────── -->
+  <section class="plate" id="anatomy">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 4</b> <span>section anatomy</span></p>
+      <h2>What one section is made of</h2>
+      <p>
+        The head row is flat and outside; the card is the first real nesting in compiled
+        output. Everything else about a section is unchanged.
+      </p>
+    </div>
+
+    <div class="pair">
+      <div class="pane is-bad">
+        <h5>Today — flat siblings <span class="tag is-bad">defect</span></h5>
+        <div style="background:var(--surface-2);border:1px dashed var(--rule);border-radius:5px;padding:12px;display:grid;gap:8px">
+          <div style="display:flex;gap:8px;align-items:baseline">
+            <span style="font-size:13px;font-weight:600;flex:1">Revenue by region</span>
+            <span style="font-size:11px;color:var(--muted)">⤓</span>
+          </div>
+          <div style="height:64px;background:var(--surface);border:1px dashed var(--rule)"></div>
+        </div>
+        <ul class="verdict">
+          <li><span class="fail">Title</span><span><code>span 20</code> — a sibling</span></li>
+          <li><span class="fail">Button</span><span><code>span 4</code> — a sibling</span></li>
+          <li><span class="fail">EChart</span><span><code>span 24</code> — a sibling</span></li>
+        </ul>
+        <p style="margin:0;font-size:12.5px;color:var(--ink-2)">No container, so nothing binds the heading to its chart or separates one section from the next.</p>
+      </div>
+
+      <div class="pane is-good">
+        <h5>Target — head row + card <span class="tag is-new">new</span></h5>
+        <div style="background:var(--surface-2);border-radius:5px;padding:12px;display:grid;gap:7px">
+          <div class="m-head" style="margin:0">
+            <h4>Revenue by region</h4><span class="dl">⤓</span>
+          </div>
+          <div class="m-card" style="padding:10px">
+            <div style="height:58px;background:linear-gradient(to top,var(--v1) 0 32%,transparent 32%),linear-gradient(to top,var(--grid-line) 0 100%);border-bottom:1px solid var(--axis)"></div>
+          </div>
+        </div>
+        <ul class="verdict">
+          <li><span class="pass">Title</span><span><code>span 20</code> — unchanged</span></li>
+          <li><span class="pass">Button</span><span><code>span 4</code> — unchanged</span></li>
+          <li><span class="pass">Card</span><span><code>span 24</code> — <b>contains</b> the EChart</span></li>
+        </ul>
+        <p style="margin:0;font-size:12.5px;color:var(--ink-2)">The card is the figure; the page plane is the ground. This is the single largest difference from all seven client reports.</p>
+      </div>
+    </div>
+
+    <div class="pair" style="margin-top:4px">
+      <div class="pane">
+        <h5>KPI tile — what it can carry</h5>
+        <div class="m-row two" style="gap:10px">
+          <div class="m-tile"><span class="lab">Total revenue</span><span class="val">$44,690</span></div>
+          <div class="m-tile"><span class="lab">Workflow completion</span><span class="val">25.0%</span></div>
+        </div>
+        <p style="margin:0;font-size:12.5px;color:var(--ink-2)">
+          <b>Label → value.</b> Equal height from the card; unit from the contract
+          <code>format</code>; <code>tabular-nums</code> so a row of tiles lines up.
+        </p>
+      </div>
+      <div class="pane is-bad">
+        <h5>KPI tile — what it cannot <span class="tag is-bad">out of scope</span></h5>
+        <div class="m-row two" style="gap:10px;opacity:.4">
+          <div class="m-tile">
+            <span class="lab">Total revenue</span><span class="val">$44,690</span>
+            <span style="font-size:11px;color:var(--accent-ink)">▼ 45% vs Jul</span>
+          </div>
+          <div class="m-tile">
+            <span class="lab">Total orders</span><span class="val">90</span>
+            <svg viewBox="0 0 80 20" style="width:100%;height:18px"><polyline fill="none" stroke="currentColor" stroke-width="1.5" points="2,15 14,9 26,12 38,5 50,10 62,4 78,7"/></svg>
+          </div>
+        </div>
+        <p style="margin:0;font-size:12.5px;color:var(--ink-2)">
+          A delta needs a second resolved value for a shifted window; a sparkline needs a
+          series. A <code>kpi</code> section is <b>one query returning one scalar</b> — neither
+          is expressible in the spec, <code>querySections</code>, or the resolve path.
+          <b>A spec change, not a polish change.</b>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PLATE 5 ─────────────────────────────────────────────────────── -->
+  <section class="plate" id="charts">
+    <div class="plate-head">
+      <p class="kicker"><b>Plate 5</b> <span>buildFlintOption — post-assembly rewrite</span> <span class="tag is-new">new</span></p>
+      <h2>The palette is computable, so it was computed</h2>
+      <p>
+        <code>buildFlintOption</code> already post-processes Flint's output — it strips
+        private keys, overrides <code>barWidth</code>, moves the legend and pins pie
+        geometry. The rewrite point exists; nothing new has to be invented.
+      </p>
+    </div>
+
+    <div class="pair">
+      <div class="pane is-bad">
+        <h5>Stock ECharts — what Flint ships <span class="tag is-bad">fails</span></h5>
+        <div class="sw">
+          <i style="background:var(--o1)"></i><i style="background:var(--o2)"></i>
+          <i style="background:var(--o3)"></i><i style="background:var(--o4)"></i>
+          <i style="background:var(--o5)"></i><i style="background:var(--o6)"></i>
+          <i style="background:var(--o7)"></i><i style="background:var(--o8)"></i>
+        </div>
+        <ul class="verdict">
+          <li><span class="fail">FAIL</span><span>Lightness band — <code>#91cc75</code> 0.784, <code>#fac858</code> 0.857</span></li>
+          <li><span class="fail">FAIL</span><span>Chroma floor — <code>#73c0de</code> reads grey</span></li>
+          <li><span class="fail">FAIL</span><span>CVD separation — worst adjacent ΔE <b>4.0</b> (protan)</span></li>
+          <li><span class="fail">FAIL</span><span>Normal-vision floor — ΔE <b>13.9</b>, below the 15 floor</span></li>
+          <li><span class="warn">WARN</span><span>Contrast — 4 of 8 below 3:1</span></li>
+        </ul>
+        <p style="margin:0;font-size:12.5px;color:var(--ink-2)">
+          The normal-vision ΔE is the damning one: <b>slots 2 and 3 are hard to tell apart
+          with full colour vision</b>, before CVD is considered.
+        </p>
+      </div>
+
+      <div class="pane is-good">
+        <h5>Reference categorical palette <span class="tag is-now">all checks pass</span></h5>
+        <div class="sw">
+          <i style="background:var(--v1)"></i><i style="background:var(--v2)"></i>
+          <i style="background:var(--v3)"></i><i style="background:var(--v4)"></i>
+          <i style="background:var(--v5)"></i><i style="background:var(--v6)"></i>
+          <i style="background:var(--v7)"></i><i style="background:var(--v8)"></i>
+        </div>
+        <ul class="verdict">
+          <li><span class="pass">PASS</span><span>Lightness band — all 8 in band</span></li>
+          <li><span class="pass">PASS</span><span>Chroma floor — all 8 ≥ 0.1</span></li>
+          <li><span class="pass">PASS</span><span>CVD separation — worst adjacent ΔE <b>9.1</b></span></li>
+          <li><span class="pass">PASS</span><span>Normal-vision floor — worst adjacent ΔE <b>19.6</b></span></li>
+          <li><span class="warn">WARN</span><span>Contrast — 3 below 3:1, <b>relief discharged</b></span></li>
+        </ul>
+        <p style="margin:0;font-size:12.5px;color:var(--ink-2)">
+          Validated against this repo's real surfaces — <code>#ffffff</code> light,
+          <code>#141414</code> dark — not the skill's defaults. Dark passes contrast too.
+          The light WARN obligates visible labels or a table view; a compiled report has
+          both (a legend on every multi-series chart, a <code>⤓</code> on every section).
+        </p>
+      </div>
+    </div>
+
+    <ol class="notes">
+      <li><span class="c n">1</span><span><b>Two writes, not one.</b> Flint declares the palette as <code>option.color</code> <em>and</em> as a concrete hex on each <code>series[i].itemStyle.color</code> — and the per-series value wins on bar and line. Setting <code>option.color</code> alone is a silent no-op there. Pie is the exception: no per-slice colour, so <code>option.color</code> drives it.</span></li>
+      <li><span class="c n">2</span><span><b>Assert it.</b> A test should check no stock hex survives anywhere in the option tree, on all three chart kinds — this is the kind of half-fix that looks right in a diff and is wrong on screen.</span></li>
+      <li><span class="c n">3</span><span><b>Colour identity is report-scoped.</b> Today hues come from series index within one chart, so <code>Done</code> is red in one section and green two sections later. Slots assign from the union of multi-series names <em>and</em> pie slice names, first-appearance order — "colour follows the entity, never its rank". Single-series bar/line charts take slot 1 and stay out of the union; a capped pie <code>Other</code> is a reserved neutral, never a categorical hue; past 8 union names the overflow assigns per chart — never cycle, never fold.</span></li>
+      <li><span class="c n">4</span><span><b>Rotation gets the width Flint ignores.</b> Compute available px per category from the plot width the span actually gives, and step 0 → 45 → 90. Flint only emits 0 or 90; 45 is the missing middle.</span></li>
+      <li><span class="c n">5</span><span><b>Type joins the app — via a shared theme object.</b> One file (<code>defaults/chart_theme.yaml</code>) set as <code>properties.theme</code> on all three <code>EChart</code> sites carries what Flint leaves unset: <code>textStyle</code> (undefined today), <code>axisLabel.fontSize</code> 10 → 12, axis chrome, tooltip and legend text. A theme merges <em>under</em> the option, so it can carry type — never the palette.</span></li>
+      <li><span class="c n">6</span><span><b>Pie slices cap at 6 + Other.</b> The corpus's worst failure is two client pies with ~20 slices each, leader labels overlapping into an unreadable mat.</span></li>
+      <li><span class="c n">7</span><span><b>The chat panel gets this for free</b> — it shares <code>buildFlintOption</code> and the theme object (which also reaches the expand modal, a surface <code>compileReport</code> never touches), and its 420px panel benefits most from the rotation and legend fixes. Its layout is not touched. One accepted consequence: chat parts persist their compiled option, so old chat snapshots keep the palette of their day.</span></li>
+      <li><span class="c n">8</span><span><b>Rejected: dual y-axes,</b> which 3 corpus charts use. It is the named #1 chart mistake; <code>CHART_TYPES</code> cannot express it and must not learn to.</span></li>
+    </ol>
+  </section>
+
+  <!-- ── ASKS ────────────────────────────────────────────────────────── -->
+  <section class="impl" id="impl">
+    <h2>What this asks of the module</h2>
+    <div class="rules">
+      <table>
+        <tr><th>Change</th><th>Where</th><th>Notes</th></tr>
+        <tr>
+          <td>Palette, mark styling, legend, rotation, pie cap</td>
+          <td><code>buildFlintOption.js</code></td>
+          <td>Self-contained, testable without the block layer, and it improves the chat panel on its own. Start here.</td>
+        </tr>
+        <tr>
+          <td>Chart typography &amp; axis chrome</td>
+          <td><code>defaults/chart_theme.yaml</code> + 3 <code>EChart</code> sites</td>
+          <td>A theme merges <em>under</em> the option — it can never recolor Flint's pinned series, and it reaches the chat card and expand modal, which <code>compileReport</code> never touches.</td>
+        </tr>
+        <tr>
+          <td>Report-scoped colour identity</td>
+          <td><code>buildFlintOption.js</code>, <code>compileReport.js</code></td>
+          <td>Needs a report-wide pass over series names before per-section assembly.</td>
+        </tr>
+        <tr>
+          <td>Section cards</td>
+          <td><code>compileReport.js</code>, <code>pages/report.yaml</code></td>
+          <td>The risky structural change — first nesting in compiled output, and the <code>Dynamic</code> <code>types.blocks</code> allowlist. Land alone.</td>
+        </tr>
+        <tr>
+          <td>Runs, pairing, spans</td>
+          <td><code>compileReport.js</code></td>
+          <td>On top of cards. Reuses <code>filterSpans</code>; <code>withTopGap</code>'s wrap-line arithmetic has to keep holding.</td>
+        </tr>
+        <tr>
+          <td>Filter scope line + Reset, downloads card, table <code>flex</code></td>
+          <td><code>compileReport.js</code></td>
+          <td>Independent of each other; each fixes one measured defect.</td>
+        </tr>
+        <tr>
+          <td>Demo consumer + docs</td>
+          <td><code>apps/demo/</code>, <code>docs/ai-reporting/</code></td>
+          <td>A report hitting every rule: a paired narrow pair, a wide temporal chart, a capped pie, a 6-column table, a download run. Docs follow the implementation.</td>
+        </tr>
+      </table>
+    </div>
+
+    <h2 style="margin-top:26px;font-size:22px">The acceptance bar</h2>
+    <div class="rules">
+      <table>
+        <tr><th style="width:34px">#</th><th>Test</th><th style="width:150px">Gate</th></tr>
+        <tr><td>1</td><td><code>validate_palette.js</code> passes both modes against <code>#ffffff</code> / <code>#141414</code></td><td><span class="tag is-now">unit</span></td></tr>
+        <tr><td>2</td><td>No stock ECharts hex survives in any assembled option — bar, line <em>and</em> pie</td><td><span class="tag is-now">unit</span></td></tr>
+        <tr><td>3</td><td>The demo's 9-section report drops from <b>7810px</b> to under ~4000px, nothing smaller than its data needs</td><td><span class="tag is-new">dev-test</span></td></tr>
+        <tr><td>4</td><td>Zero axis-label ↔ axis-title collisions; zero clipped or under-filled table columns</td><td><span class="tag is-new">dev-test</span></td></tr>
+        <tr><td>5</td><td>A series or slice name in two sections has the same hue in both; a capped <code>Other</code> slice is neutral</td><td><span class="tag is-new">dev-test</span></td></tr>
+        <tr><td>6</td><td>Side-by-side against Plate 2, section by section</td><td><span class="tag is-new">review</span></td></tr>
+        <tr><td>7</td><td><code>ldf:b</code> clean and the report still resolves — a missed <code>types</code> entry blanks the whole report</td><td><span class="tag is-now">build</span></td></tr>
+      </table>
+    </div>
+
+    <div class="foot">
+      <span>designs/ai-reporting/follow-ups/report-visual-polish · design.md · findings.md · wireframes.html · probe.mjs</span>
+      <span>Evidence: a rendered 9-section demo report · 7 manually-built client reports read for pattern · flint-chart@0.5.0 probes · validate_palette.js</span>
+      <span>Chrome tokens continue designs/ai-reporting/ux/wireframes.html. Series tokens are the palette this design adopts, shown in both modes. This deck is the acceptance target; the wireframes/ canvas boards are exploratory context.</span>
+    </div>
+  </section>
+
+</div>

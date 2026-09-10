@@ -847,6 +847,14 @@ blocks:
                           - 300
                       option:
                         _state: charts.$.option
+                      theme:
+                        _if:
+                          test:
+                            _media: darkMode
+                          then:
+                            _ref: defaults/chart_theme_dark.yaml
+                          else:
+                            _ref: defaults/chart_theme_light.yaml
                   # The option is a snapshot of the turn that produced it — a
                   # reopened conversation shows those numbers, not today's — so the
                   # card dates itself. A leaf, so `visible:` is safe. Read through

@@ -1,0 +1,46 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Dashboard — KPI band + chart grid", "x": 0, "y": 0, "w": 1240, "h": 1720 },
+    { "file": "Narrative.dc.html", "title": "Narrative report — markdown-led", "x": 1360, "y": 0, "w": 980, "h": 2320 },
+    { "file": "Operations.dc.html", "title": "Dense operational view", "x": 2460, "y": 0, "w": 1240, "h": 1400 },
+    { "file": "ChartTheme.dc.html", "title": "Chart theme — compiled + themed", "x": 0, "y": 2560, "w": 1240, "h": 1340 }
+  ],
+  "annotations": [
+    {
+      "id": "deck-brief",
+      "x": 0,
+      "y": -430,
+      "w": 560,
+      "text": "Report visual polish — aspirational targets.\nThree report archetypes plus a chart-theme spec, all built from the same section vocabulary (kpi, chart, table, filter, markdown, download). Everything shown maps to a section the spec already has, except where a note says otherwise. Series palettes are CVD-validated against their surfaces (light and dark). Sample data is fictional."
+    },
+    {
+      "id": "note-dashboard",
+      "x": 660,
+      "y": -430,
+      "w": 480,
+      "text": "Dashboard: KPI band + chart grid.\nFilters dock in one row (max 3), the KPI band answers first, then a 7/5 chart row, a full-width trend, one table. Bars sort value-descending with direct value labels and rounded caps; the multi-series line carries a legend, end labels and a gradient area under the lead series. Proposed additions to today's renderer: side-by-side section widths (7/5 split), KPI delta captions, and KPI tile sparklines (each needs a small trend query) — all flagged for the design pass."
+    },
+    {
+      "id": "note-narrative",
+      "x": 1720,
+      "y": -430,
+      "w": 480,
+      "text": "Narrative report: markdown-led single column.\nA generate_report composition that reads like a document: serif prose with a drop cap, a hero KPI, figures sized to the text measure, numbered figure labels, and a compact table. Everything here exists in the contract today (markdown + kpi + chart + table + download) — the polish is measure, rhythm, and the centered paper surface."
+    },
+    {
+      "id": "note-operations",
+      "x": 2880,
+      "y": -430,
+      "w": 480,
+      "text": "Dense operational view: the table is the report.\nCompact header, filters, a divider-strip of six KPIs (not six cards), a small-multiples strip (same measure, per-panel scale, one hue), then a dense grid sorted by urgency. Amber ink is reserved for state: the overdue KPI and the 7-plus-day overdue counts (the column tint is aspirational — table cells render plain text today). Deal names carry medium weight so the eye lands on the entity first."
+    },
+    {
+      "id": "note-theme",
+      "x": 1340,
+      "y": 2560,
+      "w": 520,
+      "text": "Chart theme: where each styling decision lives.\nVerified against the real code: the Lowdefy EChart block accepts a full theme OBJECT (properties.theme — it calls echarts registerTheme per block), but ECharts merges a theme UNDER the option, and flint's compiled option pins the stock palette and per-series itemStyle.color. So: palette + mark styling land in buildFlintOption's existing post-pass (it already rewrites barWidth, pie radius, legend), and one shared theme object carries typography, axis chrome and tooltip styling for every EChart the module renders — report sections, chat cards, expand modal."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

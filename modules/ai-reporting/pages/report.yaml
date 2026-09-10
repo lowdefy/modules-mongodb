@@ -43,6 +43,13 @@ _ref:
             _module.endpointId: resolve-report
           types:
             blocks:
+              # Section containers. A kpi, chart or table section compiles into
+              # a Card carrying that section's span, and Box wraps sections that
+              # share a laid-out row. A container type missing from this list
+              # blanks the WHOLE report, not the one section inside it, so both
+              # are declared together.
+              - Card
+              - Box
               - Title
               - Paragraph
               - Statistic
@@ -78,6 +85,13 @@ _ref:
               - _state
               - _api
               - _if_none
+              # Every chart block carries both themes behind an `_if` on
+              # `_media: darkMode`, because the ink a chart needs depends on the
+              # card it is drawn on and only the browser knows which mode that
+              # is. Resolved per render, so toggling dark mode re-inks the
+              # charts with no re-resolve.
+              - _if
+              - _media
               # Drop reads the report id from the page URL (the same value
               # resolve-report loads the report from) for its remove-report-section
               # call and the re-navigation that refreshes the page.
