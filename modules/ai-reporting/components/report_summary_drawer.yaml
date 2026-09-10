@@ -31,6 +31,11 @@ properties:
   title: AI summary
   placement: right
   width: 520
+  # No mask: the summary refers to the charts and numbers beside it, so the
+  # reader must be able to see them at full contrast and scroll the report to
+  # the section a sentence names while the drawer stays open. A masked drawer
+  # also locks the page's scroll, which is exactly the movement this needs.
+  mask: false
 blocks:
   - id: summary_explainer
     type: Paragraph

@@ -39,4 +39,16 @@ test("the header's AI summary opens the drawer on its empty state", async ({
   await expect(drawer.getByText("Filters changed")).toBeHidden();
   await expect(drawer.getByText(/^Generated /)).toBeHidden();
   await expect(drawer.getByRole("button", { name: "Refresh" })).toBeHidden();
+
+  // No mask, and the page behind is not scroll-locked: the summary names the
+  // report's own sections, so the reader has to be able to see them and scroll
+  // to them while the drawer stays open.
+  await expect(page.locator(".ant-drawer-mask")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Summarize me" }),
+  ).toBeVisible();
+  const bodyOverflow = await page.evaluate(
+    () => getComputedStyle(document.body).overflow,
+  );
+  expect(bodyOverflow).not.toBe("hidden");
 });
