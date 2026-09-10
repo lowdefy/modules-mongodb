@@ -277,22 +277,16 @@ blocks:
                 method: setOpen
                 args:
                   - open: true
-          # Shared with the page's mount, which opens the conversation a
+          # Shared with the workspace's mount, which opens the conversation a
           # Continue-in-chat link names in the URL. Object form because the
           # shared action is a `try`/`catch` pair (see load_conversation.yaml);
           # the stop is this caller's own — the mount has no stream to abort.
           onSelect:
             try:
               _build.array.concat:
-                # A reply still streaming into the conversation being left would
-                # keep appending to the transcript after the id changed under it:
-                # AgentChat clears its messages on a conversationId change but
-                # does not abort the stream. So abort it before switching.
-                - - id: stop_stream
-                    type: CallMethod
-                    params:
-                      blockId: chat
-                      method: stop
+                # Abort a still-streaming reply before switching — see
+                # stop_stream.yaml, shared with New chat.
+                - _ref: pages/chat/actions/stop_stream.yaml
                 - _ref:
                     path: pages/chat/actions/load_conversation.yaml
                     key: try
