@@ -1,0 +1,118 @@
+# The ECharts theme shared by every chart surface: compiled report chart
+# blocks, the chat result card and its expand modal. ECharts merges a theme
+# UNDER the option, so this can only carry what Flint leaves unset —
+# typography and axis chrome. It must never carry a `color` palette or any
+# per-series styling: buildFlintOption pins those directly into the option,
+# where they win over anything here, so a palette added to this file would
+# compile and then silently do nothing.
+#
+# Every ink is a var because the app has a dark mode and a chart drawn on a
+# near-black card needs the inverse of the one drawn on white — `rgba(0,0,0,.65)`
+# on antd's dark card is 1.19:1, which is not a faint label but an absent one.
+# Instantiated by chart_theme_light.yaml and chart_theme_dark.yaml; nothing
+# refs this file directly.
+#
+#   ink   — text: axis labels, axis titles, legend entries, tooltip, and any
+#           text the option leaves uncoloured (a pie's slice labels)
+#   axis  — the axis line itself
+#   split — the grid lines across the plot
+backgroundColor: transparent
+# `color` here, not just a font family: ECharts falls back to this for text an
+# option colours nowhere else, which is what a pie's slice labels are — Flint
+# sizes and formats them but never inks them, so before this they took ECharts'
+# own near-black default and vanished on a dark card.
+textStyle:
+  fontFamily: &font -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+  color:
+    _var: ink
+categoryAxis:
+  axisLabel:
+    fontSize: 12
+    color:
+      _var: ink
+  axisLine:
+    lineStyle:
+      color:
+        _var: axis
+  splitLine:
+    lineStyle:
+      color:
+        _var: split
+  nameTextStyle:
+    fontFamily: *font
+    color:
+      _var: ink
+valueAxis:
+  axisLabel:
+    fontSize: 12
+    color:
+      _var: ink
+  axisLine:
+    lineStyle:
+      color:
+        _var: axis
+  splitLine:
+    lineStyle:
+      color:
+        _var: split
+  nameTextStyle:
+    fontFamily: *font
+    color:
+      _var: ink
+timeAxis:
+  axisLabel:
+    fontSize: 12
+    color:
+      _var: ink
+  axisLine:
+    lineStyle:
+      color:
+        _var: axis
+  splitLine:
+    lineStyle:
+      color:
+        _var: split
+  nameTextStyle:
+    fontFamily: *font
+    color:
+      _var: ink
+# A pie's slice labels need inking here, separately, because they are text
+# ATTACHED to the sector path — and for attached text ECharts deliberately
+# SKIPS the global textStyle above (label/labelStyle.js, the `isAttached`
+# branch: "text may be on a path"). What it falls back to is zrender's
+# auto-contrast for outside text, which reads the chart's own background:
+# `getOutsideFill` ends at a literal '#000', and `getOutsideStroke` composites
+# the background, which this theme sets `transparent` — alpha 0, so it
+# composites to white. Every slice label therefore drew black with a white
+# halo, on a light card and a dark one alike.
+#
+# An explicit fill is enough to switch the halo off (zrender only applies its
+# default stroke while the fill is also its own default), but `textBorderWidth`
+# says so outright rather than resting on that coupling.
+pie:
+  label:
+    color:
+      _var: ink
+    textBorderWidth: 0
+  # ECharts draws no gap between slices; a border in the colour of the card
+  # behind them is one. It has to be inked here rather than at assembly for the
+  # same reason the text does — the card is #ffffff or #1f1f1f depending on a
+  # mode only the browser knows. (A real angular gap via `padAngle` would need
+  # no colour at all, and was rejected: it insets each sector's straight edges,
+  # so a pie with no inner radius stops meeting at its centre and reads as
+  # skewed.) The Other slice's own itemStyle sets only `color`, so it keeps this
+  # border.
+  itemStyle:
+    borderWidth: 2
+    borderColor:
+      _var: surface
+legend:
+  textStyle:
+    fontFamily: *font
+    color:
+      _var: ink
+tooltip:
+  textStyle:
+    fontFamily: *font
+    color:
+      _var: ink

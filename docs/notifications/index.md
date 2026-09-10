@@ -26,7 +26,7 @@ Add `notifications` when an app needs an in-app notification bell and inbox. The
 # lowdefy.yaml
 modules:
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.36.0"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.38.0"
     vars:
       app_name: my-app
       send_routine:
@@ -34,6 +34,18 @@ modules:
 ```
 
 `app_name` is required. `send_routine` is an array of API routine steps that receives `{ event_ids }` in the payload — leave it empty to skip dispatch (notifications still write but nothing is sent).
+
+## Popup notifications (toasts)
+
+Any notification flagged `popup: true` is also surfaced as a dismissible toast card in a fixed-position stack, top-right of the viewport, over every page. The stack is mounted automatically by the `layout` page component (the `popup-notifications` and `popup-notifications-requests` exports), the same way the bell is wired.
+
+- **Opt in per notification.** Set `popup: true` on the document in your `send_routine`. Notifications left `popup: false` still appear in the bell and inbox but never toast. No migration is needed — apps that never set it see no toasts.
+- **Refresh.** Toasts are fetched on page mount/navigation (no sockets or polling), showing up to `popup_limit` (default 3) most-recent unread popups scoped to the current user and `app_name`.
+- **Acknowledge marks read.** Clicking **Acknowledge** sets `read: true`, so the toast, the inbox unread entry, and the bell count clear together.
+- **Optional deep-link button.** If the notification has a `links.button` (`{ pageId, urlQuery }`), the toast also shows a **View** button that navigates there via a `Link` action. Toasts without `links.button` show only Acknowledge.
+- **Disable per page.** Pass `hide_popup_notifications: true` to the `layout` page component to suppress the stack (independent of the bell's `hide_notifications`). The stack is also hidden on the notifications inbox (`all`) page.
+
+Toast icon and color come from the `enums.event_types.<event_type>` global (falling back to a bell icon), the same lookup the inbox uses.
 
 ## Deep-link and file-download pages
 
