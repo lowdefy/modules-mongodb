@@ -2449,7 +2449,7 @@ describe("owner-only affordances", () => {
     // menu carries no item that opens it. Nor the delete confirm.
     expect(json).not.toContain("rename_modal");
     expect(json).not.toContain("delete_confirm_modal");
-    const links = blocks
+    const links = flatten(blocks)
       .flatMap((block) => block.events?.onClick ?? [])
       .filter((action) => action.type === "Link");
     // Both of these are a reader's: the ★ reload, and the new tab a duplicate opens.
@@ -2483,17 +2483,37 @@ describe("owner-only affordances", () => {
     ).toBe(false);
   });
 
-  // The title shares its row with the actions, so its span is whatever they
-  // leave — 16 with AI summary, ★ and ⋯, 11 once the chat link joins them.
-  test("the title's span makes room for exactly the actions compiled beside it", () => {
+  // The title shares its row with ONE actions cell: a right-justified group that
+  // sizes each action to its content, so the actions sit together at the right
+  // whatever their number, rather than a column's width apart in cells of their
+  // own.
+  test("the actions share one right-justified group beside the title", () => {
     const alone = compile({ is_owner: false });
-    expect(alone.report_title.layout.span).toBe(16);
-    expect(alone.report_summary.layout.span).toBe(4);
+    expect(
+      alone.report_title.layout.span + alone.report_actions.layout.span,
+    ).toBe(24);
+    expect(alone.report_actions.type).toBe("Box");
+    expect(alone.report_actions.layout).toMatchObject({
+      justify: "end",
+      align: "middle",
+    });
+    expect(alone.report_actions.blocks.map((b) => b.id)).toEqual([
+      "report_summary",
+      "report_favourite",
+      "report_menu",
+    ]);
+    for (const action of alone.report_actions.blocks) {
+      expect(action.layout).toEqual({ size: "auto" });
+    }
     expect(alone.report_continue_in_chat).toBeUndefined();
 
     const withChat = compile({ is_owner: true, conversation_id: "conv-1" });
-    expect(withChat.report_title.layout.span).toBe(11);
-    expect(withChat.report_continue_in_chat.layout.span).toBe(5);
+    expect(withChat.report_actions.blocks.map((b) => b.id)).toEqual([
+      "report_continue_in_chat",
+      "report_summary",
+      "report_favourite",
+      "report_menu",
+    ]);
   });
 
   // The ⋯ is compiled for EVERY viewer, like the ★: it always holds Duplicate, which
@@ -3504,22 +3524,13 @@ describe("AI summary", () => {
   });
   const byId = byIdOf(blocks);
 
-  test("the header carries an AI summary button beside ★ and ⋯, and the title yields its span", () => {
-    const ids = blocks.map((b) => b.id);
-    expect(ids.indexOf("report_summary")).toBeGreaterThan(
-      ids.indexOf("report_title"),
-    );
+  test("the header's action group carries an AI summary button before ★ and ⋯", () => {
+    const ids = byId.report_actions.blocks.map((b) => b.id);
     expect(ids.indexOf("report_summary")).toBeLessThan(
       ids.indexOf("report_favourite"),
     );
     expect(byId.report_summary.properties.title).toBe("AI summary");
-    const spans = [
-      byId.report_title,
-      byId.report_summary,
-      byId.report_favourite,
-      byId.report_menu,
-    ].map((b) => b.layout.span);
-    expect(spans.reduce((a, b) => a + b, 0)).toBe(24);
+    expect(byId.report_summary.properties.type).toBe("default");
   });
 
   test("the button seeds the drawer's filter values from the live controls, then opens the static drawer by id", () => {
@@ -3573,7 +3584,7 @@ describe("AI summary", () => {
       endpointId,
       chartEndpointId,
     });
-    const button = unfiltered.find((b) => b.id === "report_summary");
+    const button = byIdOf(unfiltered).report_summary;
     expect(button.events.onClick[0].params).toEqual({
       "summary.filter_values": {},
     });

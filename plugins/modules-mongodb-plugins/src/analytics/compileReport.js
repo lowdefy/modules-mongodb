@@ -134,12 +134,16 @@ const RIGHT_IN_CELL = {
   marginLeft: "auto",
 };
 
-// Header action widths, on the same 24-column grid. ★ and ⋯ are icons alone; the
-// chat link carries its label, so it needs the wider cell.
-const FAVOURITE_SPAN = 2;
-const MENU_SPAN = 2;
-const CHAT_LINK_SPAN = 5;
-const SUMMARY_SPAN = 4;
+// The title row: the title takes the left of the 24-column grid and ONE cell
+// holds every action, laid out as a right-justified flex group that sizes each
+// action to its content. One cell rather than a cell per action because a grid
+// cell is a fixed fraction of the row: four actions in four cells sat a
+// column's width apart, with a bordered button stranded in the middle of the
+// row and the icons drifting off on their own.
+const TITLE_SPAN = 14;
+const ACTIONS_SPAN = 24 - TITLE_SPAN;
+// An action inside the group shrinks to its content.
+const ACTION_LAYOUT = { size: "auto" };
 
 // The layout engine's column count. A block with no declared span fills the row.
 const GRID_COLUMNS = 24;
@@ -1557,32 +1561,27 @@ function compileReport({
   const header = [];
   const bodyBlocks = [];
 
-  // The title row: the title, then its actions right-aligned beside it rather
-  // than stacked underneath. ★ is always there — favouriting is a read-side act,
-  // so a non-owner may star a shared report — and Continue-in-chat only where
-  // there is a conversation to reopen and the viewer owns it. The spans are
-  // decided here, together, because the title takes whatever the actions leave;
-  // that is also why the buttons are pushed immediately after it.
+  // The title row: the title, then its actions grouped at the right beside it
+  // rather than stacked underneath. ★ is always there — favouriting is a
+  // read-side act, so a non-owner may star a shared report — and
+  // Continue-in-chat only where there is a conversation to reopen and the
+  // viewer owns it. The actions are collected here and emitted as one group
+  // after the title.
   const showContinueInChat = Boolean(is_owner && conversation_id);
-  const actionsSpan =
-    SUMMARY_SPAN +
-    FAVOURITE_SPAN +
-    MENU_SPAN +
-    (showContinueInChat ? CHAT_LINK_SPAN : 0);
+  const actions = [];
 
   header.push({
     id: "report_title",
     type: "Title",
-    layout: { span: 24 - actionsSpan },
+    layout: { span: TITLE_SPAN },
     properties: { content: validated.title, level: 3 },
   });
 
   if (showContinueInChat) {
-    header.push({
+    actions.push({
       id: "report_continue_in_chat",
       type: "Button",
-      layout: { span: CHAT_LINK_SPAN },
-      style: RIGHT_IN_CELL,
+      layout: ACTION_LAYOUT,
       properties: {
         title: "Continue in chat",
         icon: "AiOutlineMessage",
@@ -1612,11 +1611,10 @@ function compileReport({
   // model-related in compiled output. Every viewer gets it: reading a report is
   // what the button serves, and the endpoint resolves under the viewer's own
   // roles.
-  header.push({
+  actions.push({
     id: "report_summary",
     type: "Button",
-    layout: { span: SUMMARY_SPAN },
-    style: RIGHT_IN_CELL,
+    layout: ACTION_LAYOUT,
     properties: {
       title: "AI summary",
       icon: "AiOutlineBulb",
@@ -1653,11 +1651,10 @@ function compileReport({
   // client-side negation. The re-navigation is the refresh, the same mechanism
   // Drop-a-section uses: the report is a server-resolved Dynamic block with no
   // client refetch, so re-opening the page is what re-renders the ★ filled.
-  header.push({
+  actions.push({
     id: "report_favourite",
     type: "Button",
-    layout: { span: FAVOURITE_SPAN },
-    style: RIGHT_IN_CELL,
+    layout: ACTION_LAYOUT,
     properties: {
       title: is_favourite ? "Remove from favourites" : "Add to favourites",
       hideTitle: true,
@@ -1844,23 +1841,20 @@ function compileReport({
       ],
     });
   }
-  header.push({
+  actions.push({
     id: "report_menu",
     type: "DropdownMenu",
-    layout: { span: MENU_SPAN },
+    layout: ACTION_LAYOUT,
     properties: {
       trigger: "click",
       placement: "bottomRight",
       links: menuItems.map((item) => item.link),
     },
-    // slots.content — the blocks that trigger the dropdown. RIGHT_IN_CELL goes on the
-    // button rather than on the DropdownMenu: antd's Dropdown renders no element of
-    // its own, so a style on the block has nothing to land on.
+    // slots.content — the blocks that trigger the dropdown.
     blocks: [
       {
         id: "report_menu_trigger",
         type: "Button",
-        style: RIGHT_IN_CELL,
         properties: {
           title: "Report actions",
           hideTitle: true,
@@ -1893,6 +1887,18 @@ function compileReport({
         ...menuItems.flatMap((item) => item.actions),
       ],
     },
+  });
+
+  header.push({
+    id: "report_actions",
+    type: "Box",
+    layout: {
+      span: ACTIONS_SPAN,
+      justify: "end",
+      align: "middle",
+      gap: 8,
+    },
+    blocks: actions,
   });
 
   if (validated.description) {
