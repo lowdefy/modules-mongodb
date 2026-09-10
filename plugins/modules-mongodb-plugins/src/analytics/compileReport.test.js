@@ -1750,10 +1750,14 @@ describe("filter placement", () => {
     expect(byId.filters_s0_reset.events.onClick[0].params).toEqual({
       filter_status: null,
       "sections.s0.rows": null,
+      "summary.filter_values.status": null,
+      "summary.stale": true,
     });
     expect(byId.filters_s3_reset.events.onClick[0].params).toEqual({
       filter_region: null,
       "sections.s3.rows": null,
+      "summary.filter_values.region": null,
+      "summary.stale": true,
     });
   });
 
@@ -2252,21 +2256,32 @@ describe("filter placement", () => {
         "sections.s3.option": null,
         "sections.s3.height": null,
         "sections.s4.rows": null,
+        // Reset moves the numbers too, so the AI summary's record of this
+        // group's values goes with the controls and a shown summary is stale.
+        "summary.filter_values.status": null,
+        "summary.filter_values.region": null,
+        "summary.stale": true,
       });
       // The invariant behind those keys, asserted against the re-query that
       // writes them: a key a filter change can write and Reset does not clear is
-      // a section still showing filtered data after a Reset.
+      // a section still showing filtered data after a Reset. The summary keys
+      // are asserted literally above — onChange writes the whole map with live
+      // reads, Reset nulls the group's fields one by one.
       const written = new Set();
       for (const field of ["status", "region"]) {
         for (const action of byId[`filter_${field}`].events.onChange) {
           if (action.type === "SetState") {
-            Object.keys(action.params).forEach((key) => written.add(key));
+            Object.keys(action.params)
+              .filter((key) => !key.startsWith("summary."))
+              .forEach((key) => written.add(key));
           }
         }
       }
-      expect(new Set(Object.keys(reset.params))).toEqual(
-        new Set([...written, "filter_status", "filter_region"]),
-      );
+      expect(
+        new Set(
+          Object.keys(reset.params).filter((k) => !k.startsWith("summary.")),
+        ),
+      ).toEqual(new Set([...written, "filter_status", "filter_region"]));
     });
 
     // The arithmetic filterSpans exists for, applied to what follows the
@@ -2469,14 +2484,15 @@ describe("owner-only affordances", () => {
   });
 
   // The title shares its row with the actions, so its span is whatever they
-  // leave — 20 with the ★ and ⋯, 15 once the chat link joins them.
+  // leave — 16 with AI summary, ★ and ⋯, 11 once the chat link joins them.
   test("the title's span makes room for exactly the actions compiled beside it", () => {
     const alone = compile({ is_owner: false });
-    expect(alone.report_title.layout.span).toBe(20);
+    expect(alone.report_title.layout.span).toBe(16);
+    expect(alone.report_summary.layout.span).toBe(4);
     expect(alone.report_continue_in_chat).toBeUndefined();
 
     const withChat = compile({ is_owner: true, conversation_id: "conv-1" });
-    expect(withChat.report_title.layout.span).toBe(15);
+    expect(withChat.report_title.layout.span).toBe(11);
     expect(withChat.report_continue_in_chat.layout.span).toBe(5);
   });
 
@@ -3474,5 +3490,92 @@ describe("a pair of charts lines up", () => {
     expect(byId.s1.properties.height).toBe(byId.s2.properties.height);
     expect(typeof byId.s1.properties.height).toBe("number");
     expect(byId.s1.properties.option.__if_none).toBeDefined();
+  });
+});
+
+describe("AI summary", () => {
+  const blocks = compileReport({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+  });
+  const byId = byIdOf(blocks);
+
+  test("the header carries an AI summary button beside ★ and ⋯, and the title yields its span", () => {
+    const ids = blocks.map((b) => b.id);
+    expect(ids.indexOf("report_summary")).toBeGreaterThan(
+      ids.indexOf("report_title"),
+    );
+    expect(ids.indexOf("report_summary")).toBeLessThan(
+      ids.indexOf("report_favourite"),
+    );
+    expect(byId.report_summary.properties.title).toBe("AI summary");
+    const spans = [
+      byId.report_title,
+      byId.report_summary,
+      byId.report_favourite,
+      byId.report_menu,
+    ].map((b) => b.layout.span);
+    expect(spans.reduce((a, b) => a + b, 0)).toBe(24);
+  });
+
+  test("the button seeds the drawer's filter values from the live controls, then opens the static drawer by id", () => {
+    const [seed, open] = byId.report_summary.events.onClick;
+    expect(seed.type).toBe("SetState");
+    expect(seed.params).toEqual({
+      "summary.filter_values": { status: { __state: "filter_status" } },
+    });
+    expect(open).toEqual({
+      id: "open_summary_drawer",
+      type: "CallMethod",
+      params: {
+        blockId: "report_summary_drawer",
+        method: "setOpen",
+        args: [{ open: true }],
+      },
+    });
+  });
+
+  test("every filter's onChange ends by refreshing the values and marking the summary stale", () => {
+    const onChange = byId.filter_status.events.onChange;
+    const last = onChange[onChange.length - 1];
+    expect(last).toEqual({
+      id: "mark_summary_stale",
+      type: "SetState",
+      params: {
+        "summary.filter_values": { status: { __state: "filter_status" } },
+        "summary.stale": true,
+      },
+    });
+    // After the re-queries, never before: a throwing CallAPI must leave the
+    // summary describing the numbers still on screen.
+    expect(onChange.filter((a) => a.type === "CallAPI").length).toBeGreaterThan(
+      0,
+    );
+    expect(onChange.findIndex((a) => a.id === "mark_summary_stale")).toBe(
+      onChange.length - 1,
+    );
+  });
+
+  test("a report with no filters seeds an empty map", () => {
+    const unfiltered = compileReport({
+      spec: {
+        title: "Plain",
+        sections: [
+          { type: "kpi", label: "Total", query: orderTotal, valueKey: "total" },
+        ],
+      },
+      results: [[{ total: 1 }]],
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    const button = unfiltered.find((b) => b.id === "report_summary");
+    expect(button.events.onClick[0].params).toEqual({
+      "summary.filter_values": {},
+    });
   });
 });

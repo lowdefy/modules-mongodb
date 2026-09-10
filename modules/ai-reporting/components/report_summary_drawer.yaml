@@ -1,0 +1,164 @@
+# The report page's AI summary: a model-generated reading of the report AS
+# CURRENTLY FILTERED, in a drawer the viewer summons from the header and
+# generates on demand. Page chrome, not a report section — the body stays the
+# module's deterministic surface and the prose is visibly a different kind of
+# content in a different place. Nothing is saved: `summary.*` is page state,
+# kept across close/reopen and discarded on navigation, so stale commentary can
+# never be read beside numbers it no longer describes.
+#
+# State this reads, all under `summary`:
+#   filter_values — field → live control value, seeded by the compiled header
+#                   button on open and rewritten by every filter's onChange and
+#                   Reset. The payload for summarize-report.
+#   stale         — set true by every filter change and Reset, false by Generate.
+#   text / scope / generatedAt / excluded — the last response.
+#
+# Generate is explicit — no auto-generate on open. A model call is a visible,
+# deliberate act; there is exactly one generate implementation (this button);
+# and the wait is the Button's own action-in-flight spinner, with no loading
+# flag to unstick on failure. CallAPI throws on rejection and stops the chain,
+# so a failed call leaves the previous summary standing. The Drawer's onOpen
+# event exists if auto-generation is ever wanted.
+id: report_summary_drawer
+type: Drawer
+# `summary.filter_values` is written only by the compiled header inside the
+# Dynamic block's server-resolved content, which the build cannot see, and none
+# of the summary.* paths is an input block — so the state-refs check would warn
+# on every build.
+~ignoreBuildChecks:
+  - state-refs
+properties:
+  title: AI summary
+  placement: right
+  width: 520
+blocks:
+  - id: summary_explainer
+    type: Paragraph
+    properties:
+      type: secondary
+      content: >-
+        A reading of this report's numbers as they are currently filtered,
+        written by a model from the report's own data. It is generated when you
+        ask and is not saved with the report.
+
+  - id: summary_stale_alert
+    type: Alert
+    visible:
+      _and:
+        - _ne:
+            - _state: summary.text
+            - null
+        - _eq:
+            - _state: summary.stale
+            - true
+    properties:
+      type: warning
+      showIcon: true
+      message: Filters changed
+      description: >-
+        This summary describes a previous selection. Refresh it to read the
+        report as it is filtered now.
+
+  - id: summary_text
+    type: Markdown
+    visible:
+      _ne:
+        - _state: summary.text
+        - null
+    properties:
+      content:
+        _state: summary.text
+
+  - id: summary_meta
+    type: Paragraph
+    visible:
+      _ne:
+        - _state: summary.text
+        - null
+    properties:
+      type: secondary
+      content:
+        _nunjucks:
+          template: "Generated {{ at }} · {{ scope }}"
+          on:
+            at:
+              _dayjs:
+                - _state: summary.generatedAt
+                - format: D MMMM YYYY, HH:mm
+            scope:
+              _state: summary.scope
+
+  # A summary silently omitting a section that is visibly on the page (even as
+  # an Alert card) would misrepresent the report. Labels only — the reason a
+  # section failed is the access model, not the reader's business.
+  - id: summary_excluded
+    type: Paragraph
+    visible:
+      _gt:
+        - _array.length:
+            _if_none:
+              - _state: summary.excluded
+              - []
+        - 0
+    properties:
+      type: secondary
+      content:
+        _string.concat:
+          - "Not included: "
+          - _array.join:
+              - _if_none:
+                  - _state: summary.excluded
+                  - []
+              - ", "
+
+  - id: summary_generate
+    type: Button
+    properties:
+      title:
+        _if:
+          test:
+            _eq:
+              - _state: summary.text
+              - null
+          then: Generate summary
+          else: Refresh
+      icon: AiOutlineBulb
+      type: primary
+    events:
+      onClick:
+        - id: call_summarize_report
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: summarize-report
+            payload:
+              report_id:
+                _url_query: report_id
+              filters:
+                _if_none:
+                  - _state: summary.filter_values
+                  - {}
+        - id: set_summary
+          type: SetState
+          params:
+            summary.text:
+              _api:
+                _build.string.concat:
+                  - _module.endpointId: summarize-report
+                  - .response.text
+            summary.scope:
+              _api:
+                _build.string.concat:
+                  - _module.endpointId: summarize-report
+                  - .response.scope
+            summary.generatedAt:
+              _api:
+                _build.string.concat:
+                  - _module.endpointId: summarize-report
+                  - .response.generatedAt
+            summary.excluded:
+              _api:
+                _build.string.concat:
+                  - _module.endpointId: summarize-report
+                  - .response.excluded
+            summary.stale: false

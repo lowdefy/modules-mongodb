@@ -33,12 +33,12 @@ Add `ai-reporting` to an app whose users need to explore data conversationally a
 
 Surfaces exported as pages:
 
-| Page              | Surface                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `chat`            | Conversational — `AgentChat` with an adjacent charts, tables and downloads panel, and a two-track empty state (ask a question / build a report) taught by the `welcome` var                                                                                                                                                                                                                                             |
-| `reports-list`    | Saved reports as a scannable grid — Mine / Shared / Favourites / All scopes, search, sort, a contents preview, visibility, per-row actions, a New report shortcut to the chat, and a link to recovery                                                                                                                                                                                                                   |
-| `reports-deleted` | Recovery — [soft-deleted](../shared/soft-delete.md) reports with their delete stamp and one-click restore to private; reached from the reports-list footer                                                                                                                                                                                                                                                              |
-| `report`          | Report renderer (`Dynamic` block over `resolve-report`) — a provenance header (who made it, last edited, data-as-of, and the publisher when shared), per-section CSV export on chart and table sections, filters co-located inline above their first bound section, owner-only Continue-in-chat and broken-section recoveries (Fix in chat / Drop this section), and a distinct withheld Alert for role-denied sections |
+| Page              | Surface                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chat`            | Conversational — `AgentChat` with an adjacent charts, tables and downloads panel, and a two-track empty state (ask a question / build a report) taught by the `welcome` var                                                                                                                                                                                                                                                                                                                                                   |
+| `reports-list`    | Saved reports as a scannable grid — Mine / Shared / Favourites / All scopes, search, sort, a contents preview, visibility, per-row actions, a New report shortcut to the chat, and a link to recovery                                                                                                                                                                                                                                                                                                                         |
+| `reports-deleted` | Recovery — [soft-deleted](../shared/soft-delete.md) reports with their delete stamp and one-click restore to private; reached from the reports-list footer                                                                                                                                                                                                                                                                                                                                                                    |
+| `report`          | Report renderer (`Dynamic` block over `resolve-report`) — a provenance header (who made it, last edited, data-as-of, and the publisher when shared), per-section CSV export on chart and table sections, filters co-located inline above their first bound section, owner-only Continue-in-chat and broken-section recoveries (Fix in chat / Drop this section), a distinct withheld Alert for role-denied sections, and an on-demand [AI summary](concepts/ai-summary.md) drawer that reads the report as currently filtered |
 
 Reports are created from the chat surface two ways: the agent's `generate_report` tool persists a spec and returns its URL, or the user ticks result cards and confirms a sheet — see [Save as report](how-to/save-as-report.md).
 
@@ -85,25 +85,27 @@ Omitting the var omits the section; the agent works without it. It is prompt mat
 
 ### Connections
 
-The module bundles four connections; only two point at data you must supply:
+The module bundles five connections; only two point at data you must supply:
 
-| Connection            | What it is                                                              |
-| --------------------- | ----------------------------------------------------------------------- |
-| `reports-store`       | MongoDB collection for saved report specs                               |
-| `conversations-store` | MongoDB collection for chat conversations                               |
-| `reporting-data`      | Read-only `ReportingData` connection over the app's own data            |
-| `ai`                  | AI gateway provider connection (the `model` var selects provider/model) |
+| Connection            | What it is                                                                                   |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| `reports-store`       | MongoDB collection for saved report specs                                                    |
+| `conversations-store` | MongoDB collection for chat conversations                                                    |
+| `reporting-data`      | Read-only `ReportingData` connection over the app's own data                                 |
+| `ai`                  | AI gateway provider connection for the agent (the `model` var selects provider/model)        |
+| `ai-text`             | `AiText` connection for the report page's one-shot [AI summary](concepts/ai-summary.md) call |
 
 The `reporting-data` connection must point at a **read-only MongoDB principal** — the engine's second safety layer. See [Secrets → Read-only reporting principal](../shared/secrets.md#read-only-reporting-principal-reporting_data_mongodb_uri) for provisioning.
 
-To reuse an existing gateway connection instead of the bundled one, remap `ai`:
+To reuse existing connections instead of the bundled ones, remap `ai` and `ai-text` together — both read the same `AI_GATEWAY_API_KEY` secret:
 
 ```yaml
 connections:
   ai: my-gateway-connection
+  ai-text: my-ai-text-connection
 ```
 
-When `ai` is remapped, `AI_GATEWAY_API_KEY` is not needed.
+When both are remapped, `AI_GATEWAY_API_KEY` is not needed.
 
 ### Protect the pages and endpoints
 
@@ -125,6 +127,7 @@ Role-gate individual collections with `roles` in the [catalog](reference/catalog
 
 - [The open query engine](concepts/open-query-engine.md) — the pipeline model, the three default-deny grammars, resource caps, the always-appended row limit, the two-layer security model, and the grain/fan-out risk
 - [Implementation walkthrough](concepts/implementation-walkthrough.md) — contributor-facing end-to-end trace: chat message in, rendered output out, with file and line references for each hop
+- [The AI summary](concepts/ai-summary.md) — the report page's on-demand, model-written reading of the report as currently filtered: server-side re-resolution under the viewer's roles and filter values, the scope line, mark-stale on filter change, excluded sections, nothing persisted
 - [Report ownership, visibility and retirement](concepts/ownership.md) — who can see a report and who can change it: `share_roles` and the asymmetric publish gate, what `shared` does and does not promise, per-user favourites, the five list scopes, soft delete and restore
 
 ## How-to

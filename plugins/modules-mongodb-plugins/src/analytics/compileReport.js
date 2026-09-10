@@ -139,6 +139,7 @@ const RIGHT_IN_CELL = {
 const FAVOURITE_SPAN = 2;
 const MENU_SPAN = 2;
 const CHAT_LINK_SPAN = 5;
+const SUMMARY_SPAN = 4;
 
 // The layout engine's column count. A block with no declared span fills the row.
 const GRID_COLUMNS = 24;
@@ -228,6 +229,37 @@ function tableHeight(rows) {
 // Filter control block ids double as their page-state keys.
 function filterStateKey(field) {
   return `filter_${field}`;
+}
+
+// The live value of every filter control, as a `field → deferred __state read`
+// map: what the AI summary drawer sends summarize-report so the server can
+// re-resolve the report under the viewer's current selection. Values, not
+// triples — the server derives each op from the stored spec, so the client
+// cannot choose an operator. Written into `summary.filter_values` by the header
+// button on open and by every filter's onChange, so the drawer's payload is
+// always the selection on screen.
+function summaryFilterValues(filterSectionsByField) {
+  const values = {};
+  for (const field of filterSectionsByField.keys()) {
+    values[field] = { __state: filterStateKey(field) };
+  }
+  return values;
+}
+
+// The SetState every filter's onChange ends with: refresh the summary's
+// filter values and mark any summary on screen stale. Mark, not re-generate —
+// a model call per filter change (including each step of a multi-filter
+// selection, with the drawer closed) would spend prose nobody is reading; the
+// drawer shows the stale Alert with Refresh beside it instead.
+function markSummaryStale(filterSectionsByField) {
+  return {
+    id: "mark_summary_stale",
+    type: "SetState",
+    params: {
+      "summary.filter_values": summaryFilterValues(filterSectionsByField),
+      "summary.stale": true,
+    },
+  };
 }
 
 // Filters anchored above the same section sit side by side rather than each
@@ -639,6 +671,10 @@ function requeryActions({
       },
     });
   }
+  // Last, so a re-query that throws leaves the summary state alone along with
+  // the section it failed to refresh: the on-screen numbers did not change, so
+  // the summary still describes them.
+  actions.push(markSummaryStale(filterSectionsByField));
   return actions;
 }
 
@@ -1295,7 +1331,16 @@ function sharedScopeKey(group) {
 // emptying a control does not run its own re-query.
 function filterResetAction(anchorId, group, boundUnion) {
   const params = {};
-  for (const { filter } of group) params[filterStateKey(filter.field)] = null;
+  for (const { filter } of group) {
+    params[filterStateKey(filter.field)] = null;
+    // Reset changes what is on screen as surely as a selection does, so the
+    // summary's record of this group's values is cleared with the controls and
+    // any summary on screen is marked stale. Per-field nulls rather than the
+    // live-read map the onChange writes: SetState evaluates its params before
+    // it writes, so a deferred read here would capture the values being reset.
+    params[`summary.filter_values.${filter.field}`] = null;
+  }
+  params["summary.stale"] = true;
   for (const section of boundUnion) {
     if (section.type === "chart") {
       params[`sections.${section.id}.option`] = null;
@@ -1520,7 +1565,10 @@ function compileReport({
   // that is also why the buttons are pushed immediately after it.
   const showContinueInChat = Boolean(is_owner && conversation_id);
   const actionsSpan =
-    FAVOURITE_SPAN + MENU_SPAN + (showContinueInChat ? CHAT_LINK_SPAN : 0);
+    SUMMARY_SPAN +
+    FAVOURITE_SPAN +
+    MENU_SPAN +
+    (showContinueInChat ? CHAT_LINK_SPAN : 0);
 
   header.push({
     id: "report_title",
@@ -1555,6 +1603,47 @@ function compileReport({
       },
     });
   }
+
+  // AI summary opens the STATIC drawer in report.yaml by id — the same
+  // compiled-header-to-static-sibling path the ⋯ menu's Rename takes to
+  // rename_modal — after seeding the drawer's filter values from the live
+  // controls. The drawer owns generation (its own Generate button calls
+  // summarize-report), so there is one generate implementation and nothing
+  // model-related in compiled output. Every viewer gets it: reading a report is
+  // what the button serves, and the endpoint resolves under the viewer's own
+  // roles.
+  header.push({
+    id: "report_summary",
+    type: "Button",
+    layout: { span: SUMMARY_SPAN },
+    style: RIGHT_IN_CELL,
+    properties: {
+      title: "AI summary",
+      icon: "AiOutlineBulb",
+      type: "link",
+      size: "small",
+    },
+    events: {
+      onClick: [
+        {
+          id: "seed_summary_filters",
+          type: "SetState",
+          params: {
+            "summary.filter_values": summaryFilterValues(filterSectionsByField),
+          },
+        },
+        {
+          id: "open_summary_drawer",
+          type: "CallMethod",
+          params: {
+            blockId: "report_summary_drawer",
+            method: "setOpen",
+            args: [{ open: true }],
+          },
+        },
+      ],
+    },
+  });
 
   // set-report-favourite takes the desired state, not a toggle — and the current
   // state is known at compile time, so the payload is a literal rather than a

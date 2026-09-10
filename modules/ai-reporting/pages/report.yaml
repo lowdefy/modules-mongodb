@@ -143,6 +143,14 @@ _ref:
                   urlQuery:
                     report_id:
                       _url_query: report_id
+      # The AI summary drawer, opened by the compiled header's "AI summary" button
+      # (CallMethod setOpen by id, the path the ⋯ takes to the modals above). Static
+      # for the same reasons: its state survives a re-resolve, and Drawer, Markdown
+      # and Alert stay out of the allowlist. It owns generation — the only call to
+      # summarize-report — so the compiled header carries nothing model-related.
+      - _ref:
+          path: components/report_summary_drawer.yaml
+
       - _ref:
           path: components/report_delete_modal.yaml
           vars:
