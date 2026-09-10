@@ -59,6 +59,12 @@ import {
  *                included or left out HERE rather than gated by a `_user`
  *                operator in compiled output. Absent reads as false, which
  *                matches an unset share_roles: nothing can be published.
+ *   ai_summary — whether the module's `ai_summary` var is on. Off, nothing
+ *                summary-related is emitted: no header button, and no
+ *                `summary.*` writes from the filters' onChange or Reset — the
+ *                drawer those writes feed is never opened. Decided by the
+ *                endpoint (it holds the var) and passed as a boolean, like
+ *                can_share. Absent reads as off.
  *   theme      — optional `{ light, dark }` pair of ECharts theme objects. Each
  *                carries only typography and axis chrome, never a palette:
  *                ECharts merges a theme under the option, and buildFlintOption
@@ -134,11 +140,16 @@ const RIGHT_IN_CELL = {
   marginLeft: "auto",
 };
 
-// Header action widths, on the same 24-column grid. ★ and ⋯ are icons alone; the
-// chat link carries its label, so it needs the wider cell.
-const FAVOURITE_SPAN = 2;
-const MENU_SPAN = 2;
-const CHAT_LINK_SPAN = 5;
+// The title row: the title takes the left of the 24-column grid and ONE cell
+// holds every action, laid out as a right-justified flex group that sizes each
+// action to its content. One cell rather than a cell per action because a grid
+// cell is a fixed fraction of the row: four actions in four cells sat a
+// column's width apart, with a bordered button stranded in the middle of the
+// row and the icons drifting off on their own.
+const TITLE_SPAN = 14;
+const ACTIONS_SPAN = 24 - TITLE_SPAN;
+// An action inside the group shrinks to its content.
+const ACTION_LAYOUT = { size: "auto" };
 
 // The layout engine's column count. A block with no declared span fills the row.
 const GRID_COLUMNS = 24;
@@ -228,6 +239,37 @@ function tableHeight(rows) {
 // Filter control block ids double as their page-state keys.
 function filterStateKey(field) {
   return `filter_${field}`;
+}
+
+// The live value of every filter control, as a `field → deferred __state read`
+// map: what the AI summary drawer sends summarize-report so the server can
+// re-resolve the report under the viewer's current selection. Values, not
+// triples — the server derives each op from the stored spec, so the client
+// cannot choose an operator. Written into `summary.filter_values` by the header
+// button on open and by every filter's onChange, so the drawer's payload is
+// always the selection on screen.
+function summaryFilterValues(filterSectionsByField) {
+  const values = {};
+  for (const field of filterSectionsByField.keys()) {
+    values[field] = { __state: filterStateKey(field) };
+  }
+  return values;
+}
+
+// The SetState every filter's onChange ends with: refresh the summary's
+// filter values and mark any summary on screen stale. Mark, not re-generate —
+// a model call per filter change (including each step of a multi-filter
+// selection, with the drawer closed) would spend prose nobody is reading; the
+// drawer shows the stale Alert with Refresh beside it instead.
+function markSummaryStale(filterSectionsByField) {
+  return {
+    id: "mark_summary_stale",
+    type: "SetState",
+    params: {
+      "summary.filter_values": summaryFilterValues(filterSectionsByField),
+      "summary.stale": true,
+    },
+  };
 }
 
 // Filters anchored above the same section sit side by side rather than each
@@ -571,6 +613,7 @@ function requeryActions({
   chartEndpointId,
   colors,
   spanBySection,
+  aiSummary,
 }) {
   const actions = [];
   for (const section of boundSections) {
@@ -639,6 +682,10 @@ function requeryActions({
       },
     });
   }
+  // Last, so a re-query that throws leaves the summary state alone along with
+  // the section it failed to refresh: the on-screen numbers did not change, so
+  // the summary still describes them.
+  if (aiSummary) actions.push(markSummaryStale(filterSectionsByField));
   return actions;
 }
 
@@ -1293,9 +1340,33 @@ function sharedScopeKey(group) {
 // those are the only ones a filter change can leave behind. They have to be
 // cleared here rather than left to the controls: SetState fires no onChange, so
 // emptying a control does not run its own re-query.
-function filterResetAction(anchorId, group, boundUnion) {
+function filterResetAction({
+  anchorId,
+  group,
+  boundUnion,
+  filterSectionsByField,
+  aiSummary,
+}) {
   const params = {};
-  for (const { filter } of group) params[filterStateKey(filter.field)] = null;
+  const resetFields = new Set(group.map(({ filter }) => filter.field));
+  for (const field of resetFields) {
+    params[filterStateKey(field)] = null;
+  }
+  // Reset changes what is on screen as surely as a selection does, so the
+  // summary's record of this group's values is cleared with the controls and
+  // any summary on screen is marked stale. The whole map is rewritten, as the
+  // onChange does, because the map is keyed by the field STRING: a dot-path
+  // `summary.filter_values.<field>` would nest a dotted field (owner.user_id)
+  // beside the literal key and leave its old value for the next Generate. The
+  // group's own fields are literal nulls rather than live reads: SetState
+  // evaluates its params before it writes, so a deferred read of a field being
+  // reset would capture the value on its way out.
+  if (aiSummary) {
+    const values = summaryFilterValues(filterSectionsByField);
+    for (const field of resetFields) values[field] = null;
+    params["summary.filter_values"] = values;
+    params["summary.stale"] = true;
+  }
   for (const section of boundUnion) {
     if (section.type === "chart") {
       params[`sections.${section.id}.option`] = null;
@@ -1322,6 +1393,8 @@ function filterGroupFooter({
   boundUnion,
   note,
   rowsBySectionId,
+  filterSectionsByField,
+  aiSummary,
 }) {
   // Nothing to put back: every section these filters drive failed its resolve,
   // so each renders an Alert that reads no state and would re-query on no
@@ -1346,7 +1419,17 @@ function filterGroupFooter({
       layout: { span: note ? RESET_SPAN : GRID_COLUMNS },
       style: RIGHT_IN_CELL,
       properties: { title: "Reset", type: "text", size: "small" },
-      events: { onClick: [filterResetAction(anchorId, group, boundUnion)] },
+      events: {
+        onClick: [
+          filterResetAction({
+            anchorId,
+            group,
+            boundUnion,
+            filterSectionsByField,
+            aiSummary,
+          }),
+        ],
+      },
     });
   }
   return blocks;
@@ -1371,6 +1454,7 @@ function filterControlBlock({
   spanBySection,
   span,
   showScope,
+  aiSummary,
 }) {
   const onChange = requeryActions({
     boundSections,
@@ -1379,6 +1463,7 @@ function filterControlBlock({
     chartEndpointId,
     colors,
     spanBySection,
+    aiSummary,
   });
   // A note only this control needs — its scope differs from the one its group
   // states below, or it is the only thing that would say it. It goes in the
@@ -1462,6 +1547,7 @@ function compileReport({
   can_share,
   conversation_id,
   theme,
+  ai_summary,
 }) {
   if (typeof endpointId !== "string" || endpointId === "") {
     fail("endpointId (the query-data endpoint) is required.");
@@ -1512,29 +1598,27 @@ function compileReport({
   const header = [];
   const bodyBlocks = [];
 
-  // The title row: the title, then its actions right-aligned beside it rather
-  // than stacked underneath. ★ is always there — favouriting is a read-side act,
-  // so a non-owner may star a shared report — and Continue-in-chat only where
-  // there is a conversation to reopen and the viewer owns it. The spans are
-  // decided here, together, because the title takes whatever the actions leave;
-  // that is also why the buttons are pushed immediately after it.
+  // The title row: the title, then its actions grouped at the right beside it
+  // rather than stacked underneath. ★ is always there — favouriting is a
+  // read-side act, so a non-owner may star a shared report — and
+  // Continue-in-chat only where there is a conversation to reopen and the
+  // viewer owns it. The actions are collected here and emitted as one group
+  // after the title.
   const showContinueInChat = Boolean(is_owner && conversation_id);
-  const actionsSpan =
-    FAVOURITE_SPAN + MENU_SPAN + (showContinueInChat ? CHAT_LINK_SPAN : 0);
+  const actions = [];
 
   header.push({
     id: "report_title",
     type: "Title",
-    layout: { span: 24 - actionsSpan },
+    layout: { span: TITLE_SPAN },
     properties: { content: validated.title, level: 3 },
   });
 
   if (showContinueInChat) {
-    header.push({
+    actions.push({
       id: "report_continue_in_chat",
       type: "Button",
-      layout: { span: CHAT_LINK_SPAN },
-      style: RIGHT_IN_CELL,
+      layout: ACTION_LAYOUT,
       properties: {
         title: "Continue in chat",
         icon: "AiOutlineMessage",
@@ -1556,16 +1640,62 @@ function compileReport({
     });
   }
 
+  // AI summary opens the STATIC drawer in report.yaml by id — the same
+  // compiled-header-to-static-sibling path the ⋯ menu's Rename takes to
+  // rename_modal — after seeding the drawer's filter values from the live
+  // controls. The drawer owns generation (its own Generate button calls
+  // summarize-report), so there is one generate implementation and nothing
+  // model-related in compiled output. Only where the module's ai_summary var is
+  // on; when it is, every viewer gets it: reading a report is what the button
+  // serves, and the endpoint resolves under the viewer's own roles.
+  if (ai_summary) {
+    actions.push({
+      id: "report_summary",
+      type: "Button",
+      layout: ACTION_LAYOUT,
+      properties: {
+        title: "AI summary",
+        icon: "AiOutlineBulb",
+        // A bordered button, unlike the text-styled ★, ⋯ and chat link: this is
+        // the header's one call to action, and as a link it read as another
+        // navigation.
+        type: "default",
+        size: "small",
+      },
+      events: {
+        onClick: [
+          {
+            id: "seed_summary_filters",
+            type: "SetState",
+            params: {
+              "summary.filter_values": summaryFilterValues(
+                filterSectionsByField,
+              ),
+            },
+          },
+          {
+            id: "open_summary_drawer",
+            type: "CallMethod",
+            params: {
+              blockId: "report_summary_drawer",
+              method: "setOpen",
+              args: [{ open: true }],
+            },
+          },
+        ],
+      },
+    });
+  }
+
   // set-report-favourite takes the desired state, not a toggle — and the current
   // state is known at compile time, so the payload is a literal rather than a
   // client-side negation. The re-navigation is the refresh, the same mechanism
   // Drop-a-section uses: the report is a server-resolved Dynamic block with no
   // client refetch, so re-opening the page is what re-renders the ★ filled.
-  header.push({
+  actions.push({
     id: "report_favourite",
     type: "Button",
-    layout: { span: FAVOURITE_SPAN },
-    style: RIGHT_IN_CELL,
+    layout: ACTION_LAYOUT,
     properties: {
       title: is_favourite ? "Remove from favourites" : "Add to favourites",
       hideTitle: true,
@@ -1752,23 +1882,20 @@ function compileReport({
       ],
     });
   }
-  header.push({
+  actions.push({
     id: "report_menu",
     type: "DropdownMenu",
-    layout: { span: MENU_SPAN },
+    layout: ACTION_LAYOUT,
     properties: {
       trigger: "click",
       placement: "bottomRight",
       links: menuItems.map((item) => item.link),
     },
-    // slots.content — the blocks that trigger the dropdown. RIGHT_IN_CELL goes on the
-    // button rather than on the DropdownMenu: antd's Dropdown renders no element of
-    // its own, so a style on the block has nothing to land on.
+    // slots.content — the blocks that trigger the dropdown.
     blocks: [
       {
         id: "report_menu_trigger",
         type: "Button",
-        style: RIGHT_IN_CELL,
         properties: {
           title: "Report actions",
           hideTitle: true,
@@ -1801,6 +1928,18 @@ function compileReport({
         ...menuItems.flatMap((item) => item.actions),
       ],
     },
+  });
+
+  header.push({
+    id: "report_actions",
+    type: "Box",
+    layout: {
+      span: ACTIONS_SPAN,
+      justify: "end",
+      align: "middle",
+      gap: 8,
+    },
+    blocks: actions,
   });
 
   if (validated.description) {
@@ -1964,6 +2103,7 @@ function compileReport({
         spanBySection,
         span: spans[index],
         showScope: scopeKey(boundSections) !== sharedKey,
+        aiSummary: Boolean(ai_summary),
       }),
     );
     blocks.push(
@@ -1973,6 +2113,8 @@ function compileReport({
         boundUnion,
         note: sharedNote,
         rowsBySectionId,
+        filterSectionsByField,
+        aiSummary: Boolean(ai_summary),
       }),
     );
     filtersByFirstSubscriber.set(anchorId, blocks);

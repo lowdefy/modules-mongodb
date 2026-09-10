@@ -7,6 +7,7 @@
  * smuggled into a domain connection that carries a database and its secrets.
  */
 import GenerateChatTitle from "./GenerateChatTitle.js";
+import SummarizeReportData from "./SummarizeReportData.js";
 
 export default {
   schema: {
@@ -29,5 +30,6 @@ export default {
   },
   requests: {
     GenerateChatTitle,
+    SummarizeReportData,
   },
 };

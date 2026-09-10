@@ -2155,6 +2155,8 @@ describe("filter placement", () => {
           roles,
           endpointId,
           chartEndpointId,
+          // On, so the Reset test below can assert the summary keys it clears.
+          ai_summary: true,
         }),
       );
     const notes = (byId, fields) =>
@@ -2252,20 +2254,57 @@ describe("filter placement", () => {
         "sections.s3.option": null,
         "sections.s3.height": null,
         "sections.s4.rows": null,
+        // Reset moves the numbers too, so the AI summary's record of this
+        // group's values goes with the controls and a shown summary is stale.
+        // The whole map, keyed by field string like the onChange writes it,
+        // with this group's fields as literal nulls.
+        "summary.filter_values": { status: null, region: null },
+        "summary.stale": true,
       });
       // The invariant behind those keys, asserted against the re-query that
       // writes them: a key a filter change can write and Reset does not clear is
-      // a section still showing filtered data after a Reset.
+      // a section still showing filtered data after a Reset. The summary keys
+      // are asserted literally above — onChange writes the whole map with live
+      // reads, Reset rewrites it with the group's fields nulled.
       const written = new Set();
       for (const field of ["status", "region"]) {
         for (const action of byId[`filter_${field}`].events.onChange) {
           if (action.type === "SetState") {
-            Object.keys(action.params).forEach((key) => written.add(key));
+            Object.keys(action.params)
+              .filter((key) => !key.startsWith("summary."))
+              .forEach((key) => written.add(key));
           }
         }
       }
-      expect(new Set(Object.keys(reset.params))).toEqual(
-        new Set([...written, "filter_status", "filter_region"]),
+      expect(
+        new Set(
+          Object.keys(reset.params).filter((k) => !k.startsWith("summary.")),
+        ),
+      ).toEqual(new Set([...written, "filter_status", "filter_region"]));
+    });
+
+    // Two groups, one with a dotted field: Reset on one group nulls only its own
+    // fields and keeps a live read for the other group's, in the same
+    // string-keyed map the onChange writes. A dot-path per field would have
+    // nested `owner.user_id` beside the literal key and left the old value for
+    // the next Generate.
+    test("Reset rewrites the summary map: its own fields null, the other group's a live read, dotted fields kept as one key", () => {
+      const byId = compile(
+        [
+          select("owner.user_id"),
+          select("region"),
+          kpi("Revenue", ["owner.user_id"]),
+          table("Orders", ["region"]),
+        ],
+        [[{ total: 5 }], tableRows],
+      );
+      const [reset] = byId.filters_s2_reset.events.onClick;
+      expect(reset.params["summary.filter_values"]).toEqual({
+        "owner.user_id": null,
+        region: { __state: "filter_region" },
+      });
+      expect(Object.keys(reset.params)).not.toContainEqual(
+        expect.stringMatching(/^summary\.filter_values\./),
       );
     });
 
@@ -2434,7 +2473,7 @@ describe("owner-only affordances", () => {
     // menu carries no item that opens it. Nor the delete confirm.
     expect(json).not.toContain("rename_modal");
     expect(json).not.toContain("delete_confirm_modal");
-    const links = blocks
+    const links = flatten(blocks)
       .flatMap((block) => block.events?.onClick ?? [])
       .filter((action) => action.type === "Link");
     // Both of these are a reader's: the ★ reload, and the new tab a duplicate opens.
@@ -2468,16 +2507,41 @@ describe("owner-only affordances", () => {
     ).toBe(false);
   });
 
-  // The title shares its row with the actions, so its span is whatever they
-  // leave — 20 with the ★ and ⋯, 15 once the chat link joins them.
-  test("the title's span makes room for exactly the actions compiled beside it", () => {
-    const alone = compile({ is_owner: false });
-    expect(alone.report_title.layout.span).toBe(20);
+  // The title shares its row with ONE actions cell: a right-justified group that
+  // sizes each action to its content, so the actions sit together at the right
+  // whatever their number, rather than a column's width apart in cells of their
+  // own.
+  test("the actions share one right-justified group beside the title", () => {
+    const alone = compile({ is_owner: false, ai_summary: true });
+    expect(
+      alone.report_title.layout.span + alone.report_actions.layout.span,
+    ).toBe(24);
+    expect(alone.report_actions.type).toBe("Box");
+    expect(alone.report_actions.layout).toMatchObject({
+      justify: "end",
+      align: "middle",
+    });
+    expect(alone.report_actions.blocks.map((b) => b.id)).toEqual([
+      "report_summary",
+      "report_favourite",
+      "report_menu",
+    ]);
+    for (const action of alone.report_actions.blocks) {
+      expect(action.layout).toEqual({ size: "auto" });
+    }
     expect(alone.report_continue_in_chat).toBeUndefined();
 
-    const withChat = compile({ is_owner: true, conversation_id: "conv-1" });
-    expect(withChat.report_title.layout.span).toBe(15);
-    expect(withChat.report_continue_in_chat.layout.span).toBe(5);
+    const withChat = compile({
+      is_owner: true,
+      conversation_id: "conv-1",
+      ai_summary: true,
+    });
+    expect(withChat.report_actions.blocks.map((b) => b.id)).toEqual([
+      "report_continue_in_chat",
+      "report_summary",
+      "report_favourite",
+      "report_menu",
+    ]);
   });
 
   // The ⋯ is compiled for EVERY viewer, like the ★: it always holds Duplicate, which
@@ -3474,5 +3538,122 @@ describe("a pair of charts lines up", () => {
     expect(byId.s1.properties.height).toBe(byId.s2.properties.height);
     expect(typeof byId.s1.properties.height).toBe("number");
     expect(byId.s1.properties.option.__if_none).toBeDefined();
+  });
+});
+
+describe("AI summary", () => {
+  const blocks = compileReport({
+    spec,
+    results,
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+    ai_summary: true,
+  });
+  const byId = byIdOf(blocks);
+
+  // The var is opt-in, and off is the default: an app that has not turned it on
+  // gets no button, and none of the `summary.*` state writes the drawer would
+  // read — a stale flag nothing reads is dead weight in every filter's onChange.
+  test("off (the default), nothing summary-related is compiled", () => {
+    const off = byIdOf(
+      compileReport({
+        spec,
+        results,
+        catalog: testCatalog,
+        roles,
+        endpointId,
+        chartEndpointId,
+      }),
+    );
+    expect(off.report_summary).toBeUndefined();
+    expect(off.report_actions.blocks.map((b) => b.id)).toEqual([
+      "report_favourite",
+      "report_menu",
+    ]);
+    const writes = (actions) =>
+      actions
+        .filter((a) => a.type === "SetState")
+        .flatMap((a) => Object.keys(a.params));
+    expect(writes(off.filter_status.events.onChange)).not.toContainEqual(
+      expect.stringMatching(/^summary\./),
+    );
+    expect(off.filter_status.events.onChange.map((a) => a.id)).not.toContain(
+      "mark_summary_stale",
+    );
+    const reset = Object.values(off).find((b) =>
+      /^filters_.*_reset$/.test(b.id),
+    );
+    expect(writes(reset.events.onClick)).not.toContainEqual(
+      expect.stringMatching(/^summary\./),
+    );
+  });
+
+  test("the header's action group carries an AI summary button before ★ and ⋯", () => {
+    const ids = byId.report_actions.blocks.map((b) => b.id);
+    expect(ids.indexOf("report_summary")).toBeLessThan(
+      ids.indexOf("report_favourite"),
+    );
+    expect(byId.report_summary.properties.title).toBe("AI summary");
+    expect(byId.report_summary.properties.type).toBe("default");
+  });
+
+  test("the button seeds the drawer's filter values from the live controls, then opens the static drawer by id", () => {
+    const [seed, open] = byId.report_summary.events.onClick;
+    expect(seed.type).toBe("SetState");
+    expect(seed.params).toEqual({
+      "summary.filter_values": { status: { __state: "filter_status" } },
+    });
+    expect(open).toEqual({
+      id: "open_summary_drawer",
+      type: "CallMethod",
+      params: {
+        blockId: "report_summary_drawer",
+        method: "setOpen",
+        args: [{ open: true }],
+      },
+    });
+  });
+
+  test("every filter's onChange ends by refreshing the values and marking the summary stale", () => {
+    const onChange = byId.filter_status.events.onChange;
+    const last = onChange[onChange.length - 1];
+    expect(last).toEqual({
+      id: "mark_summary_stale",
+      type: "SetState",
+      params: {
+        "summary.filter_values": { status: { __state: "filter_status" } },
+        "summary.stale": true,
+      },
+    });
+    // After the re-queries, never before: a throwing CallAPI must leave the
+    // summary describing the numbers still on screen.
+    expect(onChange.filter((a) => a.type === "CallAPI").length).toBeGreaterThan(
+      0,
+    );
+    expect(onChange.findIndex((a) => a.id === "mark_summary_stale")).toBe(
+      onChange.length - 1,
+    );
+  });
+
+  test("a report with no filters seeds an empty map", () => {
+    const unfiltered = compileReport({
+      spec: {
+        title: "Plain",
+        sections: [
+          { type: "kpi", label: "Total", query: orderTotal, valueKey: "total" },
+        ],
+      },
+      results: [[{ total: 1 }]],
+      roles,
+      endpointId,
+      chartEndpointId,
+      ai_summary: true,
+    });
+    const button = byIdOf(unfiltered).report_summary;
+    expect(button.events.onClick[0].params).toEqual({
+      "summary.filter_values": {},
+    });
   });
 });

@@ -211,6 +211,11 @@ routine:
                 _user.hasSomeRoles:
                   _module.var: share_roles
               else: false
+          # Whether the header carries the AI summary button and the filters
+          # write the drawer's `summary.*` state. A module var, so only the
+          # config can read it; the compiler gets a boolean, like can_share.
+          ai_summary:
+            _module.var: ai_summary
           resolvedAt:
             _date: now
           # Both themes, as plain data, because the choice between them cannot
