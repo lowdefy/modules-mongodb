@@ -55,7 +55,7 @@ active filter selections applied, and the prose opens by naming that scope.
    - a header **"AI summary" button** in the compiled title row (beside
      Continue-in-chat / ★ / ⋯) whose onClick SetStates
      `summary.filter_values` — a map of filter field → live `__state:
-     filter_{field}` read — then CallMethods `setOpen` on the static drawer,
+filter_{field}` read — then CallMethods `setOpen` on the static drawer,
      the exact pattern the compiled ⋯ menu uses on the static modals;
    - every filter's onChange (in `requeryActions`) additionally SetStates a
      fresh `summary.filter_values` and `summary.stale: true`, so the drawer's
@@ -133,10 +133,10 @@ agent vocabulary so the assistant could author one, save-sheet handling,
 `filterBy` binding semantics, and a persistence question ("does it save?") with
 a misleading-stale-prose failure mode. A drawer is page chrome: no grammar
 change, no agent change, nothing persisted, and every already-saved report gets
-it. Three of the draft's open questions dissolve outright — *which sections
-does it interpret* (the whole report; it is a report-level lens, and a
-per-section subset would be spec surface with no concrete need), *does it save*
-(no; page state only), and *how does it slot into the section list* (it
+it. Three of the draft's open questions dissolve outright — _which sections
+does it interpret_ (the whole report; it is a report-level lens, and a
+per-section subset would be spec surface with no concrete need), _does it save_
+(no; page state only), and _how does it slot into the section list_ (it
 doesn't).
 
 ### Generation re-resolves server-side — the draft's "consumer of resolved rows" cannot work as written
@@ -149,7 +149,7 @@ client-authored input to the prose — generated "readings" of whatever a caller
 chose to claim. Instead the summarize endpoint re-runs each data section's
 stored pipeline through the same `AnalyticsPipeline` gate `resolve-report`
 uses, under the viewing user's roles, with the active filter values applied.
-That guarantees data-and-scope consistency *at generation time*, keeps the
+That guarantees data-and-scope consistency _at generation time_, keeps the
 security boundary in one place, and costs one query per data section per
 generate — the same order of work as opening the report.
 
@@ -175,7 +175,7 @@ speculative knob.
 The payload is a map of `field → current control state` (`region: "West"`,
 `period: [start, end]`, `tags: ["a", "b"]`), seeded by the compiled header
 button and kept fresh by every filter onChange. The server derives each triple's
-op from the *stored spec's* filter sections — daterange → `gte`/`lte` over the
+op from the _stored spec's_ filter sections — daterange → `gte`/`lte` over the
 pair, multiselect → `in`/`all` per the section's `match`, select → `eq` —
 the same mapping `boundFilters` compiles client-side for re-queries. Values are
 untrusted client input exactly as on `query-data`, and contained the same way:
@@ -207,7 +207,7 @@ and the query-sourced options.
 ### The call goes through `AiText`, not the `ai` gateway connection
 
 The draft assumed the `ai` connection "already exists" for this. It exists for
-the *agent*: `AIGateway`/`AIGatewayAgent` own conversations, and a plain
+the _agent_: `AIGateway`/`AIGatewayAgent` own conversations, and a plain
 "ask the model once, get text back" has nowhere to live there — the exact
 reason the `AiText` connection type was created (see its header note). So the
 module gains an `ai-text` connection on the same `AI_GATEWAY_API_KEY` secret,
@@ -261,7 +261,7 @@ place, as `resolve-report`). The response's `excluded` list names the affected
 sections by label and the drawer shows a muted "Not included: …" line when
 non-empty: a summary silently omitting a section that is visibly on the page
 (even as an Alert card) would misrepresent the report. Labels only, no reasons
-— naming *why* would leak the access model, the `SECTION_WITHHELD_DESCRIPTION`
+— naming _why_ would leak the access model, the `SECTION_WITHHELD_DESCRIPTION`
 posture.
 
 ### Nothing persists
@@ -276,12 +276,27 @@ exchange for saving a click. If a concrete need to keep or share a summary
 surfaces, that is its own design — with the scope-recording obligations the
 draft flagged.
 
-### No disable var, no per-report opt-out
+### Opt-in via the `ai_summary` var, no per-report opt-out
 
-The button renders on every report unconditionally. An app that cannot or does
-not want to serve the model call simply has a button that errors on Generate —
-which argues for configuring the connection, not for a flag. A `disable` var is
-a restriction on a guess; it earns its place when an app actually asks.
+The feature is off by default and turned on per module entry with
+`ai_summary: true`. The first cut rendered the button unconditionally on the
+"restriction on a guess" argument; the concrete need surfaced immediately in
+review: generating a summary ships a report's rows to a model, and an app —
+not the module's default — has to decide whether its data may go there at all.
+That is a data-egress decision, not a convenience flag, so it is a boolean var
+rather than "configure the connection or live with an erroring button".
+
+Off means off in both places: `resolve-report` passes the var to
+`compileReport`, which then emits no header button and none of the `summary.*`
+state writes (a stale flag nothing reads is dead weight in every filter's
+onChange and Reset); and `summarize-report` rejects every call before loading
+the report, since an exported endpoint can be called without the button. The
+hidden button is an affordance, the rejection is the switch — the same split
+`share_roles` uses. The static drawer stays in `report.yaml` regardless: it is
+inert without the button, and conditional `_ref`s would buy nothing.
+
+No per-report opt-out: which reports may be summarised is the same question
+as which data the viewer may query, and the role gate already answers that.
 
 ## Deliberately not in scope
 
@@ -298,8 +313,8 @@ a restriction on a guess; it earns its place when an app actually asks.
 ## Demo consumer and verification
 
 The demo mounts the module (`apps/demo/modules.yaml`) with the bundled `ai`
-connection on `AI_GATEWAY_API_KEY`; the new `ai-text` connection uses the same
-secret, so the seeded example report (filters bound to three sections —
+connection on `AI_GATEWAY_API_KEY` and `ai_summary: true` in its vars; the new
+`ai-text` connection uses the same secret, so the seeded example report (filters bound to three sections —
 `reporting-seed-example-report.yaml`) exercises the whole flow with no demo
 changes beyond the module bump: open report → AI summary → Generate → change
 the region filter → stale Alert → Refresh with the narrowed scope named.

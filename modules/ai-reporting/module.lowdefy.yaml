@@ -146,6 +146,18 @@ vars:
     description: >
       Gateway model id (provider/model) for the reporting assistant, e.g.
       anthropic/claude-sonnet-5 or anthropic/claude-haiku-4.5.
+  ai_summary:
+    type: boolean
+    default: false
+    description: >
+      Turn on the report page's AI summary: an "AI summary" button in every
+      report's header that opens a drawer where the viewer generates, on
+      demand, a model-written reading of the report as currently filtered.
+      Opt-in, so an app decides whether its report data is sent to a model for
+      prose at all. Off, the button is not rendered and the exported
+      `summarize-report` endpoint rejects every call — the hidden button is an
+      affordance, the rejection is the switch. Needs the `ai-text` connection
+      (bundled on `AI_GATEWAY_API_KEY`, or remapped) when on.
   welcome:
     type: object
     description: >

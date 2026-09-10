@@ -59,6 +59,12 @@ import {
  *                included or left out HERE rather than gated by a `_user`
  *                operator in compiled output. Absent reads as false, which
  *                matches an unset share_roles: nothing can be published.
+ *   ai_summary — whether the module's `ai_summary` var is on. Off, nothing
+ *                summary-related is emitted: no header button, and no
+ *                `summary.*` writes from the filters' onChange or Reset — the
+ *                drawer those writes feed is never opened. Decided by the
+ *                endpoint (it holds the var) and passed as a boolean, like
+ *                can_share. Absent reads as off.
  *   theme      — optional `{ light, dark }` pair of ECharts theme objects. Each
  *                carries only typography and axis chrome, never a palette:
  *                ECharts merges a theme under the option, and buildFlintOption
@@ -607,6 +613,7 @@ function requeryActions({
   chartEndpointId,
   colors,
   spanBySection,
+  aiSummary,
 }) {
   const actions = [];
   for (const section of boundSections) {
@@ -678,7 +685,7 @@ function requeryActions({
   // Last, so a re-query that throws leaves the summary state alone along with
   // the section it failed to refresh: the on-screen numbers did not change, so
   // the summary still describes them.
-  actions.push(markSummaryStale(filterSectionsByField));
+  if (aiSummary) actions.push(markSummaryStale(filterSectionsByField));
   return actions;
 }
 
@@ -1333,7 +1340,7 @@ function sharedScopeKey(group) {
 // those are the only ones a filter change can leave behind. They have to be
 // cleared here rather than left to the controls: SetState fires no onChange, so
 // emptying a control does not run its own re-query.
-function filterResetAction(anchorId, group, boundUnion) {
+function filterResetAction(anchorId, group, boundUnion, aiSummary) {
   const params = {};
   for (const { filter } of group) {
     params[filterStateKey(filter.field)] = null;
@@ -1342,9 +1349,9 @@ function filterResetAction(anchorId, group, boundUnion) {
     // any summary on screen is marked stale. Per-field nulls rather than the
     // live-read map the onChange writes: SetState evaluates its params before
     // it writes, so a deferred read here would capture the values being reset.
-    params[`summary.filter_values.${filter.field}`] = null;
+    if (aiSummary) params[`summary.filter_values.${filter.field}`] = null;
   }
-  params["summary.stale"] = true;
+  if (aiSummary) params["summary.stale"] = true;
   for (const section of boundUnion) {
     if (section.type === "chart") {
       params[`sections.${section.id}.option`] = null;
@@ -1371,6 +1378,7 @@ function filterGroupFooter({
   boundUnion,
   note,
   rowsBySectionId,
+  aiSummary,
 }) {
   // Nothing to put back: every section these filters drive failed its resolve,
   // so each renders an Alert that reads no state and would re-query on no
@@ -1395,7 +1403,9 @@ function filterGroupFooter({
       layout: { span: note ? RESET_SPAN : GRID_COLUMNS },
       style: RIGHT_IN_CELL,
       properties: { title: "Reset", type: "text", size: "small" },
-      events: { onClick: [filterResetAction(anchorId, group, boundUnion)] },
+      events: {
+        onClick: [filterResetAction(anchorId, group, boundUnion, aiSummary)],
+      },
     });
   }
   return blocks;
@@ -1420,6 +1430,7 @@ function filterControlBlock({
   spanBySection,
   span,
   showScope,
+  aiSummary,
 }) {
   const onChange = requeryActions({
     boundSections,
@@ -1428,6 +1439,7 @@ function filterControlBlock({
     chartEndpointId,
     colors,
     spanBySection,
+    aiSummary,
   });
   // A note only this control needs — its scope differs from the one its group
   // states below, or it is the only thing that would say it. It goes in the
@@ -1511,6 +1523,7 @@ function compileReport({
   can_share,
   conversation_id,
   theme,
+  ai_summary,
 }) {
   if (typeof endpointId !== "string" || endpointId === "") {
     fail("endpointId (the query-data endpoint) is required.");
@@ -1608,43 +1621,47 @@ function compileReport({
   // rename_modal — after seeding the drawer's filter values from the live
   // controls. The drawer owns generation (its own Generate button calls
   // summarize-report), so there is one generate implementation and nothing
-  // model-related in compiled output. Every viewer gets it: reading a report is
-  // what the button serves, and the endpoint resolves under the viewer's own
-  // roles.
-  actions.push({
-    id: "report_summary",
-    type: "Button",
-    layout: ACTION_LAYOUT,
-    properties: {
-      title: "AI summary",
-      icon: "AiOutlineBulb",
-      // A bordered button, unlike the text-styled ★, ⋯ and chat link: this is
-      // the header's one call to action, and as a link it read as another
-      // navigation.
-      type: "default",
-      size: "small",
-    },
-    events: {
-      onClick: [
-        {
-          id: "seed_summary_filters",
-          type: "SetState",
-          params: {
-            "summary.filter_values": summaryFilterValues(filterSectionsByField),
+  // model-related in compiled output. Only where the module's ai_summary var is
+  // on; when it is, every viewer gets it: reading a report is what the button
+  // serves, and the endpoint resolves under the viewer's own roles.
+  if (ai_summary) {
+    actions.push({
+      id: "report_summary",
+      type: "Button",
+      layout: ACTION_LAYOUT,
+      properties: {
+        title: "AI summary",
+        icon: "AiOutlineBulb",
+        // A bordered button, unlike the text-styled ★, ⋯ and chat link: this is
+        // the header's one call to action, and as a link it read as another
+        // navigation.
+        type: "default",
+        size: "small",
+      },
+      events: {
+        onClick: [
+          {
+            id: "seed_summary_filters",
+            type: "SetState",
+            params: {
+              "summary.filter_values": summaryFilterValues(
+                filterSectionsByField,
+              ),
+            },
           },
-        },
-        {
-          id: "open_summary_drawer",
-          type: "CallMethod",
-          params: {
-            blockId: "report_summary_drawer",
-            method: "setOpen",
-            args: [{ open: true }],
+          {
+            id: "open_summary_drawer",
+            type: "CallMethod",
+            params: {
+              blockId: "report_summary_drawer",
+              method: "setOpen",
+              args: [{ open: true }],
+            },
           },
-        },
-      ],
-    },
-  });
+        ],
+      },
+    });
+  }
 
   // set-report-favourite takes the desired state, not a toggle — and the current
   // state is known at compile time, so the payload is a literal rather than a
@@ -2062,6 +2079,7 @@ function compileReport({
         spanBySection,
         span: spans[index],
         showScope: scopeKey(boundSections) !== sharedKey,
+        aiSummary: Boolean(ai_summary),
       }),
     );
     blocks.push(
@@ -2071,6 +2089,7 @@ function compileReport({
         boundUnion,
         note: sharedNote,
         rowsBySectionId,
+        aiSummary: Boolean(ai_summary),
       }),
     );
     filtersByFirstSubscriber.set(anchorId, blocks);

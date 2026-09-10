@@ -46,6 +46,16 @@ payloadSchema:
         daterange's [start, end] pair. Null/absent values and empty arrays mean
         "no constraint". Fields no filter section declares are ignored.
 routine:
+  # The feature is opt-in per app (the `ai_summary` var). The hidden header
+  # button is an affordance; this rejection is the switch — an exported endpoint
+  # can be called without the button, and the var is what says whether this
+  # app's report data may be sent to a model at all.
+  - :if:
+      _ne:
+        - _module.var: ai_summary
+        - true
+    :then:
+      - :reject: The AI summary is not enabled for this app.
   # Same reason as resolve-report: "shared" means every AUTHENTICATED user, and
   # the catalog's role gate assumes there is a user.
   - :if:

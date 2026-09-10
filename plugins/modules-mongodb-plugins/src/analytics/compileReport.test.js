@@ -1750,14 +1750,10 @@ describe("filter placement", () => {
     expect(byId.filters_s0_reset.events.onClick[0].params).toEqual({
       filter_status: null,
       "sections.s0.rows": null,
-      "summary.filter_values.status": null,
-      "summary.stale": true,
     });
     expect(byId.filters_s3_reset.events.onClick[0].params).toEqual({
       filter_region: null,
       "sections.s3.rows": null,
-      "summary.filter_values.region": null,
-      "summary.stale": true,
     });
   });
 
@@ -2159,6 +2155,8 @@ describe("filter placement", () => {
           roles,
           endpointId,
           chartEndpointId,
+          // On, so the Reset test below can assert the summary keys it clears.
+          ai_summary: true,
         }),
       );
     const notes = (byId, fields) =>
@@ -2488,7 +2486,7 @@ describe("owner-only affordances", () => {
   // whatever their number, rather than a column's width apart in cells of their
   // own.
   test("the actions share one right-justified group beside the title", () => {
-    const alone = compile({ is_owner: false });
+    const alone = compile({ is_owner: false, ai_summary: true });
     expect(
       alone.report_title.layout.span + alone.report_actions.layout.span,
     ).toBe(24);
@@ -2507,7 +2505,11 @@ describe("owner-only affordances", () => {
     }
     expect(alone.report_continue_in_chat).toBeUndefined();
 
-    const withChat = compile({ is_owner: true, conversation_id: "conv-1" });
+    const withChat = compile({
+      is_owner: true,
+      conversation_id: "conv-1",
+      ai_summary: true,
+    });
     expect(withChat.report_actions.blocks.map((b) => b.id)).toEqual([
       "report_continue_in_chat",
       "report_summary",
@@ -3521,8 +3523,46 @@ describe("AI summary", () => {
     roles,
     endpointId,
     chartEndpointId,
+    ai_summary: true,
   });
   const byId = byIdOf(blocks);
+
+  // The var is opt-in, and off is the default: an app that has not turned it on
+  // gets no button, and none of the `summary.*` state writes the drawer would
+  // read — a stale flag nothing reads is dead weight in every filter's onChange.
+  test("off (the default), nothing summary-related is compiled", () => {
+    const off = byIdOf(
+      compileReport({
+        spec,
+        results,
+        catalog: testCatalog,
+        roles,
+        endpointId,
+        chartEndpointId,
+      }),
+    );
+    expect(off.report_summary).toBeUndefined();
+    expect(off.report_actions.blocks.map((b) => b.id)).toEqual([
+      "report_favourite",
+      "report_menu",
+    ]);
+    const writes = (actions) =>
+      actions
+        .filter((a) => a.type === "SetState")
+        .flatMap((a) => Object.keys(a.params));
+    expect(writes(off.filter_status.events.onChange)).not.toContainEqual(
+      expect.stringMatching(/^summary\./),
+    );
+    expect(off.filter_status.events.onChange.map((a) => a.id)).not.toContain(
+      "mark_summary_stale",
+    );
+    const reset = Object.values(off).find((b) =>
+      /^filters_.*_reset$/.test(b.id),
+    );
+    expect(writes(reset.events.onClick)).not.toContainEqual(
+      expect.stringMatching(/^summary\./),
+    );
+  });
 
   test("the header's action group carries an AI summary button before ★ and ⋯", () => {
     const ids = byId.report_actions.blocks.map((b) => b.id);
@@ -3583,6 +3623,7 @@ describe("AI summary", () => {
       roles,
       endpointId,
       chartEndpointId,
+      ai_summary: true,
     });
     const button = byIdOf(unfiltered).report_summary;
     expect(button.events.onClick[0].params).toEqual({

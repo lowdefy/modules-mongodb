@@ -7,9 +7,9 @@ concepts: [ai-summary, filter-scope]
 
 # The AI summary
 
-A report shows the numbers; the AI summary says what they mean. Every report page carries an **AI summary** button in its header, beside ★ and ⋯. It opens a drawer where the viewer generates, on demand, a short model-written reading of the report's data — "sales are up quarter-on-quarter, driven by the West region; the East is flat and worth a look" — as markdown, followed by a **Generated {time} · {scope}** line.
+A report shows the numbers; the AI summary says what they mean. With the `ai_summary` var on, every report page carries an **AI summary** button in its header, beside ★ and ⋯. It opens a drawer where the viewer generates, on demand, a short model-written reading of the report's data — "sales are up quarter-on-quarter, driven by the West region; the East is flat and worth a look" — as markdown, followed by a **Generated {time} · {scope}** line.
 
-It is page chrome, not a report section. The report body stays the module's deterministic surface, the prose is visibly a different kind of content in a different place, and there is nothing to author: no spec key, no agent tool, no change to any saved report. Every report a viewer can open has the button.
+It is page chrome, not a report section. The report body stays the module's deterministic surface, the prose is visibly a different kind of content in a different place, and there is nothing to author: no spec key, no agent tool, no change to any saved report. Once on, every report a viewer can open has the button.
 
 ## It describes the report as currently filtered
 
@@ -39,6 +39,15 @@ The generated text lives in page state. It survives closing and reopening the dr
 
 ## Configuration
 
+The feature is **opt-in**: it is off unless the module entry sets `ai_summary: true`. Generating a summary sends a report's rows to a model, and whether that is acceptable is the app's decision, not the module's default. Off, the header renders no button and the `summarize-report` endpoint rejects every call, so the switch holds even for a caller that skips the page.
+
+```yaml
+modules:
+  - id: ai-reporting
+    vars:
+      ai_summary: true
+```
+
 The call goes through the module's `ai-text` connection (type `AiText`, from [`@lowdefy/modules-mongodb-plugins`](../../plugins/index.md#aitext-connection)), keyed by the same `AI_GATEWAY_API_KEY` secret as the agent's `ai` connection, and uses the module's `model` var. An app that remaps `ai` to its own gateway remaps `ai-text` the same way:
 
 ```yaml
@@ -49,4 +58,4 @@ modules:
       ai-text: my-ai-text-connection
 ```
 
-The endpoint is exported as `summarize-report` and rejects unauthenticated callers. Protect it with the rest of the module's endpoints — see [Protect the pages and endpoints](../index.md#protect-the-pages-and-endpoints). There is no switch to turn the button off: an app that does not serve the model call has a button that reports an error on Generate, which argues for configuring the connection.
+The endpoint is exported as `summarize-report` and rejects unauthenticated callers. Protect it with the rest of the module's endpoints — see [Protect the pages and endpoints](../index.md#protect-the-pages-and-endpoints).

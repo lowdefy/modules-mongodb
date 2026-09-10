@@ -17,6 +17,12 @@ catalog:
 share_roles:
   - report-publisher
 
+# The report page's AI summary is opt-in. On here so the demo exercises the
+# header button, the drawer and the summarize-report endpoint (the e2e suite
+# proves the model-free half); an app that leaves it off gets no button and an
+# endpoint that rejects.
+ai_summary: true
+
 # Project context for the agent's instructions — the things the catalog can't
 # say: what this app is, the words users will actually type, and the business
 # conventions to assume. Per-field mechanics (types, enum values, which array
