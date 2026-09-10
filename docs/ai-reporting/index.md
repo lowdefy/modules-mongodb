@@ -15,7 +15,7 @@ Charts, saved reports, and CSV exports ride the same engine: their queries are p
 
 ## Requirements
 
-**A Lowdefy build whose server passes `urlQuery` into page config.** The `report` page is a `Dynamic` block: it resolves each viewer's report through `resolve-report`, which reads the report id as `_payload: urlQuery.report_id`. That only works where the server threads the URL query into `getPageConfig` — it does so on the Vite/Hono line (verified in `0.0.0-experimental-20260814133003` and `0.0.0-experimental-20260822164337`), and not on the current stable `5.5.1`, which calls `getPageConfig(context, { pageId })` with no `urlQuery` at all.
+**A Lowdefy build whose server passes `urlQuery` into page config.** The `report` page is a `Dynamic` block: it resolves each viewer's report through `resolve-report`, which reads the report id as `_payload: urlQuery.report_id`. That only works where the server threads the URL query into `getPageConfig` — it does so on the Vite/Hono line (`6.0.0`, and the experimental builds before it), and not on the `5.5.1` line, which calls `getPageConfig(context, { pageId })` with no `urlQuery` at all.
 
 On a build without it, every report page resolves as though no report id had been supplied and renders the not-found fallback. Nothing else degrades: the agent still answers questions, `generate_report` still persists specs, and the reports list still shows them — the saved report simply cannot be opened. Only this page is affected, because `chat` reads its deep-link parameter with the client-side `_url_query` operator, which every build supports.
 

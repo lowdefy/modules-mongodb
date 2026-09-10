@@ -220,20 +220,19 @@ forked a duplicate doc without its `data_parts`. It was carried as
 `id: effectiveConversationId` upstream; it shipped in the 2026-08-06 build and that
 hunk was dropped from the patch.
 
-Three `dist/` patches are in play in total, all interim and all owed upstream:
-`blocks-antd-x` (the `setInput` method the chat empty state fills the composer
-with, and the in-flow two-track welcome — both open upstream as
-[lowdefy/lowdefy#2303](https://github.com/lowdefy/lowdefy/pull/2303), along with the
-`ai-utils` fix below), `ai-utils` (`generateMessageId`, without which the assistant
-message reaches `onFinish` with `id: ""`), and `blocks-aggrid` (the `cell.type:
-menu` renderer the reports list's ⋯ column uses, plus the cell-renderer identity
-fix that menu needs — the block rebuilt every renderer on every render, and
-ag-grid treats a new renderer function as a different component, so it destroyed
-the mounted cell and the popover with it; submitted as
-[lowdefy/lowdefy#2310](https://github.com/lowdefy/lowdefy/pull/2310)). They are declared in
-`pnpm-workspace.yaml` under `patchedDependencies`, keyed by bare package name so a
-release that touches a patched file fails the apply loudly instead of leaving the
-patch silently unapplied.
+No `dist/` patches are in play any more. The module ran on a series of interim
+patches while its framework fixes were owed upstream — `blocks-antd-x` (the
+`setInput` method the chat empty state fills the composer with, and the in-flow
+two-track welcome, [lowdefy/lowdefy#2303](https://github.com/lowdefy/lowdefy/pull/2303)),
+`ai-utils` (`generateMessageId`, without which the assistant message reached
+`onFinish` with `id: ""`), `blocks-aggrid` (the `cell.type: menu` renderer the
+reports list's ⋯ column uses, plus the cell-renderer identity fix that menu needs,
+[lowdefy/lowdefy#2310](https://github.com/lowdefy/lowdefy/pull/2310)), and last
+`blocks-echarts` (re-applying a changed theme to the live chart through ECharts 6's
+`setTheme`, so a dark-mode toggle re-inks charts without a reload,
+[lowdefy/lowdefy#2358](https://github.com/lowdefy/lowdefy/pull/2358)). All four
+merged and ship in Lowdefy `6.0.0`, which the demo now pins. `pnpm check:patches`
+still runs in CI so that any future patch is keyed to the pinned Lowdefy version.
 
 ## 7. Chat → saved report
 
