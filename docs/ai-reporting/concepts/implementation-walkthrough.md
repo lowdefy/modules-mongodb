@@ -392,6 +392,15 @@ old pooled filter row required is gone.
   (`Modal`, `TextInput`, `TextArea`, `ConfirmModal`) stay out of the allowlist, where
   one missed type blanks the whole report. The allowlist cost of the menu itself is
   one block (`DropdownMenu`) and two operators (`_event`, `_ne`).
+  **Icons are the same class of problem with a quieter failure.** The build collects
+  icon imports by scanning the _static_ page config for icon names, and nothing
+  compiled at runtime is visible to it — so an icon only the compiled header names
+  (`AiOutlineEllipsis` on the ⋯, typically) was bundled only if the consuming app
+  happened to use it on some other page, and rendered as the exclamation-circle
+  fallback otherwise. `report.yaml` lists every icon the compiler emits under the
+  Dynamic block's `properties.icons` — unread by the block, present for the scan —
+  and `compileReport.declared.test.js` asserts the list is exactly the set compiled
+  output uses, across the owner / non-owner / favourited headers.
   The dispatch is why those two operators: the block fires **one** `onClick` for the
   whole menu, carrying the clicked link's id, so each item's actions carry
   `skip: {_ne: [{_event: key}, <item>]}`. An item's link and its actions are emitted
