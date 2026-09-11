@@ -227,7 +227,11 @@ _ref:
                   _state: enrol.passkey_registered
                 params:
                   status: error
-                  content: Couldn't add a passkey. Your device may have cancelled the request.
+                  content: >-
+                    The passkey wasn't created. This usually happens if the
+                    prompt was cancelled, the device or browser doesn't
+                    support passkeys, or it timed out — try Add a passkey
+                    again.
 
       # ── TOTP · phase scan ──
       - id: enrol_scan_intro

@@ -342,7 +342,12 @@ _ref:
                                   _state: passkey_registered
                                 params:
                                   status: error
-                                  content: Couldn't add a passkey. Your device may have cancelled the request.
+                                  content: >-
+                                    The passkey wasn't created. This usually
+                                    happens if the prompt was cancelled, the
+                                    device or browser doesn't support
+                                    passkeys, or it timed out — try Add
+                                    passkey again.
                   # The caller's registered passkeys, rendered from passkeys_ui
                   # state (seeded off get_passkeys). Each row deletes via
                   # PasskeyDelete, then re-fetches. A List binds to a state array,

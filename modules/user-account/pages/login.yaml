@@ -911,23 +911,41 @@ _ref:
                   variant: outlined
                 events:
                   onClick:
-                    - :if:
-                        _not:
-                          _regex:
-                            pattern: '^[^\s@]+@[^\s@]+\.[^\s@]+$'
-                            on:
-                              _if_none:
-                                - _state: email
-                                - ""
-                      :then:
-                        - id: login_passkey_email_required
-                          type: DisplayMessage
-                          params:
-                            status: warning
-                            content: Enter your email address above first.
-                      :else:
-                        - id: passkey_signin
-                          type: PasskeySignIn
+                    try:
+                      - :if:
+                          _not:
+                            _regex:
+                              pattern: '^[^\s@]+@[^\s@]+\.[^\s@]+$'
+                              on:
+                                _if_none:
+                                  - _state: email
+                                  - ""
+                        :then:
+                          - id: login_passkey_email_required
+                            type: DisplayMessage
+                            params:
+                              status: warning
+                              content: Enter your email address above first.
+                        :else:
+                          - id: passkey_signin
+                            type: PasskeySignIn
+                            messages:
+                              error: false
+                    # One generic message for every failure (no matching
+                    # passkey, the prompt was cancelled, the device doesn't
+                    # support it, or it timed out) — never reveal which case it
+                    # was, so this can't be used to probe whether an email has
+                    # an account or a passkey.
+                    catch:
+                      - id: passkey_signin_error
+                        type: DisplayMessage
+                        params:
+                          status: warning
+                          content: >-
+                            No passkey could be used to sign in on this
+                            device. Sign in with your email link or code
+                            instead, then add a passkey from your profile
+                            page.
             else: []
 
         # --- Link-sent actions. Resend re-fires the same shared send
