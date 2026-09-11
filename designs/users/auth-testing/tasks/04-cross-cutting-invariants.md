@@ -14,7 +14,7 @@
 > **A ninth form found this run (2026-08-07):** the shared **magic-link send** button
 > (`components/magic-link-send.yaml`, used on both login and signup) has **no `Validate` at
 > all** — a blank email dispatches the send. Same defect class, worse (missing, not just
-> mis-scoped). Recorded under **[F41](../findings/F41-magic-link-empty-email-no-validation-github-redirect.md)**
+> mis-scoped). Recorded under **[F41](../findings/_completed/F41-magic-link-empty-email-no-validation-github-redirect.md)**
 > (it also produced a GitHub 404 mis-redirect).
 
 One defect class across eight forms, so test them as a single pass. Every one of these

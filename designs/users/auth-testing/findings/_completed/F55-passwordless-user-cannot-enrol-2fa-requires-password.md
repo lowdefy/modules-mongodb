@@ -1,13 +1,13 @@
 # F55 — Magic-link / passwordless user cannot enrol 2FA: enrolment still demands a password
 
 **Status:** `confirmed` (regression on an already-designed fix) · **Area:** user-account / 2FA enrolment
-· **Owner:** [passwordless-2fa-management](../../passwordless-2fa-management/design.md) — **unimplemented**
+· **Owner:** [passwordless-2fa-management](../../../passwordless-2fa-management/design.md) — **unimplemented**
 
 Signing in with a magic link and then trying to enrol two-factor auth fails: the flow presents /
 requires an **account password**, which a passwordless member does not have. This is the exact
 population `allowPasswordless` exists to serve being locked out of self-service 2FA — the symptom
-[F48](../../passwordless-2fa-management/F48-forced-enrol-page-broken-for-passwordless.md) documented and
-the [passwordless-2fa-management](../../passwordless-2fa-management/design.md) design was written to fix.
+[F48](../../../passwordless-2fa-management/F48-forced-enrol-page-broken-for-passwordless.md) documented and
+the [passwordless-2fa-management](../../../passwordless-2fa-management/design.md) design was written to fix.
 
 ## Why it's still broken — the design was never implemented (not an upstream wait)
 
@@ -50,7 +50,7 @@ type "string"`) _before_ `allowPasswordless` can waive it. The Validate was remo
 ## Fix already specified — just needs building
 
 The whole resolution is written up in
-[passwordless-2fa-management/tasks/tasks.md](../../passwordless-2fa-management/tasks/tasks.md): the rule is
+[passwordless-2fa-management/tasks/tasks.md](../../../passwordless-2fa-management/tasks/tasks.md): the rule is
 "password field shown/required/validated **iff** `has_credential`; the `password` param **always sent as
 a string** (empty when the caller holds none) via `{ _if_none: [ { _state: <ns>.password }, '' ] }`,
 letting `allowPasswordless` waive it server-side." Tasks 3 (tile + both modals) and 4 (forced-enrol page)
