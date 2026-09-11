@@ -1,9 +1,12 @@
 # Attributes tile (design Decision 3). This app's access: roles + member
-# attributes. Edit opens modal_access (UpdateMemberRoles + UpdateMemberAttributes,
-# wired task 13). Roles render as tags from the app role catalog; a role held in
+# attributes, plus — behind the `org_authority` var — the member's
+# organization-authority tier. Edit opens modal_access (UpdateMemberRoles +
+# UpdateMemberAttributes, and the tier via update-org-role; wired task 13).
+# Roles render as tags from the app role catalog; a role held in
 # data but no longer in the catalog renders as a flagged "no longer configured"
 # chip and is never hidden (Decision 8). Member attributes come from the consumer
-# fields.member_attributes via SmartDescriptions.
+# fields.member_attributes via SmartDescriptions. The org-authority row mirrors the
+# modal's labels: Owner / Admin / No admin access.
 _ref:
   module: layout
   component: card
@@ -27,38 +30,63 @@ _ref:
                 blockId: modal_access
                 method: toggleOpen
     blocks:
-      # Roles. Catalog-labelled tags; orphaned roles flagged (Decision 8).
-      - id: attributes_roles
-        type: Html
-        properties:
-          html:
-            _nunjucks:
-              template: |
-                <div style="display:flex; align-items:baseline; gap:16px;">
-                  <span style="color:var(--ant-color-text-secondary); font-size:13px; min-width:88px; flex:0 0 auto;">Roles</span>
-                  <span style="display:flex; gap:4px; flex-wrap:wrap;">
-                  {% for r in roles %}
-                    {% if r.orphan %}
-                      <span title="Role is no longer in the app's role catalogue, so it can be removed but not re-added" style="display:inline-flex; align-items:center; gap:4px; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-warning-bg); border:1px solid var(--ant-color-warning-border); color:var(--ant-color-warning-text);">⚑ {{ r.label }}</span>
-                    {% else %}
-                      <span title="{{ r.description }}" style="display:inline-flex; align-items:center; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">{{ r.label }}</span>
-                    {% endif %}
-                  {% endfor %}
-                  </span>
-                </div>
-              on:
-                # Roles are the member's app_roles, catalog-resolved to
-                # { id, label, description, orphan } by the detail read (design Decision 8).
-                roles:
-                  _request: get_user_detail.0.roles
-      # Member attributes. Consumer fields.member_attributes (state.member_attributes.*).
-      - id: attributes_view
-        type: SmartDescriptions
-        properties:
-          column: 1
-          size: small
-          data:
-            member_attributes:
-              _request: get_user_detail.0.member_attributes
-          fields:
-            _module.var: fields.member_attributes
+      _build.array.concat:
+        # Roles. Catalog-labelled tags; orphaned roles flagged (Decision 8).
+        - - id: attributes_roles
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  template: |
+                    <div style="display:flex; align-items:baseline; gap:16px;">
+                      <span style="color:var(--ant-color-text-secondary); font-size:13px; min-width:88px; flex:0 0 auto;">Roles</span>
+                      <span style="display:flex; gap:4px; flex-wrap:wrap;">
+                      {% for r in roles %}
+                        {% if r.orphan %}
+                          <span title="Role is no longer in the app's role catalogue, so it can be removed but not re-added" style="display:inline-flex; align-items:center; gap:4px; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-warning-bg); border:1px solid var(--ant-color-warning-border); color:var(--ant-color-warning-text);">⚑ {{ r.label }}</span>
+                        {% else %}
+                          <span title="{{ r.description }}" style="display:inline-flex; align-items:center; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border); color:var(--ant-color-text-secondary);">{{ r.label }}</span>
+                        {% endif %}
+                      {% endfor %}
+                      </span>
+                    </div>
+                  on:
+                    # Roles are the member's app_roles, catalog-resolved to
+                    # { id, label, description, orphan } by the detail read (design Decision 8).
+                    roles:
+                      _request: get_user_detail.0.roles
+        # Organization authority. Behind the `org_authority` var — the same gate as the
+        # modal's tier control. A read-only row mirroring the modal's labels; the tier
+        # is edited in modal_access, not here.
+        - _build.if:
+            test:
+              _module.var: org_authority
+            then:
+              - id: attributes_org_authority
+                type: Html
+                properties:
+                  html:
+                    _nunjucks:
+                      template: |
+                        <div style="display:flex; align-items:baseline; gap:16px;">
+                          <span style="color:var(--ant-color-text-secondary); font-size:13px; min-width:88px; flex:0 0 auto;">Org authority</span>
+                          <span style="font-size:13px; color:var(--ant-color-text);">
+                          {% if org_role == 'owner' %}Owner{% elif org_role == 'admin' %}Admin{% else %}No admin access{% endif %}
+                          </span>
+                        </div>
+                      on:
+                        # owner | admin | member, from the detail read ($ifNull → member).
+                        org_role:
+                          _request: get_user_detail.0.org_role
+            else: []
+        # Member attributes. Consumer fields.member_attributes (state.member_attributes.*).
+        - - id: attributes_view
+            type: SmartDescriptions
+            properties:
+              column: 1
+              size: small
+              data:
+                member_attributes:
+                  _request: get_user_detail.0.member_attributes
+              fields:
+                _module.var: fields.member_attributes
