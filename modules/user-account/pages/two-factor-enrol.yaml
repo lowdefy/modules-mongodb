@@ -301,6 +301,9 @@ _ref:
           span: 24
         properties:
           bordered: false
+          # Collapse defaults an unset defaultActiveKey to the first panel's key,
+          # which opens this disclosure; [] keeps it collapsed by default.
+          defaultActiveKey: []
           panels:
             - key: manual
               title: Can't scan? Enter this key instead
