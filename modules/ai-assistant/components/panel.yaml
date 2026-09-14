@@ -199,9 +199,14 @@ slots:
             type: TitleInput
             layout:
               flex: 1 1 auto
+            # Size pinned rather than left to the app's h5: `level: 5` asks for a semantic
+            # heading, but this is a chat title, and an app that styles h5 as metadata renders
+            # it at secondary-text size. Flat 1rem, not the heading-5 token, which shrinks under
+            # antd's `compact` algorithm.
             style:
               ".element":
                 margin: 0
+                fontSize: 1rem
             properties:
               level: 5
               ellipsis: true
@@ -237,7 +242,11 @@ slots:
                   size: small
                 events:
                   onClick:
-                    _ref: actions/delete-thread.yaml
+                    - id: ai_panel_open_delete_confirm
+                      type: CallMethod
+                      params:
+                        blockId: ai_delete_confirm_modal
+                        method: open
 
   # ── Scrolling body: the conversation, or the thread list ───────────────────
   # Both are sized to fill the panel body exactly: --fp-body-height is a
@@ -256,3 +265,8 @@ slots:
           path: components/chat.yaml
           vars:
             height: var(--fp-body-height, 520px)
+
+      # Mounted inside the panel body, where the delete button is. A ConfirmModal renders into
+      # a portal, so the panel's overflow does not clip it — only its z-index matters, and the
+      # component sets that.
+      - _ref: components/delete_confirm_modal.yaml

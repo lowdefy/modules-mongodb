@@ -7,7 +7,7 @@ concepts: [agent-chat, threads, scope, titling, docked-panel, embedded-chat]
 
 # AI Assistant
 
-A persisted, multi-thread chat with one of your app's agents, in two shapes: a **docked assistant** for any page (an Intercom-style corner launcher and floating panel) and an **embedded** variant that sits inline in a page's own layout. Both share one thread history per (scope, user), with a searchable thread list, in-place rename, delete, and titles generated from each thread's first exchange.
+A persisted, multi-thread chat with one of your app's agents, in two shapes: a **docked assistant** for any page (an Intercom-style corner launcher and floating panel) and an **embedded** variant that sits inline in a page's own layout. Both share one thread history per (scope, user), with a searchable thread list, in-place rename, delete behind a confirmation, and titles generated from each thread's first exchange.
 
 The panel never masks or reflows the page. Its wrapper is `pointer-events: none`, so everything behind stays clickable — you can keep working while the assistant is open, and because `shared_state` is read on every message send, the assistant follows whatever you select. That is the whole reason for the pattern; a drawer covers the thing you are asking about.
 
@@ -68,6 +68,8 @@ Without it, Lowdefy raises a ConfigWarning for every `ai_*` key the chat reads. 
 ## Mounting the embedded variant
 
 The embedded shell renders the same chat and thread lifecycle inline — a toolbar (thread name, rename, delete, new chat, manage chats) over the chat area. The page owns the container: put it inside whatever Card or column the layout calls for, and size it with the `embedded_height` var.
+
+Delete asks first, in both shells. The thread and its messages are removed outright — there is no soft delete and nothing to restore from — so the confirm names the thread and says the deletion is permanent. It is not configurable: there is no var to turn it off.
 
 ```yaml
 - id: assistant_card

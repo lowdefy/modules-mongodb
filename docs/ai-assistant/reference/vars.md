@@ -47,3 +47,27 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `title_domain` | string |  |  | One phrase describing the app for the title generator's vocabulary, e.g. "a staffing and payroll tool". Null for a generic prompt. |
 | `title_model` | string | `openai/gpt-5-mini` |  | Gateway model id for the titling call. Small and fast is the right choice. |
 | `collection` | string | `conversations` |  | MongoDB collection holding threads. |
+| `toolbar` | object | `{}` |  | The embedded shell's toolbar — its button size, and the fills that mark the primary action apart from the rest. The panel's toolbar is not covered: its buttons are icon-only in a narrow column, where `small` is right and a fill would read as chrome rather than an action. |
+| `thread_selection` | object | `{}` |  | Colours for the selected chat in the thread list, any CSS colour. Defaults to antd's primary tokens, which is right where the app's primary IS its accent and wrong where it is a neutral: a grey colorPrimary leaves the selected chat looking like a hovered one. |
+
+## Nested var details
+
+### `toolbar`
+
+The embedded shell's toolbar — its button size, and the fills that mark the primary action apart from the rest. The panel's toolbar is not covered: its buttons are icon-only in a narrow column, where `small` is right and a fill would read as chrome rather than an action.
+
+| Name | Type | Default | Required | Description |
+|---|---|---|---|---|
+| `size` | string | `small` |  | antd Button size for the toolbar's buttons — small, middle or large. `small` is a 24px control, which is slight for what are the shell's primary actions in a full-width column. |
+| `accent` | string |  |  | Background of the "New chat" button, any CSS colour. Unset leaves antd's `type: text` default, which is what every consumer had before this var. |
+| `accent_text` | string |  |  | Text colour on the accent fill. Only read when `accent` is set. |
+| `secondary` | string |  |  | Background of "Manage chats" and "Back to chat". Unset leaves the antd default. |
+
+### `thread_selection`
+
+Colours for the selected chat in the thread list, any CSS colour. Defaults to antd's primary tokens, which is right where the app's primary IS its accent and wrong where it is a neutral: a grey colorPrimary leaves the selected chat looking like a hovered one.
+
+| Name | Type | Default | Required | Description |
+|---|---|---|---|---|
+| `border` | string | `var(--ant-color-primary-border)` |  |  |
+| `background` | string | `var(--ant-color-primary-bg)` |  |  |

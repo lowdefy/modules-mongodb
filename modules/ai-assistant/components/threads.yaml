@@ -46,8 +46,10 @@ blocks:
     # since `properties.styles` is never read and a plain nested object fails the build.
     style:
       .selected:
-        borderColor: var(--ant-color-primary-border)
-        backgroundColor: var(--ant-color-primary-bg)
+        borderColor:
+          _module.var: thread_selection.border
+        backgroundColor:
+          _module.var: thread_selection.background
         boxShadow: none
     properties:
       data:

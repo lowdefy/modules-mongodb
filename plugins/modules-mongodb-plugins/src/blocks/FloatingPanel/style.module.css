@@ -423,10 +423,13 @@
     letter-spacing: 0.04em;
   }
   /* Assistant — brand colour. antd ships primary / primary-bg as a contrast
-     pair and flips both with the theme, so this holds in light and dark. */
+     pair and flips both with the theme, so this holds in light and dark.
+     Overridable, because the pair is only a brand colour where the app's
+     primary IS its accent: an app whose colorPrimary is a neutral gets a grey
+     chip on a grey tint, which is the one thing this chip exists to avoid. */
   :global(.fp-panel .fp-chat .ant-bubble-start .ant-bubble-header h5) {
-    background: var(--ant-color-primary-bg);
-    color: var(--ant-color-primary);
+    background: var(--fp-role-assistant-bg, var(--ant-color-primary-bg));
+    color: var(--fp-role-assistant-fg, var(--ant-color-primary));
   }
   /* User — neutral. The person typing does not need a brand colour, and two
      coloured chips would compete down the length of the thread. */

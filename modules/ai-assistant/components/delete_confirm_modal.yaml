@@ -1,0 +1,32 @@
+# Delete confirm. Deleting a chat destroys the conversation and its answers outright — there is
+# no soft-delete and nothing to restore from, so this is the last point at which it can be
+# stopped. The control sits beside "New chat" and "Manage chats", which is exactly where a
+# stray click lands.
+#
+# Deliberately not a var: a confirm nobody switched on is a confirm nobody has, and the cost is
+# one extra click on the rarest action in the shell.
+#
+# ConfirmModal, not Modal: the panel stacks at 1100 and the Modal block does not forward
+# `zIndex`, so a Modal would open BEHIND the panel it was launched from. 1200 matches the
+# panel's own tooltips. (ai-reporting's delete modal is a Modal because it sits on a page.)
+#
+# Nothing is seeded here — delete-thread.yaml captures `ai_conversation_id` for itself before
+# replacing it — so cancelling leaves no state to clean up.
+id: ai_delete_confirm_modal
+type: ConfirmModal
+properties:
+  title: Delete this chat?
+  okText: Delete
+  okButton:
+    danger: true
+  zIndex: 1200
+  content:
+    _nunjucks:
+      template: >-
+        “{{ t }}” and everything in it is deleted for good. This cannot be undone.
+      on:
+        t:
+          _state: ai_title
+events:
+  onOk:
+    _ref: actions/delete-thread.yaml

@@ -38,9 +38,14 @@ blocks:
             - threads
         layout:
           flex: 1 1 auto
+        # Size pinned rather than left to the app's h5: `level: 5` asks for a semantic
+        # heading, but this is a chat title, and an app that styles h5 as metadata renders
+        # it at secondary-text size. Flat 1rem, not the heading-5 token, which shrinks under
+        # antd's `compact` algorithm.
         style:
           ".element":
             margin: 0
+            fontSize: 1rem
         properties:
           level: 5
           ellipsis: true
@@ -61,9 +66,14 @@ blocks:
             - threads
         layout:
           flex: 1 1 auto
+        # Size pinned rather than left to the app's h5: `level: 5` asks for a semantic
+        # heading, but this is a chat title, and an app that styles h5 as metadata renders
+        # it at secondary-text size. Flat 1rem, not the heading-5 token, which shrinks under
+        # antd's `compact` algorithm.
         style:
           ".element":
             margin: 0
+            fontSize: 1rem
         properties:
           level: 5
           content: Your chats
@@ -72,17 +82,33 @@ blocks:
         type: Button
         layout:
           flex: 0 0 auto
+        # Set on the block rather than left to a consumer stylesheet: reaching the button
+        # from outside means selecting on this id, which is module-internal and can be
+        # renamed without the consumer seeing an error.
+        # `.element` is the button itself; a bare style object lands on the block's wrapper,
+        # where the fill paints a square behind a transparent button.
+        style:
+          .element:
+            backgroundColor:
+              _module.var: toolbar.accent
+            color:
+              _module.var: toolbar.accent_text
         properties:
           title: New chat
           icon: AiOutlinePlus
           type: text
-          size: small
+          size:
+            _module.var: toolbar.size
         events:
           onClick:
             _ref: actions/new-thread.yaml
 
       - id: ai_embedded_manage_chats_button
         type: Button
+        style:
+          .element:
+            backgroundColor:
+              _module.var: toolbar.secondary
         visible:
           _ne:
             - _state: ai_view
@@ -93,13 +119,18 @@ blocks:
           title: Manage chats
           icon: AiOutlineUnorderedList
           type: text
-          size: small
+          size:
+            _module.var: toolbar.size
         events:
           onClick:
             _ref: actions/open-threads.yaml
 
       - id: ai_embedded_back_to_chat_button
         type: Button
+        style:
+          .element:
+            backgroundColor:
+              _module.var: toolbar.secondary
         visible:
           _eq:
             - _state: ai_view
@@ -110,7 +141,8 @@ blocks:
           title: Back to chat
           icon: AiOutlineArrowLeft
           type: text
-          size: small
+          size:
+            _module.var: toolbar.size
         events:
           onClick:
             - id: ai_show_chat_view
@@ -132,10 +164,15 @@ blocks:
           icon: AiOutlineDelete
           type: text
           danger: true
-          size: small
+          size:
+            _module.var: toolbar.size
         events:
           onClick:
-            _ref: actions/delete-thread.yaml
+            - id: ai_open_delete_confirm
+              type: CallMethod
+              params:
+                blockId: ai_delete_confirm_modal
+                method: open
 
   - _ref:
       path: components/threads.yaml
@@ -148,3 +185,5 @@ blocks:
       vars:
         height:
           _module.var: embedded_height
+
+  - _ref: components/delete_confirm_modal.yaml

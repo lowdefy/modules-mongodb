@@ -122,6 +122,55 @@ vars:
       Overrides merged over the module's AgentChat messageDisplay defaults
       (assistant name, reasoning/tool display, copy action).
 
+  toolbar:
+    type: object
+    default: {}
+    description: >-
+      The embedded shell's toolbar — its button size, and the fills that mark the
+      primary action apart from the rest. The panel's toolbar is not covered: its
+      buttons are icon-only in a narrow column, where `small` is right and a fill
+      would read as chrome rather than an action.
+    properties:
+      size:
+        type: string
+        default: small
+        description: >-
+          antd Button size for the toolbar's buttons — small, middle or large.
+          `small` is a 24px control, which is slight for what are the shell's
+          primary actions in a full-width column.
+      accent:
+        type: string
+        default: null
+        description: >-
+          Background of the "New chat" button, any CSS colour. Unset leaves antd's
+          `type: text` default, which is what every consumer had before this var.
+      accent_text:
+        type: string
+        default: null
+        description: Text colour on the accent fill. Only read when `accent` is set.
+      secondary:
+        type: string
+        default: null
+        description: >-
+          Background of "Manage chats" and "Back to chat". Unset leaves the antd
+          default.
+
+  thread_selection:
+    type: object
+    default: {}
+    description: >-
+      Colours for the selected chat in the thread list, any CSS colour. Defaults
+      to antd's primary tokens, which is right where the app's primary IS its
+      accent and wrong where it is a neutral: a grey colorPrimary leaves the
+      selected chat looking like a hovered one.
+    properties:
+      border:
+        type: string
+        default: var(--ant-color-primary-border)
+      background:
+        type: string
+        default: var(--ant-color-primary-bg)
+
   on_before_send:
     type: array
     default: []
