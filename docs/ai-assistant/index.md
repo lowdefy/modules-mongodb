@@ -69,7 +69,9 @@ Without it, Lowdefy raises a ConfigWarning for every `ai_*` key the chat reads. 
 
 The embedded shell renders the same chat and thread lifecycle inline — a toolbar (thread name, rename, delete, new chat, manage chats) over the chat area. The page owns the container: put it inside whatever Card or column the layout calls for, and size it with the `embedded_height` var.
 
-Delete asks first, in both shells. The thread and its messages are removed outright — there is no soft delete and nothing to restore from — so the confirm names the thread and says the deletion is permanent. It is not configurable: there is no var to turn it off.
+Delete asks first, in both shells, and the confirm names the thread. It is not configurable: there is no var to turn it off.
+
+The delete is **soft** — it sets a `deleted` [change stamp](../shared/soft-delete.md) and every read filters the thread out, so the conversation survives the click and the stamp records who deleted it and when. Nothing in the shell reads a deleted thread back and there is no restore control, so the confirm tells the user the chat goes without offering them recovery: bringing one back is an operator action against the collection.
 
 ```yaml
 - id: assistant_card

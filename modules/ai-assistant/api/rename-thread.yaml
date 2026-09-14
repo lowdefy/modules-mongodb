@@ -34,6 +34,8 @@ routine:
           _payload: conversationId
         user_id:
           _user: id
+        deleted.timestamp:
+          $exists: false
       update:
         $set:
           title:

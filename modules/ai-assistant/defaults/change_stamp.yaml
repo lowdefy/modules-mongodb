@@ -1,0 +1,19 @@
+# Audit metadata for a thread write: who and when.
+#
+# Written here rather than consumed from the events module's exported
+# change_stamp component, because this module declares no dependencies — the
+# same choice ai-reporting made, and for the same reason. The shape is
+# identical, so a host app reads it with the same predicate as every other
+# module's soft delete. The consequence worth knowing: the events component
+# resolves to that module entry's `change_stamp` var, so an app that adds a
+# field to its audit stamps centrally will NOT see it here.
+#
+# See docs/shared/change-stamps.md for the idiom and docs/shared/soft-delete.md
+# for the `deleted` variant of it.
+timestamp:
+  _date: now
+user:
+  name:
+    _user: profile.name
+  id:
+    _user: id

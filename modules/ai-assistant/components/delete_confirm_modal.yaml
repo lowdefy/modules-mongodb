@@ -1,7 +1,7 @@
-# Delete confirm. Deleting a chat destroys the conversation and its answers outright — there is
-# no soft-delete and nothing to restore from, so this is the last point at which it can be
-# stopped. The control sits beside "New chat" and "Manage chats", which is exactly where a
-# stray click lands.
+# Delete confirm. The control sits beside "New chat" and "Manage chats", which is exactly where
+# a stray click lands. The delete is soft (api/delete-thread.yaml), so the copy says the chat
+# goes rather than that it is destroyed — but nothing in the shell can hand it back, so this is
+# still the last point at which the user can stop it, and it offers no recovery.
 #
 # Deliberately not a var: a confirm nobody switched on is a confirm nobody has, and the cost is
 # one extra click on the rarest action in the shell.
@@ -23,7 +23,8 @@ properties:
   content:
     _nunjucks:
       template: >-
-        “{{ t }}” and everything in it is deleted for good. This cannot be undone.
+        “{{ t }}” and everything in it is removed from your chats. You will not be able to
+        open it again.
       on:
         t:
           _state: ai_title

@@ -6,12 +6,12 @@ ai-assistant: ask before deleting a chat
 
 Delete chat destroyed the open thread on the click. `delete-thread.yaml` went straight to the
 delete endpoint, and neither the embedded toolbar's button nor the panel's carried a guard, so
-one stray click took the conversation and every answer in it. There is no soft delete and no
-restore path — what goes is gone — and the control sits directly beside "New chat" and "Manage
-chats", which is where a mis-click lands.
+one stray click took the conversation and every answer in it, and the control sits directly
+beside "New chat" and "Manage chats", which is where a mis-click lands.
 
-Both shells now open a confirm first. It names the thread and says the deletion is permanent
-rather than borrowing the softer wording used where a restore exists.
+Both shells now open a confirm first, naming the thread. (The delete itself is soft as of the
+accompanying change, so the confirm's wording stops at the chat leaving the user's list rather
+than claiming the conversation is destroyed.)
 
 Decisions:
 
