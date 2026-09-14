@@ -9,6 +9,19 @@ payload:
     _build.app: slug
   contact_id:
     _user: id
+  # The caller's auth user id, or a sentinel when there is no session. NEVER
+  # null: a null here would $match records whose own user_id is null — every
+  # notification addressed to a login-less contact — and make them readable by
+  # anyone holding the id. The sentinel cannot equal a real user id.
+  user_id:
+    _if:
+      test:
+        _ne:
+          - _user: id
+          - null
+      then:
+        _user: id
+      else: __no_session__
 properties:
   pipeline:
     - $match:
@@ -17,8 +30,22 @@ properties:
         created.app_name:
           _payload: app_name
         # Pre-auth notification types (module var public_link_types) resolve
-        # without a session; everything else needs the recipient's contact_id.
-        # Legacy records store event_type; pipeline records store type.
+        # without a session; everything else needs the caller to BE the
+        # recipient. Legacy records store event_type; pipeline records store
+        # type.
+        #
+        # Two ways to be the recipient, because `contact._id` means different
+        # things in different apps:
+        #   user_id     — the auth user behind the recipient, written by
+        #                 dispatch-notification-item from item.contact.user_id.
+        #                 Like-for-like against the session, and the one that
+        #                 works when an app models people as per-organization
+        #                 contact rows whose ids are not user ids.
+        #   contact_id  — the original comparison, kept for apps whose
+        #                 `contact._id` IS the user id, and for records written
+        #                 before user_id was persisted.
+        # A record with neither (a login-less contact) resolves only through
+        # public_link_types, which is correct: there is no session to check.
         $or:
           - event_type:
               $in:
@@ -28,3 +55,5 @@ properties:
                 _module.var: public_link_types
           - contact_id:
               _payload: contact_id
+          - user_id:
+              _payload: user_id
