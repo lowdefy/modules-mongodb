@@ -96,6 +96,6 @@ MongoDB, so none of the following can be verified autonomously:
 - The design leaves "one release or two" open — whether to ship the form-data re-key ahead of the
   rest, since it is the only change gating the host app's own follow-on work. One changeset covering
   everything assumes a single release; if the decision changes, split it.
-- Two items are deliberately *not* in this release: the unresolved `deal-status-chip` export defect
+- Two items are deliberately _not_ in this release: the unresolved `deal-status-chip` export defect
   (the manifest declares an export with no top-level `components:` list to resolve it), and the host
   app's own migration. Don't fold either in.

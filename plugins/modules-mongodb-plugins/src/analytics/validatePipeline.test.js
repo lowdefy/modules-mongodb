@@ -731,7 +731,10 @@ describe("touchedCollections", () => {
   // t_deep is reachable ONLY through the nested $lookup sub-pipeline, so its
   // presence proves the nested walk records rather than a base + top-level scan.
   const catalog = {
-    t_base: { description: "Open base.", fields: { mid_id: { type: "string" } } },
+    t_base: {
+      description: "Open base.",
+      fields: { mid_id: { type: "string" } },
+    },
     t_mid: {
       roles: ["analyst"],
       description: "Gated mid.",

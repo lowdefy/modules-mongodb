@@ -143,12 +143,12 @@ Form state is validated (regex-anchored to `^{blockId}\.form\.`) before `onSave`
 
 `metadataTags` renders a small Antd `Tag` under each file row, driven by that file's `metadata`. Each entry is an object:
 
-| Field   | Type    | Description                                                                                                  |
-| ------- | ------- | ------------------------------------------------------------------------------------------------------------ |
-| `key`   | string  | The `metadata` field to read (`fileDoc.metadata[key]`). Required — entries without a `key` are ignored.      |
-| `label` | string  | Tag text. Defaults to `key`.                                                                                 |
-| `when`  | any     | If present, the tag shows only when `metadata[key]` **strictly equals** `when`. If omitted, any truthy value shows the tag. |
-| `color` | string  | Any Antd tag color (a preset like `green`/`red` or a hex value). Optional.                                    |
+| Field   | Type   | Description                                                                                                                 |
+| ------- | ------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `key`   | string | The `metadata` field to read (`fileDoc.metadata[key]`). Required — entries without a `key` are ignored.                     |
+| `label` | string | Tag text. Defaults to `key`.                                                                                                |
+| `when`  | any    | If present, the tag shows only when `metadata[key]` **strictly equals** `when`. If omitted, any truthy value shows the tag. |
+| `color` | string | Any Antd tag color (a preset like `green`/`red` or a hex value). Optional.                                                  |
 
 ```yaml
 metadataTags:
@@ -162,12 +162,12 @@ Tags are display-only — they render in both editable and `viewOnly` modes and 
 
 ## Events
 
-| Event        | When                                                       | Payload                                                                                                                |
-| ------------ | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `onChange`   | Dragger upload state changes (start, progress, error).     | —                                                                                                                     |
-| `onSave`     | Upload completes (and the form is valid, when present).    | `{ file: { name, key, bucket, size, type, thumbnail } }`. The consumer is expected to persist this and any form state. |
-| `onDelete`   | Per-row delete is confirmed.                               | `{ fileDoc }` — the full file document being deleted.                                                                 |
-| `onDownload` | A download is initiated (after the presigned URL opens).   | `{ fileDoc }` — the full file document being downloaded.                                                              |
+| Event        | When                                                     | Payload                                                                                                                |
+| ------------ | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `onChange`   | Dragger upload state changes (start, progress, error).   | —                                                                                                                      |
+| `onSave`     | Upload completes (and the form is valid, when present).  | `{ file: { name, key, bucket, size, type, thumbnail } }`. The consumer is expected to persist this and any form state. |
+| `onDelete`   | Per-row delete is confirmed.                             | `{ fileDoc }` — the full file document being deleted.                                                                  |
+| `onDownload` | A download is initiated (after the presigned URL opens). | `{ fileDoc }` — the full file document being downloaded.                                                               |
 
 `onDownload` fires only once the presigned GET URL has resolved and the download has actually been opened, so it is safe to use for download audit logging. Note that download logging is emitted **client-side** from this event (unlike upload/delete auditing, which the `files` module records **server-side** in its `save-file` / `delete-file` API routines) — there is no download API to hang it off, so the `file-manager` / `file-card` components call the events module's `new-event` endpoint directly from `onDownload`.
 

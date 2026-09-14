@@ -115,7 +115,7 @@ onMount:
         skip:
           _eq:
             - _state: ai_scope
-            - _global: active_company_id   # your source of truth
+            - _global: active_company_id # your source of truth
         params:
           ai_scope:
             _global: active_company_id
@@ -153,14 +153,14 @@ Two vars sharpen the generated names: `title_context` (one line of grounding, e.
 
 The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` and will not hand that over. A thread is persisted twice: once when the message is sent, and again when the reply completes. The first save is what makes a thread survive a client that leaves mid-stream — without it the thread was never created, and the question went with it. Everything else an app might want to do around a message is a var, each a list of actions run on the corresponding chat-block event:
 
-| Var | Event | For |
-|---|---|---|
-| `on_before_send` | `onBeforeSend` | Refuse a send — `Throw` here. The only seam that runs *before* the model is called, so quotas and entitlement checks belong here. |
-| `on_user_message` | `onUserMessage` | The app's own record of what was asked. Runs after the module has persisted the thread, so a thread id is already stored by this point. |
-| `on_data_part` | `onDataPart` | Custom data parts the agent streams. Filter on the part type yourself; every part arrives here. |
-| `on_feedback` | `onFeedback` | Ratings from the feedback control. |
-| `on_thread_change` | — | The active thread changed by a user action: a thread opened from the list, or a new chat started. Not fired by `enter`, which a page splices its own actions after directly. Re-derive anything you render outside the chat from the open conversation; read the new thread from `ai_conversation_id`, not the event. |
-| `on_link_click` | `onLinkClick` | A link clicked inside a message, as `{ href, text }`. Open an in-app target in place instead of navigating out of the conversation. Wiring it turns interception on for the whole message, so an href you do not recognise navigates nowhere — handle the fall-through. Modified and non-primary clicks are never delivered, so open-in-new-tab keeps working. |
+| Var                | Event           | For                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `on_before_send`   | `onBeforeSend`  | Refuse a send — `Throw` here. The only seam that runs _before_ the model is called, so quotas and entitlement checks belong here.                                                                                                                                                                                                                              |
+| `on_user_message`  | `onUserMessage` | The app's own record of what was asked. Runs after the module has persisted the thread, so a thread id is already stored by this point.                                                                                                                                                                                                                        |
+| `on_data_part`     | `onDataPart`    | Custom data parts the agent streams. Filter on the part type yourself; every part arrives here.                                                                                                                                                                                                                                                                |
+| `on_feedback`      | `onFeedback`    | Ratings from the feedback control.                                                                                                                                                                                                                                                                                                                             |
+| `on_thread_change` | —               | The active thread changed by a user action: a thread opened from the list, or a new chat started. Not fired by `enter`, which a page splices its own actions after directly. Re-derive anything you render outside the chat from the open conversation; read the new thread from `ai_conversation_id`, not the event.                                          |
+| `on_link_click`    | `onLinkClick`   | A link clicked inside a message, as `{ href, text }`. Open an in-app target in place instead of navigating out of the conversation. Wiring it turns interception on for the whole message, so an href you do not recognise navigates nowhere — handle the fall-through. Modified and non-primary clicks are never delivered, so open-in-new-tab keeps working. |
 
 Each event brings its own `_event` payload from the chat block, and they do not agree on field names — `onBeforeSend` gives you `{ text, files, messages, switches }`, so a rule about what the user typed reads `_event: text`, not `content`. Reading a field the event does not carry yields null silently, which in a `skip` reads as "skip this action" — a gate written against the wrong field does not error, it just never fires. Worth a check against the block's reference when writing one.
 
@@ -205,10 +205,10 @@ on_before_send:
 - **Two indexes on the threads collection.** The module does not create them; nothing breaks
   without them until the collection grows, which is the worst time to find out.
 
-  | Index | Serves |
-  |---|---|
+  | Index                                   | Serves                                                                                                                                                                                                   |
+  | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
   | `{ scope: 1, user_id: 1, updated: -1 }` | `list-threads`, which matches on scope and the session user and sorts newest-first. The whole index, in order — a partial one still sorts in memory. Also serves the match stage of `get-active-thread`. |
-  | `{ conversationId: 1, user_id: 1 }` | the other four endpoints: get, save, rename, delete all filter on exactly this pair. |
+  | `{ conversationId: 1, user_id: 1 }`     | the other four endpoints: get, save, rename, delete all filter on exactly this pair.                                                                                                                     |
 
   The thread list is capped at 200 per (scope, user), newest first. The threads view searches client-side over that window, so a user holding more chats than the cap in one scope cannot reach the older ones — an app expecting that needs pagination in `list-threads`, not a larger cap.
 

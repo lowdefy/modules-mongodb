@@ -94,7 +94,11 @@ test("a spec without a catalog skips the pipeline gate (shape checks only)", () 
 test.each([
   ["spec is missing", undefined, /spec must be an object/],
   ["spec is an array", [], /spec must be an object/],
-  ["title is missing", { query: ordersByRegion, columns: [{ key: "region" }] }, /title is required/],
+  [
+    "title is missing",
+    { query: ordersByRegion, columns: [{ key: "region" }] },
+    /title is required/,
+  ],
   [
     "title is blank",
     { title: "", query: ordersByRegion, columns: [{ key: "region" }] },

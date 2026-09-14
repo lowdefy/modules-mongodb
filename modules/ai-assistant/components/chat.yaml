@@ -294,7 +294,6 @@ events:
             content:
               _event: message
 
-
     # onLinkClick is added ONLY when the consumer supplies actions. The block turns link
     # interception on whenever the event is present (`Boolean(events?.onLinkClick)`), and an
     # event declared with an empty action array is still present — so wiring this

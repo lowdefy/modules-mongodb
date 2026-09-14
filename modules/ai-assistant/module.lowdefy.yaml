@@ -310,5 +310,5 @@ secrets:
 plugins:
   # FloatingPanel (the launcher + panel block) and the AiText connection
   # (the titling call) both ship here.
-  - name: '@lowdefy/modules-mongodb-plugins'
+  - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.36.0"

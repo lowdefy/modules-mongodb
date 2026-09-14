@@ -124,7 +124,11 @@ describe("selectCollections — --include / --exclude filtering", () => {
   test("`*`-glob include matches a naming family and is anchored", () => {
     const { selected } = selectCollections(all, { include: ["demo_*"] });
     // Underscore family only — the hyphenated `demo-log-changes` must NOT match.
-    expect(selected).toEqual(["demo_activities", "demo_companies", "demo_orders"]);
+    expect(selected).toEqual([
+      "demo_activities",
+      "demo_companies",
+      "demo_orders",
+    ]);
   });
 
   test("exclude drops matching collections (exact and glob)", () => {

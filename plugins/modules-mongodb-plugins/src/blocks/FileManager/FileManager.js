@@ -385,7 +385,11 @@ const FileManager = ({
                 <Tag
                   key={ti}
                   color={tag.color}
-                  style={{ marginInlineEnd: 0, fontSize: 11, lineHeight: "16px" }}
+                  style={{
+                    marginInlineEnd: 0,
+                    fontSize: 11,
+                    lineHeight: "16px",
+                  }}
                 >
                   {tag.label ?? tag.key}
                 </Tag>

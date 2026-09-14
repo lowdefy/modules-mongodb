@@ -27,6 +27,6 @@ on_feedback:
     params:
       content:
         _string.concat:
-          - 'Thanks — recorded a '
+          - "Thanks — recorded a "
           - _event: rating
-          - ' (demo only).'
+          - " (demo only)."

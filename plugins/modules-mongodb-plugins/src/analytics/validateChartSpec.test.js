@@ -7,7 +7,13 @@ const query = { collection: "orders", pipeline: [] };
 test("a single-measure pie is accepted", () => {
   expect(() =>
     validateChartSpec({
-      spec: { chart: "pie", title: "By region", query, x: "region", y: ["revenue"] },
+      spec: {
+        chart: "pie",
+        title: "By region",
+        query,
+        x: "region",
+        y: ["revenue"],
+      },
     }),
   ).not.toThrow();
 });

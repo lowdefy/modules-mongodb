@@ -50,8 +50,8 @@ Three behaviours worth knowing:
 
 ## Slots
 
-| Slot      | Purpose                                                                                                                                  |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Slot      | Purpose                                                                                                                                   |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `content` | The panel body. Scrolls; everything else in the panel is fixed chrome.                                                                    |
 | `header`  | Optional extra content in the header row, between the title and the window controls.                                                      |
 | `toolbar` | Optional fixed band between the header and the body — for the subject of what is in the body, anything that must not scroll away with it. |
@@ -59,39 +59,39 @@ Three behaviours worth knowing:
 
 ## Properties
 
-| Property        | Type                                 | Default          | Description                                                                                          |
-| --------------- | ------------------------------------ | ---------------- | ------------------------------------------------------------------------------------------------------ |
-| `title`         | string                               | —                | Panel header title. Set in the app display font when `--fp-font-display` is defined.                  |
-| `subtitle`      | string                               | —                | Small line under the title — an identity or status line, not a sentence.                              |
-| `avatar`        | object                               | —                | Round mark left of the title: `{ icon, color }`. Icon defaults to a built-in spark glyph.             |
-| `launcher`      | object \| `false`                    | `true`           | The launcher button — `{ icon, label, ariaLabel, badge }` — or `false` to drive the panel by methods. |
-| `width`         | number \| string                     | `400`            | Panel width. Numbers are px.                                                                          |
-| `height`        | number \| string                     | `620`            | Panel height. Always clamped to the viewport, so this is a maximum in practice.                       |
-| `expandedWidth` | number \| string                     | `720`            | Panel width while expanded.                                                                           |
-| `expandable`    | boolean                              | `true`           | Show the expand/collapse control in the header.                                                       |
-| `closable`      | boolean                              | `true`           | Show the close control in the header.                                                                 |
-| `keyboard`      | boolean                              | `true`           | Escape closes the panel.                                                                              |
-| `placement`     | `"bottom-right"` \| `"bottom-left"`  | `"bottom-right"` | Which corner the launcher and panel anchor to.                                                        |
-| `offset`        | object                               | `{24, 24}`       | Distance from the anchored corner: `{ bottom, side }`, in px.                                         |
-| `zIndex`        | number                               | `1100`           | Stacking order. The stylesheet default clears the antd popup layer (~1050–1070).                      |
-| `defaultOpen`   | boolean                              | `false`          | Render with the panel already open on first mount.                                                    |
+| Property        | Type                                | Default          | Description                                                                                           |
+| --------------- | ----------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------- |
+| `title`         | string                              | —                | Panel header title. Set in the app display font when `--fp-font-display` is defined.                  |
+| `subtitle`      | string                              | —                | Small line under the title — an identity or status line, not a sentence.                              |
+| `avatar`        | object                              | —                | Round mark left of the title: `{ icon, color }`. Icon defaults to a built-in spark glyph.             |
+| `launcher`      | object \| `false`                   | `true`           | The launcher button — `{ icon, label, ariaLabel, badge }` — or `false` to drive the panel by methods. |
+| `width`         | number \| string                    | `400`            | Panel width. Numbers are px.                                                                          |
+| `height`        | number \| string                    | `620`            | Panel height. Always clamped to the viewport, so this is a maximum in practice.                       |
+| `expandedWidth` | number \| string                    | `720`            | Panel width while expanded.                                                                           |
+| `expandable`    | boolean                             | `true`           | Show the expand/collapse control in the header.                                                       |
+| `closable`      | boolean                             | `true`           | Show the close control in the header.                                                                 |
+| `keyboard`      | boolean                             | `true`           | Escape closes the panel.                                                                              |
+| `placement`     | `"bottom-right"` \| `"bottom-left"` | `"bottom-right"` | Which corner the launcher and panel anchor to.                                                        |
+| `offset`        | object                              | `{24, 24}`       | Distance from the anchored corner: `{ bottom, side }`, in px.                                         |
+| `zIndex`        | number                              | `1100`           | Stacking order. The stylesheet default clears the antd popup layer (~1050–1070).                      |
+| `defaultOpen`   | boolean                             | `false`          | Render with the panel already open on first mount.                                                    |
 
 ## Events
 
-| Event      | Fires                                                       |
-| ---------- | ------------------------------------------------------------ |
-| `onOpen`   | When the panel opens.                                        |
-| `onClose`  | When the panel closes.                                       |
-| `onToggle` | On every open/close, before the two above. `_event = { open }`. |
+| Event      | Fires                                                              |
+| ---------- | ------------------------------------------------------------------ |
+| `onOpen`   | When the panel opens.                                              |
+| `onClose`  | When the panel closes.                                             |
+| `onToggle` | On every open/close, before the two above. `_event = { open }`.    |
 | `onExpand` | When the expand/collapse control is used. `_event = { expanded }`. |
 
 ## Methods
 
-| Method        | Does                                                        |
-| ------------- | ------------------------------------------------------------ |
-| `setOpen`     | Open or close the panel. `args: { open: boolean }`.          |
-| `toggleOpen`  | Toggle the panel — same thing the launcher does.             |
-| `setExpanded` | Widen or restore the panel. `args: { expanded: boolean }`.   |
+| Method        | Does                                                       |
+| ------------- | ---------------------------------------------------------- |
+| `setOpen`     | Open or close the panel. `args: { open: boolean }`.        |
+| `toggleOpen`  | Toggle the panel — same thing the launcher does.           |
+| `setExpanded` | Widen or restore the panel. `args: { expanded: boolean }`. |
 
 ## Styling slot content
 

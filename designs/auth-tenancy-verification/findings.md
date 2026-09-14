@@ -250,20 +250,20 @@ are in play and they are deliberately distinct:
 "machiel+bob@resonancy.io"`, which is what the header, the switcher and every
       workspace-name surface then display.
 
-          **Mechanism.** The engine mints the organization with
-          `name: user?.name || user?.email || session.userId`
-          (`@lowdefy/api/dist/routes/auth/organizations/createActiveOrgPolicyHook.js:160`) at
-          **first sign-in** — which is *before* onboarding collects a name, so `users.name` is
-          still the empty string signup wrote. The `user?.name` branch is therefore unreachable
-          on the email/password path and the name always falls through to the email. It is
-          reachable via OAuth, where the provider supplies a name at account creation, so the
-          same app yields tidy names for Google signups and raw addresses for password signups.
+            **Mechanism.** The engine mints the organization with
+            `name: user?.name || user?.email || session.userId`
+            (`@lowdefy/api/dist/routes/auth/organizations/createActiveOrgPolicyHook.js:160`) at
+            **first sign-in** — which is *before* onboarding collects a name, so `users.name` is
+            still the empty string signup wrote. The `user?.name` branch is therefore unreachable
+            on the email/password path and the name always falls through to the email. It is
+            reachable via OAuth, where the provider supplies a name at account creation, so the
+            same app yields tidy names for Google signups and raw addresses for password signups.
 
-          The plan's §2.1 ("named after Alice") and §4 ("named after him") are satisfied only in
-          the loosest sense. Renaming works (§2.3) so this is cosmetic and self-correcting, but
-          it is the first thing every new workspace owner sees. Options: derive a name from the
-          email local part at mint, or re-derive the organization name from the profile at
-          onboarding when the owner has not renamed it.
+            The plan's §2.1 ("named after Alice") and §4 ("named after him") are satisfied only in
+            the loosest sense. Renaming works (§2.3) so this is cosmetic and self-correcting, but
+            it is the first thing every new workspace owner sees. Options: derive a name from the
+            email local part at mint, or re-derive the organization name from the profile at
+            onboarding when the owner has not renamed it.
 
 - [x] **T11 — The `deals` collection is not tenant-walled, so deals are neither org-stamped
       on write nor org-filtered on read. Every workspace sees every deal.** Found
@@ -585,10 +585,10 @@ are in play and they are deliberately distinct:
       scope the leading `$match` mechanically.
 
 - [~] **T18 — A profile edit in one workspace overwrites the global identity, so the other
-      workspace's avatar and its change stamps show the wrong workspace's name.** Observed
-      2026-08-03. The plan's §4 checks that a name edited in one workspace does not appear _in
-      the other workspace's profile page and members list_ — that part passes. What it does not
-      check, and what breaks, is everything else that reads the caller's identity.
+  workspace's avatar and its change stamps show the wrong workspace's name.** Observed
+  2026-08-03. The plan's §4 checks that a name edited in one workspace does not appear _in
+  the other workspace's profile page and members list_ — that part passes. What it does not
+  check, and what breaks, is everything else that reads the caller's identity.
 
       **The per-workspace records are correct.** After editing the same person's name to "Alice
       in B" in Workspace B, the two contact rows hold exactly what they should:

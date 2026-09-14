@@ -83,8 +83,7 @@ blocks:
   # wide layout the RHS is omitted entirely so the middle column reclaims the
   # width (span 18) and no second events-timeline mounts.
   _build.array.concat:
-    -
-      # LEFT — the entity's workflows + steps (current row links to its action page),
+    - # LEFT — the entity's workflows + steps (current row links to its action page),
       # in a card. The CARD renders immediately with a content-shaped skeleton while
       # the action request is in flight (Part 26), gated on the request — never the
       # self-set entity_id — so it reserves its column width and doesn't pop in (the

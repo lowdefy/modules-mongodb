@@ -8,9 +8,9 @@ Second pass after review 1's resolutions replaced the design's central mechanism
 
 The design asks the issue author whether they accept the new tile pairing (Company | Product over People | Files) and files it last among six open questions, phrased as needing confirming "rather than assuming".
 
-It is more than that. Issue item 4 asked for the pre-module layout, and the whole of the current approach — move one line, no new var, nothing breaking — exists *because* exact fidelity was judged not worth its cost. If the author says no, the resolution to review-1 #2 reverts to one of the three alternatives the design explicitly rejects in the same section, every one of which costs either a breaking config change or permanent module surface. That is not a detail to settle during implementation; it decides which design gets built.
+It is more than that. Issue item 4 asked for the pre-module layout, and the whole of the current approach — move one line, no new var, nothing breaking — exists _because_ exact fidelity was judged not worth its cost. If the author says no, the resolution to review-1 #2 reverts to one of the three alternatives the design explicitly rejects in the same section, every one of which costs either a breaking config change or permanent module surface. That is not a detail to settle during implementation; it decides which design gets built.
 
-Two consequences the document should carry: mark it as **blocking item 4** rather than a general open question, and note that the answer is cheap to get (a screenshot of the two pairings) and worth getting *before* the release is scoped, since the fallback is materially larger work.
+Two consequences the document should carry: mark it as **blocking item 4** rather than a general open question, and note that the answer is cheap to get (a screenshot of the two pairings) and worth getting _before_ the release is scoped, since the fallback is materially larger work.
 
 ### 2. "One full-width card" is ambiguous, and the obvious reading nests card chrome
 
@@ -18,7 +18,7 @@ Two consequences the document should carry: mark it as **blocking item 4** rathe
 
 Proposed change 1 and the decision section both describe the combined open-items surface as "one full-width card" / "one stacked card". The problem is what `card` means here.
 
-`components/detail/open_items_row.yaml` is a **`Box`** today (`:7`), containing two span-12 `Box` columns each with its own `Html` section header. It has no Card block. And it renders inside `detail_card` (`pages/view.yaml:637`), which *is* a `Card`, with `.body` padding of 8px.
+`components/detail/open_items_row.yaml` is a **`Box`** today (`:7`), containing two span-12 `Box` columns each with its own `Html` section header. It has no Card block. And it renders inside `detail_card` (`pages/view.yaml:637`), which _is_ a `Card`, with `.body` padding of 8px.
 
 So an implementer reading "one full-width card" can reasonably introduce a `Card` block — putting a bordered, titled card inside the bordered detail card, one of the more visible ways to make a panel look wrong. The alternative reading, which is almost certainly what is meant, is the existing Box with the two columns stacked and the existing Html headers retained.
 
@@ -28,11 +28,11 @@ Say which. If Card chrome genuinely is wanted, say that the containing card's ow
 
 > **Resolved.** Premise holds, but the finding's breakpoint was wrong and the correction supplied the answer. Lowdefy's grid keys are counterintuitive: the **top-level `span` applies from md (≥768px) up** (`deriveLayout.js:131` → `--lf-span-md`), while `sm: {span: 24}` sets the base for everything below (`:148`) — so the boundary is 768px, not 576/640. Because top-level `span` only bites at md+, a span-based collapse is automatically a no-op below it, so no breakpoint-aware visibility is needed (which Lowdefy would make awkward — `visible` reads state, not media queries). Settled on **one collapsed state doing two things**: hide the card body (search, list, pagination) and drop the span to a rail. Renders as the rail at ≥768px and a full-width header-only strip below — the latter a genuine mobile improvement, since the `calc(100vh - 110px)` list stacks above the workspace there and currently forces a full screen of scrolling. Recorded with the breakpoint semantics, since they are easy to misread.
 
-`deal_list_col` is `layout: { span: 5, sm: { span: 24 } }` (`pages/view.yaml:112-115`), so below the `sm` breakpoint the deal list is full width and stacks *above* the workspace rather than beside it. `workspace_col` mirrors it at `span: 19, sm: 24`.
+`deal_list_col` is `layout: { span: 5, sm: { span: 24 } }` (`pages/view.yaml:112-115`), so below the `sm` breakpoint the deal list is full width and stacks _above_ the workspace rather than beside it. `workspace_col` mirrors it at `span: 19, sm: 24`.
 
 The collapse decision describes one geometry: span 5 → narrow rail, with `workspace_col` 19 → 23. At `sm` that has no meaning — there is no side-by-side arrangement to reclaim width from, and a "narrow rail" would be a full-width strip above the workspace containing nothing but a chevron. The design says nothing about it.
 
-This needs a decision, not just a note: either the toggle is hidden below `sm` (leaving the stacked full-width list, which is the sane mobile layout), or collapsing at `sm` means something different — collapsing the list's *height* to just its header, say. The first is simpler and probably right; either way it is a second state the implementer otherwise has to invent.
+This needs a decision, not just a note: either the toggle is hidden below `sm` (leaving the stacked full-width list, which is the sane mobile layout), or collapsing at `sm` means something different — collapsing the list's _height_ to just its header, say. The first is simpler and probably right; either way it is a second state the implementer otherwise has to invent.
 
 ### 4. The pairing rationale holds only for exactly two host tiles
 
@@ -55,7 +55,7 @@ After the re-key in proposed change 6, the host reads workflow form data two dif
 
 Both live under `modules/deals/`, both are host-owned, both use the field name `workflows`, and they will have different shapes. Verified this is not a runtime bug — `deal_card_fields.yaml:89-91` `$unset`s `workflows` before the results leave the pipeline, so nothing downstream sees the flat shape. It is an authoring trap: the rename work requires editing both files, and the natural instinct on seeing the mismatch is to "fix" one to match the other, which silently breaks whichever it touches.
 
-The design's Host follow-through notes that `deal_card_fields.yaml` is "self-built, so ... **not** affected by the module's re-keying", which is correct but reads as reassurance rather than warning. State positively that the two shapes differ *by design*, and why.
+The design's Host follow-through notes that `deal_card_fields.yaml` is "self-built, so ... **not** affected by the module's re-keying", which is correct but reads as reassurance rather than warning. State positively that the two shapes differ _by design_, and why.
 
 ### 6. The fixed card width has no value, and the tunability decision disappeared silently
 

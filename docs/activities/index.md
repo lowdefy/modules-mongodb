@@ -159,7 +159,7 @@ Reserve `form_requests` for fields that are genuinely page-only by intent: an ex
 
 **A field writing into `references` must not be `visible`-gated in the modal.** Hiding a block deletes its state, and a host page's `prefill.references` is exactly that state — so the gate would discard the link and the activity would be created unattached. Give such a field self-contained options and render it `disabled` outside the full form instead, so the reference stays intact and stays visible.
 
-A host page cannot embed a *second* `capture_activity`: `form_activity` hardcodes the contacts selector's request id, so two instances on one page fail the build on a duplicate request id. Where a page already carries one — or wants its own entry point with different prefill — send the user to the full form instead. `open_capture`, or `capture_activity` in `mode: page`, deep-links into the new page carrying `prefill` with `attributes` and `references` included; a button on a deal passes `references: { deal_ids: [...] }`.
+A host page cannot embed a _second_ `capture_activity`: `form_activity` hardcodes the contacts selector's request id, so two instances on one page fail the build on a duplicate request id. Where a page already carries one — or wants its own entry point with different prefill — send the user to the full form instead. `open_capture`, or `capture_activity` in `mode: page`, deep-links into the new page carrying `prefill` with `attributes` and `references` included; a button on a deal passes `references: { deal_ids: [...] }`.
 
 ## Agenda topics
 

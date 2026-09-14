@@ -61,35 +61,35 @@ Internalize this before doing anything else: see [Signals vs status](../concepts
 
 ## Field-and-concept mapping at a glance
 
-| Legacy                                                         | Module                                                                                            | Notes                                                                                          |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `workflows.yaml` registry                                      | `workflows_config` module var (one entry per type)                                                | One YAML, passed as a var; validated at build by `makeWorkflowsConfig`                          |
-| workflow `type` / `title`                                      | `type` / `title`                                                                                  | Unchanged                                                                                       |
-| category-field auto-start (`ticket_category`, `non_conformance_category`)  | **App-wired** call to the `{type}-start` endpoint                                     | No built-in category trigger — see [How workflows start](#how-workflows-start)                  |
-| programmatic / `starting_actions`-seeded start (non-ticket workflows)      | call to the `{type}-start` endpoint                                                   | Near 1:1 — this is already how the module starts every workflow                                 |
-| `entity` block (`key` / `collection` / `redirect_page` / `requests`) — _if present_ | `entity.{ connection_id, ref_key, page_id, title, … }`                       | `collection`→`connection_id`, `{key}_ids`→`ref_key`, `redirect_page`→`page_id`; `requests` dropped. Some legacy workflows omit `entity` entirely — see [grammar](../reference/authoring-grammar.md) |
-| action-definition field `action:`                             | action `type:`                                                                                    | Renamed on the definition. Legacy _references_ (`starting_actions`, `UpdateWorkflowActions`) already use `type:` — they carry over |
-| _(implicit — every action was a form)_                         | `kind:` **(required)**: `form` \| `check` \| `custom` \| `tracker`                                | New required field; see [Action kinds](../concepts/action-kinds.md)                             |
-| `sort_order`                                                   | _(removed)_                                                                                        | Order = `action_groups` + `actions` array order; workflow order via `display_order`             |
-| `shared: true` _(prp-style apps)_                              | _(removed)_                                                                                        | Multi-app reuse handled by listing multiple apps under `access:`                                |
-| `responsibility: <app-defined>`                                | _(removed)_                                                                                        | Values are app-specific. Replaced by per-app `access:` (who may act) + check-action `assignees` (who should) |
-| `access: { app: [view, edit, review] }`                        | `access: { app: { view: true, edit: [roles], review: [roles] } }`                                 | Per-verb map; array shorthand is now rejected — see [Access](../concepts/access.md)             |
-| `roles:` / `access.roles`                                      | folded into per-verb gates                                                                        | Action-wide `roles:` is rejected by the validator                                               |
-| `notification_roles`                                           | `notification_roles` (action root)                                                                | Kept at the action root; engine auto-dispatch is planned but **not yet implemented**            |
-| `status_map.{stage}.{app}.message`                             | `status_map.{stage}.{app}.message`                                                                | Kept                                                                                            |
-| `status_map.{stage}.status_title`                              | `status_map.{stage}.status_title`                                                                  | Kept                                                                                            |
-| `status_map.{stage}.{app}.link`                                | _(removed for built-in kinds)_                                                                    | Engine derives navigation; authored links rejected except on `kind: custom`                     |
-| `form` / `form_review` / `form_error`                          | `form` / `form_review` _(no `form_error`)_                                                          | Error recovery reuses the edit form on the `-error` page                                        |
-| `viewOnly: true` on a field                                    | _(removed)_                                                                                        | The `-view` page is auto-generated read-only                                                    |
-| hand-written `pages: { edit, view, review, error }`            | _(generated)_ + `pages.{verb}` overrides                                                            | You stop authoring pages; tune via overrides — see [Pages](#pages-and-events-stop-writing-them) |
-| `buttons.additional`                                           | `pages.{verb}.buttons.extra`                                                                       | App-specific buttons; signal buttons are auto-shipped                                           |
-| `UpdateWorkflowActions` (explicit status)                      | `blocked_by:` (auto-unblock) + pre-hook `:return.actions` with `signal:`                            | The core rewrite                                                                                |
-| `status: not-required` + `force: true`                         | signals `not_required` / `activate`                                                                | No `force:`; see [Signals vs status](../concepts/signals-vs-status.md)                          |
-| `upsert: true` + `additional_fields` + `metadata` + `key`      | pre-hook `:return` entry `{ upsert: true, fields, metadata, key }`                                  | `additional_fields` → `fields`                                                                  |
-| `_array.map` over devices → N actions                          | instanced actions (`key:`) seeded at start or via pre-hook `upsert`                                | See [Instanced actions](#instanced-actions-per-device-per-line)                                 |
-| child-ticket map + manual status mirroring                     | `kind: tracker` + `child_workflow_type` + `start_link`                                            | See [Child workflows → trackers](#child-workflows--tracker-actions)                             |
-| manual `MongoDBInsertOne` into `events` per routine            | _(automatic)_ engine log event + `event:` overrides                                                | Delete the manual event writes                                                                  |
-| `create_notifications.yaml` in each routine                    | _(automatic)_ engine dispatch to `send-notification`                                              | Delete the manual notification wiring                                                           |
+| Legacy                                                                              | Module                                                                   | Notes                                                                                                                                                                                               |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflows.yaml` registry                                                           | `workflows_config` module var (one entry per type)                       | One YAML, passed as a var; validated at build by `makeWorkflowsConfig`                                                                                                                              |
+| workflow `type` / `title`                                                           | `type` / `title`                                                         | Unchanged                                                                                                                                                                                           |
+| category-field auto-start (`ticket_category`, `non_conformance_category`)           | **App-wired** call to the `{type}-start` endpoint                        | No built-in category trigger — see [How workflows start](#how-workflows-start)                                                                                                                      |
+| programmatic / `starting_actions`-seeded start (non-ticket workflows)               | call to the `{type}-start` endpoint                                      | Near 1:1 — this is already how the module starts every workflow                                                                                                                                     |
+| `entity` block (`key` / `collection` / `redirect_page` / `requests`) — _if present_ | `entity.{ connection_id, ref_key, page_id, title, … }`                   | `collection`→`connection_id`, `{key}_ids`→`ref_key`, `redirect_page`→`page_id`; `requests` dropped. Some legacy workflows omit `entity` entirely — see [grammar](../reference/authoring-grammar.md) |
+| action-definition field `action:`                                                   | action `type:`                                                           | Renamed on the definition. Legacy _references_ (`starting_actions`, `UpdateWorkflowActions`) already use `type:` — they carry over                                                                  |
+| _(implicit — every action was a form)_                                              | `kind:` **(required)**: `form` \| `check` \| `custom` \| `tracker`       | New required field; see [Action kinds](../concepts/action-kinds.md)                                                                                                                                 |
+| `sort_order`                                                                        | _(removed)_                                                              | Order = `action_groups` + `actions` array order; workflow order via `display_order`                                                                                                                 |
+| `shared: true` _(prp-style apps)_                                                   | _(removed)_                                                              | Multi-app reuse handled by listing multiple apps under `access:`                                                                                                                                    |
+| `responsibility: <app-defined>`                                                     | _(removed)_                                                              | Values are app-specific. Replaced by per-app `access:` (who may act) + check-action `assignees` (who should)                                                                                        |
+| `access: { app: [view, edit, review] }`                                             | `access: { app: { view: true, edit: [roles], review: [roles] } }`        | Per-verb map; array shorthand is now rejected — see [Access](../concepts/access.md)                                                                                                                 |
+| `roles:` / `access.roles`                                                           | folded into per-verb gates                                               | Action-wide `roles:` is rejected by the validator                                                                                                                                                   |
+| `notification_roles`                                                                | `notification_roles` (action root)                                       | Kept at the action root; engine auto-dispatch is planned but **not yet implemented**                                                                                                                |
+| `status_map.{stage}.{app}.message`                                                  | `status_map.{stage}.{app}.message`                                       | Kept                                                                                                                                                                                                |
+| `status_map.{stage}.status_title`                                                   | `status_map.{stage}.status_title`                                        | Kept                                                                                                                                                                                                |
+| `status_map.{stage}.{app}.link`                                                     | _(removed for built-in kinds)_                                           | Engine derives navigation; authored links rejected except on `kind: custom`                                                                                                                         |
+| `form` / `form_review` / `form_error`                                               | `form` / `form_review` _(no `form_error`)_                               | Error recovery reuses the edit form on the `-error` page                                                                                                                                            |
+| `viewOnly: true` on a field                                                         | _(removed)_                                                              | The `-view` page is auto-generated read-only                                                                                                                                                        |
+| hand-written `pages: { edit, view, review, error }`                                 | _(generated)_ + `pages.{verb}` overrides                                 | You stop authoring pages; tune via overrides — see [Pages](#pages-and-events-stop-writing-them)                                                                                                     |
+| `buttons.additional`                                                                | `pages.{verb}.buttons.extra`                                             | App-specific buttons; signal buttons are auto-shipped                                                                                                                                               |
+| `UpdateWorkflowActions` (explicit status)                                           | `blocked_by:` (auto-unblock) + pre-hook `:return.actions` with `signal:` | The core rewrite                                                                                                                                                                                    |
+| `status: not-required` + `force: true`                                              | signals `not_required` / `activate`                                      | No `force:`; see [Signals vs status](../concepts/signals-vs-status.md)                                                                                                                              |
+| `upsert: true` + `additional_fields` + `metadata` + `key`                           | pre-hook `:return` entry `{ upsert: true, fields, metadata, key }`       | `additional_fields` → `fields`                                                                                                                                                                      |
+| `_array.map` over devices → N actions                                               | instanced actions (`key:`) seeded at start or via pre-hook `upsert`      | See [Instanced actions](#instanced-actions-per-device-per-line)                                                                                                                                     |
+| child-ticket map + manual status mirroring                                          | `kind: tracker` + `child_workflow_type` + `start_link`                   | See [Child workflows → trackers](#child-workflows--tracker-actions)                                                                                                                                 |
+| manual `MongoDBInsertOne` into `events` per routine                                 | _(automatic)_ engine log event + `event:` overrides                      | Delete the manual event writes                                                                                                                                                                      |
+| `create_notifications.yaml` in each routine                                         | _(automatic)_ engine dispatch to `send-notification`                     | Delete the manual notification wiring                                                                                                                                                               |
 
 ## Step-by-step: migrate one workflow
 
@@ -199,13 +199,27 @@ status_map:
   action-required:
     team-app:
       message: Allocate devices.
-      link: { pageId: device-installation-allocation-edit, urlQuery: { action_id: true } }
+      link:
+        {
+          pageId: device-installation-allocation-edit,
+          urlQuery: { action_id: true },
+        }
   done:
     status_title: Device Allocation Complete
     team-app: { message: Devices allocated. }
 form:
-  - { key: form.devices, component: multiple_selector, title: Devices, required: true }
-  - { key: form.clocking_number_list, component: file_upload, title: Clocking list, required: true }
+  - {
+      key: form.devices,
+      component: multiple_selector,
+      title: Devices,
+      required: true,
+    }
+  - {
+      key: form.clocking_number_list,
+      component: file_upload,
+      title: Clocking list,
+      required: true,
+    }
 ```
 
 ```yaml
@@ -225,8 +239,18 @@ status_map:
     status_title: Device Allocation Complete
     team-app: { message: Devices allocated. }
 form:
-  - { key: form.devices, component: multiple_selector, title: Devices, required: true }
-  - { key: form.clocking_number_list, component: file_upload, title: Clocking list, required: true }
+  - {
+      key: form.devices,
+      component: multiple_selector,
+      title: Devices,
+      required: true,
+    }
+  - {
+      key: form.clocking_number_list,
+      component: file_upload,
+      title: Clocking list,
+      required: true,
+    }
 ```
 
 **Choosing `kind:`** — see [Action kinds](../concepts/action-kinds.md):
@@ -240,14 +264,14 @@ form:
 
 This is where most legacy code disappears. Categorize each `UpdateWorkflowActions` entry your old submit/approve endpoints wrote:
 
-| Legacy routine did…                                            | Module replacement                                                                 |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `{ current-action, status: done }`                             | _Nothing_ — the `submit` signal lands the current action automatically              |
-| `{ next-action, status: action-required }` (static unblock)    | `blocked_by: [current-action]` (or a group id) on the next action                   |
-| `{ some-action, status: action-required, force: true }`        | pre-hook returns `{ type: some-action, signal: activate }`                          |
-| `{ some-action, status: not-required }`                        | pre-hook returns `{ type: some-action, signal: not_required }`                      |
-| conditional unblock inside `_if`                               | pre-hook `:return.actions` built with `_if` (see [Conditional actions](../how-to/conditional-actions.md)) |
-| side effects (update entity doc, regenerate a PDF, etc.)       | a `hooks.{signal}.pre` or `.post` routine                                           |
+| Legacy routine did…                                         | Module replacement                                                                                        |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `{ current-action, status: done }`                          | _Nothing_ — the `submit` signal lands the current action automatically                                    |
+| `{ next-action, status: action-required }` (static unblock) | `blocked_by: [current-action]` (or a group id) on the next action                                         |
+| `{ some-action, status: action-required, force: true }`     | pre-hook returns `{ type: some-action, signal: activate }`                                                |
+| `{ some-action, status: not-required }`                     | pre-hook returns `{ type: some-action, signal: not_required }`                                            |
+| conditional unblock inside `_if`                            | pre-hook `:return.actions` built with `_if` (see [Conditional actions](../how-to/conditional-actions.md)) |
+| side effects (update entity doc, regenerate a PDF, etc.)    | a `hooks.{signal}.pre` or `.post` routine                                                                 |
 
 A legacy conditional unblock:
 
@@ -257,7 +281,8 @@ actions:
   _array.concat:
     - _if:
         test: { _payload: form.site_setup_required }
-        then: [{ type: site-setup-check, status: action-required, upsert: true }]
+        then:
+          [{ type: site-setup-check, status: action-required, upsert: true }]
         else: []
     - - { type: initial-details, status: done }
 ```
@@ -274,7 +299,8 @@ hooks:
             actions:
               _if:
                 test: { _eq: [{ _payload: form.site_setup_required }, true] }
-                then: [{ type: site-setup-check, signal: activate, upsert: true }]
+                then:
+                  [{ type: site-setup-check, signal: activate, upsert: true }]
                 else: []
 ```
 
@@ -308,7 +334,11 @@ pages:
           properties: { title: Regenerate work order }
           events:
             onClick:
-              - { id: regen, type: CallApi, params: { endpointId: regenerate-work-order } }
+              - {
+                  id: regen,
+                  type: CallApi,
+                  params: { endpointId: regenerate-work-order },
+                }
 ```
 
 Button `visible` overrides can only **further restrict** the server-resolved gate. A legacy submit-confirmation `modal:` becomes the [button → modal pattern](../reference/authoring-grammar.md#extra-buttons-buttonsextra) (a `Modal` in `formFooter` opened from an extra button).
@@ -411,18 +441,18 @@ If your workflows are authored at **runtime as data** — reusable templates in 
 
 Once you've decided to freeze templates into `workflows_config`, follow the [step-by-step procedure](#step-by-step-migrate-one-workflow) above — but skip the parts that unwind config-driven machinery you never had:
 
-| Step                                       | Data-driven source                                                          |
-| ------------------------------------------ | --------------------------------------------------------------------------- |
-| 1. Add the module + config var             | **Applies**                                                                 |
-| 2. Convert the workflow definition         | **Applies** — author it from the template doc; there's no YAML to convert   |
-| 3. Convert each action                     | **Applies** — every action is `kind: check` (see mechanics below)           |
-| 4. Replace transition routines             | **Skip** — you have none; `blocked_by` is already your mechanism            |
-| 5. Review / not-required / error paths     | Skip unless a template action actually needs one                            |
+| Step                                          | Data-driven source                                                           |
+| --------------------------------------------- | ---------------------------------------------------------------------------- |
+| 1. Add the module + config var                | **Applies**                                                                  |
+| 2. Convert the workflow definition            | **Applies** — author it from the template doc; there's no YAML to convert    |
+| 3. Convert each action                        | **Applies** — every action is `kind: check` (see mechanics below)            |
+| 4. Replace transition routines                | **Skip** — you have none; `blocked_by` is already your mechanism             |
+| 5. Review / not-required / error paths        | Skip unless a template action actually needs one                             |
 | 6. Delete pages / notification / event wiring | **Skip the deletes** — you never wrote them; you get them generated for free |
-| 7. Form components                         | **Skip** — no `form:` blocks exist                                          |
-| 8. Instanced actions                       | Skip unless a template spawns N-per-item                                     |
-| 9. Child workflows → trackers              | Skip unless a template links a child workflow                               |
-| 10. Reports and dashboards                 | **Applies**                                                                 |
+| 7. Form components                            | **Skip** — no `form:` blocks exist                                           |
+| 8. Instanced actions                          | Skip unless a template spawns N-per-item                                     |
+| 9. Child workflows → trackers                 | Skip unless a template links a child workflow                                |
+| 10. Reports and dashboards                    | **Applies**                                                                  |
 
 The mechanics of the steps that do apply are mostly favourable:
 
@@ -444,7 +474,7 @@ The mechanics of the steps that do apply are mostly favourable:
 
 - **`not-required` is terminal** for form/check actions (no outgoing transitions). If your legacy flow re-opened "not required" actions, model the recovery as a separate action or an out-of-band admin write.
 - **Re-firing a signal is safe** — `unblock` only fires from `blocked`, so re-evaluating `blocked_by` never drags a started action back. Lean on this instead of guarding re-entry by hand.
-- **The `review` flip is action-global** — if *any* app declares `review`, *every* app's `submit` lands `in-review`. There's no per-caller review.
+- **The `review` flip is action-global** — if _any_ app declares `review`, _every_ app's `submit` lands `in-review`. There's no per-caller review.
 - **Pre-hook writes are out-of-band** — a pre-hook's spawns/signals are not rolled back if the submit later fails; post-hooks must be idempotent. See [Hooks](../concepts/hooks.md).
 
 ## Verify
