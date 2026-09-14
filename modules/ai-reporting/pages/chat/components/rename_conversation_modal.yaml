@@ -1,0 +1,33 @@
+# Rename, opened by the rail's kebab menu with
+# CallMethod(setOpen, { open: true }) once onMenuClick has seeded the target row.
+#
+# Never hidden with `visible:`. Hiding a container deletes the state of every
+# block beneath it, and that pass runs on every state change — so the seeded
+# title would be deleted before the modal could open with it. A closed antd
+# Modal is already invisible; the block stays visible.
+id: rename_conversation_modal
+type: Modal
+properties:
+  title: Rename conversation
+  okText: Save
+events:
+  onOk:
+    _build.array.concat:
+      - - id: rename_conversation
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: set-conversation-title
+            payload:
+              conversationId:
+                _state: menu_conversation_id
+              title:
+                _state: rename_title
+      # Persist first, then re-read: the refetch has to see the saved title.
+      - _ref: pages/chat/actions/refresh_conversations.yaml
+blocks:
+  - id: rename_title
+    type: TextInput
+    properties:
+      title: Title
+      placeholder: Conversation title

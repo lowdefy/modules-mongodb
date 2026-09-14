@@ -24,6 +24,32 @@ routine:
         :then:
           :reject: Missing required profile fields.
 
+    # Profile-photo guard. The AvatarUpload block compresses to ≤ 512 KB
+    # client-side, but /api/endpoints callers bypass the client — so the server
+    # re-checks. A 512 KB image is ~700 K base64 characters; the cap allows
+    # headroom for the data-URI prefix, nothing more. Also refuse a photo that
+    # is not an image data URI at all.
+    - - :if:
+          _and:
+            - _ne:
+                - _if_none:
+                    - _payload: profile.photo
+                    - null
+                - null
+            - _js:
+                fn: |
+                  const photo = args.photo;
+                  return (
+                    typeof photo !== 'string' ||
+                    !photo.startsWith('data:image/') ||
+                    photo.length > 720000
+                  );
+                args:
+                  photo:
+                    _payload: profile.photo
+        :then:
+          :reject: Profile photo must be an image of at most 500 KB.
+
     # Resolve which contact row is the caller's, from the walled connection:
     # {active organization, caller's email}. The organization half comes from the
     # wall, so the row always belongs to the organization the caller is acting in.
@@ -113,6 +139,32 @@ routine:
                           user:
                             _step: reread_contact
                     description: null
+            # T1: the onboarding save is the write that CREATES the caller's
+            # name, so the session this event would stamp from doesn't hold one
+            # yet ('' on the engine's user row). Pass the actor explicitly from
+            # the freshly-written contact in that one case; null otherwise so
+            # the plain template stamps as usual. Self-service API — the actor
+            # IS the target, so the substitution can never name someone else.
+            actor:
+              _if:
+                test:
+                  _or:
+                    - _eq:
+                        - _if_none:
+                            - _user: name
+                            - _user: profile.name
+                        - null
+                    - _eq:
+                        - _if_none:
+                            - _user: name
+                            - _user: profile.name
+                        - ""
+                then:
+                  name:
+                    _step: reread_contact.profile.name
+                  id:
+                    _user: id
+                else: null
             references:
               contact_ids:
                 - _step: resolve_own_contact._id

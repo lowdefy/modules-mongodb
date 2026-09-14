@@ -1,0 +1,20 @@
+# The contrast case for quiet-check.yaml: a check action that declares no
+# show_comment, so the optional comment box renders (default true). Shares the
+# `knob-behaviors-action` page with quiet-check, so the two together assert the
+# flag is read per action off the GetWorkflowAction envelope.
+type: loud-check
+kind: check
+action_group: knob-group
+sort_order: 30
+description: Check action with show_comment defaulted — comment box renders.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Mark this started, then submit.
+  done:
+    test:
+      message: Done.

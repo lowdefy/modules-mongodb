@@ -1,0 +1,70 @@
+# Export tool: validates the export spec (pipeline only — no presentation
+# contract) and acks. The emit-data-parts hook turns it into a download
+# dataPart; the panel button runs the pipeline and builds the CSV client-side
+# (DownloadCsv action), taking its headers from the row keys.
+id: export-data
+type: Api
+description: >
+  Offer the user a CSV download of a query's results. Validates the export
+  spec; a download button appears in the panel beside the chat when the turn
+  completes. Exports carry no presentation contract — the CSV columns are the
+  result row keys.
+payloadSchema:
+  type: object
+  required:
+    - query
+  properties:
+    label:
+      type: string
+      description: Button label (defaults to "Download CSV").
+    description:
+      type: string
+      description: Short secondary line shown under the button describing what the file contains.
+    query:
+      type: object
+      description: The collection and pipeline producing the rows to export (same shape as query_data).
+      required:
+        - collection
+        - pipeline
+      properties:
+        collection:
+          type: string
+          description: Catalog-declared base collection the pipeline reads from.
+        pipeline:
+          type: array
+          description: Read-only MongoDB aggregation pipeline stages.
+routine:
+  # Validation runs the catalog role gate, which treats a role-less collection
+  # as readable by any AUTHENTICATED user. This tool is HTTP-callable, so
+  # without this guard an unprotected app leaks catalog structure to anonymous
+  # callers through the validator's errors. Same guard the data-reading
+  # endpoints carry (see query-data).
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to export data.
+  - :set_state:
+      validated:
+        _analytics.validateExportSpec:
+          spec:
+            label:
+              _payload: label
+            description:
+              _payload: description
+            query:
+              _payload: query
+          catalog:
+            _module.var: catalog
+          roles:
+            _user: roles
+  - :return:
+      ok: true
+      spec:
+        label:
+          _payload: label
+        description:
+          _payload: description
+        query:
+          _payload: query

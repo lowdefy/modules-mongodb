@@ -1,0 +1,13 @@
+id: ai_assistant_threads
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection:
+    _module.var: collection
+  write: true
+# No changeLog, and no var to switch one on. A thread is rewritten on every
+# message, so change-logging it produces one row per turn for no audit value —
+# and the key cannot be made conditional anyway: `_if` yields null when the test
+# fails, and the connection schema wants changeLog either an object or absent,
+# not null. An app that genuinely needs the history can log it from the routine.

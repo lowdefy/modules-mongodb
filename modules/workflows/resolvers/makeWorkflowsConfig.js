@@ -6,6 +6,7 @@ import {
 } from "./hookSignals.js";
 import { collectTrackerEdges } from "./trackerEdges.js";
 import { humanizeSlug } from "./humanizeSlug.js";
+import { PAGE_LAYOUTS } from "./pageLayouts.js";
 
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
 // (form, form_review, form_error, pages, hooks, event) are excluded —
@@ -35,6 +36,11 @@ const ACTION_FIELDS = [
   // so GetWorkflowAction can render it (read-time nunjucks) as the envelope's
   // `description`. Lives on `actionConfig.description`, never on the action doc.
   "description",
+  // Part 73: the optional-comment presence flag. Same category as `description`
+  // and `universal_fields` — author config carried onto the blob so
+  // GetWorkflowAction can resolve it per read for the shared check surfaces,
+  // which have no build-time action identity. Never on the action doc.
+  "show_comment",
 ];
 
 const WORKFLOW_FIELDS = [
@@ -59,7 +65,22 @@ const STRUCTURAL_COMPONENTS = [
   "file_upload",
 ];
 
-const METADATA_FIELDS = ["component", "key", "required", "title", "validate"];
+// `enum` rides along so the overview card's read-only DataDescriptions can show
+// an enum-backed selector's title instead of its stored slug. `options` stays
+// out: authored options are often operators that read form state, which cannot
+// resolve in the card's context.
+const METADATA_FIELDS = [
+  "component",
+  "key",
+  "required",
+  "title",
+  "validate",
+  "enum",
+  // Titles each list item's card on the overview card's read-only
+  // DataDescriptions. A Nunjucks template rendered against the item; its
+  // fields are the template context and it may emit HTML.
+  "itemTitle",
+];
 
 function pickMetadata(entry) {
   const node = {};
@@ -638,6 +659,17 @@ function validateAction(workflow, action) {
     );
   }
 
+  // Part 73: the optional-comment presence flag. Boolean when present, default
+  // true. Authored on any kind; honoured on form (edit / review pages) and check
+  // (both shared surfaces); accepted-but-unrendered on custom / tracker, which
+  // render no comment box at all — the same posture as `description` above.
+  if ("show_comment" in action && typeof action.show_comment !== "boolean") {
+    fail(
+      workflow.type,
+      `${where} show_comment must be a boolean when present (got: ${JSON.stringify(action.show_comment)}).`,
+    );
+  }
+
   if ("title" in action && typeof action.title !== "string") {
     fail(
       workflow.type,
@@ -771,6 +803,20 @@ function validateEntityView(workflow) {
   }
 }
 
+// Optional `page_layout` selects the action-page layout variant. Closed enum;
+// absent → standard (defaulted downstream by makeActionPages' workspaceVars).
+// Build-time-only UI field — not carried on the runtime blob (absent from
+// WORKFLOW_FIELDS); consumed by makeActionPages against the raw workflow YAML.
+function validatePageLayout(workflow) {
+  if (!("page_layout" in workflow)) return;
+  if (!PAGE_LAYOUTS.includes(workflow.page_layout)) {
+    fail(
+      workflow.type,
+      `invalid page_layout "${workflow.page_layout}" (expected one of: ${PAGE_LAYOUTS.join(", ")}).`,
+    );
+  }
+}
+
 function validateWorkflow(workflow) {
   if ("entity_type" in workflow) {
     fail(
@@ -872,6 +918,8 @@ function validateWorkflow(workflow) {
       `workflow title must be a string when present (got: ${JSON.stringify(workflow.title)}).`,
     );
   }
+
+  validatePageLayout(workflow);
 
   validateWorkflowEvent(workflow);
 

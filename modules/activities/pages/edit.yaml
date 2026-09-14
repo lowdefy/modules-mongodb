@@ -66,6 +66,11 @@ _ref:
               _if_none:
                 - _request: get_activity.0.attributes
                 - {}
+            # Seeded whole, not per key, so keys no field binds to still round-trip.
+            references:
+              _if_none:
+                - _request: get_activity.0.references
+                - {}
             # Agenda tasks mapped back to form rows. Items keep the task
             # _id so saving updates the right task; rows added in the form
             # have none and update-activity mints one. Mapped with
@@ -187,6 +192,10 @@ _ref:
                           attributes:
                             _if_none:
                               - _state: attributes
+                              - {}
+                          references:
+                            _if_none:
+                              - _state: references
                               - {}
                           agenda_topics:
                             _if_none:

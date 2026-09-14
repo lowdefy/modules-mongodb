@@ -1,0 +1,27 @@
+id: delete-thread
+type: Api
+description: >
+  Deletes a thread. Ownership-scoped to the session user.
+payloadSchema:
+  type: object
+  required:
+    - conversationId
+  additionalProperties: false
+  properties:
+    conversationId:
+      type: string
+routine:
+  - id: delete
+    type: MongoDBDeleteOne
+    connectionId:
+      _module.connectionId: ai_assistant_threads
+    properties:
+      filter:
+        conversationId:
+          _payload: conversationId
+        user_id:
+          _user: id
+  - :return:
+      conversationId:
+        _payload: conversationId
+      deleted: true

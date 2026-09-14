@@ -8,6 +8,9 @@ _ref:
       - home: true
         icon: AiOutlineHome
       - label: User components
+    # A component gallery wants a bare header: drop the module-wide header
+    # blocks (search, switcher) on this page only.
+    header_blocks: []
     blocks:
       - _ref:
           module: layout

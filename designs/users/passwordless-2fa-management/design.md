@@ -1,15 +1,16 @@
 # Passwordless two-factor management
 
-**Status:** Only Decision 3 (the enrol-page done-state flag) is pure in-module config and ships now.
-Decisions 1 and 2 both ride **one `@lowdefy/api` bump** carrying two small, independent engine
-changes: Decision 1 needs the twoFactor plugin instantiated with `allowPasswordless: true` — the
-server-side waiver the whole `password: ''` mechanism depends on, and **absent in every installed
-build today** (Finding 1 in [review 2](./review/review-2.md)); Decision 2 needs the invoking
-`pageId` forwarded into request authorization so the enrol page's gate exemption extends to its
-requests. Neither is a hard blocker — both are a few lines and land together. Until they do, the
-**passkey** enrol route is the only passwordless path (no password, satisfies `required` on its
-own); passwordless **TOTP** (the Security-tile modals and the forced-enrol page alike) waits on the
-`allowPasswordless` wiring. See [Upstream](#upstream--engine-dependencies).
+**Status:** **Implemented** (`e9986305`). Both engine dependencies landed in the pinned
+`@lowdefy/api` build (`allowPasswordless: true` on the twoFactor plugin at
+`getBetterAuthConfig.js:385`; the invoking `pageId` forwarded into request authorization in
+`authorizeRequest.js`), and all in-repo tasks (2–5) are applied: the enrol page's `enrol.done`
+flag (Decision 3), the tile/modal `has_credential` rule with the `''` coalesce (Decision 1), the
+enrol page's self-scoped `get_accounts` under the page-scoped gate exemption (Decision 2), and the
+`auth-methods.md` corrections. Owed: a runtime smoke with a genuinely passwordless member (see
+F55's Resolution). The paragraphs below record the state at design time — the engine changes were
+then **absent from every installed build** (Finding 1 in [review 2](./review/review-2.md)), which
+is why the design stages Decisions 1 and 2 behind an engine bump and names the **passkey** route
+as the interim passwordless path. See [Upstream](#upstream--engine-dependencies).
 
 Promotes findings [F47](./F47-security-tile-hides-2fa-for-passwordless-users.md)
 and [F48](./F48-forced-enrol-page-broken-for-passwordless.md) (moved into this folder),

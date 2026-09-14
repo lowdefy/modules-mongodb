@@ -9,7 +9,7 @@ import { getBlock } from "@lowdefy/e2e-utils";
 // coverage — so this sweep exercises EVERY renderable component in
 // modules/workflows/components/fields/. It is a roster, not a behavior matrix.
 //
-// Roster coverage is 28 of 29. The one exclusion is `location`: it renders the
+// Roster coverage is 27 of 28. The one exclusion is `location`: it renders the
 // block types GoogleAPIProvider / PlacesAutocomplete, which NO published Lowdefy
 // plugin provides (verified 2026-06-25) — the field is currently unrenderable
 // and fails the build if included. See the documented exception in
@@ -53,7 +53,6 @@ const FIELD_KEYS = [
   "form.button_selector", // button_selector
   "form.checkbox_switch", // checkbox_switch
   "form.yes_no_selector", // yes_no_selector
-  "form.enum_selector", // enum_selector
   // ── files ─────────────────────────────────────────────────────────────────────
   "form.file_upload", // file_upload (inner S3UploadDragger carries the key)
   "form.file_download", // file_download (inner S3Download carries the key)
@@ -70,16 +69,16 @@ const FIELD_KEYS = [
 // PlacesAutocomplete (or the field is reworked onto available blocks).
 const EXCLUDED = ["form.location"];
 
-test("every renderable field component (28/29) renders on the gallery edit page", async ({
+test("every renderable field component (27/28) renders on the gallery edit page", async ({
   ldf,
   mdb,
   workflow,
   page,
 }) => {
   // Guard the census exception: the roster size is fixed and deliberate. Adding
-  // a 29th renderable component must be a conscious edit to FIELD_KEYS, not a
+  // a 28th renderable component must be a conscious edit to FIELD_KEYS, not a
   // silent drift — and EXCLUDED documents the one component left out and why.
-  expect(FIELD_KEYS).toHaveLength(28);
+  expect(FIELD_KEYS).toHaveLength(27);
   expect(EXCLUDED).toEqual(["form.location"]);
 
   await ldf.user({

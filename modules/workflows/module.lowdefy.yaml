@@ -20,7 +20,7 @@
 # enum components below are UI-only consumers.
 
 name: Workflows
-version: 0.17.0
+version: 0.36.0
 description: Workflow engine — action lifecycle, status transitions, hooks, trackers
 
 dependencies:
@@ -53,6 +53,12 @@ dependencies:
     description: >
       Supplies the user-multi-selector and user-avatar components the
       universal-fields surface composes (Part 24 / Part 24a).
+  - id: files
+    description: >
+      Provides the download-policy component the two overview pages instantiate
+      into their `requests:` — the presigned S3 GET DataDescriptions needs
+      before a file field inside an action card renders as a download instead of
+      "No files available".
 
 vars:
   workflows_config:
@@ -102,9 +108,12 @@ vars:
       (base set: PO ID URL API CRM SLA KPI VAT PDF CSV FAQ KYC RFQ; extended by
       `title_acronyms`). Set `title:` only when the default is wrong.
       Per-action UI knobs (optional): `show_comment` (boolean, default true) — set
-      false to hide the free-form comment box on the action's edit and review
-      pages; `pages.edit.validate_on_draft` (boolean, default false) — set true to
-      validate the form (like Submit) before the edit page's Save Draft persists.
+      false to hide the optional free-form comment box on the action's working
+      surfaces (a form action's edit and review pages, and both check surfaces);
+      the mandatory comments — the Request Changes brief and the error recovery
+      note — always render; `pages.edit.validate_on_draft` (boolean, default false)
+      — set true to validate the form (like Submit) before the edit page's Save
+      Draft persists.
   enable_internal_comments:
     type: boolean
     default: false
@@ -256,7 +265,7 @@ pages:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.17.0"
+    version: "^0.36.0"
 
 secrets:
   - name: MONGODB_URI

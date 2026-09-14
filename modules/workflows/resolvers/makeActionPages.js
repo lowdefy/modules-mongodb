@@ -1,4 +1,5 @@
 import { humanizeSlug } from "./humanizeSlug.js";
+import { DEFAULT_PAGE_LAYOUT } from "./pageLayouts.js";
 
 const VERBS = ["edit", "view", "review", "error"];
 
@@ -67,6 +68,13 @@ function resolveWorkflowTitle(workflow, titleAcronyms) {
 // The templates source the breadcrumb instance name from `entity_link.name` on
 // the action response (resolved server-side from the entity.data routine).
 function workspaceVars(workflow, workflowTitle) {
+  // The optional `page_layout` enum selects the action-page layout; absent →
+  // standard. It is not consumed by templates directly — it is translated here
+  // into the two layout vars the shell and templates branch on. `wide` swaps the
+  // left step-list for workflow-progress and moves Details + History into a
+  // drawer so the form fills the freed width. Validated in makeWorkflowsConfig.
+  const pageLayout = workflow.page_layout ?? DEFAULT_PAGE_LAYOUT;
+  const isWide = pageLayout === "wide";
   return {
     connection_id: workflow.entity.connection_id,
     reference_field: workflow.entity.ref_key,
@@ -74,6 +82,8 @@ function workspaceVars(workflow, workflowTitle) {
     entity_view_slot: workflow.entity_view?.slot ?? [],
     list_page_id: workflow.entity.list_page_id ?? "",
     list_title: workflow.entity.list_title ?? "",
+    left_variant: isWide ? "progress" : "steps",
+    history_in_drawer: isWide,
   };
 }
 
@@ -98,6 +108,12 @@ function emitForAction(workflow, action, slug, titleAcronyms, workflowTitle) {
   actionConfig.universal_fields = normalizeUniversalFields(
     action.universal_fields,
   );
+
+  // Part 73: normalize show_comment to a concrete boolean here so the templates
+  // gate on a plain value with no `default:` fallback. KEPT IN LOCK-STEP with the
+  // read-time default in GetWorkflowAction, which resolves the same flag for the
+  // shared check surfaces (they have no build-time action identity).
+  actionConfig.show_comment = action.show_comment ?? true;
 
   // Resolve the action title identically to makeWorkflowsConfig (this resolver
   // reads raw YAML, not the materialized config, so it must re-derive rather

@@ -67,10 +67,17 @@ events:
       # Tier write FIRST, and only behind the `org_authority` var. Skipped when
       # org_role is unchanged from its seeded value, so a plain attributes save
       # never invokes the org plugin or emits an org-role-updated event — and an
-      # owner (shown read-only, seed unchanged) is never rewritten. A refusal
-      # (sole owner, creator demotion) halts the chain here, before any app-role
-      # write lands. No `error` message: the plugin's own refusal text must reach
-      # the admin, not be replaced by a generic string.
+      # owner (shown read-only) is never rewritten. A refusal (sole owner,
+      # creator demotion) halts the chain here, before any app-role write lands.
+      # No `error` message: the plugin's own refusal text must reach the admin,
+      # not be replaced by a generic string.
+      #
+      # The owner case needs the second test: the `org_role` Selector is
+      # `visible: false` for an owner, and a hidden block's value is PRUNED
+      # from state — so state.org_role is undefined there, never equal to the
+      # seeded "owner", and the write fired with no role ("UpdateMemberOrgRole
+      # requires an "orgRole" string property") whenever an owner saved their
+      # own attributes. No value means nothing to write.
       - _build.if:
           test:
             _module.var: org_authority
@@ -78,9 +85,13 @@ events:
             - id: save_org_role
               type: CallAPI
               skip:
-                _eq:
-                  - _state: org_role
-                  - _request: get_user_detail.0.org_role
+                _or:
+                  - _eq:
+                      - _state: org_role
+                      - null
+                  - _eq:
+                      - _state: org_role
+                      - _request: get_user_detail.0.org_role
               messages:
                 loading: Updating organisation access…
               params:

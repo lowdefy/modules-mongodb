@@ -1,0 +1,103 @@
+# Rewrite a saved report's user-editable prose — title, and optionally
+# description. Owner-only, matched in the update filter.
+#
+# `title` and `description` are document fields, not spec fields, so this never
+# touches the spec — which is the whole reason they live outside it.
+#
+# The id still says "title" because that was the only field when the endpoint
+# shipped, and the report page's edit modal wanted the two written together: one
+# round trip, one `updated` stamp, one owner check. Renaming it would ripple
+# through the ownership design's endpoint inventory, the reports-list task notes
+# and the e2e suite for no behavioural gain — so the name is narrower than the
+# endpoint. Read it as "the report's prose", not "the title alone".
+#
+# `description` is OPTIONAL and distinguishes absent from cleared: a payload
+# without it (the list's rename modal sends title only) leaves the stored
+# description alone, while an empty string clears it. Absent reads as null —
+# `_payload` resolves a missing key to null rather than undefined — so null is
+# the "don't touch" signal and every string, including "", is a write.
+#
+# The length cap is MAX_LABEL_LENGTH from the analytics constants, spelled here
+# as a literal because YAML cannot import it. The two must agree: a title this
+# accepts but validateReportSpec would reject is a report whose next spec write
+# fails, on an edit unrelated to the rename.
+id: set-report-title
+type: Api
+routine:
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to rename a report.
+  # _js rather than operators because no operator reads a string's length, and
+  # _regex throws on a non-string instead of rejecting it. The three conditions
+  # are exactly the ones validateReportSpec applies to a spec title — no
+  # stricter, so nothing this endpoint accepts can fail the validator later, and
+  # no looser either.
+  - :if:
+      _js: |
+        const title = payload('title');
+        return typeof title !== 'string' || title === '' || title.length > 200;
+    :then:
+      - :reject: A report title is required and may be at most 200 characters.
+  # Only a non-null description is validated: null is "leave it alone", not a
+  # value. validateReportSpec accepts any string here and caps no length, so
+  # this rejects only what would fail the validator on the next spec write.
+  - :if:
+      _js: |
+        const description = payload('description');
+        return description !== null && typeof description !== 'string';
+    :then:
+      - :reject: A report description must be text.
+  - id: set_title
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      # The owner match lives in the filter rather than an :if before it, the
+      # same as delete-report: one round trip, and the authorization is
+      # structurally inseparable from the write. A non-owner's call is therefore
+      # a successful update that matched nothing.
+      filter:
+        _id:
+          _payload: report_id
+        owner.user_id:
+          _user: id
+        deleted.timestamp:
+          $exists: false
+      # Authorization lives in this filter, so a caller who may not do this
+      # matches nothing — the expected outcome, not a fault. Without this flag
+      # the request THROWS on a zero match, and the error body hands that caller
+      # the filter, this file path and a stack trace. A zero modifiedCount
+      # discloses nothing.
+      disableNoMatchError: true
+      # Two static branches rather than one $set with a computed key: an absent
+      # description must not reach the document at all, and building the key
+      # conditionally would be harder to read than spelling both writes out.
+      update:
+        $set:
+          _if:
+            test:
+              _eq:
+                - _payload: description
+                - null
+            then:
+              title:
+                _payload: title
+              # Stamped, unlike visibility / favourite / restore: a rename
+              # changes what the report is, so it belongs at the top of the list
+              # and on the report page's provenance line.
+              updated:
+                _ref: defaults/change_stamp.yaml
+            else:
+              title:
+                _payload: title
+              description:
+                _payload: description
+              updated:
+                _ref: defaults/change_stamp.yaml
+  - :return:
+      ok: true
+      modifiedCount:
+        _step: set_title.modifiedCount

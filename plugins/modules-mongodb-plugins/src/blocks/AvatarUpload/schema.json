@@ -1,0 +1,49 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "size": {
+      "type": "integer",
+      "default": 96,
+      "description": "Avatar diameter in px."
+    },
+    "initials": {
+      "type": "string",
+      "description": "Fallback text (usually initials) shown when no photo is set."
+    },
+    "background": {
+      "type": "string",
+      "description": "CSS background for the initials fallback (a color or gradient). Defaults to a neutral theme fill."
+    },
+    "maxBytes": {
+      "type": "integer",
+      "default": 512000,
+      "description": "Hard cap for the stored image in bytes (decoded). The block re-encodes at stepped quality, then halves the dimension, until the image fits."
+    },
+    "maxDimension": {
+      "type": "integer",
+      "default": 512,
+      "description": "Photos are center-cropped square and downscaled to at most this many px per side."
+    },
+    "disabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Disable picking or removing a photo."
+    },
+    "removable": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show a remove control when a photo is set."
+    },
+    "changeLabel": {
+      "type": "string",
+      "default": "Change photo",
+      "description": "Hover overlay label when a photo is set."
+    },
+    "emptyLabel": {
+      "type": "string",
+      "default": "Add photo",
+      "description": "Hover overlay label when no photo is set."
+    }
+  }
+}

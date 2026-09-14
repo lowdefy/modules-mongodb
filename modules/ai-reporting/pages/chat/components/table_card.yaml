@@ -1,0 +1,175 @@
+# One table result in the results panel — the item template of the `tables`
+# List, so every block id is a `tables.$.` path the List resolves per item.
+# The rows and columns are the frozen snapshot the turn produced (rows capped at
+# 200, the true total in `row_count`), so a reopened conversation shows the
+# numbers from that turn rather than re-running the query.
+- id: tables.$.item
+  type: Box
+  # A bordered card per result. The tick is inline in the header with the title
+  # — the panel's only marking affordance — and the border takes the primary
+  # colour while selected, so a ticked card reads at a glance.
+  layout:
+    gap: 12
+  style:
+    padding: 16px
+    borderRadius: 8px
+    background: var(--ant-color-bg-container)
+    border:
+      _if:
+        test:
+          _state: tables.$.selected
+        then: 1px solid var(--ant-color-primary)
+        else: 1px solid var(--ant-color-border-secondary)
+  blocks:
+    - id: tables.$.header
+      type: Box
+      # nowrap keeps the tick and title on one line; the checkbox needs a
+      # DEFINITE basis — its antd form wrapper is full-width, so a basis of
+      # `auto` lets it balloon and push the title below.
+      layout:
+        gap: 8
+        wrap: nowrap
+      blocks:
+        # The panel's only marking affordance: ticking flags this card on its
+        # own part, and the Save-as-report button reads `selected` across the
+        # three arrays. Bare checkbox — the panel explainer carries the wording;
+        # here it sits inline with the title.
+        - id: tables.$.selected
+          type: CheckboxSwitch
+          layout:
+            flex: "0 0 24px"
+            selfAlign: top
+          properties:
+            label:
+              disabled: true
+        - id: tables.$.table_title
+          type: Title
+          layout:
+            flex: "1 1 auto"
+            selfAlign: top
+          properties:
+            content:
+              _state: tables.$.title
+            level: 5
+            style:
+              marginBottom: 0
+        # Opens this card's snapshot bigger in the panel-level modal. A modal's
+        # own events see none of this row, so the card is seeded into
+        # `expanded_table` first — the rail's kebab → rename/delete pattern.
+        # Explicit fields, not the bare item: mid-path `$` reads are the
+        # established pattern; a trailing-`$` read is not.
+        - id: tables.$.expand
+          type: Button
+          layout:
+            flex: 0 0 auto
+            selfAlign: top
+          properties:
+            icon:
+              name: AiOutlineExpandAlt
+              title: Expand table
+            hideTitle: true
+            type: text
+          events:
+            onClick:
+              - id: seed_expanded_table
+                type: SetState
+                params:
+                  expanded_table:
+                    title:
+                      _state: tables.$.title
+                    rows:
+                      _state: tables.$.rows
+                    spec:
+                      _state: tables.$.spec
+                    row_count:
+                      _if_none:
+                        - _state: tables.$.row_count
+                        - null
+                    created:
+                      _if_none:
+                        - _state: tables.$.created
+                        - null
+              - id: open_expand_table_modal
+                type: CallMethod
+                params:
+                  blockId: expand_table_modal
+                  method: setOpen
+                  args:
+                    - open: true
+    # The truncation line, shown only when the card holds fewer rows than the
+    # query returned. `row_count` predates some parts, so `_if_none` falls back
+    # to the retained count — an absent total then equals it and the line stays
+    # hidden (the part reads as complete). A total on the engine's 1000-row cap
+    # was itself probably cut, so the line adds the report side's own wording
+    # (`— first 1000 rows`) rather than inventing a second phrasing.
+    - id: tables.$.truncation
+      type: Paragraph
+      visible:
+        _gt:
+          - _if_none:
+              - _state: tables.$.row_count
+              - _array.length:
+                  _state: tables.$.rows
+          - _array.length:
+              _state: tables.$.rows
+      properties:
+        content:
+          _nunjucks:
+            template: >-
+              first {{ shown }} of {{ total }} rows{% if capped %} — first {{
+              cap }} rows{% endif %}
+            on:
+              shown:
+                _array.length:
+                  _state: tables.$.rows
+              total:
+                _if_none:
+                  - _state: tables.$.row_count
+                  - _array.length:
+                      _state: tables.$.rows
+              capped:
+                _gte:
+                  - _if_none:
+                      - _state: tables.$.row_count
+                      - 0
+                  - 1000
+              cap: 1000
+        style:
+          fontSize: 12px
+          color: var(--ant-color-text-secondary)
+          marginBottom: 0
+    # The grid itself lives in table_grid.yaml, shared with the expand modal so
+    # the columnDefs mapping exists once (see that file for what it preserves).
+    - _ref:
+        path: pages/chat/components/table_grid.yaml
+        vars:
+          grid_id: tables.$.grid
+          rows_path: tables.$.rows
+          columns_path: tables.$.spec.columns
+          height: 300
+    # Dates the snapshot, for the same reason the chart card does. A leaf, so
+    # `visible:` is safe; read through `_if_none` so a part predating `created`
+    # renders with no line rather than a blank one.
+    - id: tables.$.as_of
+      type: Paragraph
+      visible:
+        _ne:
+          - _if_none:
+              - _state: tables.$.created
+              - null
+          - null
+      properties:
+        content:
+          _nunjucks:
+            template: "as of {{ d }}"
+            on:
+              d:
+                _dayjs:
+                  - _if_none:
+                      - _state: tables.$.created
+                      - 0
+                  - format: D MMMM
+        style:
+          fontSize: 12px
+          color: var(--ant-color-text-secondary)
+          marginBottom: 0

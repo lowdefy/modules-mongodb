@@ -16,8 +16,15 @@ properties:
           _payload: _id
         created.app_name:
           _payload: app_name
+        # Pre-auth notification types (module var public_link_types) resolve
+        # without a session; everything else needs the recipient's contact_id.
+        # Legacy records store event_type; pipeline records store type.
         $or:
-          - event_type: invite-user
-          - event_type: resend-user-invite
+          - event_type:
+              $in:
+                _module.var: public_link_types
+          - type:
+              $in:
+                _module.var: public_link_types
           - contact_id:
               _payload: contact_id

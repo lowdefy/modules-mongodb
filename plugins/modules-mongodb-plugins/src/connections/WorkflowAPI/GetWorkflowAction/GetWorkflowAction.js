@@ -2,6 +2,7 @@ import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
 import parseNunjucks from "../../shared/render/parseNunjucks.js";
 import resolveEntityData from "../../shared/render/resolveEntityData.js";
+import resolveUniversalFields from "../../shared/render/resolveUniversalFields.js";
 import {
   computeAllowed,
   resolveButtons,
@@ -22,7 +23,7 @@ import {
  *
  *   {
  *     _id, type, workflow_type, workflow_id, kind, key, status, action_group, description, due_date,
- *     assignees, assignee_docs, created, updated,
+ *     assignees, assignee_docs, universal_fields, show_comment, created, updated,
  *     entity,               // { ...entity.data routine result, id } — host fields + the always-present instance id
  *     entity_link,          // { pageId, urlQuery, title, name } from the workflow config's `entity` block (name from the routine), or null
  *     required_after_close, message,
@@ -310,6 +311,28 @@ async function GetWorkflowAction(lowdefyContext) {
   const message = action[slug]?.message ?? null;
   const required_after_close = actionConfig.required_after_close ?? null;
 
+  // ── Universal-fields presence list (author config, resolved per read) ──────
+  // Which universal fields (assignees / due_date) this action's UI shows. Author
+  // config on `actionConfig`, never on the action doc — so an author's change
+  // applies to in-flight actions with nothing to migrate. The check surfaces are
+  // shared across actions (one page per workflow type; a host-dropped modal with
+  // no build-time action identity), so this envelope key is the ONLY way they can
+  // gate per action. Form pages get the same list baked at build time by
+  // makeActionPages — the two normalizers are kept in lock-step.
+  const universal_fields = resolveUniversalFields(
+    actionConfig.universal_fields,
+  );
+
+  // ── Optional-comment presence flag (author config, resolved per read) ───────
+  // Whether this action's surface shows the free-form comment box. Same category
+  // as `description` / `universal_fields`: author config on `actionConfig`, never
+  // on the action doc, so an author's change applies to in-flight actions with
+  // nothing to migrate. The default here is KEPT IN LOCK-STEP with the build-time
+  // normalizer in makeActionPages, which bakes the same flag onto the per-action
+  // form pages. Presence only, and only for the OPTIONAL comment — the mandatory
+  // comments (the request-changes brief, the error recovery note) never gate on it.
+  const show_comment = actionConfig.show_comment ?? true;
+
   return {
     // Engine fields
     _id: action._id,
@@ -325,6 +348,12 @@ async function GetWorkflowAction(lowdefyContext) {
     due_date: action.due_date ?? null,
     assignees: action.assignees ?? null,
     assignee_docs,
+    // UI presence list for the two universal fields above (author config, not
+    // doc state). The check surfaces gate their chips + edit modal on this.
+    universal_fields,
+    // Whether the optional comment box renders (author config, not doc state).
+    // The check surfaces gate their comment input on this.
+    show_comment,
     // Part 26: the entity object the action page's slot + DataDescriptions read.
     // The host routine result merged with the always-present entity id — id is
     // injected LAST so the instance id always wins over any host-returned `id`.

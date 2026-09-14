@@ -313,16 +313,33 @@ _ref:
                           onClick:
                             try:
                               _build.array.concat:
-                                - - id: passkey_register
+                                # The registered flag tells the catch whether the
+                                # passkey itself failed (toast) or only the trailing
+                                # refetch after a successful registration (skip —
+                                # "Couldn't add a passkey" would be false, and the
+                                # success toast already fired). Reset first so a
+                                # cancelled retry after an earlier success still
+                                # toasts (F58).
+                                - - id: reset_passkey_registered
+                                    type: SetState
+                                    params:
+                                      passkey_registered: false
+                                  - id: passkey_register
                                     type: PasskeyRegister
                                     messages:
                                       loading: Waiting for your authenticator…
                                       success: Passkey added.
                                       error: false
+                                  - id: mark_passkey_registered
+                                    type: SetState
+                                    params:
+                                      passkey_registered: true
                                 - _ref: actions/refetch_account.yaml
                             catch:
                               - id: passkey_register_error
                                 type: DisplayMessage
+                                skip:
+                                  _state: passkey_registered
                                 params:
                                   status: error
                                   content: Couldn't add a passkey. Your device may have cancelled the request.

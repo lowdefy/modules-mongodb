@@ -1,7 +1,9 @@
 export { default as ActionSteps } from "./blocks/ActionSteps/ActionSteps.js";
+export { default as AvatarUpload } from "./blocks/AvatarUpload/AvatarUpload.js";
 export { default as ContactSelector } from "./blocks/ContactSelector/ContactSelector.js";
 export { default as DataDescriptions } from "./blocks/DataDescriptions/DataDescriptions.js";
 export { default as EventsTimeline } from "./blocks/EventsTimeline/EventsTimeline.js";
 export { default as FileManager } from "./blocks/FileManager/FileManager.js";
+export { default as FloatingPanel } from "./blocks/FloatingPanel/FloatingPanel.js";
 export { default as SmartDescriptions } from "./blocks/SmartDescriptions/SmartDescriptions.js";
 export { default as WorkflowProgress } from "./blocks/WorkflowProgress/WorkflowProgress.js";

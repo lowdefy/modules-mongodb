@@ -8,9 +8,10 @@ blocks:
     # Host domain fields (Details), full-width at the top — self-contained with
     # its own trailing divider, and self-hiding (no fields / show_details false).
     - - _ref: components/detail/section_fields.yaml
-    # span-12 tiles: People, Files, then host-injected tiles.
+    # App-injected info-grid tiles (default []) — the shipped grid has no
+    # product tile; host apps inject their own (e.g. a product tile) here,
+    # ahead of the built-in tiles below.
+    - _module.var: components.info_grid_slots
+    # span-12 tiles: host-injected tiles, then People, Files.
     - - _ref: components/detail/section_people.yaml
       - _ref: components/detail/section_files.yaml
-    # App-injected info-grid tiles (default []) — the shipped grid has no
-    # product tile; host apps inject their own (e.g. a product tile) here.
-    - _module.var: components.info_grid_slots

@@ -6,18 +6,46 @@ properties:
   pipeline:
     _build.array.concat:
       - - $match:
-            hidden:
-              $ne: true
-            disabled:
-              $ne: true
-        - $project:
+            _object.assign:
+              - hidden:
+                  $ne: true
+                disabled:
+                  $ne: true
+              # Dropped entirely when exclude_users_from_selectors is `none`,
+              # so the compiled $match is unchanged for apps leaving it unset.
+              # The stage file picks the this-app / any-app expression itself.
+              - _build.if:
+                  test:
+                    _build.ne:
+                      - _module.var: exclude_users_from_selectors
+                      - none
+                  then:
+                    $expr:
+                      _ref: requests/stages/expr_not_user_record.yaml
+                  else: {}
+      # Consumer stages (request_stages.selector, default []) run BEFORE the
+      # label projection so they can filter/derive on raw document fields —
+      # e.g. excluding contacts that are also app users from a picker. After
+      # the projection only `label` and `value` survive, which is no use to a
+      # consumer wanting to filter. Mirrors get_companies_for_selector.
+      - _module.var: request_stages.selector
+      - - $project:
+            # $concat returns null if ANY operand is null or missing, which
+            # rendered a blank, unselectable option for every contact without
+            # a name or an email. Guarded the same way as
+            # get_role_contacts_for_selector, falling back to lowercase_email.
             label:
               $concat:
-                - "$profile.name"
+                - $ifNull:
+                    - "$profile.name"
+                    - ""
                 - " ("
-                - "$email"
+                - $ifNull:
+                    - "$email"
+                    - $ifNull:
+                        - "$lowercase_email"
+                        - "no email"
                 - ")"
             value: "$_id"
         - $sort:
             label: 1
-      - _module.var: request_stages.selector

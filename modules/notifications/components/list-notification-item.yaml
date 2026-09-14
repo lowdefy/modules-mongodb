@@ -1,0 +1,49 @@
+# One inbox row: type icon, title + preview, time and unread dot. Selection
+# colours are inline (operator-driven); everything else is in
+# notification-list.css. Legacy records store event_type / description,
+# pipeline records store type / preview — both shapes coalesce in the parts.
+id: list.$.item
+type: Box
+class:
+  .element: notification-item
+layout:
+  gap: 12
+style:
+  marginBottom: 8
+  .element:
+    borderColor:
+      _if:
+        test:
+          _eq:
+            - _state: list.$._id
+            - _state: selected_id
+        then: var(--ant-color-primary)
+        else: var(--ant-color-border-secondary)
+    background:
+      _if:
+        test:
+          _eq:
+            - _state: list.$._id
+            - _state: selected_id
+        then: var(--ant-color-primary-bg)
+        else: var(--ant-color-bg-container)
+events:
+  onClick:
+    _build.array.concat:
+      - - id: set_url_query
+          type: Link
+          params:
+            pageId:
+              _module.pageId: all
+            urlQuery:
+              _id:
+                _state: list.$._id
+      - _ref:
+          path: actions/set-selected.yaml
+          vars:
+            selected_id:
+              _state: list.$._id
+blocks:
+  - _ref: components/list-item-icon.yaml
+  - _ref: components/list-item-text.yaml
+  - _ref: components/list-item-meta.yaml

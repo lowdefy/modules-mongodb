@@ -17,7 +17,24 @@ routine:
             date:
               _date: now
             created:
-              _ref: defaults/change_stamp.yaml
+              # Optional actor override: a caller may pass `payload.actor`
+              # ({name, id}) when the session cannot stamp itself correctly —
+              # the onboarding save creates the caller's name, so the session
+              # it would stamp from doesn't hold one yet (T1). Absent payloads
+              # keep the plain template.
+              _object.assign:
+                - _ref: defaults/change_stamp.yaml
+                - _if:
+                    test:
+                      _ne:
+                        - _if_none:
+                            - _payload: actor
+                            - null
+                        - null
+                    then:
+                      user:
+                        _payload: actor
+                    else: {}
             type:
               _payload: type
             metadata:

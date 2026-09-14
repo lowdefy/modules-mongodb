@@ -24,25 +24,13 @@ properties:
   _build.object.assign:
     - title:
         _var: title
-      breadcrumb:
-        list:
-          _var:
-            key: breadcrumbs
-            default: []
       menu:
         _var:
           key: menu
           default:
-            _build.if:
-              test:
-                _build.not:
-                  _build.eq:
-                    - _module.var: menu
-                    - null
-              then:
-                _module.var: menu
-              else:
-                _menu: default
+            _build.if_none:
+              - _module.var: menu
+              - _menu: default
       # Built-in header features — gated by per-page hide flags
       profile:
         _build.if:
@@ -74,6 +62,27 @@ properties:
           else: null
       darkModeToggle:
         _module.var: dark_mode_toggle
+    # Breadcrumb only when the page supplies crumbs. Passing an empty `breadcrumb`
+    # object still renders the block — an empty bar taking its own 16px margin — so
+    # a page with no breadcrumbs (and any full-bleed page) would carry a stray gap.
+    # Omitting the property entirely leaves properties.breadcrumb undefined, which
+    # the page block reads as "no breadcrumb". Tested against null (the default when
+    # unset), not on length: a page's breadcrumbs are often a `_build.array.concat`
+    # expression, so length can't be taken here — but any supplied value is non-null.
+    - _build.if:
+        test:
+          _build.ne:
+            - _var:
+                key: breadcrumbs
+                default: null
+            - null
+        then:
+          breadcrumb:
+            list:
+              _var:
+                key: breadcrumbs
+                default: []
+        else: {}
     # sider / siderStorageKey only apply to sider-menu and sidebar variants.
     # PageHeaderMenu rejects them (additionalProperties: false).
     - _build.if:
@@ -93,6 +102,55 @@ properties:
 style:
   .logo:
     _module.var: logo.style
+  # Override the content area's own style — the page block defaults it to
+  # `padding: 0 40px 40px 40px`. Merged over that default, so `{}` (the default)
+  # is a no-op. Dot-prefixed to target the `content` CSS slot key (a bare
+  # `content:` reads as a raw CSS property).
+  #
+  # `full_bleed` is applied UNDER content_style, so a page can still add its own
+  # background or override an offset, and the two are independent: a page may set
+  # content_style without asking for full bleed.
+  .content:
+    _build.object.assign:
+      - _build.if:
+          test:
+            _var:
+              key: full_bleed
+              default: false
+          then:
+            padding: 0
+            # Only this module knows how much chrome it puts above the content, so
+            # it publishes the remaining height rather than leaving each full-bleed
+            # page to guess. Custom properties inherit, so content nested any depth
+            # down can size itself off it — which is what lets a page fill the
+            # viewport without a page scrollbar. Consumers should read it with a
+            # 100dvh fallback, for a page not wrapped by this component.
+            --layout-content-height:
+              _build.if:
+                test:
+                  _build.eq:
+                    - _var:
+                        key: page_type
+                        default:
+                          _module.var: page_type
+                    - sidebar
+                then: 100dvh
+                # PageHeaderMenu and PageSiderMenu both put a header bar above the
+                # content; PageSidebarLayout does not (its sider is full-height).
+                # The header block itself sizes off this same variable, so the two
+                # cannot drift apart.
+                else: calc(100dvh - var(--ant-layout-header-height, 64px))
+            # All three page blocks reserve a band at the top of the content —
+            # the breadcrumb, or an empty spacer div in its place when there are
+            # no crumbs (`py-1.5 sm:py-1.5 md:py-2.5 lg:py-5`, so 12/20/40px).
+            # There is no prop to drop it, so a full-bleed page is pulled up over
+            # it. Hard-coded to the lg value: a full-bleed page is a
+            # whole-viewport layout, which needs the width to work at all.
+            marginTop: -40px
+          else: {}
+      - _var:
+          key: content_style
+          default: {}
 requests:
   _build.array.concat:
     - _build.if:
@@ -106,15 +164,64 @@ requests:
               module: notifications
               component: unread-count-request
         else: []
+    - _build.if:
+        test:
+          _build.not:
+            _var:
+              key: hide_popup_notifications
+              default: false
+        then:
+          _ref:
+            module: notifications
+            component: popup-notifications-requests
+        else: []
     - _module.var: header_extra.requests
+    - _module.var: global_requests
     - _var:
         key: requests
         default: []
 events:
+  # Module-entry global init runs AFTER the page's own — its state is set by
+  # the time a global widget's state contract runs. A page may author onInit
+  # in the { try, catch } form; the global actions then join its try list.
+  # Build-time operators evaluate every branch, so the list the globals are
+  # appended to is picked first — each concat below only ever sees an array.
   onInit:
-    _var:
-      key: events.onInit
-      default: []
+    _build.if:
+      test:
+        _build.type:
+          type: array
+          on:
+            _var:
+              key: events.onInit
+              default: []
+      then:
+        _build.array.concat:
+          - _build.if:
+              test:
+                _build.type:
+                  type: array
+                  on:
+                    _var:
+                      key: events.onInit
+                      default: []
+              then:
+                _var:
+                  key: events.onInit
+                  default: []
+              else: []
+          - _module.var: global_events.onInit
+      else:
+        try:
+          _build.array.concat:
+            - _var:
+                key: events.onInit.try
+                default: []
+            - _module.var: global_events.onInit
+        catch:
+          _var:
+            key: events.onInit.catch
+            default: []
   onInitAsync:
     _var:
       key: events.onInitAsync
@@ -145,6 +252,22 @@ events:
                   - null
               params: notifications_unread_count
           else: []
+      - _build.if:
+          test:
+            _build.not:
+              _var:
+                key: hide_popup_notifications
+                default: false
+          then:
+            - id: __fetch_notifications_popups
+              type: Request
+              params: notifications_popups
+            - id: __set_notifications_popups
+              type: SetState
+              params:
+                popup_notifications:
+                  _request: notifications_popups
+          else: []
       # Header widgets read their data with `_request:`, which returns a cached
       # response and never triggers a call. Without a fetch here the seam's
       # requests compile into every page and none of them run, so the widgets
@@ -172,29 +295,47 @@ events:
                   - null
               params:
                 __build.args: 0.id
+      # Module-entry global actions, spliced into EVERY page that uses this
+      # component — the module-level counterpart of the per-page events var.
+      # Runs after the header fetches above (their `_request:` values have
+      # resolved) and before the page's own onMountAsync, so an app can hang
+      # app-wide guards here (e.g. an onboarding gate that redirects until the
+      # caller's org is set up) without touching each page.
+      - _module.var: global_events.onMountAsync
       - _var:
           key: events.onMountAsync
           default: []
 slots:
   _build.object.assign:
+    # The header seam's blocks (search, org switcher) come from the module var,
+    # so every page carries the same header. A page may replace them —
+    # `header_blocks: []` for a bare header, or a shorter list to keep only
+    # some of them. Used by the onboarding wizard, which shows the org switcher
+    # but neither search nor the app menu.
     - header:
         blocks:
-          _module.var: header_extra.blocks
-      footer:
-        _build.if:
-          test:
-            _build.not:
-              _var:
-                key: hide_footer
-                default: false
-          then:
+          _var:
+            key: header_blocks
+            default:
+              _module.var: header_extra.blocks
+    # A hidden footer drops the slot key entirely — a slot must be a block
+    # object, so an empty placeholder value would draw a ConfigWarning (and an
+    # empty footer bar) rather than nothing.
+    - _build.if:
+        test:
+          _build.not:
+            _var:
+              key: hide_footer
+              default: false
+        then:
+          footer:
             style:
               textAlign: center
               fontSize: 12
               color: "var(--ant-color-text-secondary)"
             blocks:
               _module.var: footer
-          else: []
+        else: {}
     - _build.if:
         test:
           _build.eq:
@@ -225,6 +366,20 @@ blocks:
       margin: auto
     blocks:
       _build.array.concat:
+        # Global popup notification toast stack — position:fixed, floats over the
+        # viewport regardless of this Box, and only renders when popup:true unread
+        # notifications exist.
+        - _build.if:
+            test:
+              _build.not:
+                _var:
+                  key: hide_popup_notifications
+                  default: false
+            then:
+              - _ref:
+                  module: notifications
+                  component: popup-notifications
+            else: []
         # Title block (per-page override > module-level override > default)
         - _build.if:
             test:
@@ -299,3 +454,5 @@ blocks:
             else: []
         # Consumer content
         - _var: blocks
+        # App-wide widgets (floating, so position in the tree is immaterial).
+        - _module.var: global_blocks

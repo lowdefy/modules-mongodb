@@ -2,8 +2,8 @@
 # (design Decision 7). Two layers keyed off invite_state:
 #   entry    → email input + Check (invite_state resting|checking, input open)
 #   resolved → email locked + "Use a different email" (any resolved outcome)
-# The real check API + branch to an outcome is the WIRE task (17); Check here just
-# advances the state to `checking` as a mock transition.
+# Check validates the input, copies it to state.email, then resolves + branches
+# via actions/resolve_email.yaml.
 _ref:
   module: layout
   component: card
@@ -31,7 +31,11 @@ _ref:
               align: bottom
               selfAlign: bottom
             blocks:
-              - id: email
+              # Block id `email_input`, NOT `email`: the engine deletes a hidden
+              # input's state field, and this layer hides once the check
+              # resolves. The checked address lives in plain state.email
+              # (set by Check below), which every later step reads.
+              - id: email_input
                 type: TextInput
                 required: true
                 layout:
@@ -58,11 +62,13 @@ _ref:
                       _build.array.concat:
                         - - id: validate_email
                             type: Validate
-                            params: email
+                            params: email_input
                           - id: set_checking
                             type: SetState
                             params:
                               invite_state: checking
+                              email:
+                                _state: email_input
                         # Resolve + branch the state machine (shared action).
                         - _ref: actions/resolve_email.yaml
                     catch:
@@ -129,6 +135,7 @@ _ref:
                   params:
                     invite_state: resting
                     email: null
+                    email_input: null
                     full_name: null
                     profile: null
                     roles: null

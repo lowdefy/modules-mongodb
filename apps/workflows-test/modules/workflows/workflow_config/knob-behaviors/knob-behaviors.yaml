@@ -1,6 +1,11 @@
-# knob-behaviors — a single-action workflow exercising the per-action UI knobs
-# (show_comment / validate_on_draft / max_length). Kept separate from the other
-# fixtures so toggling these flags never perturbs their specs.
+# knob-behaviors — exercises the per-action UI knobs (show_comment /
+# validate_on_draft / max_length). Kept separate from the other fixtures so
+# toggling these flags never perturbs their specs.
+#
+# One form action (knobs) covers the build-time knobs, plus a pair of check
+# actions (quiet-check / loud-check) that declare opposite show_comment values on
+# the ONE shared `knob-behaviors-action` page — the Part 73 case that can only be
+# resolved per read.
 type: knob-behaviors
 title: Knob behaviors
 entity:
@@ -13,6 +18,12 @@ entity:
 starting_actions:
   - type: knobs
     status: action-required
+  # Both check actions start immediately so the shared check page can be visited
+  # without a form submit (Part 73 show_comment coverage).
+  - type: quiet-check
+    status: action-required
+  - type: loud-check
+    status: action-required
 
 action_groups:
   - id: knob-group
@@ -21,3 +32,5 @@ action_groups:
 
 actions:
   - _ref: modules/workflows/workflow_config/knob-behaviors/knobs.yaml
+  - _ref: modules/workflows/workflow_config/knob-behaviors/quiet-check.yaml
+  - _ref: modules/workflows/workflow_config/knob-behaviors/loud-check.yaml

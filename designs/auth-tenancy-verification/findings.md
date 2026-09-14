@@ -20,7 +20,7 @@ are in play and they are deliberately distinct:
 
 ## Findings
 
-- [ ] **T1 — The onboarding write stamps `updated.user.name` as an empty string, so
+- [x] **T1 — The onboarding write stamps `updated.user.name` as an empty string, so
       "updated by" renders blank.** Observed 2026-07-31 from a single email/password
       signup → verify → onboarding run. The onboarding submit
       (`user-account/onboarding`, request `write_contact`) is the write that **creates**
@@ -37,7 +37,15 @@ are in play and they are deliberately distinct:
       user name from the same source the event title already uses — the profile in the
       payload — rather than the pre-write session.
 
-- [ ] **T2 — The verify-time contact creation stamps no actor at all.** Same run as T1.
+      **Fixed 2026-08-21** in `modules/shared/contact/write-profile.yaml` (stage 4: when
+      the stamped name is empty and the write is the caller's own contact, the stamp
+      takes the freshly-derived `$profile.name`; never fires for an admin editing another
+      user) and `modules/events/api/new-event.yaml` + `modules/user-account/api/update-profile.yaml`
+      (the event accepts an optional `payload.actor`, passed only when the session holds
+      no name — so the log-events row carries the same repaired attribution). Build-verified
+      on `apps/tenant-demo` + `apps/demo`; the onboarding runtime re-test on the rig is owed.
+
+- [x] **T2 — The verify-time contact creation stamps no actor at all.** Same run as T1.
       `user-contacts.created.user` is `{name: null, id: null}`, written by the
       `user-account/user-contacts-system` connection via `upsert_contact` during the
       `email.verified` hook. The `userId` of the user being verified is set in the very
@@ -48,6 +56,13 @@ are in play and they are deliberately distinct:
       Milder than T1 in that a system write arguably has no actor, so the decision is
       whether the verifying user counts as one. Distinct from T1: this is the **created**
       stamp on the system write; T1 is the **updated** stamp on the onboarding write.
+
+      **Fixed 2026-08-21**: the verifying user counts as the actor. `modules/shared/contact/ensure-contact.yaml`
+      takes optional `actor_id`/`actor_name` vars that replace the stamp's user in SYSTEM
+      context only (a logged-in caller keeps the plain template), and
+      `modules/user-account/api/ensure-contact-on-signup.yaml` passes `_payload: user.id` /
+      `_payload: user.name`. Name is best-effort (absent pre-onboarding on the password
+      path); the id is the durable attribution.
 
 - [~] **T3 — Open questions from the tenant-policy signup inspection.** Recorded so they
   aren't re-derived next pass. None is a confirmed fault.
@@ -569,7 +584,7 @@ are in play and they are deliberately distinct:
       `atlas_search: false` on the deals entry, which drops `$search` entirely and lets the wall
       scope the leading `$match` mechanically.
 
-- [ ] **T18 — A profile edit in one workspace overwrites the global identity, so the other
+- [~] **T18 — A profile edit in one workspace overwrites the global identity, so the other
       workspace's avatar and its change stamps show the wrong workspace's name.** Observed
       2026-08-03. The plan's §4 checks that a name edited in one workspace does not appear _in
       the other workspace's profile page and members list_ — that part passes. What it does not
@@ -612,6 +627,17 @@ are in play and they are deliberately distinct:
       `users` row; the layout avatar and the "Invited by" lookup have the same choice to make.
       Related to [T1](#findings)/[T2](#findings), which are also change-stamp attribution
       faults.
+
+      **Fix in flight 2026-08-21**, two halves. Engine half (lowdefy PR #2315,
+      `fix/per-org-caller-name`): `UpdateUserProfile` denormalizes `name`/`image` onto the
+      member row of the floor's resolved organization, and `resolveMemberCaller` prefers the
+      member copies — so `_user: name`/`_user: image` (the stamp template and the layout
+      avatar) become per-workspace with no module change, falling back to the global row for
+      members who never saved a profile in that organization. Module half (this repo):
+      `modules/shared/org/invitations_base.yaml` derives `inviter_name` from the inviter's
+      member copy (`user-members` lookup on `{user_id, organization_id}`), falling back to
+      the global `users` row. Tick this finding when the pinned engine carries #2315 and the
+      two-workspace re-test passes.
 
 ---
 

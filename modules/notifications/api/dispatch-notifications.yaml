@@ -1,0 +1,49 @@
+# Generic notification dispatch pipeline. Payload:
+#   notification_id: id from the app's `notifications:` config section
+#   items: array of notification items (or `item`, a single object)
+# Each item runs through dispatch-notification-item: render → store with
+# dedup → send → record the result. Apps shape events into items in their
+# send_routine and CallApi this endpoint.
+id: dispatch-notifications
+type: InternalApi
+routine:
+  - :if:
+      _not:
+        _type:
+          type: string
+          on:
+            _payload: notification_id
+    :then:
+      - :throw: dispatch-notifications requires payload.notification_id (string).
+  - :set_state:
+      items:
+        _if_none:
+          - _payload: items
+          - _if:
+              test:
+                _type:
+                  type: object
+                  on:
+                    _payload: item
+              then:
+                - _payload: item
+              else: []
+  # Each item dispatches through its own endpoint call: step results are
+  # index-keyed inside :for, so the per-item pipeline needs fresh steps/state.
+  - :for: item
+    :in:
+      _state: items
+    :do:
+      - id: dispatch_item
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId: dispatch-notification-item
+          payload:
+            notification_id:
+              _payload: notification_id
+            item:
+              _item: item
+  - :return:
+      results:
+        _step: dispatch_item

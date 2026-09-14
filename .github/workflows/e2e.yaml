@@ -9,7 +9,7 @@ name: E2E
 # `configureMdb()`, which boots mongodb-memory-server (a single-node replica set,
 # required for the engine's transactions) and sets LOWDEFY_SECRET_MONGODB_URI at
 # config-eval time. So no MongoDB service container and no real secrets are
-# needed — the demo config also injects a build-only NEXTAUTH_SECRET itself.
+# needed — the demo config also injects a build-only AUTH_SECRET itself.
 #
 # The two jobs are independent (no `needs`) so a demo flake never masks a
 # workflows-test regression, and vice versa.
@@ -95,7 +95,7 @@ jobs:
         run: pnpm --filter @lowdefy/modules-demo exec playwright install --with-deps chromium
 
       # The Playwright webServer runs `lowdefy build` + `lowdefy start` (port 3101);
-      # the config injects a build-only NEXTAUTH_SECRET, so no runner secrets are
+      # the config injects a build-only AUTH_SECRET, so no runner secrets are
       # required. The demo carries only the curated example smoke + the form-submit
       # button specs (Part 22 keeps exhaustive coverage in workflows-test).
       - name: Run demo e2e

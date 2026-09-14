@@ -77,9 +77,24 @@ events:
                   _url_query: callbackUrl
               else:
                 home: true
+          # A new user with an inbound `?callbackUrl=` keeps it — the accept
+          # page sends invitees here with the accept URL, and dropping it lands
+          # a brand-new invitee on the PROTECTED onboarding page, which the
+          # existence-hiding bounce renders as a 404 for an awaiting (org-less)
+          # caller. Onboarding is still reached afterwards via the router
+          # (profile_created is false until the profile save).
           newUserCallbackUrl:
-            pageId:
-              _module.pageId: onboarding
+            _if:
+              test:
+                _ne:
+                  - _url_query: callbackUrl
+                  - null
+              then:
+                url:
+                  _url_query: callbackUrl
+              else:
+                pageId:
+                  _module.pageId: onboarding
       - id: show_link_sent
         type: SetState
         params:

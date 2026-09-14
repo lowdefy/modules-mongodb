@@ -1,26 +1,45 @@
 # Shared action-card click handler (Part 51 — F22; Part 55 — D2/D3).
 #
 # A reusable action sequence wired into the `onActionClick` of the
-# `actions-on-entity` surface (ActionSteps). The block fires an `{ action }`
-# event consumed by this handler. Consumers never write their own click
-# handler — it is baked into the host by default.
+# `actions-on-entity` and `workflow-progress` surfaces. The block fires an
+# `{ action }` event consumed by this handler. Consumers never write their own
+# click handler — it is baked into the host by default.
 #
-# The page (not a surface) drops the check-action modal, so a surface can no
-# longer assume the modal is present. The handler degrades gracefully:
-#   - `check` kind → TRY to open the shared modal in place (the fixed
-#     `check_action_modal` blockId). If no modal is on the page the open
-#     `CallMethod` throws and the `catch` navigates to the action's own page
-#     (`action.link`). Only the open `CallMethod` carries
-#     `messages.error: false`, so the recovered-via-catch path is silent.
-#   - every other kind → navigate via the server-resolved `action.link` in the
-#     `try` body (skip-gated); never touches the modal, never reaches the catch.
+# The page (not a surface) drops the check-action modal, so the modal is present
+# ONLY on entity-view pages. On the per-workflow ACTION pages (the form
+# templates and the {workflow_type}-action check page) the modal is never
+# dropped — those pages are addressable ONLY via `?action_id=<id>`, which every
+# action-page template guards on. This handler uses the presence of
+# `_url_query.action_id` as the "am I on an action page?" signal:
+#
+#   - `check` kind on an ENTITY page (no action_id) → open the shared modal in
+#     place (the fixed `check_action_modal` blockId).
+#   - `check` kind on an ACTION page (action_id set) → navigate to the action's
+#     own page via the server-resolved `action.link`, WITHOUT touching the modal.
+#     This is the fix for the "Cannot read properties of undefined (reading
+#     'methods')" error: the engine's CallMethod throws when the target block is
+#     absent, so on action pages (which never drop the modal) we must not attempt
+#     the open at all.
+#   - every other kind → navigate via `action.link`.
+#
+# The `try/catch` is kept only as a safety net: should a modal-less ENTITY page
+# ever wire this surface without dropping the modal, the open `CallMethod` throws
+# and the `catch` degrades to navigation (silently — `messages.error: false`
+# suppresses the toast). On action pages the open is skip-gated away, so it never
+# throws and never logs.
 try:
   - id: set_check_action_modal_action
     type: SetState
+    # Open the modal only for a check click on an entity page (no action_id).
     skip:
-      _ne:
-        - _event: action.kind
-        - check
+      _not:
+        _and:
+          - _eq:
+              - _event: action.kind
+              - check
+          - _eq:
+              - _url_query: action_id
+              - null
     params:
       check_action_modal:
         action_id:
@@ -28,11 +47,17 @@ try:
   - id: open_check_action_modal
     type: CallMethod
     skip:
-      _ne:
-        - _event: action.kind
-        - check
-    # error:false → when no modal is on the page the CallMethod throws and the
-    # catch navigates; suppress the would-be error toast so recovery is silent.
+      _not:
+        _and:
+          - _eq:
+              - _event: action.kind
+              - check
+          - _eq:
+              - _url_query: action_id
+              - null
+    # error:false → belt-and-suspenders. If a modal-less entity page reaches this
+    # open, the CallMethod throws and the catch navigates; suppress the would-be
+    # error toast so that fallback is silent.
     messages:
       error: false
     params:
@@ -42,17 +67,24 @@ try:
         - open: true
   - id: link_to_action_page
     type: Link
+    # Navigate for every case EXCEPT a check click on an entity page (which opens
+    # the modal above): i.e. non-check kinds, and check clicks on action pages.
     skip:
-      _eq:
-        - _event: action.kind
-        - check
+      _and:
+        - _eq:
+            - _event: action.kind
+            - check
+        - _eq:
+            - _url_query: action_id
+            - null
     params:
       pageId:
         _event: action.link.pageId
       urlQuery:
         _event: action.link.urlQuery
 catch:
-  # Modal not on the page (open threw) — navigate to the action's own page.
+  # Safety net — a modal-less entity page threw on the open above; navigate to
+  # the action's own page instead.
   - id: link_to_action_page_fallback
     type: Link
     params:

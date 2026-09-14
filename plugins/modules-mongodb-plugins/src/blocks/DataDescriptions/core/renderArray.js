@@ -1,7 +1,7 @@
 import React from "react";
 
 function renderArray(structure, config, Icon, methods, properties) {
-  const { value, fieldType } = structure;
+  const { value, fieldType, enumMap } = structure;
 
   // Empty array
   if (value.length === 0) {
@@ -10,14 +10,27 @@ function renderArray(structure, config, Icon, methods, properties) {
 
   // Custom array rendering (if field type defines renderArray)
   if (config && config.renderArray) {
-    return config.renderArray({ value, Icon, methods, properties, fieldType });
+    return config.renderArray({
+      value,
+      Icon,
+      methods,
+      properties,
+      fieldType,
+      enumMap,
+    });
   }
 
   // Typed array (contact[], file[], location[], number[], etc.)
   if (config && config.render) {
     // Single item - render inline
     if (value.length === 1) {
-      return config.render({ value: value[0], Icon, methods, properties });
+      return config.render({
+        value: value[0],
+        Icon,
+        methods,
+        properties,
+        enumMap,
+      });
     }
 
     // Multiple items - render as list
@@ -25,7 +38,13 @@ function renderArray(structure, config, Icon, methods, properties) {
       <div className="dataview-special-array">
         {value.map((item, index) => (
           <div className="dataview-special-array-item" key={index}>
-            {config.render({ value: item, Icon, methods, properties })}
+            {config.render({
+              value: item,
+              Icon,
+              methods,
+              properties,
+              enumMap,
+            })}
           </div>
         ))}
       </div>

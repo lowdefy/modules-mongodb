@@ -54,6 +54,14 @@ routine:
           # state — this is $setOnInsert only.
           user_id:
             _payload: user.id
+          # T2: the hook runs in system context, where the stamp records no
+          # actor — but it knows exactly whose verified session fired. Name is
+          # best-effort (absent pre-onboarding on the password path); id is the
+          # durable attribution.
+          actor_id:
+            _payload: user.id
+          actor_name:
+            _payload: user.name
           # Explicit org (Decision 7): the session's resolved active org,
           # policy-conditional — null under `pinned`.
           organization_id:

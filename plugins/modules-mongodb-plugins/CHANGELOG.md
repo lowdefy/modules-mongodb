@@ -1,5 +1,208 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.36.0
+
+### Patch Changes
+
+- [#206](https://github.com/lowdefy/modules-mongodb/pull/206) [`7446425`](https://github.com/lowdefy/modules-mongodb/commit/7446425232dcd684914387e458af8d9315952d95) Thanks [@JohannMoller](https://github.com/JohannMoller)! - ai-reporting: rename the `reporting` module to `ai-reporting`, and declare the AI gateway plugin it needs
+
+  The module is an AI surface — a chat that authors MongoDB pipelines against a catalog you
+  supply, and saves the answers as reports — but `reporting` named it as though it were a
+  static report renderer. `ai-assistant` already signals its nature in its name; this brings
+  the reporting module in line, so the module list reads as what each module actually is.
+
+  **Migration.** Point the `source` at the new path:
+
+  ```yaml
+  modules:
+    - id: ai-reporting
+      source: "github:lowdefy/modules-mongodb/modules/ai-reporting@v0.36.0"
+  ```
+
+  The entry `id` is yours to choose, and it is what scopes page URLs — `- id: ai-reporting`
+  serves the chat at `/ai-reporting/chat`. Renaming the entry alongside the source is the
+  recommended move and is what the demo and the docs now show, but it will break existing
+  bookmarks and any hard-coded links into the module's pages. Keep `- id: reporting` if you
+  would rather leave URLs where they are; nothing else depends on the entry being renamed.
+
+  Nothing inside the module was renamed. The `reporting-data` connection, the
+  `REPORTING_MONGODB_URI` and `REPORTING_DATA_MONGODB_URI` secrets, the `ReportingData`
+  connection type, the `_analytics` operator, the `reporting-assistant` agent and the
+  `lowdefy-reporting-catalog` bin all keep their names — so no connection remaps, no secret
+  renames, and no catalog regeneration. Documentation moved from `docs/reporting/` to
+  `docs/ai-reporting/`, which is the only change the catalog bootstrap CLI reflects: the
+  header comment it writes into a generated catalog now cites the new doc paths.
+
+  **The manifest now declares `@lowdefy/connection-ai-gateway`.** The module ships an `ai`
+  connection (`type: AIGateway`) and the reporting assistant (`type: AIGatewayAgent`), both
+  types from that package, but it never declared it — leaving each consuming app to know it
+  had to add the plugin itself, and to pick its version. If you were adding it by hand you
+  can drop it, unless your app declares an AI gateway connection or agent of its own.
+
+  That gap had teeth. The plugin's newest stable release, `5.5.1`, keys agent tools by
+  `endpointId` rather than by the configured tool `name`, and a module-scoped endpoint id
+  contains a `/` — which providers reject against the tool-name pattern
+  `^[a-zA-Z0-9_-]{1,128}$`, failing every chat turn with a 400 while the built agent config
+  looked entirely correct. The manifest therefore pins an exact version rather than a range,
+  because `^5` resolves straight back into the bug.
+
+## 0.35.0
+
+## 0.34.0
+
+### Patch Changes
+
+- [#201](https://github.com/lowdefy/modules-mongodb/pull/201) [`fa99a04`](https://github.com/lowdefy/modules-mongodb/commit/fa99a04e93f6fc17244cb959d63169ab76d764e0) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: add an `on_link_click` var, and soften the selected-thread highlight
+
+  A link in an answer was a plain anchor, so following a citation was a full browser
+  navigation out of the conversation with no way for an app to show the target in
+  place. `AgentChat` now carries an `onLinkClick` event, and this exposes it as the
+  `on_link_click` seam alongside `on_before_send`, `on_user_message`, `on_data_part`
+  and `on_feedback`. The event gives you `href` and `text`.
+
+  It is wired only when you supply actions. The block decides whether to intercept a
+  click from the event's presence, and an event declared with an empty action array is
+  still present — so passing the var through unconditionally would suppress every
+  anchor in every consuming app and then run nothing. Wiring nothing changes nothing.
+
+  Two things to know once you do wire it: an href you do not recognise navigates
+  nowhere, because interception covers the whole message, so handle the fall-through;
+  and modified or non-primary clicks are never delivered, so open-in-new-tab keeps
+  working.
+
+  The manage-chats list also passes its own `.selected` style now. `ListSelector`
+  defaults to a primary border plus a `0 0 0 1px` primary ring, and a box-shadow ring
+  keeps the radius it is given rather than growing to stay concentric — so the two
+  curves fell out of phase and every corner rendered thick and faceted. It is now one
+  soft primary border over a tinted fill, from theme tokens, so it follows dark mode
+  and your own primary colour.
+
+  Also widens the plugin package's Lowdefy peer range to accept
+  `0.0.0-experimental-20260827105525`, the first published build carrying the event.
+
+## 0.33.0
+
+## 0.32.1
+
+## 0.32.0
+
+### Minor Changes
+
+- [#124](https://github.com/lowdefy/modules-mongodb/pull/124) [`11049eb`](https://github.com/lowdefy/modules-mongodb/commit/11049eb9766d5836ae01847ec80e0da4d030e86c) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Add the reporting module: an AI assistant that answers questions and builds saved reports over an app's MongoDB data.
+
+  **Open query engine.** The assistant authors read-only MongoDB aggregation pipelines over an app-supplied collections catalog — `$lookup`, `$unwind`, array work, window functions, faceting — with joins composed directly from catalog `relationships`. Safety rests on two layers: every pipeline is validated against three independent default-deny grammars (stages, aggregation expressions, `$match` query documents) plus resource caps, and then **reconstructed** so only nodes the validator explicitly approved reach the driver; the connection points at a read-only MongoDB principal. The catalog is both the assistant's data dictionary and its authorization boundary, bound at the connection so a request cannot substitute a wider one. (A pre-built MongoDB view can back a collection where a fixed grain or field hiding is wanted.) The engine is exposed as the `ReportingData` connection's `AnalyticsPipeline` request, the `_analytics` server operator, and a `DownloadCsv` action.
+
+  **Charts.** Charts — in the chat results panel and in saved reports — are compiled server-side by the `flint-chart` compiler (pinned exactly `0.5.0`; its output shape is the contract), which derives axis names, label rotation, grid padding, colours and pie labels from the result rows. A chart section declares `chart` / `x` / `y`; the assistant contributes no chart config. A chart's canvas is a constant plot area plus the axis furniture its labels need, so heights vary between sections and a filter change can resize the section it re-queries. Two behaviours are documented in `docs/reporting/reference/presentation-contract.md`: bar charts over plain category labels render sorted by value descending regardless of the pipeline's `$sort`, and tooltips use the ECharts defaults because the compiled option travels to the browser as JSON. A bar chart accepts `stacked: true` to stack multiple `y` series into one bar per category (a validation error on `line`/`pie`). Two columns that humanize to the same display name — or an `x` column whose display name lands on `Measure`/`Value` — are rejected with the rename that fixes it. Filtered chart sections re-query through a `chart-data` endpoint (a chart needs a compiled option back, not rows); table sections use `query-data`. The plugin exposes `_analytics.buildFlintOption` (`{ chart, x, y, rows }` → `{ option, height }`, JSON-safe); `compileReport` takes a `chartEndpointId` alongside the other endpoint ids.
+
+  **Report filters.** Reports support multi-select filters with `any`/`all` matching over scalar and array fields, and filters whose options are looked up from another collection rather than typed by hand — a foreign-key filter that shows names instead of ids, a pre-filtered list, or the distinct values of an array field. A looked-up list resolves on every report open, through the same pipeline validation and per-viewer role gate as any section's query. Two behaviours worth knowing: a bound filter matches **documents**, not array elements (a section that `$unwind`s the filtered array still sees every element of a matching document); and an options query's `valueKey` must project a string or number, because the value round-trips through the browser and an ObjectId would arrive back as a bare hex string that no longer equals the field — a non-scalar `valueKey` fails the options contract and renders as an Alert naming `$toString`. The catalog enum `values` a filter can fall back on are role-gated: a collection the viewer may not query contributes no options. The relevant caps are `MAX_QUERY_FILTER_OPTIONS` (500) and `MAX_ARRAY_LITERAL_LENGTH` (500, the pipeline **text** an `$in`/`$nin`/`$all` literal may hold), which sit under the pipeline byte and node budgets.
+
+  **Catalog bootstrap CLI.** The plugins package ships a bin, `lowdefy-reporting-catalog`, that drafts a collections catalog from a live database — `pnpm exec lowdefy-reporting-catalog` in any app that installs the package. It depends on `js-yaml` (`mongodb` is a peer). See `docs/reporting/how-to/bootstrap-catalog.md`.
+
+  **Data model.** Persisted report and conversation documents follow the repo's snake_case + change-stamp convention: `created` / `updated` are full change stamps (`{ timestamp, user: { name, id } }`), and fields use `conversation_id`, `data_parts`, and a `report_id` endpoint/URL parameter (the report page reads `?report_id=`). Model ownership is a named reference, `owner: { user_id, name }`, following the shape `deals.salesperson` uses: `owner.user_id` is the authorization key every scope filter and mutation matches, and `owner.name` rides along so a list row or report header can name the owner without a lookup — kept distinct from the `created` change stamp, since `owner` is current state and the stamps are history. Three fragments under `modules/reporting/defaults/` keep this mechanical rather than per-caller: `user_id.yaml` (the `sub ?? id` derivation, `_ref`'d by every read and write site so a writer and reader can never silently disagree), `owner.yaml`, and `change_stamp.yaml` (reporting declares no dependencies, so it carries its own stamp shape rather than the events module's, though the shape is identical). The report **spec** vocabulary (`optionsQuery`, `valueKey`, `labelKey`, `filterBy`) stays camelCase: a spec is a config DSL, closer to Lowdefy's own vocabulary than to a Mongo document. Names owned by the framework — `conversationId` (the `AgentChat` block property and agent-hook payload key) and `messages` / `steps` / `toolResults` (the `onFinish` payload) — are left as the framework spells them.
+
+## 0.31.1
+
+## 0.31.0
+
+## 0.30.0
+
+### Minor Changes
+
+- [#182](https://github.com/lowdefy/modules-mongodb/pull/182) [`98b846f`](https://github.com/lowdefy/modules-mongodb/commit/98b846f5d08136963ef716e331a4ffa8d5714f21) Thanks [@Yianni99](https://github.com/Yianni99)! - New `ai-assistant` module: a persisted, multi-thread chat with one of the app's agents, in two shapes — a docked assistant for any page (an Intercom-style corner launcher and floating panel) and an `embedded` variant that sits inline in a page's own layout. Both share one thread history per (scope, user), with a searchable thread list, in-place rename, delete, and titles generated from each thread's first exchange.
+
+  The module owns the chat shell and the thread lifecycle; it owns no domain knowledge. The agent, what the agent is told about the page (`shared_state`), how threads are partitioned (`scope`), and every string the user reads are vars. Mount `panel` into a page and splice `state` into its `onInit`; a page using `embedded` also splices `enter` (the resume-or-mint chain the panel runs on first open) after it. One shell per page — the two share block ids and state on purpose.
+
+  The plugin package gains what the module rides on:
+
+  - `FloatingPanel` block — a corner launcher + floating panel over a `pointer-events: none` wrapper, so the page behind stays fully clickable (a Drawer masks or reflows it). Children are lazy-mounted then kept mounted across close, and the body publishes its measured height as `--fp-body-height` for children that must fill it exactly.
+  - `AiText` connection with a `GenerateChatTitle` request — names a thread from the first exchange (question AND reply) over the Vercel AI Gateway. An agent's own `generateTitle` sees only the opening message, which behind welcome suggestion prompts is one of a handful of canned strings, so every thread comes out with the same name. Best-effort: every failure returns `title: null` and the caller keeps its provisional title.
+
+## 0.29.0
+
+## 0.28.0
+
+### Minor Changes
+
+- [#166](https://github.com/lowdefy/modules-mongodb/pull/166) [`e0aa5d0`](https://github.com/lowdefy/modules-mongodb/commit/e0aa5d0b4e532da730a60dd7876b0becbedc6718) Thanks [@Saiby100](https://github.com/Saiby100)! - `DataDescriptions` now titles array-item cards from an `itemTitle` Nunjucks template rendered against each item (its fields are the template context, plus `_index` — the item's 0-based position), producing the title as HTML — so a title can reference multiple fields and emit markup. The list's own `title` is also rendered as HTML. Falls back to `Item N` when `itemTitle` is absent or renders empty.
+
+  **Breaking:** the previous `itemKey` property (a single dot-notation key) is removed. Replace `itemKey: name` with `itemTitle: "{{ name }}"`.
+
+## 0.27.0
+
+## 0.26.0
+
+## 0.25.1
+
+### Patch Changes
+
+- [#156](https://github.com/lowdefy/modules-mongodb/pull/156) [`9467f55`](https://github.com/lowdefy/modules-mongodb/commit/9467f55a7d7dc0f7a24b3e1b0cdbee3074bb554c) Thanks [@Saiby100](https://github.com/Saiby100)! - DataDescriptions array fields accept an optional `itemKey` — a dot-notation key relative to each array item — that titles each item's collapsible card from the item's own data (e.g. `itemKey: name` shows `devices[i].name`). Cards fall back to `Item N` when `itemKey` is absent or the value is missing or empty.
+
+- [#156](https://github.com/lowdefy/modules-mongodb/pull/156) [`831a1b0`](https://github.com/lowdefy/modules-mongodb/commit/831a1b044d68da037ec6b2272732e32d49939cf7) Thanks [@Saiby100](https://github.com/Saiby100)! - DataDescriptions renders nested array fields (controlled_list inside controlled_list) at any depth. Previously data below the first list level was silently dropped in form-config mode.
+
+## 0.25.0
+
+### Minor Changes
+
+- [#155](https://github.com/lowdefy/modules-mongodb/pull/155) [`a96d1a2`](https://github.com/lowdefy/modules-mongodb/commit/a96d1a2db63f73464bf7a2769614ff203888838e) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Files: file rows can now show read-only tags from a file's metadata.
+
+  The files module's `file-manager` and `file-card` gain a `metadata_tags` var — a list of `{ key, label, when, color }` entries. Each renders a small tag under a file row when that file's metadata field matches (any truthy value, or an exact match when `when` is set), in both editable and read-only views. This lets a surface flag files inline — for example an "Available to client" tag — without a bespoke file list. Tags are display-only and never affect upload, save, or delete.
+
+## 0.24.0
+
+## 0.23.1
+
+## 0.23.0
+
+### Patch Changes
+
+- [#147](https://github.com/lowdefy/modules-mongodb/pull/147) [`125c0b0`](https://github.com/lowdefy/modules-mongodb/commit/125c0b04c7003d28ddc84aa039e3d3b80fde7a84) Thanks [@Yianni99](https://github.com/Yianni99)! - `WorkflowProgress`'s action buttons are smaller — 12px text with 4px/10px padding, about 26px tall where they were 31px. They sit under each action group's label, so a workflow with several groups spends most of its height on them, and the extra bulk bought nothing.
+
+  This applies everywhere the block renders, not just the deals workspace. Consumers wanting a different size can style the `button` cssKey rather than carry a fork.
+
+## 0.22.0
+
+### Minor Changes
+
+- [#138](https://github.com/lowdefy/modules-mongodb/pull/138) [`254289d`](https://github.com/lowdefy/modules-mongodb/commit/254289dcc89444eb4efa294f6feda47db7db06b8) Thanks [@Saiby100](https://github.com/Saiby100)! - Five selectors in the form-components library — `selector`, `multiple_selector`, `button_selector`, `radio_selector`, `checkbox_selector` — now take an `enum` var as an alternative to `options`. An enum map (`slug → { title, color, icon }`) is converted to options for you: the title becomes the label, the slug is the stored value, the colour tints the selected value and the icon shows on a `multiple_selector` tag. `options` wins when both are set, and an operator-valued `enum` (`_global: enums.x`, `_module.var: y`) still resolves. `tree_multiple_selector` stays `options`-only: a flat enum map cannot express the `primaryKey`/`parentKey` hierarchy it exists for, and for flat choices `multiple_selector` renders enum colours and icons that the tree drops.
+
+  On read-only surfaces, an enum-driven selector now shows the entry's title. The `DataDescriptions` block reads the field's `enum` map off the form config and renders the matching entry's `title`, colour and icon instead of formatting the stored slug — so a `status` of `in-progress` with title "In progress" no longer displays as "In Progress". Overview action cards carry the `enum` map through, so they resolve too. Nothing else changes: an `options`-driven selector, an unknown value, and a field with no `enum` all keep their existing display.
+
+  **Breaking:** the `enum_selector` component is removed — it was a `Selector`-only special case of what `selector` + `enum` now does. Replace `component: enum_selector` with `component: selector` and keep the same `enum:` map. Two behaviour differences to expect: the label is no longer hardcoded to `align: right / span: 12` (declare `label_inline` / `label_span` if you relied on it), and the enum's colour now actually tints the selected value, which the old component's option shape never did.
+
+### Patch Changes
+
+- [#138](https://github.com/lowdefy/modules-mongodb/pull/138) [`b8f7213`](https://github.com/lowdefy/modules-mongodb/commit/b8f7213de6a58e9d43375e1a38e3ec908d986616) Thanks [@Saiby100](https://github.com/Saiby100)! - A `checkbox_selector` field now uses the `selector` renderer on read-only surfaces, like every other selector. It was the one options-taking selector missing from the `DataDescriptions` component hints, so its stored slugs fell through to the generic string renderer. That path already rendered them as tags, so the visible fix is enum resolution: an enum-backed checkbox list showed "Weekly" (the slug, title-cased) instead of the entry's title "Weekly review", and dropped the entry's colour and icon.
+
+## 0.21.0
+
+### Minor Changes
+
+- [#133](https://github.com/lowdefy/modules-mongodb/pull/133) [`66d0e4a`](https://github.com/lowdefy/modules-mongodb/commit/66d0e4a1bbe58c1bf3b21e51496812f17d56ea19) Thanks [@Saiby100](https://github.com/Saiby100)! - Honour `show_comment` on `kind: check` actions. The flag chooses whether an action's working surface offers the optional free-text comment box — it has worked on form actions since it shipped, but check actions silently ignored it and always rendered the box. Declaring `show_comment: false` on a check action now removes it, on both the standalone check page and the in-context check modal.
+
+  Each check action's declaration is honoured independently even though one `{workflow_type}-action` page serves them all. The flag is resolved from workflow config on every read (like `description` and `universal_fields`), so it is never stored on the action document — change it and redeploy, and in-flight actions pick it up with nothing to migrate.
+
+  Only the **optional** comment is gated. The two mandatory comment inputs always render, because the engine needs their text: the reviewer's brief in the review-mode Request Changes modal, and the recovery note on an action sitting in the `error` stage. This matches what form actions already did.
+
+  `show_comment` is now validated: a non-boolean value fails the build instead of being silently accepted. If an app authored a quoted `show_comment: "false"`, that build will now error — the quoted string was never honoured as `false`, so update it to a real boolean. The field is also now documented in the authoring grammar reference, where it was previously missing entirely.
+
+## 0.20.0
+
+## 0.19.0
+
+### Minor Changes
+
+- [#129](https://github.com/lowdefy/modules-mongodb/pull/129) [`339a42b`](https://github.com/lowdefy/modules-mongodb/commit/339a42b9d1766df645c82614da133c881124504f) Thanks [@Saiby100](https://github.com/Saiby100)! - Honour `universal_fields` on `kind: check` actions. The flag chooses which of the two action-level fields (`assignees`, `due_date`) an action's UI shows — it has worked on form actions since it shipped, but check actions silently ignored it and always rendered both. Declaring `universal_fields: [due_date]` on a check action now hides the assignees chip and drops the assignees input from the ✎ edit modal, on both the standalone check page and the in-context check modal.
+
+  Each check action's declaration is honoured independently even though one `{workflow_type}-action` page serves them all. The presence list is resolved from workflow config on every read (like `description`), so it is never stored on the action document — change it and redeploy, and in-flight actions pick it up with nothing to migrate.
+
+  This is presence, not permission: hiding a field does not gate who may change it (use `access:` for that), and a hidden field is never written or cleared, so narrowing the list on an action that already has assignees stops showing them rather than wiping them. `universal_fields` is now documented in the authoring grammar reference, where it was previously missing entirely.
+
+## 0.18.0
+
+### Patch Changes
+
+- [#126](https://github.com/lowdefy/modules-mongodb/pull/126) [`87c465c`](https://github.com/lowdefy/modules-mongodb/commit/87c465c5ee4a7e286d35bd36fed1478f76cb84f9) Thanks [@Yianni99](https://github.com/Yianni99)! - Removed the redundant status-colored dot from workflow actions: the leading bullet on each action in the WorkflowProgress panel, and the dot beside the status text on action events in the EventsTimeline card. The status colour is already carried by the surrounding button/text, so the dot added visual noise. Timeline node markers, group icons, and the standard ActionSteps step list are unchanged.
+
 ## 0.17.0
 
 ## 0.16.0

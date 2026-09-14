@@ -1,0 +1,45 @@
+# Overview-page title-bar subtitle (link to the entity record).
+#
+# Returns the subtitle HTML STRING the two shared overview pages
+# (workflow-overview, workflow-group-overview) assign to their layout-page
+# `description` var — the secondary line under the title. It carries the one
+# thing no other element on the page does: the entity's own id, linked straight
+# to its record.
+#
+#   C-00042            →  /companies/view?_id=C-00042
+#
+# Deliberately the id alone, with no type prefix: the eyebrow directly above
+# already reads "{entity type}: {entity name}" (overview-entity-eyebrow.yaml), so
+# labelling it here would state the same thing twice in one title block.
+#
+# The href is hand-built from entity_link.{pageId,urlQuery} because `description`
+# is a string var the title-block pipes through `| safe`; a real Link block can't
+# go there (the breadcrumb above carries that). The id stays autoescaped.
+#
+# Renders null until the API response lands, and null when the workflow declares
+# no `entity:` block at all (entity_link is then null) — the title-block simply
+# omits the line.
+_if:
+  test:
+    _eq:
+      - _state: workflow.entity_link
+      - null
+  then: null
+  else:
+    _nunjucks:
+      template: >-
+        <a href="{{ href }}">{{ id }}</a>
+      on:
+        id:
+          _state: workflow.entity.id
+        href:
+          _js:
+            args:
+              link:
+                _state: workflow.entity_link
+            fn: |
+              const link = args.link || {};
+              const query = Object.entries(link.urlQuery || {})
+                .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+                .join('&');
+              return `/${link.pageId}${query ? `?${query}` : ''}`;

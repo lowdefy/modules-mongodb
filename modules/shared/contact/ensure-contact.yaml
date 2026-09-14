@@ -40,6 +40,13 @@
 #                     runtime operator resolves to nothing — the contact is minted
 #                     unlinked and resolve-own-contact claims it on that person's
 #                     first own-contact resolution.
+#   actor_id        — optional; the acting user's id, for SYSTEM-context callers
+#                     whose stamp would otherwise record no actor (T2: the
+#                     merge-on-signup hook knows exactly whose verified session
+#                     it fires for). Runtime operator, like `email`.
+#   actor_name      — optional; the acting user's display name when the caller
+#                     knows it (may legitimately be absent pre-onboarding —
+#                     id is the durable attribution, name is best-effort).
 #   organization_id — optional; explicit organization for system-context callers
 #                     writing through a shared connection (Decision 7). When
 #                     set, it joins the upsert filter and read query, so the
@@ -97,14 +104,63 @@
                       _var: email
                 hidden: false
                 disabled: false
+                # In system context `_user` is null, so the template stamps
+                # {name: null, id: null} — when the caller passed an actor
+                # (the signup hook always knows whose verified session fired),
+                # record it instead so the contact is not born unattributable
+                # (T2). A logged-in caller keeps the plain template.
                 created:
-                  _ref:
-                    module: events
-                    component: change_stamp
+                  _if:
+                    test:
+                      _eq:
+                        - _if_none:
+                            - _user: id
+                            - null
+                        - null
+                    then:
+                      _object.assign:
+                        - _ref:
+                            module: events
+                            component: change_stamp
+                        - user:
+                            name:
+                              _var:
+                                key: actor_name
+                                default: null
+                            id:
+                              _var:
+                                key: actor_id
+                                default: null
+                    else:
+                      _ref:
+                        module: events
+                        component: change_stamp
                 updated:
-                  _ref:
-                    module: events
-                    component: change_stamp
+                  _if:
+                    test:
+                      _eq:
+                        - _if_none:
+                            - _user: id
+                            - null
+                        - null
+                    then:
+                      _object.assign:
+                        - _ref:
+                            module: events
+                            component: change_stamp
+                        - user:
+                            name:
+                              _var:
+                                key: actor_name
+                                default: null
+                            id:
+                              _var:
+                                key: actor_id
+                                default: null
+                    else:
+                      _ref:
+                        module: events
+                        component: change_stamp
               # The auth-user link, when the caller knows it — merged at build
               # time only when `user_id` is passed. A caller passing a runtime
               # operator that resolves to nothing writes `user_id: null`, which

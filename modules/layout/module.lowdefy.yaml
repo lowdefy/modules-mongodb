@@ -1,5 +1,5 @@
 name: Layout
-version: 0.17.0
+version: 0.36.0
 description: Page layout module supporting three page block variants — PageHeaderMenu (top header + inline menu, default), PageSiderMenu (top header + collapsible sider), and PageSidebarLayout (full-height sider) — selected via the page_type var.
 
 dependencies:
@@ -71,13 +71,48 @@ vars:
   menu:
     type: object
     description: >-
-      Menu config passed to the page block, to override the menu for this
-      module entry. When omitted, the page block falls back to the app's
-      "default" menu (_menu default).
+      Menu config passed to the page block. When unset, the page falls back to
+      the app's "default" menu (resolved client-side via `_menu`).
   header:
     type: object
     default: {}
     description: "Page block header properties: { theme, contentStyle }"
+  global_events:
+    type: object
+    default: {}
+    description: >-
+      Module-entry actions spliced into EVERY page that uses the page
+      component — the module-level counterpart of the per-page `events` var.
+      Use for app-wide guards (e.g. an onboarding gate that redirects until
+      the caller's org is set up) so no page has to opt in.
+    properties:
+      onInit:
+        default: []
+        description: >-
+          Actions appended to every page's onInit, AFTER the page's own
+          events.onInit — so a page's initial state is already set when these
+          run (e.g. a global widget's state contract that reads it).
+      onMountAsync:
+        default: []
+        description: >-
+          Actions appended to every page's onMountAsync, after the
+          header_extra request fetches (their `_request:` values have
+          resolved) and before the page's own events.onMountAsync.
+  global_blocks:
+    type: array
+    default: []
+    description: >-
+      Blocks appended after the consumer content on EVERY page that uses the
+      page component — for app-wide floating widgets (an assistant launcher,
+      a help beacon). Pair with `global_requests` for any requests they need
+      and `global_events.onInit` for their state contract.
+  global_requests:
+    type: array
+    default: []
+    description: >-
+      Requests declared on every page for `global_blocks` to use. Unlike
+      `header_extra.requests` these are NOT auto-fired on mount — they are
+      on-demand (e.g. upload/download policies a block calls itself).
   header_extra:
     type: object
     description: "Header customization: { blocks, requests }"
@@ -151,7 +186,15 @@ vars:
 exports:
   components:
     - id: page
-      description: Page layout wrapper with title bar, header/sider slots, menu, and content area. Selects PageHeaderMenu, PageSiderMenu, or PageSidebarLayout based on the page_type var.
+      description: >-
+        Page layout wrapper with title bar, header/sider slots, menu, and content
+        area. Selects PageHeaderMenu, PageSiderMenu, or PageSidebarLayout based on
+        the page_type var. Pass `full_bleed: true` for a page whose content is the
+        whole content area: it zeroes the content padding, applies the top offset
+        the selected page type needs, and publishes the remaining height as the
+        CSS custom property `--layout-content-height` for the content to size off
+        (read it with a `100dvh` fallback). A full-bleed page will usually also
+        want `hide_title: true`, `hide_footer: true` and no breadcrumbs.
     - id: card
       description: Standard content card layout with optional back button and footer
     - id: floating-actions

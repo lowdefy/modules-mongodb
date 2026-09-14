@@ -3,6 +3,8 @@
 # Resend re-resolve so the branching + prefill logic lives in one place.
 # The check routine's "contact" outcome maps to the form's "existing" (prefilled)
 # layer; "unknown" is the blank form.
+# CallAPI stores the endpoint's return value under `<id>.response.response`
+# (`<id>.response` is the call record: loading / success / response / …).
 - id: check_invite
   type: CallAPI
   params:
@@ -18,19 +20,23 @@
       _if:
         test:
           _eq:
-            - _actions: check_invite.response.state
+            - _actions: check_invite.response.response.state
             - contact
         then: existing
         else:
-          _actions: check_invite.response.state
+          _actions: check_invite.response.response.state
+    # The normalised (trimmed, lower-cased) address the check matched on, so
+    # the invite / resend / cancel payloads send exactly what was looked up.
+    email:
+      _actions: check_invite.response.response.email
     resolved_member:
-      _actions: check_invite.response.member
+      _actions: check_invite.response.response.member
     resolved_invitation:
-      _actions: check_invite.response.invitation
+      _actions: check_invite.response.response.invitation
     resolved_contact:
-      _actions: check_invite.response.contact
+      _actions: check_invite.response.response.contact
     profile:
-      _actions: check_invite.response.contact.profile
+      _actions: check_invite.response.response.contact.profile
     # The invitation form's organization-authority default. `member` is the
     # no-authority value, so an admin who ignores the field invites app roles and
     # nothing more. Re-seeded on every resolve, so a tier chosen for one email

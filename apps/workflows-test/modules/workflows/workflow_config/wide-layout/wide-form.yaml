@@ -1,0 +1,25 @@
+# A minimal form action for the wide-layout workflow. Its emitted pages
+# (wide-layout-wide-form-{view,edit}) render the wide variant.
+type: wide-form
+kind: form
+action_group: main
+sort_order: 10
+description: A form action rendered in the wide layout.
+access:
+  test:
+    view: true
+    edit: true
+form:
+  - key: form.detail
+    component: text_input
+    title: Detail
+status_map:
+  action-required:
+    test:
+      message: Complete the form.
+  in-progress:
+    test:
+      message: Draft saved.
+  done:
+    test:
+      message: Completed.

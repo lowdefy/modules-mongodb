@@ -41,6 +41,10 @@ Two consequences worth knowing:
 - **A palette change does not migrate existing people.** Because a resolved `{ from, to }` pair is stored, changing the `avatar_colors` var only affects profiles that have no colour yet. Clearing `profile.avatar_color` in a migration is the escape hatch — the next write through any seam then draws from the new palette.
 - **A profile with no name carries no picture at all.** Rather than an avatar showing `?`, which reads as a deliberate identity, the Avatar block's person icon renders. An invited user who has not onboarded is the case this covers; the seam derives a real avatar on the write that first supplies a name.
 
+## Uploaded photos
+
+A profile may also carry an uploaded photo. The `avatar-picker` row renders the [AvatarUpload](../plugins/avatar-upload.md) block bound to `profile.photo` — a compressed image data URI — and the shared write-profile fragment makes that photo the stored `profile.picture` on the same write, after the initials derivation. Removing the photo (`profile.photo: null`) unsets it and the derived initials avatar takes over again. The gradient is still resolved and stored either way, so the "Change colour" choice survives a photo being added and removed; the picker hides the button while a photo is set because the colour is not visible then.
+
 ## Overriding
 
 To use a custom palette, write your own `{ from, to }` array and pass it as the `avatar_colors` var:

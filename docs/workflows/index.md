@@ -11,13 +11,14 @@ Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped
 
 ## Dependencies
 
-| Module                                                 | Why                                                                                                                 |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| [layout](../../modules/layout/README.md)               | Page wrapper consumed by every shared page                                                                          |
-| [events](../../modules/events/README.md)               | Provides the `change_stamp` component and the `new-event` API the engine dispatches the per-invocation log event to |
-| [notifications](../../modules/notifications/README.md) | Provides the `send-notification` InternalApi the engine dispatches after each committed event                       |
-| [contacts](../../modules/contacts/README.md)           | Provides the `contact-selector` component wrapped by `contact` / `multiple_contact` form fields                     |
-| [user-account](../../modules/user-account/README.md)   | Supplies the `user-multi-selector` and `user-avatar` components used by the universal-fields surface                |
+| Module                                                 | Why                                                                                                                          |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| [layout](../../modules/layout/README.md)               | Page wrapper consumed by every shared page                                                                                   |
+| [events](../../modules/events/README.md)               | Provides the `change_stamp` component and the `new-event` API the engine dispatches the per-invocation log event to          |
+| [notifications](../../modules/notifications/README.md) | Provides the `send-notification` InternalApi the engine dispatches after each committed event                                |
+| [contacts](../../modules/contacts/README.md)           | Provides the `contact-selector` component wrapped by `contact` / `multiple_contact` form fields                              |
+| [user-account](../../modules/user-account/README.md)   | Supplies the `user-multi-selector` and `user-avatar` components used by the universal-fields surface                         |
+| [files](../../modules/files/README.md)                 | Provides the `download-policy` component the two overview pages wire, so file fields in an action's data render as downloads |
 
 The `events` and `notifications` dispatch targets are resolved at app build time via `_module.endpointId` into the `workflow-api` connection's `endpoints` property.
 
@@ -31,7 +32,7 @@ Add `workflows` when an app needs multi-step business processes on any entity �
 # lowdefy.yaml
 modules:
   - id: workflows
-    source: "github:lowdefy/modules-mongodb/modules/workflows@v0.6.0"
+    source: "github:lowdefy/modules-mongodb/modules/workflows@v0.36.0"
     vars:
       workflows_config:
         _ref: workflow_config/workflows.yaml
@@ -73,6 +74,7 @@ See [`apps/demo/modules/workflows/vars.yaml`](../../apps/demo/modules/workflows/
 - [Track a child workflow](how-to/track-a-child-workflow.md) — tracker actions, `start_link`, `parent_action_id`
 - [Instanced actions](how-to/instanced-actions.md) — keyed actions, `key` field, per-instance spawning
 - [Write a hook](how-to/write-a-hook.md) — inline routines, `pre`/`post` phases, the `:return` shape
+- [Migrate from a legacy workflow engine](how-to/migrate-from-a-legacy-workflow-engine.md) — map a hand-rolled, app-embedded engine onto the module
 
 ## Shared idioms
 

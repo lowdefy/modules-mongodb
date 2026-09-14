@@ -191,15 +191,31 @@ _ref:
           onClick:
             try:
               # PasskeyRegister enrols a factor in one step (no backup codes), so
-              # a refreshed session is all the done state needs.
+              # a refreshed session is all the done state needs. The registered
+              # flag tells the catch whether the passkey itself failed (toast) or
+              # only the trailing session refresh after a successful registration
+              # (skip — "Couldn't add a passkey" would be false, and the success
+              # toast already fired; the per-request gate reads the DB, so a
+              # reload still routes the enrolled caller home). Reset first so a
+              # cancelled retry after an earlier success still toasts (F58).
+              - id: reset_enrol_passkey_registered
+                type: SetState
+                params:
+                  enrol.passkey_registered: false
               - id: enrol_passkey
                 type: PasskeyRegister
                 messages:
                   loading: Waiting for your authenticator…
                   success: Passkey added.
                   error: false
+              - id: mark_enrol_passkey_registered
+                type: SetState
+                params:
+                  enrol.passkey_registered: true
               - id: enrol_passkey_session
                 type: UpdateSession
+                messages:
+                  error: false
               - id: mark_passkey_done
                 type: SetState
                 params:
@@ -207,6 +223,8 @@ _ref:
             catch:
               - id: enrol_passkey_error
                 type: DisplayMessage
+                skip:
+                  _state: enrol.passkey_registered
                 params:
                   status: error
                   content: Couldn't add a passkey. Your device may have cancelled the request.

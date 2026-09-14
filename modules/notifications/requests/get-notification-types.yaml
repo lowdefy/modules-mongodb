@@ -17,5 +17,9 @@ properties:
     - _ref: requests/stages/match-filter-read-status.yaml
     - $group:
         _id: 0
+        # Legacy records store event_type; pipeline records store type.
         event_types:
-          $addToSet: $event_type
+          $addToSet:
+            $ifNull:
+              - $event_type
+              - $type

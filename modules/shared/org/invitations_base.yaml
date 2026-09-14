@@ -17,7 +17,8 @@
 #     pending row's expires_at: future → Invited, past → Expired (Decision 2).
 #   app roles ride only `app_roles` (unset in close_row) and surface resolved as
 #     `roles` where the export needs them.
-#   inviter_name / inviter_id: the "Invited by" column (join `users`).
+#   inviter_name / inviter_id: the "Invited by" column — the inviter's
+#     per-org member display copy, falling back to the global `users` row (T18).
 - $match:
     organization_id:
       _var: org_value
@@ -30,8 +31,35 @@
 - $unwind:
     path: "$inviter"
     preserveNullAndEmptyArrays: true
+# The inviter's per-organization display copy (denormalized onto the member row
+# by UpdateUserProfile). The global users row is deployment-wide last-edit-wins,
+# so "Invited by" on an invitation sent from THIS organization would otherwise
+# render the name last saved in ANOTHER workspace (T18). Falls back to the
+# global row for inviters who never saved a profile in this organization.
+- $lookup:
+    from: user-members
+    as: inviter_member
+    let:
+      inviter_user_id: "$inviter_id"
+      invitation_org_id: "$organization_id"
+    pipeline:
+      - $match:
+          $expr:
+            $and:
+              - $eq:
+                  - "$user_id"
+                  - "$$inviter_user_id"
+              - $eq:
+                  - "$organization_id"
+                  - "$$invitation_org_id"
+- $unwind:
+    path: "$inviter_member"
+    preserveNullAndEmptyArrays: true
 - $addFields:
-    inviter_name: "$inviter.name"
+    inviter_name:
+      $ifNull:
+        - "$inviter_member.name"
+        - "$inviter.name"
     inviter_id: "$inviter_id"
     expires_at: "$expires_at"
     # Stored invite-time member attributes (applied to the member at accept),
@@ -47,3 +75,7 @@
             - _date: now
         - Invited
         - Expired
+# inviter_member exists only to derive inviter_name — never ship the joined
+# member row (app_roles / attributes are authorization inputs).
+- $unset:
+    - inviter_member

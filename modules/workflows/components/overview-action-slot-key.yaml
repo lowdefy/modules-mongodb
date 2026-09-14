@@ -1,0 +1,41 @@
+# Overview action slot key.
+#
+# Returns the OPERATOR that resolves one action's slot key at runtime — the
+# identifier both `_state.collapse_map` and `workflow.form_data` are keyed by:
+#
+#   "{type}.{key}"   for a keyed (per-instance) action
+#   "{type}"         otherwise
+#
+# The overview action card needs it in eight places — every `collapse_map` and
+# `workflow.form_data` lookup on the card (the collapsed `bodyPadding`, the
+# chevron's icon and its SetState, both body `visible` gates, and the body's
+# form_data read) — so it lives here rather than being spelled out each time.
+#
+# Vars:
+#   - prefix  build-time state-path prefix of the action being rendered, e.g.
+#             "groups_list.$.actions.$" (workflow-overview) or "actions_list.$"
+#             (workflow-group-overview).
+_if:
+  test:
+    _ne:
+      - _state:
+          _build.string.concat:
+            - _var: prefix
+            - .key
+      - null
+  then:
+    _string.concat:
+      - _state:
+          _build.string.concat:
+            - _var: prefix
+            - .type
+      - .
+      - _state:
+          _build.string.concat:
+            - _var: prefix
+            - .key
+  else:
+    _state:
+      _build.string.concat:
+        - _var: prefix
+        - .type

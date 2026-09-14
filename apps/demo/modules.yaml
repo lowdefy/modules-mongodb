@@ -3,6 +3,11 @@
   vars:
     _ref: modules/activities/vars.yaml
 
+- id: ai-assistant
+  source: "file:../../modules/ai-assistant"
+  vars:
+    _ref: modules/ai-assistant/vars.yaml
+
 # workflows must be listed before companies: the companies entry vars
 # cross-module _ref workflows components, and the experimental build's
 # entry-vars resolve is order-sensitive (target module entry must be
@@ -78,3 +83,16 @@
   vars:
     org_slug: customer-portal
     app_title: Customer
+- id: ai-reporting
+  source: "file:../../modules/ai-reporting"
+  # Remap the module's storage + data connections onto MONGODB_URI-backed app
+  # connections so the demo needs no REPORTING_MONGODB_URI / REPORTING_DATA_MONGODB_URI
+  # secrets. (ai keeps its bundled gateway connection → AI_GATEWAY_API_KEY.)
+  # Note reporting-analytics points at the app's read-write MONGODB_URI, so the
+  # demo does NOT exercise the read-only principal production must use.
+  connections:
+    reports-store: reporting-reports
+    conversations-store: reporting-conversations
+    reporting-data: reporting-analytics
+  vars:
+    _ref: modules/ai-reporting/vars.yaml

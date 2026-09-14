@@ -21,7 +21,9 @@
 #                    `UpdateUserProfile` re-denorm is guarded on presence and
 #                    no-ops when absent (the contact write still lands). All other
 #                    callers always pass a user_id.
-#   profile        — the profile fields to merge onto the contact (object)
+#   profile        — the profile fields to merge onto the contact (object). May
+#                    carry `photo`, an uploaded image data URI (or null to remove
+#                    it); stage 5 makes it the stored `picture`.
 #   avatar_colors  — the `{from, to}` gradient palette the derivation draws from
 #                    when the profile carries no `avatar_color` (the caller's
 #                    `avatar_colors` module var)
@@ -117,6 +119,64 @@
                       - null
                   then: "$$REMOVE"
                   else: "$profile.picture"
+        # Stage 4: T1 repair — the stamp above resolves from the session, but a
+        # SELF-write that CREATES the caller's name (onboarding) stamps from a
+        # session that doesn't hold one yet, leaving `updated.user.name` empty.
+        # When the stamped name is empty/null and the write is the caller's own
+        # contact (the var'd target user is the session user), take the
+        # freshly-derived profile name from stage 2 instead. Never fires for an
+        # admin editing another user (target ≠ caller), so the actor is never
+        # replaced by the target. Assumes the change_stamp template's
+        # `user.name` path — the module default and documented shape.
+        - - $set:
+              updated.user.name:
+                $cond:
+                  if:
+                    $and:
+                      - $in:
+                          - $ifNull: ["$updated.user.name", null]
+                          - [null, ""]
+                      # Resolved before MongoDB sees the pipeline: true only
+                      # when the target user is the session caller. `_user: id`
+                      # coalesces to a sentinel so a caller-less system run can
+                      # never equal an absent user_id.
+                      - _eq:
+                          - _if_none:
+                              - _var: user_id
+                              - null
+                          - _if_none:
+                              - _user: id
+                              - "__no_caller__"
+                  then:
+                    $ifNull:
+                      - "$profile.name"
+                      - "$updated.user.name"
+                  else: "$updated.user.name"
+        # Stage 5: an uploaded photo is the picture. Stage 2 always derives the
+        # initials SVG, so the photo has to be applied AFTER it — with a photo
+        # set, `picture` becomes the photo; with none, the derived initials
+        # stand, so removing a photo falls back to initials on the same write.
+        # The re-denorm below then copies the result onto `user.image`. A null
+        # `photo` (removed in the form) is unset rather than stored.
+        - - $set:
+              profile.picture:
+                $cond:
+                  if:
+                    $eq:
+                      - $ifNull:
+                          - "$profile.photo"
+                          - null
+                      - null
+                  then:
+                    $ifNull:
+                      - "$profile.picture"
+                      - "$$REMOVE"
+                  else: "$profile.photo"
+          - $set:
+              profile.photo:
+                $ifNull:
+                  - "$profile.photo"
+                  - "$$REMOVE"
         # Caller-supplied write-stage extensions.
         - _var: write_stages
 

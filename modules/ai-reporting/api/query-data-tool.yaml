@@ -1,0 +1,135 @@
+# The agent's read path: the same query as query-data, on a much tighter result
+# budget, returning a summary the model reads instead of the rows it cannot.
+#
+# Why a second endpoint rather than a payload property: the agent authors the
+# payload, so a payload-supplied budget is one the agent can raise. The
+# distinguishing fact is which endpoint was called. Why not a second
+# reporting-data connection with a tighter maxResultBytes — which would need no
+# plugin change at all: reporting-data.yaml's header records that a consumer
+# remapping the connection replaces it entirely and must re-bind BOTH the
+# catalog and a read-only principal, so a second connection doubles that hazard
+# and adds a second remappable name that can drift from the first while both
+# are meant to reach the same data. A budget is a request-shaped fact anyway.
+#
+# query-data keeps its 8 MB budget and its bare-array return for report filter
+# re-queries and panel downloads: chat.yaml reads that response as an array
+# straight into DownloadCsv, so a display key on it would break the download.
+#
+# The security boundary does not move. Both endpoints run the same signed-in
+# guard and the same AnalyticsPipeline request against the same catalog, bound
+# at the connection.
+id: query-data-tool
+type: Api
+description: >
+  Run an AI-authored, allowlist-validated read-only aggregation pipeline
+  against a cataloged collection. Never raw database access — the pipeline is
+  reconstructed and revalidated before execution. Returns the result rows and a
+  summary line stating the row count, whether the engine's row cap bound the
+  result, and how long the query took.
+payloadSchema:
+  type: object
+  required:
+    - query
+  properties:
+    query:
+      type: object
+      description: The collection and pipeline to run.
+      required:
+        - collection
+        - pipeline
+      properties:
+        collection:
+          type: string
+          description: Catalog-declared base collection the pipeline reads from.
+        pipeline:
+          type: array
+          description: Read-only MongoDB aggregation pipeline stages.
+routine:
+  # Catalog entries with no `roles` are readable by any AUTHENTICATED user, so
+  # the engine's role gate assumes there is a user. Lowdefy endpoints are
+  # public unless the app protects them, and this is the only endpoint that
+  # reads app data — without this guard an unprotected app exposes every
+  # role-less cataloged collection to anonymous callers.
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to query data.
+  # `_date` is dynamic and each routine step resolves as it runs, so this and
+  # the reading after the query are two distinct timestamps.
+  - :set_state:
+      started:
+        _date: now
+  - id: run_query
+    type: AnalyticsPipeline
+    connectionId:
+      _module.connectionId: reporting-data
+    properties:
+      query:
+        _payload: query
+      roles:
+        _user: roles
+      # 200 KB, well under the connection's 8 MB memory backstop, because these
+      # rows are persisted into the conversation document AND re-sent as model
+      # context on every later step and turn — two fat results would break the
+      # 16 MB document ceiling inside a hook whose errors are only warned. The
+      # number sits on the discriminating line rather than at a round guess: a
+      # typical aggregation row ({ _id: "Acme", total: 412000, count: 12 }) is
+      # under a hundred bytes, so the full 1000-row cap costs well under it,
+      # while a `$push: "$$ROOT"` dump of wide documents breaks it immediately.
+      # Exceeding it throws the engine's message mid-stream ("Narrow the query —
+      # project fewer fields, or aggregate instead of returning raw documents"),
+      # which is the correct instruction to an analytics agent and one it can
+      # act on inside the turn. It throws rather than truncating deliberately:
+      # stating a remainder means draining the cursor past the budget, and a
+      # silently shortened aggregation is a wrong answer that looks complete.
+      maxResultBytes: 200000
+      # No `filters`: filter triples belong to the report re-query path. The
+      # agent authors its whole pipeline.
+  - :set_state:
+      finished:
+        _date: now
+  - :return:
+      # The row cap owes the model a sentence, the way compileReport's
+      # sectionHeading owes the reader one: the engine appends a trailing
+      # $limit, so a result landing on exactly 1000 rows is indistinguishable
+      # from a complete one, and an assistant reporting "1000 customers" about
+      # forty thousand is simply wrong. MessageBubble renders this markdown
+      # behind the trace item's collapse and uses its first 80 characters as the
+      # item's description, so the count and duration lead and the cap
+      # disclosure follows within that budget.
+      display:
+        _mql.expr:
+          on:
+            row_count:
+              _array.length:
+                _step: run_query
+            started:
+              _state: started
+            finished:
+              _state: finished
+          expr:
+            $concat:
+              - $toString: $row_count
+              - " rows · "
+              - $toString:
+                  $round:
+                    - $divide:
+                        - $subtract:
+                            - $finished
+                            - $started
+                        - 1000
+                    - 1
+              - "s"
+              # 1000 is PIPELINE_RESULT_CAP, the engine's trailing $limit —
+              # a plugin constant with no operator to read it from here.
+              - $cond:
+                  - $gte:
+                      - $row_count
+                      - 1000
+                  - " (capped — the engine returns at most the first 1000 rows;
+                    narrow or aggregate for a complete answer)"
+                  - ""
+      rows:
+        _step: run_query

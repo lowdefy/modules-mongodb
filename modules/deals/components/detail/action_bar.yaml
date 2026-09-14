@@ -3,7 +3,8 @@ type: Box
 layout:
   gap: 8
   align: middle
-  flex: 0 0 auto
+  # Shrinkable so the buttons wrap instead of spilling the topbar when narrow.
+  flex: 0 1 auto
 blocks:
   - id: detail_add_note_btn
     type: Button

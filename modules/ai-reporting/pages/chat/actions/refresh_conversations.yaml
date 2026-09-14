@@ -1,0 +1,22 @@
+# Re-read the rail, shared by every handler that changes what it shows: the end
+# of a turn, the generated title, a rename and a delete. The list is the server's
+# answer to "the 200 most recent, soft-deleted excluded", so it is refetched
+# rather than patched in place — a client-side edit of the array would drift from
+# that predicate the moment two of these run for one conversation.
+#
+# Callers splice this in with _build.array.concat. A _ref resolves to the value
+# at the node it sits in, so a bare _ref as a list ITEM nests this array inside
+# the action list instead of extending it.
+- id: refresh_conversations
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: list-conversations
+- id: update_conversations
+  type: SetState
+  params:
+    conversations:
+      _api:
+        _build.string.concat:
+          - _module.endpointId: list-conversations
+          - ".response"

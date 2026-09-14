@@ -1,5 +1,57 @@
 # @lowdefy/modules-mongodb-files
 
+## 0.36.0
+
+## 0.35.0
+
+## 0.34.0
+
+## 0.33.0
+
+## 0.32.1
+
+## 0.32.0
+
+## 0.31.1
+
+## 0.31.0
+
+## 0.30.0
+
+## 0.29.0
+
+## 0.28.0
+
+## 0.27.0
+
+## 0.26.0
+
+## 0.25.1
+
+## 0.25.0
+
+### Minor Changes
+
+- [#155](https://github.com/lowdefy/modules-mongodb/pull/155) [`a96d1a2`](https://github.com/lowdefy/modules-mongodb/commit/a96d1a2db63f73464bf7a2769614ff203888838e) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Files: file rows can now show read-only tags from a file's metadata.
+
+  The files module's `file-manager` and `file-card` gain a `metadata_tags` var — a list of `{ key, label, when, color }` entries. Each renders a small tag under a file row when that file's metadata field matches (any truthy value, or an exact match when `when` is set), in both editable and read-only views. This lets a surface flag files inline — for example an "Available to client" tag — without a bespoke file list. Tags are display-only and never affect upload, save, or delete.
+
+## 0.24.0
+
+## 0.23.1
+
+## 0.23.0
+
+## 0.22.0
+
+## 0.21.0
+
+## 0.20.0
+
+## 0.19.0
+
+## 0.18.0
+
 ## 0.17.0
 
 ## 0.16.0

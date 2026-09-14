@@ -1,0 +1,87 @@
+# The rail's items: the window list-conversations returned — the 200 most recent,
+# soft-deleted excluded — mapped to the AgentConversations item schema, grouped
+# by recency, and filtered by the rail's search term.
+#
+# The page reads this expression twice: as the rail's `items`, and inside the
+# no-match paragraph's `visible` test. One definition, so the paragraph and the
+# rail can never disagree about whether the filter found anything.
+#
+# Filtering happens after mapping, on `label`, so the term is matched against
+# exactly the text a row shows — including the New conversation fallback — rather
+# than against the stored title that fallback stands in for.
+_array.filter:
+  - _array.map:
+      - _if_none:
+          - _state: conversations
+          - []
+      - _function:
+          key:
+            __args: 0._id
+          # Fall back when a stored title is missing or empty, so the item never
+          # renders as a blank grey block. Operators inside a _function callback
+          # take the __ prefix so they resolve in the callback's __args scope.
+          label:
+            __if:
+              test:
+                __eq:
+                  - __if_none:
+                      - __args: 0.title
+                      - ""
+                  - ""
+              then: New conversation
+              else:
+                __args: 0.title
+          # Recency reaches the user as three group headings and nothing else:
+          # the block's item schema is one line per row, with nowhere to hang a
+          # date. The documents arrive sorted `updated.timestamp: -1` and the
+          # block groups by first appearance, so these three fall out in this
+          # order without a client-side sort.
+          #
+          # Compared as YYYY-MM-DD strings, whose lexical order is their
+          # chronological order — mixing a Date and dayjs's ISO string in one
+          # comparison would coerce the Date to "Wed Aug 05 2026 …" and compare
+          # that lexically against "2026-08-05".
+          #
+          # An undated document falls back to the epoch, not to now:
+          # dayjs(undefined) is the current time, which would file a conversation
+          # with no `updated` stamp under Today.
+          group:
+            __switch:
+              branches:
+                - if:
+                    __gte:
+                      - __dayjs:
+                          - __if_none:
+                              - __args: 0.updated.timestamp
+                              - 0
+                          - format: YYYY-MM-DD
+                      - __dayjs:
+                          - now
+                          - format: YYYY-MM-DD
+                  then: Today
+                - if:
+                    __gte:
+                      - __dayjs:
+                          - __if_none:
+                              - __args: 0.updated.timestamp
+                              - 0
+                          - format: YYYY-MM-DD
+                      - __dayjs:
+                          - now
+                          - subtract:
+                              - 7
+                              - day
+                          - format: YYYY-MM-DD
+                  then: Previous 7 days
+              default: Older
+  # An empty box needs no special case: every string contains "".
+  - _function:
+      __string.includes:
+        on:
+          __string.toLowerCase:
+            __args: 0.label
+        searchString:
+          __string.toLowerCase:
+            __if_none:
+              - __state: conversation_search
+              - ""
