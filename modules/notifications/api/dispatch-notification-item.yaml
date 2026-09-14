@@ -84,6 +84,18 @@ routine:
               _payload: notification_id
             contact_id:
               _payload: item.contact._id
+            # The auth user behind the recipient, when there is one. A contact
+            # is not a user: apps that model people as per-organization contact
+            # rows give `contact._id` a contact id of its own, which is NOT the
+            # session's user id — so the link page cannot authorize a recipient
+            # by comparing the two (it did, and silently never matched). This
+            # is the like-for-like handle. Null for a recipient with no login,
+            # and null for an app that does not supply it, in which case the
+            # link page falls back to the previous contact_id comparison.
+            user_id:
+              _if_none:
+                - _payload: item.contact.user_id
+                - null
             contact:
               _payload: item.contact
             email:
