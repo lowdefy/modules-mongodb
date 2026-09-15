@@ -81,6 +81,14 @@ routine:
         $setOnInsert:
           created:
             _date: now
+          # Initialised so live threads have one shape — see
+          # docs/shared/soft-delete.md. Deliberately NOT in the filter above:
+          # this is an upsert, and $exists is not an equality clause, so a
+          # no-match would mint a SECOND row under the same conversationId
+          # rather than skipping the write. An in-flight save landing after a
+          # delete therefore rewrites the deleted row's messages, but leaves the
+          # stamp intact, so it stays filtered out of every read.
+          deleted: null
       options:
         upsert: true
   - :return:

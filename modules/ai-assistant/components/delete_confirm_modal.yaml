@@ -1,0 +1,34 @@
+# Delete confirm. The delete is soft (api/delete-thread.yaml), so the copy says the chat goes
+# rather than that it is destroyed — but nothing in the shell hands it back, so this is still
+# the last point at which the user can stop it.
+#
+# ConfirmModal, not Modal: the panel stacks at 1100 and the Modal block does not forward
+# `zIndex`, so a Modal would open BEHIND the panel it was launched from. 1200 matches the
+# panel's own tooltips. (ai-reporting's delete modal is a Modal because it sits on a page.)
+#
+# Nothing is seeded here — delete-thread.yaml captures `ai_conversation_id` for itself before
+# replacing it — so cancelling leaves no state to clean up.
+#
+# The id is passed in: both shells mount this, and an app running the panel docked over a page
+# that embeds the assistant would carry two blocks with one id — which Lowdefy does not check
+# for, so the collision is silent and CallMethod opens whichever won.
+id:
+  _var: id
+type: ConfirmModal
+properties:
+  title: Delete this chat?
+  okText: Delete
+  okButton:
+    danger: true
+  zIndex: 1200
+  content:
+    _nunjucks:
+      template: >-
+        “{{ t }}” and everything in it is removed from your chats. You will not be able to
+        open it again.
+      on:
+        t:
+          _state: ai_title
+events:
+  onOk:
+    _ref: actions/delete-thread.yaml

@@ -1,7 +1,18 @@
 id: delete-thread
 type: Api
 description: >
-  Deletes a thread. Ownership-scoped to the session user.
+  Soft-deletes a thread. Ownership-scoped to the session user.
+
+  Soft, not hard: the repo convention is that a delete sets a `deleted` change
+  stamp and reads filter it out (docs/shared/soft-delete.md). A chat is the
+  user's own record of what they asked and what they were told — a stray click
+  on a control sitting beside "New chat" should not be the end of it, and the
+  confirm cannot be the only safeguard. The stamp doubles as the audit record of
+  who deleted it and when.
+
+  Nothing in the module reads deleted threads back and there is no restore
+  control: recovery is an operator action against the collection. The point is
+  that the data survives the click, not that the shell grows an undo.
 payloadSchema:
   type: object
   required:
@@ -12,15 +23,27 @@ payloadSchema:
       type: string
 routine:
   - id: delete
-    type: MongoDBDeleteOne
+    type: MongoDBUpdateOne
     connectionId:
       _module.connectionId: ai_assistant_threads
     properties:
+      # Required, not tidy-up: MongoDBUpdateOne throws on a zero match where the
+      # MongoDBDeleteOne this replaced did not. Two zero matches are normal here
+      # — a thread minted client-side has no row until its first message is
+      # saved, and the filter below excludes already-deleted threads so a repeat
+      # delete cannot overwrite the original stamp's who/when.
+      disableNoMatchError: true
       filter:
         conversationId:
           _payload: conversationId
         user_id:
           _user: id
+        deleted.timestamp:
+          $exists: false
+      update:
+        $set:
+          deleted:
+            _ref: defaults/change_stamp.yaml
   - :return:
       conversationId:
         _payload: conversationId

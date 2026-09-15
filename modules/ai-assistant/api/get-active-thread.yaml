@@ -36,6 +36,10 @@ routine:
             conversationId:
               $exists: true
               $ne: null
+            # Without this, a deleted thread is still the most recently opened
+            # one in the scope, so the next visit resumes straight back into it.
+            deleted.timestamp:
+              $exists: false
         # Threads written before last_opened existed have never been stamped, so they
         # fall back to `updated` rather than sorting below every stamped thread.
         - $addFields:

@@ -73,6 +73,10 @@ routine:
           _payload: conversationId
         user_id:
           _user: id
+        # See docs/shared/soft-delete.md. A thread deleted while its title was
+        # still being generated must not have the result written back to it.
+        deleted.timestamp:
+          $exists: false
       update:
         $set:
           title:
