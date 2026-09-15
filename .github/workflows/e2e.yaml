@@ -1,5 +1,20 @@
 name: E2E
 
+# The SLOW lane. Both jobs boot a real Lowdefy server and a browser, so they run
+# on the release PR only — changesets' `changeset-release/main` branch, the one
+# merge that publishes. Every other PR sees these jobs as skipped, which branch
+# protection counts as passing, so e2e can be a required check on main without
+# an ordinary PR ever waiting on it. The fast, always-on checks live in ci.yaml.
+#
+# The approval click is the gate: the release PR is authored by
+# github-actions[bot] from a GITHUB_TOKEN push, and GitHub holds every workflow
+# run on such a PR in "action_required" until a maintainer clicks "Approve and
+# run" on the PR's Checks tab. Nothing here starts — or costs a minute — until
+# someone approves.
+#
+# workflow_dispatch runs both suites on any branch, unconditionally, for proving
+# a change before it reaches the release PR.
+#
 # Part 22 task 12. There was no e2e lane before this; "matching the demo's e2e
 # posture" therefore means matching its LOCAL posture — `pnpm e2e` runs the
 # Playwright config, whose webServer does a full `lowdefy build` + `lowdefy
@@ -14,15 +29,11 @@ name: E2E
 # The two jobs are independent (no `needs`) so a demo flake never masks a
 # workflows-test regression, and vice versa.
 
+# No path filters: the release PR only ever touches CHANGELOG/package.json, so a
+# path filter would keep this workflow from triggering there at all. The `if` on
+# each job is what narrows the lane.
 on:
   pull_request:
-    # Path filters keep design-only / docs-only PRs off this (slow) lane.
-    paths:
-      - "apps/workflows-test/**"
-      - "apps/demo/**"
-      - "modules/**"
-      - "plugins/**"
-      - ".github/workflows/e2e.yaml"
   workflow_dispatch:
 
 concurrency:
@@ -32,6 +43,7 @@ concurrency:
 jobs:
   workflows-test-e2e:
     name: workflows-test e2e
+    if: ${{ github.event_name == 'workflow_dispatch' || github.head_ref == 'changeset-release/main' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,6 +84,7 @@ jobs:
 
   demo-e2e:
     name: demo e2e
+    if: ${{ github.event_name == 'workflow_dispatch' || github.head_ref == 'changeset-release/main' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
