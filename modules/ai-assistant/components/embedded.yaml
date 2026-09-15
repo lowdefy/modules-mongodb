@@ -38,10 +38,8 @@ blocks:
             - threads
         layout:
           flex: 1 1 auto
-        # Size pinned rather than left to the app's h5: `level: 5` asks for a semantic
-        # heading, but this is a chat title, and an app that styles h5 as metadata renders
-        # it at secondary-text size. Flat 1rem, not the heading-5 token, which shrinks under
-        # antd's `compact` algorithm.
+        # Flat 1rem, not the h5 token: an app that styles h5 as metadata renders the chat
+        # title at secondary-text size, and the token shrinks again under `compact`.
         style:
           ".element":
             margin: 0
@@ -66,10 +64,8 @@ blocks:
             - threads
         layout:
           flex: 1 1 auto
-        # Size pinned rather than left to the app's h5: `level: 5` asks for a semantic
-        # heading, but this is a chat title, and an app that styles h5 as metadata renders
-        # it at secondary-text size. Flat 1rem, not the heading-5 token, which shrinks under
-        # antd's `compact` algorithm.
+        # Flat 1rem, not the h5 token: an app that styles h5 as metadata renders the chat
+        # title at secondary-text size, and the token shrinks again under `compact`.
         style:
           ".element":
             margin: 0
@@ -171,7 +167,7 @@ blocks:
             - id: ai_open_delete_confirm
               type: CallMethod
               params:
-                blockId: ai_delete_confirm_modal
+                blockId: ai_embedded_delete_confirm_modal
                 method: open
 
   - _ref:
@@ -186,4 +182,7 @@ blocks:
         height:
           _module.var: embedded_height
 
-  - _ref: components/delete_confirm_modal.yaml
+  - _ref:
+      path: components/delete_confirm_modal.yaml
+      vars:
+        id: ai_embedded_delete_confirm_modal
