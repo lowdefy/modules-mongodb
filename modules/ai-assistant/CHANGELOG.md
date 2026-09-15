@@ -1,5 +1,113 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 0.40.0
+
+### Minor Changes
+
+- [#229](https://github.com/lowdefy/modules-mongodb/pull/229) [`82473ca`](https://github.com/lowdefy/modules-mongodb/commit/82473ca1f790082ffeb45920ae8015969f0a335f) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: let an app colour the chat where it currently inherits antd's primary
+
+  Three surfaces took their colour from `--ant-color-primary*` with no way to change it: the
+  selected chat in the thread list, the embedded toolbar's buttons, and the assistant's name chip
+  in the docked panel. That is right where the app's primary IS its accent, and wrong where it is
+  a neutral — an app with a grey `colorPrimary` gets a grey selected chat that looks hovered, and
+  a grey name chip on a grey tint, which is the one thing that chip exists to avoid. Nothing an
+  app could write in its own stylesheet fixed it: the thread list's selected class is generated,
+  and the panel's chip rule lands at the same specificity a consumer can reach, so the two tie
+  and the plugin wins on order.
+
+  - `thread_selection` — `{ border, background }` for the selected chat.
+  - `toolbar` — `{ size, accent, accent_text, secondary }` for the embedded shell's toolbar: the
+    antd button size, the fill marking the primary action, and the fill behind the rest.
+  - `--fp-role-assistant-bg` / `--fp-role-assistant-fg` — CSS custom properties the FloatingPanel
+    stylesheet now reads for the assistant's name chip.
+
+  The chat title's size is also pinned to 1rem. `level: 5` asked for a semantic heading, so the
+  title took whatever the consuming app decided `h5` means — an app that styles h5 as metadata,
+  which is a common choice, rendered the chat title at secondary-text size. A consumer that had
+  deliberately sized the title through `h5` will now see 1rem instead.
+
+  Decisions:
+
+  - Every default is today's value, so no existing consumer changes appearance. `toolbar.size`
+    stays `small` for the same reason, even though 24px is slight for what are the shell's
+    primary actions — an app that wants bigger now says so.
+  - `toolbar` covers the embedded shell only. The panel's buttons are icon-only in a 420px
+    column, where `small` is right and a fill would read as chrome rather than as an action.
+  - The toolbar fills are set on the blocks via their `.element` css key rather than left to a
+    consumer stylesheet. Reaching those buttons from outside means selecting on module-internal
+    block ids, which a release can rename with nothing raising an error on the consumer's side.
+  - The panel chip uses CSS custom properties rather than a var, because the rule lives in the
+    plugin's stylesheet and never passes through the module's var resolution.
+
+- [#229](https://github.com/lowdefy/modules-mongodb/pull/229) [`82473ca`](https://github.com/lowdefy/modules-mongodb/commit/82473ca1f790082ffeb45920ae8015969f0a335f) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: ask before deleting a chat
+
+  Delete chat destroyed the open thread on the click. `delete-thread.yaml` went straight to the
+  delete endpoint, and neither the embedded toolbar's button nor the panel's carried a guard, so
+  one stray click took the conversation and every answer in it, and the control sits directly
+  beside "New chat" and "Manage chats", which is where a mis-click lands.
+
+  Both shells now open a confirm first, naming the thread. (The delete itself is soft as of the
+  accompanying change, so the confirm's wording stops at the chat leaving the user's list rather
+  than claiming the conversation is destroyed.)
+
+  Decisions:
+
+  - No var to switch it off. A confirm nobody opted into is a confirm nobody has, and the cost
+    is one extra click on the rarest action in the shell. That makes this a behaviour change for
+    existing consumers, hence minor rather than patch — a delete that used to happen now waits
+    for an answer.
+  - `ConfirmModal`, not the `Modal` that ai-reporting's delete confirm uses. The panel stacks at
+    1100 and the `Modal` block does not forward `zIndex`, so a `Modal` would open behind the
+    panel that launched it. `ConfirmModal` does forward it; 1200 matches the panel's own
+    tooltips. ai-reporting's modal sits on an ordinary page and never had to clear a panel.
+  - `delete-thread.yaml` is unchanged and runs from `onOk`. It already captures
+    `ai_conversation_id` before replacing it, so nothing is seeded for the confirm and
+    cancelling leaves no state behind.
+
+- [#229](https://github.com/lowdefy/modules-mongodb/pull/229) [`bfe0493`](https://github.com/lowdefy/modules-mongodb/commit/bfe049331c40f5af80517f96ce82d1c6450a4c62) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: deleting a chat no longer destroys it
+
+  Delete chat removed the thread from the collection outright. It was the only hard delete left in
+  the repo — every other module that deletes its own documents marks them with a `deleted` change
+  stamp and filters them out of reads. A chat is the user's own record of what they asked and what
+  they were told, and the confirm added alongside this is a prompt, not a safeguard: it cannot
+  help the person who meant to click it and then wanted the thread back.
+
+  Deleting now sets the `deleted` stamp, which also records who deleted the thread and when, and
+  every read filters on it — the thread list, the resume-on-open lookup, the message replay, and
+  the rename and generated-title writes.
+
+  Decisions:
+
+  - The stamp is written from the module's own `defaults/change_stamp.yaml` rather than the events
+    module's exported component, because this module declares no dependencies. Same choice, and
+    the same shape, as ai-reporting — so a host app reads it with one predicate across every
+    module.
+  - No restore control, and none planned here. The point is that the conversation survives a
+    stray click; recovering one is an operator action against the collection. Adding a deleted-
+    chats view would be a second feature, and pretending to offer recovery in the confirm would
+    be worse than saying nothing.
+  - The confirm's copy changed with it. It used to say the chat was "deleted for good" and could
+    not be undone, which is no longer true — it now says the chat is removed from the user's
+    chats and cannot be opened again, which is what the user actually experiences.
+  - The read predicate is deliberately absent from `save-thread`'s filter. That filter drives an
+    upsert, and `$exists` is not an equality clause, so a no-match would mint a second row under
+    the same conversationId rather than skip the write. A save already in flight when the delete
+    lands therefore rewrites the deleted row's messages but leaves the stamp intact, so the
+    thread stays gone from every read. `deleted: null` is initialised on insert instead, so live
+    threads have one shape.
+  - `disableNoMatchError` is set, and is load-bearing rather than tidy-up. `MongoDBDeleteOne`
+    never complained about matching nothing, but `MongoDBUpdateOne` throws "No matching record to
+    update." on a zero match unless the flag is set or the write is an upsert — so switching to
+    an update would otherwise have turned two harmless cases into errors: deleting a thread that
+    was minted but never sent in (no row exists until the first message is saved), and a repeat
+    delete. Both now report zero modified, and a repeat can no longer overwrite the original
+    stamp's who and when.
+
+  Minor rather than patch: existing rows are untouched and reads treat a missing `deleted` field
+  as live, so nothing needs migrating — but a consumer that counted on the collection shrinking,
+  or that reads the collection itself rather than through the module's endpoints, now sees
+  deleted threads and has to apply the same predicate.
+
 ## 0.39.1
 
 ## 0.39.0
