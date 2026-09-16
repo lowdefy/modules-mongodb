@@ -1,0 +1,45 @@
+# notice.yaml — the `notice` var, when set: the assistant is unavailable, so say why in place of
+# the conversation and offer no composer (chat.yaml hides itself while the var is non-null). The
+# thread list stays reachable, so a user can still read what they were told before it stopped.
+#
+# The id is passed in for the same reason delete_confirm_modal's is: both shells mount this, and
+# an app docking the panel over a page that embeds the assistant would carry two blocks with one
+# id, which Lowdefy does not check for.
+id:
+  _var: id
+type: Alert
+visible:
+  _and:
+    - _ne:
+        - _state: ai_view
+        - threads
+    - _ne:
+        - _module.var: notice
+        - null
+style:
+  margin: 12px
+properties:
+  showIcon: true
+  # Read through _js so the object's leaves reach the Alert's string properties without the
+  # consumer needing a per-leaf operator.
+  type:
+    _js:
+      fn: |
+        return (args.notice || {}).type || 'warning';
+      args:
+        notice:
+          _module.var: notice
+  message:
+    _js:
+      fn: |
+        return (args.notice || {}).message || 'The assistant is unavailable right now.';
+      args:
+        notice:
+          _module.var: notice
+  description:
+    _js:
+      fn: |
+        return (args.notice || {}).description || null;
+      args:
+        notice:
+          _module.var: notice

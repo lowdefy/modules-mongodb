@@ -32,6 +32,22 @@ on_feedback:
           - _event: rating
           - ' (demo only).'
 
+# Demonstrates the notice seam: an app that has stopped the assistant says so in place of the
+# conversation instead of leaving a composer that cannot send. Driven from page state here so the
+# demo can show both states; a real app would read a subscription or credit balance.
+notice:
+  _if:
+    test:
+      # The switch lives on the assistant page; the panel on home reads the same var and has
+      # none, where the key resolving to undefined is the answer rather than a mistake.
+      _state: demo_assistant_paused
+      ~ignoreBuildChecks: true
+    then:
+      type: warning
+      message: The assistant is paused
+      description: This workspace has run out of AI credits. Your earlier chats are still here.
+    else: null
+
 # Demonstrates the styling seams. Both default to antd's primary tokens, which the
 # app's theme already supplies — so these are set to the SAME brand colour on
 # purpose, to show where a consumer whose palette does not come from `colorPrimary`

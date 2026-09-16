@@ -13,9 +13,15 @@ id: ai_chat
 type: AgentChat
 class: fp-chat
 visible:
-  _ne:
-    - _state: ai_view
-    - threads
+  _and:
+    - _ne:
+        - _state: ai_view
+        - threads
+    # notice.yaml takes the conversation's place while this is set, and the composer goes with
+    # it — an app that has stopped the assistant must not still accept messages.
+    - _eq:
+        - _module.var: notice
+        - null
 # Held until enter.yaml has decided which thread you are in. A spinner, not
 # message skeletons: skeletons would promise a conversation that may turn out
 # to be empty, and this wait is short.

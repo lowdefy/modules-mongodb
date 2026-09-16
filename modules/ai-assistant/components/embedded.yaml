@@ -177,6 +177,11 @@ blocks:
           _module.var: embedded_height
 
   - _ref:
+      path: components/notice.yaml
+      vars:
+        id: ai_embedded_notice
+
+  - _ref:
       path: components/chat.yaml
       vars:
         height:

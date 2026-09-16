@@ -155,6 +155,16 @@ vars:
           Background of "Manage chats" and "Back to chat". Unset leaves the antd
           default.
 
+  notice:
+    type: object
+    default: null
+    description: >-
+      Runtime operator resolving to null, or to { type, message, description } while the
+      assistant is unavailable — an organisation out of AI credits, a tenant paused. Non-null
+      replaces the conversation with an Alert of that shape (type: info | warning | error) and
+      takes the composer with it, so nothing can be sent; the thread list stays reachable so
+      earlier answers can still be read. Null (the default) shows the chat as normal.
+
   thread_selection:
     type: object
     default: {}
