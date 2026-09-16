@@ -1,5 +1,59 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 0.41.0
+
+### Minor Changes
+
+- [#232](https://github.com/lowdefy/modules-mongodb/pull/232) [`c222639`](https://github.com/lowdefy/modules-mongodb/commit/c2226394d747fb08beeb7e210e9a908be7abb592) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: say when the assistant is unavailable
+
+  An app that has stopped the assistant — a workspace out of AI credits, a paused tenant — had
+  nowhere to say so. The chat still offered a composer, and a message sent into it failed on its
+  own terms, which reads as the assistant being broken rather than switched off.
+
+  The new `notice` var takes `{ type, message, description }` and replaces the conversation with
+  that alert, taking the composer with it. The thread list stays reachable, so earlier answers can
+  still be read. Null, the default, shows the chat as normal.
+
+### Patch Changes
+
+- [#232](https://github.com/lowdefy/modules-mongodb/pull/232) [`f4f3ada`](https://github.com/lowdefy/modules-mongodb/commit/f4f3adaac16c47a7f49ffe66e6bed8f636a09cd0) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: run `on_thread_change` when the open thread is deleted
+
+  Deleting the open thread mints a fresh conversation to land in, which is the active thread
+  changing by a user action — but `delete-thread` never ran `on_thread_change`, so a consuming
+  app was not told. Anything derived from the open conversation and rendered outside the chat
+  kept describing the thread that had just been deleted, and stayed that way until the user
+  opened another one. That reads as wrong data rather than as missing data.
+
+  `new-thread` and `select-thread` already ran the seam; this was the third way the active
+  thread can change, and the only one that did not.
+
+- [#232](https://github.com/lowdefy/modules-mongodb/pull/232) [`dbcd7b7`](https://github.com/lowdefy/modules-mongodb/commit/dbcd7b7b23bb084efb0f3b4cce1ac9beb5639c8f) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: survive a turn that is cut off mid-stream
+
+  A reply that stopped early left its tool call with no result. That pairing cannot be sent back
+  to the model, so every later message on the thread failed before it reached one, and the thread
+  could not be opened again either — the stored history no longer validated. One interrupted reply
+  therefore killed the conversation permanently, and the only signal was that nothing happened.
+
+  Unresolved tool calls are now dropped when the history is saved and again when a thread is
+  loaded, along with any message left carrying nothing. The load side is what brings threads
+  already stored in that state back.
+
+  A turn that ends without an answer also says so. This is not an error the chat can report —
+  the stream closes normally and only carries nothing — so it went by in silence, which reads as
+  the assistant ignoring the question and invites the same question again.
+
+  Deleting a single message now keeps the stored thread in step. Regenerating or editing one
+  already did, because each ends in a send the thread is saved from; deleting ends there, so the
+  message came back on the next reload.
+
+- [#232](https://github.com/lowdefy/modules-mongodb/pull/232) [`dc1c696`](https://github.com/lowdefy/modules-mongodb/commit/dc1c6967631b97c371600f83a8f4a80f35334535) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: the threads index on `{ conversationId, user_id }` should be unique
+
+  Saving a thread upserts on that pair. Two saves that race and both find no existing row will
+  both insert, and MongoDB allows it unless the index is unique — so one conversation ends up
+  stored twice, showing twice in the list, with whichever row the query reaches first being the
+  one that reads back. The index was already recommended for speed; it is needed for correctness
+  too. Apps that added it as non-unique should replace it.
+
 ## 0.40.0
 
 ### Minor Changes
