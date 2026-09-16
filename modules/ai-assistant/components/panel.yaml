@@ -260,6 +260,11 @@ slots:
             height: var(--fp-body-height, 520px)
 
       - _ref:
+          path: components/notice.yaml
+          vars:
+            id: ai_panel_notice
+
+      - _ref:
           path: components/chat.yaml
           vars:
             height: var(--fp-body-height, 520px)

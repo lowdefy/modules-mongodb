@@ -52,8 +52,14 @@ routine:
         $set:
           last_opened:
             _date: now
-  - :return:
-      messages:
+  # Reading through the filter is what recovers threads already stored with an unresolved
+  # tool call in them.
+  - :set_state:
+      raw_messages:
         _if_none:
           - _step: load_thread.messages
           - []
+  - _ref: api/routines/sanitize_messages.yaml
+  - :return:
+      messages:
+        _state: replayable_messages

@@ -1,0 +1,27 @@
+# persist-thread.yaml — write the thread to the store. Three callers, differing only in where
+# the history comes from: on send (the event's, including the message just sent), on reply
+# complete, and after a message is deleted.
+#
+# Skipped without a conversation id: `enter` mints one before anything can be typed, so a null
+# here is the panel mid-setup rather than a thread worth saving.
+id:
+  _var: id
+type: CallAPI
+skip:
+  _eq:
+    - _state: ai_conversation_id
+    - null
+params:
+  endpointId:
+    _module.endpointId: save-thread
+  payload:
+    conversationId:
+      _state: ai_conversation_id
+    messages:
+      _var: messages
+    title:
+      _state: ai_title
+    scope:
+      _module.var: scope
+    tag:
+      _module.var: tag
