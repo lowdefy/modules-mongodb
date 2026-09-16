@@ -328,6 +328,41 @@ events:
       onFeedback:
         _module.var: on_feedback
 
+      # Deleting is the one message action that ends there: regenerate streams a new reply and
+      # edit resends, so both persist through their own completion. The event carries the
+      # history as it stood, so the dropped message is filtered out here rather than reused.
+      onDeleteMessage:
+        - id: ai_drop_message
+          type: SetState
+          params:
+            ai_messages:
+              _js:
+                fn: |
+                  const id = event('messageId');
+                  return (event('messages') || []).filter((message) => message.id !== id);
+                args: {}
+        - id: ai_persist_after_delete
+          type: CallAPI
+          skip:
+            _eq:
+              - _state: ai_conversation_id
+              - null
+          params:
+            endpointId:
+              _module.endpointId: save-thread
+            payload:
+              conversationId:
+                _state: ai_conversation_id
+              messages:
+                _state: ai_messages
+              title:
+                _state: ai_title
+              scope:
+                _module.var: scope
+              tag:
+                _module.var: tag
+
+
       onError:
         - id: ai_show_chat_error
           type: DisplayMessage

@@ -21,6 +21,7 @@ message_display:
   actions:
     - copy
     - feedback
+    - delete
 on_feedback:
   - id: demo_ack_feedback
     type: DisplayMessage
