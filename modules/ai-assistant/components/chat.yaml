@@ -105,26 +105,12 @@ events:
       onUserMessage:
         _build.array.concat:
           - - _ref: actions/stash-provisional-title.yaml
-            - id: ai_persist_on_send
-              type: CallAPI
-              skip:
-                _eq:
-                  - _state: ai_conversation_id
-                  - null
-              params:
-                endpointId:
-                  _module.endpointId: save-thread
-                payload:
-                  conversationId:
-                    _state: ai_conversation_id
+            - _ref:
+                path: actions/persist-thread.yaml
+                vars:
+                  id: ai_persist_on_send
                   messages:
                     _event: messages
-                  title:
-                    _state: ai_title
-                  scope:
-                    _module.var: scope
-                  tag:
-                    _module.var: tag
           - _module.var: on_user_message
       onDataPart:
         _module.var: on_data_part
@@ -139,6 +125,10 @@ events:
             # A turn cut off mid-stream leaves its tool call with no result. That pairing is
             # invalid to send back, so every later turn on the thread fails and the thread is
             # dead — drop the unresolved call, and any message left carrying nothing.
+            #
+            # api/routines/sanitize_messages.yaml is the same rule server-side, for what is
+            # stored and read back. The two cannot share a body: that one runs on a routine's
+            # state, this one on a block event. Change one, change the other.
             ai_messages:
               _js:
                 fn: |
@@ -179,26 +169,12 @@ events:
             duration: 8
             content: The assistant stopped before it finished answering. Please try again.
 
-        - id: ai_persist_thread
-          type: CallAPI
-          skip:
-            _eq:
-              - _state: ai_conversation_id
-              - null
-          params:
-            endpointId:
-              _module.endpointId: save-thread
-            payload:
-              conversationId:
-                _state: ai_conversation_id
+        - _ref:
+            path: actions/persist-thread.yaml
+            vars:
+              id: ai_persist_thread
               messages:
                 _state: ai_messages
-              title:
-                _state: ai_title
-              scope:
-                _module.var: scope
-              tag:
-                _module.var: tag
 
         # Relabel the thread in the list (prepend if not present yet).
         - id: ai_patch_thread_title
@@ -347,26 +323,12 @@ events:
                   const id = event('messageId');
                   return (event('messages') || []).filter((message) => message.id !== id);
                 args: {}
-        - id: ai_persist_after_delete
-          type: CallAPI
-          skip:
-            _eq:
-              - _state: ai_conversation_id
-              - null
-          params:
-            endpointId:
-              _module.endpointId: save-thread
-            payload:
-              conversationId:
-                _state: ai_conversation_id
+        - _ref:
+            path: actions/persist-thread.yaml
+            vars:
+              id: ai_persist_after_delete
               messages:
                 _state: ai_messages
-              title:
-                _state: ai_title
-              scope:
-                _module.var: scope
-              tag:
-                _module.var: tag
 
 
       onError:
