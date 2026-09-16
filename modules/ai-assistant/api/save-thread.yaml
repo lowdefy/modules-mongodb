@@ -29,6 +29,12 @@ payloadSchema:
       type: string
       description: Display label accumulated onto the thread as a chip.
 routine:
+  # Every writer comes through here — the chat persists on send as well as on completion — so
+  # an unreplayable history is filtered once, at the write, rather than at each call site.
+  - :set_state:
+      raw_messages:
+        _payload: messages
+  - _ref: api/routines/sanitize_messages.yaml
   - id: upsert_thread
     type: MongoDBUpdateOne
     connectionId:
@@ -44,7 +50,7 @@ routine:
       update:
         $set:
           messages:
-            _payload: messages
+            _state: replayable_messages
           title:
             _payload: title
           scope:

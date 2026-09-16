@@ -130,9 +130,48 @@ events:
         - id: ai_save_messages
           type: SetState
           params:
+            # A turn cut off mid-stream leaves its tool call with no result. That pairing is
+            # invalid to send back, so every later turn on the thread fails and the thread is
+            # dead — drop the unresolved call, and any message left carrying nothing.
             ai_messages:
-              _event: messages
+              _js:
+                fn: |
+                  const settled = (part) => {
+                    const type = (part || {}).type;
+                    const isTool =
+                      type === 'dynamic-tool' ||
+                      (typeof type === 'string' && type.startsWith('tool-'));
+                    if (!isTool) return true;
+                    return part.state === 'output-available' || part.state === 'output-error';
+                  };
+                  return (event('messages') || [])
+                    .map((message) =>
+                      Array.isArray((message || {}).parts)
+                        ? { ...message, parts: message.parts.filter(settled) }
+                        : message)
+                    .filter((message) =>
+                      !Array.isArray((message || {}).parts) ||
+                      message.parts.some((part) => (part || {}).type !== 'step-start'));
+                args: {}
         - _ref: actions/stash-provisional-title.yaml
+        # A turn can end with no answer in it: the stream closes early and the block reports
+        # completion, not an error, so nothing else tells the user. Silence reads as the
+        # assistant ignoring them, and they resend — which is how one dead turn becomes five.
+        - id: ai_warn_no_answer
+          type: DisplayMessage
+          skip:
+            _js:
+              fn: |
+                // Stopping on purpose is not a failure to report.
+                return (
+                  String(event('content') || '').trim().length > 0 ||
+                  event('isAbort') === true
+                );
+              args: {}
+          params:
+            status: warning
+            duration: 8
+            content: The assistant stopped before it finished answering. Please try again.
 
         - id: ai_persist_thread
           type: CallAPI
@@ -147,7 +186,7 @@ events:
               conversationId:
                 _state: ai_conversation_id
               messages:
-                _event: messages
+                _state: ai_messages
               title:
                 _state: ai_title
               scope:
