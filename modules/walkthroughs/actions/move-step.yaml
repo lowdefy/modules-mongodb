@@ -1,0 +1,43 @@
+# Swaps the selected step with the neighbour `offset` away and follows the selection. Take it with
+# `_ref` and a `vars.offset` of -1 or 1, and splice the result in with `_build.array.concat`.
+#
+# The buttons that call this are disabled at the ends; the guard is here as well because a move
+# past an end would otherwise write `undefined` into the array and lose a step.
+- id: walkthrough_move_step
+  type: SetState
+  params:
+    walkthrough_draft.steps:
+      _js:
+        fn: |
+          const { steps, from, offset } = args[0] || {};
+          const next = (steps || []).slice();
+          const to = from + offset;
+          if (to < 0 || to >= next.length) return next;
+          const moved = next[from];
+          next[from] = next[to];
+          next[to] = moved;
+          return next;
+        args:
+          - steps:
+              _state: walkthrough_draft.steps
+            from:
+              _state: walkthrough_edit_index
+            offset:
+              _var: offset
+    walkthrough_edit_index:
+      _js:
+        fn: |
+          const { index, offset, total } = args[0] || {};
+          const to = index + offset;
+          return to < 0 || to >= total ? index : to;
+        args:
+          - index:
+              _state: walkthrough_edit_index
+            offset:
+              _var: offset
+            total:
+              _array.length:
+                _if_none:
+                  - _state: walkthrough_draft.steps
+                  - []
+- _ref: actions/sync-step.yaml

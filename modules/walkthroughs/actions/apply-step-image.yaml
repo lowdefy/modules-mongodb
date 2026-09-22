@@ -1,0 +1,39 @@
+# Writes an uploaded screenshot onto the selected step and re-syncs the frame. Take it with `_ref`
+# and vars for `uploaded`, the upload's `{key, width, height}`, and `source`, a URL the browser can
+# already show the bytes from. Picking a file and capturing a frame both end here, so a screenshot
+# reaches a step one way whichever produced it.
+- id: walkthrough_apply_image
+  type: SetState
+  messages:
+    success: Screenshot uploaded.
+  params:
+    walkthrough_draft.steps:
+      _js:
+        fn: |
+          const { steps, index, uploaded, source } = args[0] || {};
+          return (steps || []).map((step, i) => {
+            if (i !== index) return step;
+            // The focus point is in the replaced image's pixel space, so it only survives a
+            // replacement of the same size.
+            const sameSize =
+              step.image &&
+              step.image.width === uploaded.width &&
+              step.image.height === uploaded.height;
+            return {
+              ...step,
+              // Shown from the local bytes until the next load: the bucket origin is composed
+              // server-side and the editor never learns it.
+              image: { ...uploaded, url: source },
+              focus: sameSize ? step.focus : null,
+            };
+          });
+        args:
+          - steps:
+              _state: walkthrough_draft.steps
+            index:
+              _state: walkthrough_edit_index
+            uploaded:
+              _var: uploaded
+            source:
+              _var: source
+- _ref: actions/sync-step.yaml

@@ -1,0 +1,58 @@
+# Zoom and pan for the current step, computed once into state so the image and the highlight
+# read the same numbers instead of each deriving their own.
+#
+# 2x fit, measured across a 169-step corpus: at fit alone three highlights are clipped by the
+# frame edge, and at 3x forty-one images magnify past their natural resolution. The 1:1 clamp
+# is what lets a capture arrive at any screen resolution without a quality gate, reading as less
+# zoomed rather than as blurry.
+id: walkthrough_recalc_geometry
+type: SetState
+params:
+  walkthrough_geometry:
+    _js:
+      fn: |
+        const { steps, index, frameWidth, frameHeight, whole } = args[0] || {};
+        const step = (steps || [])[index || 0];
+        const image = step && step.image;
+        if (!image || !image.width || !image.height) return null;
+
+        const focus = whole ? null : step.focus;
+        const fit = Math.min(frameWidth / image.width, frameHeight / image.height);
+        const zoom = focus ? Math.min(1, fit * 2) : fit;
+        const width = image.width * zoom;
+        const height = image.height * zoom;
+
+        // An axis smaller than the frame centres; a larger one pans to the focus, clamped so no
+        // edge of the image is ever pulled inside the frame.
+        const place = (frame, size, at) =>
+          size <= frame
+            ? (frame - size) / 2
+            : Math.max(Math.min(frame / 2 - at * zoom, 0), frame - size);
+
+        const left = place(frameWidth, width, focus ? focus.x : 0);
+        const top = place(frameHeight, height, focus ? focus.y : 0);
+
+        // An explicit boolean: an undefined `visible` reads as "not specified" and the block
+        // renders anyway, so a missing ring has to be a false, never an absent value.
+        return {
+          hasRing: Boolean(step.focus),
+          url: image.url,
+          width,
+          height,
+          left,
+          top,
+          ring: step.focus
+            ? { left: step.focus.x * zoom + left, top: step.focus.y * zoom + top }
+            : null,
+        };
+      args:
+        - steps:
+            _state: walkthrough.steps
+          index:
+            _state: walkthrough_step
+          whole:
+            _state: walkthrough_whole
+          frameWidth:
+            _module.var: frame_width
+          frameHeight:
+            _module.var: frame_height

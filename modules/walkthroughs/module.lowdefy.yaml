@@ -1,0 +1,120 @@
+name: Walkthroughs
+version: 0.1.0
+description: >-
+  Step-by-step walkthroughs, stored and played in-app. A walkthrough is a title,
+  an overview and an ordered list of steps; a step is a caption with an optional
+  screenshot and an optional focus point marking where on that screenshot the
+  highlight belongs. The module owns the data model, the player that renders one
+  step at a time, and the endpoints that author one. Authoring is off unless a
+  consumer sets the `writable` var: an author edits a draft subdocument and
+  publishes it explicitly, so what the player reads changes only when they say so.
+
+  It owns no domain knowledge. What a walkthrough is about, which walkthroughs a
+  surface carries and where they are linked from stay the consuming app's
+  business — the module stores and plays them. Screenshots live outside it too: a
+  step stores an object key, and the player composes a URL from the bucket the
+  app supplies, so the bucket and its access posture remain the app's decision.
+
+dependencies: []
+
+vars:
+  collection:
+    type: string
+    default: walkthroughs
+    description: MongoDB collection holding walkthroughs.
+  region:
+    type: string
+    required: true
+    description: >-
+      AWS region of the screenshot bucket (e.g. us-east-1, eu-west-1). Only used
+      to compose the object URL, so a wrong one fails at image load rather than
+      at build — which is why it has no default.
+  frame_width:
+    type: number
+    default: 860
+    description: >-
+      Width of the player's viewport in pixels. The zoom rule is calibrated
+      against it, so a consumer changing it should re-check that highlights stay
+      inside the frame.
+  frame_height:
+    type: number
+    default: 520
+    description: Height of the player's viewport in pixels.
+  writable:
+    type: boolean
+    default: false
+    description: >-
+      Whether this app may author walkthroughs. False keeps the module read-only:
+      the collection and the screenshot bucket both refuse writes, and every
+      authoring endpoint refuses outright.
+
+exports:
+  connections:
+    - id: walkthroughs-collection
+      description: MongoDB connection for the walkthroughs collection
+  api:
+    - id: get-walkthrough
+      description: Load one walkthrough, its image keys resolved to URLs
+    - id: create-walkthrough
+      description: Create an empty walkthrough carrying a starting draft
+    - id: get-draft
+      description: Load a walkthrough's working copy, its image keys resolved to URLs
+    - id: save-draft
+      description: Replace a walkthrough's draft
+    - id: discard-draft
+      description: Throw a walkthrough's draft away, leaving published content alone
+    - id: publish-walkthrough
+      description: Copy a walkthrough's draft up to its published content
+    - id: presign-step-image
+      description: Presign an upload for one step screenshot
+
+connections:
+  - _ref: connections/walkthroughs-collection.yaml
+  - _ref: connections/screenshots-bucket.yaml
+
+api:
+  - _ref: api/get-walkthrough.yaml
+  - _ref: api/create-walkthrough.yaml
+  - _ref: api/get-draft.yaml
+  - _ref: api/save-draft.yaml
+  - _ref: api/discard-draft.yaml
+  - _ref: api/publish-walkthrough.yaml
+  - _ref: api/presign-step-image.yaml
+
+components:
+  - id: player
+    component:
+      _ref: components/player.yaml
+  - id: open
+    component:
+      _ref: actions/open-walkthrough.yaml
+  - id: editor
+    component:
+      _ref: components/editor.yaml
+  - id: load
+    component:
+      _ref: actions/load-draft.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+  - name: FILES_S3_BUCKET_PUB
+    description: >-
+      Bucket holding the screenshots. A secret rather than a var because it
+      differs per environment and a var is fixed at build time, where one config
+      builds every environment. Its objects must be readable without credentials:
+      a walkthrough shows every one of its screenshots in a single visit, so
+      there is nowhere sensible to presign.
+  - name: FILES_S3_ACCESS_KEY_ID
+    description: Access key id for the screenshot bucket, used to sign upload policies.
+  - name: FILES_S3_SECRET_ACCESS_KEY
+    description: Secret access key for the screenshot bucket, used to sign upload policies.
+
+plugins:
+  - name: '@lowdefy/community-plugin-mongodb'
+    version: '^3'
+  - name: '@lowdefy/modules-mongodb-plugins'
+    version: '^0.42.0'
+  # Both majors: the plugin tracks Lowdefy's own, and this module is mounted by apps on 5 and on 6.
+  - name: '@lowdefy/plugin-aws'
+    version: '^5 || ^6'

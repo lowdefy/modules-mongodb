@@ -1,0 +1,12 @@
+# Write is a var, not a constant: a module's endpoints compile into every consumer,
+# and one of them may authenticate people who must never author, so whether
+# authoring is permitted has to be decided per mount rather than here.
+id: walkthroughs-collection
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection:
+    _module.var: collection
+  write:
+    _module.var: writable

@@ -1,0 +1,83 @@
+id: publish-walkthrough
+type: Api
+description: >-
+  Copies a walkthrough's draft up to the published fields the player and the
+  consuming app read, stamps `published`, and clears the draft. Until this runs,
+  nothing an author has done is visible outside the editor.
+payloadSchema:
+  type: object
+  required:
+    - walkthrough_id
+    - updated_timestamp
+  additionalProperties: false
+  properties:
+    walkthrough_id:
+      type: string
+    updated_timestamp:
+      description: The update timestamp the caller last received; a stale one is refused.
+routine:
+  - :if:
+      _not:
+        _module.var: writable
+    :then:
+      - :reject: Authoring is not enabled in this app.
+  - id: load_walkthrough
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: walkthroughs-collection
+    properties:
+      query:
+        _id:
+          _payload: walkthrough_id
+      options:
+        projection:
+          draft: 1
+  - :if:
+      _eq:
+        - _step: load_walkthrough.draft
+        - null
+    :then:
+      - :reject: There is nothing to publish — this walkthrough has no unpublished changes.
+  - :set_state:
+      stamp:
+        _ref: defaults/change_stamp.yaml
+  # Reading the draft and writing it back are two operations, but the timestamp filter closes the
+  # gap: anything written in between moves `updated` and this update matches nothing.
+  - id: publish
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: walkthroughs-collection
+    properties:
+      filter:
+        _id:
+          _payload: walkthrough_id
+        updated.timestamp:
+          _payload: updated_timestamp
+      # A zero-match update throws by default; the guard below turns it into a refusal the
+      # editor can act on.
+      disableNoMatchError: true
+      update:
+        $set:
+          title:
+            _step: load_walkthrough.draft.title
+          overview:
+            _step: load_walkthrough.draft.overview
+          steps:
+            _if_none:
+              - _step: load_walkthrough.draft.steps
+              - []
+          published:
+            _state: stamp
+          updated:
+            _state: stamp
+        $unset:
+          draft: ''
+  - :if:
+      _eq:
+        - _step: publish.matchedCount
+        - 0
+    :then:
+      - :reject: This walkthrough changed elsewhere since you opened it. Reload before publishing.
+  - :return:
+      updated_timestamp:
+        _state: stamp.timestamp

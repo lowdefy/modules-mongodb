@@ -99,6 +99,8 @@ importers:
 
   modules/user-admin: {}
 
+  modules/walkthroughs: {}
+
   modules/workflows:
     devDependencies:
       '@lowdefy/modules-mongodb-plugins':

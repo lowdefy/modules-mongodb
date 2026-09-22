@@ -1,0 +1,88 @@
+id: get-draft
+type: Api
+description: >-
+  Returns the working copy of one walkthrough — its draft, or the published
+  content where it has never been edited — with each step's image key already
+  resolved to a URL. Unlike get-walkthrough this serves unpublished content, so
+  it is refused wherever authoring is off.
+payloadSchema:
+  type: object
+  required:
+    - walkthrough_id
+  additionalProperties: false
+  properties:
+    walkthrough_id:
+      type: string
+routine:
+  - :if:
+      _not:
+        _module.var: writable
+    :then:
+      - :reject: Authoring is not enabled in this app.
+  - id: load_walkthrough
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: walkthroughs-collection
+    properties:
+      query:
+        _id:
+          _payload: walkthrough_id
+  - :if:
+      _eq:
+        - _step: load_walkthrough
+        - null
+    :then:
+      - :reject: That walkthrough could not be found.
+  # Falling back field by field would be wrong: a draft may legitimately hold a null overview,
+  # and reading the published one in its place would resurrect text the author deleted.
+  - :set_state:
+      draft:
+        _if_none:
+          - _step: load_walkthrough.draft
+          - title:
+              _step: load_walkthrough.title
+            overview:
+              _step: load_walkthrough.overview
+            steps:
+              _step: load_walkthrough.steps
+  # Resolved here rather than in the editor because the bucket is a secret: one built config
+  # serves every environment, so an origin baked in at build time would point production at
+  # whichever bucket was current when it was built.
+  - :set_state:
+      resolved_steps:
+        _js:
+          fn: |
+            const { steps, bucket, region } = args[0] || {};
+            const origin = `https://${bucket}.s3.${region}.amazonaws.com/`;
+            // The key is dropped once it is resolved: a consumer that kept using it would pin
+            // itself to the bucket layout this module exists to keep to itself.
+            return (steps || []).map(({ image, ...step }) => ({
+              ...step,
+              image: image ? { width: image.width, height: image.height, url: origin + image.key } : null,
+            }));
+          args:
+            - steps:
+                _state: draft.steps
+              bucket:
+                _secret: FILES_S3_BUCKET_PUB
+              region:
+                _module.var: region
+  - :return:
+      _id:
+        _step: load_walkthrough._id
+      title:
+        _state: draft.title
+      overview:
+        _state: draft.overview
+      steps:
+        _state: resolved_steps
+      published:
+        _step: load_walkthrough.published
+      retired:
+        _step: load_walkthrough.retired
+      updated_timestamp:
+        _step: load_walkthrough.updated.timestamp
+      has_draft:
+        _ne:
+          - _step: load_walkthrough.draft
+          - null

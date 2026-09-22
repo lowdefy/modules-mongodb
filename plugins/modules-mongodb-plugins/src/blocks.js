@@ -5,4 +5,6 @@ export { default as EventsTimeline } from "./blocks/EventsTimeline/EventsTimelin
 export { default as FileManager } from "./blocks/FileManager/FileManager.js";
 export { default as FloatingPanel } from "./blocks/FloatingPanel/FloatingPanel.js";
 export { default as SmartDescriptions } from "./blocks/SmartDescriptions/SmartDescriptions.js";
+export { default as WalkthroughCapture } from "./blocks/WalkthroughCapture/WalkthroughCapture.js";
+export { default as WalkthroughImageTarget } from "./blocks/WalkthroughImageTarget/WalkthroughImageTarget.js";
 export { default as WorkflowProgress } from "./blocks/WorkflowProgress/WorkflowProgress.js";

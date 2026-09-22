@@ -1,0 +1,64 @@
+id: get-walkthrough
+type: Api
+description: >
+  Returns one walkthrough with its steps, each stored image key already resolved
+  to a URL. Retired walkthroughs still load: anything holding an id — a link, a
+  citation, a registry row — keeps resolving, and hiding it is the consumer's
+  decision to make.
+payloadSchema:
+  type: object
+  required:
+    - walkthrough_id
+  additionalProperties: false
+  properties:
+    walkthrough_id:
+      type: string
+routine:
+  - id: load_walkthrough
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: walkthroughs-collection
+    properties:
+      query:
+        _id:
+          _payload: walkthrough_id
+      options:
+        projection:
+          _id: 1
+          title: 1
+          overview: 1
+          steps: 1
+          retired: 1
+  # Resolved here rather than in the player because the bucket is a secret: one built config
+  # serves every environment, so an origin baked in at build time would point production at
+  # whichever bucket was current when it was built.
+  - :set_state:
+      resolved_steps:
+        _js:
+          fn: |
+            const { steps, bucket, region } = args[0] || {};
+            const origin = `https://${bucket}.s3.${region}.amazonaws.com/`;
+            // The key is dropped once it is resolved: a consumer that kept using it would pin
+            // itself to the bucket layout this module exists to keep to itself.
+            return (steps || []).map(({ image, ...step }) => ({
+              ...step,
+              image: image ? { width: image.width, height: image.height, url: origin + image.key } : null,
+            }));
+          args:
+            - steps:
+                _step: load_walkthrough.steps
+              bucket:
+                _secret: FILES_S3_BUCKET_PUB
+              region:
+                _module.var: region
+  - :return:
+      _id:
+        _step: load_walkthrough._id
+      title:
+        _step: load_walkthrough.title
+      overview:
+        _step: load_walkthrough.overview
+      retired:
+        _step: load_walkthrough.retired
+      steps:
+        _state: resolved_steps
