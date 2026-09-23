@@ -1,5 +1,5 @@
 name: Walkthroughs
-version: 0.1.0
+version: 0.42.0
 description: >-
   Step-by-step walkthroughs, stored and played in-app. A walkthrough is a title,
   an overview and an ordered list of steps; a step is a caption with an optional
@@ -114,7 +114,7 @@ plugins:
   - name: '@lowdefy/community-plugin-mongodb'
     version: '^3'
   - name: '@lowdefy/modules-mongodb-plugins'
-    version: '^0.42.0'
+    version: "^0.42.0"
   # Both majors: the plugin tracks Lowdefy's own, and this module is mounted by apps on 5 and on 6.
   - name: '@lowdefy/plugin-aws'
     version: '^5 || ^6'

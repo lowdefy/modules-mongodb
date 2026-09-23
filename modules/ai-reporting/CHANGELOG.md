@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-ai-reporting
 
+## 0.42.0
+
 ## 0.41.0
 
 ## 0.40.0
