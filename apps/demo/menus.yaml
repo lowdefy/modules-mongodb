@@ -55,6 +55,12 @@
       properties:
         title: AI Assistant
         icon: AiOutlineRobot
+    - id: walkthroughs
+      type: MenuLink
+      pageId: walkthroughs-demo
+      properties:
+        title: Walkthroughs
+        icon: AiOutlinePlaySquare
     - id: admin-group
       type: MenuGroup
       properties:

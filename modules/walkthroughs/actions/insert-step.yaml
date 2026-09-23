@@ -1,0 +1,25 @@
+# Inserts an empty step at the position `at` and selects it. Take it with `_ref` and a `vars.at`,
+# and splice the result in with `_build.array.concat`.
+- id: walkthrough_insert_step
+  type: SetState
+  params:
+    walkthrough_draft.steps:
+      _js:
+        fn: |
+          const { steps, at, id } = args[0] || {};
+          const next = (steps || []).slice();
+          next.splice(at, 0, { _id: id, caption: '', image: null, focus: null });
+          return next;
+        args:
+          - steps:
+              _state: walkthrough_draft.steps
+            at:
+              _var: at
+            id:
+              _uuid: true
+    walkthrough_edit_index:
+      _var: at
+- _ref:
+    path: actions/sync-step.yaml
+    vars:
+      sync_id: walkthrough_sync_step_inserted

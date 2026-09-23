@@ -98,6 +98,15 @@ _ref:
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
+                id: walkthroughs
+                icon: AiOutlinePlaySquare
+                title: Walkthroughs
+                description: Step-by-step guides — capture, edit, publish, and play.
+                note: Screenshot upload needs AWS credentials, which the demo doesn't have.
+                pageId: walkthroughs-demo
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
                 id: notifications
                 icon: AiOutlineBell
                 title: Notifications

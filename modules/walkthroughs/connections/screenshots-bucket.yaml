@@ -1,0 +1,15 @@
+# Gated the same way as walkthroughs-collection.yaml, and separately: write is a connection
+# property, so gating the collection alone would leave this bucket open to a presigned POST.
+id: screenshots-bucket
+type: AwsS3Bucket
+properties:
+  accessKeyId:
+    _secret: FILES_S3_ACCESS_KEY_ID
+  secretAccessKey:
+    _secret: FILES_S3_SECRET_ACCESS_KEY
+  region:
+    _module.var: region
+  bucket:
+    _secret: FILES_S3_BUCKET_PUB
+  write:
+    _module.var: writable

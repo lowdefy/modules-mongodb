@@ -1,0 +1,58 @@
+id: presign-step-image
+type: Api
+description: >
+  Issues a presigned POST policy for one step screenshot. The key embeds a hash of the image
+  bytes and the policy fixes the key at issue time, so the caller hashes client-side and passes
+  the hash in rather than the bytes.
+payloadSchema:
+  type: object
+  required:
+    - walkthrough_id
+    - step_id
+    - content_hash
+  additionalProperties: false
+  properties:
+    # Both ids go into the object key, so both are pinned to the uuid shape the module mints. A
+    # bare string would let a caller put `../` in the key and write outside the module's prefix,
+    # into a bucket it shares with whatever else the app keeps there.
+    walkthrough_id:
+      type: string
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    step_id:
+      type: string
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    content_hash:
+      type: string
+      pattern: '^[0-9a-f]{64}$'
+routine:
+  - :if:
+      _not:
+        _module.var: writable
+    :then:
+      - :reject: Authoring is not enabled in this app.
+  - :set_state:
+      key:
+        _string.concat:
+          - walkthroughs/
+          - _payload: walkthrough_id
+          - /
+          - _payload: step_id
+          - '-'
+          - _payload: content_hash
+          - .jpeg
+  - id: sign
+    type: AwsS3PresignedPostPolicy
+    connectionId:
+      _module.connectionId: screenshots-bucket
+    properties:
+      key:
+        _state: key
+      fields:
+        Content-Type: image/jpeg
+  - :return:
+      url:
+        _step: sign.url
+      fields:
+        _step: sign.fields
+      key:
+        _state: key

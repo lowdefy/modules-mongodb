@@ -29,6 +29,7 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [workflows](../modules/workflows/README.md)         | Multi-workflow engine — declare workflow YAML, render entity action lists, FSM-driven lifecycle transitions |
 | [release-notes](../modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page                                                               |
 | [ai-reporting](../modules/ai-reporting/README.md)   | AI chat over your data — open query engine, charts, CSV exports, saved reports                              |
+| [walkthroughs](../modules/walkthroughs/README.md) | Step-by-step walkthroughs stored and played in-app — native player, draft/publish editor, screen capture |
 
 ## Dependency graph
 
@@ -56,6 +57,7 @@ graph TD
   activities --> events
   activities --> contacts
   ai-assistant
+  walkthroughs
   workflows --> layout
   workflows --> events
   workflows --> notifications

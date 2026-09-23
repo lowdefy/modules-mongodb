@@ -1,0 +1,255 @@
+# Plays one walkthrough, a step at a time, from the `walkthrough` state the `open` action loads.
+#
+# Loading is the opener's job rather than this block's: a modal's blocks mount with the page, not
+# when it opens, so an onMount load here would fire once against no id and never again.
+#
+# Composed from Box and Img, never an Html block: HtmlComponent reassigns innerHTML on update as
+# well as on mount, so every step change would destroy and rebuild the subtree — the crossfade
+# becomes a hard cut, the zoom jumps instead of moving, and the image reloads each step. Box and
+# Img render React elements and merge styles into the inline style, so a changed value updates the
+# attribute in place and the transition runs.
+id: walkthrough_player
+type: Box
+blocks:
+  - id: walkthrough_loading
+    type: Spinner
+    visible:
+      _not:
+        _state: walkthrough
+
+  - id: walkthrough_frame
+    type: Box
+    visible:
+      _boolean:
+        _state: walkthrough_geometry
+    style:
+      position: relative
+      overflow: hidden
+      borderRadius: 8
+      background: '#000'
+      width:
+        _module.var: frame_width
+      height:
+        _module.var: frame_height
+    blocks:
+      - id: walkthrough_image
+        type: Img
+        properties:
+          src:
+            _state: walkthrough_geometry.url
+        style:
+          position: absolute
+          left:
+            _state: walkthrough_geometry.left
+          top:
+            _state: walkthrough_geometry.top
+          width:
+            _state: walkthrough_geometry.width
+          height:
+            _state: walkthrough_geometry.height
+          maxWidth: none
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1)
+
+      # Constant 44x44 at every zoom — it marks a point, so scaling it with the image would make
+      # it grow exactly where there is already more detail to see.
+      - id: walkthrough_highlight
+        type: Box
+        visible:
+          _eq:
+            - _state: walkthrough_geometry.hasRing
+            - true
+        style:
+          position: absolute
+          pointerEvents: none
+          width: 44
+          height: 44
+          marginLeft: -22
+          marginTop: -22
+          borderRadius: '50%'
+          border: 2px solid rgb(251, 146, 60)
+          background: rgba(251, 146, 60, 0.047)
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1)
+          left:
+            _state: walkthrough_geometry.ring.left
+          top:
+            _state: walkthrough_geometry.ring.top
+
+  # A caption-only step renders here with no frame above it: a step whose author wrote a line
+  # without capturing anything is a legitimate step.
+  - id: walkthrough_caption
+    type: Markdown
+    visible:
+      _state: walkthrough
+    properties:
+      content:
+        _js:
+          fn: |
+            const { steps, index } = args[0] || {};
+            const step = (steps || [])[index || 0];
+            return (step && step.caption) || '';
+          args:
+            - steps:
+                _state: walkthrough.steps
+              index:
+                _state: walkthrough_step
+    style:
+      marginTop: 16
+
+  - id: walkthrough_progress_segments
+    type: Html
+    visible:
+      _state: walkthrough
+    properties:
+      html:
+        _js:
+          fn: |
+            const { steps, index } = args[0] || {};
+            const total = (steps || []).length;
+            const at = index || 0;
+            return Array.from({ length: total }, (_, i) =>
+              `<span style="flex:1;height:3px;border-radius:2px;background:${
+                i <= at ? 'rgb(251,146,60)' : 'rgba(0,0,0,0.12)'
+              }"></span>`).join('');
+          args:
+            - steps:
+                _state: walkthrough.steps
+              index:
+                _state: walkthrough_step
+    style:
+      display: flex
+      gap: 4
+      width: '100%'
+      marginTop: 16
+
+  - id: walkthrough_controls
+    type: Box
+    visible:
+      _state: walkthrough
+    layout:
+      gap: 16
+      contentAlign: middle
+    style:
+      marginTop: 12
+    blocks:
+      # View controls on the left, navigation on the right: the toggle changes how the current
+      # step is shown, so grouping it with Back and Next would read as a third way to move.
+      - id: walkthrough_view
+        type: Box
+        layout:
+          flex: 1 0 auto
+          gap: 12
+          contentAlign: middle
+        blocks:
+          - id: walkthrough_counter
+            type: Html
+            layout:
+              flex: 0 1 auto
+            properties:
+              html:
+                _nunjucks:
+                  on:
+                    step:
+                      _sum:
+                        - _state: walkthrough_step
+                        - 1
+                    total:
+                      _array.length:
+                        _if_none:
+                          - _state: walkthrough.steps
+                          - []
+                  template: '<span class="secondary">Step {{ step }} of {{ total }}</span>'
+          - id: walkthrough_whole_toggle
+            type: Button
+            layout:
+              flex: 0 1 auto
+            visible:
+              _boolean:
+                _state: walkthrough_geometry
+            properties:
+              type: default
+              size: small
+              # react-icons names, which is what this app's icon package resolves — an Ant
+              # Design name renders as a placeholder glyph rather than failing.
+              icon:
+                _if:
+                  test:
+                    _eq:
+                      - _state: walkthrough_whole
+                      - true
+                  then: AiOutlineZoomIn
+                  else: AiOutlineFullscreen
+              title:
+                _if:
+                  test:
+                    _eq:
+                      - _state: walkthrough_whole
+                      - true
+                  then: Zoom to step
+                  else: Show whole screen
+            events:
+              onClick:
+                - id: toggle_whole
+                  type: SetState
+                  params:
+                    walkthrough_whole:
+                      _not:
+                        _eq:
+                          - _state: walkthrough_whole
+                          - true
+                - _ref: actions/recalc-geometry.yaml
+      - id: walkthrough_nav
+        type: Box
+        layout:
+          flex: 0 1 auto
+          gap: 8
+          justify: end
+        blocks:
+          - id: walkthrough_back
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Back
+              type: default
+              disabled:
+                _eq:
+                  - _state: walkthrough_step
+                  - 0
+            events:
+              onClick:
+                - id: step_back
+                  type: SetState
+                  params:
+                    walkthrough_whole: false
+                    walkthrough_step:
+                      _subtract:
+                        - _state: walkthrough_step
+                        - 1
+                - _ref: actions/recalc-geometry.yaml
+          - id: walkthrough_next
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Next
+              type: primary
+              disabled:
+                _gte:
+                  - _sum:
+                      - _state: walkthrough_step
+                      - 1
+                  - _array.length:
+                      _if_none:
+                        - _state: walkthrough.steps
+                        - []
+            events:
+              onClick:
+                - id: step_next
+                  type: SetState
+                  params:
+                    walkthrough_whole: false
+                    walkthrough_step:
+                      _sum:
+                        - _state: walkthrough_step
+                        - 1
+                - _ref: actions/recalc-geometry.yaml

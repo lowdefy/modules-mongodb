@@ -1,0 +1,91 @@
+id: save-draft
+type: Api
+description: >-
+  Replaces a walkthrough's draft wholesale and returns the new update timestamp,
+  which the caller must hold for its next write. Published content is untouched;
+  only publishing moves a draft up.
+payloadSchema:
+  type: object
+  required:
+    - walkthrough_id
+    - updated_timestamp
+    - draft
+  additionalProperties: false
+  properties:
+    walkthrough_id:
+      type: string
+    updated_timestamp:
+      description: The update timestamp the caller last received; a stale one is refused.
+    draft:
+      type: object
+      required:
+        - steps
+      additionalProperties: false
+      properties:
+        title:
+          type:
+            - string
+            - 'null'
+        overview:
+          type:
+            - string
+            - 'null'
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+              caption:
+                type:
+                  - string
+                  - 'null'
+              image:
+                type:
+                  - object
+                  - 'null'
+              focus:
+                type:
+                  - object
+                  - 'null'
+routine:
+  - :if:
+      _not:
+        _module.var: writable
+    :then:
+      - :reject: Authoring is not enabled in this app.
+  # One stamp in state rather than a _ref at each use: `_date: now` yields a fresh value every
+  # time it is evaluated, and the timestamp returned to the caller has to be the one stored, or
+  # the caller's next save collides with this one.
+  - :set_state:
+      stamp:
+        _ref: defaults/change_stamp.yaml
+  - id: save
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: walkthroughs-collection
+    properties:
+      filter:
+        _id:
+          _payload: walkthrough_id
+        updated.timestamp:
+          _payload: updated_timestamp
+      # A zero-match update throws by default; the guard below turns it into a refusal the
+      # editor can act on.
+      disableNoMatchError: true
+      update:
+        $set:
+          draft:
+            _payload: draft
+          updated:
+            _state: stamp
+  - :if:
+      _eq:
+        - _step: save.matchedCount
+        - 0
+    :then:
+      - :reject: This walkthrough changed elsewhere since you opened it. Reload before saving again.
+  - :return:
+      updated_timestamp:
+        _state: stamp.timestamp

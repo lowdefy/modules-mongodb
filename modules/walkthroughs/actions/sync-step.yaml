@@ -1,0 +1,22 @@
+# Mirrors the selected step out of the draft, so the frame, the caption field and the step
+# controls each bind to one plain path instead of indexing an array by a value that changes at
+# runtime. The draft stays the source of truth: everything that edits a step rewrites the array
+# and then re-runs this.
+# The id is a var because two fragments ending in this one can be spliced into a single event,
+# and an action id has to be unique within it.
+id:
+  _var:
+    key: sync_id
+    default: walkthrough_sync_step
+type: SetState
+params:
+  walkthrough_edit_step:
+    _js:
+      fn: |
+        const { steps, index } = args[0] || {};
+        return (steps || [])[index || 0] || null;
+      args:
+        - steps:
+            _state: walkthrough_draft.steps
+          index:
+            _state: walkthrough_edit_index

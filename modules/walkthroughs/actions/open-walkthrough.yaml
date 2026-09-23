@@ -1,0 +1,33 @@
+# Loads the walkthrough named by `walkthrough_id` state and puts it at step 1. The consumer calls
+# this when it opens the player — from a modal's onOpen, a link handler, or a button.
+#
+# A list of actions: splice it in with `_build.array.concat`, not a bare `_ref`.
+#
+# Step data is fetched here rather than carried with whatever list the walkthrough was chosen
+# from: a step carries an image, its dimensions and a focus point, which is far more than a list
+# card needs, and a walkthrough is opened rarely next to how often a list renders.
+#
+# Cleared first, so a consumer opening a second walkthrough sees the spinner rather than the
+# previous one while the fetch is in flight. These are the module's own state keys; a consumer
+# sets `walkthrough_id` and nothing else.
+- id: walkthrough_reset
+  type: SetState
+  params:
+    walkthrough: null
+    walkthrough_geometry: null
+- id: walkthrough_load
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: get-walkthrough
+    payload:
+      walkthrough_id:
+        _state: walkthrough_id
+- id: walkthrough_seed
+  type: SetState
+  params:
+    walkthrough:
+      _actions: walkthrough_load.response.response
+    walkthrough_step: 0
+    walkthrough_whole: false
+- _ref: actions/recalc-geometry.yaml

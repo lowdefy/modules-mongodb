@@ -1,0 +1,36 @@
+# Authors one walkthrough, opened by id from the url: /walkthrough-editor-demo?id=<walkthrough_id>.
+# The id is set in onMount rather than onInit, which the module's README explains.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: walkthrough-editor-demo
+    title: Walkthrough Editor
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Walkthroughs
+        pageId: walkthroughs-demo
+      - label: Editor
+    events:
+      onMount:
+        _build.array.concat:
+          - - id: set_walkthrough_id
+              type: SetState
+              params:
+                walkthrough_id:
+                  _url_query: id
+          # After the id is set: the editor does not load itself.
+          - _ref:
+              module: walkthroughs
+              component: load
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: Editor
+            blocks:
+              - _ref:
+                  module: walkthroughs
+                  component: editor

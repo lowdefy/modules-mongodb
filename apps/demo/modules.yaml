@@ -83,3 +83,11 @@
     reporting-data: reporting-analytics
   vars:
     _ref: modules/ai-reporting/vars.yaml
+
+# Authoring on, so the demo exercises the editor as well as the player. The module writes to the
+# app's own bucket, which the demo has no credentials for — uploads fail here, everything else runs.
+- id: walkthroughs
+  source: "file:../../modules/walkthroughs"
+  vars:
+    region: us-east-1
+    writable: true
