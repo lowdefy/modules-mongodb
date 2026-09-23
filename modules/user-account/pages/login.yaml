@@ -182,42 +182,49 @@ _ref:
           # login_resend_email, which the password catch sets only for
           # EMAIL_NOT_VERIFIED — so the button shows for that wall alone (not the
           # MEMBERSHIP_REQUIRED one it shares) and never without an address to send to.
-          - id: login_resend_verification
-            type: Button
-            visible:
-              _and:
-                - _eq:
-                    - _state: login_view
-                    - noaccess
-                - _ne:
-                    - _state: login_resend_email
-                    - null
-            properties:
-              title: Resend verification email
-              block: true
-              size: large
-            events:
-              onClick:
-                - id: resend_verification
-                  type: SendVerificationEmail
-                  params:
-                    email:
-                      _state: login_resend_email
-                    callbackUrl:
-                      pageId:
-                        _module.pageId: verify-email
-                      urlQuery:
-                        verified: "1"
-                        email:
-                          _state: login_resend_email
-                - id: go_verify_email
-                  type: Link
-                  params:
-                    pageId:
-                      _module.pageId: verify-email
-                    urlQuery:
-                      email:
-                        _state: login_resend_email
+          # Built only when password sign-in is enabled: that catch is the one
+          # writer of login_resend_email, so without it the button can never show.
+          - _build.if:
+              test:
+                _build.authConfig: emailAndPassword.enabled
+              then:
+                - id: login_resend_verification
+                  type: Button
+                  visible:
+                    _and:
+                      - _eq:
+                          - _state: login_view
+                          - noaccess
+                      - _ne:
+                          - _state: login_resend_email
+                          - null
+                  properties:
+                    title: Resend verification email
+                    block: true
+                    size: large
+                  events:
+                    onClick:
+                      - id: resend_verification
+                        type: SendVerificationEmail
+                        params:
+                          email:
+                            _state: login_resend_email
+                          callbackUrl:
+                            pageId:
+                              _module.pageId: verify-email
+                            urlQuery:
+                              verified: "1"
+                              email:
+                                _state: login_resend_email
+                      - id: go_verify_email
+                        type: Link
+                        params:
+                          pageId:
+                            _module.pageId: verify-email
+                          urlQuery:
+                            email:
+                              _state: login_resend_email
+              else: []
 
           # Retryable notice above the form. Carries both the expired-magic-link
           # warning and a failed password sign-in (INVALID_EMAIL_OR_PASSWORD and
