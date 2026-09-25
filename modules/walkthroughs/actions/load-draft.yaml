@@ -9,6 +9,8 @@
     walkthrough_edit_index: null
     walkthrough_draft_steps_held: null
     walkthrough_preview: false
+    # Preview mounts the player, which reads this; `open` sets it everywhere else.
+    walkthrough_missing: false
 - id: walkthrough_load_draft
   type: CallAPI
   skip:
