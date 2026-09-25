@@ -1,7 +1,9 @@
 # The email-code verify chain, `_ref`'d by both the "Sign in with code" button's
 # onClick and the code field's onPressEnter so click and Enter run the identical
-# sequence. Reads the address the send was made to (`magic_link_sent_email`), the
-# key both the login and signup "check your email" renders store it under.
+# sequence. Reads the visible email input when there is one (the expired-link
+# render of the login page), else the address the send was made to
+# (`magic_link_sent_email`), the key both the login and signup "check your
+# email" renders store it under.
 #
 # EmailOtpVerify signs the caller in and the engine navigates to the resolved
 # callbackUrl. A 2FA-enrolled user gets no session but a `twoFactorRedirect`
@@ -14,14 +16,30 @@ try:
     type: Validate
     messages:
       error: false
-    params: otp
+    params:
+      # On the expired-link render the email input is visible and must be
+      # filled too; under the link-sent result it is hidden (pruned from state).
+      _if:
+        test:
+          _eq:
+            - _state: login_view
+            - signin
+        then:
+          - email
+          - otp
+        else: otp
   - id: verify_email_code
     type: EmailOtpVerify
     messages:
       error: false
     params:
+      # The visible email input wins (expired-link render); under the link-sent
+      # result it is hidden and pruned, so the address the send was made to is
+      # used instead.
       email:
-        _state: magic_link_sent_email
+        _if_none:
+          - _state: email
+          - _state: magic_link_sent_email
       otp:
         _state: otp
       callbackUrl:

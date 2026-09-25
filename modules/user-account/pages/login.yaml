@@ -84,7 +84,12 @@ _ref:
                   _eq:
                     - _url_query: error
                     - INVALID_TOKEN
-                then: This link has expired or was already used. Request a new one.
+                then:
+                  _build.if:
+                    test:
+                      _build.authConfig: emailOTP.enabled
+                    then: This link has expired or was already used. Enter your email and the code from that email below, or request a new link.
+                    else: This link has expired or was already used. Request a new one.
                 else: null
             # Notice tone: warning (amber) for the retryable expired-link case;
             # the password catch sets error (red) for a failed sign-in.
@@ -290,6 +295,115 @@ _ref:
                   placeholder: you@example.com
             else: []
 
+        # --- "Check your email" result + code entry. The magic-link send returns
+        # { status: true } with no session, so it cannot navigate; it flips
+        # login_view to link-sent and shows the result. With emailOTP on, the one
+        # send carries both the link and the code, so the code entry needs no
+        # second send. The code entry ALSO renders on the signin view when the
+        # page was reached as the expired/consumed-link redirect
+        # (`?error=INVALID_TOKEN`): corporate mail security spends the single-use
+        # link before the person opens it, but the code in the same email is
+        # still theirs to type — so an expired link offers the code under the
+        # email input instead of dead-ending on "request a new one". ---------
+        - _build.if:
+            test:
+              _build.authConfig: magicLink.enabled
+            then:
+              _build.array.concat:
+                - - id: login_link_sent
+                    type: Result
+                    visible:
+                      _eq:
+                        - _state: login_view
+                        - link-sent
+                    properties:
+                      icon:
+                        name: AiOutlineMail
+                        color: "var(--ant-color-primary)"
+                      status: info
+                      title: Check your email
+                      subTitle:
+                        _nunjucks:
+                          # With emailOTP on, the one send carries both the link
+                          # and the code, so the result names both.
+                          template:
+                            _build.if:
+                              test:
+                                _build.authConfig: emailOTP.enabled
+                              then: We've emailed a sign-in link and a code to <b>{{ email }}</b>. Click the link, or enter the code below. The link and code expire in a few minutes.
+                              else: We've emailed a sign-in link to <b>{{ email }}</b>. Open it on this device to continue. The link expires in a few minutes.
+                          on:
+                            email:
+                              _state: magic_link_sent_email
+
+                - _build.if:
+                    test:
+                      _build.authConfig: emailOTP.enabled
+                    then:
+                      - id: otp
+                        type: TextInput
+                        visible:
+                          _or:
+                            - _eq:
+                                - _state: login_view
+                                - link-sent
+                            - _and:
+                                - _eq:
+                                    - _state: login_view
+                                    - signin
+                                - _eq:
+                                    - _url_query: error
+                                    - INVALID_TOKEN
+                        required: true
+                        properties:
+                          size: large
+                          maxLength: 6
+                          placeholder: "000000"
+                          label:
+                            # Unlabelled under the result; titled beside the
+                            # email input on the expired-link render.
+                            disabled:
+                              _eq:
+                                - _state: login_view
+                                - link-sent
+                            title: Code from the email
+                            colon: false
+                            span: 24
+                        style:
+                          .element:
+                            textAlign: center
+                            letterSpacing: 8
+                            fontFamily: var(--mono)
+                        events:
+                          # Enter runs the same chain as the button below.
+                          onPressEnter:
+                            _ref: actions/verify_email_code.yaml
+                      - id: login_code_verify
+                        type: Button
+                        visible:
+                          _or:
+                            - _eq:
+                                - _state: login_view
+                                - link-sent
+                            - _and:
+                                - _eq:
+                                    - _state: login_view
+                                    - signin
+                                - _eq:
+                                    - _url_query: error
+                                    - INVALID_TOKEN
+                        properties:
+                          title: Sign in with code
+                          block: true
+                          size: large
+                          color: primary
+                          variant: solid
+                        events:
+                          onClick:
+                            _ref: actions/verify_email_code.yaml
+                    else: []
+            else: []
+
         # --- Magic-link primary send. When password is off, the send is the
         # primary action directly under the email input. The button, its `Login`
         # dispatch, callback params, and cooldown live in the shared component. -
@@ -304,7 +418,32 @@ _ref:
                   path: components/magic-link-send.yaml
                   vars:
                     id: login_magic_send
-                    label: Email me a sign-in link
+                    label:
+                      _if:
+                        test:
+                          _eq:
+                            - _url_query: error
+                            - INVALID_TOKEN
+                        then: Email me a new link
+                        else: Email me a sign-in link
+                    # Secondary under the code entry on the expired-link render,
+                    # primary otherwise.
+                    color:
+                      _if:
+                        test:
+                          _eq:
+                            - _url_query: error
+                            - INVALID_TOKEN
+                        then: default
+                        else: primary
+                    variant:
+                      _if:
+                        test:
+                          _eq:
+                            - _url_query: error
+                            - INVALID_TOKEN
+                        then: outlined
+                        else: solid
                     on_sent:
                       login_view: link-sent
                       magic_link_sent_email:
@@ -791,87 +930,15 @@ _ref:
                           type: PasskeySignIn
             else: []
 
-        # --- Link-sent result (magic-link). The send returns { status: true }
-        # with no session, so it cannot navigate; it flips login_view to
-        # link-sent and shows this "check your email" render. Resend re-fires the
-        # same shared send (cooldown-guarded); the link button returns to signin.
+        # --- Link-sent actions. Resend re-fires the same shared send
+        # (cooldown-guarded); the link button returns to signin. The "check your
+        # email" result and the code entry render above (see the code-entry
+        # section after the email input). ------------------------------------
         - _build.if:
             test:
               _build.authConfig: magicLink.enabled
             then:
               _build.array.concat:
-                - - id: login_link_sent
-                    type: Result
-                    visible:
-                      _eq:
-                        - _state: login_view
-                        - link-sent
-                    properties:
-                      icon:
-                        name: AiOutlineMail
-                        color: "var(--ant-color-primary)"
-                      status: info
-                      title: Check your email
-                      subTitle:
-                        _nunjucks:
-                          # With emailOTP on, the one send carries both the link
-                          # and the code, so the result names both.
-                          template:
-                            _build.if:
-                              test:
-                                _build.authConfig: emailOTP.enabled
-                              then: We've emailed a sign-in link and a code to <b>{{ email }}</b>. Click the link, or enter the code below. The link and code expire in a few minutes.
-                              else: We've emailed a sign-in link to <b>{{ email }}</b>. Open it on this device to continue. The link expires in a few minutes.
-                          on:
-                            email:
-                              _state: magic_link_sent_email
-
-                # --- Code entry. The magic-link send emits one email carrying
-                # both the link and the code when emailOTP is enabled, so this
-                # render only needs somewhere to type the code — no second send.
-                - _build.if:
-                    test:
-                      _build.authConfig: emailOTP.enabled
-                    then:
-                      - id: otp
-                        type: TextInput
-                        visible:
-                          _eq:
-                            - _state: login_view
-                            - link-sent
-                        required: true
-                        properties:
-                          size: large
-                          maxLength: 6
-                          placeholder: "000000"
-                          label:
-                            disabled: true
-                        style:
-                          .element:
-                            textAlign: center
-                            letterSpacing: 8
-                            fontFamily: var(--mono)
-                        events:
-                          # Enter runs the same chain as the button below.
-                          onPressEnter:
-                            _ref: actions/verify_email_code.yaml
-                      - id: login_code_verify
-                        type: Button
-                        visible:
-                          _eq:
-                            - _state: login_view
-                            - link-sent
-                        properties:
-                          title: Sign in with code
-                          block: true
-                          size: large
-                          color: primary
-                          variant: solid
-                        events:
-                          onClick:
-                            _ref: actions/verify_email_code.yaml
-                    else: []
-
                 - - _ref:
                       path: components/magic-link-send.yaml
                       vars:
