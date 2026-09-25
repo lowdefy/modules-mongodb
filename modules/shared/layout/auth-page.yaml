@@ -82,7 +82,11 @@ blocks:
                   bordered: false
                   theme:
                     borderRadiusLG: 12
-                    bodyPadding: "28px 32px 28px 32px"
+                    # antd's Card `bodyPadding` token is a number of px, never a
+                    # CSS shorthand — the block schema rejects the string form.
+                    # There is no separate token for the inline padding, so the
+                    # shorthand collapses to its vertical value.
+                    bodyPadding: 28
                 slots:
                   # Gradient cover band is the `band` brand treatment only; `minimal` is bandless.
                   cover:
@@ -106,13 +110,16 @@ blocks:
                             blocks:
                               - id: auth-logo
                                 type: Img
+                                # `properties.width` on Img is a number of px
+                                # under the block schema, so the `100%` CSS
+                                # length belongs in `style`, not `properties`.
                                 style:
+                                  width: 100%
                                   maxWidth:
                                     _module.var: auth_page.logo_max_width
                                 properties:
                                   src:
                                     _module.var: logo.primary_dark
-                                  width: 100%
                         else: []
                 blocks:
                   _build.array.concat:
