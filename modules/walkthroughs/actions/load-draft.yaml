@@ -38,6 +38,9 @@
       _js:
         fn: |
           const { draft, walkthroughId } = args[0] || {};
+          // Params are evaluated before `skip`, so this runs with no draft whenever the fetch
+          // above was skipped.
+          if (!draft) return null;
           // `get-draft` resolves each image key to a URL and drops the key, but `save-draft`
           // stores keys — so the key is rebuilt here and carried beside the URL for the rest of
           // the session. It is rebuilt from the module's own
