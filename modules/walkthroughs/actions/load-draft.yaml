@@ -1,8 +1,5 @@
-# Loads the working copy of the walkthrough named by `walkthrough_id` into the editor's state.
-# Run on mount and again after every write that changes what is stored, so the editor never keeps
-# editing a document it has just replaced.
-#
-# A list of actions: splice it in with `_build.array.concat`, not a bare `_ref`.
+# Loads the draft named by `walkthrough_id`, or starts a new one when it is null. Rerun after
+# each write. Splice it in with `_build.array.concat`.
 - id: walkthrough_editor_reset
   type: SetState
   params:
@@ -12,9 +9,6 @@
     walkthrough_edit_index: null
     walkthrough_draft_steps_held: null
     walkthrough_preview: false
-# Reset runs whatever the id, so arriving without one clears the previous walkthrough rather than
-# leaving it on screen. The fetch and the seed below are skipped instead of being asked to load
-# nothing.
 - id: walkthrough_load_draft
   type: CallAPI
   skip:
@@ -38,12 +32,11 @@
       _js:
         fn: |
           const { draft, walkthroughId } = args[0] || {};
-          // `get-draft` resolves each image key to a URL and drops the key, but `save-draft`
-          // stores keys — so the key is rebuilt here and carried beside the URL for the rest of
-          // the session. It is rebuilt from the module's own
-          // `walkthroughs/{walkthrough_id}/{file}` layout rather than by stripping the URL's
-          // origin, because the origin is the app's bucket and can change without the layout
-          // changing.
+          // Params are evaluated before `skip`, so this runs with no draft whenever the fetch
+          // above was skipped.
+          if (!draft) return null;
+          // `get-draft` returns URLs but `save-draft` stores keys, so the key is rebuilt from the
+          // module's own layout rather than the URL, whose origin is the app's bucket.
           return {
             title: draft.title,
             overview: draft.overview,
@@ -68,6 +61,26 @@
       _actions: walkthrough_load_draft.response.response.has_draft
     walkthrough_published:
       _actions: walkthrough_load_draft.response.response.published
+    walkthrough_edit_index: 0
+    walkthrough_editor_loaded: true
+# After the fetch, which skips on the id this sets. Nothing is stored until the first save, so an
+# editor opened and abandoned leaves no walkthrough behind.
+- id: walkthrough_start_draft
+  type: SetState
+  skip:
+    _ne:
+      - _state: walkthrough_id
+      - null
+  params:
+    walkthrough_id:
+      _uuid: true
+    walkthrough_draft:
+      title: null
+      overview: null
+      steps: []
+    walkthrough_updated: null
+    walkthrough_has_draft: false
+    walkthrough_published: null
     walkthrough_edit_index: 0
     walkthrough_editor_loaded: true
 - _ref:

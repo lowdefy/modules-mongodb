@@ -1,5 +1,5 @@
-# Inserts an empty step at the position `at` and selects it. Take it with `_ref` and a `vars.at`,
-# and splice the result in with `_build.array.concat`.
+# Inserts an empty step at the position `at` and selects it. Take it with `_ref` and a `vars.at`
+# (and optionally `vars.id`), and splice the result in with `_build.array.concat`.
 - id: walkthrough_insert_step
   type: SetState
   params:
@@ -16,7 +16,10 @@
             at:
               _var: at
             id:
-              _uuid: true
+              _var:
+                key: id
+                default:
+                  _uuid: true
     walkthrough_edit_index:
       _var: at
 - _ref:

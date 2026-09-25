@@ -27,6 +27,8 @@ routine:
       query:
         _id:
           _payload: walkthrough_id
+        deleted.timestamp:
+          $exists: false
   - :if:
       _eq:
         - _step: load_walkthrough
@@ -45,28 +47,11 @@ routine:
               _step: load_walkthrough.overview
             steps:
               _step: load_walkthrough.steps
-  # Resolved here rather than in the editor because the bucket is a secret: one built config
-  # serves every environment, so an origin baked in at build time would point production at
-  # whichever bucket was current when it was built.
-  - :set_state:
-      resolved_steps:
-        _js:
-          fn: |
-            const { steps, bucket, region } = args[0] || {};
-            const origin = `https://${bucket}.s3.${region}.amazonaws.com/`;
-            // The key is dropped once it is resolved: a consumer that kept using it would pin
-            // itself to the bucket layout this module exists to keep to itself.
-            return (steps || []).map(({ image, ...step }) => ({
-              ...step,
-              image: image ? { width: image.width, height: image.height, url: origin + image.key } : null,
-            }));
-          args:
-            - steps:
-                _state: draft.steps
-              bucket:
-                _secret: FILES_S3_BUCKET_PUB
-              region:
-                _module.var: region
+  - _ref:
+      path: api/routines/resolve_steps.yaml
+      vars:
+        steps:
+          _state: draft.steps
   - :return:
       _id:
         _step: load_walkthrough._id

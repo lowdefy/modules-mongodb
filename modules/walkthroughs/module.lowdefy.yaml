@@ -55,18 +55,18 @@ exports:
   api:
     - id: get-walkthrough
       description: Load one walkthrough, its image keys resolved to URLs
-    - id: create-walkthrough
-      description: Create an empty walkthrough carrying a starting draft
     - id: get-draft
       description: Load a walkthrough's working copy, its image keys resolved to URLs
     - id: save-draft
-      description: Replace a walkthrough's draft
+      description: Replace a walkthrough's draft, creating the walkthrough on its first save
     - id: discard-draft
       description: Throw a walkthrough's draft away, leaving published content alone
     - id: publish-walkthrough
       description: Copy a walkthrough's draft up to its published content
     - id: presign-step-image
       description: Presign an upload for one step screenshot
+    - id: delete-walkthrough
+      description: Soft-delete a walkthrough that has never been published
 
 connections:
   - _ref: connections/walkthroughs-collection.yaml
@@ -74,12 +74,12 @@ connections:
 
 api:
   - _ref: api/get-walkthrough.yaml
-  - _ref: api/create-walkthrough.yaml
   - _ref: api/get-draft.yaml
   - _ref: api/save-draft.yaml
   - _ref: api/discard-draft.yaml
   - _ref: api/publish-walkthrough.yaml
   - _ref: api/presign-step-image.yaml
+  - _ref: api/delete-walkthrough.yaml
 
 components:
   - id: player

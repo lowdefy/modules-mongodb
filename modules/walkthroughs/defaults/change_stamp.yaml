@@ -1,13 +1,5 @@
-# Audit metadata for a walkthrough write: who and when.
-#
-# Written here rather than consumed from the events module's exported change_stamp component,
-# because this module declares no dependencies — the same choice ai-assistant and ai-reporting
-# made, for the same reason. The shape is identical, so a host app reads it with the same
-# predicate as every other module's stamps. The consequence worth knowing: the events component
-# resolves to that module entry's `change_stamp` var, so an app that adds a field to its audit
-# stamps centrally will NOT see it here.
-#
-# See docs/shared/change-stamps.md for the idiom.
+# Who and when, inline because this module declares no dependencies. Same shape as the events
+# module's stamp, but an app's central additions to that stamp do not reach this one.
 timestamp:
   _date: now
 user:

@@ -36,18 +36,20 @@ guides held in its own database and bucket rather than at a third-party host.
 ```
 
 `source` can equally be a `file:` path against a local checkout. The module declares
-`@lowdefy/community-plugin-mongodb` (`^3`), `@lowdefy/plugin-aws` (`^5`) and
+`@lowdefy/community-plugin-mongodb` (`^3`), `@lowdefy/plugin-aws` (`^5 || ^6`) and
 `@lowdefy/modules-mongodb-plugins` (`^0.42.0`), which carries its blocks and its upload action, so
 the app must list all three plugins, and it reads four secrets:
 `MONGODB_URI`, `FILES_S3_BUCKET_PUB`, `FILES_S3_ACCESS_KEY_ID` and `FILES_S3_SECRET_ACCESS_KEY`.
 
 ## Vars
 
-| Var          | Type    | Default        |                                                                  |
-| ------------ | ------- | -------------- | ---------------------------------------------------------------- |
-| `collection` | string  | `walkthroughs` | MongoDB collection holding walkthroughs.                        |
-| `region`     | string  | required       | AWS region, used only to compose the screenshot URL.            |
-| `writable`   | boolean | `false`        | Whether this app may author walkthroughs.                       |
+| Var            | Type    | Default        |                                                      |
+| -------------- | ------- | -------------- | ---------------------------------------------------- |
+| `collection`   | string  | `walkthroughs` | MongoDB collection holding walkthroughs.             |
+| `region`       | string  | required       | AWS region, used only to compose the screenshot URL. |
+| `frame_width`  | number  | `860`          | Width of the player's viewport in pixels.            |
+| `frame_height` | number  | `520`          | Height of the player's viewport in pixels.           |
+| `writable`     | boolean | `false`        | Whether this app may author walkthroughs.            |
 
 ## Secrets
 
@@ -92,6 +94,7 @@ steps      Step[]                        published; ordered, position is the arr
 draft      { title, overview, steps }    null/absent = no unpublished changes
 published  changeStamp | null            null = never published
 retired    changeStamp | null            non-null hides the walkthrough from new use
+deleted    changeStamp | null            non-null = soft-deleted; only a never-published one can be deleted
 created    changeStamp
 updated    changeStamp
 ```
@@ -151,11 +154,18 @@ Zoom is **not** stored. The player derives it from the focus point and the image
 clamps at 1:1 — an image is never magnified past its natural resolution, which is what lets a
 capture come from any screen without a quality gate.
 
-### Retirement
+### Retirement and deletion
 
-A walkthrough is retired by stamping `retired`, never deleted. Anything that stored an `_id` — a
-registry row, a link, a citation — keeps resolving, so a retired walkthrough reads as withdrawn
-rather than as a broken reference.
+A published walkthrough is retired, never deleted: the consuming app stamps `retired` on it itself,
+since the module has no endpoint for it. Anything that stored an `_id` (a registry row, a link, a
+citation) keeps resolving, so a retired walkthrough reads as withdrawn rather than as a broken
+reference.
+
+A walkthrough that has never been published has no such references, so `delete-walkthrough`
+soft-deletes it instead, following the repo's [soft delete](../shared/soft-delete.md) convention:
+a `deleted` change stamp, and every read and update skips it with
+`deleted.timestamp: { $exists: false }`. A consumer listing walkthroughs straight from the
+collection applies the same predicate.
 
 ## Endpoints
 
@@ -166,15 +176,19 @@ being read.
 
 | Endpoint              | Payload                                      | Returns                                                                           |
 | --------------------- | -------------------------------------------- | --------------------------------------------------------------------------------- |
-| `get-walkthrough`     | `{walkthrough_id}`                           | Published content, image keys resolved to URLs                                    |
-| `create-walkthrough`  | `{}`                                         | `{_id, updated_timestamp}`                                                        |
+| `get-walkthrough`     | `{walkthrough_id}`                           | Published content, image keys resolved to URLs; null if none to play              |
 | `get-draft`           | `{walkthrough_id}`                           | `{_id, title, overview, steps, published, retired, updated_timestamp, has_draft}` |
 | `save-draft`          | `{walkthrough_id, updated_timestamp, draft}` | `{updated_timestamp}`                                                             |
 | `discard-draft`       | `{walkthrough_id, updated_timestamp}`        | `{updated_timestamp}`                                                             |
 | `publish-walkthrough` | `{walkthrough_id, updated_timestamp}`        | `{updated_timestamp}`                                                             |
-| `presign-step-image`  | `{walkthrough_id, step_id, content_hash}`     | `{url, fields, key}`                                                              |
+| `presign-step-image`  | `{walkthrough_id, step_id, content_hash}`    | `{url, fields, key}`                                                              |
+| `delete-walkthrough`  | `{walkthrough_id, updated_timestamp}`        | `{walkthrough_id, deleted}`                                                       |
 
 Ids are namespaced by the mount, so an app calls them as `walkthroughs/save-draft`.
+
+`get-walkthrough` returns null for an id that is unknown, deleted or never published. `open` then
+sets `walkthrough_missing` to true and the player shows that the walkthrough is not available; a
+page that would rather redirect reads `walkthrough_missing` after `open`.
 
 `get-draft` falls back to the published `title`/`overview`/`steps` where there is no draft, so opening
 a never-edited walkthrough starts from what is live, and reports `has_draft` so a caller can show
@@ -187,6 +201,13 @@ makes reordering an ordinary save. A walkthrough is small enough that an editor 
 it last received; a write that matches nothing is refused with a message saying the walkthrough
 changed elsewhere. Authoring is a sequence of saves, so a caller that kept its original timestamp
 would collide with its own previous write — it must replace the held value from each response.
+
+**There is no create endpoint: the first save creates.** A `save-draft` with a null
+`updated_timestamp` inserts the walkthrough under the `walkthrough_id` it is given, and is refused if
+that id already exists. The editor mints the id itself, so an editor opened and never saved leaves
+nothing behind. Screenshots can be captured before that first save, since `presign-step-image`
+checks only the id's shape; an editor abandoned after capturing leaves those objects in the bucket,
+unreferenced.
 
 Two gates are needed in an authoring app, not one. `writable` keeps authoring out of the apps that
 should not have it; inside the app that should, the endpoints carry their own `auth.api.roles` entry.
@@ -203,26 +224,29 @@ Four, pulled in with a `_ref` naming the mount:
     component: editor
 ```
 
-| Component | Kind        |                                                               |
-| --------- | ----------- | ------------------------------------------------------------- |
-| `player`  | block       | Renders one step at a time from the `walkthrough` state key.  |
-| `open`    | action list | Loads the walkthrough named by `walkthrough_id` and plays it. |
-| `editor`  | block       | Authors one walkthrough's draft. Needs `writable`.            |
-| `load`    | action list | Loads the draft named by `walkthrough_id` into the editor.    |
+| Component | Kind        |                                                                 |
+| --------- | ----------- | --------------------------------------------------------------- |
+| `player`  | block       | Renders one step at a time from the `walkthrough` state key.    |
+| `open`    | action list | Loads the walkthrough named by `walkthrough_id` and plays it.   |
+| `editor`  | block       | Authors one walkthrough's draft. Needs `writable`.              |
+| `load`    | action list | Loads the draft named by `walkthrough_id`, or starts a new one. |
 
 Neither block loads itself: `player` is loaded by `open`, and `editor` by `load`. A modal's blocks
 mount with the page rather than when it opens, so a load inside the player would fire once against
 no id and never again; and a page context is memoized on the page id alone, so an editor that
 loaded itself went on showing the first walkthrough when a second was opened without a full reload.
 
-A consumer sets `walkthrough_id` and then runs the matching action list. **Set it from the page's
+A consumer sets `walkthrough_id` and then runs the matching action list; for the editor, a null id
+starts a new walkthrough, stored on its first save. **Set it from the page's
 `onMount`, not its `onInit`** — `onInit` is latched once it has run, so returning to the same page
 with a different id never re-runs it, while `onMount` re-fires because the block tree is remounted.
 Place the editor on a page rather than in a modal.
 
-It holds the draft in `walkthrough_draft`, the selected position in `walkthrough_edit_index` and the
-concurrency token in `walkthrough_updated`, and replaces the token from every write's response — the
-endpoint contract above only works if the caller does.
+It holds the walkthrough's id in `walkthrough_id`, the draft in `walkthrough_draft`, the selected
+position in `walkthrough_edit_index` and the concurrency token in `walkthrough_updated`, and
+replaces the token from every write's response; the endpoint contract above only works if the
+caller does. `walkthrough_has_draft` and `walkthrough_published` say whether there are unpublished
+changes and whether it has ever been published, for a consumer drawing its own controls.
 
 **`on_published` is an action list run after a publish succeeds**, empty by default. What a newly
 published walkthrough should trigger elsewhere — a search index, a sync, anything — is the
@@ -239,6 +263,12 @@ name:
           type: Request
           params: some_app_request
 ```
+
+**`on_deleted` is the same for a delete**, run after the editor has moved on to a new walkthrough,
+so `walkthrough_id` already holds the new one; the deleted id is
+`_actions: walkthrough_delete_walkthrough.response.response.walkthrough_id`. The editor's Delete
+shows only on a saved walkthrough that has never been published. A consumer that opened the editor
+from a list typically returns to it here.
 
 Its frame is the player's, with `WalkthroughImageTarget` from `@lowdefy/modules-mongodb-plugins` in
 place of the player's `Img`: same dimensions, same focus point, same ring, so what an author lines
@@ -261,8 +291,10 @@ what `WalkthroughUploadStepImage` already takes as its `source`. So a captured f
 file hash, presign and post identically, and both end in `actions/apply-step-image.yaml`. Capture is
 offered as a new step as well as over the selected one, because a walkthrough is shot as a run.
 Clicks are not detected: the author presses Capture at each step and then clicks the image to place
-its highlight. A browser without `getDisplayMedia` — or an insecure origin, which amounts to the same
-thing — gets no Share control and a line saying to upload instead.
+its highlight. A browser without `getDisplayMedia` gets no Share control and a line saying to
+upload instead. An insecure origin has neither: capture and hashing both need HTTPS, so the line
+says that instead. A picked file that is not a JPEG is re-encoded to one before it is hashed,
+since the key and the upload policy both say JPEG.
 
 **The editor rebuilds each image key on load.** `get-draft` resolves keys to URLs and drops the key,
 and `save-draft` stores keys, so the key is rebuilt from the `walkthroughs/{walkthrough_id}/{file}`

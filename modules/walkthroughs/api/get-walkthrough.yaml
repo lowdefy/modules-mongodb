@@ -1,9 +1,10 @@
 id: get-walkthrough
 type: Api
 description: >
-  Returns one walkthrough with its steps, each stored image key already resolved
-  to a URL. Retired walkthroughs still load: anything holding an id — a link, a
-  citation, a registry row — keeps resolving, and hiding it is the consumer's
+  Returns one published walkthrough with its steps, each stored image key already
+  resolved to a URL, or null when there is none to play: unknown, deleted, or never
+  published. Retired walkthroughs still load, since anything holding an id (a link,
+  a citation, a registry row) should keep resolving; hiding them is the consumer's
   decision to make.
 payloadSchema:
   type: object
@@ -22,6 +23,10 @@ routine:
       query:
         _id:
           _payload: walkthrough_id
+        deleted.timestamp:
+          $exists: false
+        published:
+          $ne: null
       options:
         projection:
           _id: 1
@@ -29,28 +34,17 @@ routine:
           overview: 1
           steps: 1
           retired: 1
-  # Resolved here rather than in the player because the bucket is a secret: one built config
-  # serves every environment, so an origin baked in at build time would point production at
-  # whichever bucket was current when it was built.
-  - :set_state:
-      resolved_steps:
-        _js:
-          fn: |
-            const { steps, bucket, region } = args[0] || {};
-            const origin = `https://${bucket}.s3.${region}.amazonaws.com/`;
-            // The key is dropped once it is resolved: a consumer that kept using it would pin
-            // itself to the bucket layout this module exists to keep to itself.
-            return (steps || []).map(({ image, ...step }) => ({
-              ...step,
-              image: image ? { width: image.width, height: image.height, url: origin + image.key } : null,
-            }));
-          args:
-            - steps:
-                _step: load_walkthrough.steps
-              bucket:
-                _secret: FILES_S3_BUCKET_PUB
-              region:
-                _module.var: region
+  - :if:
+      _eq:
+        - _step: load_walkthrough
+        - null
+    :then:
+      - :return: null
+  - _ref:
+      path: api/routines/resolve_steps.yaml
+      vars:
+        steps:
+          _step: load_walkthrough.steps
   - :return:
       _id:
         _step: load_walkthrough._id

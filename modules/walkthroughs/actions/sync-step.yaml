@@ -1,9 +1,5 @@
-# Mirrors the selected step out of the draft, so the frame, the caption field and the step
-# controls each bind to one plain path instead of indexing an array by a value that changes at
-# runtime. The draft stays the source of truth: everything that edits a step rewrites the array
-# and then re-runs this.
-# The id is a var because two fragments ending in this one can be spliced into a single event,
-# and an action id has to be unique within it.
+# Mirrors the selected step out of the draft so controls bind to one plain path. The id is a var
+# so two fragments ending in this one can share an event.
 id:
   _var:
     key: sync_id

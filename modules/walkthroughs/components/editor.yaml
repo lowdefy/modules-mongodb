@@ -1,25 +1,14 @@
-# Authors one walkthrough's draft. Nothing here touches published content: an author edits the
-# draft, saves it as often as they like, and only Publish moves it up to what the player reads.
-#
-# The frame is the player's frame with an edit layer over it rather than a second renderer —
-# `WalkthroughImageTarget` takes the same image, the same stored dimensions and the same focus
-# point, and draws the same 44px ring — so what an author lines up is what a reader sees. Preview
-# goes further and mounts the player itself against the draft.
-#
-# Composed from Box and blocks, never an Html block: HtmlComponent reassigns innerHTML on update
-# as well as on mount, so every keystroke would destroy and rebuild the subtree under it.
+# Authors one walkthrough's draft; only Publish moves it to what the player reads. Built from
+# Box, not Html, which would rebuild its subtree on every keystroke.
 id: walkthrough_editor
 type: Box
-# The draft is not loaded here. A block's own onMount fires before its page's, and a page context
-# is memoized on the page id alone — so a consumer arriving with a different id reuses this one and
-# a self-load would show the walkthrough it opened first. The consumer calls `load` instead, from
-# an event that re-fires. The player and `open` are split the same way.
+# Not loaded here: a page context is memoized on the page id, so a self-load would keep the first
+# walkthrough. The consumer calls `load` from an event that re-fires.
 events:
   onMount:
     _build.array.concat:
-      # Asked once, here, so the Share control is absent rather than dead where the browser has no
-      # screen capture — the block itself says so where the preview would be. `getDisplayMedia`
-      # needs a secure context, so an app served over plain http has none either.
+      # Asked once, so Share is absent rather than dead where there is no screen capture, including
+      # over plain http.
       - - id: walkthrough_capture_probe
           type: SetState
           params:
@@ -163,11 +152,8 @@ blocks:
                     walkthrough_step:
                       _state: walkthrough_edit_index
                     walkthrough_whole: false
-                    # The engine deletes a hidden block's state, and the step strip is a `list`
-                    # block whose id IS `walkthrough_draft.steps` — so hiding the workspace to
-                    # preview throws the draft's steps away. Held aside on the way in and put back
-                    # on the way out; without this, returning from preview shows no steps and a
-                    # save would store that.
+                    # Hiding the workspace drops the step strip's state, `walkthrough_draft.steps`,
+                    # so the steps are held aside for preview and put back after.
                     walkthrough_draft_steps_held:
                       _if:
                         test:
@@ -187,7 +173,36 @@ blocks:
                           _state: walkthrough_draft_steps_held
                         else:
                           _state: walkthrough_draft.steps
+                # The caption field is hidden with the workspace, which drops its value; re-read it.
+                - _ref: actions/sync-step.yaml
                 - _ref: actions/recalc-geometry.yaml
+
+          # Saved and never published: an unsaved one has nothing stored, and a published one is
+          # retired rather than deleted.
+          - id: walkthrough_editor_delete
+            type: Button
+            layout:
+              flex: 0 1 auto
+            visible:
+              _and:
+                - _ne:
+                    - _state: walkthrough_updated
+                    - null
+                - _not:
+                    _boolean:
+                      _state: walkthrough_published
+            properties:
+              type: default
+              danger: true
+              icon: AiOutlineDelete
+              title: Delete
+            events:
+              onClick:
+                - id: walkthrough_open_delete_confirm
+                  type: CallMethod
+                  params:
+                    blockId: walkthrough_editor_delete_modal
+                    method: open
 
           - id: walkthrough_editor_discard
             type: Button
@@ -198,11 +213,15 @@ blocks:
               danger: true
               icon: AiOutlineUndo
               title: Discard draft
+              # Never published, there is nothing to go back to: Delete covers that case.
               disabled:
                 _not:
-                  _eq:
-                    - _state: walkthrough_has_draft
-                    - true
+                  _and:
+                    - _eq:
+                        - _state: walkthrough_has_draft
+                        - true
+                    - _boolean:
+                        _state: walkthrough_published
             events:
               onClick:
                 - id: walkthrough_open_discard_confirm
@@ -240,6 +259,11 @@ blocks:
               type: primary
               icon: AiOutlineSave
               title: Save
+              # Preview hides the step strip, and hiding it drops the steps from state.
+              disabled:
+                _eq:
+                  - _state: walkthrough_preview
+                  - true
             events:
               onClick:
                 - id: walkthrough_save_draft
@@ -261,9 +285,8 @@ blocks:
                           _js:
                             fn: |
                               const { steps } = args[0] || {};
-                              // Back to the stored shape: the editor carries a display URL beside
-                              // each key, and the payload schema takes only what the document
-                              // holds.
+                              // Back to the stored shape, dropping the display URL the editor
+                              // carries beside each key.
                               return (steps || []).map((step) => ({
                                 _id: step._id,
                                 caption: step.caption ?? '',
@@ -279,9 +302,8 @@ blocks:
                             args:
                               - steps:
                                   _state: walkthrough_draft.steps
-                # Every write stamps a new `updated` and returns it, and the next write filters on
-                # it — so a saved editor that kept the value it loaded would collide with its own
-                # previous save. The same replacement follows discard and publish below.
+                # Each write returns a new token and the next one filters on it; discard and
+                # publish get theirs from the reload that follows them.
                 - id: walkthrough_hold_updated_after_save
                   type: SetState
                   messages:
@@ -540,9 +562,8 @@ blocks:
                           _js:
                             fn: |
                               const { steps, index, x, y } = args[0] || {};
-                              // The click arrives in the image's own pixel space, which is the
-                              // space the point is stored in; `shape` and `scale` are the
-                              // indicator's, and a re-place must not silently reset them.
+                              // Stored in the image's own pixel space; a re-place keeps the
+                              // indicator's shape and scale.
                               return (steps || []).map((step, i) =>
                                 i !== index
                                   ? step
@@ -635,17 +656,12 @@ blocks:
                     events:
                       onBeforeUpload:
                         _build.array.concat:
-                          - - id: walkthrough_upload_image
-                              type: WalkthroughUploadStepImage
-                              params:
-                                endpointId:
-                                  _module.endpointId: presign-step-image
-                                source:
-                                  _event: file.url
-                                walkthroughId:
-                                  _state: walkthrough_id
-                                stepId:
-                                  _state: walkthrough_edit_step._id
+                          - - _ref:
+                                path: actions/upload-step-image.yaml
+                                vars:
+                                  id: walkthrough_upload_image
+                                  source:
+                                    _event: file.url
                           - _ref:
                               path: actions/apply-step-image.yaml
                               vars:
@@ -653,11 +669,8 @@ blocks:
                                   _actions: walkthrough_upload_image.response
                                 source:
                                   _event: file.url
-                          # S3UploadButton is here only to pick a file. Its own flow asks a page
-                          # request for a policy and never sees the bytes, so it cannot request one
-                          # keyed on a hash of them; the block documents a throwing onBeforeUpload
-                          # as the way to cancel that flow, and an error message of `false` keeps
-                          # the cancellation off the screen.
+                          # S3UploadButton only picks the file: a throwing onBeforeUpload stops its
+                          # own upload, and `false` keeps that cancellation off screen.
                           - - id: walkthrough_cancel_builtin_upload
                               type: Throw
                               messages:
@@ -679,11 +692,6 @@ blocks:
                       title: Clear highlight
                     events:
                       onClick:
-                        - id: walkthrough_clear_focus_block
-                          type: CallMethod
-                          params:
-                            blockId: walkthrough_editor_target
-                            method: clearFocus
                         - id: walkthrough_clear_focus_state
                           type: SetState
                           params:
@@ -701,11 +709,8 @@ blocks:
                                       _state: walkthrough_edit_index
                         - _ref: actions/sync-step.yaml
 
-              # Capture shares a window or a screen, never this tab: the author drives the
-              # documented app in a second window and watches it in the preview here, so a run of
-              # steps is capture, caption, capture rather than a switch back and forth. Clicks are
-              # not detected — that was the extension's job — so each step is a press of Capture
-              # and then a click on the image to place its highlight.
+              # Shares a window or screen, never this tab: the author drives the app in a second
+              # window. Each step is a Capture, then a click on the image to place its highlight.
               - id: walkthrough_editor_capture
                 type: Box
                 layout:
@@ -757,9 +762,8 @@ blocks:
                           icon: AiOutlineCamera
                           title: Capture as new step
                         events:
-                          # The frame first, then the step it lands on: a capture that fails leaves
-                          # the walkthrough as it was, and the step is inserted after the selected
-                          # one so capturing a run of them follows the order they are shot in.
+                          # Uploaded before the step exists, so a failure leaves the walkthrough
+                          # as it was; inserted after the selected step so a run keeps its order.
                           onClick:
                             _build.array.concat:
                               - - id: walkthrough_capture_frame
@@ -767,9 +771,24 @@ blocks:
                                   params:
                                     blockId: walkthrough_editor_capture_preview
                                     method: capture
+                                - id: walkthrough_capture_mint_step
+                                  type: SetState
+                                  params:
+                                    walkthrough_capture_step_id:
+                                      _uuid: true
+                                - _ref:
+                                    path: actions/upload-step-image.yaml
+                                    vars:
+                                      id: walkthrough_capture_upload
+                                      source:
+                                        _actions: walkthrough_capture_frame.response.url
+                                      step_id:
+                                        _state: walkthrough_capture_step_id
                               - _ref:
                                   path: actions/insert-step.yaml
                                   vars:
+                                    id:
+                                      _state: walkthrough_capture_step_id
                                     at:
                                       _js:
                                         fn: |
@@ -783,17 +802,6 @@ blocks:
                                                 _if_none:
                                                   - _state: walkthrough_draft.steps
                                                   - []
-                              - - id: walkthrough_capture_upload
-                                  type: WalkthroughUploadStepImage
-                                  params:
-                                    endpointId:
-                                      _module.endpointId: presign-step-image
-                                    source:
-                                      _actions: walkthrough_capture_frame.response.url
-                                    walkthroughId:
-                                      _state: walkthrough_id
-                                    stepId:
-                                      _state: walkthrough_edit_step._id
                               - _ref:
                                   path: actions/apply-step-image.yaml
                                   vars:
@@ -825,17 +833,12 @@ blocks:
                                   params:
                                     blockId: walkthrough_editor_capture_preview
                                     method: capture
-                                - id: walkthrough_capture_upload
-                                  type: WalkthroughUploadStepImage
-                                  params:
-                                    endpointId:
-                                      _module.endpointId: presign-step-image
-                                    source:
-                                      _actions: walkthrough_capture_frame.response.url
-                                    walkthroughId:
-                                      _state: walkthrough_id
-                                    stepId:
-                                      _state: walkthrough_edit_step._id
+                                - _ref:
+                                    path: actions/upload-step-image.yaml
+                                    vars:
+                                      id: walkthrough_capture_upload
+                                      source:
+                                        _actions: walkthrough_capture_frame.response.url
                               - _ref:
                                   path: actions/apply-step-image.yaml
                                   vars:
@@ -864,9 +867,8 @@ blocks:
                                 blockId: walkthrough_editor_capture_preview
                                 method: stopSharing
 
-                  # The block reports sharing rather than the buttons assuming it: the browser's
-                  # own Stop sharing control lives outside the page, and the editor would otherwise
-                  # go on offering Capture over a stream that has ended.
+                  # Reported by the block, since the browser's own Stop sharing control lives
+                  # outside the page.
                   - id: walkthrough_editor_capture_preview
                     type: WalkthroughCapture
                     layout:
@@ -900,9 +902,8 @@ blocks:
                     minRows: 3
                     maxRows: 10
                 events:
-                  # Writes through to the draft and stops there. Re-reading the step back into the
-                  # field mid-edit is what would move the caret, and the value is stored exactly as
-                  # typed: the caption is markdown and a hard line break is meaningful.
+                  # Writes through to the draft only: re-reading into the field mid-edit would move
+                  # the caret.
                   onChange:
                     - id: walkthrough_write_caption
                       type: SetState
@@ -963,12 +964,47 @@ blocks:
                     _state: walkthrough_id
                   updated_timestamp:
                     _state: walkthrough_updated
-            - id: walkthrough_hold_updated_after_discard
-              type: SetState
-              params:
-                walkthrough_updated:
-                  _actions: walkthrough_discard_draft.response.response.updated_timestamp
           - _ref: actions/load-draft.yaml
+
+  - id: walkthrough_editor_delete_modal
+    type: ConfirmModal
+    properties:
+      width: 480
+      title: Delete walkthrough
+      okText: Delete
+      okButton:
+        danger: true
+    blocks:
+      - id: walkthrough_editor_delete_body
+        type: Box
+        properties:
+          content: >-
+            This walkthrough has never been published, so nothing links to it. Deleting it removes
+            it from every list, and there is no undo here. Continue?
+    events:
+      onOk:
+        _build.array.concat:
+          - - id: walkthrough_delete_walkthrough
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: delete-walkthrough
+                payload:
+                  walkthrough_id:
+                    _state: walkthrough_id
+                  updated_timestamp:
+                    _state: walkthrough_updated
+            # Onto a new walkthrough, so an editor left in place is not holding a deleted one.
+            - id: walkthrough_clear_after_delete
+              type: SetState
+              messages:
+                success: Walkthrough deleted.
+              params:
+                walkthrough_id: null
+          - _ref: actions/load-draft.yaml
+          - _var:
+              key: on_deleted
+              default: []
 
   - id: walkthrough_editor_publish_modal
     type: ConfirmModal
@@ -982,7 +1018,7 @@ blocks:
         properties:
           content: >-
             The draft becomes the live walkthrough and anyone reading it sees these steps. Save
-            first if you have unsaved edits — publishing moves the last save, not the screen.
+            first if you have unsaved edits: publishing moves the last save, not the screen.
             Continue?
     events:
       onOk:
@@ -997,14 +1033,8 @@ blocks:
                     _state: walkthrough_id
                   updated_timestamp:
                     _state: walkthrough_updated
-            - id: walkthrough_hold_updated_after_publish
-              type: SetState
-              params:
-                walkthrough_updated:
-                  _actions: walkthrough_publish_walkthrough.response.response.updated_timestamp
           - _ref: actions/load-draft.yaml
-          # What publishing something client-visible should do next is the consuming app's
-          # business, not the module's — see the README for what a consumer hangs off it.
+          # What a publish triggers elsewhere is the consumer's; see docs/walkthroughs.
           - _var:
               key: on_published
               default: []
