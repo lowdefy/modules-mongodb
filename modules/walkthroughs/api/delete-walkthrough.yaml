@@ -1,8 +1,8 @@
-id: discard-draft
+id: delete-walkthrough
 type: Api
 description: >-
-  Throws away a walkthrough's draft, leaving its published content exactly as it
-  was. This is the only undo authoring has — there is no version history.
+  Soft-deletes a walkthrough that has never been published. A published one may
+  be linked or cited by id elsewhere, so it is retired instead.
 payloadSchema:
   type: object
   required:
@@ -20,10 +20,7 @@ routine:
         _module.var: writable
     :then:
       - :reject: Authoring is not enabled in this app.
-  - :set_state:
-      stamp:
-        _ref: defaults/change_stamp.yaml
-  - id: discard
+  - id: delete
     type: MongoDBUpdateOne
     connectionId:
       _module.connectionId: walkthroughs-collection
@@ -33,23 +30,23 @@ routine:
           _payload: walkthrough_id
         updated.timestamp:
           _payload: updated_timestamp
+        published: null
         deleted.timestamp:
           $exists: false
-      # A zero-match update throws by default; the guard below turns it into a refusal the
-      # editor can act on.
       disableNoMatchError: true
       update:
         $set:
-          updated:
-            _state: stamp
-        $unset:
-          draft: ''
+          deleted:
+            _ref: defaults/change_stamp.yaml
   - :if:
       _eq:
-        - _step: discard.matchedCount
+        - _step: delete.matchedCount
         - 0
     :then:
-      - :reject: This walkthrough changed elsewhere since you opened it. Reload before discarding.
+      - :reject: >-
+          This walkthrough was published or changed elsewhere since you opened it. Reload before
+          deleting it.
   - :return:
-      updated_timestamp:
-        _state: stamp.timestamp
+      walkthrough_id:
+        _payload: walkthrough_id
+      deleted: true

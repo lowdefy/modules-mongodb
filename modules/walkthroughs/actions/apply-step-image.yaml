@@ -1,7 +1,5 @@
-# Writes an uploaded screenshot onto the selected step and re-syncs the frame. Take it with `_ref`
-# and vars for `uploaded`, the upload's `{key, width, height}`, and `source`, a URL the browser can
-# already show the bytes from. Picking a file and capturing a frame both end here, so a screenshot
-# reaches a step one way whichever produced it.
+# Writes an uploaded screenshot, `vars.uploaded` ({key, width, height}) shown from `vars.source`,
+# onto the selected step. Picking a file and capturing a frame both end here.
 - id: walkthrough_apply_image
   type: SetState
   messages:

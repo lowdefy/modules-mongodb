@@ -8,27 +8,23 @@ const positive = (value) => {
   return Number.isFinite(number) && number > 0 ? number : null;
 };
 
-const clamp = (value, max) => Math.min(Math.max(value, 0), max);
+const clamp = (value, size) => Math.min(Math.max(value, 0), size - 1);
 
 const WalkthroughImageTargetBlock = ({ blockId, methods, properties }) => {
   const imgRef = useRef(null);
   const [intrinsic, setIntrinsic] = useState(null);
-  // The point is held here as well as taken from the property so it lands the instant it is
-  // clicked; the property re-seeds it when the consumer stores it, or when the image changes.
+  // Held locally so a click shows at once; the property re-seeds it once the consumer stores it.
   const [focus, setFocus] = useState(properties.focus ?? null);
 
   useEffect(() => {
     setFocus(properties.focus ?? null);
   }, [properties.src, properties.focus?.x, properties.focus?.y]);
 
-  useEffect(() => {
-    methods.registerMethod('clearFocus', () => setFocus(null));
-  }, []);
-
-  // A consumer can omit the natural size, and the block cannot map a click without it, so the
-  // loaded element's own dimensions stand in.
-  const naturalWidth = positive(properties.naturalWidth) ?? intrinsic?.width ?? null;
-  const naturalHeight = positive(properties.naturalHeight) ?? intrinsic?.height ?? null;
+  // The loaded element's own size stands in when the consumer omits the natural size.
+  // Keyed to its source, so a new image never borrows the previous one's size.
+  const measured = intrinsic?.src === properties.src ? intrinsic : null;
+  const naturalWidth = positive(properties.naturalWidth) ?? measured?.width ?? null;
+  const naturalHeight = positive(properties.naturalHeight) ?? measured?.height ?? null;
   const frameWidth = positive(properties.frameWidth) ?? 860;
   const frameHeight = positive(properties.frameHeight) ?? 520;
 
@@ -39,8 +35,7 @@ const WalkthroughImageTargetBlock = ({ blockId, methods, properties }) => {
 
   const handleClick = (event) => {
     if (!imgRef.current || !naturalWidth || !naturalHeight) return;
-    // The rendered rectangle is the only trustworthy scale: a resized frame or a letterboxed
-    // image changes it, and neither is visible from the properties.
+    // The rendered rectangle, since resizing or letterboxing changes the scale unseen.
     const rect = imgRef.current.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const x = clamp(
@@ -89,6 +84,7 @@ const WalkthroughImageTargetBlock = ({ blockId, methods, properties }) => {
           onClick={handleClick}
           onLoad={(event) =>
             setIntrinsic({
+              src: properties.src,
               width: event.target.naturalWidth,
               height: event.target.naturalHeight,
             })

@@ -1,10 +1,5 @@
-# Zoom and pan for the current step, computed once into state so the image and the highlight
-# read the same numbers instead of each deriving their own.
-#
-# 2x fit, measured across a 169-step corpus: at fit alone three highlights are clipped by the
-# frame edge, and at 3x forty-one images magnify past their natural resolution. The 1:1 clamp
-# is what lets a capture arrive at any screen resolution without a quality gate, reading as less
-# zoomed rather than as blurry.
+# Zoom and pan for the current step, computed once so the image and the highlight agree. 2x fit
+# and a 1:1 clamp, measured against a real set of captured walkthroughs.
 id: walkthrough_recalc_geometry
 type: SetState
 params:

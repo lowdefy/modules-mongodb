@@ -12,9 +12,8 @@ payloadSchema:
     - content_hash
   additionalProperties: false
   properties:
-    # Both ids go into the object key, so both are pinned to the uuid shape the module mints. A
-    # bare string would let a caller put `../` in the key and write outside the module's prefix,
-    # into a bucket it shares with whatever else the app keeps there.
+    # Both ids go into the object key, so both are pinned to a uuid: a bare string could hold `../`
+    # and write outside the module's prefix in a shared bucket.
     walkthrough_id:
       type: string
       pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'

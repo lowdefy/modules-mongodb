@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { withBlockDefaults } from '@lowdefy/block-utils';
 
-// The stored key ends `.jpeg`, so the format is settled; 0.92 is where the quantiser stops being
-// what limits a screenshot — above it the file grows for differences no reader can see at 1:1.
+// 0.92 is where the quantiser stops limiting a screenshot; above it the file only grows.
 const IMAGE_TYPE = 'image/jpeg';
 const IMAGE_QUALITY = 0.92;
 
@@ -13,11 +12,14 @@ const positive = (value) => {
 
 const WalkthroughCaptureBlock = ({ blockId, methods, properties }) => {
   const streamRef = useRef(null);
+  const pendingRef = useRef(null);
+  const mountedRef = useRef(true);
   const videoRef = useRef(null);
   const [sharing, setSharing] = useState(false);
   const [supported, setSupported] = useState(null);
 
   useEffect(() => {
+    mountedRef.current = true;
     setSupported(Boolean(navigator.mediaDevices?.getDisplayMedia));
 
     const release = () => {
@@ -28,9 +30,7 @@ const WalkthroughCaptureBlock = ({ blockId, methods, properties }) => {
       return Boolean(stream);
     };
 
-    // Stopping a track from here does not fire `ended`, so this runs only when the user stops the
-    // share from the browser's own control. Without it the preview freezes and the consumer goes
-    // on believing it is sharing.
+    // Only the browser's own stop control fires `ended`; stopping a track from here does not.
     const handleEnded = () => {
       if (release()) {
         setSharing(false);
@@ -38,18 +38,19 @@ const WalkthroughCaptureBlock = ({ blockId, methods, properties }) => {
       }
     };
 
-    methods.registerMethod('startSharing', async () => {
-      if (!navigator.mediaDevices?.getDisplayMedia) return false;
-      if (streamRef.current) return true;
+    const share = async () => {
       let stream;
       try {
         stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       } catch (error) {
-        // Dismissing the picker raises the same NotAllowedError a blocked permissions policy
-        // does, and nothing tells them apart — so it returns false rather than raising, because
-        // changing your mind about sharing is not an error.
+        // Dismissing the picker is indistinguishable from a blocked policy, and is not an error.
         if (error.name === 'NotAllowedError') return false;
         throw error;
+      }
+      // Unmounted while the picker was open: nothing is left to show it, so stop it here.
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return false;
       }
       streamRef.current = stream;
       stream.getVideoTracks().forEach((track) => track.addEventListener('ended', handleEnded));
@@ -57,6 +58,18 @@ const WalkthroughCaptureBlock = ({ blockId, methods, properties }) => {
       setSharing(true);
       methods.triggerEvent({ name: 'onShareStart', event: {} });
       return true;
+    };
+
+    methods.registerMethod('startSharing', () => {
+      if (!navigator.mediaDevices?.getDisplayMedia) return false;
+      if (streamRef.current) return true;
+      // A second click while the picker is open shares the first one's outcome.
+      if (!pendingRef.current) {
+        pendingRef.current = share().finally(() => {
+          pendingRef.current = null;
+        });
+      }
+      return pendingRef.current;
     });
 
     methods.registerMethod('stopSharing', () => {
@@ -71,12 +84,11 @@ const WalkthroughCaptureBlock = ({ blockId, methods, properties }) => {
       if (!streamRef.current || !video) {
         throw new Error('Share a window or screen before capturing.');
       }
-      // The stream's own size, not the preview's: a focus point is stored in the captured image's
-      // pixel space, so the frame is taken at whatever the shared display gives.
+      // The stream's own size, not the preview's: a focus point is stored in the image's pixels.
       const height = video.videoHeight;
       const width = video.videoWidth;
       if (!height || !width) {
-        throw new Error('The shared window has not produced a frame yet.');
+        throw new Error('The shared screen has not produced a frame yet.');
       }
       const canvas = document.createElement('canvas');
       canvas.height = height;
@@ -88,17 +100,15 @@ const WalkthroughCaptureBlock = ({ blockId, methods, properties }) => {
       if (!blob) {
         throw new Error('The captured frame could not be encoded.');
       }
-      // An object URL rather than the blob: a consumer carries this through state or an action
-      // response, and both deep-copy through JSON, which would leave `{}` behind.
+      // A URL rather than the blob, which would not survive state's JSON deep copy.
       const captured = { height, url: URL.createObjectURL(blob), width };
       methods.triggerEvent({ name: 'onCapture', event: captured });
       return captured;
     });
 
-    // Unmounting releases the stream, so it reports the end as well: a consumer that hides this
-    // block — behind a preview toggle, say — would otherwise go on holding it as sharing, and
-    // the browser's indicator would outlive the page.
+    // Hiding the block unmounts it, so the end is reported or the consumer goes on sharing.
     return () => {
+      mountedRef.current = false;
       if (release()) {
         methods.triggerEvent({ name: 'onShareEnd', event: {} });
       }
@@ -112,7 +122,9 @@ const WalkthroughCaptureBlock = ({ blockId, methods, properties }) => {
     <div id={blockId}>
       {supported === false && (
         <div style={{ color: 'rgba(0, 0, 0, 0.45)' }}>
-          Screen capture is not available in this browser. Upload a screenshot instead.
+          {window.isSecureContext
+            ? 'Screen capture is not available in this browser. Upload a screenshot instead.'
+            : 'Screenshots can only be added over HTTPS.'}
         </div>
       )}
       <video

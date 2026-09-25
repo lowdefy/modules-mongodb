@@ -1,0 +1,17 @@
+# Uploads `vars.source` as the screenshot of `vars.step_id` (the selected step by default). Its
+# response is what `apply-step-image` takes as `uploaded`, read by the action id in `vars.id`.
+id:
+  _var: id
+type: WalkthroughUploadStepImage
+params:
+  endpointId:
+    _module.endpointId: presign-step-image
+  source:
+    _var: source
+  walkthroughId:
+    _state: walkthrough_id
+  stepId:
+    _var:
+      key: step_id
+      default:
+        _state: walkthrough_edit_step._id

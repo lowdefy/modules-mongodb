@@ -1,5 +1,5 @@
-# Authors one walkthrough, opened by id from the url: /walkthrough-editor-demo?id=<walkthrough_id>.
-# The id is set in onMount rather than onInit, which the module's README explains.
+# Authors the walkthrough in `?id=`, or a new one with no id. Set in onMount, not onInit: see
+# docs/walkthroughs.
 _ref:
   module: layout
   component: page
@@ -34,3 +34,9 @@ _ref:
               - _ref:
                   module: walkthroughs
                   component: editor
+                  vars:
+                    on_deleted:
+                      - id: back_to_list
+                        type: Link
+                        params:
+                          pageId: walkthroughs-demo

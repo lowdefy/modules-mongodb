@@ -1,6 +1,4 @@
-# Write is a var, not a constant: a module's endpoints compile into every consumer,
-# and one of them may authenticate people who must never author, so whether
-# authoring is permitted has to be decided per mount rather than here.
+# Write is a var because the endpoints compile into every consumer, and some must never author.
 id: walkthroughs-collection
 type: MongoDBCollection
 properties:

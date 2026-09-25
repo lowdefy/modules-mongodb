@@ -1,21 +1,27 @@
-# Plays one walkthrough, a step at a time, from the `walkthrough` state the `open` action loads.
-#
-# Loading is the opener's job rather than this block's: a modal's blocks mount with the page, not
-# when it opens, so an onMount load here would fire once against no id and never again.
-#
-# Composed from Box and Img, never an Html block: HtmlComponent reassigns innerHTML on update as
-# well as on mount, so every step change would destroy and rebuild the subtree — the crossfade
-# becomes a hard cut, the zoom jumps instead of moving, and the image reloads each step. Box and
-# Img render React elements and merge styles into the inline style, so a changed value updates the
-# attribute in place and the transition runs.
+# Plays the walkthrough the `open` action loads into `walkthrough` state. Built from Box and Img,
+# not Html, which rebuilds on every step and breaks the transitions.
 id: walkthrough_player
 type: Box
 blocks:
   - id: walkthrough_loading
     type: Spinner
     visible:
-      _not:
-        _state: walkthrough
+      _and:
+        - _not:
+            _state: walkthrough
+        - _not:
+            _state: walkthrough_missing
+
+  - id: walkthrough_unavailable
+    type: Result
+    # Explicit, since a visible that reads undefined shows the block, and Preview never sets it.
+    visible:
+      _eq:
+        - _state: walkthrough_missing
+        - true
+    properties:
+      status: info
+      title: This walkthrough is not available.
 
   - id: walkthrough_frame
     type: Box
@@ -79,7 +85,8 @@ blocks:
   - id: walkthrough_caption
     type: Markdown
     visible:
-      _state: walkthrough
+      _boolean:
+        _state: walkthrough
     properties:
       content:
         _js:
@@ -98,7 +105,8 @@ blocks:
   - id: walkthrough_progress_segments
     type: Html
     visible:
-      _state: walkthrough
+      _boolean:
+        _state: walkthrough
     properties:
       html:
         _js:
@@ -124,7 +132,8 @@ blocks:
   - id: walkthrough_controls
     type: Box
     visible:
-      _state: walkthrough
+      _boolean:
+        _state: walkthrough
     layout:
       gap: 16
       contentAlign: middle

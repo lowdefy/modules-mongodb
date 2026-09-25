@@ -1,8 +1,5 @@
-# Swaps the selected step with the neighbour `offset` away and follows the selection. Take it with
-# `_ref` and a `vars.offset` of -1 or 1, and splice the result in with `_build.array.concat`.
-#
-# The buttons that call this are disabled at the ends; the guard is here as well because a move
-# past an end would otherwise write `undefined` into the array and lose a step.
+# Swaps the selected step with the one `vars.offset` (-1 or 1) away. Guarded as well as disabled
+# at the ends, since a move past an end writes `undefined` and loses a step.
 - id: walkthrough_move_step
   type: SetState
   params:

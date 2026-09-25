@@ -97,18 +97,10 @@ _ref:
                       type: default
                     events:
                       onClick:
-                        - id: create_walkthrough
-                          type: CallAPI
-                          params:
-                            endpointId: walkthroughs/create-walkthrough
-                            payload: {}
                         - id: open_new_editor
                           type: Link
                           params:
                             pageId: walkthrough-editor-demo
-                            urlQuery:
-                              id:
-                                _actions: create_walkthrough.response.response._id
 
       - id: walkthrough_player_modal
         type: Modal

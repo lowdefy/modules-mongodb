@@ -7,6 +7,8 @@ properties:
   pipeline:
     - $match:
         retired: null
+        deleted.timestamp:
+          $exists: false
     - $sort:
         updated.timestamp: -1
     - $project:

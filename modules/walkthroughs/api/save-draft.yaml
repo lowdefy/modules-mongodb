@@ -3,7 +3,8 @@ type: Api
 description: >-
   Replaces a walkthrough's draft wholesale and returns the new update timestamp,
   which the caller must hold for its next write. Published content is untouched;
-  only publishing moves a draft up.
+  only publishing moves a draft up. A null update timestamp creates the
+  walkthrough under the caller's id, so nothing is stored until a first save.
 payloadSchema:
   type: object
   required:
@@ -12,10 +13,14 @@ payloadSchema:
     - draft
   additionalProperties: false
   properties:
+    # Pinned to a uuid because a first save inserts under it, and it goes into screenshot keys.
     walkthrough_id:
       type: string
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     updated_timestamp:
-      description: The update timestamp the caller last received; a stale one is refused.
+      description: >-
+        The update timestamp the caller last received; a stale one is refused. Null for a
+        walkthrough that has never been saved.
     draft:
       type: object
       required:
@@ -34,6 +39,9 @@ payloadSchema:
           type: array
           items:
             type: object
+            required:
+              - _id
+            additionalProperties: false
             properties:
               _id:
                 type: string
@@ -41,26 +49,94 @@ payloadSchema:
                 type:
                   - string
                   - 'null'
+              # The key is served as `origin + key` from a bucket the app shares, so it is held to
+              # the layout `presign-step-image` issues rather than any object a caller names.
               image:
                 type:
                   - object
                   - 'null'
+                required:
+                  - key
+                  - width
+                  - height
+                additionalProperties: false
+                properties:
+                  key:
+                    type: string
+                    pattern: '^walkthroughs/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{64}\.jpeg$'
+                  width:
+                    type: number
+                  height:
+                    type: number
               focus:
                 type:
                   - object
                   - 'null'
+                required:
+                  - x
+                  - 'y'
+                additionalProperties: false
+                properties:
+                  x:
+                    type: number
+                  'y':
+                    type: number
+                  shape:
+                    type: string
+                  scale:
+                    type: number
 routine:
   - :if:
       _not:
         _module.var: writable
     :then:
       - :reject: Authoring is not enabled in this app.
-  # One stamp in state rather than a _ref at each use: `_date: now` yields a fresh value every
-  # time it is evaluated, and the timestamp returned to the caller has to be the one stored, or
-  # the caller's next save collides with this one.
+  # One stamp in state, since `_date: now` changes per evaluation and the returned timestamp must
+  # be the stored one.
   - :set_state:
       stamp:
         _ref: defaults/change_stamp.yaml
+  - :if:
+      _eq:
+        - _payload: updated_timestamp
+        - null
+    :then:
+      # An upsert that only sets on insert, so an id that already exists writes nothing and is
+      # refused below rather than failing on the duplicate key.
+      - id: create
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: walkthroughs-collection
+        properties:
+          filter:
+            _id:
+              _payload: walkthrough_id
+          options:
+            upsert: true
+          update:
+            $setOnInsert:
+              title: null
+              overview: null
+              steps: []
+              draft:
+                _payload: draft
+              published: null
+              retired: null
+              deleted: null
+              created:
+                _state: stamp
+              updated:
+                _state: stamp
+      - :if:
+          _eq:
+            - _step: create.upsertedCount
+            - 0
+        :then:
+          - :reject: >-
+              This walkthrough has already been saved. Open it from the list to keep editing.
+      - :return:
+          updated_timestamp:
+            _state: stamp.timestamp
   - id: save
     type: MongoDBUpdateOne
     connectionId:
@@ -71,6 +147,8 @@ routine:
           _payload: walkthrough_id
         updated.timestamp:
           _payload: updated_timestamp
+        deleted.timestamp:
+          $exists: false
       # A zero-match update throws by default; the guard below turns it into a refusal the
       # editor can act on.
       disableNoMatchError: true

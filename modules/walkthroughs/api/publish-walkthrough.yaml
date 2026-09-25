@@ -29,15 +29,23 @@ routine:
       query:
         _id:
           _payload: walkthrough_id
+        deleted.timestamp:
+          $exists: false
       options:
         projection:
           draft: 1
   - :if:
       _eq:
+        - _step: load_walkthrough
+        - null
+    :then:
+      - :reject: That walkthrough could not be found.
+  - :if:
+      _eq:
         - _step: load_walkthrough.draft
         - null
     :then:
-      - :reject: There is nothing to publish — this walkthrough has no unpublished changes.
+      - :reject: There is nothing to publish. This walkthrough has no unpublished changes.
   - :set_state:
       stamp:
         _ref: defaults/change_stamp.yaml
@@ -53,6 +61,8 @@ routine:
           _payload: walkthrough_id
         updated.timestamp:
           _payload: updated_timestamp
+        deleted.timestamp:
+          $exists: false
       # A zero-match update throws by default; the guard below turns it into a refusal the
       # editor can act on.
       disableNoMatchError: true
