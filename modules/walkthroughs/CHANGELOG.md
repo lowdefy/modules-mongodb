@@ -1,5 +1,14 @@
 # @lowdefy/modules-mongodb-walkthroughs
 
+## 0.43.1
+
+### Patch Changes
+
+- [#239](https://github.com/lowdefy/modules-mongodb/pull/239) [`95c2cc3`](https://github.com/lowdefy/modules-mongodb/commit/95c2cc3108eb9040df3069c6c6696d4921a78e81) Thanks [@Yianni99](https://github.com/Yianni99)! - walkthroughs: the editor now sets `walkthrough_missing`, which the player it mounts for Preview reads
+
+  An app building the editor page on Lowdefy 5 failed its build with a warning that the page referenced
+  `walkthrough_missing` but never set it. `load` now sets it to false when it resets the editor.
+
 ## 0.43.0
 
 ### Minor Changes
