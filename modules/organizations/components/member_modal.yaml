@@ -142,7 +142,7 @@ blocks:
             _state: selected_member.is_self
         properties:
           title: Remove from organization
-          icon: AiOutlineUserDelete
+          icon: UserMinus
           danger: true
           block: true
         events:
@@ -171,7 +171,7 @@ blocks:
           _state: selected_member.is_self
         properties:
           title: Leave this organization
-          icon: AiOutlineLogout
+          icon: logout
           danger: true
           block: true
         events:

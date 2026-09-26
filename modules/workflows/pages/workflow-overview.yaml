@@ -234,8 +234,8 @@ _ref:
                                       else:
                                         _state: groups_list.$.actions.$.type
                                   default: false
-                              then: AiOutlineUp
-                              else: AiOutlineDown
+                              then: chevron-up
+                              else: chevron-down
                         events:
                           onClick:
                             - id: groups_list.$.actions.$.toggle

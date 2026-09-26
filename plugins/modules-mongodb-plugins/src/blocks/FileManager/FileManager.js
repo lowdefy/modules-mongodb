@@ -43,18 +43,18 @@ const generateThumbnail = (file, maxSize = 64) =>
   });
 
 const FILE_TYPE_ICONS = {
-  pdf: ["AiOutlineFilePdf", "#ff4d4f"],
-  xls: ["AiOutlineFileExcel", "#52c41a"],
-  xlsx: ["AiOutlineFileExcel", "#52c41a"],
-  csv: ["AiOutlineFileExcel", "#52c41a"],
-  doc: ["AiOutlineFileWord", "#1890ff"],
-  docx: ["AiOutlineFileWord", "#1890ff"],
-  png: ["AiOutlineFileImage", "#722ed1"],
-  jpg: ["AiOutlineFileImage", "#722ed1"],
-  jpeg: ["AiOutlineFileImage", "#722ed1"],
-  gif: ["AiOutlineFileImage", "#722ed1"],
-  svg: ["AiOutlineFileImage", "#722ed1"],
-  webp: ["AiOutlineFileImage", "#722ed1"],
+  pdf: ["FileText", "#ff4d4f"],
+  xls: ["FileSpreadsheet", "#52c41a"],
+  xlsx: ["FileSpreadsheet", "#52c41a"],
+  csv: ["FileSpreadsheet", "#52c41a"],
+  doc: ["FileText", "#1890ff"],
+  docx: ["FileText", "#1890ff"],
+  png: ["FileImage", "#722ed1"],
+  jpg: ["FileImage", "#722ed1"],
+  jpeg: ["FileImage", "#722ed1"],
+  gif: ["FileImage", "#722ed1"],
+  svg: ["FileImage", "#722ed1"],
+  webp: ["FileImage", "#722ed1"],
 };
 
 const downloadFile = async ({ fileDoc, methods }) => {
@@ -306,7 +306,7 @@ const FileManager = ({
     }
     const ext = (file.name || "").split(".").pop()?.toLowerCase();
     const [iconName, color] = FILE_TYPE_ICONS[ext] || [
-      "AiOutlineFile",
+      "file",
       "var(--ant-color-text-tertiary, #8c8c8c)",
     ];
     return (
@@ -369,7 +369,7 @@ const FileManager = ({
           >
             <Icon
               blockId={`${blockId}_file_${index}_dl`}
-              properties={{ name: "AiOutlineDownload", size: 16 }}
+              properties={{ name: "download", size: 16 }}
             />
           </Button>
         </Tooltip>
@@ -383,7 +383,7 @@ const FileManager = ({
             >
               <Icon
                 blockId={`${blockId}_file_${index}_rm`}
-                properties={{ name: "AiOutlineDelete", size: 16 }}
+                properties={{ name: "delete", size: 16 }}
               />
             </Button>
           </Tooltip>

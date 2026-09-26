@@ -13,7 +13,7 @@ blocks:
       # invitee who has not onboarded renders as. The write seams store no
       # `profile.picture` for a profile with no name, because initials in a gradient
       # circle would claim an identity that hasn't been supplied yet.
-      icon: AiOutlineUser
+      icon: user
   - id: name
     type: Title
     visible:

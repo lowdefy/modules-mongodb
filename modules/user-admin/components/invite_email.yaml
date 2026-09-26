@@ -48,7 +48,7 @@ _ref:
                   flex: 0 0 auto
                 properties:
                   title: Check
-                  icon: AiOutlineSearch
+                  icon: search
                   color: primary
                   variant: solid
                   size: large
@@ -118,7 +118,7 @@ _ref:
               flex: 0 0 auto
             properties:
               title: Use a different email
-              icon: AiOutlineArrowLeft
+              icon: arrow-left
               variant: text
               size: small
             events:

@@ -8,7 +8,7 @@ properties:
     _string.concat:
       - "New "
       - _module.var: label
-  icon: AiOutlinePlusCircle
+  icon: add-circle
   type: primary
 events:
   onClick:

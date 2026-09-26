@@ -651,7 +651,7 @@ blocks:
     properties:
       title: Copy codes
       block: true
-      icon: AiOutlineCopy
+      icon: copy
       variant: outlined
     events:
       onClick:

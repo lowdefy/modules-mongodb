@@ -272,7 +272,7 @@ _ref:
                 properties:
                   type: email
                   size: large
-                  suffixIcon: AiOutlineMail
+                  suffixIcon: mail
                   disabled:
                     _ne:
                       - _url_query: email
@@ -599,7 +599,7 @@ _ref:
                     - _state: login_show_password
                 properties:
                   title: Other options
-                  icon: AiOutlineArrowLeft
+                  icon: arrow-left
                   block: true
                   variant: link
                   color: primary
@@ -627,7 +627,7 @@ _ref:
                     label: Email me a sign-in link
                     variant: outlined
                     color: default
-                    icon: AiOutlineMail
+                    icon: mail
                     on_sent:
                       login_view: link-sent
                       magic_link_sent_email:
@@ -757,7 +757,7 @@ _ref:
                         _state: login_show_password
                 properties:
                   title: Sign in with a passkey
-                  icon: AiOutlineKey
+                  icon: Key
                   block: true
                   size: large
                   variant: outlined
@@ -783,7 +783,7 @@ _ref:
                     - link-sent
                 properties:
                   icon:
-                    name: AiOutlineMail
+                    name: mail
                     color: "var(--ant-color-primary)"
                   status: info
                   title: Check your email

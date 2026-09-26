@@ -15,7 +15,7 @@
 #                   mode) or carried in urlQuery (page mode, except
 #                   `description` — see design.md / decisions.md §8).
 #   label         — button text. Default "Log activity".
-#   icon          — button icon. Default `AiOutlinePlus`.
+#   icon          — button icon. Default `add`.
 #   button_type   — `primary | default | link | text`. Default `primary`.
 #   size          — `small | middle | large`. Default `middle`.
 #   mode          — `modal | page`. Default `modal`.
@@ -60,7 +60,7 @@ blocks:
           icon:
             _var:
               key: icon
-              default: AiOutlinePlus
+              default: add
           type:
             _var:
               key: button_type

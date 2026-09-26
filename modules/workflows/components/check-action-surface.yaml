@@ -150,7 +150,7 @@ blocks:
                 properties:
                   type: text
                   hideTitle: true
-                  icon: AiOutlineClose
+                  icon: close
                 events:
                   onClick:
                     - id: close_check_action_modal

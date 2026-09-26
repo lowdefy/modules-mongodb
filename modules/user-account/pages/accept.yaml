@@ -366,7 +366,7 @@ _ref:
             - expired
         properties:
           icon:
-            name: AiOutlineClockCircle
+            name: clock
             color: "var(--ant-color-warning)"
           status: warning
           title: This invitation can't be used

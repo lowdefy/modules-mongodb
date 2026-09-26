@@ -17,7 +17,7 @@ _ref:
           flex: 0 0 auto
         properties:
           title: Edit
-          icon: AiOutlineEdit
+          icon: edit
           size: small
           variant: outlined
         events:

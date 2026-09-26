@@ -47,7 +47,7 @@ _ref:
         _request: get_account
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Account
     blocks:
       - id: account_grid
