@@ -228,7 +228,7 @@ exports:
     - id: user-contacts-collection
       description: Read-write MongoDB connection for the app-owned contact records (tenant-walled).
     - id: user-contacts-system
-      description: Deliberately unwalled user-contacts connection for the system-context merge-on-signup mint; writes are explicitly org-stamped from the session hook payload (org-aware-modules Decision 7).
+      description: Deliberately unwalled user-contacts connection for the system-context merge-on-signup mint; writes are explicitly org-stamped from the session hook payload (org-aware-modules Decision 7). Change-logs into its own `log-changes-system` collection, which no walled connection reads.
     - id: users
       description: Read-only native read of the BetterAuth users collection.
     - id: user-sessions
