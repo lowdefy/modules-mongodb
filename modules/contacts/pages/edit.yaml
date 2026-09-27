@@ -12,7 +12,7 @@ _ref:
     content_width: 600
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _module.var: label_plural
         pageId:
@@ -106,7 +106,7 @@ _ref:
                   flex: 0 1 auto
                 properties:
                   title: Cancel
-                  icon: AiOutlineCloseCircle
+                  icon: close-circle
                   type: default
                 events:
                   onClick:
@@ -120,7 +120,7 @@ _ref:
                   flex: 0 1 auto
                 properties:
                   title: Save
-                  icon: AiOutlineSave
+                  icon: save
                 events:
                   onClick:
                     - id: validate

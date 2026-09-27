@@ -38,7 +38,7 @@ blocks:
         layout:
           flex: 0 0 auto
         properties:
-          name: AiOutlineBank
+          name: Landmark
           size: 14
       - id: org_switcher_single_name
         type: Html
@@ -81,7 +81,7 @@ blocks:
               properties:
                 title:
                   __args: 0.organization_name
-                icon: AiOutlineBank
+                icon: Landmark
                 disabled:
                   __args: 0.is_active
     events:
@@ -111,6 +111,6 @@ blocks:
             _if_none:
               - _request: get_switcher_organization.name
               - Organization
-          icon: AiOutlineBank
+          icon: Landmark
           size: small
           variant: text

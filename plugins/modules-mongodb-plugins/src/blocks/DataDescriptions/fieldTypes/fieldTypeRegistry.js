@@ -135,7 +135,7 @@ export const fieldTypeRegistry = {
               className="dataview-link"
               href={`/${contactDetailPageId}?_id=${contactId}`}
             >
-              <Icon blockId="contact-icon" properties="AiOutlineUser" />{" "}
+              <Icon blockId="contact-icon" properties="user" />{" "}
               {displayName}
             </a>
           </span>
@@ -143,7 +143,7 @@ export const fieldTypeRegistry = {
       }
       return (
         <span className="dataview-value">
-          <Icon blockId="contact-icon" properties="AiOutlineUser" />{" "}
+          <Icon blockId="contact-icon" properties="user" />{" "}
           {displayName}
         </span>
       );
@@ -167,7 +167,7 @@ export const fieldTypeRegistry = {
               className="dataview-link"
               href={`/${companyDetailPageId}?_id=${companyId}`}
             >
-              <Icon blockId="company-icon" properties="AiOutlineCluster" />{" "}
+              <Icon blockId="company-icon" properties="Waypoints" />{" "}
               {value.trading_name}
             </a>
           </span>
@@ -175,7 +175,7 @@ export const fieldTypeRegistry = {
       }
       return (
         <span className="dataview-value">
-          <Icon blockId="company-icon" properties="AiOutlineCluster" />{" "}
+          <Icon blockId="company-icon" properties="Waypoints" />{" "}
           {value.trading_name}
         </span>
       );
@@ -266,7 +266,7 @@ export const fieldTypeRegistry = {
             rel="noopener noreferrer"
             target="_blank"
           >
-            <Icon blockId="location-icon" properties="AiOutlineEnvironment" />{" "}
+            <Icon blockId="location-icon" properties="location" />{" "}
             {address}
           </a>
         </span>

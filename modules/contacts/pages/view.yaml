@@ -18,7 +18,7 @@ _ref:
         _request: get_contact
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _module.var: label_plural
         pageId:
@@ -44,7 +44,7 @@ _ref:
           flex: 0 1 auto
         properties:
           title: Edit
-          icon: AiOutlineEdit
+          icon: edit
           type: default
         events:
           onClick:

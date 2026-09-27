@@ -13,7 +13,7 @@ _ref:
     title: Members
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Members
     requests:
       - _ref: requests/get_members.yaml
@@ -39,7 +39,7 @@ _ref:
           _request: get_my_member.0.is_org_admin
         properties:
           title: Invite member
-          icon: AiOutlinePlus
+          icon: add
           color: primary
           variant: solid
         events:
