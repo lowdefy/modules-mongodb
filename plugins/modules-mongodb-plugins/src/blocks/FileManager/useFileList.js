@@ -21,6 +21,7 @@ const useFileList = ({ methods }) => {
       key,
       lastModified,
       name,
+      pasted,
       size,
       status,
       type: fileType,
@@ -31,6 +32,7 @@ const useFileList = ({ methods }) => {
       key,
       lastModified,
       name,
+      pasted,
       percent: percent ?? file.percent ?? 0,
       size,
       status,
@@ -73,7 +75,14 @@ const useFileList = ({ methods }) => {
     }));
   };
 
-  return [state, loadFileList, setFileList, setValue];
+  const removeFile = (uid) => {
+    setState((prev) => ({
+      file: null,
+      fileList: prev.fileList.filter((f) => f.uid !== uid),
+    }));
+  };
+
+  return [state, loadFileList, setFileList, setValue, removeFile];
 };
 
 export default useFileList;

@@ -137,6 +137,75 @@ _ref:
                       title: Avatar (single image)
                     hint: Click or drag one image
 
+      # ── upload policy from an endpoint ──────────────────────────────────
+      - id: policy_event_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: Upload policy from an endpoint
+      - id: policy_event_note
+        type: Paragraph
+        properties:
+          type: secondary
+          content: >
+            The raw block with `onUploadPolicy`: instead of a page request, the
+            page's actions get the upload policy from an API endpoint
+            (`files-demo-upload-policy`) and hand it to the block with
+            `setUploadPolicy`. The endpoint gives no policy for files over 1 MB,
+            so the block drops them quietly and the page shows its own message.
+            A pasted screenshot arrives marked `pasted`, and the endpoint names
+            it `pasted-YYYYMMDD-HHmmss.png`.
+      - id: demo_policy_event_manager
+        type: FileManager
+        properties:
+          hint: Click, drag or paste a file (up to 1 MB)
+        events:
+          onUploadPolicy:
+            - id: get_policy
+              type: CallAPI
+              params:
+                endpointId: files-demo-upload-policy
+                payload:
+                  name:
+                    _event: file.name
+                  content_type:
+                    _event: file.type
+                  size:
+                    _event: file.size
+                  pasted:
+                    _event: pasted
+            - id: too_large
+              type: DisplayMessage
+              skip:
+                _ne:
+                  - _actions: get_policy.response.response.upload
+                  - null
+              params:
+                status: warning
+                content: That file is over 1 MB, so it was not uploaded.
+            - id: set_policy
+              type: CallMethod
+              skip:
+                _eq:
+                  - _actions: get_policy.response.response.upload
+                  - null
+              params:
+                blockId: demo_policy_event_manager
+                method: setUploadPolicy
+                args:
+                  - _actions: get_policy.response.response.upload
+          onSave:
+            - id: uploaded
+              type: DisplayMessage
+              params:
+                status: success
+                content:
+                  _nunjucks:
+                    template: "Uploaded {{ file.key }}{% if file.pasted %} (pasted){% endif %}"
+                    on:
+                      file:
+                        _event: file
+
       # ── file-list ───────────────────────────────────────────────────────
       - id: file_list_divider
         type: Divider

@@ -77,8 +77,11 @@ const downloadFile = async ({ fileDoc, methods }) => {
  *     file_category, metadata, created: { timestamp, user: { name, id } } }
  *
  * Events fired:
- *   onSave  — { file: { name, key, bucket, size, type, thumbnail } }
- *   onDelete — { fileDoc: <full file document> }
+ *   onUploadPolicy: { file: { name, lastModified, size, type, uid }, pasted },
+ *     when the page defines it, in place of the s3PostPolicyRequestId request;
+ *     the page answers by calling the setUploadPolicy method with { url, fields }
+ *   onSave: { file: { name, key, bucket, size, type, thumbnail, pasted } }
+ *   onDelete: { fileDoc: <full file document> }
  */
 const FileManager = ({
   blockId,
@@ -98,6 +101,9 @@ const FileManager = ({
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const thumbnailRef = useRef(null);
+  const policyRef = useRef(null);
+  const policyQueueRef = useRef(Promise.resolve());
+  const usePolicyEvent = !!events?.onUploadPolicy;
 
   const fileDocs = type.isArray(properties.files) ? properties.files : [];
   const hasForm = !!content?.form;
@@ -128,19 +134,28 @@ const FileManager = ({
     },
   };
 
-  const [draggerState, loadFileList, setDraggerFileList, setDraggerValue] =
-    useFileList({
-      methods: interceptedMethods,
-    });
+  const [
+    draggerState,
+    loadFileList,
+    setDraggerFileList,
+    setDraggerValue,
+    removeDraggerFile,
+  ] = useFileList({
+    methods: interceptedMethods,
+  });
 
   const rawS3Upload = getS3Upload({
     methods,
     setFileList: setDraggerFileList,
+    removeFile: removeDraggerFile,
+    usePolicyEvent,
+    policyRef,
+    policyQueueRef,
   });
 
-  const s3UploadRequest = async ({ file }) => {
+  const s3UploadRequest = async ({ file, pasted }) => {
     thumbnailRef.current = await generateThumbnail(file);
-    return rawS3Upload({ file });
+    return rawS3Upload({ file, pasted });
   };
 
   const onPaste = getOnPaste({
@@ -202,6 +217,12 @@ const FileManager = ({
     });
   }, [onPaste]);
 
+  useEffect(() => {
+    methods.registerMethod("setUploadPolicy", (policy) => {
+      policyRef.current = policy ?? null;
+    });
+  }, []);
+
   const handleUploadSuccess = (uploadedFile) => {
     if (!uploadedFile) return;
     const s3File = {
@@ -211,6 +232,9 @@ const FileManager = ({
       size: uploadedFile.size,
       type: uploadedFile.type,
     };
+    if (uploadedFile.pasted === true) {
+      s3File.pasted = true;
+    }
     if (thumbnailRef.current) {
       s3File.thumbnail = thumbnailRef.current;
       thumbnailRef.current = null;

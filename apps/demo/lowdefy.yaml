@@ -146,6 +146,8 @@ auth:
   # write steps are floored separately by the engine against the caller's member
   # row in the organization each step names; reads have no such floor.
   api:
+    protected:
+      - files-demo-upload-policy
     roles:
       user-admin:
         - user-admin/**
@@ -198,7 +200,8 @@ connections:
           user:
             _user: true
 
-api: []
+api:
+  - _ref: api/files-demo-upload-policy.yaml
 
 pages:
   - _ref: pages/router.yaml
