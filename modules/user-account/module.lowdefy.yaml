@@ -24,7 +24,9 @@ vars:
   event_display:
     description: >-
       Event display templates: a flat map of event type to a Nunjucks title
-      template. Templates receive `user` (the acting user). When unset, the
+      template. Templates receive `user` (the acting user); the
+      `org-member-joined` template also receives `inviter` ({ id, name }) and
+      `organization` ({ id, name }). When unset, the
       module's `defaults/event_display.yaml` renders. When set, the override
       fully replaces the defaults, no merge. The rendered block is written to
       the event under the app slug, which is where the events module's
@@ -99,10 +101,12 @@ connections:
   - _ref: connections/user-accounts.yaml
   - _ref: connections/user-passkeys.yaml
   - _ref: connections/user-invitations.yaml
+  - _ref: connections/user-events-system.yaml
 
 api:
   - _ref: api/update-profile.yaml
   - _ref: api/ensure-contact-on-signup.yaml
+  - _ref: api/log-member-joined.yaml
 
 pages:
   _build.array.concat:
@@ -239,11 +243,15 @@ exports:
       description: Read-only native read of the passkeys collection.
     - id: user-invitations
       description: Read-only native read of the invitations collection.
+    - id: user-events-system
+      description: Deliberately unwalled log-events connection for the org-member-joined event; the write stamps the accepted invitation's organization explicitly. Change-logs into `log-changes-system`, which no walled connection reads.
   api:
     - id: update-profile
       description: Update the caller's contact profile and re-denormalize onto their session user.
     - id: ensure-contact-on-signup
       description: Merge-on-signup hook endpoint. Ensures the caller has a contact in the session's organization.
+    - id: log-member-joined
+      description: Save the org-member-joined event for an invitation the caller accepted, once per invitation, in the invitation's organization.
   components:
     - id: profile-avatar
       description: Avatar config for the PageHeaderMenu profile. User image with first-letter fallback.

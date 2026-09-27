@@ -33,8 +33,14 @@
 #     session_org_value    → the signup-session organization id value for the
 #                            contact mint's `organization_id` var; null under
 #                            pinned (the mint stamps no org).
+#     stamp                → `{ organization_id: <value> }` for a document a
+#                            shared connection writes on an organization's
+#                            behalf; merge with `_build.object.assign`. {}
+#                            under pinned.
 #   org_expr — member_eq only: the aggregation expression for the caller-side
 #              organization (e.g. "$$member_org").
+#   value    — stamp only: the organization id to stamp, read from data the
+#              system already holds (never defaulted).
 _build.if:
   test:
     _build.eq:
@@ -83,6 +89,13 @@ _build.if:
               - session_org_value
           then:
             _payload: session.activeOrganizationId
+        - if:
+            _build.eq:
+              - _var: shape
+              - stamp
+          then:
+            organization_id:
+              _var: value
   else:
     _build.switch:
       branches:
