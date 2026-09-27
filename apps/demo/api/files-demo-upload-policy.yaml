@@ -1,14 +1,25 @@
 # Mints an S3 post policy for the FileManager onUploadPolicy example on the
-# files demo page. Files over 1 MB get no policy, which the block treats as a
-# quiet cancel. A pasted image is named pasted-YYYYMMDD-HHmmss.png here, since
-# clipboard files arrive with a generic name.
+# files demo page. Files over 1 MB get no policy unless the payload says
+# large: true, which allows up to 10 MB; with no policy the block holds the
+# upload until the page resumes or cancels it. A pasted image is named
+# pasted-YYYYMMDD-HHmmss.png here, since clipboard files arrive with a generic
+# name.
 id: files-demo-upload-policy
 type: Api
 routine:
+  - :set_state:
+      max_size:
+        _if:
+          test:
+            _eq:
+              - _payload: large
+              - true
+          then: 10485760
+          else: 1048576
   - :if:
       _gt:
         - _payload: size
-        - 1048576
+        - _state: max_size
     :then:
       - :return:
           upload: null
@@ -40,7 +51,7 @@ routine:
       conditions:
         - - content-length-range
           - 1
-          - 1048576
+          - _state: max_size
   - :return:
       upload:
         _step: policy

@@ -108,9 +108,82 @@ By default the block fetches its upload policy with the page request named by `s
 
 The policy is the same `{ url, fields }` an `AwsS3PresignedPostPolicy` request returns; `fields.key` and `fields.bucket` become `file.key` and `file.bucket` on `onSave`.
 
-If the event ends without a `setUploadPolicy` call (the endpoint refused, or an action skipped the call) or with a failed action, the block drops that upload quietly: no error state and no error message from the block, so the page can show its own and let the user retry. Policy events run one at a time, so each `setUploadPolicy` call belongs to the upload that asked for it.
+Policy events run one at a time, so each `setUploadPolicy` call in the event belongs to the upload that asked for it.
 
 A file pasted from the clipboard carries `pasted: true`, in the `onUploadPolicy` event and on `onSave`'s `file`, so the app can give it a generated name (clipboard images arrive with a generic one).
+
+#### A refused upload is held
+
+If the event ends without a `setUploadPolicy` call (the endpoint refused, or an action skipped the call) or with a failed action, the block holds that upload quietly: no progress bar, no error state and no error message from the block. The page decides what happens next, usually after asking the user (a name clash: "Replace report.pdf?"). Keep the file's `uid` from the event, then either:
+
+- send it: fetch a policy again and call `setUploadPolicy` with the policy and the `uid` as the second argument. The upload goes ahead as if the event had answered, and `onSave` fires as usual.
+- drop it: call `cancelUpload` with the `uid`. The block forgets the file.
+
+```yaml
+events:
+  onUploadPolicy:
+    - id: get_policy
+      type: CallAPI
+      params:
+        endpointId: attachments-upload-policy
+        payload:
+          name:
+            _event: file.name
+    - id: hold
+      type: SetState
+      skip:
+        _ne:
+          - _actions: get_policy.response.response.upload
+          - null
+      params:
+        held_upload:
+          uid:
+            _event: file.uid
+          name:
+            _event: file.name
+    - id: ask_replace
+      type: CallMethod
+      skip:
+        _ne:
+          - _actions: get_policy.response.response.upload
+          - null
+      params:
+        blockId: replace_modal
+        method: toggleOpen
+    # set_policy as above, skipped when there is no policy
+```
+
+The `replace_modal` Modal's `onOk` fetches the policy again (with `replace: true`, say) and resumes the upload; its `onCancel` drops it:
+
+```yaml
+onOk:
+  - id: get_replace_policy
+    type: CallAPI
+    params:
+      endpointId: attachments-upload-policy
+      payload:
+        name:
+          _state: held_upload.name
+        replace: true
+  - id: resume
+    type: CallMethod
+    params:
+      blockId: attachments
+      method: setUploadPolicy
+      args:
+        - _actions: get_replace_policy.response.response.upload
+        - _state: held_upload.uid
+onCancel:
+  - id: drop
+    type: CallMethod
+    params:
+      blockId: attachments
+      method: cancelUpload
+      args:
+        - _state: held_upload.uid
+```
+
+A `setUploadPolicy` call for a held `uid` with no policy leaves the upload held. A `uid` the block does not hold (already sent or cancelled) is ignored. Held files live in the block until they are sent, cancelled or the page is left.
 
 ### Form-fields modal
 
@@ -205,10 +278,11 @@ For the form-fields modal, the consumer can return `{ success: false }` from the
 
 ## Methods
 
-| Method            | Args              | Effect                                                                                                                                          |
-| ----------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `uploadFromPaste` | none              | Reads the system clipboard (PNG/JPEG only) and starts an upload. Useful as a button action when the user can't focus the dragger.               |
-| `setUploadPolicy` | `{ url, fields }` | Hands the block the upload policy for the upload in progress. Called from the `onUploadPolicy` actions; a call with no policy drops the upload. |
+| Method            | Args                     | Effect                                                                                                                                                                                                                                                |
+| ----------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uploadFromPaste` | none                     | Reads the system clipboard (PNG/JPEG only) and starts an upload. Useful as a button action when the user can't focus the dragger.                                                                                                                     |
+| `setUploadPolicy` | `{ url, fields }`, `uid` | Hands the block an upload policy. From the `onUploadPolicy` actions it answers the upload that asked (`uid` optional); with the `uid` of a held upload, at any time, it sends that upload. See [A refused upload is held](#a-refused-upload-is-held). |
+| `cancelUpload`    | `uid`                    | Forgets a held upload.                                                                                                                                                                                                                                |
 
 ## CSS Keys
 

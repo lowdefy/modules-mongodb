@@ -24,6 +24,7 @@ const useFileList = ({ methods }) => {
       pasted,
       size,
       status,
+      thumbnail,
       type: fileType,
       uid,
     } = file;
@@ -36,6 +37,7 @@ const useFileList = ({ methods }) => {
       percent: percent ?? file.percent ?? 0,
       size,
       status,
+      thumbnail,
       type: fileType,
       uid,
     };

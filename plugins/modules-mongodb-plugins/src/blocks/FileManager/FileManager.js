@@ -79,7 +79,9 @@ const downloadFile = async ({ fileDoc, methods }) => {
  * Events fired:
  *   onUploadPolicy: { file: { name, lastModified, size, type, uid }, pasted },
  *     when the page defines it, in place of the s3PostPolicyRequestId request;
- *     the page answers by calling the setUploadPolicy method with { url, fields }
+ *     the page answers by calling the setUploadPolicy method with { url, fields };
+ *     an upload left with no policy is held until setUploadPolicy is called
+ *     with its uid, or cancelUpload forgets it
  *   onSave: { file: { name, key, bucket, size, type, thumbnail, pasted } }
  *   onDelete: { fileDoc: <full file document> }
  */
@@ -100,9 +102,11 @@ const FileManager = ({
   const [pendingFile, setPendingFile] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const thumbnailRef = useRef(null);
-  const policyRef = useRef(null);
-  const policyQueueRef = useRef(Promise.resolve());
+  const uploadsRef = useRef({
+    queue: Promise.resolve(),
+    asking: null,
+    held: new Map(),
+  });
   const usePolicyEvent = !!events?.onUploadPolicy;
 
   const fileDocs = type.isArray(properties.files) ? properties.files : [];
@@ -144,18 +148,17 @@ const FileManager = ({
     methods: interceptedMethods,
   });
 
-  const rawS3Upload = getS3Upload({
+  const s3Upload = getS3Upload({
     methods,
     setFileList: setDraggerFileList,
     removeFile: removeDraggerFile,
     usePolicyEvent,
-    policyRef,
-    policyQueueRef,
+    uploadsRef,
   });
 
   const s3UploadRequest = async ({ file, pasted }) => {
-    thumbnailRef.current = await generateThumbnail(file);
-    return rawS3Upload({ file, pasted });
+    file.thumbnail = await generateThumbnail(file);
+    return s3Upload.upload({ file, pasted });
   };
 
   const onPaste = getOnPaste({
@@ -218,10 +221,9 @@ const FileManager = ({
   }, [onPaste]);
 
   useEffect(() => {
-    methods.registerMethod("setUploadPolicy", (policy) => {
-      policyRef.current = policy ?? null;
-    });
-  }, []);
+    methods.registerMethod("setUploadPolicy", s3Upload.setUploadPolicy);
+    methods.registerMethod("cancelUpload", s3Upload.cancelUpload);
+  }, [s3Upload]);
 
   const handleUploadSuccess = (uploadedFile) => {
     if (!uploadedFile) return;
@@ -235,9 +237,8 @@ const FileManager = ({
     if (uploadedFile.pasted === true) {
       s3File.pasted = true;
     }
-    if (thumbnailRef.current) {
-      s3File.thumbnail = thumbnailRef.current;
-      thumbnailRef.current = null;
+    if (uploadedFile.thumbnail) {
+      s3File.thumbnail = uploadedFile.thumbnail;
     }
     if (hasForm) {
       setPendingFile(s3File);
