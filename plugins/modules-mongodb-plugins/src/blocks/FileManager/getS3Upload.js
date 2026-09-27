@@ -14,8 +14,9 @@ const getPolicyFromRequest = async ({ methods, file }) => {
 // uploadsRef.current holds:
 //   queue: the policy event chain, so events run one at a time and each
 //     setUploadPolicy call lands on the upload that asked for it
-//   asking: { uid, policy } for the upload whose onUploadPolicy event is
-//     running; setUploadPolicy writes its policy
+//   asking: { uid, policy, cancelled } for the upload whose onUploadPolicy
+//     event is running; setUploadPolicy writes its policy, cancelUpload marks
+//     it cancelled so it is not held
 //   held: uid to File, for uploads whose event ended with no policy;
 //     setUploadPolicy with that uid sends one, cancelUpload forgets it
 const getS3Upload = ({
@@ -28,15 +29,16 @@ const getS3Upload = ({
   const uploads = uploadsRef.current;
 
   const getPolicyFromEvent = async ({ file, pasted }) => {
-    uploads.asking = { uid: file.uid, policy: null };
+    uploads.asking = { uid: file.uid, policy: null, cancelled: false };
     try {
       const response = await methods.triggerEvent({
         name: "onUploadPolicy",
         event: { file, pasted },
       });
-      if (response.success !== true) return null;
-      const { policy } = uploads.asking;
-      return isPolicy(policy) ? policy : null;
+      const { policy, cancelled } = uploads.asking;
+      if (cancelled) return { policy: null, cancelled: true };
+      if (response.success !== true) return { policy: null, cancelled: false };
+      return { policy: isPolicy(policy) ? policy : null, cancelled: false };
     } finally {
       uploads.asking = null;
     }
@@ -98,7 +100,7 @@ const getS3Upload = ({
         await send({ file, policy });
         return;
       }
-      const policy = await queuePolicyEvent({
+      const { policy, cancelled } = await queuePolicyEvent({
         file: fileInfo,
         pasted: file.pasted,
       });
@@ -106,7 +108,7 @@ const getS3Upload = ({
         await send({ file, policy });
         return;
       }
-      uploads.held.set(uid, file);
+      if (!cancelled) uploads.held.set(uid, file);
       removeFile(uid);
     } catch (error) {
       console.error(error);
@@ -130,8 +132,13 @@ const getS3Upload = ({
     uploads.asking.policy = policy ?? null;
   };
 
+  // Forgets a held upload, or, from the upload's own onUploadPolicy actions,
+  // drops it instead of holding it.
   const cancelUpload = (uid) => {
     uploads.held.delete(uid);
+    if (uploads.asking && uploads.asking.uid === uid) {
+      uploads.asking.cancelled = true;
+    }
   };
 
   return { upload, setUploadPolicy, cancelUpload };

@@ -119,6 +119,8 @@ If the event ends without a `setUploadPolicy` call (the endpoint refused, or an 
 - send it: fetch a policy again and call `setUploadPolicy` with the policy and the `uid` as the second argument. The upload goes ahead as if the event had answered, and `onSave` fires as usual.
 - drop it: call `cancelUpload` with the `uid`. The block forgets the file.
 
+An upload the page will never send (a file over its size limit, say) can be dropped from the event itself: `cancelUpload` with the event's `uid`, called from the `onUploadPolicy` actions, drops it instead of holding it.
+
 ```yaml
 events:
   onUploadPolicy:
@@ -282,7 +284,7 @@ For the form-fields modal, the consumer can return `{ success: false }` from the
 | ----------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `uploadFromPaste` | none                     | Reads the system clipboard (PNG/JPEG only) and starts an upload. Useful as a button action when the user can't focus the dragger.                                                                                                                     |
 | `setUploadPolicy` | `{ url, fields }`, `uid` | Hands the block an upload policy. From the `onUploadPolicy` actions it answers the upload that asked (`uid` optional); with the `uid` of a held upload, at any time, it sends that upload. See [A refused upload is held](#a-refused-upload-is-held). |
-| `cancelUpload`    | `uid`                    | Forgets a held upload.                                                                                                                                                                                                                                |
+| `cancelUpload`    | `uid`                    | Forgets a held upload. From the upload's own `onUploadPolicy` actions, drops it instead of holding it.                                                                                                                                                |
 
 ## CSS Keys
 

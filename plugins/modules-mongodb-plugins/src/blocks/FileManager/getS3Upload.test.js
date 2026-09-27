@@ -248,3 +248,58 @@ test("policy events run one at a time", async () => {
   expect(a.key).toBe("key-a");
   expect(b.key).toBe("key-b");
 });
+
+test("cancelUpload from the upload's own policy event drops it instead of holding it", async () => {
+  const uploadsRef = makeUploadsRef();
+  let block;
+  const methods = {
+    triggerEvent: jest.fn(async ({ event }) => {
+      block.cancelUpload(event.file.uid);
+      return { success: true, responses: {} };
+    }),
+  };
+  const setFileList = jest.fn(async () => {});
+  const removeFile = jest.fn();
+  block = getS3Upload({
+    methods,
+    setFileList,
+    removeFile,
+    usePolicyEvent: true,
+    uploadsRef,
+  });
+  await block.upload({ file: makeFile() });
+  expect(sent).toHaveLength(0);
+  expect(removeFile).toHaveBeenCalledWith("u1");
+  expect(setFileList).not.toHaveBeenCalled();
+  expect(uploadsRef.current.held.size).toBe(0);
+  await block.setUploadPolicy(policy, "u1");
+  expect(sent).toHaveLength(0);
+});
+
+test("a held upload resumed during another upload's policy event is sent, and that event stays unanswered", async () => {
+  const uploadsRef = makeUploadsRef();
+  let block;
+  const methods = {
+    triggerEvent: jest.fn(async ({ event }) => {
+      if (event.file.uid === "b") await block.setUploadPolicy(policy, "a");
+      return { success: true, responses: {} };
+    }),
+  };
+  block = getS3Upload({
+    methods,
+    setFileList: async () => {},
+    removeFile: () => {},
+    usePolicyEvent: true,
+    uploadsRef,
+  });
+  const a = makeFile("a");
+  const b = makeFile("b");
+  await block.upload({ file: a });
+  expect(uploadsRef.current.held.has("a")).toBe(true);
+  await block.upload({ file: b });
+  expect(sent).toHaveLength(1);
+  expect(a.key).toBe(policy.fields.key);
+  expect(b.key).toBeUndefined();
+  expect(uploadsRef.current.held.has("a")).toBe(false);
+  expect(uploadsRef.current.held.has("b")).toBe(true);
+});

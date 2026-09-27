@@ -69,7 +69,7 @@ export default {
     },
     cancelUpload: {
       description:
-        "Forget a held upload, one whose onUploadPolicy event ended without a policy.",
+        "Forget a held upload, one whose onUploadPolicy event ended without a policy. Called from the upload's own onUploadPolicy actions, drops it instead of holding it.",
       params: {
         uid: "The uid from that upload's onUploadPolicy event.",
       },
