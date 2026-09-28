@@ -12,8 +12,8 @@ properties:
   filter:
     _id:
       _payload: selected_id
-    contact_id:
-      _user: id
+    $or:
+      _ref: requests/match-recipient.yaml
     created.app_name:
       _payload: app_name
   update:

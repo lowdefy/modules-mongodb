@@ -14,7 +14,7 @@ Some production apps predate this module and deliver notifications through their
 Three properties of the module make coexistence work; none of them need a flag or setting:
 
 - **`send_routine` is the delivery seam.** The module never sends anything on its own initiative — the `send-notification` endpoint's entire body is the app-supplied `send_routine`, and email only goes out when something calls `dispatch-notifications`. A `send_routine` that hands event ids to an external Lambda is exactly as valid as one that shapes items and dispatches in-process. An empty `send_routine` is a no-op.
-- **Both systems share the `notifications` collection by design.** The module's read paths scope every query by `created.app_name` and `contact_id`, so records written by an external pipeline appear in the module's inbox and bell alongside module-written ones — one inbox, regardless of which side delivered the email.
+- **Both systems share the `notifications` collection by design.** The module's read paths scope every query by `created.app_name` and the recipient (`contact_id`, or `user_id` when the record stores one), so records written by an external pipeline appear in the module's inbox and bell alongside module-written ones — one inbox, regardless of which side delivered the email.
 - **Reads coalesce legacy field names.** The inbox falls back `description ?? preview`, badges and filters match `event_type ?? type`, and the link page falls back to a record's top-level `links.button` target. Records written by a Lambda-era pipeline render and deep-link without any data migration.
 
 ## The one rule: each type is owned by exactly one pipeline

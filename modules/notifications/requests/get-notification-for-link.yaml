@@ -7,8 +7,6 @@ payload:
     _url_query: _id
   app_name:
     _build.app: slug
-  contact_id:
-    _user: id
 properties:
   pipeline:
     - $match:
@@ -17,8 +15,11 @@ properties:
         created.app_name:
           _payload: app_name
         # Pre-auth notification types (module var public_link_types) resolve
-        # without a session; everything else needs the recipient's contact_id.
-        # Legacy records store event_type; pipeline records store type.
+        # without a session; everything else needs the caller to BE the
+        # recipient (requests/match-recipient.yaml). Legacy records store
+        # event_type; pipeline records store type. A record addressed to a
+        # login-less contact resolves only through public_link_types, which is
+        # correct: there is no session to check.
         $or:
           - event_type:
               $in:
@@ -26,5 +27,5 @@ properties:
           - type:
               $in:
                 _module.var: public_link_types
-          - contact_id:
-              _payload: contact_id
+          - $or:
+              _ref: requests/match-recipient.yaml
