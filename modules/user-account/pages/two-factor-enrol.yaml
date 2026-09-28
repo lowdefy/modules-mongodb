@@ -194,7 +194,7 @@ _ref:
               # a refreshed session is all the done state needs. The registered
               # flag tells the catch whether the passkey itself failed (toast) or
               # only the trailing session refresh after a successful registration
-              # (skip — "Couldn't add a passkey" would be false, and the success
+              # (skip — a failure toast would be false, and the success
               # toast already fired; the per-request gate reads the DB, so a
               # reload still routes the enrolled caller home). Reset first so a
               # cancelled retry after an earlier success still toasts (F58).
@@ -227,7 +227,11 @@ _ref:
                   _state: enrol.passkey_registered
                 params:
                   status: error
-                  content: Couldn't add a passkey. Your device may have cancelled the request.
+                  content: >-
+                    The passkey wasn't created. This usually happens if the
+                    prompt was cancelled, the device or browser doesn't
+                    support passkeys, or it timed out — try Add a passkey
+                    again.
 
       # ── TOTP · phase scan ──
       - id: enrol_scan_intro

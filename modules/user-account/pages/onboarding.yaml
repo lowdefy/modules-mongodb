@@ -123,7 +123,11 @@ _ref:
                               _state: passkey_registered
                             params:
                               status: error
-                              content: Couldn't add a passkey. Your device may have cancelled the request.
+                              content: >-
+                                The passkey wasn't created. This usually
+                                happens if the prompt was cancelled, the device
+                                or browser doesn't support passkeys, or it timed
+                                out — try Add passkey again.
                   - id: onboarding_passkey_done
                     type: Tag
                     visible:
