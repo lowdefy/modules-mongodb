@@ -29,9 +29,10 @@ name: E2E
 # The two jobs are independent (no `needs`) so a demo flake never masks a
 # workflows-test regression, and vice versa.
 
-# No path filters: the release PR only ever touches CHANGELOG/package.json, so a
-# path filter would keep this workflow from triggering there at all. The `if` on
-# each job is what narrows the lane.
+# No path filters. The `if` on each job is what narrows the lane, and it has to
+# be the job-level `if`: a workflow that a path filter keeps from triggering
+# reports no status at all, so a required check waits on it forever, while a
+# job skipped by `if` reports as skipped, which counts as passing.
 on:
   pull_request:
   workflow_dispatch:
