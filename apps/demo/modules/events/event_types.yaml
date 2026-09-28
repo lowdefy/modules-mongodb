@@ -1,11 +1,11 @@
 create-deal:
   color: "#1890ff"
   title: Deal Created
-  icon: AiOutlineFileAdd
+  icon: FilePlus
 action-approve:
   color: "#52c41a"
   title: Action Approved
-  icon: AiOutlineCheckCircle
+  icon: check-circle
 # Saved by user-account's accept page (log-member-joined).
 org-member-joined:
   color: "#52c41a"
@@ -16,8 +16,8 @@ org-member-joined:
 quote-approved:
   color: "#52c41a"
   title: Quote Approved
-  icon: AiOutlineCheckCircle
+  icon: check-circle
 user-invite:
   color: "#1890ff"
   title: User Invited
-  icon: AiOutlineUserAdd
+  icon: UserPlus

@@ -485,7 +485,7 @@ _ref:
                         - link-sent
                     properties:
                       icon:
-                        name: AiOutlineMail
+                        name: mail
                         color: "var(--ant-color-primary)"
                       status: info
                       title: Check your email

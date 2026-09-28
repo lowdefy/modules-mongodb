@@ -41,7 +41,7 @@ modules:
         sync-job:
           title: Sync job
           color: blue
-          icon: AiOutlineSync
+          icon: RefreshCw
 ```
 
 `display_key` selects which per-app title to render — the events timeline reads it from each event's top-level `{display_key}.title` field. It defaults to the app's own `slug`, so set it only when this app should render another app's event display strings. See [App slug scoping](../shared/app-name.md).

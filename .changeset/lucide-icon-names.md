@@ -1,6 +1,8 @@
 ---
 "@lowdefy/modules-mongodb-plugins": minor
 "@lowdefy/modules-mongodb-activities": minor
+"@lowdefy/modules-mongodb-ai-assistant": minor
+"@lowdefy/modules-mongodb-ai-reporting": minor
 "@lowdefy/modules-mongodb-companies": minor
 "@lowdefy/modules-mongodb-contacts": minor
 "@lowdefy/modules-mongodb-deals": minor

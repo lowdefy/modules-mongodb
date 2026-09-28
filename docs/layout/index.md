@@ -133,13 +133,13 @@ Two supported shapes:
       pageId: user-account/view
       properties:
         title: Profile
-        icon: AiOutlineUser
+        icon: user
     - id: settings
       type: MenuLink
       pageId: settings/all
       properties:
         title: Settings
-        icon: AiOutlineSetting
+        icon: settings
     - id: logout-divider
       type: MenuDivider
     - id: logout
@@ -147,7 +147,7 @@ Two supported shapes:
       pageId: user-account/logout
       properties:
         title: Logout
-        icon: AiOutlineLogout
+        icon: logout
         danger: true
 ```
 

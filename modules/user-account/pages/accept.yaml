@@ -522,7 +522,7 @@ _ref:
             - invalid
         properties:
           icon:
-            name: AiOutlineClockCircle
+            name: clock
             color: "var(--ant-color-warning)"
           status: warning
           title: This invitation can't be used
@@ -537,7 +537,7 @@ _ref:
             - link_expired
         properties:
           icon:
-            name: AiOutlineClockCircle
+            name: clock
             color: "var(--ant-color-warning)"
           status: warning
           title: This invitation has expired
@@ -559,7 +559,7 @@ _ref:
             - withdrawn
         properties:
           icon:
-            name: AiOutlineClockCircle
+            name: clock
             color: "var(--ant-color-warning)"
           status: warning
           title: This invitation was withdrawn
@@ -581,7 +581,7 @@ _ref:
             - wrong_email
         properties:
           icon:
-            name: AiOutlineClockCircle
+            name: clock
             color: "var(--ant-color-warning)"
           status: warning
           title: This invitation is for a different address

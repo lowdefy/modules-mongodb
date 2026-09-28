@@ -199,8 +199,8 @@ _ref:
                                 _eq:
                                   - _state: deals_list_collapsed
                                   - true
-                              then: AiOutlineDoubleRight
-                              else: AiOutlineDoubleLeft
+                              then: chevrons-right
+                              else: chevrons-left
                         events:
                           onClick:
                             - id: toggle_deals_list_collapsed

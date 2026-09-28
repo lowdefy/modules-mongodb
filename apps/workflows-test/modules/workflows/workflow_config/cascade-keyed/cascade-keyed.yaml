@@ -39,7 +39,7 @@ starting_actions:
 action_groups:
   - id: cascade
     title: Cascade
-    icon: AiOutlineApartment
+    icon: Network
 
 actions:
   - _ref: modules/workflows/workflow_config/cascade-keyed/driver.yaml

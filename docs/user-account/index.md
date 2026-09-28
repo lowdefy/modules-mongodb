@@ -197,7 +197,7 @@ modules:
       providers: # display metadata layered over _build.authConfig.providers
         - id: google
           label: Google
-          icon: AiOutlineGoogle
+          icon: Search
 ```
 
 There is **no `app_name` var** (per-app scoping by the old `apps.{app}` map is

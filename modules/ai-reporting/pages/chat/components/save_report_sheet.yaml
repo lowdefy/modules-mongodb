@@ -219,7 +219,7 @@ blocks:
             layout:
               flex: 0 0 auto
             properties:
-              icon: AiOutlineArrowUp
+              icon: arrow-up
               variant: text
               shape: circle
               size: small
@@ -237,7 +237,7 @@ blocks:
             layout:
               flex: 0 0 auto
             properties:
-              icon: AiOutlineArrowDown
+              icon: arrow-down
               variant: text
               shape: circle
               size: small
@@ -255,7 +255,7 @@ blocks:
             layout:
               flex: 0 0 auto
             properties:
-              icon: AiOutlineDelete
+              icon: delete
               variant: text
               color: danger
               shape: circle
@@ -470,7 +470,7 @@ blocks:
                 layout:
                   flex: 0 0 auto
                 properties:
-                  icon: AiOutlineDelete
+                  icon: delete
                   variant: text
                   color: danger
                   shape: circle

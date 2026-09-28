@@ -4,7 +4,7 @@
       type: MenuGroup
       properties:
         title: CRM
-        icon: AiOutlineContacts
+        icon: Contact
       links:
         _build.array.concat:
           - _ref:
@@ -23,14 +23,14 @@
       type: MenuGroup
       properties:
         title: Reporting
-        icon: AiOutlineBarChart
+        icon: chart
       links:
         - id: reporting-home
           type: MenuLink
           pageId: reporting-demo
           properties:
             title: Overview
-            icon: AiOutlineDashboard
+            icon: Gauge
         - id: reporting-chat
           type: MenuLink
           pageId:
@@ -39,7 +39,7 @@
               id: chat
           properties:
             title: Chat
-            icon: AiOutlineMessage
+            icon: message
         - id: reporting-reports
           type: MenuLink
           pageId:
@@ -48,18 +48,18 @@
               id: reports-list
           properties:
             title: Saved reports
-            icon: AiOutlineFileText
+            icon: document
     - id: assistant-demo
       type: MenuLink
       pageId: assistant-demo
       properties:
         title: AI Assistant
-        icon: AiOutlineRobot
+        icon: bot
     - id: admin-group
       type: MenuGroup
       properties:
         title: Admin
-        icon: AiOutlineSetting
+        icon: settings
       links:
         _ref:
           module: user-admin
@@ -75,7 +75,7 @@
           id: view
       properties:
         title: Profile
-        icon: AiOutlineUser
+        icon: user
     - id: release-notes
       type: MenuLink
       pageId:
@@ -84,7 +84,7 @@
           id: view
       properties:
         title: Release Notes
-        icon: AiOutlineFileText
+        icon: document
     - id: users
       type: MenuLink
       pageId:
@@ -93,7 +93,7 @@
           id: all
       properties:
         title: User Admin
-        icon: AiOutlineTeam
+        icon: users
     - id: logout-divider
       type: MenuDivider
     - id: logout
@@ -104,5 +104,5 @@
           id: logout
       properties:
         title: Logout
-        icon: AiOutlineLogout
+        icon: logout
         danger: true

@@ -59,10 +59,10 @@ vars:
     default: null
     description: Small line under the title — an identity or status line, not a sentence.
   panel_avatar_icon:
-    default: AiOutlineRobot
+    default: bot
     description: Icon in the round mark left of the title.
   panel_launcher_icon:
-    default: AiOutlineRobot
+    default: bot
     description: Icon on the closed launcher.
   panel_launcher_label:
     default: null

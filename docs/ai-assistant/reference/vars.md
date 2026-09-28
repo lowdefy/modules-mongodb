@@ -19,8 +19,8 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `visible` |  | `true` |  | Runtime operator gating the whole panel INCLUDING its launcher — e.g. `{_state: loaded}`, so the assistant appears with the page's content rather than over its skeleton. Read only by the `panel` component; the `embedded` component's visibility is its page's business. |
 | `panel_title` |  | `Assistant` |  | Panel header title. Takes the app display font when one is defined. |
 | `panel_subtitle` |  |  |  | Small line under the title — an identity or status line, not a sentence. |
-| `panel_avatar_icon` |  | `AiOutlineRobot` |  | Icon in the round mark left of the title. |
-| `panel_launcher_icon` |  | `AiOutlineRobot` |  | Icon on the closed launcher. |
+| `panel_avatar_icon` |  | `bot` |  | Icon in the round mark left of the title. |
+| `panel_launcher_icon` |  | `bot` |  | Icon on the closed launcher. |
 | `panel_launcher_label` |  |  |  | Optional text pill beside the launcher while closed. Leave null for a circular icon-only launcher. |
 | `panel_launcher_aria_label` |  | `Open assistant` |  | Accessible name for the launcher. Always meaningful, label or not. |
 | `panel_width` |  | `420` |  | Panel width in px. ~420 is about 62 characters of chat. |

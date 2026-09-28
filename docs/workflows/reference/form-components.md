@@ -189,8 +189,8 @@ On read-only surfaces an `enum`-driven selector shows the entry's title, colour 
   key: status
   title: Status
   enum:
-    open: { title: Open, color: "#1890ff", icon: AiOutlineFolderOpen }
-    closed: { title: Closed, color: "#52c41a", icon: AiOutlineCheck }
+    open: { title: Open, color: "#1890ff", icon: FolderOpen }
+    closed: { title: Closed, color: "#52c41a", icon: check }
 ```
 
 `tree_multiple_selector` takes `options` only. Its whole point is a hierarchy built from `primaryKey` / `parentKey` on each row, which a flat enum map cannot express — and for flat choices `multiple_selector` is the better component anyway, since it renders each option's colour and icon on the tag while the tree renders plain text.

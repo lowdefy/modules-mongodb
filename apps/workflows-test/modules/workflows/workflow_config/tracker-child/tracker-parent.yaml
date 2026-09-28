@@ -28,7 +28,7 @@ starting_actions:
 action_groups:
   - id: tracking
     title: Tracking
-    icon: AiOutlineNodeIndex
+    icon: Waypoints
 
 actions:
   - _ref: modules/workflows/workflow_config/tracker-child/track-child.yaml

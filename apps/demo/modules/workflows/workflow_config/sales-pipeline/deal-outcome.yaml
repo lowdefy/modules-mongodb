@@ -20,11 +20,11 @@ form:
       won:
         title: Won
         color: "#52c41a"
-        icon: AiOutlineCheckCircle
+        icon: check-circle
       lost:
         title: Lost
         color: "#ff4d4f"
-        icon: AiOutlineCloseCircle
+        icon: close-circle
     # Clear a stale reason when the outcome flips so the filtered list re-applies.
     on_change:
       - id: reset_reason_on_outcome_change

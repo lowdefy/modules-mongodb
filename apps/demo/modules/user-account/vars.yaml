@@ -6,6 +6,6 @@ fields:
 providers:
   - id: github
     label: GitHub
-    icon: AiOutlineGithub
+    icon: GitBranch
 request_stages:
   write: []

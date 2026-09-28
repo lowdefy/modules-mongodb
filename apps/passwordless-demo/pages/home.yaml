@@ -7,7 +7,7 @@ _ref:
       _app: name
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
     blocks:
       - id: description
         type: Paragraph

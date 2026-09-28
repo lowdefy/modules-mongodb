@@ -25,7 +25,7 @@ _ref:
         _module.pageId: reports-list
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Reports
         pageId:
           _module.pageId: reports-list
@@ -88,7 +88,7 @@ _ref:
               flex: 0 0 auto
             properties:
               title: Open
-              icon: AiOutlineFileText
+              icon: document
               type: default
               size: small
             events:
@@ -177,7 +177,7 @@ _ref:
                   selfAlign: middle
                 properties:
                   title: Restore
-                  icon: AiOutlineUndo
+                  icon: Undo
                   type: default
                   size: small
                 events:

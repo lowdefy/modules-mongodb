@@ -63,7 +63,7 @@ blocks:
           # which renders it into the svg. `hideTitle` still has to stay:
           # without it an untitled button labels itself with its block id.
           icon:
-            name: AiOutlineDoubleRight
+            name: chevrons-right
             title: Show conversations
           hideTitle: true
           type: text
@@ -79,7 +79,7 @@ blocks:
         type: Button
         properties:
           icon:
-            name: AiOutlinePlus
+            name: add
             title: New chat
           hideTitle: true
           type: text
@@ -131,7 +131,7 @@ blocks:
               flex: 0 0 auto
             properties:
               icon:
-                name: AiOutlineDoubleLeft
+                name: chevrons-left
                 title: Hide conversations
               hideTitle: true
               type: text
@@ -495,7 +495,7 @@ blocks:
               flex: 0 0 auto
             properties:
               icon:
-                name: AiOutlineDoubleRight
+                name: chevrons-right
                 title: Hide results
               hideTitle: true
               type: text
@@ -806,7 +806,7 @@ blocks:
                           selfAlign: top
                         properties:
                           icon:
-                            name: AiOutlineExpandAlt
+                            name: Maximize2
                             title: Expand chart
                           hideTitle: true
                           type: text
@@ -1040,7 +1040,7 @@ blocks:
                     type: Button
                     properties:
                       title: Download CSV
-                      icon: AiOutlineDownload
+                      icon: download
                       block: true
                     events:
                       onClick:
@@ -1093,7 +1093,7 @@ blocks:
         type: Button
         properties:
           icon:
-            name: AiOutlineDoubleLeft
+            name: chevrons-left
             title: Show results
           hideTitle: true
           type: text
