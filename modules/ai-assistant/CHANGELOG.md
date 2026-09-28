@@ -1,5 +1,20 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 0.44.0
+
+### Minor Changes
+
+- [#248](https://github.com/lowdefy/modules-mongodb/pull/248) [`fad5d0a`](https://github.com/lowdefy/modules-mongodb/commit/fad5d0a4235374e4449d099f00bf7cad47ce8f5b) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: `composer_note` shows a fixed line under the chat's composer
+
+  An app can now put a standing note under the composer in both the docked panel and the embedded chat, such as a reminder not to share personal information. It stays visible alongside the conversation without becoming a message in it, and nothing is shown by default.
+
+- [#248](https://github.com/lowdefy/modules-mongodb/pull/248) [`48676e9`](https://github.com/lowdefy/modules-mongodb/commit/48676e945078271bf904a8b67432ff4fdbe4a085) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: `title_zero_data_retention` keeps thread titling on zero-data-retention providers
+
+  Titling sends a thread's first question and reply to the title model. An agent can already restrict
+  its routing to providers with a zero data retention policy, but titling had no way to follow, so it
+  could land on a provider that retains what it's sent. The `GenerateChatTitle` request takes
+  `zeroDataRetention`, and the module passes it from the new var, which defaults to off.
+
 ## 0.43.1
 
 ## 0.43.0

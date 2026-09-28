@@ -1,5 +1,16 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.44.0
+
+### Minor Changes
+
+- [#248](https://github.com/lowdefy/modules-mongodb/pull/248) [`48676e9`](https://github.com/lowdefy/modules-mongodb/commit/48676e945078271bf904a8b67432ff4fdbe4a085) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: `title_zero_data_retention` keeps thread titling on zero-data-retention providers
+
+  Titling sends a thread's first question and reply to the title model. An agent can already restrict
+  its routing to providers with a zero data retention policy, but titling had no way to follow, so it
+  could land on a provider that retains what it's sent. The `GenerateChatTitle` request takes
+  `zeroDataRetention`, and the module passes it from the new var, which defaults to off.
+
 ## 0.43.1
 
 ## 0.43.0
