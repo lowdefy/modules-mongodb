@@ -25,6 +25,12 @@
 #
 # Each rejecting view is logged server-side (best-effort, non-blocking) via
 # log-invitation-rejection so a report can be traced without reproducing it.
+#
+# Joining is logged through log-member-joined, which saves one org-member-joined
+# event per accepted invitation whatever the number of calls: after a
+# successful accept, on a retry that finds the invitation already accepted, and
+# on the member render (a reload after an accept whose page never got to log).
+# A failed log never stops the person entering the app.
 _ref:
   module: layout
   component: auth-page
@@ -114,6 +120,21 @@ _ref:
                                   _user: email
                         then: wrong_email
                     default: signedin
+            - id: log_joined_on_member
+              type: CallAPI
+              async: true
+              skip:
+                _ne:
+                  - _state: accept_view
+                  - member
+              messages:
+                error: false
+              params:
+                endpointId:
+                  _module.endpointId: log-member-joined
+                payload:
+                  invitationId:
+                    _url_query: invitationId
       # Best-effort diagnostic: one server-side log line naming which guard
       # rejected the attempt, so a "can't be used" report is traceable
       # without reproducing it. Runs on onInitAsync (not onInit) and
@@ -349,7 +370,10 @@ _ref:
                     email:
                       _user: email
       # Accept the invitation. BetterAuth merges the profile fragment and applies
-      # invite-time attributes engine-side; on success we enter the app.
+      # invite-time attributes engine-side; on success we log the join and enter
+      # the app. A retry against an invitation this caller already accepted (an
+      # interrupted first attempt) fails "not found" although they are in, so the
+      # catch re-reads the invitation: accepted means log the join and enter.
       - id: accept_continue
         type: Button
         visible:
@@ -372,6 +396,16 @@ _ref:
                 params:
                   invitationId:
                     _url_query: invitationId
+              - id: log_joined
+                type: CallAPI
+                messages:
+                  error: false
+                params:
+                  endpointId:
+                    _module.endpointId: log-member-joined
+                  payload:
+                    invitationId:
+                      _url_query: invitationId
               # LOCAL FORK: refresh the client's _user BEFORE routing. The
               # accept just gave this session its organization; without the
               # refresh the router still reads awaiting_organization from the
@@ -396,6 +430,17 @@ _ref:
                     - _request: get_invitation.0.status
                     - accepted
                 :then:
+                  - id: log_joined_after_retry
+                    type: CallAPI
+                    async: true
+                    messages:
+                      error: false
+                    params:
+                      endpointId:
+                        _module.endpointId: log-member-joined
+                      payload:
+                        invitationId:
+                          _url_query: invitationId
                   - id: refresh_session_after_retry
                     type: UpdateSession
                   - id: enter_app_after_retry

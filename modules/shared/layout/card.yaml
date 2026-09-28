@@ -7,14 +7,24 @@ _build.switch:
       then:
         _module.var: card
   default:
-    id: card-section
+    # Unique per page when a page stacks several cards — pass `id` to
+    # disambiguate (block ids are page state keys and must be unique).
+    id:
+      _var:
+        key: id
+        default: card-section
     type: Box
     layout:
       span: 24
       gap: 8
     blocks:
       _build.array.concat:
-        - - id: card
+        - - id:
+              _build.string.concat:
+                - _var:
+                    key: id
+                    default: card-section
+                - '_card'
             type: Card
             loading:
               _var:

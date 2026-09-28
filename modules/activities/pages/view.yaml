@@ -40,7 +40,7 @@ _ref:
         _request: get_activity
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _module.var: label_plural
         pageId:
@@ -56,7 +56,7 @@ _ref:
           flex: 0 1 auto
         properties:
           title: Edit
-          icon: AiOutlineEdit
+          icon: edit
           type: default
         events:
           onClick:
@@ -91,7 +91,7 @@ _ref:
                 - complex
         properties:
           title: Mark done
-          icon: AiOutlineCheckCircle
+          icon: check-circle
           type: default
         events:
           onClick:
@@ -150,7 +150,7 @@ _ref:
                 - complex
         properties:
           title: Reopen
-          icon: AiOutlineReload
+          icon: refresh
           type: default
         events:
           onClick:
@@ -209,7 +209,7 @@ _ref:
                 - complex
         properties:
           title: Cancel
-          icon: AiOutlineStop
+          icon: Ban
           type: default
         events:
           onClick:
@@ -247,7 +247,7 @@ _ref:
           flex: 0 1 auto
         properties:
           title: Delete
-          icon: AiOutlineDelete
+          icon: delete
           danger: true
           type: default
         events:
@@ -480,7 +480,7 @@ _ref:
                         _string.concat:
                           - "Delete "
                           - _module.var: label
-                      icon: AiOutlineDelete
+                      icon: delete
                       danger: true
                       type: primary
                     events:

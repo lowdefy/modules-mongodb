@@ -84,7 +84,7 @@ _ref:
                 properties:
                   type: email
                   size: large
-                  suffixIcon: AiOutlineMail
+                  suffixIcon: mail
                   disabled:
                     _ne:
                       - _url_query: email
@@ -269,7 +269,7 @@ _ref:
                     - _state: signup_show_password
                 properties:
                   title: Other options
-                  icon: AiOutlineArrowLeft
+                  icon: arrow-left
                   block: true
                   variant: link
                   color: primary
@@ -297,7 +297,7 @@ _ref:
                     label: Email me a sign-in link
                     variant: outlined
                     color: default
-                    icon: AiOutlineMail
+                    icon: mail
                     on_sent:
                       signup_view: link-sent
                       magic_link_sent_email:
@@ -411,7 +411,7 @@ _ref:
                 - check
             properties:
               icon:
-                name: AiOutlineMail
+                name: mail
                 color: "var(--ant-color-primary)"
               status: info
               title: Check your email

@@ -20,7 +20,7 @@ _ref:
                 properties:
                   title: Go to home page
                   type: link
-                  icon: AiOutlineHome
+                  icon: home
                 events:
                   onClick:
                     - id: go_home
@@ -31,7 +31,7 @@ _ref:
                 type: Button
                 properties:
                   title: Go to inbox
-                  icon: AiOutlineBell
+                  icon: bell
                 events:
                   onClick:
                     - id: go_inbox

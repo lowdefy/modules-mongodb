@@ -8,7 +8,9 @@ _build.array.concat:
       params:
         selected_id:
           _if_none:
-            - _var: selected_id
+            - _var:
+                key: selected_id
+                default: null
             - _url_query: _id
     - id: get_selected_notification
       type: Request

@@ -13,8 +13,13 @@ properties:
   databaseUri:
     _secret: MONGODB_URI
   collection: user-contacts
+  # Its own change-log collection: the engine writes a shared connection's
+  # change-log records without organization_id, and one such record in a
+  # collection a walled connection reads (log-changes) makes the tenant
+  # preflight refuse to serve the app. Lowdefy's build refuses that pairing
+  # under policy: tenant.
   changeLog:
-    collection: log-changes
+    collection: log-changes-system
     meta:
       user:
         _user: true

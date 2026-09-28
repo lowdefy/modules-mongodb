@@ -388,7 +388,7 @@ blocks:
           flex: 0 0 auto
         properties:
           type: text
-          icon: AiOutlineEdit
+          icon: edit
           hideTitle: true
         events:
           onClick:

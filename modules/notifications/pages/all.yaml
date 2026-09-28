@@ -175,7 +175,7 @@ _ref:
                   flex: 1 0 auto
                 properties:
                   title: Selected
-                  orientation: left
+                  titlePlacement: start
               - id: selected_area_card
                 type: Card
                 properties:

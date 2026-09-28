@@ -153,7 +153,7 @@ export const fieldTypeRegistry = {
               className="dataview-link"
               href={`/${contactDetailPageId}?_id=${contactId}`}
             >
-              <Icon blockId="contact-icon" properties="AiOutlineUser" />{" "}
+              <Icon blockId="contact-icon" properties="user" />{" "}
               {displayName}
             </a>
           </span>
@@ -161,7 +161,7 @@ export const fieldTypeRegistry = {
       }
       return (
         <span className="dataview-value">
-          <Icon blockId="contact-icon" properties="AiOutlineUser" />{" "}
+          <Icon blockId="contact-icon" properties="user" />{" "}
           {displayName}
         </span>
       );
@@ -186,7 +186,7 @@ export const fieldTypeRegistry = {
               className="dataview-link"
               href={`/${companyDetailPageId}?_id=${companyId}`}
             >
-              <Icon blockId="company-icon" properties="AiOutlineCluster" />{" "}
+              <Icon blockId="company-icon" properties="Waypoints" />{" "}
               {value.name}
             </a>
           </span>
@@ -194,7 +194,7 @@ export const fieldTypeRegistry = {
       }
       return (
         <span className="dataview-value">
-          <Icon blockId="company-icon" properties="AiOutlineCluster" />{" "}
+          <Icon blockId="company-icon" properties="Waypoints" />{" "}
           {value.name}
         </span>
       );
@@ -278,7 +278,7 @@ export const fieldTypeRegistry = {
       if (!value.geometry?.location) {
         return (
           <span className="dataview-value">
-            <Icon blockId="location-icon" properties="AiOutlineEnvironment" />{" "}
+            <Icon blockId="location-icon" properties="location" />{" "}
             {address}
           </span>
         );
@@ -296,7 +296,7 @@ export const fieldTypeRegistry = {
             rel="noopener noreferrer"
             target="_blank"
           >
-            <Icon blockId="location-icon" properties="AiOutlineEnvironment" />{" "}
+            <Icon blockId="location-icon" properties="location" />{" "}
             {address}
           </a>
         </span>

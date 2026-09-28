@@ -171,7 +171,7 @@ blocks:
                       flex: 0 0 auto
                     properties:
                       title: Send invitation
-                      icon: AiOutlineMail
+                      icon: mail
                       color: primary
                       variant: solid
                     events:

@@ -61,6 +61,132 @@ The block does not own the file metadata — it expects the consumer to pass an 
 
 The pre-wired `file-card` component on the `files` module sets all of this up — most consumers should use that instead of the block directly.
 
+### Upload policy from the page
+
+By default the block fetches its upload policy with the page request named by `s3PostPolicyRequestId`. When the app must mint the policy somewhere a page request cannot reach (an API endpoint that checks permissions or picks the key on the server), define `onUploadPolicy` instead. The block then triggers it before each upload, in place of the request, with `_event` set to `{ file: { name, lastModified, size, type, uid }, pasted }`. The actions fetch the policy and hand it back with the block's `setUploadPolicy` method:
+
+```yaml
+- id: attachments
+  type: FileManager
+  properties:
+    s3GetPolicyRequestId: download_policy
+  events:
+    onUploadPolicy:
+      - id: get_policy
+        type: CallAPI
+        params:
+          endpointId: attachments-upload-policy
+          payload:
+            name:
+              _event: file.name
+            content_type:
+              _event: file.type
+            size:
+              _event: file.size
+            pasted:
+              _event: pasted
+      - id: set_policy
+        type: CallMethod
+        skip:
+          _eq:
+            - _actions: get_policy.response.response.upload
+            - null
+        params:
+          blockId: attachments
+          method: setUploadPolicy
+          args:
+            - _actions: get_policy.response.response.upload
+    onSave:
+      - id: record
+        type: CallAPI
+        params:
+          endpointId: attachments-record
+          payload:
+            key:
+              _event: file.key
+```
+
+The policy is the same `{ url, fields }` an `AwsS3PresignedPostPolicy` request returns; `fields.key` and `fields.bucket` become `file.key` and `file.bucket` on `onSave`.
+
+Policy events run one at a time, so each `setUploadPolicy` call in the event belongs to the upload that asked for it.
+
+A file pasted from the clipboard carries `pasted: true`, in the `onUploadPolicy` event and on `onSave`'s `file`, so the app can give it a generated name (clipboard images arrive with a generic one).
+
+#### A refused upload is held
+
+If the event ends without a `setUploadPolicy` call (the endpoint refused, or an action skipped the call) or with a failed action, the block holds that upload quietly: no progress bar, no error state and no error message from the block. The page decides what happens next, usually after asking the user (a name clash: "Replace report.pdf?"). Keep the file's `uid` from the event, then either:
+
+- send it: fetch a policy again and call `setUploadPolicy` with the policy and the `uid` as the second argument. The upload goes ahead as if the event had answered, and `onSave` fires as usual.
+- drop it: call `cancelUpload` with the `uid`. The block forgets the file.
+
+An upload the page will never send (a file over its size limit, say) can be dropped from the event itself: `cancelUpload` with the event's `uid`, called from the `onUploadPolicy` actions, drops it instead of holding it.
+
+```yaml
+events:
+  onUploadPolicy:
+    - id: get_policy
+      type: CallAPI
+      params:
+        endpointId: attachments-upload-policy
+        payload:
+          name:
+            _event: file.name
+    - id: hold
+      type: SetState
+      skip:
+        _ne:
+          - _actions: get_policy.response.response.upload
+          - null
+      params:
+        held_upload:
+          uid:
+            _event: file.uid
+          name:
+            _event: file.name
+    - id: ask_replace
+      type: CallMethod
+      skip:
+        _ne:
+          - _actions: get_policy.response.response.upload
+          - null
+      params:
+        blockId: replace_modal
+        method: toggleOpen
+    # set_policy as above, skipped when there is no policy
+```
+
+The `replace_modal` Modal's `onOk` fetches the policy again (with `replace: true`, say) and resumes the upload; its `onCancel` drops it:
+
+```yaml
+onOk:
+  - id: get_replace_policy
+    type: CallAPI
+    params:
+      endpointId: attachments-upload-policy
+      payload:
+        name:
+          _state: held_upload.name
+        replace: true
+  - id: resume
+    type: CallMethod
+    params:
+      blockId: attachments
+      method: setUploadPolicy
+      args:
+        - _actions: get_replace_policy.response.response.upload
+        - _state: held_upload.uid
+onCancel:
+  - id: drop
+    type: CallMethod
+    params:
+      blockId: attachments
+      method: cancelUpload
+      args:
+        - _state: held_upload.uid
+```
+
+A `setUploadPolicy` call for a held `uid` with no policy leaves the upload held. A `uid` the block does not hold (already sent or cancelled) is ignored. Held files live in the block until they are sent, cancelled or the page is left.
+
 ### Form-fields modal
 
 When the block has a `form` slot, completing an upload opens a modal with the slot rendered inside it. State written under `{blockId}.form.*` is sent through to `onSave` along with the file:
@@ -100,24 +226,24 @@ Form state is validated (regex-anchored to `^{blockId}\.form\.`) before `onSave`
 
 ## Properties
 
-| Property                | Type                                 | Default                        | Description                                                                                 |
-| ----------------------- | ------------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------- |
-| `files`                 | array                                | `[]`                           | The file documents to display. See [File document shape](#file-document-shape).             |
-| `s3PostPolicyRequestId` | string                               | —                              | Request id that returns an S3 post-policy for uploads. Required to upload.                  |
-| `s3GetPolicyRequestId`  | string                               | —                              | Request id that returns an S3 get-policy URL for downloads. Required for the download link. |
-| `accept`                | string                               | `*`                            | File-type filter passed to the dragger (e.g. `.pdf,.jpg`, `image/*`).                       |
-| `hint`                  | string (HTML)                        | `Click or drag file to upload` | Hint text inside the dragger. Rendered through `renderHtml`.                                |
-| `disabled`              | boolean                              | `false`                        | Disable the dragger.                                                                        |
-| `viewOnly`              | boolean                              | `false`                        | Hide the dragger and the per-row delete button. Useful for read-only views.                 |
-| `showDelete`            | boolean                              | `true`                         | Show the delete button per row. Forced to `false` when `viewOnly` is `true`.                |
-| `singleFile`            | boolean                              | `false`                        | Hide the dragger once a file is uploaded (one-file mode).                                   |
-| `maxCount`              | number                               | —                              | Hide the dragger once `files.length >= maxCount`.                                           |
-| `modalTitle`            | string                               | `Upload File`                  | Title of the form-fields modal. Only used when the `form` slot is present.                  |
-| `okText`                | string                               | `Save`                         | Submit button label on the form-fields modal.                                               |
-| `metadataTags`          | array                                | `[]`                           | Read-only tags shown under each file row. See [Metadata tags](#metadata-tags).              |
-| `label`                 | object                               | —                              | When set, wraps the block in an Antd `Label` (with `title`, `extra`, `tooltip`, …).         |
-| `required`              | boolean                              | `false`                        | Forwarded to the `Label` wrapper for required-state styling.                                |
-| `size`                  | `"small"` \| `"middle"` \| `"large"` | —                              | Forwarded to the `Label` wrapper.                                                           |
+| Property                | Type                                 | Default                        | Description                                                                                                    |
+| ----------------------- | ------------------------------------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `files`                 | array                                | `[]`                           | The file documents to display. See [File document shape](#file-document-shape).                                |
+| `s3PostPolicyRequestId` | string                               | —                              | Request id that returns an S3 post-policy for uploads. Required to upload, unless `onUploadPolicy` is defined. |
+| `s3GetPolicyRequestId`  | string                               | —                              | Request id that returns an S3 get-policy URL for downloads. Required for the download link.                    |
+| `accept`                | string                               | `*`                            | File-type filter passed to the dragger (e.g. `.pdf,.jpg`, `image/*`).                                          |
+| `hint`                  | string (HTML)                        | `Click or drag file to upload` | Hint text inside the dragger. Rendered through `renderHtml`.                                                   |
+| `disabled`              | boolean                              | `false`                        | Disable the dragger.                                                                                           |
+| `viewOnly`              | boolean                              | `false`                        | Hide the dragger and the per-row delete button. Useful for read-only views.                                    |
+| `showDelete`            | boolean                              | `true`                         | Show the delete button per row. Forced to `false` when `viewOnly` is `true`.                                   |
+| `singleFile`            | boolean                              | `false`                        | Hide the dragger once a file is uploaded (one-file mode).                                                      |
+| `maxCount`              | number                               | —                              | Hide the dragger once `files.length >= maxCount`.                                                              |
+| `modalTitle`            | string                               | `Upload File`                  | Title of the form-fields modal. Only used when the `form` slot is present.                                     |
+| `okText`                | string                               | `Save`                         | Submit button label on the form-fields modal.                                                                  |
+| `metadataTags`          | array                                | `[]`                           | Read-only tags shown under each file row. See [Metadata tags](#metadata-tags).                                 |
+| `label`                 | object                               | —                              | When set, wraps the block in an Antd `Label` (with `title`, `extra`, `tooltip`, …).                            |
+| `required`              | boolean                              | `false`                        | Forwarded to the `Label` wrapper for required-state styling.                                                   |
+| `size`                  | `"small"` \| `"middle"` \| `"large"` | —                              | Forwarded to the `Label` wrapper.                                                                              |
 
 ### File document shape
 
@@ -162,12 +288,13 @@ Tags are display-only — they render in both editable and `viewOnly` modes and 
 
 ## Events
 
-| Event        | When                                                     | Payload                                                                                                                |
-| ------------ | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `onChange`   | Dragger upload state changes (start, progress, error).   | —                                                                                                                      |
-| `onSave`     | Upload completes (and the form is valid, when present).  | `{ file: { name, key, bucket, size, type, thumbnail } }`. The consumer is expected to persist this and any form state. |
-| `onDelete`   | Per-row delete is confirmed.                             | `{ fileDoc }` — the full file document being deleted.                                                                  |
-| `onDownload` | A download is initiated (after the presigned URL opens). | `{ fileDoc }` — the full file document being downloaded.                                                               |
+| Event            | When                                                                               | Payload                                                                                                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `onChange`       | Dragger upload state changes (start, progress, error).                             | —                                                                                                                                                                          |
+| `onUploadPolicy` | Before each upload, when defined, in place of the `s3PostPolicyRequestId` request. | `{ file: { name, lastModified, size, type, uid }, pasted }`. Hand the policy back with `setUploadPolicy`. See [Upload policy from the page](#upload-policy-from-the-page). |
+| `onSave`         | Upload completes (and the form is valid, when present).                            | `{ file: { name, key, bucket, size, type, thumbnail, pasted } }`, `pasted: true` only on a clipboard file. The consumer is expected to persist this and any form state.    |
+| `onDelete`       | Per-row delete is confirmed.                                                       | `{ fileDoc }` — the full file document being deleted.                                                                                                                      |
+| `onDownload`     | A download is initiated (after the presigned URL opens).                           | `{ fileDoc }` — the full file document being downloaded.                                                                                                                   |
 
 `onDownload` fires only once the presigned GET URL has resolved and the download has actually been opened, so it is safe to use for download audit logging. Note that download logging is emitted **client-side** from this event (unlike upload/delete auditing, which the `files` module records **server-side** in its `save-file` / `delete-file` API routines) — there is no download API to hang it off, so the `file-manager` / `file-card` components call the events module's `new-event` endpoint directly from `onDownload`.
 
@@ -175,9 +302,11 @@ For the form-fields modal, the consumer can return `{ success: false }` from the
 
 ## Methods
 
-| Method            | Args | Effect                                                                                                                            |
-| ----------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `uploadFromPaste` | none | Reads the system clipboard (PNG/JPEG only) and starts an upload. Useful as a button action when the user can't focus the dragger. |
+| Method            | Args                     | Effect                                                                                                                                                                                                                                                |
+| ----------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uploadFromPaste` | none                     | Reads the system clipboard (PNG/JPEG only) and starts an upload. Useful as a button action when the user can't focus the dragger.                                                                                                                     |
+| `setUploadPolicy` | `{ url, fields }`, `uid` | Hands the block an upload policy. From the `onUploadPolicy` actions it answers the upload that asked (`uid` optional); with the `uid` of a held upload, at any time, it sends that upload. See [A refused upload is held](#a-refused-upload-is-held). |
+| `cancelUpload`    | `uid`                    | Forgets a held upload. From the upload's own `onUploadPolicy` actions, drops it instead of holding it.                                                                                                                                                |
 
 ## CSS Keys
 
