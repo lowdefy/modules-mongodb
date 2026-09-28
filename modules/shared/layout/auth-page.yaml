@@ -78,15 +78,15 @@ blocks:
                 style:
                   .element:
                     _module.var: auth_page.card_style
+                  # antd's Card `bodyPadding` theme token is a number of px, so the
+                  # block schema rejects a CSS shorthand there. The asymmetric
+                  # padding is set on the body's own style instead.
+                  .body:
+                    padding: 28px 32px
                 properties:
                   bordered: false
                   theme:
                     borderRadiusLG: 12
-                    # antd's Card `bodyPadding` token is a number of px, never a
-                    # CSS shorthand — the block schema rejects the string form.
-                    # There is no separate token for the inline padding, so the
-                    # shorthand collapses to its vertical value.
-                    bodyPadding: 28
                 slots:
                   # Gradient cover band is the `band` brand treatment only; `minimal` is bandless.
                   cover:

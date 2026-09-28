@@ -13,7 +13,7 @@ is unchanged, since a missing var already resolved to null under the lax check.
 
 Two block-schema defects in auth-page are fixed alongside:
 
-- `Card`'s `bodyPadding` theme token is a number of px, not a CSS shorthand. The
-  `"28px 32px 28px 32px"` string is rejected and collapses to `28` — a cosmetic
-  regression of 4px horizontal padding, as there is no separate inline-padding token.
+- `Card`'s `bodyPadding` theme token is a number of px, not a CSS shorthand, so the
+  `"28px 32px 28px 32px"` string is rejected. The same padding now sets the card
+  body's style (`.body`), so the rendered card is unchanged.
 - `Img`'s `properties.width` is a number of px, so the `100%` CSS length moves to `style`.
