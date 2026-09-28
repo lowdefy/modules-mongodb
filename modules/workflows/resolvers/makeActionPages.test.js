@@ -390,7 +390,7 @@ test("makeActionPages: universal_fields_required never appears in output", () =>
 test("makeActionPages: show_comment omitted → true on action_config", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
-    app_name: APP,
+    slug: SLUG,
   });
   expect(pages[0]._ref.vars.action_config.show_comment).toBe(true);
 });
@@ -399,7 +399,7 @@ test("makeActionPages: show_comment false → false on action_config", () => {
   const action = { ...qualifyAction, show_comment: false };
   const pages = makeActionPages(null, {
     workflows: [workflow([action])],
-    app_name: APP,
+    slug: SLUG,
   });
   expect(pages[0]._ref.vars.action_config.show_comment).toBe(false);
 });
@@ -629,7 +629,7 @@ test("makeActionPages: a custom-only workflow emits the single shared action pag
 
 test("makeActionPages: page_layout wide derives left_variant progress + history_in_drawer true on every emitted page", () => {
   const wf = { ...workflow([sendQuoteAction]), page_layout: "wide" };
-  const pages = makeActionPages(null, { workflows: [wf], app_name: APP });
+  const pages = makeActionPages(null, { workflows: [wf], slug: SLUG });
 
   expect(pages.length).toBeGreaterThan(0);
   for (const page of pages) {
@@ -640,7 +640,7 @@ test("makeActionPages: page_layout wide derives left_variant progress + history_
 
 test("makeActionPages: page_layout standard derives left_variant steps + history_in_drawer false", () => {
   const wf = { ...workflow([sendQuoteAction]), page_layout: "standard" };
-  const pages = makeActionPages(null, { workflows: [wf], app_name: APP });
+  const pages = makeActionPages(null, { workflows: [wf], slug: SLUG });
 
   for (const page of pages) {
     expect(page._ref.vars.left_variant).toBe("steps");
@@ -651,7 +651,7 @@ test("makeActionPages: page_layout standard derives left_variant steps + history
 test("makeActionPages: absent page_layout defaults to steps + no drawer (unchanged behavior)", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([sendQuoteAction])],
-    app_name: APP,
+    slug: SLUG,
   });
 
   for (const page of pages) {
@@ -662,7 +662,7 @@ test("makeActionPages: absent page_layout defaults to steps + no drawer (unchang
 
 test("makeActionPages: the per-workflow check page carries the derived layout vars", () => {
   const wf = { ...workflow([scheduleFollowupAction]), page_layout: "wide" };
-  const [checkPage] = makeActionPages(null, { workflows: [wf], app_name: APP });
+  const [checkPage] = makeActionPages(null, { workflows: [wf], slug: SLUG });
 
   expect(checkPage.id).toBe("onboarding-action");
   expect(checkPage._ref.vars.left_variant).toBe("progress");
