@@ -52,7 +52,7 @@ modules:
         _ref: modules/notifications/send-routine.yaml
 ```
 
-Scoping reads the app's own `slug` — nothing to pass. `server_url` is the origin used to compose email link URLs — required when notification items carry page links. `send_routine` is an array of API routine steps that receives `{ event_ids }` in the payload — leave it empty to skip dispatch (notifications still write but nothing is sent).
+Scoping reads the app's own `slug` — nothing to pass. `server_url` is the origin used to compose email link URLs. It defaults to the `url` of the current Lowdefy environment (`config.environments`), so an app that declares its environments leaves it unset; otherwise it is required when notification items carry page links. On the dev server, with neither set, links use the request origin. `send_routine` is an array of API routine steps that receives `{ event_ids }` in the payload — leave it empty to skip dispatch (notifications still write but nothing is sent).
 
 Apps with an existing email connection can remap `notifications-email` instead of setting the `email` vars (or `notifications-email-sendgrid` instead of the `sendgrid` vars when `transport: sendgrid`):
 
