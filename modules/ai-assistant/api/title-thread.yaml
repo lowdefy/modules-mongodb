@@ -29,7 +29,10 @@ payloadSchema:
     reply:
       type: string
     context:
-      type: string
+      # Null when the `title_context` var is left at its default.
+      type:
+        - string
+        - "null"
 routine:
   - id: generate_title
     type: GenerateChatTitle
