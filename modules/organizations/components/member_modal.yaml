@@ -70,19 +70,19 @@ blocks:
     type: TagMultipleSelector
     properties:
       title: Roles
-      placeholder: No role
       options:
         _ref: components/role_options.yaml
   - id: org_role_divider
     type: Divider
-    properties:
-      margin: 4
+    style:
+      marginBlock: 4
   - id: member_org_role
     type: Selector
     required: true
     properties:
       title: Organization authority
-      extra: Who may administer this organization — separate from the app roles above, and not implied by them.
+      label:
+        extra: Who may administer this organization — separate from the app roles above, and not implied by them.
       # `member` is the no-authority value, not an empty one: the write refuses
       # an empty tier, so revoking authority writes `member`. Labelled in the
       # app's language rather than BetterAuth's, where "member" reads as a
@@ -142,7 +142,7 @@ blocks:
             _state: selected_member.is_self
         properties:
           title: Remove from organization
-          icon: AiOutlineUserDelete
+          icon: UserMinus
           danger: true
           block: true
         events:
@@ -171,7 +171,7 @@ blocks:
           _state: selected_member.is_self
         properties:
           title: Leave this organization
-          icon: AiOutlineLogout
+          icon: logout
           danger: true
           block: true
         events:

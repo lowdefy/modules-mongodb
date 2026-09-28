@@ -35,7 +35,7 @@ global_blocks:
       zIndex: 10
     properties:
       title: What's new
-      icon: AiOutlineNotification
+      icon: Megaphone
       shape: round
     events:
       onClick:

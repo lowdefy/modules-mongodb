@@ -22,7 +22,7 @@
 #           terminal group crumb.
 _array.concat:
   - - home: true
-      icon: AiOutlineHome
+      icon: home
   # Entity list — runtime-optional: present only when the workflow configures
   # entity.list_page_id (carried onto entity_link by the read handler, Part 63).
   - _if:

@@ -83,7 +83,7 @@ Menu links come from the module's `default` menu:
   type: MenuGroup
   properties:
     title: Organization
-    icon: AiOutlineBank
+    icon: Landmark
   links:
     _ref:
       module: organizations

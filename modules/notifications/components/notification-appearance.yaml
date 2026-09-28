@@ -29,7 +29,7 @@ _js:
     let hash = 0;
     for (const ch of String(type)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
     return {
-      icon: entry.icon ?? 'AiOutlineBell',
+      icon: entry.icon ?? 'bell',
       color: entry.color ?? palette[hash % palette.length],
       title: entry.title ?? null,
     };

@@ -19,7 +19,7 @@ _ref:
       _module.var: label_plural
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _module.var: label_plural
     page_actions:
@@ -33,7 +33,7 @@ _ref:
             _string.concat:
               - "New "
               - _module.var: label
-          icon: AiOutlinePlusCircle
+          icon: add-circle
           type: primary
         events:
           onClick:

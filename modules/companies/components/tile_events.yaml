@@ -2,6 +2,7 @@ _ref:
   module: layout
   component: card
   vars:
+    id: tile_events
     title: History
     blocks:
       - _ref:

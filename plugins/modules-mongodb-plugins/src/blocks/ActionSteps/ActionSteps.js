@@ -64,7 +64,7 @@ const setActionGroupIcon = ({
   const color = statusColor(actionStatusConfig, actionGroupStatus);
   const name =
     actionGroupStatus === "done"
-      ? "AiOutlineCheckCircle"
+      ? "check-circle"
       : actionGroupConfig[item.action_group]?.icon;
   return { name, color };
 };

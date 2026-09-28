@@ -8,7 +8,7 @@ _ref:
     hide_title: true
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _module.var: label_plural
         pageId:
@@ -199,8 +199,8 @@ _ref:
                                 _eq:
                                   - _state: deals_list_collapsed
                                   - true
-                              then: AiOutlineDoubleRight
-                              else: AiOutlineDoubleLeft
+                              then: chevrons-right
+                              else: chevrons-left
                         events:
                           onClick:
                             - id: toggle_deals_list_collapsed
@@ -258,7 +258,7 @@ _ref:
                         - 0
                     properties:
                       icon:
-                        name: AiOutlineContainer
+                        name: Archive
                         color: "#d9d9d9"
                       subTitle: No active deals. Create one to get started.
                   # ListSelector's card template only gets `item`/`index` (no
@@ -550,7 +550,7 @@ _ref:
                                 type: Result
                                 properties:
                                   icon:
-                                    name: AiOutlineRightCircle
+                                    name: CircleChevronRight
                                     color: "#d9d9d9"
                                   subTitle: Select a deal to view its pipeline.
 
@@ -730,7 +730,7 @@ _ref:
                             type: Result
                             properties:
                               icon:
-                                name: AiOutlineRightCircle
+                                name: CircleChevronRight
                                 color: "#d9d9d9"
                               subTitle: Select a deal to view its details.
 

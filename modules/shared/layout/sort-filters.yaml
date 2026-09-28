@@ -83,8 +83,8 @@ blocks:
                 _eq:
                   - _state: sort.order
                   - -1
-              then: AiOutlineSortDescending
-              else: AiOutlineSortAscending
+              then: ArrowDownZA
+              else: ArrowDownAZ
           hideTitle: true
           color: primary
           variant: solid

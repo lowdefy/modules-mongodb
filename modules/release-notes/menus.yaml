@@ -6,4 +6,4 @@ links:
       _module.pageId: view
     properties:
       title: Release Notes
-      icon: AiOutlineFileText
+      icon: document

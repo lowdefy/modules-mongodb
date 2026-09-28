@@ -8,6 +8,7 @@ _ref:
   module: layout
   component: card
   vars:
+    id: tile_profile
     title: Profile
     header_buttons:
       - id: profile_edit_btn
@@ -16,7 +17,7 @@ _ref:
           flex: 0 0 auto
         properties:
           title: Edit
-          icon: AiOutlineEdit
+          icon: edit
           size: small
           variant: outlined
         events:

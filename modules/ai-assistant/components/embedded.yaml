@@ -74,7 +74,7 @@ blocks:
           flex: 0 0 auto
         properties:
           title: New chat
-          icon: AiOutlinePlus
+          icon: add
           type: text
           size: small
         events:
@@ -91,7 +91,7 @@ blocks:
           flex: 0 0 auto
         properties:
           title: Manage chats
-          icon: AiOutlineUnorderedList
+          icon: list
           type: text
           size: small
         events:
@@ -108,7 +108,7 @@ blocks:
           flex: 0 0 auto
         properties:
           title: Back to chat
-          icon: AiOutlineArrowLeft
+          icon: arrow-left
           type: text
           size: small
         events:
@@ -129,7 +129,7 @@ blocks:
           flex: 0 0 auto
         properties:
           title: Delete chat
-          icon: AiOutlineDelete
+          icon: delete
           type: text
           danger: true
           size: small

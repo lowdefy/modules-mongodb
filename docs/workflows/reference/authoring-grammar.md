@@ -386,7 +386,7 @@ pages:
           properties:
             title: Help
             type: link # primary | default | link | danger
-            icon: AiOutlineQuestionCircle
+            icon: help
           visible: <bool | operator> # optional, author-controlled
           events:
             onClick:

@@ -22,6 +22,7 @@ blocks:
       module: layout
       component: card
       vars:
+        id: tile_hierarchy
         title:
           _string.concat:
             - _module.var: label

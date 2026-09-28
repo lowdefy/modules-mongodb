@@ -22,13 +22,13 @@ Used by the `events` module to back its `events-timeline` component. The block d
       create-contact:
         color: "#1890ff"
         title: Contact Created
-        icon: AiOutlineUserAdd
+        icon: UserPlus
         card_color: "#fafcff"
         border_color: "#d6e8ff"
       update-contact:
         color: "#52c41a"
         title: Contact Updated
-        icon: AiOutlineEdit
+        icon: edit
     actionStatusConfig:
       pending:
         color: "#faad14"

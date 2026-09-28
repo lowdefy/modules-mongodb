@@ -102,7 +102,7 @@ slots:
                 type: Button
                 properties:
                   title: New chat
-                  icon: AiOutlinePlus
+                  icon: add
                   type: text
                   size: small
                 events:
@@ -127,7 +127,7 @@ slots:
                 type: Button
                 properties:
                   title: Manage chats
-                  icon: AiOutlineUnorderedList
+                  icon: list
                   type: text
                   size: small
                 events:
@@ -152,7 +152,7 @@ slots:
                 type: Button
                 properties:
                   title: Back to chat
-                  icon: AiOutlineArrowLeft
+                  icon: arrow-left
                   type: text
                   size: small
                 events:
@@ -225,7 +225,7 @@ slots:
                   # control is the one you least want to be a mystery glyph
                   # with no accessible name.
                   title: Delete chat
-                  icon: AiOutlineDelete
+                  icon: delete
                   type: text
                   danger: true
                   size: small
