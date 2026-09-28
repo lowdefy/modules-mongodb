@@ -433,23 +433,34 @@ _ref:
                             - INVALID_TOKEN
                         then: Email me a new link
                         else: Email me a sign-in link
-                    # Secondary under the code entry on the expired-link render,
-                    # primary otherwise.
+                    # Secondary under the code entry on the expired-link render
+                    # (emailOTP on), primary otherwise — without emailOTP it is
+                    # the only action on that render.
                     color:
-                      _if:
+                      _build.if:
                         test:
-                          _eq:
-                            - _url_query: error
-                            - INVALID_TOKEN
-                        then: default
+                          _build.authConfig: emailOTP.enabled
+                        then:
+                          _if:
+                            test:
+                              _eq:
+                                - _url_query: error
+                                - INVALID_TOKEN
+                            then: default
+                            else: primary
                         else: primary
                     variant:
-                      _if:
+                      _build.if:
                         test:
-                          _eq:
-                            - _url_query: error
-                            - INVALID_TOKEN
-                        then: outlined
+                          _build.authConfig: emailOTP.enabled
+                        then:
+                          _if:
+                            test:
+                              _eq:
+                                - _url_query: error
+                                - INVALID_TOKEN
+                            then: outlined
+                            else: solid
                         else: solid
                     on_sent:
                       login_view: link-sent
