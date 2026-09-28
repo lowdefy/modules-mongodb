@@ -25,9 +25,9 @@ Three behaviours worth knowing:
     title: Help
     subtitle: Docs assistant
     avatar:
-      icon: AiOutlineRobot
+      icon: bot
     launcher:
-      icon: AiOutlineQuestionCircle
+      icon: help
       ariaLabel: Open help
     width: 420
     height: 660

@@ -33,7 +33,7 @@ blocks:
         marginTop: 4px
     properties:
       title: Upload file
-      icon: AiOutlinePlus
+      icon: add
       size: small
       block: true
       # type: default

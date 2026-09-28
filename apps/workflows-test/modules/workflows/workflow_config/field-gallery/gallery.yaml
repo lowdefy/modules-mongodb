@@ -177,11 +177,11 @@ form:
       open:
         title: Open
         color: "#1890ff"
-        icon: AiOutlineFolderOpen
+        icon: FolderOpen
       closed:
         title: Closed
         color: "#52c41a"
-        icon: AiOutlineCheck
+        icon: check
   # The multi-select side of the same var: the stored value is an array of slugs,
   # so it exercises the read-only renderer's array path.
   - key: form.enum_backed_checkboxes

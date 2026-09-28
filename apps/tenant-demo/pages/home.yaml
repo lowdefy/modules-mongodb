@@ -7,7 +7,7 @@ _ref:
       _app: name
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
     blocks:
       - id: description
         type: Paragraph
@@ -30,7 +30,7 @@ _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
                 id: deals
-                icon: AiOutlineFundProjectionScreen
+                icon: Presentation
                 title: Deals
                 description: Deal pipeline — capture, progress, and win or lose.
                 note: Demonstrates the Deals module orchestrating Workflows, Companies, Contacts, Files & Activities.
@@ -39,7 +39,7 @@ _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
                 id: companies
-                icon: AiOutlineShop
+                icon: Store
                 title: Companies
                 description: Company records — list, detail, edit, and create.
                 pageId:
@@ -50,7 +50,7 @@ _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
                 id: contacts
-                icon: AiOutlineContacts
+                icon: Contact
                 title: Contacts
                 description: Contact management with a reusable picker.
                 pageId:
@@ -61,7 +61,7 @@ _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
                 id: activities
-                icon: AiOutlineFlag
+                icon: Flag
                 title: Activities
                 description: Calls, meetings, and emails linked to records.
                 pageId:
@@ -84,7 +84,7 @@ _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
                 id: files
-                icon: AiOutlinePaperClip
+                icon: attach
                 title: Files
                 description: Entity attachments — file-card, file-manager, file-list.
                 note: Showcases the files module components, form slot, and download logging.
@@ -93,7 +93,7 @@ _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
                 id: notifications
-                icon: AiOutlineBell
+                icon: bell
                 title: Notifications
                 description: Inbox, bell, and deep-link routing.
                 pageId:
@@ -104,7 +104,7 @@ _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
                 id: release_notes
-                icon: AiOutlineFileText
+                icon: document
                 title: Release Notes
                 description: Changelog rendered from CHANGELOG.md.
                 pageId:

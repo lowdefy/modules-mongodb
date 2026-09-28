@@ -50,7 +50,7 @@ starting_actions:
 action_groups:
   - id: lifecycle
     title: Lifecycle
-    icon: AiOutlineForm
+    icon: SquarePen
 
 actions:
   - _ref: modules/workflows/workflow_config/form-lifecycle/reviewed-form.yaml

@@ -26,8 +26,10 @@ vars:
     default: null
     description: >
       Absolute origin used to compose email link URLs (e.g.
-      https://app.example.com). Required when notification items carry page
-      links — there is no framework fallback.
+      https://app.example.com). Defaults to the url of the current Lowdefy
+      environment (config.environments), so an app that declares its
+      environments leaves it unset. Required otherwise when notification
+      items carry page links.
   public_link_types:
     type: array
     default:
@@ -98,7 +100,8 @@ vars:
         description: >
           SMTP recipient filter ({ replaceAddress, allowlist, regex }) to
           redirect or restrict outgoing mail in non-production environments.
-          Types in filter_exempt_types bypass it.
+          Unset falls back to the current Lowdefy environment's email filter
+          (config.environments). Types in filter_exempt_types bypass both.
   sendgrid:
     description: >
       SendGrid HTTP API transport for notification emails, used when transport
@@ -129,7 +132,8 @@ vars:
         description: >
           SendGridMail recipient filter ({ replaceAddress, allowlist, regex })
           to redirect or restrict outgoing mail in non-production environments.
-          Types in filter_exempt_types bypass it.
+          Unset falls back to the current Lowdefy environment's email filter
+          (config.environments). Types in filter_exempt_types bypass both.
       sandbox:
         type: boolean
         default: false

@@ -6,7 +6,7 @@ _ref:
     title: AI Assistant
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - AI Assistant
     events:
       onInit:

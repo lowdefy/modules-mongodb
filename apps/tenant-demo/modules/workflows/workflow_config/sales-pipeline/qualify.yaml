@@ -157,7 +157,7 @@ pages:
             flex: 0 1 auto
           properties:
             title: Help
-            icon: AiOutlineQuestionCircle
+            icon: help
           events:
             onClick:
               - id: nav_help

@@ -22,7 +22,7 @@ blocks:
       subTitle: Click on a notification to view details.
       title: No Selected Notification
       icon:
-        name: AiOutlineFileExclamation
+        name: FileExclamationPoint
         color: "#d9d9d9"
   - id: selected_item
     type: Box

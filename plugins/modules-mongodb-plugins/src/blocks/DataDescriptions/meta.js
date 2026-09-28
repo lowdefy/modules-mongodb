@@ -1,10 +1,10 @@
 export default {
   category: "display",
   icons: [
-    "AiOutlineEnvironment",
-    "AiOutlineCluster",
-    "AiOutlineUser",
-    "AiOutlinePaperClip",
+    "location",
+    "Waypoints",
+    "user",
+    "attach",
   ],
   slots: {
     extra: "Extra content in the header.",

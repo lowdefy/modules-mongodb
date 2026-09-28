@@ -21,7 +21,7 @@ _ref:
     content_width: 1100
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Reports
         pageId:
           _module.pageId: reports-list

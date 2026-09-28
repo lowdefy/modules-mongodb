@@ -33,10 +33,10 @@ starting_actions:
 action_groups:
   - id: prep
     title: Prep
-    icon: AiOutlineCheckSquare
+    icon: SquareCheck
   - id: launch
     title: Launch
-    icon: AiOutlineRocket
+    icon: Rocket
 
 actions:
   - _ref: modules/workflows/workflow_config/check-blocked-by/first-check.yaml

@@ -40,7 +40,7 @@ modules:
         quote:
           title: Quote
           color: "#fa8c16"
-          icon: AiOutlineFileText
+          icon: document
           default_stage: open
           type: complex
 ```
@@ -65,7 +65,7 @@ activity_types:
   site_visit:
     title: Site Visit
     color: "#fa8c16"
-    icon: AiOutlineEnvironment
+    icon: location
     default_stage: done
     type: complex
     agenda: true
