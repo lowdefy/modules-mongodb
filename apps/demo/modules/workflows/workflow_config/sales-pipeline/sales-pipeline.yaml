@@ -81,7 +81,7 @@ starting_actions:
 action_groups:
   - id: qualification
     title: Qualify
-    icon: AiOutlineUserAdd
+    icon: UserPlus
     # Group `on_complete` — worked example. When the qualification phase reaches
     # `done` (here: the sole `qualify` action completes), the engine fires this
     # routine post-commit and it advances the deal's pipeline status to
@@ -134,16 +134,16 @@ action_groups:
               _payload: context.workflow.entity.id
   - id: quoting
     title: Quote
-    icon: AiOutlineFileText
+    icon: document
   - id: order
     title: Purchase order
-    icon: AiOutlineShoppingCart
+    icon: ShoppingCart
   - id: conversion
     title: Company setup
-    icon: AiOutlineBank
+    icon: Landmark
   - id: closing
     title: Closing
-    icon: AiOutlineFileDone
+    icon: FileCheck
 
 actions:
   - _ref: modules/workflows/workflow_config/sales-pipeline/qualify.yaml

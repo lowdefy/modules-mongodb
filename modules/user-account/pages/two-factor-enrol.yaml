@@ -185,7 +185,7 @@ _ref:
         properties:
           title: Add a passkey
           block: true
-          icon: AiOutlineKey
+          icon: Key
           variant: outlined
         events:
           onClick:
@@ -319,6 +319,9 @@ _ref:
           span: 24
         properties:
           bordered: false
+          # Collapse defaults an unset defaultActiveKey to the first panel's key,
+          # which opens this disclosure; [] keeps it collapsed by default.
+          defaultActiveKey: []
           panels:
             - key: manual
               title: Can't scan? Enter this key instead
@@ -423,7 +426,7 @@ _ref:
         properties:
           title: Copy codes
           block: true
-          icon: AiOutlineCopy
+          icon: copy
           variant: outlined
         events:
           onClick:

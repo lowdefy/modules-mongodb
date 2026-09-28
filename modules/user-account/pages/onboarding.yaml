@@ -97,7 +97,7 @@ _ref:
                       flex: 0 0 auto
                     properties:
                       title: Add passkey
-                      icon: AiOutlineKey
+                      icon: Key
                       variant: outlined
                     events:
                       onClick:
@@ -132,7 +132,7 @@ _ref:
                       flex: 0 0 auto
                     properties:
                       color: green
-                      icon: AiOutlineCheck
+                      icon: check
                       title: Passkey added
             else: []
         # ---- Submit ----

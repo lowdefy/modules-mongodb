@@ -14,7 +14,7 @@ _ref:
     title: Organization
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Organization
     requests:
       - _ref: requests/get_active_organization.yaml

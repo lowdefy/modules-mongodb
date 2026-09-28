@@ -5,7 +5,7 @@
       pageId: home
       properties:
         title: Home
-        icon: AiOutlineHome
+        icon: home
 
 - id: profile
   links:

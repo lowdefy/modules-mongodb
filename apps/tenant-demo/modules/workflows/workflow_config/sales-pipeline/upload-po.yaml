@@ -109,7 +109,7 @@ pages:
             flex: 0 1 auto
           properties:
             title: PO requirements
-            icon: AiOutlineQuestionCircle
+            icon: help
           events:
             onClick:
               - id: show_po_help

@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260908113207
+lowdefy: 0.0.0-experimental-20260928062533
 name: Module Demo App
 slug: demo
 
@@ -35,7 +35,7 @@ plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
   - name: "@lowdefy/connection-ai-gateway"
-    version: 0.0.0-experimental-20260908113207
+    version: 0.0.0-experimental-20260928062533
 
 auth:
   secret:
@@ -148,6 +148,8 @@ auth:
   # write steps are floored separately by the engine against the caller's member
   # row in the organization each step names; reads have no such floor.
   api:
+    protected:
+      - files-demo-upload-policy
     roles:
       user-admin:
         - user-admin/**
@@ -254,6 +256,7 @@ api:
   - _ref: api/reporting-seed-example-report.yaml
   - _ref: api/reporting-seed-ownership.yaml
   - _ref: api/reporting-seed-conversations.yaml
+  - _ref: api/files-demo-upload-policy.yaml
 
 agents:
   # The agent behind the ai-assistant module demo. The module brings the chat

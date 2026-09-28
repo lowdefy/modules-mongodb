@@ -59,10 +59,10 @@ vars:
     default: null
     description: Small line under the title — an identity or status line, not a sentence.
   panel_avatar_icon:
-    default: AiOutlineRobot
+    default: bot
     description: Icon in the round mark left of the title.
   panel_launcher_icon:
-    default: AiOutlineRobot
+    default: bot
     description: Icon on the closed launcher.
   panel_launcher_label:
     default: null
@@ -310,5 +310,5 @@ secrets:
 plugins:
   # FloatingPanel (the launcher + panel block) and the AiText connection
   # (the titling call) both ship here.
-  - name: '@lowdefy/modules-mongodb-plugins'
+  - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.36.0"

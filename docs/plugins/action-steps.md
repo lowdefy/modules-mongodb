@@ -24,11 +24,11 @@ Useful for showing a checklist-style progression where each stage has multiple s
       kickoff:
         order: 1
         title: Kickoff
-        icon: AiOutlineFlag
+        icon: Flag
       review:
         order: 2
         title: Review
-        icon: AiOutlineAudit
+        icon: ClipboardCheck
         link:
           pageId: review-view
           urlQuery:
@@ -36,7 +36,7 @@ Useful for showing a checklist-style progression where each stage has multiple s
       sign-off:
         order: 3
         title: Sign-off
-        icon: AiOutlineCheckSquare
+        icon: SquareCheck
     items:
       - action_group: kickoff
         actions:
@@ -105,7 +105,7 @@ Badge-dot and group-icon colours come from `actionStatusConfig` — the shared `
 | `in-progress`      | `process`   | Badge animates (`processing`); enum colour is a distinct teal. |
 | `in-review`        | `wait`      |                                                                |
 | `changes-required` | `error`     |                                                                |
-| `done`             | `finish`    | Step icon overridden to `AiOutlineCheckCircle`.                |
+| `done`             | `finish`    | Step icon overridden to `check-circle`.                |
 | `error`            | `error`     |                                                                |
 | `not-required`     | `wait`      | Message and group title rendered with `<strike>`.              |
 
@@ -165,4 +165,4 @@ Group-title links (`actionGroupConfig[group].link`) are unaffected; `onActionCli
 
 - **HTML in `message` and `actionGroupConfig.title` is rendered through `renderHtml`** from `@lowdefy/block-utils`. Sanitize upstream if the source isn't trusted.
 - **Ordering** comes from `actionGroupConfig[group].order`. Items without an `order` will sort as `undefined` — set `order` on every configured group.
-- **`done` step icon** is forced to `AiOutlineCheckCircle` regardless of the `actionGroupConfig` icon.
+- **`done` step icon** is forced to `check-circle` regardless of the `actionGroupConfig` icon.

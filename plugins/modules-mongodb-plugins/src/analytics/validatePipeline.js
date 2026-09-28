@@ -96,7 +96,11 @@ const OPAQUE_BSON_TYPES = new Set([
 ]);
 
 function isBsonRegExp(value) {
-  return value !== null && typeof value === "object" && value._bsontype === "BSONRegExp";
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    value._bsontype === "BSONRegExp"
+  );
 }
 
 // The walkers reconstruct every object and array key by key; a value that is
@@ -108,7 +112,10 @@ function isBsonRegExp(value) {
 // occur on that path. Allowlist the leaf types and fail closed on the rest.
 function passOpaqueScalar(value, what) {
   if (value instanceof Date) return value;
-  if (typeof value?._bsontype === "string" && OPAQUE_BSON_TYPES.has(value._bsontype)) {
+  if (
+    typeof value?._bsontype === "string" &&
+    OPAQUE_BSON_TYPES.has(value._bsontype)
+  ) {
     // A genuine BSON leaf carries no operator keys. Checking anyway costs
     // nothing and stops a look-alike class instance from riding through on a
     // forged _bsontype with, say, a $where property alongside it.
@@ -313,7 +320,8 @@ function walkExpression(node, ctx) {
     checkArrayLength(node, "an expression array");
     return node.map((element) => walkExpression(element, inner));
   }
-  if (!isPlainObject(node)) return passOpaqueScalar(node, "an expression value");
+  if (!isPlainObject(node))
+    return passOpaqueScalar(node, "an expression value");
   const keys = Object.keys(node);
   for (const key of keys) checkKey(key);
   if (!keys.some((key) => key.startsWith("$"))) {
@@ -1040,7 +1048,12 @@ function validatePipeline({ collection, pipeline, catalog, roles }) {
 // (a collection absent from the catalog is BROKEN, not withheld); only the
 // role gate is skipped. Roles are irrelevant under collect-only.
 export function touchedCollections({ collection, pipeline, catalog }) {
-  const ctx = buildWalkCtx({ collection, pipeline, catalog, collectOnly: true });
+  const ctx = buildWalkCtx({
+    collection,
+    pipeline,
+    catalog,
+    collectOnly: true,
+  });
   checkCollectionAccess(collection, ctx);
   validateSubPipeline(pipeline, ctx, { appendCap: true });
   return [...ctx.touchedCollections];

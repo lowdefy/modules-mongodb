@@ -19,10 +19,11 @@ Today that join is scoped to exactly one workflow:
       - $match:
           $expr:
             $and:
-              - $eq: [$entity.connection_id, { _module.var: entity_connection_id }]
+              - $eq:
+                  [$entity.connection_id, { _module.var: entity_connection_id }]
               - $eq: [$entity.id, $$deal_id]
-              - $eq: [$workflow_type, { _module.var: workflow_type }]   # ← scoping
-      - $limit: 1                                                       # ← scoping
+              - $eq: [$workflow_type, { _module.var: workflow_type }] # ← scoping
+      - $limit: 1 # ← scoping
       - $project:
           form_data: 1
 - $addFields:
@@ -37,7 +38,7 @@ back **without erroring** — a silent wrong value, not a crash.
 
 The fix is to join all of the deal's workflows and key the result by workflow type. A flat merge
 keyed by action type was considered and rejected: the workflow engine enforces action-type
-uniqueness only *within* a workflow (`modules/workflows/resolvers/makeWorkflowsConfig.js:930` hard-errors
+uniqueness only _within_ a workflow (`modules/workflows/resolvers/makeWorkflowsConfig.js:930` hard-errors
 on a duplicate) and namespaces by workflow type everywhere across them, so cross-workflow reuse is
 legal config that a flat merge would silently truncate.
 
@@ -52,7 +53,7 @@ legal config that a flat merge would silently truncate.
 **1. Restructure the `$lookup` in `modules/deals/requests/get_selected_deal.yaml`.**
 
 - Remove the `$eq: [$workflow_type, …]` clause from the `$match`. Keep both `entity` clauses —
-  matching `entity.connection_id` *and* `entity.id` is what keeps the
+  matching `entity.connection_id` _and_ `entity.id` is what keeps the
   `{entity.connection_id, entity.id}` index in play, as the existing comment above the stage notes.
 - Remove the `$limit: 1`.
 - Add `workflow_type: 1` to the `$project` alongside `form_data: 1`.
@@ -79,7 +80,7 @@ Keep the `$unset: workflow` that follows.
 joined and keyed by workflow type, and that the `entity` match is retained for the index.
 
 **4. Leave the `workflow_type` module var alone.** It is still used by other surfaces (the outcome
-modal's `get-entity-workflows` payloads, other requests). This task removes only *this* request's
+modal's `get-entity-workflows` payloads, other requests). This task removes only _this_ request's
 dependence on it.
 
 **5. Document the shape in `docs/deals/index.md`.** That file is hand-maintained (no GENERATED

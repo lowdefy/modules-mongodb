@@ -292,8 +292,8 @@ Use the `SetDarkMode` action with `_media: darkMode`:
       _if:
         test:
           _media: darkMode
-        then: AiOutlineSun
-        else: AiOutlineMoon
+        then: Sun
+        else: Moon
   events:
     onClick:
       - id: toggle

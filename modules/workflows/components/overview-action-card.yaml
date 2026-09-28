@@ -93,8 +93,8 @@ slots:
                         prefix:
                           _var: prefix
                   default: false
-              then: AiOutlineUp
-              else: AiOutlineDown
+              then: chevron-up
+              else: chevron-down
         events:
           onClick:
             - id:
@@ -228,7 +228,7 @@ slots:
                     - .link.title
               - Open
           type: link
-          icon: AiOutlineArrowRight
+          icon: arrow-right
         events:
           onClick:
             - id:

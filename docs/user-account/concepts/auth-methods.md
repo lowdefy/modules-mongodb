@@ -56,11 +56,11 @@ lives in the `providers` var, keyed by provider id:
 providers:
   - id: google
     label: Google
-    icon: AiOutlineGoogle
+    icon: Search
     order: 1
   - id: github
     label: GitHub
-    icon: AiOutlineGithub
+    icon: GitBranch
     order: 2
 ```
 

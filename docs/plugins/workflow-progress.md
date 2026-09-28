@@ -49,7 +49,7 @@ A presentation variant of [ActionSteps](action-steps.md) — same data contract 
       id: "kickoff",
       order: 1,
       title: "Kickoff",         // omit for an unlabelled section
-      icon: "AiOutlineFlag",    // optional, left of the section title
+      icon: "Flag",    // optional, left of the section title
       actions: [
         {
           _id: "...",

@@ -21,8 +21,9 @@
 //     the console page gate (`auth.pages.roles.user-admin: [user-admin/**]`) and
 //     UpdateMemberRoles read. The role granted here goes here.
 //   - `role` — BetterAuth's org-authority tier (owner | admin | member), a
-//     separate axis (see Phase 5 / org-authority). Bootstrapped to `member`, the
-//     no-authority default; app-role access does not need an org tier above it.
+//     separate axis (see Phase 5 / org-authority). Bootstrapped to `owner` so the
+//     first admin can run org-authority actions (e.g. set_org_role, which requires
+//     `member: [update]`) — the bootstrap user is the org's founding owner.
 //
 // Usage (from scripts/auth-testing/):
 //   node bootstrap-admin.mjs <email> [appRole]
@@ -77,16 +78,20 @@ try {
 
   if (existing) {
     const current = Array.isArray(existing.app_roles) ? existing.app_roles.filter(Boolean) : [];
-    if (current.includes(appRole)) {
+    const set = {};
+    if (!current.includes(appRole)) set.app_roles = [...current, appRole];
+    if (existing.role !== 'owner') set.role = 'owner'; // upgrade a member-tier bootstrap row to founding owner
+
+    if (Object.keys(set).length === 0) {
       console.log(
-        `\n✓ ${email} already holds app role "${appRole}" in org "${orgSlug}" — nothing to do.\n`,
+        `\n✓ ${email} already holds app role "${appRole}" and org owner authority in org "${orgSlug}" — nothing to do.\n`,
       );
     } else {
-      const merged = [...current, appRole];
-      await members.updateOne({ _id: existing._id }, { $set: { app_roles: merged } });
+      await members.updateOne({ _id: existing._id }, { $set: set });
       console.log(
-        `\n✓ Added app role "${appRole}" to ${email} in org "${orgSlug}".\n` +
-          `  app_roles now: ${merged.join(', ')}\n`,
+        `\n✓ Updated ${email} in org "${orgSlug}".\n` +
+          `  app_roles: ${(set.app_roles || current).join(', ')}\n` +
+          `  role: ${set.role || existing.role}\n`,
       );
     }
   } else {
@@ -95,7 +100,7 @@ try {
       user_id: user._id, // matches users._id
       organization_id: org._id, // matches user-organizations._id (_organization:id)
       app_roles: [appRole], // array of app catalog roles — what the page gate reads
-      role: 'member', // org-authority tier (owner|admin|member); no-authority default
+      role: 'owner', // org-authority tier (owner|admin|member); founding owner can run org-authority actions
       created_at: new Date(), // read as `signed_up` on the members list
     };
     await members.insertOne(memberDoc);

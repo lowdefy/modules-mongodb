@@ -4,7 +4,7 @@
 - id: ai_capture_delete_target
   type: SetState
   params:
-    ai_delete_target: 
+    ai_delete_target:
       _state: ai_conversation_id
 
 - id: ai_delete_thread

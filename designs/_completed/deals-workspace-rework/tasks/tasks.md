@@ -28,16 +28,16 @@ From the repo (`CLAUDE.md`):
 
 ## Tasks
 
-| #   | File                                       | Summary                                                                    | Depends On |
-| --- | ------------------------------------------ | -------------------------------------------------------------------------- | ---------- |
-| 1   | `01-form-data-by-workflow-type.md`         | Key `get_selected_deal`'s workflow form data by workflow type (breaking)     | —          |
-| 2   | `02-related-deals-single-row.md`           | Bound the related-deals strip; lookup limit 20 → 10 (as built: paginated)    | 1          |
+| #   | File                                       | Summary                                                                     | Depends On |
+| --- | ------------------------------------------ | --------------------------------------------------------------------------- | ---------- |
+| 1   | `01-form-data-by-workflow-type.md`         | Key `get_selected_deal`'s workflow form data by workflow type (breaking)    | —          |
+| 2   | `02-related-deals-single-row.md`           | Bound the related-deals strip; lookup limit 20 → 10 (as built: paginated)   | 1          |
 | 3   | `03-info-grid-slot-position.md`            | Move `info_grid_slots` injection above People/Files; update var description | —          |
 | 4   | `04-open-items-stacked.md`                 | Combine the Actions and Tasks sections (as built: merged into one list)     | —          |
 | 5   | `05-workspace-columns-and-card-numbers.md` | Pipeline/detail columns to 12/12; card volume to 2dp                        | —          |
-| 6   | `06-left-panel-button-and-collapse.md`     | New-deal button in the list card header; collapsible left panel            | 5          |
-| 7   | `07-capture-activity-docblock.md`          | Correct `capture_activity`'s stale `prefill` docblock in `activities`        | —          |
-| 8   | `08-changeset-and-verify.md`               | Changeset with the breaking-config note; build check; human verify list      | 1–7       |
+| 6   | `06-left-panel-button-and-collapse.md`     | New-deal button in the list card header; collapsible left panel             | 5          |
+| 7   | `07-capture-activity-docblock.md`          | Correct `capture_activity`'s stale `prefill` docblock in `activities`       | —          |
+| 8   | `08-changeset-and-verify.md`               | Changeset with the breaking-config note; build check; human verify list     | 1–7        |
 
 > **Work landed after decomposition, outside this task set.** Tasks 2 and 4 were both
 > superseded by the actions/tasks merge and the pagination that bounds both lists — see

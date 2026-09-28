@@ -1826,7 +1826,7 @@ describe("owner-only affordances", () => {
   // gets. It sends the DESIRED state, which the compiler already knows.
   test("the ★ is compiled for every viewer and sends the opposite of the current state", () => {
     const unstarred = compile({ is_owner: false, is_favourite: false });
-    expect(unstarred.report_favourite.properties.icon).toBe("AiOutlineStar");
+    expect(unstarred.report_favourite.properties.icon).toBe("star");
     const [call, reload] = unstarred.report_favourite.events.onClick;
     expect(call.type).toBe("CallAPI");
     expect(call.params.endpointId).toBe("ai-reporting/set-report-favourite");
@@ -1837,7 +1837,7 @@ describe("owner-only affordances", () => {
     expect(reload.params.pageId).toBe("ai-reporting/report");
 
     const starred = compile({ is_owner: true, is_favourite: true });
-    expect(starred.report_favourite.properties.icon).toBe("AiFillStar");
+    expect(starred.report_favourite.properties.icon).toBe("star");
     expect(
       starred.report_favourite.events.onClick[0].params.payload.favourite,
     ).toBe(false);
@@ -1878,7 +1878,7 @@ describe("owner-only affordances", () => {
         const [trigger] = byId.report_menu.blocks;
         expect(trigger.type).toBe("Button");
         expect(trigger.properties.hideTitle).toBe(true);
-        expect(trigger.properties.icon).toBe("AiOutlineEllipsis");
+        expect(trigger.properties.icon).toBe("more");
       }
     });
 

@@ -107,7 +107,7 @@ blocks:
             - null
         properties:
           title: Change colour
-          icon: AiOutlineReload
+          icon: refresh
           size: small
           shape: round
           variant: outlined

@@ -53,7 +53,7 @@ starting_actions:
 action_groups:
   - id: onboarding
     title: Onboarding
-    icon: AiOutlineRocket
+    icon: Rocket
 
 actions:
   - _ref: modules/workflows/workflow_config/onboarding/kickoff.yaml

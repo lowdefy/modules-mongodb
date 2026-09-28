@@ -266,7 +266,7 @@ function sectionDownload(section, endpointId) {
     properties: {
       title: "Export CSV",
       hideTitle: true,
-      icon: "AiOutlineDownload",
+      icon: "download",
       type: "link",
       size: "small",
     },
@@ -694,7 +694,7 @@ function brokenSectionBlocks(
       layout: { span: 24 },
       properties: {
         title: "Fix in chat",
-        icon: "AiOutlineMessage",
+        icon: "message",
         type: "link",
         size: "small",
       },
@@ -729,7 +729,7 @@ function brokenSectionBlocks(
     layout: { span: 24 },
     properties: {
       title: "Drop this section",
-      icon: "AiOutlineDelete",
+      icon: "delete",
       type: "link",
       danger: true,
       size: "small",
@@ -1017,7 +1017,7 @@ function compileReport({
       style: RIGHT_IN_CELL,
       properties: {
         title: "Continue in chat",
-        icon: "AiOutlineMessage",
+        icon: "message",
         type: "link",
         size: "small",
       },
@@ -1049,7 +1049,7 @@ function compileReport({
     properties: {
       title: is_favourite ? "Remove from favourites" : "Add to favourites",
       hideTitle: true,
-      icon: is_favourite ? "AiFillStar" : "AiOutlineStar",
+      icon: is_favourite ? "star" : "star",
       type: "text",
       size: "small",
     },
@@ -1120,7 +1120,7 @@ function compileReport({
   // would navigate. The list's menu cell has one.
   if (is_owner) {
     menuItems.push({
-      link: menuLink("rename", "Rename", "AiOutlineEdit"),
+      link: menuLink("rename", "Rename", "edit"),
       // Seeded FROM selected_report (which rename_modal writes back to on save), not
       // from the literals in the seed below, so a title saved without a reload
       // survives. Mirrors actions/report_rename_open.yaml.
@@ -1155,7 +1155,7 @@ function compileReport({
   // patched.
   if (canPublish) {
     menuItems.push({
-      link: menuLink("publish", "Publish to the app", "AiOutlineGlobal"),
+      link: menuLink("publish", "Publish to the app", "globe"),
       actions: visibilityActions(
         "publish",
         "shared",
@@ -1166,7 +1166,7 @@ function compileReport({
   }
   if (canUnpublish) {
     menuItems.push({
-      link: menuLink("unpublish", "Unpublish", "AiOutlineEyeInvisible"),
+      link: menuLink("unpublish", "Unpublish", "hide"),
       actions: visibilityActions(
         "unpublish",
         "private",
@@ -1176,7 +1176,7 @@ function compileReport({
     });
   }
   menuItems.push({
-    link: menuLink("duplicate", "Duplicate", "AiOutlineCopy"),
+    link: menuLink("duplicate", "Duplicate", "copy"),
     // The copy opens in a NEW TAB rather than replacing this page: it is a different
     // report, so refreshing here would leave the reader on the original with nothing
     // to show a copy was made.
@@ -1214,7 +1214,7 @@ function compileReport({
   });
   if (is_owner) {
     menuItems.push({
-      link: menuLink("delete", "Delete", "AiOutlineDelete", { danger: true }),
+      link: menuLink("delete", "Delete", "delete", { danger: true }),
       // Hands off to the confirm modal, which owns the write and its own follow-up
       // (this page cannot stay on a report that no longer resolves), so nothing runs
       // after the open. Mirrors actions/report_delete_open.yaml.
@@ -1252,7 +1252,7 @@ function compileReport({
         properties: {
           title: "Report actions",
           hideTitle: true,
-          icon: "AiOutlineEllipsis",
+          icon: "more",
           type: "text",
           size: "small",
         },
@@ -1517,7 +1517,7 @@ function compileReport({
         id: section.id,
         type: "Button",
         layout: { span: 6 },
-        properties: { title: section.label, icon: "AiOutlineDownload" },
+        properties: { title: section.label, icon: "download" },
         events: {
           onClick: [
             {

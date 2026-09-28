@@ -15,10 +15,10 @@ The deal workspace's detail panel contains an "info grid" of half-width tiles, a
 ```yaml
 blocks:
   _build.array.concat:
-    - - _ref: components/detail/section_fields.yaml   # Details — full width, self-hiding
+    - - _ref: components/detail/section_fields.yaml # Details — full width, self-hiding
     - - _ref: components/detail/section_people.yaml
       - _ref: components/detail/section_files.yaml
-    - _module.var: components.info_grid_slots          # ← host tiles, appended LAST
+    - _module.var: components.info_grid_slots # ← host tiles, appended LAST
 ```
 
 Host apps inject their own tiles through the `info_grid_slots` var, which currently **appends** them
@@ -39,7 +39,7 @@ between the Details entry and the People/Files group:
 blocks:
   _build.array.concat:
     - - _ref: components/detail/section_fields.yaml
-    - _module.var: components.info_grid_slots          # ← moved up
+    - _module.var: components.info_grid_slots # ← moved up
     - - _ref: components/detail/section_people.yaml
       - _ref: components/detail/section_files.yaml
 ```
@@ -86,7 +86,7 @@ effect on it, and it needs no new consumer for this — no capability is being a
 - **This task is the one that could be invalidated.** The design carries a blocking open question:
   whether the issue author accepts the resulting tile pairing. Tiles are span-12, two per row, so the
   rows depend on how many tiles the host injects — with two injected tiles the host's pair sits on the
-  top row and People/Files below, which is *not* the pre-cutover arrangement (that had one host tile
+  top row and People/Files below, which is _not_ the pre-cutover arrangement (that had one host tile
   paired with People). If the author rejects it, this task is replaced by one of the rejected
   alternatives and becomes materially larger. Confirm before starting if that answer hasn't landed.
 - Host config is untouched by this change: a host already listing its tiles in its preferred order

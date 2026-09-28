@@ -36,6 +36,9 @@ properties:
         _array.includes:
           - _module.var: filter_exempt_types
           - _payload: notification_id
-      then: null
+      # false, not null: an unset (null) filter falls back to the current
+      # environment's email filter (Lowdefy config.environments), while false
+      # turns filtering off, the environment's too.
+      then: false
       else:
         _module.var: email.filter

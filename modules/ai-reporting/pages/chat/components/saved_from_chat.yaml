@@ -125,7 +125,7 @@ blocks:
               selfAlign: middle
             properties:
               title: Open
-              icon: AiOutlineFileText
+              icon: document
               type: default
               size: small
             events:

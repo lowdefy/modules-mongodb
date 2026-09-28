@@ -1,5 +1,5 @@
 ---
-'@lowdefy/modules-mongodb-notifications': minor
+"@lowdefy/modules-mongodb-notifications": minor
 ---
 
 Auth-flow emails now reach their actual recipients even when a recipient filter redirects everything else.

@@ -22,7 +22,7 @@ blocks:
         - 0
     properties:
       icon:
-        name: AiOutlineInbox
+        name: Inbox
         color: var(--ant-color-text-quaternary)
       subTitle: No matching notifications. Change the filter to view more.
   - id: list

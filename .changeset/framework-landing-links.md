@@ -1,5 +1,5 @@
 ---
-'@lowdefy/modules-mongodb-notifications': minor
+"@lowdefy/modules-mongodb-notifications": minor
 ---
 
 The notifications module now owns the full notification dispatch pipeline. Lowdefy's framework (≥ 5.4) renders notification emails from the app's `notifications:` config section via the `RenderNotification` step; this module composes everything around the render.
@@ -17,4 +17,3 @@ The notifications module now owns the full notification dispatch pipeline. Lowde
 **Required index.** Dedup depends on an app-managed unique partial index on `key` (`notification_key_unique`, partial on `key: { $type: 'string' }`) — documented in the module docs; the guarantee does not exist without it.
 
 **Unified record convention.** Pipeline records write `type` (the notification config id), `preview`, and rendered `subject`/`body`/`text`; the inbox, badges, filters, and link page coalesce legacy Lambda-era fields on read (`description ?? preview`, `event_type ?? type`, top-level `links.button` fallback). The link page resolves framework landing links (`?_id=<record>&option=<dataPath>`) from the record's `data` at the `option` dot-path — records store the original `{ pageId, urlQuery }` link objects.
-

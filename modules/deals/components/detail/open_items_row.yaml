@@ -123,9 +123,9 @@ blocks:
             height: 100%
             border:
               _string.concat:
-                - '1px '
+                - "1px "
                 - _state: open_items.$.border_style
-                - ' '
+                - " "
                 - _state: open_items.$.border
             borderLeft:
               _state: open_items.$.border_left
@@ -189,7 +189,7 @@ blocks:
                     body:
                       _if_none:
                         - _state: open_items.$.body
-                        - ''
+                        - ""
           - id: open_items.$.due
             type: Html
             visible:
@@ -203,5 +203,5 @@ blocks:
                   - _dayjs.format:
                       on:
                         _state: open_items.$.due_date
-                      format: 'D MMM YYYY'
-                  - '</div>'
+                      format: "D MMM YYYY"
+                  - "</div>"

@@ -35,7 +35,7 @@ starting_actions:
 action_groups:
   - id: gated
     title: Gated
-    icon: AiOutlineLock
+    icon: lock
 
 actions:
   - _ref: modules/workflows/workflow_config/access-verbs/everyone-edits.yaml

@@ -9,12 +9,12 @@ export default {
   category: "input-container",
   valueType: "array",
   icons: [
-    "AiFillCloseCircle",
-    "AiFillCheckCircle",
-    "AiOutlineLoading",
-    "AiFillExclamationCircle",
-    "AiOutlineDelete",
-    "AiOutlineEdit",
+    "close-circle",
+    "check-circle",
+    "loading",
+    "CircleAlert",
+    "delete",
+    "edit",
   ],
   slots: {
     content: "The form shown inside the add/edit contact modal.",

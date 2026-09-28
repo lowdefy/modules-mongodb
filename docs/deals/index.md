@@ -62,7 +62,7 @@ Values captured in workflow action forms live on the workflow documents, not on 
 workflows.{workflow_type}.{action_type}.{field}
 ```
 
-Each of the deal's workflow types appears under its own key, so a deal running two chained workflows exposes both. The key is the workflow *type*, not the instance — if a deal ever carries two workflows of the same type, only one of them is exposed here. Host `request_stages.get_selected_deal` stages and host-injected tiles (e.g. via `info_grid_slots`) read through this shape — for example `workflows.sales-pipeline.volumes.annual_volume_ton`.
+Each of the deal's workflow types appears under its own key, so a deal running two chained workflows exposes both. The key is the workflow _type_, not the instance — if a deal ever carries two workflows of the same type, only one of them is exposed here. Host `request_stages.get_selected_deal` stages and host-injected tiles (e.g. via `info_grid_slots`) read through this shape — for example `workflows.sales-pipeline.volumes.annual_volume_ton`.
 
 An instanced action keys its own form data by instance, so those reads carry a fourth segment: `workflows.{workflow_type}.{action_type}.{key}.{field}`.
 
@@ -76,17 +76,17 @@ Each entry is a workflow carrying `workflow_type`, `title` and `groups[].actions
 
 `create-deal` persists whatever the host's `fields` blocks bind under `attributes.*`, so a host that only needs to **store** something needs nothing more. A host that needs creation to also **do** something — write to another collection, back-fill a field on the linked company — supplies routine steps through the `hooks` var.
 
-| Slot | In scope | On failure |
-| --- | --- | --- |
-| `pre_insert` | the create payload: `_payload: form.*` and `_payload: attributes.*` | no deal is written |
-| `post_insert` | the above, plus `_step: deals_insert_deal.insertedId` | the deal exists with no workflow |
+| Slot          | In scope                                                            | On failure                       |
+| ------------- | ------------------------------------------------------------------- | -------------------------------- |
+| `pre_insert`  | the create payload: `_payload: form.*` and `_payload: attributes.*` | no deal is written               |
+| `post_insert` | the above, plus `_step: deals_insert_deal.insertedId`               | the deal exists with no workflow |
 
 Pick the slot by what the steps need to **do**, not by what they need to see:
 
 - **`pre_insert` is for validation.** It is the only point at which a create can still be stopped — a `:reject: <message>` there surfaces the message on the page and no deal is written.
 - **`post_insert` is for side effects**, including ones that don't need the deal id. There is no transaction around the routine, so a write made from `pre_insert` stays behind if the insert then fails — leaving, say, a company stamped from a deal that never existed. From `post_insert` the deal is already committed, so nothing can strand the write.
 
-"The create aborts" means no *deal* was written. It does not mean the hook's own writes are undone; nothing here rolls back. Past the insert that is doubly true, so keep `post_insert` steps idempotent.
+"The create aborts" means no _deal_ was written. It does not mean the hook's own writes are undone; nothing here rolls back. Past the insert that is doubly true, so keep `post_insert` steps idempotent.
 
 `post_insert` runs **before** the workflow starts, not after. That ordering is deliberate: a failing hook then leaves a deal with no workflow, which a host can detect and repair, rather than a workflow pointing at a deal that was never created, which it cannot. Steps run server-side in the same request as the insert — these are routine steps, not a client action list like the activities module's `hooks.on_created`.
 

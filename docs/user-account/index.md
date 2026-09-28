@@ -67,7 +67,13 @@ operator console). Both run against the same `contact` / `user` / `member` /
   [Auth methods](concepts/auth-methods.md#the-link-lands-on-a-page-not-the-verify-endpoint).
 - **Accept invitation** (`accept` page) — public, takes `?invitationId=…`, serves
   the `authPages.acceptInvitation` role so the invitation email's accept link
-  targets it. Ensures a session, then fires one `AcceptInvitation` client action.
+  targets it. Ensures a session, then fires one `AcceptInvitation` client action
+  and logs the join through the `log-member-joined` endpoint: one
+  `org-member-joined` event per accepted invitation, saved in the invitation's
+  organization (not the caller's active one), naming the person joining and who
+  invited them. A retry that finds the invitation already accepted, and a reload
+  that shows "already a member", log it too, and the event is still saved once.
+  A failed log never stops the person entering the app.
   Its sign-in / create-account buttons carry the invited address on to the
   `login` / `signup` page as `?email=…`, where the email field is **prefilled and
   locked** — the invitation is only accepted for a session on that address, so
@@ -191,7 +197,7 @@ modules:
       providers: # display metadata layered over _build.authConfig.providers
         - id: google
           label: Google
-          icon: AiOutlineGoogle
+          icon: Search
 ```
 
 There is **no `app_name` var** (per-app scoping by the old `apps.{app}` map is

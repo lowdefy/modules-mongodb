@@ -6,11 +6,11 @@ links:
       _module.pageId: members
     properties:
       title: Members
-      icon: AiOutlineTeam
+      icon: users
   - id: organization-settings
     type: MenuLink
     pageId:
       _module.pageId: settings
     properties:
       title: Organization
-      icon: AiOutlineBank
+      icon: Landmark

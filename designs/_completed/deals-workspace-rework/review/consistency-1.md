@@ -4,7 +4,7 @@
 
 Checked the design, both finding reviews and all nine task files against what shipped. Found **nine** inconsistencies, all stemming from work decided and built after decomposition — the actions/tasks merge, pagination on both lists, and the collapse fixes. Eight auto-resolved from `design.md`; one is a question for the user (below), because it concerns whether to annotate superseded review resolutions.
 
-**The usual source-of-truth hierarchy is inverted here.** Four review resolutions have been superseded by decisions taken *after* both review passes and already shipped. `design.md` is therefore the later word, not the reviews, and it was used as the authority throughout.
+**The usual source-of-truth hierarchy is inverted here.** Four review resolutions have been superseded by decisions taken _after_ both review passes and already shipped. `design.md` is therefore the later word, not the reviews, and it was used as the authority throughout.
 
 ## Files Reviewed
 
@@ -43,7 +43,7 @@ No `mockups/` folder exists.
 **Type:** Design-vs-Task (constraint breach)
 **Source of truth:** `design.md` — the `render` var decision
 **Files affected:** `tasks/tasks.md`
-**Resolution:** Struck through and annotated rather than deleted. `activities/open-tasks` gained `render` and `on_loaded`, both defaulted. Recorded that the constraint still holds for `deals` — no var added or renamed there — and why the alternative was worse: deals duplicating an aggregation over a doc shape activities owns *and writes*, including agenda-topic tasks. This is the most significant finding in the pass, because a Global Constraint is what `/r2:orchestrate`'s reviewers check against.
+**Resolution:** Struck through and annotated rather than deleted. `activities/open-tasks` gained `render` and `on_loaded`, both defaulted. Recorded that the constraint still holds for `deals` — no var added or renamed there — and why the alternative was worse: deals duplicating an aggregation over a doc shape activities owns _and writes_, including agenda-topic tasks. This is the most significant finding in the pass, because a Global Constraint is what `/r2:orchestrate`'s reviewers check against.
 
 ### 5. `tasks.md` Global Constraint fixes the card width at 180px
 

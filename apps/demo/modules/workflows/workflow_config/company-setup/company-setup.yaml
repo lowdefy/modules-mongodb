@@ -70,7 +70,7 @@ starting_actions:
 action_groups:
   # title omitted — derives to "Setup" via humanizeSlug (docs/workflows/reference/authoring-grammar.md#titles).
   - id: setup
-    icon: AiOutlineSetting
+    icon: settings
 
 actions:
   - _ref: modules/workflows/workflow_config/company-setup/billing-details.yaml

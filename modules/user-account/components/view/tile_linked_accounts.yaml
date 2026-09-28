@@ -6,6 +6,7 @@ _ref:
   module: layout
   component: card
   vars:
+    id: tile_linked_accounts
     title: Linked accounts
     blocks:
       - id: linked_accounts_body

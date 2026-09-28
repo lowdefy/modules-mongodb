@@ -8,6 +8,7 @@ _ref:
   module: layout
   component: card
   vars:
+    id: tile_sessions
     title: Active sessions
     header_buttons:
       - id: sessions_sign_out_others_btn

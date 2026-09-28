@@ -35,7 +35,7 @@ _ref:
     description: Add someone to this app. We'll check for existing access first.
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _build.string.trim:
             _build.string.concat:
@@ -85,7 +85,7 @@ _ref:
                 - checking
             properties:
               type: info
-              icon: AiOutlineLoading
+              icon: loading
               message: Checking access…
               description:
                 _nunjucks:
@@ -106,7 +106,7 @@ _ref:
                 - member
             properties:
               type: success
-              icon: AiOutlineCheckCircle
+              icon: check-circle
               message: Already a member
               description:
                 _nunjucks:
@@ -125,7 +125,7 @@ _ref:
                       flex: 0 0 auto
                     properties:
                       title: View user
-                      icon: AiOutlineUser
+                      icon: user
                       color: primary
                       variant: solid
                       size: small
@@ -149,7 +149,7 @@ _ref:
                 - pending
             properties:
               type: warning
-              icon: AiOutlineMail
+              icon: mail
               message: Invitation pending
               description:
                 _nunjucks:
@@ -171,7 +171,7 @@ _ref:
                           flex: 0 0 auto
                         properties:
                           title: Resend
-                          icon: AiOutlineSend
+                          icon: send
                           variant: outlined
                           size: small
                         events:
@@ -206,7 +206,7 @@ _ref:
                           flex: 0 0 auto
                         properties:
                           title: Cancel invitation
-                          icon: AiOutlineClose
+                          icon: close
                           color: danger
                           variant: outlined
                           size: small
