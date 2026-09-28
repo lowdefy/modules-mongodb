@@ -250,8 +250,8 @@ slots:
   # Both are sized to fill the panel body exactly: --fp-body-height is a
   # measured pixel value published by the FloatingPanel block, and it inherits
   # through Lowdefy's lf-col / lf-row wrappers, where a percentage would break.
-  # Nothing to subtract: the buttons and the title are both fixed chrome, so
-  # the chat IS the body.
+  # The buttons and the title are fixed chrome, so the chat is the body less the
+  # composer note's fixed height when there is one.
   content:
     blocks:
       - _ref:
@@ -267,7 +267,20 @@ slots:
       - _ref:
           path: components/chat.yaml
           vars:
-            height: var(--fp-body-height, 520px)
+            height:
+              _if:
+                test:
+                  _eq:
+                    - _module.var: composer_note
+                    - null
+                then: var(--fp-body-height, 520px)
+                else: calc(var(--fp-body-height, 520px) - 56px)
+
+      - _ref:
+          path: components/composer_note.yaml
+          vars:
+            id: ai_panel_composer_note
+            height: 56px
 
       # A ConfirmModal renders into a portal, so the panel's overflow does not clip it — only
       # its z-index matters, and the component sets that.

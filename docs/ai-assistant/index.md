@@ -153,6 +153,10 @@ Two vars sharpen the generated names: `title_context` (one line of grounding, e.
 
 `tag` is a display **label**, accumulated as a set and shown as chips on the thread cards. It is stored as the string, not an id — the module cannot resolve app ids, and a thread list is a historical record of what was discussed. The trade-off is that renaming the underlying record does not retitle old chips.
 
+## Composer note
+
+`composer_note` puts a short fixed note of small secondary text under the composer, in both the docked panel and the embedded shell, e.g. a reminder not to share personal information. It shows whenever the conversation does and is never added to it, so the transcript stays clean. Inside the panel the chat gives up a fixed 56px to it, so a note longer than about three lines at the panel's width is clipped. Keep it to a sentence or two.
+
 ## App behaviour on the chat
 
 The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` and will not hand that over. A thread is persisted twice: once when the message is sent, and again when the reply completes. The first save is what makes a thread survive a client that leaves mid-stream — without it the thread was never created, and the question went with it. Everything else an app might want to do around a message is a var, each a list of actions run on the corresponding chat-block event:
