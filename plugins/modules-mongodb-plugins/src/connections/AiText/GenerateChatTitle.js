@@ -55,6 +55,15 @@ Examples:
   Q: "What's outstanding here?" / A: "The onboarding checklist is at 60%, with the contract and ID copy still missing..."
   -> Outstanding onboarding items`;
 
+// The exchange can carry personal data, and a gateway model can have providers
+// that retain it, so an app under a DPA restricts routing to ones that don't.
+export const buildProviderOptions = (request) => ({
+  openai: { reasoningEffort: request.reasoningEffort || DEFAULT_EFFORT },
+  ...(request.zeroDataRetention === true && {
+    gateway: { zeroDataRetention: true },
+  }),
+});
+
 async function GenerateChatTitle({ connection, request }) {
   if (!connection?.apiKey) {
     // Same contract as every other failure — the caller keeps its provisional
@@ -74,9 +83,7 @@ async function GenerateChatTitle({ connection, request }) {
       model: createGateway({ apiKey: connection.apiKey })(
         request.model || DEFAULT_MODEL,
       ),
-      providerOptions: {
-        openai: { reasoningEffort: request.reasoningEffort || DEFAULT_EFFORT },
-      },
+      providerOptions: buildProviderOptions(request),
       prompt: `${context}User's opening question:\n${prompt}\n\nAssistant's reply:\n${reply}\n\n${buildInstructions(
         request.domain,
       )}`,
@@ -111,6 +118,11 @@ GenerateChatTitle.schema = {
       description: "Gateway model id. Small and fast is the right choice.",
     },
     reasoningEffort: { type: ["string", "null"] },
+    zeroDataRetention: {
+      type: ["boolean", "null"],
+      description:
+        "Route only to gateway providers with a zero data retention policy.",
+    },
   },
 };
 GenerateChatTitle.meta = { checkRead: false, checkWrite: false };

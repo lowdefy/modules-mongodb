@@ -42,6 +42,8 @@ routine:
       # Low: this runs once per thread on a cosmetic path, where latency matters
       # more than depth.
       reasoningEffort: low
+      zeroDataRetention:
+        _module.var: title_zero_data_retention
       domain:
         _module.var: title_domain
       prompt:

@@ -89,14 +89,15 @@ Names a chat thread from its **first exchange** — the opening question and the
 
 Best-effort by design: every failure returns `{ title: null }` so the caller keeps whatever provisional title it already shows — a cosmetic call must never be the reason a thread has no name.
 
-| Property          | Type   | Default             | Description                                                                  |
-| ----------------- | ------ | ------------------- | ---------------------------------------------------------------------------- |
-| `prompt`          | string | —                   | The user's first message. Required.                                          |
-| `reply`           | string | —                   | The assistant's first reply. Required.                                       |
-| `context`         | string | —                   | One-line hint, e.g. the record in view.                                      |
-| `domain`          | string | —                   | Description of the app, to ground the title vocabulary.                      |
-| `model`           | string | `openai/gpt-5-mini` | Gateway model id. Small and fast is the right choice.                        |
-| `reasoningEffort` | string | `low`               | Passed to the model provider; this runs on a cosmetic path, latency matters. |
+| Property            | Type    | Default             | Description                                                                  |
+| ------------------- | ------- | ------------------- | ---------------------------------------------------------------------------- |
+| `prompt`            | string  | —                   | The user's first message. Required.                                          |
+| `reply`             | string  | —                   | The assistant's first reply. Required.                                       |
+| `context`           | string  | —                   | One-line hint, e.g. the record in view.                                      |
+| `domain`            | string  | —                   | Description of the app, to ground the title vocabulary.                      |
+| `model`             | string  | `openai/gpt-5-mini` | Gateway model id. Small and fast is the right choice.                        |
+| `reasoningEffort`   | string  | `low`               | Passed to the model provider; this runs on a cosmetic path, latency matters. |
+| `zeroDataRetention` | boolean | —                   | Route only to gateway providers with a zero data retention policy.           |
 
 ### `SummarizeReportData` request
 
