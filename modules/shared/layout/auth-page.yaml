@@ -78,11 +78,15 @@ blocks:
                 style:
                   .element:
                     _module.var: auth_page.card_style
+                  # antd's Card `bodyPadding` theme token is a number of px, so the
+                  # block schema rejects a CSS shorthand there. The asymmetric
+                  # padding is set on the body's own style instead.
+                  .body:
+                    padding: 28px 32px
                 properties:
                   bordered: false
                   theme:
                     borderRadiusLG: 12
-                    bodyPadding: "28px 32px 28px 32px"
                 slots:
                   # Gradient cover band is the `band` brand treatment only; `minimal` is bandless.
                   cover:
@@ -106,13 +110,16 @@ blocks:
                             blocks:
                               - id: auth-logo
                                 type: Img
+                                # `properties.width` on Img is a number of px
+                                # under the block schema, so the `100%` CSS
+                                # length belongs in `style`, not `properties`.
                                 style:
+                                  width: 100%
                                   maxWidth:
                                     _module.var: auth_page.logo_max_width
                                 properties:
                                   src:
                                     _module.var: logo.primary_dark
-                                  width: 100%
                         else: []
                 blocks:
                   _build.array.concat:
