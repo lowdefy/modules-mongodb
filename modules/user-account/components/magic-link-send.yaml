@@ -5,7 +5,12 @@
 # stored target email) to show that page's "check your email" state. The send
 # carries the two verify-callback targets the module owns as structured targets:
 # `callbackUrl` -> the inbound `?callbackUrl=` or app home, `newUserCallbackUrl`
-# -> the onboarding page. `errorCallbackUrl` is deliberately unset. The engine
+# -> the onboarding page, or the inbound `?callbackUrl=` when it is the accept
+# page. Under `policy: tenant` an invitee who has not accepted yet holds no
+# membership and is refused every protected page, onboarding included; the
+# accept page is public, and after accepting it enters the app, whose router
+# sends a first-time user on to onboarding. `errorCallbackUrl` is deliberately
+# unset. The engine
 # defaults it to authPages.error (the login page), so an expired/consumed link
 # lands there with `?error=INVALID_TOKEN`.
 #
@@ -77,18 +82,27 @@ events:
                   _url_query: callbackUrl
               else:
                 home: true
-          # A new user with an inbound `?callbackUrl=` keeps it — the accept
-          # page sends invitees here with the accept URL, and dropping it lands
-          # a brand-new invitee on the PROTECTED onboarding page, which the
-          # existence-hiding bounce renders as a 404 for an awaiting (org-less)
-          # caller. Onboarding is still reached afterwards via the router
-          # (profile_created is false until the profile save).
+          # A new user whose inbound `?callbackUrl=` is the accept page keeps it —
+          # the accept page sends invitees here with the accept URL, and
+          # dropping it lands a brand-new invitee on the PROTECTED onboarding
+          # page, which the existence-hiding bounce renders as a 404 for an
+          # awaiting (org-less) caller. Onboarding is still reached afterwards
+          # via the router (profile_created is false until the profile save).
           newUserCallbackUrl:
             _if:
               test:
-                _ne:
-                  - _url_query: callbackUrl
-                  - null
+                _string.endsWith:
+                  - _get:
+                      from:
+                        _string.split:
+                          - _if_none:
+                              - _url_query: callbackUrl
+                              - ""
+                          - "?"
+                      key: "0"
+                  - _string.concat:
+                      - /
+                      - _module.pageId: accept
               then:
                 url:
                   _url_query: callbackUrl
