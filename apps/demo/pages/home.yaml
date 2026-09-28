@@ -22,6 +22,23 @@ _ref:
           content: |
             Explore the modules in this monorepo. Each card opens a working demo of that module.
 
+      # The ai-assistant module's open-with-prompt: a button outside the panel
+      # that opens it on a new thread and sends the prompt, whether the panel
+      # is open, closed or not yet opened.
+      - id: ask_assistant_tour
+        type: Button
+        properties:
+          title: Ask the assistant for a tour
+          icon: bot
+          type: default
+        events:
+          onClick:
+            _ref:
+              module: ai-assistant
+              component: open-with-prompt
+              vars:
+                prompt: Give me a short tour of the modules in this demo app, and say which one to open first.
+
       - id: module_cards
         type: Masonry
         properties:
