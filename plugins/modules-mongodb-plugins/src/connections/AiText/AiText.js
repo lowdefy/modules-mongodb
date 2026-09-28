@@ -27,6 +27,9 @@ export default {
       },
     },
   },
+  // Holds no data, so there is nothing for the tenant wall to scope: declared
+  // non-scopable, the same capability the framework's AI connections declare.
+  meta: { tenant: false },
   requests: {
     GenerateChatTitle,
   },
