@@ -156,6 +156,13 @@ same screen, leaving the code box and the resend in place. A 2FA-enrolled user
 who signs in with a code is routed to the two-factor challenge exactly as the
 password and link paths are.
 
+The code also rescues an **expired or already-used link**. A link spent before
+the reader opened it (a mail scanner, a second click) lands on the login page
+with `?error=INVALID_TOKEN`, but the code in the same email is still valid. With
+`emailOTP` on, that render shows the email input, a **Code from the email** box
+and **Sign in with code**, with **Email me a new link** as the secondary action,
+so the reader types the code instead of waiting for another email.
+
 Enabling `emailOTP` without `magicLink` is not a shape this module renders — the
 code box lives on the link-sent render, which only the magic-link send reaches.
 
@@ -216,7 +223,9 @@ Mapped codes:
 (which replace the form with a "no access" wall), it leaves the login form — and
 so the email input and magic-link send — in place, and raises a dedicated warning
 notice ("this link has expired or was already used — request a new one") so the
-user can send a fresh link without leaving the page.
+user can send a fresh link without leaving the page. With `auth.emailOTP` on, the
+notice points at the code instead, and the form offers code entry above the new
+link send (see [Email codes](#email-codes-authemailotpenabled)).
 
 The table keeps a **catch-all `default` branch**, so any unmapped code (a provider
 error, a rate limit / 429) degrades to a generic "an error occurred" message

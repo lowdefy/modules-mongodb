@@ -16,18 +16,11 @@ try:
     type: Validate
     messages:
       error: false
+    # Validate skips hidden blocks: the email input counts only on the
+    # expired-link render, where it is visible beside the code.
     params:
-      # On the expired-link render the email input is visible and must be
-      # filled too; under the link-sent result it is hidden (pruned from state).
-      _if:
-        test:
-          _eq:
-            - _state: login_view
-            - signin
-        then:
-          - email
-          - otp
-        else: otp
+      - email
+      - otp
   - id: verify_email_code
     type: EmailOtpVerify
     messages:
