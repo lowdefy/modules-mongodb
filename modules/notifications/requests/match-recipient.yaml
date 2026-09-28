@@ -1,0 +1,29 @@
+# `$or` clauses that make the signed-in caller the recipient of a record.
+# Every session-scoped read and write in the module matches through these, so
+# the inbox, bell, popups, mark-read and the landing link agree on who a
+# record belongs to.
+#
+# Two ways to be the recipient, because `contact._id` means different things
+# in different apps:
+#   user_id     — the auth user behind the recipient, written by
+#                 dispatch-notification-item from item.contact.user_id.
+#                 Like-for-like against the session, and the one that works
+#                 when an app models people as per-organization contact rows
+#                 whose ids are not user ids.
+#   contact_id  — the original comparison, for apps whose `contact._id` IS the
+#                 user id, and for records written before user_id was stored.
+#
+# `_user` is read here, server side, never from the request payload: the
+# payload is client-supplied, so a payload id would let a caller claim any
+# recipient. With no session both clauses compare against a sentinel, NEVER
+# null — a null would match every record whose user_id is null (each one
+# addressed to a login-less contact) and make it readable by anyone holding
+# its id. The sentinel cannot equal a real id.
+- contact_id:
+    _if_none:
+      - _user: id
+      - __no_session__
+- user_id:
+    _if_none:
+      - _user: id
+      - __no_session__

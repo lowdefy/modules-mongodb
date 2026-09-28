@@ -5,7 +5,7 @@ requests:
   - _ref: requests/update-selected-notification.yaml
 events:
   onMount:
-    # Fetch notification (invite-user matches without contact_id, others need contact_id)
+    # Fetch notification (public_link_types match without a session; others need the recipient)
     - id: get_notification
       type: Request
       params: get_notification_for_link

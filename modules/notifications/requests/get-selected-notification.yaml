@@ -12,7 +12,7 @@ properties:
     - $match:
         _id:
           _payload: _id
-        contact_id:
-          _user: id
+        $or:
+          _ref: requests/match-recipient.yaml
         created.app_name:
           _payload: app_name
