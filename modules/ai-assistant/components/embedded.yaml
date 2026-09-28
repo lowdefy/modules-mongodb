@@ -188,6 +188,11 @@ blocks:
           _module.var: embedded_height
 
   - _ref:
+      path: components/composer_note.yaml
+      vars:
+        id: ai_embedded_composer_note
+
+  - _ref:
       path: components/delete_confirm_modal.yaml
       vars:
         id: ai_embedded_delete_confirm_modal
