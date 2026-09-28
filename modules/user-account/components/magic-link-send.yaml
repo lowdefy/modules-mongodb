@@ -5,7 +5,12 @@
 # stored target email) to show that page's "check your email" state. The send
 # carries the two verify-callback targets the module owns as structured targets:
 # `callbackUrl` -> the inbound `?callbackUrl=` or app home, `newUserCallbackUrl`
-# -> the onboarding page. `errorCallbackUrl` is deliberately unset. The engine
+# -> the onboarding page, or the inbound `?callbackUrl=` when it is the accept
+# page. Under `policy: tenant` an invitee who has not accepted yet holds no
+# membership and is refused every protected page, onboarding included; the
+# accept page is public, and after accepting it enters the app, whose router
+# sends a first-time user on to onboarding. `errorCallbackUrl` is deliberately
+# unset. The engine
 # defaults it to authPages.error (the login page), so an expired/consumed link
 # lands there with `?error=INVALID_TOKEN`.
 #
@@ -78,8 +83,26 @@ events:
               else:
                 home: true
           newUserCallbackUrl:
-            pageId:
-              _module.pageId: onboarding
+            _if:
+              test:
+                _string.endsWith:
+                  - _get:
+                      from:
+                        _string.split:
+                          - _if_none:
+                              - _url_query: callbackUrl
+                              - ""
+                          - "?"
+                      key: "0"
+                  - _string.concat:
+                      - /
+                      - _module.pageId: accept
+              then:
+                url:
+                  _url_query: callbackUrl
+              else:
+                pageId:
+                  _module.pageId: onboarding
       - id: show_link_sent
         type: SetState
         params:
