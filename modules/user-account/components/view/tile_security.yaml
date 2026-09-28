@@ -317,7 +317,7 @@ _ref:
                                 # The registered flag tells the catch whether the
                                 # passkey itself failed (toast) or only the trailing
                                 # refetch after a successful registration (skip —
-                                # "Couldn't add a passkey" would be false, and the
+                                # a failure toast would be false, and the
                                 # success toast already fired). Reset first so a
                                 # cancelled retry after an earlier success still
                                 # toasts (F58).
@@ -343,7 +343,12 @@ _ref:
                                   _state: passkey_registered
                                 params:
                                   status: error
-                                  content: Couldn't add a passkey. Your device may have cancelled the request.
+                                  content: >-
+                                    The passkey wasn't created. This usually
+                                    happens if the prompt was cancelled, the
+                                    device or browser doesn't support
+                                    passkeys, or it timed out — try Add
+                                    passkey again.
                   # The caller's registered passkeys, rendered from passkeys_ui
                   # state (seeded off get_passkeys). Each row deletes via
                   # PasskeyDelete, then re-fetches. A List binds to a state array,
