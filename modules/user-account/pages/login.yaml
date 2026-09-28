@@ -948,11 +948,13 @@ _ref:
                         type: DisplayMessage
                         params:
                           status: warning
+                          # The login page renders any mix of password,
+                          # email link/code and OAuth, so the copy names no
+                          # single alternative.
                           content: >-
                             No passkey could be used to sign in on this
-                            device. Sign in with your email link or code
-                            instead, then add a passkey from your profile
-                            page.
+                            device. Sign in another way, then add a passkey
+                            under your account's Security settings.
             else: []
 
         # --- Link-sent actions. Resend re-fires the same shared send

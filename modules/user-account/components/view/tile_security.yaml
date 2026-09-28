@@ -317,7 +317,7 @@ _ref:
                                 # The registered flag tells the catch whether the
                                 # passkey itself failed (toast) or only the trailing
                                 # refetch after a successful registration (skip —
-                                # "Couldn't add a passkey" would be false, and the
+                                # a failure toast would be false, and the
                                 # success toast already fired). Reset first so a
                                 # cancelled retry after an earlier success still
                                 # toasts (F58).
