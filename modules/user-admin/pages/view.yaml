@@ -55,7 +55,7 @@ _ref:
               _module.pageId: all
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _build.string.trim:
             _build.string.concat:

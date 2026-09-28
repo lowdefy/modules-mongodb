@@ -3,56 +3,56 @@
 profile-updated:
   color: "#52c41a"
   title: Profile Updated
-  icon: AiOutlineEdit
+  icon: edit
 access-updated:
   color: "#1890ff"
   title: Access Updated
-  icon: AiOutlineSafety
+  icon: Shield
 org-role-updated:
   color: "#722ed1"
   title: Organisation Role Changed
-  icon: AiOutlineKey
+  icon: Key
 user-attributes-updated:
   color: "#1890ff"
   title: Global Attributes Updated
-  icon: AiOutlineGlobal
+  icon: globe
 user-suspended:
   color: "#f5222d"
   title: Suspended
-  icon: AiOutlineStop
+  icon: Ban
 user-reinstated:
   color: "#52c41a"
   title: Reinstated
-  icon: AiOutlineCheckCircle
+  icon: check-circle
 sessions-revoked:
   color: "#faad14"
   title: Sessions Revoked
-  icon: AiOutlineLogout
+  icon: logout
 member-removed:
   color: "#fa8c16"
   title: Removed From App
-  icon: AiOutlineUserDelete
+  icon: UserMinus
 user-deleted:
   color: "#a8071a"
   title: Login Identity Deleted
-  icon: AiOutlineDelete
+  icon: delete
 member-invited:
   color: "#1890ff"
   title: User Invited
-  icon: AiOutlineUserAdd
+  icon: UserPlus
 invitation-cancelled:
   color: "#8c8c8c"
   title: Invitation Cancelled
-  icon: AiOutlineCloseCircle
+  icon: close-circle
 invitation-resent:
   color: "#faad14"
   title: Invitation Resent
-  icon: AiOutlineSend
+  icon: send
 two-factor-reset:
   color: "#722ed1"
   title: Two-Factor Reset
-  icon: AiOutlineSafety
+  icon: Shield
 passkeys-revoked:
   color: "#faad14"
   title: Passkeys Revoked
-  icon: AiOutlineKey
+  icon: Key

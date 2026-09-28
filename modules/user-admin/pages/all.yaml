@@ -15,7 +15,7 @@ _ref:
           - " Users"
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _build.string.trim:
             _build.string.concat:
@@ -82,7 +82,7 @@ _ref:
           _module.var: download
         properties:
           title: Download Excel
-          icon: AiOutlineDownload
+          icon: download
           # Button.type defaults to `primary`; primary is reserved for the
           # page's main action (Invite user).
           color: default
@@ -150,7 +150,7 @@ _ref:
           flex: 0 1 auto
         properties:
           title: Invite user
-          icon: AiOutlinePlus
+          icon: add
           color: primary
           variant: solid
         events:
@@ -177,7 +177,7 @@ _ref:
                   tabs:
                     - key: members_panel
                       title: Members
-                      icon: AiOutlineTeam
+                      icon: users
                     - key: invitations_panel
                       # Pending-count badge (Decision 2): the total from the invitations
                       # $facet (not rows.length); hidden when zero.
@@ -191,7 +191,7 @@ _ref:
                                 from:
                                   _request: get_all_invitations
                                 key: 0.total_results
-                      icon: AiOutlineMail
+                      icon: mail
                 slots:
                   members_panel:
                     blocks:
@@ -287,8 +287,8 @@ _ref:
                                         _eq:
                                           - _state: inv_sort.order
                                           - -1
-                                      then: AiOutlineSortDescending
-                                      else: AiOutlineSortAscending
+                                      then: ArrowDownZA
+                                      else: ArrowDownAZ
                                   hideTitle: true
                                   color: primary
                                   variant: solid

@@ -10,7 +10,7 @@ _ref:
     content_width: 600
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _module.var: label_plural
         pageId:
@@ -54,7 +54,7 @@ _ref:
                   flex: 0 1 auto
                 properties:
                   title: Cancel
-                  icon: AiOutlineCloseCircle
+                  icon: close-circle
                   type: default
                 events:
                   onClick:
@@ -72,7 +72,7 @@ _ref:
                     _string.concat:
                       - "Create "
                       - _module.var: label
-                  icon: AiOutlineUserAdd
+                  icon: UserPlus
                   type: primary
                 events:
                   onClick:

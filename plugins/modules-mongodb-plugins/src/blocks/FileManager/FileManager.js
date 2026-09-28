@@ -43,18 +43,18 @@ const generateThumbnail = (file, maxSize = 64) =>
   });
 
 const FILE_TYPE_ICONS = {
-  pdf: ["AiOutlineFilePdf", "#ff4d4f"],
-  xls: ["AiOutlineFileExcel", "#52c41a"],
-  xlsx: ["AiOutlineFileExcel", "#52c41a"],
-  csv: ["AiOutlineFileExcel", "#52c41a"],
-  doc: ["AiOutlineFileWord", "#1890ff"],
-  docx: ["AiOutlineFileWord", "#1890ff"],
-  png: ["AiOutlineFileImage", "#722ed1"],
-  jpg: ["AiOutlineFileImage", "#722ed1"],
-  jpeg: ["AiOutlineFileImage", "#722ed1"],
-  gif: ["AiOutlineFileImage", "#722ed1"],
-  svg: ["AiOutlineFileImage", "#722ed1"],
-  webp: ["AiOutlineFileImage", "#722ed1"],
+  pdf: ["FileText", "#ff4d4f"],
+  xls: ["FileSpreadsheet", "#52c41a"],
+  xlsx: ["FileSpreadsheet", "#52c41a"],
+  csv: ["FileSpreadsheet", "#52c41a"],
+  doc: ["FileText", "#1890ff"],
+  docx: ["FileText", "#1890ff"],
+  png: ["FileImage", "#722ed1"],
+  jpg: ["FileImage", "#722ed1"],
+  jpeg: ["FileImage", "#722ed1"],
+  gif: ["FileImage", "#722ed1"],
+  svg: ["FileImage", "#722ed1"],
+  webp: ["FileImage", "#722ed1"],
 };
 
 const downloadFile = async ({ fileDoc, methods }) => {
@@ -77,8 +77,13 @@ const downloadFile = async ({ fileDoc, methods }) => {
  *     file_category, metadata, created: { timestamp, user: { name, id } } }
  *
  * Events fired:
- *   onSave  — { file: { name, key, bucket, size, type, thumbnail } }
- *   onDelete — { fileDoc: <full file document> }
+ *   onUploadPolicy: { file: { name, lastModified, size, type, uid }, pasted },
+ *     when the page defines it, in place of the s3PostPolicyRequestId request;
+ *     the page answers by calling the setUploadPolicy method with { url, fields };
+ *     an upload left with no policy is held until setUploadPolicy is called
+ *     with its uid, or cancelUpload forgets it
+ *   onSave: { file: { name, key, bucket, size, type, thumbnail, pasted } }
+ *   onDelete: { fileDoc: <full file document> }
  */
 const FileManager = ({
   blockId,
@@ -97,7 +102,12 @@ const FileManager = ({
   const [pendingFile, setPendingFile] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const thumbnailRef = useRef(null);
+  const uploadsRef = useRef({
+    queue: Promise.resolve(),
+    asking: null,
+    held: new Map(),
+  });
+  const usePolicyEvent = !!events?.onUploadPolicy;
 
   const fileDocs = type.isArray(properties.files) ? properties.files : [];
   const hasForm = !!content?.form;
@@ -128,19 +138,27 @@ const FileManager = ({
     },
   };
 
-  const [draggerState, loadFileList, setDraggerFileList, setDraggerValue] =
-    useFileList({
-      methods: interceptedMethods,
-    });
-
-  const rawS3Upload = getS3Upload({
-    methods,
-    setFileList: setDraggerFileList,
+  const [
+    draggerState,
+    loadFileList,
+    setDraggerFileList,
+    setDraggerValue,
+    removeDraggerFile,
+  ] = useFileList({
+    methods: interceptedMethods,
   });
 
-  const s3UploadRequest = async ({ file }) => {
-    thumbnailRef.current = await generateThumbnail(file);
-    return rawS3Upload({ file });
+  const s3Upload = getS3Upload({
+    methods,
+    setFileList: setDraggerFileList,
+    removeFile: removeDraggerFile,
+    usePolicyEvent,
+    uploadsRef,
+  });
+
+  const s3UploadRequest = async ({ file, pasted }) => {
+    file.thumbnail = await generateThumbnail(file);
+    return s3Upload.upload({ file, pasted });
   };
 
   const onPaste = getOnPaste({
@@ -202,6 +220,11 @@ const FileManager = ({
     });
   }, [onPaste]);
 
+  useEffect(() => {
+    methods.registerMethod("setUploadPolicy", s3Upload.setUploadPolicy);
+    methods.registerMethod("cancelUpload", s3Upload.cancelUpload);
+  }, [s3Upload]);
+
   const handleUploadSuccess = (uploadedFile) => {
     if (!uploadedFile) return;
     const s3File = {
@@ -211,9 +234,11 @@ const FileManager = ({
       size: uploadedFile.size,
       type: uploadedFile.type,
     };
-    if (thumbnailRef.current) {
-      s3File.thumbnail = thumbnailRef.current;
-      thumbnailRef.current = null;
+    if (uploadedFile.pasted === true) {
+      s3File.pasted = true;
+    }
+    if (uploadedFile.thumbnail) {
+      s3File.thumbnail = uploadedFile.thumbnail;
     }
     if (hasForm) {
       setPendingFile(s3File);
@@ -306,7 +331,7 @@ const FileManager = ({
     }
     const ext = (file.name || "").split(".").pop()?.toLowerCase();
     const [iconName, color] = FILE_TYPE_ICONS[ext] || [
-      "AiOutlineFile",
+      "file",
       "var(--ant-color-text-tertiary, #8c8c8c)",
     ];
     return (
@@ -369,7 +394,7 @@ const FileManager = ({
           >
             <Icon
               blockId={`${blockId}_file_${index}_dl`}
-              properties={{ name: "AiOutlineDownload", size: 16 }}
+              properties={{ name: "download", size: 16 }}
             />
           </Button>
         </Tooltip>
@@ -383,7 +408,7 @@ const FileManager = ({
             >
               <Icon
                 blockId={`${blockId}_file_${index}_rm`}
-                properties={{ name: "AiOutlineDelete", size: 16 }}
+                properties={{ name: "delete", size: 16 }}
               />
             </Button>
           </Tooltip>

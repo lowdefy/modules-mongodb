@@ -8,6 +8,12 @@
 # -> member; status not pending or email mismatch -> expired; else signedin.
 # BetterAuth's AcceptInvitation enforces the session-email <-> invitation-email
 # match and expiry itself, so a slipped-through mismatch still fails safely.
+#
+# Joining is logged through log-member-joined, which saves one org-member-joined
+# event per accepted invitation whatever the number of calls: after a
+# successful accept, on a retry that finds the invitation already accepted, and
+# on the member render (a reload after an accept whose page never got to log).
+# A failed log never stops the person entering the app.
 _ref:
   module: layout
   component: auth-page
@@ -75,6 +81,21 @@ _ref:
                             - _user: email
                         then: expired
                     default: signedin
+            - id: log_joined_on_member
+              type: CallAPI
+              async: true
+              skip:
+                _ne:
+                  - _state: accept_view
+                  - member
+              messages:
+                error: false
+              params:
+                endpointId:
+                  _module.endpointId: log-member-joined
+                payload:
+                  invitationId:
+                    _url_query: invitationId
     blocks:
       # ---- No session, offer login / signup ----
       - id: accept_title_nosession
@@ -269,7 +290,10 @@ _ref:
                     email:
                       _user: email
       # Accept the invitation. BetterAuth merges the profile fragment and applies
-      # invite-time attributes engine-side; on success we enter the app.
+      # invite-time attributes engine-side; on success we log the join and enter
+      # the app. A retry against an invitation this caller already accepted (an
+      # interrupted first attempt) fails "not found" although they are in, so the
+      # catch re-reads the invitation: accepted means log the join and enter.
       - id: accept_continue
         type: Button
         visible:
@@ -292,16 +316,50 @@ _ref:
                 params:
                   invitationId:
                     _url_query: invitationId
+              - id: log_joined
+                type: CallAPI
+                messages:
+                  error: false
+                params:
+                  endpointId:
+                    _module.endpointId: log-member-joined
+                  payload:
+                    invitationId:
+                      _url_query: invitationId
               - id: accept_enter_app
                 type: Link
                 params:
                   home: true
             catch:
-              - id: accept_error
-                type: DisplayMessage
-                params:
-                  status: error
-                  content: This invitation couldn't be accepted. It may have expired or been sent to a different email address. Ask for a new one.
+              - id: refetch_invitation_after_error
+                type: Request
+                params: get_invitation
+              - :if:
+                  _eq:
+                    - _request: get_invitation.0.status
+                    - accepted
+                :then:
+                  - id: log_joined_after_retry
+                    type: CallAPI
+                    async: true
+                    messages:
+                      error: false
+                    params:
+                      endpointId:
+                        _module.endpointId: log-member-joined
+                      payload:
+                        invitationId:
+                          _url_query: invitationId
+                  - id: enter_app_after_retry
+                    type: Link
+                    params:
+                      home: true
+                :else:
+                  - id: accept_error
+                    type: DisplayMessage
+                    params:
+                      status: error
+                      content: This invitation couldn't be accepted. It may have expired or been sent to a different email address. Ask for a new one.
       - id: accept_not_you
         type: Html
         visible:
@@ -366,7 +424,7 @@ _ref:
             - expired
         properties:
           icon:
-            name: AiOutlineClockCircle
+            name: clock
             color: "var(--ant-color-warning)"
           status: warning
           title: This invitation can't be used

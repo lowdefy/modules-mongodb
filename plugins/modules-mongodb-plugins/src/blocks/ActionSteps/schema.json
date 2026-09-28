@@ -74,7 +74,7 @@
     },
     "actionGroupConfig": {
       "type": "object",
-      "description": "Map of action_group key → display config. Required for items to render. Each entry: { order, title, icon, link? }. `order` controls step sequence, `title` is the step title (HTML allowed, struck through when group resolves to 'not-required'), `icon` is the Antd icon name shown on the step (overridden to AiOutlineCheckCircle when the group is 'done'), `link` (optional) wraps the title in a clickable Link.",
+      "description": "Map of action_group key → display config. Required for items to render. Each entry: { order, title, icon, link? }. `order` controls step sequence, `title` is the step title (HTML allowed, struck through when group resolves to 'not-required'), `icon` is the Antd icon name shown on the step (overridden to check-circle when the group is 'done'), `link` (optional) wraps the title in a clickable Link.",
       "additionalProperties": {
         "type": "object",
         "properties": {

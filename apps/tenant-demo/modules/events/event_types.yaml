@@ -6,3 +6,8 @@ action-approve:
   color: "#52c41a"
   title: Action Approved
   icon: AiOutlineCheckCircle
+# Saved by user-account's accept page (log-member-joined).
+org-member-joined:
+  color: "#52c41a"
+  title: Joined
+  icon: UserPlus

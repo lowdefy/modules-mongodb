@@ -1,0 +1,202 @@
+# log-member-joined: saves the org-member-joined event for an invitation the
+# caller has accepted. The accept page calls it once AcceptInvitation has gone
+# through, on the retry that finds the invitation already accepted, and when a
+# reload shows the "already a member" render.
+#
+# It logs only what happened: the invitation must be accepted and addressed to
+# the caller (the engine accepts an invitation only for a session on its
+# address), else nothing is written. The event's _id is derived from the
+# invitation, and the write is an upsert with $setOnInsert, so every call after
+# the first writes nothing: one invitation, one joined event.
+#
+# The event goes into the invitation's organization, stamped explicitly, through
+# the shared user-events-system connection. The walled events-collection would
+# stamp the caller's active organization, and accepting an invitation leaves a
+# caller who is already active elsewhere active there.
+#
+# A failure is caught and answered as { logged: false }: the accept stands
+# either way, and the log is then missing a line rather than saying something
+# false.
+#
+# Event shape (besides _id, date, created, type and organization_id):
+#   <app slug>.title          the rendered line (event_display.org-member-joined)
+#   user_ids                  the person joining and the inviter
+#   metadata:
+#     actor_user_id           the person joining
+#     subject_user_id         the person joining
+#     subject_email           their email
+#     subject_name            their name, or null
+#     member_id               their new member row
+#     invitation_id           the accepted invitation
+#     inviter_user_id         who sent the invitation
+#     inviter_name            their name, or null
+#
+# Payload: { invitationId }
+# Returns { logged: true } when this call saved the event, else { logged: false }.
+id: log-member-joined
+type: Api
+routine:
+  - :try:
+      - id: read_accepted_invitation
+        type: MongoDBAggregation
+        connectionId:
+          _module.connectionId: user-invitations
+        properties:
+          pipeline:
+            - $match:
+                _id:
+                  _payload: invitationId
+                status: accepted
+            - $match:
+                $expr:
+                  $eq:
+                    - $toLower: "$email"
+                    - _string.toLowerCase:
+                        _user: email
+            - $limit: 1
+            - $lookup:
+                from: user-organizations
+                localField: organization_id
+                foreignField: _id
+                as: org
+            - $lookup:
+                from: users
+                localField: inviter_id
+                foreignField: _id
+                as: inviter
+            - $lookup:
+                from: user-members
+                let:
+                  organization_id: "$organization_id"
+                pipeline:
+                  - $match:
+                      $expr:
+                        $and:
+                          - $eq:
+                              - "$organization_id"
+                              - "$$organization_id"
+                          - $eq:
+                              - "$user_id"
+                              - _user: id
+                  - $limit: 1
+                as: member
+            - $project:
+                _id: 1
+                organization_id: 1
+                org_name:
+                  $first: "$org.name"
+                inviter_id: 1
+                inviter_name:
+                  $first: "$inviter.name"
+                member_id:
+                  $first: "$member._id"
+
+      - :if:
+          _eq:
+            - _if_none:
+                - _step: read_accepted_invitation.0
+                - null
+            - null
+        :then:
+          - :return:
+              logged: false
+
+      - id: upsert_joined_event
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: user-events-system
+        properties:
+          filter:
+            _id:
+              _string.concat:
+                - org-member-joined-
+                - _step: read_accepted_invitation.0._id
+          update:
+            $setOnInsert:
+              _build.object.assign:
+                - _build.object.fromEntries:
+                    - - _build.app: slug
+                      - title:
+                          _nunjucks:
+                            template:
+                              _if_none:
+                                - _module.var: event_display.org-member-joined
+                                - _ref:
+                                    path: defaults/event_display.yaml
+                                    key: org-member-joined
+                            on:
+                              user:
+                                id:
+                                  _user: id
+                                name:
+                                  _user: name
+                                email:
+                                  _user: email
+                              inviter:
+                                id:
+                                  _step: read_accepted_invitation.0.inviter_id
+                                name:
+                                  _step: read_accepted_invitation.0.inviter_name
+                              organization:
+                                id:
+                                  _step: read_accepted_invitation.0.organization_id
+                                name:
+                                  _step: read_accepted_invitation.0.org_name
+                        description: null
+                - user_ids:
+                    - _user: id
+                    - _step: read_accepted_invitation.0.inviter_id
+                  date:
+                    _date: now
+                  created:
+                    _ref:
+                      module: events
+                      component: change_stamp
+                  type: org-member-joined
+                  metadata:
+                    actor_user_id:
+                      _user: id
+                    subject_user_id:
+                      _user: id
+                    subject_email:
+                      _user: email
+                    subject_name:
+                      _if_none:
+                        - _user: name
+                        - null
+                    member_id:
+                      _if_none:
+                        - _step: read_accepted_invitation.0.member_id
+                        - null
+                    invitation_id:
+                      _step: read_accepted_invitation.0._id
+                    inviter_user_id:
+                      _step: read_accepted_invitation.0.inviter_id
+                    inviter_name:
+                      _if_none:
+                        - _step: read_accepted_invitation.0.inviter_name
+                        - null
+                - _ref:
+                    path: ../shared/org/tenant-clause.yaml
+                    vars:
+                      shape: stamp
+                      value:
+                        _step: read_accepted_invitation.0.organization_id
+          options:
+            upsert: true
+
+      - :return:
+          logged:
+            _eq:
+              - _step: upsert_joined_event.upsertedCount
+              - 1
+    :catch:
+      - :log:
+          _string.concat:
+            - "log-member-joined: the joined event was not saved for invitation "
+            - _if_none:
+                - _payload: invitationId
+                - ""
+        :level: warn
+      - :return:
+          logged: false

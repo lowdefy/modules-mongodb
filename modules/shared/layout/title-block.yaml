@@ -23,7 +23,7 @@ blocks:
               marginRight: 8
             properties:
               hideTitle: true
-              icon: AiOutlineArrowLeft
+              icon: arrow-left
               type: text
               size: large
             events:
@@ -84,7 +84,7 @@ blocks:
               size: 48
               src:
                 _var: avatar_src
-              icon: AiOutlineUser
+              icon: user
         else: []
     # Status pill (optional) — caller supplies a status slug + a status-enum
     # map; the pill resolves label + the three-colour contract internally and

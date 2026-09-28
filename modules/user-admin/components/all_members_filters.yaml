@@ -120,7 +120,7 @@ blocks:
       flex: 0 1 auto
     properties:
       title: Clear
-      icon: AiOutlineClear
+      icon: Eraser
       color: default
       variant: text
     events:

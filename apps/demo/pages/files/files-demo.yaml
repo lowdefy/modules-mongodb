@@ -137,6 +137,167 @@ _ref:
                       title: Avatar (single image)
                     hint: Click or drag one image
 
+      # ── upload policy from an endpoint ──────────────────────────────────
+      - id: policy_event_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: Upload policy from an endpoint
+      - id: policy_event_note
+        type: Paragraph
+        properties:
+          type: secondary
+          content: >
+            The raw block with `onUploadPolicy`: instead of a page request, the
+            page's actions get the upload policy from an API endpoint
+            (`files-demo-upload-policy`) and hand it to the block with
+            `setUploadPolicy`. The endpoint gives no policy for files over 1 MB,
+            so the block holds the upload and the page asks whether to send it
+            anyway: yes asks the endpoint again with `large: true` (up to 10 MB)
+            and resumes the held upload with `setUploadPolicy` and its `uid`, no
+            calls `cancelUpload`. A pasted screenshot arrives marked `pasted`,
+            and the endpoint names it `pasted-YYYYMMDD-HHmmss.png`.
+      - id: demo_policy_event_manager
+        type: FileManager
+        properties:
+          hint: Click, drag or paste a file (up to 1 MB, or 10 MB if you confirm)
+        events:
+          onUploadPolicy:
+            - id: get_policy
+              type: CallAPI
+              params:
+                endpointId: files-demo-upload-policy
+                payload:
+                  name:
+                    _event: file.name
+                  content_type:
+                    _event: file.type
+                  size:
+                    _event: file.size
+                  pasted:
+                    _event: pasted
+            - id: hold_large
+              type: SetState
+              skip:
+                _ne:
+                  - _actions: get_policy.response.response.upload
+                  - null
+              params:
+                held_upload:
+                  uid:
+                    _event: file.uid
+                  name:
+                    _event: file.name
+                  content_type:
+                    _event: file.type
+                  size:
+                    _event: file.size
+                  pasted:
+                    _event: pasted
+            - id: ask_large
+              type: CallMethod
+              skip:
+                _ne:
+                  - _actions: get_policy.response.response.upload
+                  - null
+              params:
+                blockId: large_upload_modal
+                method: toggleOpen
+            - id: set_policy
+              type: CallMethod
+              skip:
+                _eq:
+                  - _actions: get_policy.response.response.upload
+                  - null
+              params:
+                blockId: demo_policy_event_manager
+                method: setUploadPolicy
+                args:
+                  - _actions: get_policy.response.response.upload
+          onSave:
+            - id: uploaded
+              type: DisplayMessage
+              params:
+                status: success
+                content:
+                  _nunjucks:
+                    template: "Uploaded {{ file.key }}{% if file.pasted %} (pasted){% endif %}"
+                    on:
+                      file:
+                        _event: file
+      - id: large_upload_modal
+        type: Modal
+        properties:
+          title: Upload a large file?
+          okText: Upload
+          cancelText: Don't upload
+        events:
+          onOk:
+            - id: get_large_policy
+              type: CallAPI
+              params:
+                endpointId: files-demo-upload-policy
+                payload:
+                  name:
+                    _state: held_upload.name
+                  content_type:
+                    _state: held_upload.content_type
+                  size:
+                    _state: held_upload.size
+                  pasted:
+                    _state: held_upload.pasted
+                  large: true
+            - id: too_large
+              type: DisplayMessage
+              skip:
+                _ne:
+                  - _actions: get_large_policy.response.response.upload
+                  - null
+              params:
+                status: warning
+                content: That file is over 10 MB, so it was not uploaded.
+            - id: cancel_too_large
+              type: CallMethod
+              skip:
+                _ne:
+                  - _actions: get_large_policy.response.response.upload
+                  - null
+              params:
+                blockId: demo_policy_event_manager
+                method: cancelUpload
+                args:
+                  - _state: held_upload.uid
+            - id: resume_upload
+              type: CallMethod
+              skip:
+                _eq:
+                  - _actions: get_large_policy.response.response.upload
+                  - null
+              params:
+                blockId: demo_policy_event_manager
+                method: setUploadPolicy
+                args:
+                  - _actions: get_large_policy.response.response.upload
+                  - _state: held_upload.uid
+          onCancel:
+            - id: cancel_upload
+              type: CallMethod
+              params:
+                blockId: demo_policy_event_manager
+                method: cancelUpload
+                args:
+                  - _state: held_upload.uid
+        blocks:
+          - id: large_upload_message
+            type: Paragraph
+            properties:
+              content:
+                _nunjucks:
+                  template: "{{ name }} is over 1 MB. Upload it anyway (up to 10 MB)?"
+                  on:
+                    name:
+                      _state: held_upload.name
+
       # ── file-list ───────────────────────────────────────────────────────
       - id: file_list_divider
         type: Divider

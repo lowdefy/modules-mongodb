@@ -16,10 +16,17 @@ into any design tool's visual companion (see "Not this skill's job").
 
 ## The output: one canonical mock
 
-- **One 1440px-wide HTML file** with self-contained CSS (inline `<style>` or a
-  co-located stylesheet), no external requests. The pipeline reads the CSS for
-  exact geometry, so the CSS must be the source of truth — real column ratios,
+- **One 1440px-wide HTML file per screen, fully self-contained.** Every style
+  goes in an inline `<style>` and every script in an inline `<script>`. No
+  co-located stylesheet or script file, and no external requests (an image is a
+  data URL, inline SVG or CSS). Each screen is stored and served on its own, so
+  a relative reference to a shared file breaks. The pipeline reads the CSS for
+  exact geometry, so the CSS must be the source of truth: real column ratios,
   real gaps, real paddings, real heights.
+- **A set of screens is separate files, not a site.** Links between screens do
+  not work once each screen is stored as its own file, so a set of screens is
+  listed as separate files (one per screen, named for it) rather than navigated.
+  Don't draw cross-screen navigation that depends on those links.
 - **One element per semantic area, with clean grouping.** Each visual area
   (titlebar, filter bar, a KPI card, a table, a sidebar tile) is ONE element with
   a clear role — not a nest of presentational wrappers. Group siblings the way
@@ -97,6 +104,11 @@ independently, not baked into the base layout:
 5. **Self-check** against the checklist, then hand off to `mock-to-lowdefy`
    (phase 1 consumes this file).
 
+When normalising an existing mock, make each screen self-contained first: copy
+any shared stylesheet into each screen's own `<style>` and any shared script
+into its own `<script>`, then delete the shared files and the links between
+screens. Apply the rest of the rules after that.
+
 ## Where it lives
 
 Write the mock into the design's `mockups/` folder (e.g.
@@ -105,7 +117,10 @@ Mockups are design intermediates, not app source.
 
 ## Checklist before handing off
 
-- [ ] One 1440px HTML file, self-contained CSS, no external requests
+- [ ] One 1440px HTML file per screen: every style in an inline `<style>`,
+      every script in an inline `<script>`, no co-located stylesheet or script
+      file, no external requests
+- [ ] No links between screens; a set of screens is listed as separate files
 - [ ] One element per semantic area; areas grouped as the layout groups them
 - [ ] Spacing from one small consistent scale; real geometry in the CSS
 - [ ] Descriptive snake_case ids/classes naming each area's role

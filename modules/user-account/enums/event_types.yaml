@@ -1,4 +1,4 @@
 update-profile:
   color: "#1890ff"
   title: Profile Updated
-  icon: AiOutlineEdit
+  icon: edit

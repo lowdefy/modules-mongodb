@@ -102,7 +102,12 @@ Placement follows how many methods are enabled — the login `signin` view adapt
 The send carries the two verify-callback targets the module owns:
 
 - a **new** user — an unknown-but-admittable email, created at verify time — lands
-  on the module's **`onboarding`** page as a first-time user;
+  on the module's **`onboarding`** page as a first-time user, except when the
+  inbound `?callbackUrl=` is the **`accept`** page: an invitee signing in from
+  their invitation lands back on it. Under `policy: tenant` an invitee who has not
+  accepted holds no membership and is refused every protected page, onboarding
+  included, so they must accept first; the accept page then enters the app, and
+  the app's router sends them on to onboarding;
 - a returning user lands on the inbound `?callbackUrl=` (or the app home).
 
 The error callback is left to the engine default — `authPages.error`, i.e. the

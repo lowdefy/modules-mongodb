@@ -31,7 +31,7 @@ _ref:
           flex: 0 0 auto
         properties:
           color: green
-          icon: AiOutlineCheck
+          icon: check
           title: Email verified
       - id: security_resend_btn
         type: Button
@@ -43,7 +43,7 @@ _ref:
         properties:
           title: Verify email
           size: small
-          icon: AiOutlineMail
+          icon: mail
           variant: outlined
         events:
           onClick:
@@ -394,7 +394,7 @@ _ref:
                                 layout:
                                   flex: 0 0 auto
                                 properties:
-                                  icon: AiOutlineEdit
+                                  icon: edit
                                   variant: text
                                   size: small
                                   shape: circle
@@ -438,7 +438,7 @@ _ref:
                                 layout:
                                   flex: 0 0 auto
                                 properties:
-                                  icon: AiOutlineDelete
+                                  icon: delete
                                   color: danger
                                   variant: text
                                   size: small

@@ -29,7 +29,7 @@ const getOnPaste =
       : await getFileFromNavigator();
     if (!file) return;
     file.uid = `${file.name ?? "clipboard"}-${Date.now()}`;
-    await s3UploadRequest({ file });
+    await s3UploadRequest({ file, pasted: true });
   };
 
 export default getOnPaste;

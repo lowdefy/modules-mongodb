@@ -210,8 +210,8 @@ _ref:
                                   else:
                                     _state: actions_list.$.type
                               default: false
-                          then: AiOutlineUp
-                          else: AiOutlineDown
+                          then: chevron-up
+                          else: chevron-down
                     events:
                       onClick:
                         - id: actions_list.$.toggle

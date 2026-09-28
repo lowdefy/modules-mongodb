@@ -37,7 +37,7 @@
 #   - action_label         baked string — the current action's title (no link).
 _build.array.concat:
   - - home: true
-      icon: AiOutlineHome
+      icon: home
   # Entity list — plural label linking to the host-app list page. Build-time
   # optional: emitted only when entity_list_page_id is configured.
   - _build.if:
