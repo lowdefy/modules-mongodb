@@ -56,3 +56,9 @@ params:
   # Which thread the in-flight titling call is for — the apply step skips when
   # the active thread has changed under it.
   ai_titling_for: null
+  # The name derived from the first message, whatever ai_title kept — titling
+  # skips a thread whose name differs from it, since the user typed that one.
+  ai_title_provisional: null
+  # True while a reply streams. The controls that switch threads are disabled,
+  # since a switch would drop the reply before the module could save it.
+  ai_busy: false

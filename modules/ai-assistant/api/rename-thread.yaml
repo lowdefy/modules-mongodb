@@ -17,6 +17,7 @@ payloadSchema:
       minLength: 1
       maxLength: 120
 routine:
+  - _ref: api/routines/require_user.yaml
   - id: rename
     type: MongoDBUpdateOne
     connectionId:

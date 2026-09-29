@@ -90,6 +90,10 @@ blocks:
             color:
               _module.var: toolbar.accent_text
         properties:
+          disabled:
+            _eq:
+              - _state: ai_busy
+              - true
           title: New chat
           icon: AiOutlinePlus
           type: text
@@ -112,6 +116,10 @@ blocks:
         layout:
           flex: 0 0 auto
         properties:
+          disabled:
+            _eq:
+              - _state: ai_busy
+              - true
           title: Manage chats
           icon: AiOutlineUnorderedList
           type: text
@@ -156,6 +164,10 @@ blocks:
         layout:
           flex: 0 0 auto
         properties:
+          disabled:
+            _eq:
+              - _state: ai_busy
+              - true
           title: Delete chat
           icon: AiOutlineDelete
           type: text

@@ -107,6 +107,10 @@ slots:
               - id: ai_new_chat_button
                 type: Button
                 properties:
+                  disabled:
+                    _eq:
+                      - _state: ai_busy
+                      - true
                   title: New chat
                   icon: AiOutlinePlus
                   type: text
@@ -132,6 +136,10 @@ slots:
               - id: ai_manage_chats_button
                 type: Button
                 properties:
+                  disabled:
+                    _eq:
+                      - _state: ai_busy
+                      - true
                   title: Manage chats
                   icon: AiOutlineUnorderedList
                   type: text
@@ -229,6 +237,10 @@ slots:
               - id: ai_delete_button
                 type: Button
                 properties:
+                  disabled:
+                    _eq:
+                      - _state: ai_busy
+                      - true
                   # Named the same way as the header chrome: the label is
                   # visually hidden, not removed. An unlabelled destructive
                   # control is the one you least want to be a mystery glyph
