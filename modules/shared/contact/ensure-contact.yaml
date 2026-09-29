@@ -182,6 +182,25 @@
                         key: user_id
                         default: null
                   else: {}
+              # The organization is written onto the new row explicitly, not
+              # left to the upsert copying the filter's equality clause: a
+              # person record without organization_id is invisible behind the
+              # tenant wall and fails its preflight, so the insert must carry it
+              # whatever shape the filter reaches the database in.
+              - _build.if:
+                  test:
+                    _build.not:
+                      _build.eq:
+                        - _var:
+                            key: organization_id
+                            default: null
+                        - null
+                  then:
+                    organization_id:
+                      _var:
+                        key: organization_id
+                        default: null
+                  else: {}
         options:
           upsert: true
   :catch:
