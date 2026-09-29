@@ -22,6 +22,7 @@ payloadSchema:
     conversationId:
       type: string
 routine:
+  - _ref: api/routines/require_user.yaml
   - id: delete
     type: MongoDBUpdateOne
     connectionId:

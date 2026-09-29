@@ -9,9 +9,7 @@
 # Nothing is seeded here — delete-thread.yaml captures `ai_conversation_id` for itself before
 # replacing it — so cancelling leaves no state to clean up.
 #
-# The id is passed in: both shells mount this, and an app running the panel docked over a page
-# that embeds the assistant would carry two blocks with one id — which Lowdefy does not check
-# for, so the collision is silent and CallMethod opens whichever won.
+# The id is passed in so each shell's CallMethod names its own modal.
 id:
   _var: id
 type: ConfirmModal

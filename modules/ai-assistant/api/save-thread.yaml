@@ -22,6 +22,7 @@ payloadSchema:
       description: Full UIMessage history (user + assistant) from the chat block.
     title:
       type: string
+      maxLength: 120
     scope:
       type: string
       description: Partition key — threads are listed per (scope, user).
@@ -29,6 +30,7 @@ payloadSchema:
       type: string
       description: Display label accumulated onto the thread as a chip.
 routine:
+  - _ref: api/routines/require_user.yaml
   # Every writer comes through here — the chat persists on send as well as on completion — so
   # an unreplayable history is filtered once, at the write, rather than at each call site.
   - :set_state:
@@ -51,8 +53,6 @@ routine:
         $set:
           messages:
             _state: replayable_messages
-          title:
-            _payload: title
           scope:
             _payload: scope
           user_id:
@@ -87,6 +87,10 @@ routine:
         $setOnInsert:
           created:
             _date: now
+          # Named once, when the row is created: after that rename-thread and title-thread own
+          # it, so a save from a tab holding an older name cannot put that name back.
+          title:
+            _payload: title
           # Initialised so live threads have one shape — see
           # docs/shared/soft-delete.md. Deliberately NOT in the filter above:
           # this is an upsert, and $exists is not an equality clause, so a

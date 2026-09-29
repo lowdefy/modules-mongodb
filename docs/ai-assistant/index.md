@@ -25,29 +25,36 @@ None — the module is standalone. It does need an app agent (`agent_id`) and th
 
 Two things, both required.
 
-**1. The panel**, anywhere in the page's blocks (it positions itself):
+**1. The panel**, anywhere in the page's blocks (it positions itself). The component takes no vars of its own; everything it reads is a module var, set on the module entry:
 
 ```yaml
+# modules.yaml
+- id: ai-assistant
+  source: github:lowdefy/modules-mongodb/modules/ai-assistant@vX.Y.Z
+  vars:
+    agent_id: support
+    scope:
+      _state: record_id
+    visible:
+      _state: loaded
+    panel_title: Assistant
+    panel_subtitle: Support assistant
+    shared_state:
+      record_id:
+        _state: record_id
+    welcome:
+      title: Assistant
+      prompts:
+        - label: What can you help with?
+    tag:
+      _state: record_title
+```
+
+```yaml
+# the page's blocks
 - _ref:
     module: ai-assistant
     component: panel
-    vars:
-      agent_id: support
-      scope:
-        _state: record_id
-      visible:
-        _state: loaded
-      panel_title: Assistant
-      panel_subtitle: Support assistant
-      shared_state:
-        record_id:
-          _state: record_id
-      welcome:
-        title: Assistant
-        prompts:
-          - label: What can you help with?
-      tag:
-        _state: record_title
 ```
 
 **2. The state contract**, spliced into the page's `onInit`:
@@ -145,7 +152,9 @@ Threads are named from their **first exchange** — the opening question and the
 
 Do not use an agent's `generateTitle` alongside this. That titles from the opening message alone, and where a welcome screen offers suggestion prompts the opening message is one of a handful of canned strings, so every thread ends up named after the question rather than the subject. The subject is almost always in the reply.
 
-The provisional title (the user's first message, truncated) still appears instantly and is replaced a moment later, so a thread is never briefly nameless. If titling fails the provisional one simply stays. Set `generate_titles: false` to skip the model call entirely — the `AI_GATEWAY_API_KEY` secret is only exercised while titling is on.
+The provisional title (the user's first message, truncated) still appears instantly and is replaced a moment later, so a thread is never briefly nameless. If titling fails the provisional one simply stays.
+
+**A name the user typed is theirs.** Renaming a chat before its first reply lands skips titling for it, and a rename while the title is generating wins: the endpoint only replaces the provisional title it was given. After a thread is first saved its title changes only by a rename or by titling, never by a later save, so a tab holding an older name cannot put that name back. Set `generate_titles: false` to skip the model call entirely — the `AI_GATEWAY_API_KEY` secret is only exercised while titling is on.
 
 Two vars sharpen the generated names: `title_context` (one line of grounding, e.g. `"Acme Ltd — onboarding"`) lets the model name the subject when the exchange only ever says "this record", and `title_domain` (e.g. `"a staffing and payroll tool"`) grounds its vocabulary. `title_model` picks the gateway model — small and fast is the right choice. The titling call is sent the first question and reply, so where the agent routes with `zeroDataRetention`, set `title_zero_data_retention: true` to hold titling to the same providers.
 
@@ -163,12 +172,12 @@ The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` 
 
 | Var | Event | For |
 |---|---|---|
-| `on_before_send` | `onBeforeSend` | Refuse a send — `Throw` here. The only seam that runs *before* the model is called, so quotas and entitlement checks belong here. |
+| `on_before_send` | `onBeforeSend` | Refuse a typed send — `Throw` here. It runs in the browser, and welcome prompts, suggestions, regenerate and edit send without it, so a quota or entitlement check must also be enforced where the agent runs. |
 | `on_user_message` | `onUserMessage` | The app's own record of what was asked. Runs after the module has persisted the thread, so a thread id is already stored by this point. |
 | `on_data_part` | `onDataPart` | Custom data parts the agent streams. Filter on the part type yourself; every part arrives here. |
 | `on_feedback` | `onFeedback` | Ratings from the feedback control. |
-| `on_panel_open` | — | The `panel` opened, after `enter` has resumed the thread. The mount-time half of `on_thread_change`: it covers the thread the panel arrives on, which no other seam sees. Panel only — `embedded` has no open moment, so a page using it splices its own actions after `enter`. |
-| `on_thread_change` | — | The active thread changed by a user action: a thread opened from the list, or a new chat started. Not fired by `enter`, so it does not cover the thread resumed on arrival — see `on_panel_open`. Re-derive anything you render outside the chat from the open conversation; read the new thread from `ai_conversation_id`, not the event. |
+| `on_panel_open` | — | The `panel` opened, after `enter` has resumed the thread. Runs on every open. The mount-time half of `on_thread_change`: it covers the thread the panel arrives on, which no other seam sees. Panel only — `embedded` has no open moment, so a page using it splices its own actions after `enter`. |
+| `on_thread_change` | — | The active thread changed by a user action: a thread opened from the list, a new chat started, or the open thread deleted. Not fired by `enter`, so it does not cover the thread resumed on arrival — see `on_panel_open`. Re-derive anything you render outside the chat from the open conversation; read the new thread from `ai_conversation_id`, not the event. |
 | `on_link_click` | `onLinkClick` | A link clicked inside a message, as `{ href, text }`. Open an in-app target in place instead of navigating out of the conversation. Wiring it turns interception on for the whole message, so an href you do not recognise navigates nowhere — handle the fall-through. Modified and non-primary clicks are never delivered, so open-in-new-tab keeps working. |
 
 Each event brings its own `_event` payload from the chat block, and they do not agree on field names — `onBeforeSend` gives you `{ text, files, messages, switches }`, so a rule about what the user typed reads `_event: text`, not `content`. Reading a field the event does not carry yields null silently, which in a `skip` reads as "skip this action" — a gate written against the wrong field does not error, it just never fires. Worth a check against the block's reference when writing one.
@@ -226,13 +235,14 @@ on_before_send:
 - An app agent whose id is passed as `agent_id`.
 - `@lowdefy/modules-mongodb-plugins` — ships the [`FloatingPanel`](../plugins/floating-panel.md) block and the `AiText` connection used for titling.
 - Secrets `MONGODB_URI` and (while `generate_titles` is on) `AI_GATEWAY_API_KEY`.
+- **Protected endpoints.** Lowdefy API endpoints are public unless the app protects them, in its `auth.api` config. Every endpoint here is keyed on the session user and rejects a call with no session, but that is a backstop, not a substitute for app-level auth.
 - **Two indexes on the threads collection.** The module does not create them; nothing breaks
   without them until the collection grows, which is the worst time to find out.
 
   | Index | Serves |
   |---|---|
   | `{ scope: 1, user_id: 1, updated: -1 }` | `list-threads`, which matches on scope and the session user and sorts newest-first. The whole index, in order — a partial one still sorts in memory. Also serves the match stage of `get-active-thread`. |
-  | `{ conversationId: 1, user_id: 1 }`, **unique** | the other four endpoints: get, save, rename, delete all filter on exactly this pair. Unique is not only for speed: `save-thread` upserts on it, and concurrent upserts that both miss will both insert, leaving one conversation stored as two rows. Whichever the query reaches first is then the one the user sees. |
+  | `{ conversationId: 1, user_id: 1 }`, **unique** | the other five endpoints: get, save, rename, title and delete all filter on exactly this pair. Unique is not only for speed: `save-thread` upserts on it, and concurrent upserts that both miss will both insert, leaving one conversation stored as two rows. Whichever the query reaches first is then the one the user sees. |
 
   The thread list is capped at 200 per (scope, user), newest first. The threads view searches client-side over that window, so a user holding more chats than the cap in one scope cannot reach the older ones — an app expecting that needs pagination in `list-threads`, not a larger cap.
 

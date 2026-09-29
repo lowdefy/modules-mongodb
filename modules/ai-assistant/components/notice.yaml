@@ -2,9 +2,7 @@
 # the conversation and offer no composer (chat.yaml hides itself while the var is non-null). The
 # thread list stays reachable, so a user can still read what they were told before it stopped.
 #
-# The id is passed in for the same reason delete_confirm_modal's is: both shells mount this, and
-# an app docking the panel over a page that embeds the assistant would carry two blocks with one
-# id, which Lowdefy does not check for.
+# The id is passed in so each shell names its own, as delete_confirm_modal's is.
 id:
   _var: id
 type: Alert
