@@ -1,5 +1,15 @@
 # @lowdefy/modules-mongodb-walkthroughs
 
+## 0.44.1
+
+### Patch Changes
+
+- [#254](https://github.com/lowdefy/modules-mongodb/pull/254) [`ac11cc9`](https://github.com/lowdefy/modules-mongodb/commit/ac11cc9ed809c6f3738a0eccf0209ab4fae4cb6b) Thanks [@Yianni99](https://github.com/Yianni99)! - walkthroughs: publishing now requires a title
+
+  An untitled draft could be published, leaving a live walkthrough with no name to show. `publish-walkthrough`
+  now refuses a draft whose saved title is blank, and the editor marks Title required and disables Publish
+  while it is empty.
+
 ## 0.44.0
 
 ## 0.43.1

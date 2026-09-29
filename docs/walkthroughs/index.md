@@ -32,7 +32,7 @@ guides held in its own database and bucket rather than at a third-party host.
 
 ```yaml
 - id: walkthroughs
-  source: 'github:lowdefy/modules-mongodb/modules/walkthroughs@v0.44.0'
+  source: 'github:lowdefy/modules-mongodb/modules/walkthroughs@v0.44.1'
 ```
 
 `source` can equally be a `file:` path against a local checkout. The module declares
