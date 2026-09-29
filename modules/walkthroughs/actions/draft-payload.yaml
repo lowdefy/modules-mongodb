@@ -1,0 +1,26 @@
+# The draft as save-draft stores it. Saving sends it, and the editor compares it to the last save
+# to tell whether anything is unsaved.
+title:
+  _state: walkthrough_draft.title
+overview:
+  _state: walkthrough_draft.overview
+steps:
+  _js:
+    fn: |
+      const { steps } = args[0] || {};
+      // Back to the stored shape, dropping the display URL the editor carries beside each key.
+      return (steps || []).map((step) => ({
+        _id: step._id,
+        caption: step.caption ?? '',
+        image: step.image
+          ? {
+              key: step.image.key,
+              width: step.image.width,
+              height: step.image.height,
+            }
+          : null,
+        focus: step.focus ?? null,
+      }));
+    args:
+      - steps:
+          _state: walkthrough_draft.steps

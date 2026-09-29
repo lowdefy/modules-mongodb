@@ -89,3 +89,10 @@
     path: actions/sync-step.yaml
     vars:
       sync_id: walkthrough_sync_step_loaded
+# What the screen is compared with to tell whether anything is unsaved.
+- id: walkthrough_snapshot_draft
+  type: SetState
+  params:
+    walkthrough_draft_saved:
+      _json.stringify:
+        - _ref: actions/draft-payload.yaml

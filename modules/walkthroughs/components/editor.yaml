@@ -239,18 +239,27 @@ blocks:
               type: default
               icon: AiOutlineCloudUpload
               title: Publish
+              # Publish saves first, so an unsaved edit enables it. Not in Preview, which drops the
+              # steps from state.
               disabled:
                 _or:
-                  - _not:
-                      _eq:
-                        - _state: walkthrough_has_draft
-                        - true
+                  - _eq:
+                      - _state: walkthrough_preview
+                      - true
                   - _eq:
                       - _string.trim:
                           _if_none:
                             - _state: walkthrough_draft.title
                             - ""
                       - ""
+                  - _and:
+                      - _ne:
+                          - _state: walkthrough_has_draft
+                          - true
+                      - _eq:
+                          - _json.stringify:
+                              - _ref: actions/draft-payload.yaml
+                          - _state: walkthrough_draft_saved
             events:
               onClick:
                 - id: walkthrough_open_publish_confirm
@@ -274,52 +283,13 @@ blocks:
                   - true
             events:
               onClick:
-                - id: walkthrough_save_draft
-                  type: CallAPI
-                  params:
-                    endpointId:
-                      _module.endpointId: save-draft
-                    payload:
-                      walkthrough_id:
-                        _state: walkthrough_id
-                      updated_timestamp:
-                        _state: walkthrough_updated
-                      draft:
-                        title:
-                          _state: walkthrough_draft.title
-                        overview:
-                          _state: walkthrough_draft.overview
-                        steps:
-                          _js:
-                            fn: |
-                              const { steps } = args[0] || {};
-                              // Back to the stored shape, dropping the display URL the editor
-                              // carries beside each key.
-                              return (steps || []).map((step) => ({
-                                _id: step._id,
-                                caption: step.caption ?? '',
-                                image: step.image
-                                  ? {
-                                      key: step.image.key,
-                                      width: step.image.width,
-                                      height: step.image.height,
-                                    }
-                                  : null,
-                                focus: step.focus ?? null,
-                              }));
-                            args:
-                              - steps:
-                                  _state: walkthrough_draft.steps
-                # Each write returns a new token and the next one filters on it; discard and
-                # publish get theirs from the reload that follows them.
-                - id: walkthrough_hold_updated_after_save
-                  type: SetState
-                  messages:
-                    success: Draft saved.
-                  params:
-                    walkthrough_updated:
-                      _actions: walkthrough_save_draft.response.response.updated_timestamp
-                    walkthrough_has_draft: true
+                _build.array.concat:
+                  - _ref: actions/save-draft.yaml
+                  - - id: walkthrough_saved_message
+                      type: DisplayMessage
+                      params:
+                        content: Draft saved.
+                        status: success
 
       - id: walkthrough_editor_workspace
         type: Box
@@ -1025,12 +995,12 @@ blocks:
         type: Box
         properties:
           content: >-
-            The draft becomes the live walkthrough and anyone reading it sees these steps. Save
-            first if you have unsaved edits: publishing moves the last save, not the screen.
-            Continue?
+            Your changes are saved and become the live walkthrough, so anyone reading it sees
+            these steps. Continue?
     events:
       onOk:
         _build.array.concat:
+          - _ref: actions/save-draft.yaml
           - - id: walkthrough_publish_walkthrough
               type: CallAPI
               params:

@@ -198,6 +198,11 @@ whether there are unpublished changes.
 whose saved title is blank, and the editor disables Publish while the title is empty. A live
 walkthrough is named by its title wherever it appears, so an untitled one has nothing to show.
 
+**The editor's Publish saves first.** It sends what is on screen through `save-draft`, then calls
+`publish-walkthrough`, so an author never publishes an older save than the one they are looking at.
+Publish is enabled when there is a saved draft or an unsaved edit, and disabled in Preview. Save
+stays for keeping work in progress without publishing it.
+
 **The draft is replaced wholesale.** `save-draft` sets it from the payload and never merges, which
 makes reordering an ordinary save. A walkthrough is small enough that an editor holds all of it.
 

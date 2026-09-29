@@ -1,0 +1,25 @@
+# Saves the screen as the draft. Shared by Save and by Publish, which saves before it publishes.
+# Splice it in with `_build.array.concat`.
+- id: walkthrough_save_draft
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: save-draft
+    payload:
+      walkthrough_id:
+        _state: walkthrough_id
+      updated_timestamp:
+        _state: walkthrough_updated
+      draft:
+        _ref: actions/draft-payload.yaml
+# Each write returns a new token and the next one filters on it; discard and publish get theirs
+# from the reload that follows them.
+- id: walkthrough_hold_updated_after_save
+  type: SetState
+  params:
+    walkthrough_updated:
+      _actions: walkthrough_save_draft.response.response.updated_timestamp
+    walkthrough_has_draft: true
+    walkthrough_draft_saved:
+      _json.stringify:
+        - _ref: actions/draft-payload.yaml
