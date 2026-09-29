@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-files
 
+## 0.44.2
+
 ## 0.44.1
 
 ## 0.44.0

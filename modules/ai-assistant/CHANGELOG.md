@@ -1,5 +1,18 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 0.44.2
+
+### Patch Changes
+
+- [#259](https://github.com/lowdefy/modules-mongodb/pull/259) [`0eef584`](https://github.com/lowdefy/modules-mongodb/commit/0eef584c9b7148d59b7b175e436ea4c835e31eb7) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: keep threads and their names intact, and refuse calls with no session
+
+  - New chat, Manage chats and Delete are disabled while a reply streams. Switching mid-reply dropped the reply before it could be saved, and left the thread named after its question.
+  - A name the user types is kept. Renaming before the first reply skips titling, a rename while the title is generating wins, and a later save no longer puts an older name back.
+  - The generated title updates the thread list even after the user has switched threads.
+  - Every endpoint rejects a call with no signed-in user, and `title-thread` refuses when titling is off.
+  - The empty thread list reads in secondary text, and thread tag chips have a background.
+  - Docs: the panel mount example sets its vars on the module entry, and `on_before_send` is documented as a browser-side check that some sends skip.
+
 ## 0.44.1
 
 ## 0.44.0
