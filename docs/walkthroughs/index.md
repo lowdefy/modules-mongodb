@@ -194,6 +194,10 @@ page that would rather redirect reads `walkthrough_missing` after `open`.
 a never-edited walkthrough starts from what is live, and reports `has_draft` so a caller can show
 whether there are unpublished changes.
 
+**Publishing needs a title.** A draft may be saved untitled, but `publish-walkthrough` refuses one
+whose saved title is blank, and the editor disables Publish while the title is empty. A live
+walkthrough is named by its title wherever it appears, so an untitled one has nothing to show.
+
 **The draft is replaced wholesale.** `save-draft` sets it from the payload and never merges, which
 makes reordering an ordinary save. A walkthrough is small enough that an editor holds all of it.
 
