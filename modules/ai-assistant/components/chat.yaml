@@ -60,8 +60,10 @@ properties:
   welcome:
     _module.var: welcome
   sender:
-    placeholder:
-      _module.var: sender_placeholder
+    _build.object.assign:
+      - placeholder:
+          _module.var: sender_placeholder
+      - _module.var: sender
   messageDisplay:
     _build.object.assign:
       - # Borderless, not the block's default `outlined`. An outlined assistant

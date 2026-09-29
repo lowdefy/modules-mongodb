@@ -1,14 +1,40 @@
 # enter.yaml — the resume-or-mint chain: the panel's onOpen, and (exported as
-# the `enter` component) the embedded shell's onInit splice. On the FIRST entry
-# (no active thread yet): mint a thread id SYNCHRONOUSLY first, so the chat has
-# a conversationId before the user can possibly send, then fetch this user's
-# threads for the scope and resume the one they last opened. Re-entering with a
-# thread already active is a no-op.
+# the `enter` component) the embedded shell's onInit and onMount splice. On the
+# FIRST entry (no active thread yet): mint a thread id SYNCHRONOUSLY first, so
+# the chat has a conversationId before the user can possibly send, then fetch
+# this user's threads for the scope and resume the one they last opened.
+# Re-entering with a thread already active is a no-op, unless the scope has
+# changed since: then the open thread is dropped first, and the chain resumes in
+# the new scope.
 #
 # ai_loading covers the whole chain. Without it the panel showed the empty-thread
 # welcome screen — "start a new chat", with its suggestion prompts — for as long
 # as the fetch took, then swapped it for the resumed conversation: advertising a
 # new chat and immediately taking it away.
+
+# `ai_scope` is the open thread's scope; it differs from the var when the scope
+# moved mid-session, which nothing else in the module can observe.
+- id: ai_rescope
+  type: SetState
+  skip:
+    _eq:
+      - _state: ai_scope
+      - _module.var: scope
+  params:
+    ai_scope:
+      _module.var: scope
+    ai_view: chat
+    ai_conversation_id: null
+    ai_messages: []
+    ai_threads: []
+    ai_thread_selection: null
+    ai_title: New chat
+    ai_first_exchange: null
+    ai_delete_target: null
+    ai_titling_for: null
+    ai_title_provisional: null
+    ai_busy: false
+
 - id: ai_mark_seed_needed
   type: SetState
   params:
