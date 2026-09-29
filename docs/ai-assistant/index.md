@@ -99,6 +99,33 @@ onInit:
 
 **One shell per page.** `panel` and `embedded` share block ids and `ai_*` state on purpose — that is what gives them one thread history — so never mount both on the same page. An app-wide docked launcher should be hidden (its `visible` var) on pages that embed.
 
+## Opening the panel with a prompt
+
+`open-with-prompt` is an action list for a button anywhere on a page that mounts `panel`. It opens the panel on a **new** thread and sends the prompt into it, whether the panel is open on another thread, closed, or was never opened on this page:
+
+```yaml
+- id: explain_record
+  type: Button
+  properties:
+    title: Ask the assistant
+  events:
+    onClick:
+      _ref:
+        module: ai-assistant
+        component: open-with-prompt
+        vars:
+          prompt:
+            _string.concat:
+              - "Explain the status of "
+              - _state: record.name
+```
+
+`prompt` is a string or a runtime operator, resolved when the button is clicked. The earlier thread stays in the thread list, untouched.
+
+It runs `enter` first (so a panel that was never opened still gets its thread list), then remounts the chat on the new thread before sending, which takes a fraction of a second after the panel opens. A rejected thread fetch ends it with the panel still closed; the panel clears its own spinner the next time it opens.
+
+It needs the `panel` shell: on a page using `embedded` there is no panel to open. And, like the welcome prompts, its send does not run `on_before_send`, so a quota gate there does not see it.
+
 ## Scope
 
 `scope` is the string that partitions threads. Threads are listed and created against `(scope, session user)`, so the same page in a different scope is a different set of chats. Pass a state operator for a per-record assistant (`{_state: record_id}`), or a constant for a single global one.
@@ -202,6 +229,7 @@ on_before_send:
 - An app agent whose id is passed as `agent_id`.
 - `@lowdefy/modules-mongodb-plugins` — ships the [`FloatingPanel`](../plugins/floating-panel.md) block and the `AiText` connection used for titling.
 - Secrets `MONGODB_URI` and (while `generate_titles` is on) `AI_GATEWAY_API_KEY`.
+- Under `auth.organizations.policy: tenant` nothing extra: the threads connection is walled like any MongoDB connection, so each organization has its own thread history per (scope, user), and the `AiText` connection holds no data and is declared non-scopable.
 - **Two indexes on the threads collection.** The module does not create them; nothing breaks
   without them until the collection grows, which is the worst time to find out.
 

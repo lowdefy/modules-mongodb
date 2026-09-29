@@ -251,6 +251,14 @@ exports:
         AFTER `state`, inside a try/catch whose catch clears ai_loading — a
         rejected fetch aborts the chain before its own clear, and without the
         catch the chat spins forever.
+    - id: open-with-prompt
+      description: >-
+        An action list that opens the docked panel on a new thread and sends a
+        prompt into it, for a button anywhere on a page that mounts `panel`.
+        Takes a `prompt` var: a string, or a runtime operator resolved when the
+        action runs. Works whether the panel is open, closed or was never
+        opened. Like the welcome prompts, the send does not pass through
+        `on_before_send`.
   connections:
     - id: ai_assistant_threads
       description: MongoDB connection for the threads collection
@@ -298,6 +306,9 @@ components:
   - id: enter
     component:
       _ref: actions/enter.yaml
+  - id: open-with-prompt
+    component:
+      _ref: actions/open-with-prompt.yaml
 
 secrets:
   - name: MONGODB_URI

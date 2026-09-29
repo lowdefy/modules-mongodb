@@ -26,7 +26,10 @@ payloadSchema:
       type: string
       description: Partition key — threads are listed per (scope, user).
     tag:
-      type: string
+      # Null when the `tag` var is left at its default.
+      type:
+        - string
+        - "null"
       description: Display label accumulated onto the thread as a chip.
 routine:
   - id: upsert_thread
