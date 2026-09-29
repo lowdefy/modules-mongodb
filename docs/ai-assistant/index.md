@@ -30,7 +30,7 @@ Two things, both required.
 ```yaml
 # modules.yaml
 - id: ai-assistant
-  source: github:lowdefy/modules-mongodb/modules/ai-assistant@vX.Y.Z
+  source: github:lowdefy/modules-mongodb/modules/ai-assistant@v0.44.2
   vars:
     agent_id: support
     scope:

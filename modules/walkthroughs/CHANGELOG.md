@@ -1,5 +1,15 @@
 # @lowdefy/modules-mongodb-walkthroughs
 
+## 0.44.2
+
+### Patch Changes
+
+- [#256](https://github.com/lowdefy/modules-mongodb/pull/256) [`ad8022d`](https://github.com/lowdefy/modules-mongodb/commit/ad8022d8995b48c4f4879fd9c8bb470042d9c8cb) Thanks [@Yianni99](https://github.com/Yianni99)! - walkthroughs: Publish in the editor now saves before it publishes
+
+  Publish moved the last save, not the screen, so an author who edited and clicked Publish without saving
+  published the older version, or found Publish disabled. It now saves what is on screen first. It is
+  enabled when there is a saved draft or an unsaved edit, and disabled in Preview.
+
 ## 0.44.1
 
 ### Patch Changes
