@@ -1,5 +1,14 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 0.45.0
+
+### Minor Changes
+
+- [#260](https://github.com/lowdefy/modules-mongodb/pull/260) [`06a9e17`](https://github.com/lowdefy/modules-mongodb/commit/06a9e1771148a399ff13ba5af96bca00cb4b42a3) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: follow a scope that changes mid-session, and recolour the composer
+
+  - `enter` now notices when the `scope` var no longer matches the scope the open thread belongs to, drops that thread and its list, and resumes in the new scope. Apps with an active-company or active-record switcher no longer need their own reset on every visit. A page hosting `embedded` should splice `enter` into `onMount` as well as `onInit`.
+  - New `sender` var, merged over the chat's composer properties, so the composer's `styles` and `classNames` can be set. Together with `styles` under `message_display.roles`, this recolours the chat without `!important` (Lowdefy 6.1 or later).
+
 ## 0.44.2
 
 ### Patch Changes
