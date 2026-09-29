@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-walkthroughs
 
+## 0.45.0
+
 ## 0.44.2
 
 ### Patch Changes
