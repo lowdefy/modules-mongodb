@@ -42,6 +42,7 @@ blocks:
     blocks:
       - id: walkthrough_draft.title
         type: TextInput
+        required: true
         layout:
           flex: 1 1 320px
         properties:
@@ -239,10 +240,17 @@ blocks:
               icon: AiOutlineCloudUpload
               title: Publish
               disabled:
-                _not:
-                  _eq:
-                    - _state: walkthrough_has_draft
-                    - true
+                _or:
+                  - _not:
+                      _eq:
+                        - _state: walkthrough_has_draft
+                        - true
+                  - _eq:
+                      - _string.trim:
+                          _if_none:
+                            - _state: walkthrough_draft.title
+                            - ""
+                      - ""
             events:
               onClick:
                 - id: walkthrough_open_publish_confirm

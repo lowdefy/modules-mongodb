@@ -46,6 +46,16 @@ routine:
         - null
     :then:
       - :reject: There is nothing to publish. This walkthrough has no unpublished changes.
+  # A draft may be untitled; a live walkthrough is named by its title wherever it appears.
+  - :if:
+      _eq:
+        - _string.trim:
+            _if_none:
+              - _step: load_walkthrough.draft.title
+              - ""
+        - ""
+    :then:
+      - :reject: Give the walkthrough a title and save it before publishing.
   - :set_state:
       stamp:
         _ref: defaults/change_stamp.yaml
