@@ -1,0 +1,10 @@
+# Every read and write is keyed on the session user, and an unprotected endpoint called without a
+# session has none: every anonymous caller would share one set of threads.
+- :if:
+    _eq:
+      - _if_none:
+          - _user: id
+          - null
+      - null
+  :then:
+    - :reject: Sign in to use the assistant.

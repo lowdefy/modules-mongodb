@@ -13,9 +13,15 @@ id: ai_chat
 type: AgentChat
 class: fp-chat
 visible:
-  _ne:
-    - _state: ai_view
-    - threads
+  _and:
+    - _ne:
+        - _state: ai_view
+        - threads
+    # notice.yaml takes the conversation's place while this is set, and the composer goes with
+    # it — an app that has stopped the assistant must not still accept messages.
+    - _eq:
+        - _module.var: notice
+        - null
 # Held until enter.yaml has decided which thread you are in. A spinner, not
 # message skeletons: skeletons would promise a conversation that may turn out
 # to be empty, and this wait is short.
@@ -43,6 +49,10 @@ properties:
     _state: ai_conversation_id
   messages:
     _state: ai_messages
+  # Passed through unchanged: on_feedback reports the block's own vocabulary, so the
+  # seam stays transparent both ways rather than translating for one consumer.
+  feedbackValues:
+    _module.var: feedback_values
   # The module's one domain seam: whatever the app wants the agent to know
   # about the page, read fresh on every message send.
   sharedState:
@@ -94,30 +104,32 @@ events:
       # is the module's job. `messages` from this event already includes the message just sent.
       onUserMessage:
         _build.array.concat:
-          - - _ref: actions/stash-provisional-title.yaml
-            - id: ai_persist_on_send
-              type: CallAPI
-              skip:
-                _eq:
-                  - _state: ai_conversation_id
-                  - null
+          - - id: ai_mark_busy
+              type: SetState
               params:
-                endpointId:
-                  _module.endpointId: save-thread
-                payload:
-                  conversationId:
-                    _state: ai_conversation_id
+                ai_busy: true
+            - _ref: actions/stash-provisional-title.yaml
+            - _ref:
+                path: actions/persist-thread.yaml
+                vars:
+                  id: ai_persist_on_send
                   messages:
                     _event: messages
-                  title:
-                    _state: ai_title
-                  scope:
-                    _module.var: scope
-                  tag:
-                    _module.var: tag
           - _module.var: on_user_message
       onDataPart:
         _module.var: on_data_part
+      # A switch unmounts the stream, whose completion then never reaches the chain below, so
+      # the controls that switch threads are disabled while this is set.
+      onRegenerate:
+        - id: ai_mark_busy_regenerate
+          type: SetState
+          params:
+            ai_busy: true
+      onStop:
+        - id: ai_clear_busy_on_stop
+          type: SetState
+          params:
+            ai_busy: false
 
       # Persist the full history (incl. the assistant reply) from the client:
       # this is where the thread title and the thread-list update also live,
@@ -126,30 +138,60 @@ events:
         - id: ai_save_messages
           type: SetState
           params:
+            ai_busy: false
+            # A turn cut off mid-stream leaves its tool call with no result. That pairing is
+            # invalid to send back, so every later turn on the thread fails and the thread is
+            # dead — drop the unresolved call, and any message left carrying nothing.
+            #
+            # api/routines/sanitize_messages.yaml is the same rule server-side, for what is
+            # stored and read back. The two cannot share a body: that one runs on a routine's
+            # state, this one on a block event. Change one, change the other.
             ai_messages:
-              _event: messages
+              _js:
+                fn: |
+                  const settled = (part) => {
+                    const type = (part || {}).type;
+                    const isTool =
+                      type === 'dynamic-tool' ||
+                      (typeof type === 'string' && type.startsWith('tool-'));
+                    if (!isTool) return true;
+                    return part.state === 'output-available' || part.state === 'output-error';
+                  };
+                  return (event('messages') || [])
+                    .map((message) =>
+                      Array.isArray((message || {}).parts)
+                        ? { ...message, parts: message.parts.filter(settled) }
+                        : message)
+                    .filter((message) =>
+                      !Array.isArray((message || {}).parts) ||
+                      message.parts.some((part) => (part || {}).type !== 'step-start'));
+                args: {}
         - _ref: actions/stash-provisional-title.yaml
-
-        - id: ai_persist_thread
-          type: CallAPI
+        # A turn can end with no answer in it: the stream closes early and the block reports
+        # completion, not an error, so nothing else tells the user. Silence reads as the
+        # assistant ignoring them, and they resend — which is how one dead turn becomes five.
+        - id: ai_warn_no_answer
+          type: DisplayMessage
           skip:
-            _eq:
-              - _state: ai_conversation_id
-              - null
+            _js:
+              fn: |
+                // Stopping on purpose is not a failure to report.
+                return (
+                  String(event('content') || '').trim().length > 0 ||
+                  event('isAbort') === true
+                );
+              args: {}
           params:
-            endpointId:
-              _module.endpointId: save-thread
-            payload:
-              conversationId:
-                _state: ai_conversation_id
+            status: warning
+            duration: 8
+            content: The assistant stopped before it finished answering. Please try again.
+
+        - _ref:
+            path: actions/persist-thread.yaml
+            vars:
+              id: ai_persist_thread
               messages:
-                _event: messages
-              title:
-                _state: ai_title
-              scope:
-                _module.var: scope
-              tag:
-                _module.var: tag
+                _state: ai_messages
 
         # Relabel the thread in the list (prepend if not present yet).
         - id: ai_patch_thread_title
@@ -214,10 +256,12 @@ events:
                   const assistants = msgs.filter((m) => m.role === 'assistant');
                   // Second assistant message onwards = not the first turn.
                   if (assistants.length !== 1) return null;
+                  // Renamed by hand before the reply finished: the name is the user's, not ours.
+                  if (state('ai_title') !== state('ai_title_provisional')) return null;
                   const prompt = textOf(msgs.find((m) => m.role === 'user'));
                   const reply = textOf(assistants[0]);
                   if (!prompt && !reply) return null;
-                  return { prompt, reply };
+                  return { prompt, reply, replaces: state('ai_title') };
                 args: {}
 
         - id: ai_generate_title
@@ -242,50 +286,81 @@ events:
                 _state: ai_first_exchange.prompt
               reply:
                 _state: ai_first_exchange.reply
+              replaces:
+                _state: ai_first_exchange.replaces
               context:
                 _module.var: title_context
 
-        # The endpoint already persisted the title (and returns null on any
-        # failure), so this only mirrors it into the UI. On null nothing is
-        # touched and the provisional title stands.
-        - id: ai_apply_generated_title
+        # The endpoint persisted the title, or returned null on failure or a rename meanwhile. The
+        # list entry is keyed on the thread the call was for, so it updates after a switch too.
+        - id: ai_apply_generated_label
           type: SetState
-          skip:
-            _or:
-              # The _if_none is load-bearing, not decoration: when the step
-              # above was SKIPPED the _actions lookup is UNDEFINED, and
-              # undefined != null — so a bare _eq would fail to skip and then
-              # write undefined over a perfectly good title.
-              - _eq:
-                  - _if_none:
-                      - _actions: ai_generate_title.response.response.title
-                      - null
+          skip: &no_generated_title
+            # The _if_none is load-bearing, not decoration: when the step
+            # above was SKIPPED the _actions lookup is UNDEFINED, and
+            # undefined != null — so a bare _eq would fail to skip and then
+            # write undefined over a perfectly good title.
+            _eq:
+              - _if_none:
+                  - _actions: ai_generate_title.response.response.title
                   - null
-              # The titling call takes seconds; if the user switched threads (or
-              # minted a new one) meanwhile, applying would write the OLD thread's
-              # title into the new thread's header and list entry. The server has
-              # already persisted the title against the right conversationId, so
-              # skipping only forgoes the cosmetic in-place update.
-              - _ne:
-                  - _state: ai_titling_for
-                  - _state: ai_conversation_id
+              - null
           params:
-            ai_title:
-              _actions: ai_generate_title.response.response.title
             ai_threads:
               _js:
                 fn: |
-                  const id = state('ai_conversation_id');
+                  const id = state('ai_titling_for');
                   return (state('ai_threads') || []).map(
                     (c) => (c.key === id ? { ...c, label: args.title } : c));
                 args:
                   title:
                     _actions: ai_generate_title.response.response.title
+        # The header only while the user is still on that thread, and has not renamed it since
+        # the call went out.
+        - id: ai_apply_generated_title
+          type: SetState
+          skip:
+            _or:
+              - *no_generated_title
+              - _ne:
+                  - _state: ai_titling_for
+                  - _state: ai_conversation_id
+              - _ne:
+                  - _state: ai_title
+                  - _state: ai_first_exchange.replaces
+          params:
+            ai_title:
+              _actions: ai_generate_title.response.response.title
 
       onFeedback:
         _module.var: on_feedback
 
+      # Deleting is the one message action that ends there: regenerate streams a new reply and
+      # edit resends, so both persist through their own completion. The event carries the
+      # history as it stood, so the dropped message is filtered out here rather than reused.
+      onDeleteMessage:
+        - id: ai_drop_message
+          type: SetState
+          params:
+            ai_messages:
+              _js:
+                fn: |
+                  const id = event('messageId');
+                  return (event('messages') || []).filter((message) => message.id !== id);
+                args: {}
+        - _ref:
+            path: actions/persist-thread.yaml
+            vars:
+              id: ai_persist_after_delete
+              messages:
+                _state: ai_messages
+
+
       onError:
+        - id: ai_clear_busy_on_error
+          type: SetState
+          params:
+            ai_busy: false
         - id: ai_show_chat_error
           type: DisplayMessage
           params:

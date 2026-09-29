@@ -42,7 +42,7 @@ demo_orders:
     category:
       type: string
       description: Product category
-      values: [Electronics, Clothing, Home, Toys, Sports]
+      values: [Electronics, Clothing, Home, Toys, Sports, Garden, Books, Beauty]
     status:
       type: string
       description: Order status

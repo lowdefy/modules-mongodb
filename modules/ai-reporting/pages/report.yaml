@@ -41,8 +41,35 @@ _ref:
         properties:
           endpointId:
             _module.endpointId: resolve-report
+          # Every icon compileReport emits. The Dynamic block does not read this
+          # property — it exists for the BUILD. Lowdefy collects icon imports by
+          # scanning the static page config for icon names, and the compiled
+          # header, section ⤓ buttons and ⋯ menu only exist at runtime, so an
+          # icon named nowhere else in the consuming app ships as the
+          # exclamation-circle fallback (the ⋯ was the one that surfaced).
+          # Listing them here puts them in the bundle wherever the module is
+          # used. compileReport.declared.test.js asserts this list covers every
+          # `icon:` the compiler can emit, the same way it does for `types`.
+          icons:
+            - star
+            - copy
+            - delete
+            - download
+            - edit
+            - more
+            - hide
+            - globe
+            - message
+            - star
           types:
             blocks:
+              # Section containers. A kpi, chart or table section compiles into
+              # a Card carrying that section's span, and Box wraps sections that
+              # share a laid-out row. A container type missing from this list
+              # blanks the WHOLE report, not the one section inside it, so both
+              # are declared together.
+              - Card
+              - Box
               - Title
               - Paragraph
               - Statistic
@@ -78,6 +105,13 @@ _ref:
               - _state
               - _api
               - _if_none
+              # Every chart block carries both themes behind an `_if` on
+              # `_media: darkMode`, because the ink a chart needs depends on the
+              # card it is drawn on and only the browser knows which mode that
+              # is. Resolved per render, so toggling dark mode re-inks the
+              # charts with no re-resolve.
+              - _if
+              - _media
               # Drop reads the report id from the page URL (the same value
               # resolve-report loads the report from) for its remove-report-section
               # call and the re-navigation that refreshes the page.
@@ -129,6 +163,14 @@ _ref:
                   urlQuery:
                     report_id:
                       _url_query: report_id
+      # The AI summary drawer, opened by the compiled header's "AI summary" button
+      # (CallMethod setOpen by id, the path the ⋯ takes to the modals above). Static
+      # for the same reasons: its state survives a re-resolve, and Drawer, Markdown
+      # and Alert stay out of the allowlist. It owns generation — the only call to
+      # summarize-report — so the compiled header carries nothing model-related.
+      - _ref:
+          path: components/report_summary_drawer.yaml
+
       - _ref:
           path: components/report_delete_modal.yaml
           vars:

@@ -13,6 +13,7 @@ payloadSchema:
     conversationId:
       type: string
 routine:
+  - _ref: api/routines/require_user.yaml
   - id: load_thread
     type: MongoDBFindOne
     connectionId:
@@ -23,6 +24,8 @@ routine:
           _payload: conversationId
         user_id:
           _user: id
+        deleted.timestamp:
+          $exists: false
       options:
         projection:
           _id: 0
@@ -44,12 +47,20 @@ routine:
           _payload: conversationId
         user_id:
           _user: id
+        deleted.timestamp:
+          $exists: false
       update:
         $set:
           last_opened:
             _date: now
-  - :return:
-      messages:
+  # Reading through the filter is what recovers threads already stored with an unresolved
+  # tool call in them.
+  - :set_state:
+      raw_messages:
         _if_none:
           - _step: load_thread.messages
           - []
+  - _ref: api/routines/sanitize_messages.yaml
+  - :return:
+      messages:
+        _state: replayable_messages

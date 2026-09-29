@@ -1,0 +1,185 @@
+# The report page's AI summary: a model-generated reading of the report AS
+# CURRENTLY FILTERED. Loads the report under the same readable scope as
+# resolve-report, re-runs every data section's pipeline through AnalyticsPipeline
+# under the VIEWING user's roles with a server-built $match from the viewer's
+# filter values, and hands the capped rows to the model in one shot.
+#
+# Re-resolves rather than reading rows off the client: the on-screen rows of an
+# unfiltered section are baked into compiled block properties, not page state,
+# so the client has nothing to send — and rows shipped from the client would be
+# client-authored input to the prose. Running the stored pipelines here keeps
+# data-and-scope consistency at generation time and the security boundary in
+# the one place it already lives.
+#
+# The client sends VALUES, never ops: `filters` is a `field → control value`
+# map, and _analytics.summaryQueries derives each triple's op from the stored
+# spec's filter section (control, and a multiselect's `match`) — so a caller
+# can choose what to filter on, not how. The values are untrusted browser input
+# exactly as on query-data, and contained the same way: AnalyticsPipeline builds
+# the $match from a fixed op map and revalidates the combined pipeline.
+#
+# Nothing is persisted. The response lives in page state until navigation.
+id: summarize-report
+type: Api
+description: >
+  Generate an AI reading of a readable report under the caller's active filter
+  values. Re-runs each data section's pipeline through the catalog gate with the
+  caller's roles and a server-built filter $match, then asks the model once.
+  Returns { text, scope, generatedAt, excluded }; excluded names the sections
+  whose query failed for this caller and so were left out. Throws on model
+  failure — the caller clicked Generate and is owed an error.
+payloadSchema:
+  type: object
+  required:
+    - report_id
+  properties:
+    report_id:
+      type: string
+      description: The report to summarize.
+    filters:
+      type:
+        - object
+        - "null"
+      description: >
+        The viewer's active filter control values keyed by filter field, as the
+        report page holds them: a select's value, a multiselect's array, a
+        daterange's [start, end] pair. Null/absent values and empty arrays mean
+        "no constraint". Fields no filter section declares are ignored.
+routine:
+  # The feature is opt-in per app (the `ai_summary` var). The hidden header
+  # button is an affordance; this rejection is the switch — an exported endpoint
+  # can be called without the button, and the var is what says whether this
+  # app's report data may be sent to a model at all.
+  - :if:
+      _ne:
+        - _module.var: ai_summary
+        - true
+    :then:
+      - :reject: The AI summary is not enabled for this app.
+  # Same reason as resolve-report: "shared" means every AUTHENTICATED user, and
+  # the catalog's role gate assumes there is a user.
+  - :if:
+      _eq:
+        - _user: id
+        - null
+    :then:
+      - :reject: You must be signed in to summarize a report.
+  - id: load_report
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: reports-store
+    properties:
+      query:
+        _id:
+          _payload: report_id
+        deleted.timestamp:
+          $exists: false
+        $or:
+          - owner.user_id:
+              _user: id
+          - visibility: shared
+  - :if:
+      _eq:
+        - _step: load_report
+        - null
+    :then:
+      - :reject: Report not found.
+  # One query per data section, each carrying the filter triples derived for it
+  # from the viewer's values and the section's own filterBy — plus every filter's
+  # optionsQuery, unfiltered, whose rows label the selected ids in the scope
+  # line. The :for step results align index-for-index with this list.
+  - :for: section
+    :in:
+      _analytics.summaryQueries:
+        spec:
+          title:
+            _step: load_report.title
+          description:
+            _step: load_report.description
+          sections:
+            _step: load_report.spec.sections
+        roles:
+          _user: roles
+        filterValues:
+          _if_none:
+            - _payload: filters
+            - {}
+    :do:
+      # A failed query leaves its step result unset — buildSummaryInput drops the
+      # section and names it in `excluded`, so the summary can never describe
+      # data the report page itself withholds from this viewer (the same
+      # boundary, in the same place, as resolve-report). Logged because :catch
+      # has no error object and this is the only place the failure is
+      # diagnosable.
+      - :try:
+          - id: run_query
+            type: AnalyticsPipeline
+            connectionId:
+              _module.connectionId: reporting-data
+            properties:
+              query:
+                _item: section.query
+              filters:
+                _item: section.filters
+              roles:
+                _user: roles
+              # These rows are model context, so they get the query-data-tool
+              # budget rather than the connection's app-memory backstop.
+              maxResultBytes: 200000
+        :catch:
+          - :log:
+              msg: A report section pipeline failed validation or execution for this viewer while summarizing.
+              report_id:
+                _payload: report_id
+              section_id:
+                _item: section.id
+              section_type:
+                _item: section.type
+              collection:
+                _item: section.query.collection
+  - :set_state:
+      summary_input:
+        _analytics.buildSummaryInput:
+          spec:
+            title:
+              _step: load_report.title
+            description:
+              _step: load_report.description
+            sections:
+              _step: load_report.spec.sections
+          results:
+            _step: run_query
+          filterValues:
+            _if_none:
+              - _payload: filters
+              - {}
+          roles:
+            _user: roles
+  - id: summarize
+    type: SummarizeReportData
+    connectionId:
+      _module.connectionId: ai-text
+    properties:
+      model:
+        _module.var: model
+      title:
+        _state: summary_input.title
+      description:
+        _state: summary_input.description
+      scope:
+        _state: summary_input.scope
+      hasFilters:
+        _state: summary_input.hasFilters
+      sections:
+        _state: summary_input.sections
+  - :return:
+      text:
+        _step: summarize.text
+      # The exact scope the model was told, so the drawer displays what the
+      # prose describes rather than re-deriving it client-side.
+      scope:
+        _state: summary_input.scope
+      generatedAt:
+        _date: now
+      excluded:
+        _state: summary_input.excluded

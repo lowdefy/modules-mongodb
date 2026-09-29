@@ -1,0 +1,25 @@
+# `raw_messages` in, `replayable_messages` out. Shared by save-thread and get-thread so both
+# seams agree on what is replayable.
+#
+# A reply cut off mid-stream leaves its tool call with no result, and that pairing fails
+# validation for the whole history — the thread stops opening and stops accepting messages.
+# Filtering server-side covers every writer: the chat persists on send as well as on completion.
+- :set_state:
+    replayable_messages:
+      _js: |
+        const settled = (part) => {
+          const type = (part || {}).type;
+          const isTool =
+            type === 'dynamic-tool' ||
+            (typeof type === 'string' && type.startsWith('tool-'));
+          if (!isTool) return true;
+          return part.state === 'output-available' || part.state === 'output-error';
+        };
+        return (state('raw_messages') || [])
+          .map((message) =>
+            Array.isArray((message || {}).parts)
+              ? { ...message, parts: message.parts.filter(settled) }
+              : message)
+          .filter((message) =>
+            !Array.isArray((message || {}).parts) ||
+            message.parts.some((part) => (part || {}).type !== 'step-start'));

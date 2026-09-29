@@ -22,6 +22,7 @@ payloadSchema:
     scope:
       type: string
 routine:
+  - _ref: api/routines/require_user.yaml
   - id: load_active_thread
     type: MongoDBAggregation
     connectionId:
@@ -36,6 +37,10 @@ routine:
             conversationId:
               $exists: true
               $ne: null
+            # Without this, a deleted thread is still the most recently opened
+            # one in the scope, so the next visit resumes straight back into it.
+            deleted.timestamp:
+              $exists: false
         # Threads written before last_opened existed have never been stamped, so they
         # fall back to `updated` rather than sorting below every stamped thread.
         - $addFields:
@@ -54,6 +59,14 @@ routine:
               $ifNull:
                 - "$messages"
                 - []
+  # `enter` resumes straight into this thread, so it is the first history a visit sees and
+  # needs the same filter as get-thread.
+  - :set_state:
+      raw_messages:
+        _if_none:
+          - _step: load_active_thread.0.messages
+          - []
+  - _ref: api/routines/sanitize_messages.yaml
   - :return:
       # Null when the user has no threads in this scope — `enter` reads this to tell
       # "resume the last one" from "keep the blank thread just minted".
@@ -66,6 +79,4 @@ routine:
           - _step: load_active_thread.0.title
           - null
       messages:
-        _if_none:
-          - _step: load_active_thread.0.messages
-          - []
+        _state: replayable_messages

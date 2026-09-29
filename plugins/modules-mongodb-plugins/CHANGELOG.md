@@ -1,5 +1,237 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 0.44.1
+
+## 0.44.0
+
+### Minor Changes
+
+- [#248](https://github.com/lowdefy/modules-mongodb/pull/248) [`48676e9`](https://github.com/lowdefy/modules-mongodb/commit/48676e945078271bf904a8b67432ff4fdbe4a085) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: `title_zero_data_retention` keeps thread titling on zero-data-retention providers
+
+  Titling sends a thread's first question and reply to the title model. An agent can already restrict
+  its routing to providers with a zero data retention policy, but titling had no way to follow, so it
+  could land on a provider that retains what it's sent. The `GenerateChatTitle` request takes
+  `zeroDataRetention`, and the module passes it from the new var, which defaults to off.
+
+## 0.43.1
+
+## 0.43.0
+
+### Patch Changes
+
+- [#237](https://github.com/lowdefy/modules-mongodb/pull/237) [`4ca9350`](https://github.com/lowdefy/modules-mongodb/commit/4ca9350cf1e467d17c5b70253f58e1ce6da45272) Thanks [@Yianni99](https://github.com/Yianni99)! - walkthroughs: a new walkthrough is stored on its first save, not when the editor opens
+
+  **Breaking:** `create-walkthrough` is removed. Open the editor with no `walkthrough_id` instead, and
+  `load` starts a new walkthrough under an id it mints. Nothing is written until the author saves:
+  `save-draft` with a null `updated_timestamp` inserts the walkthrough, and refuses an id that already
+  exists. Before, every press of a New button stored an empty walkthrough whether or not anyone saved
+  it.
+
+  A walkthrough that has never been published can now be deleted: `delete-walkthrough`, and a Delete
+  button in the editor with an `on_deleted` hook. It follows the `deleted` change-stamp soft delete
+  used across the modules, and every read and update now skips a deleted walkthrough. A published one is
+  still retired rather than deleted, since other records may point at it.
+
+  `save-draft` now requires `walkthrough_id` to be a uuid on every save, as `presign-step-image`
+  already did, since a first save inserts under it.
+
+  To upgrade, an app that gives the authoring endpoints their own `auth.api.roles` entry removes
+  `walkthroughs/create-walkthrough` from it and adds `walkthroughs/delete-walkthrough`. Left out, the
+  new endpoint is open to any signed-in user.
+
+  `get-walkthrough` now returns null for a walkthrough that is unknown, deleted or never published,
+  where it used to return an empty one, and the player says the walkthrough is not available.
+  `save-draft` also checks each step's screenshot key against the layout the module issues.
+
+  Fixes:
+
+  - Saving while in Preview stored a draft with no steps. Save is now disabled in Preview.
+  - Discard on a walkthrough that was never published emptied it. It is disabled until the
+    walkthrough has been published once; Delete covers the case before that.
+  - A picked PNG was stored labelled as a JPEG. A picked file that is not a JPEG is now re-encoded.
+  - A capture whose upload failed left an empty step behind. The step is now added only after the
+    upload succeeds.
+  - A new walkthrough starts with an empty title rather than the text "Untitled walkthrough".
+  - Uploading over plain HTTP failed with a script error, and the capture block pointed authors at
+    uploading. Both now say screenshots need HTTPS.
+  - Double-clicking Share a screen could leave a screen share running after the editor closed.
+
+  `load` also no longer throws when there is nothing to fetch. Lowdefy evaluates an action's params
+  before its `skip`, so its seeding step used to run against a draft that was never loaded.
+
+## 0.42.0
+
+### Minor Changes
+
+- [#234](https://github.com/lowdefy/modules-mongodb/pull/234) [`a52d4dd`](https://github.com/lowdefy/modules-mongodb/commit/a52d4dd5679334463076e94aa3f2c92ba226c8c8) Thanks [@Yianni99](https://github.com/Yianni99)! - walkthroughs: a new module for step-by-step guides
+
+  Step-by-step walkthroughs, stored and played in-app rather than at a third-party host. A
+  walkthrough is a title, an overview and an ordered list of steps; a step is a caption with an
+  optional screenshot and an optional focus point marking where the highlight belongs. The
+  annotation is held as data, so a highlight can be moved without re-shooting the step.
+
+  The module ships the data model, a player that renders one step at a time, and an editor that
+  works on a draft and publishes it explicitly — what a reader sees changes only when the author
+  says so. Authoring is off unless the app sets `writable`, which keeps both connections read-only
+  and makes every authoring endpoint refuse outright.
+
+  `WalkthroughCapture`, `WalkthroughImageTarget` and the `WalkthroughUploadStepImage` action are new
+  in the plugins package. Capture shares a window or screen and returns a still frame; the upload
+  action hashes the bytes, asks for a presigned policy and posts it.
+
+## 0.41.0
+
+## 0.40.0
+
+### Minor Changes
+
+- [#229](https://github.com/lowdefy/modules-mongodb/pull/229) [`82473ca`](https://github.com/lowdefy/modules-mongodb/commit/82473ca1f790082ffeb45920ae8015969f0a335f) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: let an app colour the chat where it currently inherits antd's primary
+
+  Three surfaces took their colour from `--ant-color-primary*` with no way to change it: the
+  selected chat in the thread list, the embedded toolbar's buttons, and the assistant's name chip
+  in the docked panel. That is right where the app's primary IS its accent, and wrong where it is
+  a neutral — an app with a grey `colorPrimary` gets a grey selected chat that looks hovered, and
+  a grey name chip on a grey tint, which is the one thing that chip exists to avoid. Nothing an
+  app could write in its own stylesheet fixed it: the thread list's selected class is generated,
+  and the panel's chip rule lands at the same specificity a consumer can reach, so the two tie
+  and the plugin wins on order.
+
+  - `thread_selection` — `{ border, background }` for the selected chat.
+  - `toolbar` — `{ size, accent, accent_text, secondary }` for the embedded shell's toolbar: the
+    antd button size, the fill marking the primary action, and the fill behind the rest.
+  - `--fp-role-assistant-bg` / `--fp-role-assistant-fg` — CSS custom properties the FloatingPanel
+    stylesheet now reads for the assistant's name chip.
+
+  The chat title's size is also pinned to 1rem. `level: 5` asked for a semantic heading, so the
+  title took whatever the consuming app decided `h5` means — an app that styles h5 as metadata,
+  which is a common choice, rendered the chat title at secondary-text size. A consumer that had
+  deliberately sized the title through `h5` will now see 1rem instead.
+
+  Decisions:
+
+  - Every default is today's value, so no existing consumer changes appearance. `toolbar.size`
+    stays `small` for the same reason, even though 24px is slight for what are the shell's
+    primary actions — an app that wants bigger now says so.
+  - `toolbar` covers the embedded shell only. The panel's buttons are icon-only in a 420px
+    column, where `small` is right and a fill would read as chrome rather than as an action.
+  - The toolbar fills are set on the blocks via their `.element` css key rather than left to a
+    consumer stylesheet. Reaching those buttons from outside means selecting on module-internal
+    block ids, which a release can rename with nothing raising an error on the consumer's side.
+  - The panel chip uses CSS custom properties rather than a var, because the rule lives in the
+    plugin's stylesheet and never passes through the module's var resolution.
+
+## 0.39.1
+
+### Patch Changes
+
+- [#223](https://github.com/lowdefy/modules-mongodb/pull/223) [`d22dea4`](https://github.com/lowdefy/modules-mongodb/commit/d22dea4bef69e4daf7350db9ab3131694a4a16a2) Thanks [@JohannMoller](https://github.com/JohannMoller)! - ai-reporting: a loading state when switching conversations, a report chip that steps aside once a report exists, and the report header's icons bundled wherever the module is used
+
+  **Switching conversations shows a skeleton.** Selecting a conversation in the rail blanked the transcript and the results panel until the read came back, with nothing to say a read was in flight — an empty chat, or "Nothing here yet", for a conversation full of results. The switch now raises a loading state: a skeleton stands in for the transcript (taking the composer with it, so nothing can be sent into a half-loaded conversation) and for the panel's cards, and only the response for the conversation still selected lowers it, so a rapid A → B → A ends on A's transcript with no flash of B. Switching away from, or starting a new chat over, a reply that is still streaming aborts the stream first, so partial content cannot land in the conversation being opened. A read that fails lowers the state rather than leaving the skeleton up.
+
+  **The "Turn this conversation into a report" chip hides once a report exists.** It kept offering to create one under a conversation that already had, which read as noise and as an invitation to save a duplicate. It is now keyed to the same signal the panel's **Reports from this chat** band renders from: shown while the conversation has no saved report, gone the moment one is saved (from the sheet or by the agent, no reload), back on a conversation that has none. The composer still reaches `generate_report` for a second report. No "update the report" chip replaces it — the agent has no tool that edits a saved report.
+
+  **The report header's icons are bundled.** Lowdefy collects icon imports by scanning the static page config, and the report header is compiled at runtime, so an icon named nowhere else in the consuming app — the ⋯ menu's `AiOutlineEllipsis`, typically — shipped as the exclamation-circle fallback. The report page now lists every icon the compiler emits, so the bundle carries them wherever the module is used; consumers that added a `global` list of these names as a workaround can drop it. The plugin's declared-types test asserts the list stays complete.
+
+## 0.39.0
+
+### Minor Changes
+
+- [#209](https://github.com/lowdefy/modules-mongodb/pull/209) [`b9c4088`](https://github.com/lowdefy/modules-mongodb/commit/b9c40888f8a5ef8449eeff5b10c40ff95337ddd9) Thanks [@JohannMoller](https://github.com/JohannMoller)! - ai-reporting: an opt-in, on-demand AI summary of a report, as currently filtered
+
+  With the new `ai_summary` var on (off by default — sending report rows to a model is the
+  app's call), the report page's header gains an **AI summary** button that opens a drawer. Generate
+  asks the model for a short reading of the report's data and shows it as markdown with a
+  "Generated {time} · {scope}" line. The summary always describes the report **as filtered**:
+  the new `summarize-report` endpoint re-runs every data section's pipeline through the
+  catalog gate under the viewer's roles, with a server-built `$match` from the viewer's
+  active filter values honouring each section's own `filterBy`, and the prose opens by
+  naming that scope in the filters' own labels. Changing a filter (or Reset) marks a shown
+  summary stale rather than re-generating it; Refresh re-runs under the new selection.
+  Sections the viewer cannot query are left out and named in a "Not included" line.
+  Nothing is persisted. Off, no button renders and `summarize-report` rejects every call.
+
+  The module gains an `ai-text` connection (type `AiText`, on the same `AI_GATEWAY_API_KEY`
+  secret as `ai`; remap it alongside `ai` when an app supplies its own gateway). The plugin
+  package gains the `SummarizeReportData` request on `AiText` — the one-shot call, which
+  throws on failure rather than returning null, since it answers a click — and two
+  `_analytics` methods, `summaryQueries` (per-section filter triples derived server-side
+  from the stored spec) and `buildSummaryInput` (capped per-section rows and the scope
+  line). `MAX_SUMMARY_ROWS_PER_SECTION` joins the constants.
+
+  Once on, every saved report gets the feature on next open: no spec grammar, agent
+  vocabulary or stored-report migration changed.
+
+## 0.38.0
+
+### Minor Changes
+
+- [#218](https://github.com/lowdefy/modules-mongodb/pull/218) [`bd9260c`](https://github.com/lowdefy/modules-mongodb/commit/bd9260cb3c13c3104370ec97454239ac7f7e5e1e) Thanks [@JohannMoller](https://github.com/JohannMoller)! - ai-reporting: make a saved report read as a designed page, on Lowdefy 6.0.0
+
+  A saved report rendered as a vertical stack of bare numbers, grids and canvases: every
+  compiled block a sibling in one wrapping area, one number alone on a line, two small
+  charts one under the other, every section the same width whatever it held. Its charts
+  shipped the stock ECharts palette with 10px axis labels, square bars, hairline lines and
+  touching pie slices, laid out for a constant 1100px canvas they were never drawn at.
+
+  **Layout is derived, never authored.** Width, pairing, spans and heights are computed on
+  every open from a section's type, its position in its run of same-type neighbours, and the
+  shape of the rows the first unfiltered resolve returned. Numbers pack into a KPI row, two
+  narrow charts placed together pair up and share one height, an unpaired one is promoted to
+  full width, a table always runs full width. Adjacency in spec order is the agent's only
+  channel into layout. No new spec key was added: a `width: full|half` key was considered and
+  rejected, because an authored width freezes at save and goes wrong the moment the data
+  behind it moves. Existing reports pick the new layout up on their next open.
+
+  **Charts.** A validated 8-slot palette, rounded bar caps capped once per stack, 2px lines
+  with an endpoint symbol, gradient area fills, pie slice gaps with a 6 + neutral `Other`
+  cap, a legend banded above the plot where a vertical one would eat a narrow canvas, and
+  axis-label rotation that only ever relaxes Flint's decision. A shared theme
+  (`defaults/chart_theme.yaml`) carries typography, axis chrome and a transparent
+  background to all three render sites, including the chat card and expand modal, and is
+  inked from the reader's colour mode. Colour identity is scoped to the report rather than
+  the chart: every coloured entity gets one hue in first-appearance order, threaded through
+  the re-query payload so a filter cannot repaint the survivors.
+
+  **Sections.** Each data section compiles into a card with its heading and ⤓ outside it.
+  Markdown and tables take no card. A filter group closes with one muted scope line plus
+  **Reset**, which clears state without re-querying, instead of a note on every control. A
+  run of `download` sections becomes one titled Downloads card.
+
+  **Requires Lowdefy 6.0.0**, the first release on the Vite/Hono line. It carries the
+  `blocks-echarts` theme fix (lowdefy/lowdefy#2358) that charts need to re-ink when dark mode
+  is toggled; on an older build they keep their first-render colours until a reload. The
+  plugin package's Lowdefy peer range now accepts `6.0.0` and no longer accepts the
+  `0.0.0-experimental-*` builds that stood in for it.
+
+## 0.37.0
+
+### Patch Changes
+
+- [#205](https://github.com/lowdefy/modules-mongodb/pull/205) [`1c35006`](https://github.com/lowdefy/modules-mongodb/commit/1c35006132524afc63671864c18ae31e5d1ec532) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: add a `feedback_values` var so stored ratings come back
+
+  The chat block persists no rating: `on_feedback` hands one to the app and the app stores
+  it. There was no way to hand it back, so a reload or a thread switch showed every message
+  unrated even where the app had recorded the rating — a lost write rather than a display
+  gap, as far as the user could tell.
+
+  `feedback_values` takes a map of message id to `like` or `dislike`, in the same vocabulary
+  `on_feedback` reports. A rating clicked during the visit takes precedence, so the thumb
+  still responds immediately.
+
+  Rebuild the map for the thread being opened, on both seams that open one. `on_thread_change`
+  covers every switch, and a new `on_panel_open` var covers the thread the `panel` resumes when
+  it opens — which nothing could see before, because `enter` runs inside the panel and no
+  consumer actions followed it. Wiring only `on_thread_change` leaves the thumbs missing on the
+  thread the user lands on and appearing once they switch, which is the confusing half-state.
+  The `embedded` shell still has no open moment: a page using it splices its own actions after
+  the `enter` component, as before.
+
+  Requires Lowdefy 5.6.0, the release carrying the AgentChat `feedbackValues` property; on
+  an older build the property is ignored and nothing changes. The plugin package's Lowdefy
+  peer range now accepts `5.6.0` and no longer accepts
+  `0.0.0-experimental-20260827105525` — that build predates the property, so it was only
+  ever the pre-release stand-in for this release.
+
 ## 0.36.0
 
 ### Patch Changes

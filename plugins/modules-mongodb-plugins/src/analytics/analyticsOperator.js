@@ -1,8 +1,10 @@
 import buildDataParts from "./buildDataParts.js";
 import buildFlintOption from "./buildFlintOption.js";
+import buildSummaryInput from "./buildSummaryInput.js";
 import compileReport from "./compileReport.js";
 import deriveReportSpec from "./deriveReportSpec.js";
 import querySections from "./querySections.js";
+import summaryQueries from "./summaryQueries.js";
 import validateChartSpec from "./validateChartSpec.js";
 import validateExportSpec from "./validateExportSpec.js";
 import validateReportSpec from "./validateReportSpec.js";
@@ -18,6 +20,8 @@ import validateTableSpec from "./validateTableSpec.js";
  *   _analytics.validateTableSpec   { spec, catalog?, roles } → normalized spec
  *   _analytics.validateExportSpec  { spec, catalog?, roles } → normalized spec
  *   _analytics.querySections       { spec, catalog?, roles } → resolve-time queries
+ *   _analytics.summaryQueries      { spec, roles, filterValues } → summary queries + filter triples
+ *   _analytics.buildSummaryInput   { spec, results, filterValues, roles } → model input + scope line
  *   _analytics.compileReport       { spec, results, catalog?, roles, endpointId } → blocks
  *   _analytics.buildDataParts      { charts, results, downloads, roles } → dataParts
  *   _analytics.buildFlintOption    { chart, x, y, rows } → { option, height }
@@ -36,9 +40,11 @@ import validateTableSpec from "./validateTableSpec.js";
 const functions = new Map([
   ["buildDataParts", buildDataParts],
   ["buildFlintOption", buildFlintOption],
+  ["buildSummaryInput", buildSummaryInput],
   ["compileReport", compileReport],
   ["deriveReportSpec", deriveReportSpec],
   ["querySections", querySections],
+  ["summaryQueries", summaryQueries],
   ["validateChartSpec", validateChartSpec],
   ["validateExportSpec", validateExportSpec],
   ["validateReportSpec", validateReportSpec],

@@ -30,6 +30,15 @@ test("the ⋯ opens as a dropdown, and the owner sees every item they may use", 
 
   await ldf.user(USER_A);
   await ldf.goto("/ai-reporting/report?report_id=e2e-menu-own");
+
+  // The trigger's icon is compiled, not static, so the build only bundles it if
+  // the page declares it (report.yaml `icons`). Unbundled, Lowdefy renders the
+  // exclamation-circle fallback — the same clickable button, wrong glyph — which
+  // is why this is asserted on the icon's own accessible name and not on the
+  // click below succeeding.
+  await expect(
+    page.locator("#report_menu_trigger").getByRole("img", { name: "ellipsis" }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "My report" })).toBeVisible();
 
   await page.locator("#report_menu_trigger").click();
@@ -124,15 +133,31 @@ test("Publish makes the report shared, from the compiled item", async ({
   await page.locator("#report_menu_trigger").click();
   await page.getByRole("menuitem", { name: "Publish to the app" }).click();
 
-  // The item re-navigates to re-resolve, and the re-resolved menu offers the
-  // reverse — which is also how a viewer can tell the write landed.
-  await page.locator("#report_menu_trigger").click();
-  await expect(page.getByRole("menuitem", { name: "Unpublish" })).toBeVisible();
+  // The write is the first thing that lands, so wait on it rather than on the
+  // menu: a slow runner can otherwise re-open the pre-publish menu.
+  await expect
+    .poll(async () => {
+      const doc = await mdb
+        .collection(REPORTS)
+        .findOne({ _id: "e2e-menu-publish" });
+      return doc.visibility;
+    })
+    .toBe("shared");
+
+  // The item then re-navigates to the same page and query to re-resolve, so
+  // there is no URL change to wait on. Re-open the menu until the re-resolved
+  // one offers the reverse — which is also how a viewer can tell it landed.
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    await page.locator("#report_menu_trigger").click();
+    await expect(page.getByRole("menuitem", { name: "Unpublish" })).toBeVisible(
+      { timeout: 1000 },
+    );
+  }).toPass();
 
   const doc = await mdb
     .collection(REPORTS)
     .findOne({ _id: "e2e-menu-publish" });
-  expect(doc.visibility).toBe("shared");
   // Publishing does not stamp `updated` — it changes who may see a report, not
   // what it is. See docs/ai-reporting/concepts/ownership.md.
   expect(doc.updated.timestamp.getTime()).toBe(doc.created.timestamp.getTime());

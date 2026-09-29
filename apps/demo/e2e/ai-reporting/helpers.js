@@ -162,13 +162,10 @@ export function changeStamp(user) {
 // `:reject:` is HTTP **200** with `success: false, status: "reject"`, not a 4xx.
 // So assert on `response` for the happy path and `rejected` for a refusal;
 // asserting a status code would pass or fail for the wrong reason.
-export async function callEndpoint(page, endpointId, payload) {
-  const raw = await page.request.post(
-    `/api/endpoints/ai-reporting/${endpointId}`,
-    {
-      data: { payload },
-    },
-  );
+export async function callAppEndpoint(page, endpointId, payload) {
+  const raw = await page.request.post(`/api/endpoints/${endpointId}`, {
+    data: { payload },
+  });
   const body = await raw.json().catch(() => null);
   return {
     status: raw.status(),
@@ -177,6 +174,13 @@ export async function callEndpoint(page, endpointId, payload) {
     rejected: body?.success === false && body?.status === "reject",
     errored: body?.success === false && body?.status === "error",
   };
+}
+
+// A module endpoint is an app endpoint under the module entry's path segment, so
+// the two share one implementation rather than one knowing the response shape and
+// the other re-deriving it.
+export async function callEndpoint(page, endpointId, payload) {
+  return callAppEndpoint(page, `ai-reporting/${endpointId}`, payload);
 }
 
 // Reports collection name — the module's `reports_collection` var defaults to

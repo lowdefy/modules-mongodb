@@ -20,6 +20,7 @@ payloadSchema:
     - conversationId
     - prompt
     - reply
+    - replaces
   additionalProperties: false
   properties:
     conversationId:
@@ -28,23 +29,33 @@ payloadSchema:
       type: string
     reply:
       type: string
+    replaces:
+      type: string
+      description: The provisional title this replaces. A thread renamed since keeps its name.
     context:
       # Null when the `title_context` var is left at its default.
       type:
         - string
         - "null"
 routine:
+  - _ref: api/routines/require_user.yaml
+  - :if:
+      _not:
+        _module.var: generate_titles
+    :then:
+      - :reject: Title generation is not enabled in this app.
   - id: generate_title
     type: GenerateChatTitle
     connectionId:
       _module.connectionId: ai_assistant_text
     properties:
-      disableNoMatchError: true
       model:
         _module.var: title_model
       # Low: this runs once per thread on a cosmetic path, where latency matters
       # more than depth.
       reasoningEffort: low
+      zeroDataRetention:
+        _module.var: title_zero_data_retention
       domain:
         _module.var: title_domain
       prompt:
@@ -76,12 +87,27 @@ routine:
           _payload: conversationId
         user_id:
           _user: id
+        # See docs/shared/soft-delete.md. A thread deleted while its title was
+        # still being generated must not have the result written back to it.
+        deleted.timestamp:
+          $exists: false
+        title:
+          _payload: replaces
       update:
         $set:
           title:
             _step: generate_title.title
           updated:
             _date: now
+
+  # Renamed while the title was generating: the rename stands, and the caller is told so.
+  - :if:
+      _eq:
+        - _step: persist_title.matchedCount
+        - 0
+    :then:
+      - :return:
+          title: null
 
   - :return:
       title:
