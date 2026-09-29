@@ -116,35 +116,22 @@ onInit:
 
 The operator is resolved **each time it is used** — when a thread is minted, listed, or saved — not once at page init. So a scope whose value arrives late (state populated by an async request, for example) is not frozen as null.
 
-**A scope that CHANGES mid-session needs one thing from the consumer.** Nothing in the module can observe an app global or a page state key moving, so an already-open thread and its list stay as they were until something re-enters. If your scope can change while the app is running — an active-company or active-record switcher, typically — compare `ai_scope` (the scope at page init) against your own source of truth on every visit, and clear the open thread when they differ. `onInit` runs once per page per session; `onMount` runs on every visit, so the check belongs there:
+**A scope that changes mid-session** — an active-company or active-record switcher, typically — is picked up by `enter`. It keeps the scope the open thread belongs to in `ai_scope`, and when the `scope` var no longer matches, it drops the open thread and its list and resumes the thread last opened in the new scope. Nothing in the module can observe the scope moving, so this happens the next time `enter` runs. The panel runs it on every open, so a page carrying the docked panel needs nothing more. A page hosting `embedded` runs it in `onInit`, which fires once per page per session, so it also splices `enter` into `onMount`, which runs on every visit. `enter` is a no-op there while the scope is unchanged:
 
 ```yaml
 onMount:
-  _build.array.concat:
-    - - id: rescope_on_change
-        type: SetState
-        skip:
-          _eq:
-            - _state: ai_scope
-            - _global: active_company_id   # your source of truth
-        params:
-          ai_scope:
-            _global: active_company_id
-          ai_view: chat
-          ai_conversation_id: null
-          ai_messages: []
-          ai_threads: []
-          ai_thread_selection: null
-          ai_title: New chat
-    # A page hosting `embedded` re-runs `enter` here too — it is a no-op while a thread is
-    # open, and the null id above is what makes it resume in the new scope. A page carrying
-    # the docked panel needs nothing more: the panel runs `enter` on open.
-    - _ref:
-        module: ai-assistant
-        component: enter
+  try:
+    _ref:
+      module: ai-assistant
+      component: enter
+  catch:
+    - id: ai_end_loading_on_error_mount
+      type: SetState
+      params:
+        ai_loading: false
 ```
 
-Clearing `ai_conversation_id` is the whole mechanism: `enter` treats a null id as a first entry and resumes the thread last opened in the new scope.
+A scope that moves while the chat is on screen, with no visit or open in between, is picked up at the next one.
 
 ## Titles
 
@@ -165,6 +152,26 @@ Two vars sharpen the generated names: `title_context` (one line of grounding, e.
 ## Composer note
 
 `composer_note` puts a short fixed note of small secondary text under the composer, in both the docked panel and the embedded shell, e.g. a reminder not to share personal information. It shows whenever the conversation does and is never added to it, so the transcript stays clean. Inside the panel the chat gives up a fixed 56px to it, so a note longer than about three lines at the panel's width is clipped. Keep it to a sentence or two.
+
+## Colours
+
+The user's bubble, the outlined reply border and the composer border take the theme's `colorPrimary`, applied inline, so a page stylesheet cannot recolour them. Where the primary doesn't suit, pass the chat block's `styles` (or `classNames`) instead: per bubble part under `message_display.roles.user` and `.assistant`, and per composer part under `sender`. They need Lowdefy 6.1 or later.
+
+```yaml
+message_display:
+  roles:
+    assistant:
+      variant: borderless   # `roles` replaces the module's whole key, so restate it
+    user:
+      styles:
+        content:
+          background: '#0f766e'
+          color: '#ffffff'
+sender:
+  styles:
+    root:
+      borderColor: '#0f766e'
+```
 
 ## App behaviour on the chat
 

@@ -35,8 +35,8 @@ vars:
       different set of threads. Use a constant string for a single global
       assistant. Resolved each time it is used — minting, listing, saving — so a
       value that arrives late is not frozen as null. A scope that CHANGES
-      mid-session needs the consumer to clear the open thread on visit; the
-      module cannot observe an app global moving. See "Scope" in the module docs.
+      mid-session is picked up by `enter`, which drops the open thread and
+      resumes in the new scope. See "Scope" in the module docs.
   page_id:
     type: string
     default: ai-assistant
@@ -116,6 +116,13 @@ vars:
     type: string
     default: Ask a question…
     description: Placeholder text in the composer.
+  sender:
+    type: object
+    default: {}
+    description: >-
+      Overrides merged over the chat's composer (AgentChat `sender`), e.g.
+      `styles` and `classNames` to recolour it. Takes precedence over
+      `sender_placeholder`.
   composer_note:
     type: string
     default: null
@@ -134,7 +141,8 @@ vars:
     default: {}
     description: >-
       Overrides merged over the module's AgentChat messageDisplay defaults
-      (assistant name, reasoning/tool display, copy action).
+      (assistant name, reasoning/tool display, copy action). Bubble colours go
+      under `roles.user` and `roles.assistant` as `styles` and `classNames`.
 
   toolbar:
     type: object
