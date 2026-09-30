@@ -176,6 +176,13 @@ vars:
         description: >-
           Background of "Manage chats" and "Back to chat". Unset leaves the antd
           default.
+      icon_only:
+        type: boolean
+        default: false
+        description: >-
+          Hide the labels of New chat, Manage chats, Back to chat and Delete chat,
+          leaving each button's icon with its name in a tooltip. For a page whose
+          chat column is too narrow for the words.
 
   notice:
     type: object
