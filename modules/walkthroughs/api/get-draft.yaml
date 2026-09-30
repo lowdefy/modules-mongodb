@@ -63,6 +63,8 @@ routine:
         _state: resolved_steps
       published:
         _step: load_walkthrough.published
+      unpublished:
+        _step: load_walkthrough.unpublished
       retired:
         _step: load_walkthrough.retired
       updated_timestamp:

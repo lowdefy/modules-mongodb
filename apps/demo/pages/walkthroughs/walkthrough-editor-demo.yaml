@@ -31,10 +31,44 @@ _ref:
           vars:
             title: Editor
             blocks:
+              # Stands in for whatever the app needs settled before publishing (`publish_blocked`).
+              - id: demo_reviewed
+                type: Switch
+                properties:
+                  title: Reviewed
+              # A setting that goes live only with a publish (`publish_pending`).
+              - id: demo_featured
+                type: Switch
+                properties:
+                  title: Featured
               - _ref:
                   module: walkthroughs
                   component: editor
                   vars:
+                    publish_blocked:
+                      _ne:
+                        - _state: demo_reviewed
+                        - true
+                    publish_blocked_reason: Mark it reviewed before publishing.
+                    publish_pending:
+                      _ne:
+                        - _if_none:
+                            - _state: demo_featured
+                            - false
+                        - _if_none:
+                            - _state: demo_featured_published
+                            - false
+                    on_published:
+                      - id: hold_featured_published
+                        type: SetState
+                        params:
+                          demo_featured_published:
+                            _state: demo_featured
+                    on_unpublished:
+                      - id: say_unpublished
+                        type: DisplayMessage
+                        params:
+                          content: Unpublished. Its steps are kept as a draft.
                     on_deleted:
                       - id: back_to_list
                         type: Link

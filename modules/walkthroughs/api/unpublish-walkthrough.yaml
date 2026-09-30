@@ -1,0 +1,102 @@
+id: unpublish-walkthrough
+type: Api
+description: >-
+  Takes a published walkthrough down: the live content moves back into the draft,
+  unless a newer draft is already there, and `published` is cleared, so the player
+  stops serving it. Stamps `unpublished`, which keeps it from being deleted as
+  though it had never been live.
+payloadSchema:
+  type: object
+  required:
+    - walkthrough_id
+    - updated_timestamp
+  additionalProperties: false
+  properties:
+    walkthrough_id:
+      type: string
+    updated_timestamp:
+      description: The update timestamp the caller last received; a stale one is refused.
+routine:
+  - :if:
+      _not:
+        _module.var: writable
+    :then:
+      - :reject: Authoring is not enabled in this app.
+  - id: load_walkthrough
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: walkthroughs-collection
+    properties:
+      query:
+        _id:
+          _payload: walkthrough_id
+        deleted.timestamp:
+          $exists: false
+      options:
+        projection:
+          draft: 1
+          title: 1
+          overview: 1
+          steps: 1
+          published: 1
+  - :if:
+      _eq:
+        - _step: load_walkthrough
+        - null
+    :then:
+      - :reject: That walkthrough could not be found.
+  - :if:
+      _eq:
+        - _step: load_walkthrough.published
+        - null
+    :then:
+      - :reject: This walkthrough is not published.
+  - :set_state:
+      stamp:
+        _ref: defaults/change_stamp.yaml
+  - id: unpublish
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: walkthroughs-collection
+    properties:
+      filter:
+        _id:
+          _payload: walkthrough_id
+        updated.timestamp:
+          _payload: updated_timestamp
+        deleted.timestamp:
+          $exists: false
+      disableNoMatchError: true
+      update:
+        $set:
+          draft:
+            _if_none:
+              - _step: load_walkthrough.draft
+              - title:
+                  _step: load_walkthrough.title
+                overview:
+                  _step: load_walkthrough.overview
+                steps:
+                  _if_none:
+                    - _step: load_walkthrough.steps
+                    - []
+          unpublished:
+            _state: stamp
+          updated:
+            _state: stamp
+        $unset:
+          published: ''
+          title: ''
+          overview: ''
+          steps: ''
+  - :if:
+      _eq:
+        - _step: unpublish.matchedCount
+        - 0
+    :then:
+      - :reject: This walkthrough changed elsewhere since you opened it. Reload before unpublishing.
+  - :return:
+      walkthrough_id:
+        _payload: walkthrough_id
+      updated_timestamp:
+        _state: stamp.timestamp

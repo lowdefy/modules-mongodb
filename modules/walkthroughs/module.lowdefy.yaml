@@ -65,6 +65,8 @@ exports:
       description: Copy a walkthrough's draft up to its published content
     - id: presign-step-image
       description: Presign an upload for one step screenshot
+    - id: unpublish-walkthrough
+      description: Take a published walkthrough down, moving its content back into the draft
     - id: delete-walkthrough
       description: Soft-delete a walkthrough that has never been published
 
@@ -78,6 +80,7 @@ api:
   - _ref: api/save-draft.yaml
   - _ref: api/discard-draft.yaml
   - _ref: api/publish-walkthrough.yaml
+  - _ref: api/unpublish-walkthrough.yaml
   - _ref: api/presign-step-image.yaml
   - _ref: api/delete-walkthrough.yaml
 

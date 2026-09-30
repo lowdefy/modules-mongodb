@@ -1,8 +1,9 @@
 id: delete-walkthrough
 type: Api
 description: >-
-  Soft-deletes a walkthrough that has never been published. A published one may
-  be linked or cited by id elsewhere, so it is retired instead.
+  Soft-deletes a walkthrough that has never been live. One that is or was
+  published may be linked or cited by id elsewhere, so it is refused: unpublish
+  a live one instead.
 payloadSchema:
   type: object
   required:
@@ -31,6 +32,8 @@ routine:
         updated.timestamp:
           _payload: updated_timestamp
         published: null
+        # Taken down after being live: it may still be linked or cited by id.
+        unpublished: null
         deleted.timestamp:
           $exists: false
       disableNoMatchError: true
