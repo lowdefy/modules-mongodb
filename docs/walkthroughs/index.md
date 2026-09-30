@@ -88,13 +88,14 @@ gating the collection does nothing for the bucket.
 
 ```
 _id        uuid
-title      string | null                 published; null until first publish
+title      string | null                 published; null while not live
 overview   string | null                 published
 steps      Step[]                        published; ordered, position is the array index
 draft      { title, overview, steps }    null/absent = no unpublished changes
-published  changeStamp | null            null = never published
+published  changeStamp | null            null = not live
+unpublished changeStamp | null           the last unpublish; non-null = was live once
 retired    changeStamp | null            non-null hides the walkthrough from new use
-deleted    changeStamp | null            non-null = soft-deleted; only a never-published one can be deleted
+deleted    changeStamp | null            non-null = soft-deleted; only a never-live one can be deleted
 created    changeStamp
 updated    changeStamp
 ```
@@ -154,22 +155,28 @@ Zoom is **not** stored. The player derives it from the focus point and the image
 clamps at 1:1 — an image is never magnified past its natural resolution, which is what lets a
 capture come from any screen without a quality gate.
 
-### Retirement and deletion
+### Unpublishing, retirement and deletion
 
-A published walkthrough is retired, never deleted: the consuming app stamps `retired` on it itself,
-since the module has no endpoint for it. Anything that stored an `_id` (a registry row, a link, a
+**Unpublishing takes a walkthrough down and keeps its work.** `unpublish-walkthrough` moves the
+published content back into the draft, unless a newer draft is already there, clears `published`,
+and stamps `unpublished`. The player stops serving it, so a link or citation to it shows the
+walkthrough as not available, and publishing again brings it back.
+
+Retiring is the other way down, for a walkthrough whose references must keep resolving: the
+consuming app stamps `retired` on it itself, since the module has no endpoint for it. Anything that stored an `_id` (a registry row, a link, a
 citation) keeps resolving, so a retired walkthrough reads as withdrawn rather than as a broken
 reference.
 
-A walkthrough that has never been published has no such references, so `delete-walkthrough`
-soft-deletes it instead, following the repo's [soft delete](../shared/soft-delete.md) convention:
+A walkthrough that has never been live has no such references, so `delete-walkthrough`
+soft-deletes it instead; one with an `unpublished` stamp was live once and may still be linked, so
+it is refused like a published one. Deletion follows the repo's [soft delete](../shared/soft-delete.md) convention:
 a `deleted` change stamp, and every read and update skips it with
 `deleted.timestamp: { $exists: false }`. A consumer listing walkthroughs straight from the
 collection applies the same predicate.
 
 ## Endpoints
 
-`get-walkthrough` serves the player and is available wherever the module is mounted. The other six
+`get-walkthrough` serves the player and is available wherever the module is mounted. The other seven
 author, and every one of them refuses outright when `writable` is false — including the draft read,
 because a draft is unpublished content and the connection's write flag would not have stopped it
 being read.
@@ -177,10 +184,11 @@ being read.
 | Endpoint              | Payload                                      | Returns                                                                           |
 | --------------------- | -------------------------------------------- | --------------------------------------------------------------------------------- |
 | `get-walkthrough`     | `{walkthrough_id}`                           | Published content, image keys resolved to URLs; null if none to play              |
-| `get-draft`           | `{walkthrough_id}`                           | `{_id, title, overview, steps, published, retired, updated_timestamp, has_draft}` |
+| `get-draft`           | `{walkthrough_id}`                           | `{_id, title, overview, steps, published, unpublished, retired, updated_timestamp, has_draft}` |
 | `save-draft`          | `{walkthrough_id, updated_timestamp, draft}` | `{updated_timestamp}`                                                             |
 | `discard-draft`       | `{walkthrough_id, updated_timestamp}`        | `{updated_timestamp}`                                                             |
 | `publish-walkthrough` | `{walkthrough_id, updated_timestamp}`        | `{updated_timestamp}`                                                             |
+| `unpublish-walkthrough` | `{walkthrough_id, updated_timestamp}`      | `{walkthrough_id, updated_timestamp}`                                             |
 | `presign-step-image`  | `{walkthrough_id, step_id, content_hash}`    | `{url, fields, key}`                                                              |
 | `delete-walkthrough`  | `{walkthrough_id, updated_timestamp}`        | `{walkthrough_id, deleted}`                                                       |
 
@@ -273,11 +281,36 @@ name:
           params: some_app_request
 ```
 
+**`publish_blocked` holds Publish back until the consuming app is ready**, false by default. It is
+an operator the editor adds to its own disabled rule, and `publish_blocked_reason` is the tooltip
+the disabled button then shows, so the author learns what is missing before publishing rather than
+after. Use it for whatever the app needs settled first, such as a category the walkthrough is
+filed under:
+
+```yaml
+vars:
+  publish_blocked:
+    _eq:
+      - _state: some_required_choice
+      - null
+  publish_blocked_reason: Choose a category first.
+```
+
+**`publish_pending` enables Publish for the consuming app's own changes**, false by default.
+Publish is otherwise disabled while the walkthrough has no unpublished edits. Set it where the app
+keeps a setting beside the walkthrough that should go live only with a publish, such as that
+category: Publish saves first, so the unchanged steps are republished as they are, and
+`on_published` applies the app's change.
+
 **`on_deleted` is the same for a delete**, run after the editor has moved on to a new walkthrough,
 so `walkthrough_id` already holds the new one; the deleted id is
 `_actions: walkthrough_delete_walkthrough.response.response.walkthrough_id`. The editor's Delete
-shows only on a saved walkthrough that has never been published. A consumer that opened the editor
+shows only on a saved walkthrough that has never been live. A consumer that opened the editor
 from a list typically returns to it here.
+
+**`on_unpublished` is the same for Unpublish**, which shows on a published walkthrough. It saves
+what is on screen first, like Publish, then calls `unpublish-walkthrough` and reloads, so the editor
+shows the walkthrough as a draft. Use it to take down whatever `on_published` put up.
 
 Its frame is the player's, with `WalkthroughImageTarget` from `@lowdefy/modules-mongodb-plugins` in
 place of the player's `Img`: same dimensions, same focus point, same ring, so what an author lines

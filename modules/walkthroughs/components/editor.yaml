@@ -178,8 +178,8 @@ blocks:
                 - _ref: actions/sync-step.yaml
                 - _ref: actions/recalc-geometry.yaml
 
-          # Saved and never published: an unsaved one has nothing stored, and a published one is
-          # retired rather than deleted.
+          # Saved and never live: an unsaved one has nothing stored, and one that is or was
+          # published is unpublished rather than deleted.
           - id: walkthrough_editor_delete
             type: Button
             layout:
@@ -192,6 +192,9 @@ blocks:
                 - _not:
                     _boolean:
                       _state: walkthrough_published
+                - _not:
+                    _boolean:
+                      _state: walkthrough_unpublished
             properties:
               type: default
               danger: true
@@ -231,6 +234,31 @@ blocks:
                     blockId: walkthrough_editor_discard_modal
                     method: open
 
+          - id: walkthrough_editor_unpublish
+            type: Button
+            layout:
+              flex: 0 1 auto
+            visible:
+              _boolean:
+                _state: walkthrough_published
+            properties:
+              type: default
+              danger: true
+              icon: AiOutlineCloudDownload
+              title: Unpublish
+              # It saves first, like Publish, and Preview drops the steps from state.
+              disabled:
+                _eq:
+                  - _state: walkthrough_preview
+                  - true
+            events:
+              onClick:
+                - id: walkthrough_open_unpublish_confirm
+                  type: CallMethod
+                  params:
+                    blockId: walkthrough_editor_unpublish_modal
+                    method: open
+
           - id: walkthrough_editor_publish
             type: Button
             layout:
@@ -239,6 +267,18 @@ blocks:
               type: default
               icon: AiOutlineCloudUpload
               title: Publish
+              # Why a consumer is holding Publish back; null otherwise, so no tooltip shows.
+              tooltip:
+                _if:
+                  test:
+                    _var:
+                      key: publish_blocked
+                      default: false
+                  then:
+                    _var:
+                      key: publish_blocked_reason
+                      default: null
+                  else: null
               # Publish saves first, so an unsaved edit enables it. Not in Preview, which drops the
               # steps from state.
               disabled:
@@ -252,6 +292,10 @@ blocks:
                             - _state: walkthrough_draft.title
                             - ""
                       - ""
+                  - _var:
+                      key: publish_blocked
+                      default: false
+                  # Nothing to publish, unless the consumer has changes of its own to publish.
                   - _and:
                       - _ne:
                           - _state: walkthrough_has_draft
@@ -260,6 +304,10 @@ blocks:
                           - _json.stringify:
                               - _ref: actions/draft-payload.yaml
                           - _state: walkthrough_draft_saved
+                      - _not:
+                          _var:
+                            key: publish_pending
+                            default: false
             events:
               onClick:
                 - id: walkthrough_open_publish_confirm
@@ -982,6 +1030,42 @@ blocks:
           - _ref: actions/load-draft.yaml
           - _var:
               key: on_deleted
+              default: []
+
+  - id: walkthrough_editor_unpublish_modal
+    type: ConfirmModal
+    properties:
+      width: 480
+      title: Unpublish walkthrough
+      okText: Unpublish
+      okButton:
+        danger: true
+    blocks:
+      - id: walkthrough_editor_unpublish_body
+        type: Box
+        properties:
+          content: >-
+            The walkthrough stops being live, so links to it stop playing it. Its steps are kept
+            as a draft, and publishing again brings it back. Continue?
+    events:
+      onOk:
+        _build.array.concat:
+          # Saved first, or the reload after it throws away unsaved edits.
+          - _ref: actions/save-draft.yaml
+          - - id: walkthrough_unpublish_walkthrough
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: unpublish-walkthrough
+                payload:
+                  walkthrough_id:
+                    _state: walkthrough_id
+                  updated_timestamp:
+                    _state: walkthrough_updated
+          - _ref: actions/load-draft.yaml
+          # What an unpublish takes down elsewhere is the consumer's, as with on_published.
+          - _var:
+              key: on_unpublished
               default: []
 
   - id: walkthrough_editor_publish_modal

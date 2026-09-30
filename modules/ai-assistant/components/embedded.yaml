@@ -14,7 +14,7 @@
 #
 # The chrome buttons keep their labels by default — unlike the 420px panel, an
 # embedded chat has the width. `toolbar.icon_only` hides them where the column
-# is narrow, and each Tooltip then gives the word on hover.
+# is narrow; the Button then shows its title as a tooltip itself.
 id: ai_embedded
 type: Box
 layout:
@@ -75,165 +75,131 @@ blocks:
           level: 5
           content: Your chats
 
-      - id: ai_embedded_new_chat_tip
-        type: Tooltip
+      - id: ai_embedded_new_chat_button
+        type: Button
         layout:
           flex: 0 0 auto
+        # Set on the block rather than left to a consumer stylesheet: reaching the button
+        # from outside means selecting on this id, which is module-internal and can be
+        # renamed without the consumer seeing an error.
+        # `.element` is the button itself; a bare style object lands on the block's wrapper,
+        # where the fill paints a square behind a transparent button.
+        style:
+          .element:
+            backgroundColor:
+              _module.var: toolbar.accent
+            color:
+              _module.var: toolbar.accent_text
         properties:
-          title:
-            _if:
-              test:
-                _module.var: toolbar.icon_only
-              then: New chat
-              else: null
-          placement: bottom
-        blocks:
-          - id: ai_embedded_new_chat_button
-            type: Button
-            # Set on the block rather than left to a consumer stylesheet: reaching the button
-            # from outside means selecting on this id, which is module-internal and can be
-            # renamed without the consumer seeing an error.
-            # `.element` is the button itself; a bare style object lands on the block's wrapper,
-            # where the fill paints a square behind a transparent button.
-            style:
-              .element:
-                backgroundColor:
-                  _module.var: toolbar.accent
-                color:
-                  _module.var: toolbar.accent_text
-            properties:
-              disabled:
-                _eq:
-                  - _state: ai_busy
-                  - true
-              title: New chat
-              hideTitle:
-                _module.var: toolbar.icon_only
-              icon: AiOutlinePlus
-              type: text
-              size:
-                _module.var: toolbar.size
-            events:
-              onClick:
-                _ref: actions/new-thread.yaml
+          disabled:
+            _eq:
+              - _state: ai_busy
+              - true
+          title: New chat
+          hideTitle:
+            _module.var: toolbar.icon_only
+          icon:
+            # A blank title: Lowdefy titles an icon's SVG from its name, and the browser
+            # shows that ("Outline Plus") as a second tooltip over the button's own.
+            name: AiOutlinePlus
+            title: ''
+          type: text
+          size:
+            _module.var: toolbar.size
+        events:
+          onClick:
+            _ref: actions/new-thread.yaml
 
-      - id: ai_embedded_manage_chats_tip
-        type: Tooltip
-        layout:
-          flex: 0 0 auto
+      - id: ai_embedded_manage_chats_button
+        type: Button
+        style:
+          .element:
+            backgroundColor:
+              _module.var: toolbar.secondary
         visible:
           _ne:
             - _state: ai_view
             - threads
-        properties:
-          title:
-            _if:
-              test:
-                _module.var: toolbar.icon_only
-              then: Manage chats
-              else: null
-          placement: bottom
-        blocks:
-          - id: ai_embedded_manage_chats_button
-            type: Button
-            style:
-              .element:
-                backgroundColor:
-                  _module.var: toolbar.secondary
-            properties:
-              disabled:
-                _eq:
-                  - _state: ai_busy
-                  - true
-              title: Manage chats
-              hideTitle:
-                _module.var: toolbar.icon_only
-              icon: AiOutlineUnorderedList
-              type: text
-              size:
-                _module.var: toolbar.size
-            events:
-              onClick:
-                _ref: actions/open-threads.yaml
-
-      - id: ai_embedded_back_to_chat_tip
-        type: Tooltip
         layout:
           flex: 0 0 auto
+        properties:
+          disabled:
+            _eq:
+              - _state: ai_busy
+              - true
+          title: Manage chats
+          hideTitle:
+            _module.var: toolbar.icon_only
+          icon:
+            name: AiOutlineUnorderedList
+            title: ''
+          type: text
+          size:
+            _module.var: toolbar.size
+        events:
+          onClick:
+            _ref: actions/open-threads.yaml
+
+      - id: ai_embedded_back_to_chat_button
+        type: Button
+        style:
+          .element:
+            backgroundColor:
+              _module.var: toolbar.secondary
         visible:
           _eq:
             - _state: ai_view
             - threads
-        properties:
-          title:
-            _if:
-              test:
-                _module.var: toolbar.icon_only
-              then: Back to chat
-              else: null
-          placement: bottom
-        blocks:
-          - id: ai_embedded_back_to_chat_button
-            type: Button
-            style:
-              .element:
-                backgroundColor:
-                  _module.var: toolbar.secondary
-            properties:
-              title: Back to chat
-              hideTitle:
-                _module.var: toolbar.icon_only
-              icon: AiOutlineArrowLeft
-              type: text
-              size:
-                _module.var: toolbar.size
-            events:
-              onClick:
-                - id: ai_show_chat_view
-                  type: SetState
-                  params:
-                    ai_view: chat
-                    ai_thread_selection: null
-
-      - id: ai_embedded_delete_tip
-        type: Tooltip
         layout:
           flex: 0 0 auto
+        properties:
+          title: Back to chat
+          hideTitle:
+            _module.var: toolbar.icon_only
+          icon:
+            name: AiOutlineArrowLeft
+            title: ''
+          type: text
+          size:
+            _module.var: toolbar.size
+        events:
+          onClick:
+            - id: ai_show_chat_view
+              type: SetState
+              params:
+                ai_view: chat
+                ai_thread_selection: null
+
+      - id: ai_embedded_delete_button
+        type: Button
         visible:
           _ne:
             - _state: ai_view
             - threads
+        layout:
+          flex: 0 0 auto
         properties:
-          title:
-            _if:
-              test:
-                _module.var: toolbar.icon_only
-              then: Delete chat
-              else: null
-          placement: bottom
-        blocks:
-          - id: ai_embedded_delete_button
-            type: Button
-            properties:
-              disabled:
-                _eq:
-                  - _state: ai_busy
-                  - true
-              title: Delete chat
-              hideTitle:
-                _module.var: toolbar.icon_only
-              icon: AiOutlineDelete
-              type: text
-              danger: true
-              size:
-                _module.var: toolbar.size
-            events:
-              onClick:
-                - id: ai_open_delete_confirm
-                  type: CallMethod
-                  params:
-                    blockId: ai_embedded_delete_confirm_modal
-                    method: open
+          disabled:
+            _eq:
+              - _state: ai_busy
+              - true
+          title: Delete chat
+          hideTitle:
+            _module.var: toolbar.icon_only
+          icon:
+            name: AiOutlineDelete
+            title: ''
+          type: text
+          danger: true
+          size:
+            _module.var: toolbar.size
+        events:
+          onClick:
+            - id: ai_open_delete_confirm
+              type: CallMethod
+              params:
+                blockId: ai_embedded_delete_confirm_modal
+                method: open
 
   - _ref:
       path: components/threads.yaml
