@@ -66,6 +66,7 @@ The embedded shell's toolbar — its button size, and the fills that mark the pr
 | `accent` | string |  |  | Background of the "New chat" button, any CSS colour. Unset leaves antd's `type: text` default, which is what every consumer had before this var. |
 | `accent_text` | string |  |  | Text colour on the accent fill. Only read when `accent` is set. |
 | `secondary` | string |  |  | Background of "Manage chats" and "Back to chat". Unset leaves the antd default. |
+| `icon_only` | boolean | `false` |  | Hide the labels of New chat, Manage chats, Back to chat and Delete chat, leaving each button's icon with its name in a tooltip. For a page whose chat column is too narrow for the words. |
 
 ### `thread_selection`
 

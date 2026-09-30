@@ -57,6 +57,7 @@ toolbar:
   accent: '#7c3aed'
   accent_text: '#ffffff'
   secondary: '#f4f4f5'
+  icon_only: true
 thread_selection:
   border: '#7c3aed'
   background: '#f5f3ff'
