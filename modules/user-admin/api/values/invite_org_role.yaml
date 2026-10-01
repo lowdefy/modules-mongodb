@@ -1,0 +1,13 @@
+# The organization-authority tier a fresh invitation is minted with: the payload's
+# `org_role` (`member` when absent), or always `member` when the `org_authority`
+# var is false. A deployment that grants org authority out of band hides the
+# form's tier control, so the payload is not trusted for the tier there: the form
+# state, or a caller reaching the endpoint directly, could still carry `admin`.
+_build.if:
+  test:
+    _module.var: org_authority
+  then:
+    _if_none:
+      - _payload: org_role
+      - member
+  else: member

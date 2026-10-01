@@ -79,7 +79,9 @@ vars:
       through this module by a caller who reaches the endpoint directly. The
       endpoint stays registered either way. The rejection is the routine's first
       step, not an absence. When true the write is floored by the engine against
-      the caller's member row in the administered organization.
+      the caller's member row in the administered organization. When false
+      `invite` also mints every invitation with `member` and `resend-invitation`
+      keeps the invitation's stored tier, whatever the payload carries.
   suspension:
     type: boolean
     default: true
