@@ -78,11 +78,16 @@
 # `auth.organizations.org` names it does, at startup. Until that app has booted
 # against this database the surface reads EMPTY and its invite throws
 # ORGANIZATION_NOT_FOUND, so nothing is wired into the demo menu.
+#
+# Removal is switched off here: this surface cannot delete a customer's member
+# row or login, only suspend them.
 - id: customer-user-admin
   source: "file:../../modules/user-admin"
   vars:
     org_slug: customer-portal
     app_title: Customer
+    remove_member: false
+    delete_user: false
 - id: ai-reporting
   source: "file:../../modules/ai-reporting"
   # Remap the module's storage + data connections onto MONGODB_URI-backed app

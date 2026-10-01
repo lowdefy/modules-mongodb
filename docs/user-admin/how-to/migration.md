@@ -41,6 +41,8 @@ connections must all resolve to **one MongoDB database** — see
 | `fields.app_attributes`    | `fields.member_attributes` | Renamed to the model: this app's attributes live on the `member` row.                              |
 | —                          | `org_slug`                 | **Required.** The organization this instance administers. No default.                              |
 | —                          | `suspension`               | Gates suspend/reinstate (default `true`).                                                          |
+| —                          | `remove_member`            | Gates Remove from app (default `true`).                                                            |
+| —                          | `delete_user`              | Gates Delete login (default `true`).                                                               |
 | —                          | `org_authority`            | Gates the organization-authority grant control (default `true`).                                   |
 | —                          | `download`                 | Gates the Excel export (default `false`).                                                          |
 

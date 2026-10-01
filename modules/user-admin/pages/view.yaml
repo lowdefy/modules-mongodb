@@ -68,63 +68,74 @@ _ref:
             - _request: get_user_detail.0.name
             - ""
     blocks:
-      - id: user_detail_grid
-        type: Box
-        layout:
-          gap: 16
-          align: top
-          selfAlign: top
-        blocks:
-          - id: detail_main_col
+      _build.array.concat:
+        - - id: user_detail_grid
             type: Box
             layout:
-              span: 14
-              sm:
-                span: 24
               gap: 16
+              align: top
+              selfAlign: top
             blocks:
-              _build.array.concat:
-                - - _ref: components/view/tile_profile.yaml
-                  - _ref: components/view/tile_attributes.yaml
-                  - _ref: components/view/tile_global_attrs.yaml
-                # Consumer extension surface (Decision 8): extra main-column blocks.
-                - _module.var: components.main_slots
-          - id: detail_side_col
-            type: Box
-            layout:
-              span: 10
-              sm:
-                span: 24
-              gap: 16
-            blocks:
-              _build.array.concat:
-                - - _ref: components/view/tile_security.yaml
-                  # Apps tile hidden at other-membership count 0 (Decision 6):
-                  # gated here since the shared card has no visible var.
-                  - id: apps_tile_wrap
-                    type: Box
-                    layout:
-                      span: 24
-                    visible:
-                      _gt:
-                        - _array.length:
-                            _if_none:
-                              - _request: get_user_memberships
-                              - []
-                        - 0
-                    blocks:
-                      - _ref: components/view/tile_apps.yaml
-                  - _ref: components/view/tile_activity.yaml
-                # Consumer extension surface (Decision 8): extra sidebar blocks.
-                - _module.var: components.sidebar_slots
-      # ── Interaction-state layers: 7 tile / security modals (top-level siblings
-      #    of the grid, opened via CallMethod toggleOpen from their triggers) ──
-      - _ref: components/view/modal_profile.yaml
-      - _ref: components/view/modal_access.yaml
-      - _ref: components/view/modal_global.yaml
-      - _ref: components/view/modal_suspend.yaml
-      - _ref: components/view/modal_remove.yaml
-      - _ref: components/view/modal_revoke.yaml
-      - _ref: components/view/modal_delete.yaml
-      - _ref: components/view/modal_reset_2fa.yaml
-      - _ref: components/view/modal_revoke_passkeys.yaml
+              - id: detail_main_col
+                type: Box
+                layout:
+                  span: 14
+                  sm:
+                    span: 24
+                  gap: 16
+                blocks:
+                  _build.array.concat:
+                    - - _ref: components/view/tile_profile.yaml
+                      - _ref: components/view/tile_attributes.yaml
+                      - _ref: components/view/tile_global_attrs.yaml
+                    # Consumer extension surface (Decision 8): extra main-column blocks.
+                    - _module.var: components.main_slots
+              - id: detail_side_col
+                type: Box
+                layout:
+                  span: 10
+                  sm:
+                    span: 24
+                  gap: 16
+                blocks:
+                  _build.array.concat:
+                    - - _ref: components/view/tile_security.yaml
+                      # Apps tile hidden at other-membership count 0 (Decision 6):
+                      # gated here since the shared card has no visible var.
+                      - id: apps_tile_wrap
+                        type: Box
+                        layout:
+                          span: 24
+                        visible:
+                          _gt:
+                            - _array.length:
+                                _if_none:
+                                  - _request: get_user_memberships
+                                  - []
+                            - 0
+                        blocks:
+                          - _ref: components/view/tile_apps.yaml
+                      - _ref: components/view/tile_activity.yaml
+                    # Consumer extension surface (Decision 8): extra sidebar blocks.
+                    - _module.var: components.sidebar_slots
+          # ── Interaction-state layers: 7 tile / security modals (top-level siblings
+          #    of the grid, opened via CallMethod toggleOpen from their triggers) ──
+          - _ref: components/view/modal_profile.yaml
+          - _ref: components/view/modal_access.yaml
+          - _ref: components/view/modal_global.yaml
+          - _ref: components/view/modal_suspend.yaml
+        - _build.if:
+            test:
+              _module.var: remove_member
+            then:
+              - _ref: components/view/modal_remove.yaml
+            else: []
+        - - _ref: components/view/modal_revoke.yaml
+        - _build.if:
+            test:
+              _module.var: delete_user
+            then:
+              - _ref: components/view/modal_delete.yaml
+            else: []
+        - - _ref: components/view/modal_reset_2fa.yaml
+          - _ref: components/view/modal_revoke_passkeys.yaml

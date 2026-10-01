@@ -84,6 +84,15 @@ administered by one trusted operator group; it sits behind the `suspension` var
 (default on). **Remove from app** (`RemoveMember`) is the app-scoped alternative.
 **Delete login identity** is offered only when the user holds no other memberships.
 
+Remove from app deletes the member row, so the person's roles and member
+attributes go with it. Delete login removes the user id that other records may be
+keyed on, and a re-invite creates a new one. In an app whose people carry history
+or settings on those rows, set `remove_member: false` and `delete_user: false`:
+each hides its button and confirm modal and makes its endpoint (`remove-member`,
+`delete-user`) reject, the same shape as `suspension: false` on `suspend` /
+`reinstate`. The endpoints stay registered; the rejection is the routine's first
+step. Suspend and Reinstate are unaffected by either var.
+
 ## Two-factor and passkey recovery
 
 The Security tile's Auth-methods area carries two recovery controls, each built

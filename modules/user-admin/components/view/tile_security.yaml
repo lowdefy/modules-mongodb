@@ -1,7 +1,7 @@
 # Security tile (design Decision 5). "Access & sign-in". Suspend/reinstate
-# (behind the suspension var, Decision 4), Remove from app, Sign out everywhere,
-# and Delete identity. Active sessions (token projected out) and read-only auth
-# methods.
+# (behind the suspension var, Decision 4), Remove from app (behind
+# remove_member), Sign out everywhere, and Delete identity (behind delete_user).
+# Active sessions (token projected out) and read-only auth methods.
 #
 # Multi-app vs single-app degradation (Decision 6: blast-radius copy, Delete
 # enablement, "suite"/"every app" phrasing) keys off the person's other-
@@ -72,38 +72,44 @@ _ref:
                                     blockId: modal_suspend
                                     method: toggleOpen
                     else: []
-                - - id: remove_tooltip
-                    type: Tooltip
-                    layout:
-                      flex: 0 0 auto
-                    properties:
-                      title:
-                        _if:
-                          test:
-                            _gt:
-                              - _array.length:
-                                  _if_none:
-                                    - _request: get_user_memberships
-                                    - []
-                              - 0
-                          then: Takes away access to this app only.
-                          else: Takes away their access to this app.
-                    blocks:
-                      - id: remove_btn
-                        type: Button
+                # Remove from app. Behind the remove_member var.
+                - _build.if:
+                    test:
+                      _module.var: remove_member
+                    then:
+                      - id: remove_tooltip
+                        type: Tooltip
                         layout:
                           flex: 0 0 auto
                         properties:
-                          title: Remove from app
-                          variant: outlined
-                        events:
-                          onClick:
-                            - id: open_remove_modal
-                              type: CallMethod
-                              params:
-                                blockId: modal_remove
-                                method: toggleOpen
-                  - id: revoke_tooltip
+                          title:
+                            _if:
+                              test:
+                                _gt:
+                                  - _array.length:
+                                      _if_none:
+                                        - _request: get_user_memberships
+                                        - []
+                                  - 0
+                              then: Takes away access to this app only.
+                              else: Takes away their access to this app.
+                        blocks:
+                          - id: remove_btn
+                            type: Button
+                            layout:
+                              flex: 0 0 auto
+                            properties:
+                              title: Remove from app
+                              variant: outlined
+                            events:
+                              onClick:
+                                - id: open_remove_modal
+                                  type: CallMethod
+                                  params:
+                                    blockId: modal_remove
+                                    method: toggleOpen
+                    else: []
+                - - id: revoke_tooltip
                     type: Tooltip
                     layout:
                       flex: 0 0 auto
@@ -124,50 +130,54 @@ _ref:
                               params:
                                 blockId: modal_revoke
                                 method: toggleOpen
-                  # Delete identity, only when the person holds no other
-                  # memberships (Decision 4). Disabled in the multi-app variant;
-                  # task 13 flips `disabled` off the membership count.
-                  - id: delete_tooltip
-                    type: Tooltip
-                    layout:
-                      flex: 0 0 auto
-                    properties:
-                      title:
-                        _if:
-                          test:
-                            _gt:
-                              - _array.length:
-                                  _if_none:
-                                    - _request: get_user_memberships
-                                    - []
-                              - 0
-                          then: Available once they belong to no other apps.
-                          else: Permanently removes their login. Their contact record is kept.
-                    blocks:
-                      - id: delete_btn
-                        type: Button
+                # Delete identity, behind the delete_user var. Enabled only when
+                # the person holds no other memberships (Decision 4).
+                - _build.if:
+                    test:
+                      _module.var: delete_user
+                    then:
+                      - id: delete_tooltip
+                        type: Tooltip
                         layout:
                           flex: 0 0 auto
                         properties:
-                          title: Delete login
-                          danger: true
-                          variant: outlined
-                          # Enabled only at other-membership count 0 (Decision 4/6);
-                          # the routine re-checks server-side.
-                          disabled:
-                            _gt:
-                              - _array.length:
-                                  _if_none:
-                                    - _request: get_user_memberships
-                                    - []
-                              - 0
-                        events:
-                          onClick:
-                            - id: open_delete_modal
-                              type: CallMethod
-                              params:
-                                blockId: modal_delete
-                                method: toggleOpen
+                          title:
+                            _if:
+                              test:
+                                _gt:
+                                  - _array.length:
+                                      _if_none:
+                                        - _request: get_user_memberships
+                                        - []
+                                  - 0
+                              then: Available once they belong to no other apps.
+                              else: Permanently removes their login. Their contact record is kept.
+                        blocks:
+                          - id: delete_btn
+                            type: Button
+                            layout:
+                              flex: 0 0 auto
+                            properties:
+                              title: Delete login
+                              danger: true
+                              variant: outlined
+                              # Enabled only at other-membership count 0 (Decision 4/6);
+                              # the routine re-checks server-side.
+                              disabled:
+                                _gt:
+                                  - _array.length:
+                                      _if_none:
+                                        - _request: get_user_memberships
+                                        - []
+                                  - 0
+                            events:
+                              onClick:
+                                - id: open_delete_modal
+                                  type: CallMethod
+                                  params:
+                                    blockId: modal_delete
+                                    method: toggleOpen
+                    else: []
           - id: security_divider_sessions
             type: Divider
             properties:

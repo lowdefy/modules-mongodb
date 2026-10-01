@@ -8,48 +8,59 @@
 # against the caller's member row in the organization the step names. Audit event
 # is the final step.
 #
+# Behind the `remove_member` var (default true): when false, the routine is a
+# bare reject.
+#
 # Payload: { member_id (member row id or email), user_id?, target_name?, target_email? }
 id: remove-member
 type: Api
 routine:
-  - id: remove
-    type: RemoveMember
-    properties:
-      memberIdOrEmail:
-        _payload: member_id
-      organizationId:
-        _module.var: org_slug
-  - id: audit
-    type: CallApi
-    properties:
-      endpointId:
-        _module.endpointId:
-          id: new-event
-          module: events
-      payload:
-        type: member-removed
-        display:
-          _build.object.fromEntries:
-            - - _build.app: slug
-              - title:
-                  _nunjucks:
-                    template:
-                      _build.if_none:
-                        - _module.var: event_display.member-removed
-                        - _ref:
-                            path: defaults/event_display.yaml
-                            key: member-removed
-                    on:
-                      user:
-                        _user: true
-                      target:
-                        name:
-                          _payload: target_name
-                        email:
-                          _payload: target_email
-                description: null
-        references:
-          user_ids:
-            - _payload: user_id
-  - :return:
-      success: true
+  _build.array.concat:
+    - _build.if:
+        test:
+          _build.not:
+            _module.var: remove_member
+        then:
+          - - :reject: Removing members is disabled for this deployment (the "remove_member" var is false).
+        else: []
+    - - id: remove
+        type: RemoveMember
+        properties:
+          memberIdOrEmail:
+            _payload: member_id
+          organizationId:
+            _module.var: org_slug
+      - id: audit
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type: member-removed
+            display:
+              _build.object.fromEntries:
+                - - _build.app: slug
+                  - title:
+                      _nunjucks:
+                        template:
+                          _build.if_none:
+                            - _module.var: event_display.member-removed
+                            - _ref:
+                                path: defaults/event_display.yaml
+                                key: member-removed
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            name:
+                              _payload: target_name
+                            email:
+                              _payload: target_email
+                    description: null
+            references:
+              user_ids:
+                - _payload: user_id
+      - :return:
+          success: true
