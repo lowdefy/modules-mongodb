@@ -1,0 +1,31 @@
+# One member row's organization-authority tier in this instance's organization:
+# `{ role }`, `member` when the row has no tier (the same reading as the detail
+# request). A routine step, `_ref`'d before and after the tier write.
+#
+# Vars:
+#   id    — the step id
+#   match — the fields that pick the member row (`_id` or `user_id`). The
+#           organization is added here, because `user-members` is a shared
+#           connection and a member row is per organization.
+#
+# The result is an array of at most one row: `_step: <id>.0.role` is the value,
+# and is absent when no row matches.
+id:
+  _var: id
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    - $match:
+        _object.assign:
+          - _var: match
+          - organization_id:
+              _module.var: org_slug
+    - $limit: 1
+    - $project:
+        _id: 0
+        role:
+          $ifNull:
+            - "$role"
+            - member
