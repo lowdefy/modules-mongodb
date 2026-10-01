@@ -113,15 +113,7 @@ _ref:
                 pageId:
                   _module.pageId: login
                 urlQuery:
-                  _if:
-                    test:
-                      _ne:
-                        - _url_query: callbackUrl
-                        - null
-                    then:
-                      callbackUrl:
-                        _url_query: callbackUrl
-                    else: null
+                  _ref: components/callback_url_query.yaml
 
       # ---- Expired (callback error) ----
       - id: verify_expired
