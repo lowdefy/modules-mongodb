@@ -19,6 +19,8 @@ Charts, saved reports, and CSV exports ride the same engine: their queries are p
 
 On a build without it, every report page resolves as though no report id had been supplied and renders the not-found fallback. Nothing else degrades: the agent still answers questions, `generate_report` still persists specs, and the reports list still shows them — the saved report simply cannot be opened. Only this page is affected, because `chat` reads its deep-link parameter with the client-side `_url_query` operator, which every build supports.
 
+**The report policy in the app's `policies.dynamicBlocks`.** The `report` page renders blocks compiled from a stored, AI-authored spec, and a `Dynamic` block renders such blocks only under a [dynamic blocks policy](https://docs.lowdefy.com/dynamic-page-content). The module exports the policy as the `report-policy` component; Lowdefy reads policies only from `lowdefy.yaml`, so the app lists it (see the Quickstart). Without it the build fails, because the `report` page names a policy that does not exist.
+
 **MongoDB ≥ 5.0** for the database behind `REPORTING_MONGODB_URI` — see [minimum server version](../shared/secrets.md#minimum-server-version). The reporting-data database is unaffected.
 
 ## Dependencies
@@ -52,6 +54,12 @@ modules:
     vars:
       catalog:
         _ref: modules/ai-reporting/catalog.yaml
+
+policies:
+  dynamicBlocks:
+    - _ref:
+        module: ai-reporting
+        component: report-policy
 ```
 
 `catalog` is required — it is the data dictionary the agent reasons over, the allowlist the engine validates against, and the confidentiality/authorization boundary. See [The collections catalog](reference/catalog.md) for its shape and semantics, and [Vars](reference/vars.md) for the optional collection-name and model overrides.

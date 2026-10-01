@@ -244,12 +244,16 @@ spec. `api/generate-report.yaml`:
 
 ## 8. Report render
 
-`pages/report.yaml:12-79` is a single `Dynamic` block resolved by
-`resolve-report`. `properties.types` (L30-69) is a bundling declaration — the
-compiled output's block/action/operator types must be listed so they ship to the
-client. Among them the `Link` action and the `_url_query` operator, which the
-owner-only chat links and the drop-and-reload recovery need; the `Box` type the
-old pooled filter row required is gone.
+`pages/report.yaml` is a single `Dynamic` block resolved by `resolve-report`,
+under the module's dynamic blocks policy (`components/report_policy.yaml`). The
+compiled blocks are data built from a stored spec, and Lowdefy renders data as
+blocks only under a policy: it lists every block, action and operator type the
+compiled output may use (and bundles them into the client), the endpoints its
+`CallAPI` actions may call and the pages its `Link` actions may open. Among them
+the `Link` action and the `_url_query` operator, which the owner-only chat links
+and the drop-and-reload recovery need. The app lists the policy under
+`policies.dynamicBlocks`, because Lowdefy reads policies only from
+`lowdefy.yaml`.
 
 `api/resolve-report.yaml`:
 
@@ -263,9 +267,11 @@ old pooled filter row required is gone.
   connection-bound catalog with the **viewing** user's roles, on every single
   resolve. A section the viewer cannot reach, or that drifted out of the catalog,
   fails as one entry — not the whole report.
-- L53-67 — `_analytics.compileReport`. The catalog is passed here for exactly one
-  thing (L60-61): resolving select-filter options from a field's enum values. A
-  display convenience, explicitly not a gate.
+- `_analytics.compileReport`, inside a `ValidateDynamic` step that checks its
+  blocks against the report policy; `:return` hands back that step's blocks,
+  the only data a Dynamic endpoint may return as blocks. The catalog is passed
+  to the compiler for exactly one thing: resolving select-filter options from a
+  field's enum values. A display convenience, explicitly not a gate.
 
 `compileReport.js:727-1090` turns spec + rows into blocks:
 
