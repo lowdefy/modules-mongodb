@@ -11,6 +11,10 @@
 # Behind the `remove_member` var (default true): when false, the routine is a
 # bare reject.
 #
+# The audit event records the member row's `{ roles, attributes }` as `before`,
+# read before the delete. The read matches the row by id, so a call that names
+# the member by email records `before: null`.
+#
 # Payload: { member_id (member row id or email), user_id?, target_name?, target_email? }
 id: remove-member
 type: Api
@@ -23,7 +27,14 @@ routine:
         then:
           - - :reject: Removing members is disabled for this deployment (the "remove_member" var is false).
         else: []
-    - - id: remove
+    - - _ref:
+          path: api/steps/read_member_access.yaml
+          vars:
+            id: access_before
+            match:
+              _id:
+                _payload: member_id
+      - id: remove
         type: RemoveMember
         properties:
           memberIdOrEmail:
@@ -62,5 +73,10 @@ routine:
             references:
               user_ids:
                 - _payload: user_id
+            metadata:
+              before:
+                _if_none:
+                  - _step: access_before.0
+                  - null
       - :return:
           success: true

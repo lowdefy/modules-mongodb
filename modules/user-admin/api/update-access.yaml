@@ -18,10 +18,19 @@
 # Payload: { member_id, roles (array of role ids), member_attributes (object)?,
 #            user_id?, target_name?, target_email? }
 # The two-step chain's benign partial state (new roles, old attributes) is
-# resolved by retry. Audit event is the FINAL step.
+# resolved by retry. Audit event is the FINAL step. It records the member row's
+# `{ roles, attributes }` read before the first write and after the second, so an
+# attributes-only change still shows its difference.
 id: update-access
 type: Api
 routine:
+  - _ref:
+      path: api/steps/read_member_access.yaml
+      vars:
+        id: access_before
+        match:
+          _id:
+            _payload: member_id
   - id: set_roles
     type: UpdateMemberRoles
     properties:
@@ -44,6 +53,13 @@ routine:
         _if_none:
           - _payload: member_attributes
           - {}
+  - _ref:
+      path: api/steps/read_member_access.yaml
+      vars:
+        id: access_after
+        match:
+          _id:
+            _payload: member_id
   - id: audit
     type: CallApi
     properties:
@@ -77,9 +93,13 @@ routine:
           user_ids:
             - _payload: user_id
         metadata:
-          roles:
+          before:
             _if_none:
-              - _payload: roles
-              - []
+              - _step: access_before.0
+              - null
+          after:
+            _if_none:
+              - _step: access_after.0
+              - null
   - :return:
       success: true

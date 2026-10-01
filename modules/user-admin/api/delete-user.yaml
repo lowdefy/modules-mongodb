@@ -22,6 +22,9 @@
 # Behind the `delete_user` var (default true): when false, the routine is a bare
 # reject, ahead of the membership guard.
 #
+# The audit event records the member row's `{ roles, attributes }` in this
+# organization as `before`, read after the guard and before the delete.
+#
 # Payload: { user_id, target_name?, target_email? }
 id: delete-user
 type: Api
@@ -55,6 +58,13 @@ routine:
             - 0
         :then:
           - :reject: This user belongs to other apps; their login can't be deleted from here. Remove them from this app instead.
+      - _ref:
+          path: api/steps/read_member_access.yaml
+          vars:
+            id: access_before
+            match:
+              user_id:
+                _payload: user_id
       - id: delete
         type: DeleteUser
         properties:
@@ -94,5 +104,10 @@ routine:
             references:
               user_ids:
                 - _payload: user_id
+            metadata:
+              before:
+                _if_none:
+                  - _step: access_before.0
+                  - null
       - :return:
           success: true

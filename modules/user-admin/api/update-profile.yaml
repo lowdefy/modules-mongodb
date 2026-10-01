@@ -76,5 +76,23 @@ routine:
             - _payload: user_id
           contact_ids:
             - _payload: contact_id
+        # The fields the form wrote (the payload profile's keys), as stored on the
+        # contact before and after the write: the fragment reads the contact
+        # before writing (read_profile_contact) and re-reads it after
+        # (reread_contact). `photo` is left out: it is an image data URI, which
+        # would put the image in the event twice.
+        metadata:
+          _js:
+            fn: |
+              const keys = Object.keys(args.written ?? {}).filter((key) => key !== 'photo');
+              const pick = (bag) => Object.fromEntries(keys.map((key) => [key, bag?.[key] ?? null]));
+              return { before: pick(args.before), after: pick(args.after) };
+            args:
+              written:
+                _payload: profile
+              before:
+                _step: read_profile_contact.profile
+              after:
+                _step: reread_contact.profile
   - :return:
       success: true
