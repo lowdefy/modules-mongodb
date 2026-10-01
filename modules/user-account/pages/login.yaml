@@ -220,20 +220,31 @@ _ref:
                         email:
                           _state: login_resend_email
                         callbackUrl:
-                          pageId:
-                            _module.pageId: verify-email
-                          urlQuery:
-                            verified: "1"
-                            email:
-                              _state: login_resend_email
+                          _ref:
+                            path: components/verify_email_callback.yaml
+                            vars:
+                              email:
+                                _state: login_resend_email
+                    # Carries `?callbackUrl=` on so the check render's own
+                    # resend keeps it too.
                     - id: go_verify_email
                       type: Link
                       params:
                         pageId:
                           _module.pageId: verify-email
                         urlQuery:
-                          email:
-                            _state: login_resend_email
+                          _object.assign:
+                            - email:
+                                _state: login_resend_email
+                            - _if:
+                                test:
+                                  _ne:
+                                    - _url_query: callbackUrl
+                                    - null
+                                then:
+                                  callbackUrl:
+                                    _url_query: callbackUrl
+                                else: {}
             else: []
 
         # Retryable notice above the form. Carries both the expired-magic-link
