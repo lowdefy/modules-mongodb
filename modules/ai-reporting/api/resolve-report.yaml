@@ -121,10 +121,114 @@ routine:
                 _item: section.type
               collection:
                 _item: section.query.collection
+  # compileReport's arguments, held once for the two compiles below.
+  - :set_state:
+      compile:
+        spec:
+          title:
+            _step: load_report.title
+          description:
+            _step: load_report.description
+          sections:
+            _step: load_report.spec.sections
+        results:
+          _step: run_query
+        # Catalog is used ONLY to resolve select-filter options from a field's
+        # enum values (a display convenience) — not as a security gate.
+        catalog:
+          _module.var: catalog
+        roles:
+          _user: roles
+        endpointId:
+          _module.endpointId: query-data
+        # A filtered chart section re-queries here instead: Flint inlines the
+        # rows into the option, so the server returns a re-assembled option.
+        chartEndpointId:
+          _module.endpointId: chart-data
+        # The compiler renders a provenance line under the title and gates
+        # owner-only chat affordances on these. is_owner repeats the :return's
+        # expression; conversation_id is passed as-is so its absence reads as
+        # no chat.
+        created:
+          _step: load_report.created
+        updated:
+          _step: load_report.updated
+        owner:
+          _step: load_report.owner
+        visibility:
+          _step: load_report.visibility
+        conversation_id:
+          _step: load_report.conversation_id
+        is_owner:
+          _eq:
+            - _step: load_report.owner.user_id
+            - _user: id
+        # Drives the header's ★ fill and the payload its click sends (the
+        # endpoint takes the desired state, not a toggle). Derived per viewer
+        # and never returned as the raw array — a caller must not learn who
+        # else favourited a report. Absent reads as empty.
+        is_favourite:
+          _array.includes:
+            - _if_none:
+                - _step: load_report.favourite_of
+                - []
+            - _user: id
+        # Whether this viewer may publish — the header's ⋯ includes or leaves out
+        # its Publish and Unpublish items on it. Decided here because share_roles
+        # is a module var and only the config can read it; the compiler gets a
+        # boolean, so no `_user` operator has to survive into compiled output.
+        # An unset share_roles compiles to a literal false (hasSomeRoles throws on
+        # a non-array), the same guard set-report-visibility's own control uses.
+        can_share:
+          _build.if:
+            test:
+              _build.ne:
+                - _module.var: share_roles
+                - null
+            then:
+              _user.hasSomeRoles:
+                _module.var: share_roles
+            else: false
+        resolvedAt:
+          _date: now
+        # The policy's own size limit: sections that would take the content
+        # over it render as Alerts rather than failing the whole report.
+        maxBytes:
+          _ref:
+            path: components/report_policy.yaml
+            key: limits.bytes
   # compileReport's blocks are data built from the stored spec, and a Dynamic
   # endpoint may return data as blocks only once a ValidateDynamic step has
-  # checked them against the Dynamic block's own policy. Content the policy
-  # refuses fails the step, and the page renders its fallback.
+  # checked them against the Dynamic block's own policy. The policy checks every
+  # string the blocks carry, row values included, so the first check does not
+  # throw: each refusal it reports is mapped back to the section that produced
+  # it, and that section compiles as an Alert on the second pass. Refusals in
+  # the header, or on the content as a whole, still fail the second check, and
+  # the page renders its fallback.
+  - id: check_blocks
+    type: ValidateDynamic
+    properties:
+      policy:
+        _ref: components/report_policy_id.yaml
+      throwOnInvalid: false
+      blocks:
+        _analytics.compileReport:
+          _state: compile
+  - :if:
+      _step: check_blocks.valid
+    :then:
+      - :return:
+          _ref:
+            path: api/steps/resolve_report_return.yaml
+            vars:
+              blocks:
+                _step: check_blocks.blocks
+  - :log:
+      msg: The report policy refused part of a compiled report; the sections involved render as Alerts.
+      report_id:
+        _payload: urlQuery.report_id
+      errors:
+        _step: check_blocks.errors
   - id: validate_blocks
     type: ValidateDynamic
     properties:
@@ -132,95 +236,13 @@ routine:
         _ref: components/report_policy_id.yaml
       blocks:
         _analytics.compileReport:
-          spec:
-            title:
-              _step: load_report.title
-            description:
-              _step: load_report.description
-            sections:
-              _step: load_report.spec.sections
-          results:
-            _step: run_query
-          # Catalog is used ONLY to resolve select-filter options from a field's
-          # enum values (a display convenience) — not as a security gate.
-          catalog:
-            _module.var: catalog
-          roles:
-            _user: roles
-          endpointId:
-            _module.endpointId: query-data
-          # A filtered chart section re-queries here instead: Flint inlines the
-          # rows into the option, so the server returns a re-assembled option.
-          chartEndpointId:
-            _module.endpointId: chart-data
-          # The compiler renders a provenance line under the title and gates
-          # owner-only chat affordances on these. is_owner repeats the :return's
-          # expression; conversation_id is passed as-is so its absence reads as
-          # no chat.
-          created:
-            _step: load_report.created
-          updated:
-            _step: load_report.updated
-          owner:
-            _step: load_report.owner
-          visibility:
-            _step: load_report.visibility
-          conversation_id:
-            _step: load_report.conversation_id
-          is_owner:
-            _eq:
-              - _step: load_report.owner.user_id
-              - _user: id
-          # Drives the header's ★ fill and the payload its click sends (the
-          # endpoint takes the desired state, not a toggle). Derived per viewer
-          # and never returned as the raw array — a caller must not learn who
-          # else favourited a report. Absent reads as empty.
-          is_favourite:
-            _array.includes:
-              - _if_none:
-                  - _step: load_report.favourite_of
-                  - []
-              - _user: id
-          # Whether this viewer may publish — the header's ⋯ includes or leaves out
-          # its Publish and Unpublish items on it. Decided here because share_roles
-          # is a module var and only the config can read it; the compiler gets a
-          # boolean, so no `_user` operator has to survive into compiled output.
-          # An unset share_roles compiles to a literal false (hasSomeRoles throws on
-          # a non-array), the same guard set-report-visibility's own control uses.
-          can_share:
-            _build.if:
-              test:
-                _build.ne:
-                  - _module.var: share_roles
-                  - null
-              then:
-                _user.hasSomeRoles:
-                  _module.var: share_roles
-              else: false
-          resolvedAt:
-            _date: now
+          _object.assign:
+            - _state: compile
+            - policyErrors:
+                _step: check_blocks.errors
   - :return:
-      # The page renders owner-only actions from this; the resolver is the only
-      # party that knows it.
-      is_owner:
-        _eq:
-          - _step: load_report.owner.user_id
-          - _user: id
-      # Provenance for the page: who made it, last edited (the document's
-      # `updated`), and when these numbers were computed (this resolve, not the
-      # document). conversation_id may be absent — passed as-is so a missing
-      # chat link stays missing rather than becoming an empty one.
-      created:
-        _step: load_report.created
-      updated:
-        _step: load_report.updated
-      owner:
-        _step: load_report.owner
-      visibility:
-        _step: load_report.visibility
-      conversation_id:
-        _step: load_report.conversation_id
-      resolvedAt:
-        _date: now
-      blocks:
-        _step: validate_blocks.blocks
+      _ref:
+        path: api/steps/resolve_report_return.yaml
+        vars:
+          blocks:
+            _step: validate_blocks.blocks

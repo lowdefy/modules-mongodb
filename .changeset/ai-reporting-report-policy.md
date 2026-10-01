@@ -14,4 +14,4 @@ policies:
         component: report-policy
 ```
 
-The build fails without it, naming the missing policy. The policy keeps `html: false`, so a stored report whose text (markdown, title, labels) contains HTML tags now renders the fallback, with each violation in the server log.
+The build fails without it, naming the missing policy. The policy keeps `html: false` and lists no outside origins, so a string in a report that contains HTML tag syntax or a URL is refused. A refused value inside a section, including a row value, renders that section as an Alert; one in the report title or description renders the fallback. A section that would take the report over the policy's 8 MB `limits.bytes` renders as an Alert beside its CSV export. Each refusal is in the server log. Report re-queries and downloads now name the report and section (`report_id`, `section_id`) instead of sending the stored query, and `query-data` and `chart-data` accept that form and load the query server-side.

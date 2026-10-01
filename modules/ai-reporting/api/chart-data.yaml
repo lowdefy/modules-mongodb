@@ -15,13 +15,25 @@ description: >
   with the canvas height its layout needs.
 payloadSchema:
   type: object
-  required:
-    - chart
-    - title
-    - x
-    - y
-    - query
+  anyOf:
+    - required:
+        - chart
+        - title
+        - x
+        - y
+        - query
+    - required:
+        - report_id
+        - section_id
   properties:
+    report_id:
+      type: string
+      description: >-
+        A saved report whose chart section to re-run, instead of the chart
+        fields and `query`.
+    section_id:
+      type: string
+      description: The chart section of `report_id` to re-run.
     chart:
       type: string
       description: Chart kind.
@@ -87,10 +99,39 @@ routine:
   # No catalog: the grammar and role gate run inside AnalyticsPipeline at
   # execution time. This checks the contract's own shape — chart kind, inert
   # title/x/y strings, query shape — before anything runs.
-  - :set_state:
-      spec:
-        _analytics.validateChartSpec:
-          spec:
+  #
+  # A report names its section (`report_id` + `section_id`) instead of sending
+  # the chart fields and query; they are read from the stored section
+  # (steps/load_report_section.yaml), its label as the title.
+  - :if:
+      _ne:
+        - _payload: report_id
+        - null
+    :then:
+      - _ref: api/steps/load_report_section.yaml
+      - :if:
+          _eq:
+            - _step: report_section.0
+            - null
+        :then:
+          - :reject: Report section not found.
+      - :set_state:
+          source:
+            chart:
+              _step: report_section.0.chart
+            title:
+              _step: report_section.0.label
+            x:
+              _step: report_section.0.x
+            y:
+              _step: report_section.0.y
+            stacked:
+              _step: report_section.0.stacked
+            query:
+              _step: report_section.0.query
+    :else:
+      - :set_state:
+          source:
             chart:
               _payload: chart
             title:
@@ -103,6 +144,11 @@ routine:
               _payload: stacked
             query:
               _payload: query
+  - :set_state:
+      spec:
+        _analytics.validateChartSpec:
+          spec:
+            _state: source
           roles:
             _user: roles
   - id: run_query

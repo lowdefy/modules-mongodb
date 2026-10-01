@@ -49,6 +49,18 @@ import {
  *                re-queries instead: its rows are inlined into an assembled
  *                ECharts option, so the server re-assembles and returns the
  *                option and its canvas height rather than rows.
+ *   policyErrors
+ *              — the errors a ValidateDynamic step reported for this
+ *                function's own output under the report policy (resolve-report
+ *                checks once without throwing, then compiles again with them).
+ *                Each error whose path falls inside a section's blocks renders
+ *                that section as an Alert, so a value the policy refuses (HTML
+ *                tag syntax or a URL in a row, say) costs one section rather
+ *                than the report. Errors in the header, or on the content as a
+ *                whole, are left for the final check to refuse.
+ *   maxBytes   — the report policy's `limits.bytes`. Sections are kept, in spec
+ *                order, while the compiled content stays under it; a section
+ *                that would take it over renders as an Alert instead.
  *   can_share  — whether this viewer holds one of the module's share_roles.
  *                Decided by the endpoint (it holds the var) and passed in as a
  *                boolean, so the ⋯ menu's publish and unpublish items can be
@@ -67,7 +79,9 @@ import {
  * unescapes them to live operators.
  *
  * The compiler never emits `_secret` and never evaluates AI-provided strings as
- * operators — the spec is data.
+ * operators — the spec is data. A section's stored query never enters the
+ * compiled output: its re-queries and downloads name the report and section, and
+ * the endpoint loads the query server-side.
  */
 
 function fail(message) {
@@ -118,6 +132,15 @@ function menuLink(id, title, icon, properties = {}) {
 // this one. Strict === true, so this has to evaluate to a boolean — __ne does.
 function unlessItem(key) {
   return { __ne: [{ __event: "key" }, key] };
+}
+
+// The payload a section's re-query or download sends: the report the page opened
+// (the same `report_id` resolve-report loaded it from) and the section's id. The
+// endpoint reads the stored query from there. The query itself stays out of the
+// compiled output, where an operator-shaped key inside it (a `$literal` holding
+// `__api`, say) would run in the viewer's browser.
+function sectionRef(section) {
+  return { report_id: { __url_query: "report_id" }, section_id: section.id };
 }
 
 // Publish and unpublish differ only in the value they write, so they are one shape:
@@ -308,7 +331,7 @@ function sectionDownload(section, endpointId) {
         {
           id: `query_${section.id}`,
           type: "CallAPI",
-          params: { endpointId, payload: { query: section.query } },
+          params: { endpointId, payload: sectionRef(section) },
         },
         {
           id: `download_${section.id}`,
@@ -382,14 +405,7 @@ function requeryActions({
         params: {
           endpointId: chartEndpointId,
           payload: {
-            chart: section.chart,
-            // chart-data revalidates the spec, which requires a title; a chart
-            // section's label is required, so it is always there to supply one.
-            title: section.label,
-            x: section.x,
-            y: section.y,
-            ...(section.stacked ? { stacked: true } : {}),
-            query: section.query,
+            ...sectionRef(section),
             filters: boundFilters(section, filterSectionsByField),
           },
         },
@@ -414,7 +430,7 @@ function requeryActions({
       params: {
         endpointId,
         payload: {
-          query: section.query,
+          ...sectionRef(section),
           filters: boundFilters(section, filterSectionsByField),
         },
       },
@@ -962,23 +978,48 @@ function filterControlBlock({
   };
 }
 
-function compileReport({
-  spec,
-  results,
-  catalog,
-  roles,
-  endpointId,
-  chartEndpointId,
-  created,
-  updated,
-  owner,
-  visibility,
-  resolvedAt,
-  is_owner,
-  is_favourite,
-  can_share,
-  conversation_id,
-}) {
+// A section the report policy refused (see policyErrors on compileReport).
+const SECTION_REFUSED_DESCRIPTION =
+  "This section contains values the report page cannot display, such as HTML tags or web addresses.";
+
+// A section left out to keep the report under the policy's size limit.
+const SECTION_TOO_LARGE_DESCRIPTION =
+  "This section is too large to show with the rest of the report. Export it as CSV instead.";
+
+function blockBytes(blocks) {
+  return blocks.reduce(
+    (total, block) => total + JSON.stringify(block).length,
+    0,
+  );
+}
+
+// One compile. `refused` is the section ids the report policy refused, which
+// render as Alerts; `oversized` is the section ids already left out for size,
+// which a second compile keeps out so its sections stay the ones the first
+// checked.
+// Returns the blocks, each block's owning section id (null for the header) and
+// the section ids this compile left out for size.
+function compileBlocks(
+  {
+    spec,
+    results,
+    catalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+    created,
+    updated,
+    owner,
+    visibility,
+    resolvedAt,
+    is_owner,
+    is_favourite,
+    can_share,
+    conversation_id,
+    maxBytes,
+  },
+  { refused, oversized },
+) {
   if (typeof endpointId !== "string" || endpointId === "") {
     fail("endpointId (the query-data endpoint) is required.");
   }
@@ -1395,23 +1436,35 @@ function compileReport({
     list.push({ filter, boundSections });
     filtersByFirstSubscriber.set(anchor.id, list);
   }
+  // The filter ids behind each anchor's controls, in the same order, so every
+  // compiled block can be traced back to the section it was built for.
+  const filterIdsByAnchor = new Map();
   for (const [anchorId, group] of filtersByFirstSubscriber) {
     const spans = filterSpans(group.length);
+    filterIdsByAnchor.set(
+      anchorId,
+      group.map(({ filter }) => filter.id),
+    );
     filtersByFirstSubscriber.set(
       anchorId,
       group.map(({ filter, boundSections }, index) =>
-        filterControlBlock({
-          section: filter,
-          boundSections,
-          sections,
-          catalog,
-          roles,
-          rows: rowsBySectionId.get(filter.id),
-          endpointId,
-          chartEndpointId,
-          filterSectionsByField,
-          span: spans[index],
-        }),
+        refused.has(filter.id)
+          ? {
+              ...failedSectionBlock(filter, SECTION_REFUSED_DESCRIPTION),
+              layout: { span: spans[index] },
+            }
+          : filterControlBlock({
+              section: filter,
+              boundSections,
+              sections,
+              catalog,
+              roles,
+              rows: rowsBySectionId.get(filter.id),
+              endpointId,
+              chartEndpointId,
+              filterSectionsByField,
+              span: spans[index],
+            }),
       ),
     );
   }
@@ -1420,6 +1473,13 @@ function compileReport({
   // treat the section and the filter controls that lead it as a single group.
   const sectionBlocks = (section) => {
     const out = [];
+    // A refused filter is replaced where its control renders, not here.
+    if (section.type !== "filter" && refused.has(section.id)) {
+      out.push(
+        ...brokenSectionBlocks(section, SECTION_REFUSED_DESCRIPTION, brokenCtx),
+      );
+      return out;
+    }
     if (["kpi", "chart", "table"].includes(section.type)) {
       const rows = rowsBySectionId.get(section.id);
       if (rows === null || rows === undefined) {
@@ -1564,7 +1624,7 @@ function compileReport({
             {
               id: `query_${section.id}`,
               type: "CallAPI",
-              params: { endpointId, payload: { query: section.query } },
+              params: { endpointId, payload: sectionRef(section) },
             },
             {
               id: `download_${section.id}`,
@@ -1581,18 +1641,70 @@ function compileReport({
     return out;
   };
 
+  // The blocks a section shows in place of its own when it is left out for size.
+  // A chart or table keeps its ⤓, which re-queries rather than reading the page.
+  const oversizedBlocks = (section) => {
+    const alert = failedSectionBlock(section, SECTION_TOO_LARGE_DESCRIPTION);
+    if (section.type === "chart" || section.type === "table") {
+      return [
+        { ...alert, layout: { span: 20 } },
+        sectionDownload(section, endpointId),
+      ];
+    }
+    return [alert];
+  };
+
+  const owners = header.map(() => null);
+  const leftOut = new Set();
+  let bytes = blockBytes(header);
   for (const section of sections) {
     // A filter renders directly above its first subscribing section, and leads
     // that section's group — so the two are separated by the small row gap and
     // the whole group is pushed off what precedes it.
-    const group = [
-      ...(filtersByFirstSubscriber.get(section.id) ?? []),
-      ...sectionBlocks(section),
-    ];
-    if (group.length > 0) bodyBlocks.push(...withTopGap(group));
+    const controls = filtersByFirstSubscriber.get(section.id) ?? [];
+    const controlOwners = filterIdsByAnchor.get(section.id) ?? [];
+    let own = oversized.has(section.id)
+      ? oversizedBlocks(section)
+      : sectionBlocks(section);
+    let placed = withTopGap([...controls, ...own]);
+    if (
+      own.length > 0 &&
+      (oversized.has(section.id) ||
+        (typeof maxBytes === "number" && bytes + blockBytes(placed) > maxBytes))
+    ) {
+      own = oversizedBlocks(section);
+      placed = withTopGap([...controls, ...own]);
+      leftOut.add(section.id);
+    }
+    bytes += blockBytes(placed);
+    bodyBlocks.push(...placed);
+    owners.push(...controlOwners, ...own.map(() => section.id));
   }
 
-  return [...header, ...bodyBlocks];
+  return { blocks: [...header, ...bodyBlocks], owners, oversized: leftOut };
+}
+
+// The section id a ValidateDynamic error belongs to, or null. Error paths index
+// the content as submitted ("blocks.<index>…"), so the top-level index names the
+// block, and `owners` the section that block was compiled for.
+function errorOwner(error, owners) {
+  const match = /^blocks\.(\d+)(\.|$)/.exec(error?.path ?? "");
+  if (!match) return null;
+  return owners[Number(match[1])] ?? null;
+}
+
+function compileReport(args) {
+  const first = compileBlocks(args, {
+    refused: new Set(),
+    oversized: new Set(),
+  });
+  const refused = new Set();
+  for (const error of args.policyErrors ?? []) {
+    const owner = errorOwner(error, first.owners);
+    if (owner !== null) refused.add(owner);
+  }
+  if (refused.size === 0) return first.blocks;
+  return compileBlocks(args, { refused, oversized: first.oversized }).blocks;
 }
 
 export default compileReport;
