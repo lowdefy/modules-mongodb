@@ -59,7 +59,13 @@ two entries, two `org_slug` values. See
   `fields.show_honorific`, and the configured `fields.profile`), identical to the
   Profile edit modal. It also carries the invitee's app roles and — behind the
   `org_authority` var — their organization-authority tier, seeded to `member` (no
-  authority), so a form nobody touches invites app roles and no authority. That
+  authority), so a form nobody touches invites app roles and no authority. When
+  the email has an **expired** invitation in this organization, the form instead
+  opens with that invitation's app roles, organization tier and member attributes
+  (a stored `owner` tier seeds `admin`, the highest tier the form offers), and
+  sending cancels the expired row before inviting. The Invitations tab's
+  **Re-invite** on an Expired row opens the page with `?email=`, which runs the
+  check on load. That
   profile is **persisted to the contact record at invite
   time**, so the name shows on the Members list the moment the invitation is
   accepted — without waiting for the invitee to onboard. The invitation email is
