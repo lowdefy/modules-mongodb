@@ -75,9 +75,12 @@ function fail(message) {
 }
 
 // A copy of one plain object or array from query results with every key that
-// starts with "_" removed, at any depth. Class instances (Date, ObjectId,
-// Decimal128) are kept as they are: they serialize to strings or to keys
-// without a leading underscore.
+// starts with "_" removed, at any depth, except `_id`. No Lowdefy operator is
+// named `_id` (none of the installed operator packages or the app's client
+// operators has one), so it is data to the client, and it is the column a
+// $group produces. `__id` and longer forms are still removed. Class instances
+// (Date, ObjectId, Decimal128) are kept as they are: they serialize to strings
+// or to keys without a leading underscore.
 function stripUnderscoreKeys(value) {
   if (Array.isArray(value)) return value.map(stripUnderscoreKeys);
   if (value === null || typeof value !== "object") return value;
@@ -85,7 +88,7 @@ function stripUnderscoreKeys(value) {
   if (proto !== Object.prototype && proto !== null) return value;
   const out = {};
   for (const [key, child] of Object.entries(value)) {
-    if (key.startsWith("_")) continue;
+    if (key.startsWith("_") && key !== "_id") continue;
     out[key] = stripUnderscoreKeys(child);
   }
   return out;
@@ -95,11 +98,11 @@ function stripUnderscoreKeys(value) {
 // under the report policy as config: the Dynamic block strips one underscore
 // from every operator-shaped key, and the policy allows _function, _state and
 // _api. A field an AI-authored pipeline names `__function` or `_state` would
-// run as that operator in every viewer's browser, so rows lose every "_" key
-// before anything reads them, the same rule buildFlintOption applies to chart
-// options. They are stripped rather than refused: `_id` from a $group is in
-// most rows and harmless once dropped. A contract that declares a "_" key then
-// fails verifyContract and renders as an Alert, like any other missing column.
+// run as that operator in every viewer's browser, so rows lose those keys
+// before anything reads them. They are stripped rather than refused, the same
+// as buildFlintOption does for chart options. A contract that declares a
+// stripped key then fails verifyContract and renders as an Alert, like any
+// other missing column.
 function inertRows(rows) {
   return Array.isArray(rows) ? rows.map(stripUnderscoreKeys) : rows;
 }
@@ -1013,7 +1016,7 @@ function compileReport({
   orderedQueries(sections).forEach((entry, index) => {
     const rows = resultsArray[index] ?? null;
     // An options query's rows are read by key and never inlined: only the
-    // option label and value are, so `_id` stays usable as a valueKey.
+    // option label and value are, so any key stays usable as a valueKey.
     rowsBySectionId.set(
       entry.id,
       entry.type === "filter" ? rows : inertRows(rows),

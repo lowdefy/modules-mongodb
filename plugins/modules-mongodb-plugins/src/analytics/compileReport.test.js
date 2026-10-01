@@ -2412,20 +2412,61 @@ describe("query rows inlined into the compiled blocks", () => {
     expect(operatorShapedKeys(blocks)).toEqual([]);
   });
 
-  test("a declared '_' column renders the section as an Alert", () => {
+  test("a $group row's _id renders as a table column while other '_' keys are stripped", () => {
     const blocks = compileReport({
       spec: {
         title: "T",
         sections: [
           {
             type: "table",
-            label: "By id",
-            query: ordersByRegion,
+            label: "By region",
+            query: {
+              collection: "demo_orders",
+              pipeline: [
+                { $group: { _id: "$region", total: { $sum: "$total" } } },
+              ],
+            },
             columns: [{ key: "_id" }, { key: "total" }],
           },
         ],
       },
-      results: [[{ _id: "EU", total: 2500 }]],
+      results: [
+        [
+          {
+            _id: "EU",
+            total: 2500,
+            __function: { __js: "injected" },
+            detail: { __state: "injected", _id: "kept" },
+          },
+        ],
+      ],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    const table = blocks.find((b) => b.id === "s0");
+    expect(table.type).toBe("AgGridBalham");
+    expect(table.properties.rowData).toEqual([
+      { _id: "EU", total: 2500, detail: { _id: "kept" } },
+    ]);
+    expect(operatorShapedKeys(blocks)).toEqual([]);
+  });
+
+  test("a declared '_' column other than _id renders the section as an Alert", () => {
+    const blocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          {
+            type: "table",
+            label: "By key",
+            query: ordersByRegion,
+            columns: [{ key: "__id" }, { key: "total" }],
+          },
+        ],
+      },
+      results: [[{ __id: "EU", total: 2500 }]],
       catalog: testCatalog,
       roles,
       endpointId,
