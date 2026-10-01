@@ -74,6 +74,36 @@ function fail(message) {
   throw new Error(`compileReport: ${message}`);
 }
 
+// A copy of one plain object or array from query results with every key that
+// starts with "_" removed, at any depth. Class instances (Date, ObjectId,
+// Decimal128) are kept as they are: they serialize to strings or to keys
+// without a leading underscore.
+function stripUnderscoreKeys(value) {
+  if (Array.isArray(value)) return value.map(stripUnderscoreKeys);
+  if (value === null || typeof value !== "object") return value;
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return value;
+  const out = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (key.startsWith("_")) continue;
+    out[key] = stripUnderscoreKeys(child);
+  }
+  return out;
+}
+
+// A data section's rows are inlined into the compiled blocks, which render
+// under the report policy as config: the Dynamic block strips one underscore
+// from every operator-shaped key, and the policy allows _function, _state and
+// _api. A field an AI-authored pipeline names `__function` or `_state` would
+// run as that operator in every viewer's browser, so rows lose every "_" key
+// before anything reads them, the same rule buildFlintOption applies to chart
+// options. They are stripped rather than refused: `_id` from a $group is in
+// most rows and harmless once dropped. A contract that declares a "_" key then
+// fails verifyContract and renders as an Alert, like any other missing column.
+function inertRows(rows) {
+  return Array.isArray(rows) ? rows.map(stripUnderscoreKeys) : rows;
+}
+
 // A DropdownMenu item, in the Menu block link shape the block shares with Menu and
 // MobileMenu. The id is the key the block reports back on click, which is what the
 // header's ⋯ dispatches on.
@@ -596,8 +626,10 @@ function filterOptions({ filter, sections, catalog, roles, rows }) {
     const list = capped(rows, MAX_QUERY_FILTER_OPTIONS);
     return {
       ...list,
+      // The value is a string or number (verifyFilterOptionsContract); the
+      // label is not checked, so it gets the same strip as inlined rows.
       options: list.options.map((row) => ({
-        label: row[labelKey],
+        label: stripUnderscoreKeys(row[labelKey]),
         value: row[valueKey],
       })),
     };
@@ -979,7 +1011,13 @@ function compileReport({
   }
   const rowsBySectionId = new Map();
   orderedQueries(sections).forEach((entry, index) => {
-    rowsBySectionId.set(entry.id, resultsArray[index] ?? null);
+    const rows = resultsArray[index] ?? null;
+    // An options query's rows are read by key and never inlined: only the
+    // option label and value are, so `_id` stays usable as a valueKey.
+    rowsBySectionId.set(
+      entry.id,
+      entry.type === "filter" ? rows : inertRows(rows),
+    );
   });
 
   const filterSectionsByField = new Map(
