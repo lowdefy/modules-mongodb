@@ -236,15 +236,7 @@ _ref:
                           _object.assign:
                             - email:
                                 _state: login_resend_email
-                            - _if:
-                                test:
-                                  _ne:
-                                    - _url_query: callbackUrl
-                                    - null
-                                then:
-                                  callbackUrl:
-                                    _url_query: callbackUrl
-                                else: {}
+                            - _ref: components/callback_url_query.yaml
             else: []
 
         # Retryable notice above the form. Carries both the expired-magic-link

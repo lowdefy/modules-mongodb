@@ -3,8 +3,7 @@
 # failure, so the expired render still has it for a resend) and the inbound
 # `?callbackUrl=` when the page has one. verify-email hands that value on to
 # sign-in, so an invitee who registers from the accept page returns to it after
-# verifying. The key is left out when there is no inbound value: a null would
-# serialise into the link as the string "null".
+# verifying.
 #
 # Vars:
 #   email: operator resolving the address the email is sent to.
@@ -15,12 +14,4 @@ urlQuery:
     - verified: "1"
       email:
         _var: email
-    - _if:
-        test:
-          _ne:
-            - _url_query: callbackUrl
-            - null
-        then:
-          callbackUrl:
-            _url_query: callbackUrl
-        else: {}
+    - _ref: components/callback_url_query.yaml

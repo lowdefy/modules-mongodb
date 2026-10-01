@@ -54,19 +54,25 @@
     # app roles and nothing more. Re-seeded on every resolve, so values from one
     # email cannot ride along to the next one checked. A stored `owner` seeds
     # `admin`: the form does not mint the protected creator tier, and `admin`
-    # carries the same capabilities.
+    # carries the same capabilities. With the `org_authority` var false the tier
+    # control does not render and the tier is always `member`.
     roles:
       _actions: check_invite.response.response.expired_invitation.app_roles
     member_attributes:
       _actions: check_invite.response.response.expired_invitation.attributes
     org_role:
-      _if:
+      _build.if:
         test:
-          _eq:
-            - _actions: check_invite.response.response.expired_invitation.role
-            - owner
-        then: admin
-        else:
-          _if_none:
-            - _actions: check_invite.response.response.expired_invitation.role
-            - member
+          _module.var: org_authority
+        then:
+          _if:
+            test:
+              _eq:
+                - _actions: check_invite.response.response.expired_invitation.role
+                - owner
+            then: admin
+            else:
+              _if_none:
+                - _actions: check_invite.response.response.expired_invitation.role
+                - member
+        else: member

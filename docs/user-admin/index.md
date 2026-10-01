@@ -194,8 +194,10 @@ write **first**, so a refused tier write halts before any app-role write lands �
 is how it shares one submit with no rollback path. The tier is written only when it
 changed; the assignable values are `admin` and `member` (`owner` is the protected
 creator tier and is not settable from the UI). `org_authority: false` removes the
-two controls that reach it and makes the endpoint reject, so a deployment granting
-organization authority out of band closes the surface rather than only hiding it.
+two controls that reach it, makes the endpoint reject, mints every invitation with
+`member`, and makes a resend keep the invitation's stored tier, so a deployment
+granting organization authority out of band closes the surface rather than only
+hiding it.
 
 The shared contact fragments — `write-profile`, `ensure-contact`, and
 `resolve-own-contact` — live in `modules/shared/contact/` and are `_ref`'d by

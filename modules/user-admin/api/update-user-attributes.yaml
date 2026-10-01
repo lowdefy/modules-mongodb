@@ -17,18 +17,12 @@
 id: update-user-attributes
 type: Api
 routine:
-  - id: attributes_before
-    type: MongoDBFindOne
-    connectionId:
-      _module.connectionId: users
-    properties:
-      query:
-        _id:
+  - _ref:
+      path: api/steps/read_user_attributes.yaml
+      vars:
+        id: attributes_before
+        user_id:
           _payload: user_id
-      options:
-        projection:
-          _id: 0
-          attributes: 1
   - id: set_user_attributes
     type: UpdateUserAttributes
     properties:
@@ -40,18 +34,12 @@ routine:
         _if_none:
           - _payload: user_attributes
           - {}
-  - id: attributes_after
-    type: MongoDBFindOne
-    connectionId:
-      _module.connectionId: users
-    properties:
-      query:
-        _id:
+  - _ref:
+      path: api/steps/read_user_attributes.yaml
+      vars:
+        id: attributes_after
+        user_id:
           _payload: user_id
-      options:
-        projection:
-          _id: 0
-          attributes: 1
   - id: audit
     type: CallApi
     properties:

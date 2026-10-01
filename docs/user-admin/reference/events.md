@@ -33,12 +33,12 @@ attributes: { team: beta } # the row's member attributes; {} when unset
 | Event type                | Endpoint                 | `metadata.before`            | `metadata.after`             |
 | ------------------------- | ------------------------ | ---------------------------- | ---------------------------- |
 | `access-updated`          | `update-access`          | access                       | access                       |
-| `member-invited`          | `invite`                 | (none)                       | access, as invited           |
+| `member-invited`          | `invite`                 | (none)                       | access and tier, as invited  |
 | `member-removed`          | `remove-member`          | access                       | (none)                       |
 | `user-deleted`            | `delete-user`            | access                       | (none)                       |
 | `org-role-updated`        | `update-org-role`        | `owner`, `admin` or `member` | `owner`, `admin` or `member` |
 | `user-attributes-updated` | `update-user-attributes` | the user row's `attributes`  | the user row's `attributes`  |
-| `profile-updated`         | `update-profile`         | the written profile fields   | the written profile fields   |
+| `profile-updated`         | `update-profile`         | the changed profile fields   | the changed profile fields   |
 
 Both access values are recorded in full on every `access-updated` event, so a save
 that changes only member attributes shows the attribute difference with `roles`
@@ -48,12 +48,16 @@ equal on both sides.
   organization before the delete. `remove-member` finds the row by the member id it
   was called with; called with an email instead, it records `before: null`.
   `delete-user` reads the row after its other-memberships guard.
+- **`member-invited`** records the access value plus `org_role`, the
+  organization-authority tier the invitation carries (`admin` or `member`; always
+  `member` when the `org_authority` var is false).
 - **`org-role-updated`** records the organization-authority tier (`member.role`); an
   unset tier reads as `member`.
-- **`profile-updated`** records the fields the form submitted (the keys of the
-  payload's `profile`), each as stored on the contact before and after the write. A
-  field the contact did not hold is `null` in `before`. `photo` is left out, because
-  it holds the uploaded image as a data URI.
+- **`profile-updated`** records the submitted fields (the keys of the payload's
+  `profile`) whose stored value the save changed, each as stored on the contact
+  before and after the write. A field the contact did not hold is `null` in
+  `before`. `photo` and `picture` are left out, because both hold images as data
+  URIs.
 
 An access value is `null` when no member row matches the read.
 

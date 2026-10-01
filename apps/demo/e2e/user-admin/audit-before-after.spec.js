@@ -45,7 +45,7 @@ test.describe("user-admin audit events record before and after", () => {
     await ldf.user(ADMIN);
   });
 
-  test("profile-updated records the written fields before and after", async ({
+  test("profile-updated records the changed fields before and after", async ({
     page,
     mdb,
   }) => {
@@ -67,8 +67,8 @@ test.describe("user-admin audit events record before and after", () => {
       .toArray();
     expect(events).toHaveLength(1);
     expect(events[0].metadata).toEqual({
-      before: { given_name: "Before", family_name: "Target" },
-      after: { given_name: "After", family_name: "Target" },
+      before: { given_name: "Before" },
+      after: { given_name: "After" },
     });
     expect(events[0].demo.title).toBe(
       "Audit Admin updated After Target's profile",
@@ -88,8 +88,29 @@ test.describe("user-admin audit events record before and after", () => {
       .collection("log-events")
       .findOne({ type: "profile-updated", contact_ids: CONTACT_ID });
     expect(event.metadata).toEqual({
-      before: { given_name: "Before", work_phone: null },
-      after: { given_name: "Before", work_phone: "+27 11 000 0000" },
+      before: { work_phone: null },
+      after: { work_phone: "+27 11 000 0000" },
+    });
+  });
+
+  test("the whole stored profile posted back records only the edit", async ({
+    page,
+    mdb,
+  }) => {
+    const stored = await mdb
+      .collection("user-contacts")
+      .findOne({ _id: CONTACT_ID });
+    await callEndpoint(page, "update-profile", {
+      contact_id: CONTACT_ID,
+      profile: { ...stored.profile, job_title: "Manager" },
+    });
+
+    const event = await mdb
+      .collection("log-events")
+      .findOne({ type: "profile-updated", contact_ids: CONTACT_ID });
+    expect(event.metadata).toEqual({
+      before: { job_title: "Analyst" },
+      after: { job_title: "Manager" },
     });
   });
 });
