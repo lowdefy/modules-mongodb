@@ -59,7 +59,13 @@ two entries, two `org_slug` values. See
   `fields.show_honorific`, and the configured `fields.profile`), identical to the
   Profile edit modal. It also carries the invitee's app roles and — behind the
   `org_authority` var — their organization-authority tier, seeded to `member` (no
-  authority), so a form nobody touches invites app roles and no authority. That
+  authority), so a form nobody touches invites app roles and no authority. When
+  the email has an **expired** invitation in this organization, the form instead
+  opens with that invitation's app roles, organization tier and member attributes
+  (a stored `owner` tier seeds `admin`, the highest tier the form offers), and
+  sending cancels the expired row before inviting. The Invitations tab's
+  **Re-invite** on an Expired row opens the page with `?email=`, which runs the
+  check on load. That
   profile is **persisted to the contact record at invite
   time**, so the name shows on the Members list the moment the invitation is
   accepted — without waiting for the invitee to onboard. The invitation email is
@@ -83,6 +89,15 @@ blast radius. This rests on the deployment premise that the pinned suite is
 administered by one trusted operator group; it sits behind the `suspension` var
 (default on). **Remove from app** (`RemoveMember`) is the app-scoped alternative.
 **Delete login identity** is offered only when the user holds no other memberships.
+
+Remove from app deletes the member row, so the person's roles and member
+attributes go with it. Delete login removes the user id that other records may be
+keyed on, and a re-invite creates a new one. In an app whose people carry history
+or settings on those rows, set `remove_member: false` and `delete_user: false`:
+each hides its button and confirm modal and makes its endpoint (`remove-member`,
+`delete-user`) reject, the same shape as `suspension: false` on `suspend` /
+`reinstate`. The endpoints stay registered; the rejection is the routine's first
+step. Suspend and Reinstate are unaffected by either var.
 
 ## Two-factor and passkey recovery
 
@@ -329,6 +344,7 @@ that wants them aligned aligns them itself.
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
 - [Members row contract](reference/row-contract.md) — the row keys a `table_columns` or `download_columns` entry may bind
+- [Audit events](reference/events.md) — the event each write routine logs, and the `before` / `after` values it records
 - [Indexes](reference/indexes.md) — the host-app-created `user-members` compound index the role filter depends on
 - [Same-database co-location](concepts/co-location.md) — the hard read precondition
 - [Migrating from v0.x](how-to/migration.md) — var renames/removals, page renames, dropped deps, and the per-organization upgrade (`org_slug`, app-side gates, `role` off the row)

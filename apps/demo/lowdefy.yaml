@@ -159,6 +159,12 @@ auth:
 modules:
   _ref: modules.yaml
 
+policies:
+  dynamicBlocks:
+    - _ref:
+        module: ai-reporting
+        component: report-policy
+
 menus:
   _ref: menus.yaml
 

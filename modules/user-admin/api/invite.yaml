@@ -192,6 +192,18 @@ routine:
         references:
           contact_ids:
             - _step: read_contact._id
+        # The access the invitation carries, as the invite_member step sent it.
+        # There is no member row until the invitee accepts, so no `before`.
+        metadata:
+          after:
+            roles:
+              _if_none:
+                - _payload: roles
+                - []
+            attributes:
+              _if_none:
+                - _payload: member_attributes
+                - {}
 
   - :return:
       success: true

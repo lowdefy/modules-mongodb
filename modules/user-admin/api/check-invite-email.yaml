@@ -10,6 +10,8 @@
 #   contact  : a contact exists on lowercase_email but has no member row here →
 #              the UI prefills the form from `contact.profile`.
 #   unknown  : nothing found → blank form.
+# In the contact and unknown states, `expired_invitation` (the latest expired
+# pending row, or null) seeds the form's app roles, org tier and attributes.
 #
 # Reads user-invitations directly (bypassing the org-plugin helpers) so it can do
 # its own status/expiry filtering, preserving the one-contact-per-email invariant.
@@ -122,6 +124,40 @@ routine:
           # Resend can preserve them rather than blank them.
           attributes: 1
 
+  # 3b) The most recent expired pending invitation for this org, if any. It does
+  #     not change `state`: an expired row is re-invited through the form, which
+  #     prefills its app roles, org tier and attributes from this row, and the
+  #     invite routine cancels the row before inviting.
+  - id: find_expired_invitation
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: user-invitations
+    properties:
+      query:
+        organization_id:
+          _module.var: org_slug
+        status: pending
+        $expr:
+          $eq:
+            - $toLower: "$email"
+            - _string.toLowerCase:
+                _string.trim:
+                  _if_none:
+                    - _payload: email
+                    - ""
+        expires_at:
+          $lte:
+            _date: now
+      options:
+        sort:
+          expires_at: -1
+        projection:
+          _id: 1
+          app_roles: 1
+          role: 1
+          attributes: 1
+          expires_at: 1
+
   # 4) Discriminated result. `state` is computed with the nested _if OPERATOR
   #    (test/then/else) in priority order: member → pending → contact → unknown.
   #    The raw rows ride along so the UI can prefill (contact.profile) and render
@@ -162,5 +198,7 @@ routine:
         _step: find_member.0
       invitation:
         _step: find_invitation
+      expired_invitation:
+        _step: find_expired_invitation
       contact:
         _step: find_contact

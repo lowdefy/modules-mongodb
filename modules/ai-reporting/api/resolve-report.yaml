@@ -121,29 +121,15 @@ routine:
                 _item: section.type
               collection:
                 _item: section.query.collection
-  - :return:
-      # The page renders owner-only actions from this; the resolver is the only
-      # party that knows it.
-      is_owner:
-        _eq:
-          - _step: load_report.owner.user_id
-          - _user: id
-      # Provenance for the page: who made it, last edited (the document's
-      # `updated`), and when these numbers were computed (this resolve, not the
-      # document). conversation_id may be absent — passed as-is so a missing
-      # chat link stays missing rather than becoming an empty one.
-      created:
-        _step: load_report.created
-      updated:
-        _step: load_report.updated
-      owner:
-        _step: load_report.owner
-      visibility:
-        _step: load_report.visibility
-      conversation_id:
-        _step: load_report.conversation_id
-      resolvedAt:
-        _date: now
+  # compileReport's blocks are data built from the stored spec, and a Dynamic
+  # endpoint may return data as blocks only once a ValidateDynamic step has
+  # checked them against the Dynamic block's own policy. Content the policy
+  # refuses fails the step, and the page renders its fallback.
+  - id: validate_blocks
+    type: ValidateDynamic
+    properties:
+      policy:
+        _ref: components/report_policy_id.yaml
       blocks:
         _analytics.compileReport:
           spec:
@@ -168,9 +154,9 @@ routine:
           chartEndpointId:
             _module.endpointId: chart-data
           # The compiler renders a provenance line under the title and gates
-          # owner-only chat affordances on these. is_owner repeats the return's
-          # expression because sibling return keys can't reference each other;
-          # conversation_id is passed as-is so its absence reads as no chat.
+          # owner-only chat affordances on these. is_owner repeats the :return's
+          # expression; conversation_id is passed as-is so its absence reads as
+          # no chat.
           created:
             _step: load_report.created
           updated:
@@ -213,3 +199,28 @@ routine:
               else: false
           resolvedAt:
             _date: now
+  - :return:
+      # The page renders owner-only actions from this; the resolver is the only
+      # party that knows it.
+      is_owner:
+        _eq:
+          - _step: load_report.owner.user_id
+          - _user: id
+      # Provenance for the page: who made it, last edited (the document's
+      # `updated`), and when these numbers were computed (this resolve, not the
+      # document). conversation_id may be absent — passed as-is so a missing
+      # chat link stays missing rather than becoming an empty one.
+      created:
+        _step: load_report.created
+      updated:
+        _step: load_report.updated
+      owner:
+        _step: load_report.owner
+      visibility:
+        _step: load_report.visibility
+      conversation_id:
+        _step: load_report.conversation_id
+      resolvedAt:
+        _date: now
+      blocks:
+        _step: validate_blocks.blocks

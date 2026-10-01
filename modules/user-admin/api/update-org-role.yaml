@@ -28,7 +28,8 @@
 # authority out of band asks for.
 #
 # Payload: { member_id, org_role, user_id?, target_name?, target_email? }
-# The audit event is the FINAL step, so it fires only on full success.
+# The audit event is the FINAL step, so it fires only on full success. It records
+# the member row's tier read before and after the write.
 id: update-org-role
 type: Api
 routine:
@@ -40,7 +41,21 @@ routine:
         then:
           - - :reject: Organization authority is not granted through this app (the "org_authority" var is false).
         else: []
-    - - id: set_org_role
+    - - id: org_role_before
+        type: MongoDBFindOne
+        connectionId:
+          _module.connectionId: user-members
+        properties:
+          query:
+            _id:
+              _payload: member_id
+            organization_id:
+              _module.var: org_slug
+          options:
+            projection:
+              _id: 0
+              role: 1
+      - id: set_org_role
         type: UpdateMemberOrgRole
         properties:
           memberId:
@@ -49,6 +64,20 @@ routine:
             _payload: org_role
           organizationId:
             _module.var: org_slug
+      - id: org_role_after
+        type: MongoDBFindOne
+        connectionId:
+          _module.connectionId: user-members
+        properties:
+          query:
+            _id:
+              _payload: member_id
+            organization_id:
+              _module.var: org_slug
+          options:
+            projection:
+              _id: 0
+              role: 1
       - id: audit
         type: CallApi
         properties:
@@ -81,8 +110,15 @@ routine:
             references:
               user_ids:
                 - _payload: user_id
+            # An unset tier reads as `member`, the same as the detail read.
             metadata:
-              org_role:
-                _payload: org_role
+              before:
+                _if_none:
+                  - _step: org_role_before.role
+                  - member
+              after:
+                _if_none:
+                  - _step: org_role_after.role
+                  - member
       - :return:
           success: true

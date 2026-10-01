@@ -5,10 +5,11 @@
 # generic "Report" above it. The breadcrumb is the only way back to the list
 # from here, since the report's own title carries no link.
 #
-# The compiled output's block/action/operator types must be declared in
-# properties.types so they ship in the client bundle. The fallback slot covers
-# whole-report failures (missing report, unauthorized user); per-section
-# failures render as Alert cards inside the compiled report.
+# The compiled output renders under the module's report policy
+# (components/report_policy.yaml), whose lists also put its types in the client
+# bundle. The fallback slot covers whole-report failures (missing report,
+# unauthorized user, content the policy refuses); per-section failures render
+# as Alert cards inside the compiled report.
 _ref:
   module: layout
   component: page
@@ -41,62 +42,10 @@ _ref:
         properties:
           endpointId:
             _module.endpointId: resolve-report
-          types:
-            blocks:
-              - Title
-              - Paragraph
-              - Statistic
-              - EChart
-              - AgGridBalham
-              - Selector
-              - MultipleSelector
-              - DateRangeSelector
-              - Button
-              - Alert
-              - Markdown
-              # The header's ⋯ is a DropdownMenu wrapping its trigger Button — a
-              # dropdown owns the block that opens it, so it cannot live in this
-              # page's static config the way the modals below do. See
-              # compileReport's report_menu for what that costs.
-              - DropdownMenu
-            actions:
-              - CallAPI
-              - SetState
-              - DownloadCsv
-              # Owner-only affordances navigate in-app: Continue-in-chat and
-              # Fix-in-chat open the source conversation, Drop re-opens the
-              # report after removing a section (compileReport brokenSectionBlocks
-              # / the header control).
-              - Link
-              # The header's ⋯ items open the rename Modal and the delete
-              # ConfirmModal, which stay STATIC config on this page — so the menu
-              # itself is compiled but the two writes behind it are not, and their
-              # block types (Modal, TextInput, TextArea, ConfirmModal) stay out of
-              # this allowlist, where one missed type blanks the whole report.
-              - CallMethod
-            operators:
-              - _state
-              - _api
-              - _if_none
-              # Drop reads the report id from the page URL (the same value
-              # resolve-report loads the report from) for its remove-report-section
-              # call and the re-navigation that refreshes the page.
-              - _url_query
-              # The header's ⋯ fires one onClick for the whole menu, carrying the
-              # clicked item's key, so each item's actions are guarded by
-              # `skip: {_ne: [{_event: key}, <item>]}`.
-              - _event
-              - _ne
-              # A table column carrying a `format` descriptor compiles to a
-              # `__function` cell renderer wrapping `___intl.numberFormat` over
-              # `___args` (compileReport numericCellRenderer). Dynamic resolution
-              # collapses each operator's leading underscores to one and rejects any
-              # type not declared here — so an undeclared _intl fails the WHOLE
-              # report to the fallback slot, not just the column. Keep these three
-              # in step with numericCellRenderer.
-              - _function
-              - _intl
-              - _args
+          # compileReport's blocks are data built from a stored spec, so they
+          # render only under a policy that lists what they may use.
+          policy:
+            _ref: components/report_policy_id.yaml
         slots:
           fallback:
             blocks:

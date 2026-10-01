@@ -2316,3 +2316,210 @@ describe("withheld vs broken failed sections", () => {
     expect(byId.s0_drop).toBeDefined();
   });
 });
+
+describe("query rows inlined into the compiled blocks", () => {
+  // An AI-authored pipeline can project any legal field name, including ones
+  // the client would run as operators once the Dynamic block unescapes them.
+  const hostileRow = {
+    region: "EU",
+    total: 2500,
+    __function: { __js: "injected" },
+    _state: "injected",
+    detail: { label: "kept", __state: "injected", _api: "injected" },
+  };
+  const strippedRow = { region: "EU", total: 2500, detail: { label: "kept" } };
+
+  function operatorShapedKeys(value, path = "") {
+    if (Array.isArray(value)) {
+      return value.flatMap((item, i) =>
+        operatorShapedKeys(item, `${path}.${i}`),
+      );
+    }
+    if (value === null || typeof value !== "object") return [];
+    return Object.entries(value).flatMap(([key, child]) => [
+      ...(key.startsWith("_") && child === "injected"
+        ? [`${path}.${key}`]
+        : []),
+      ...(key === "__js" ? [`${path}.${key}`] : []),
+      ...operatorShapedKeys(child, `${path}.${key}`),
+    ]);
+  }
+
+  test("a row with __function and a nested __state keeps no '_' keys in a table, filtered or not", () => {
+    const tableSpec = {
+      title: "T",
+      sections: [
+        {
+          type: "table",
+          label: "Plain",
+          query: ordersByRegion,
+          columns: [{ key: "region" }, { key: "total" }],
+        },
+        {
+          type: "filter",
+          control: "select",
+          field: "status",
+          label: "Status",
+          options: ["paid"],
+        },
+        {
+          type: "table",
+          label: "Filtered",
+          query: ordersByRegion,
+          columns: [{ key: "region" }, { key: "total" }],
+          filterBy: ["status"],
+        },
+      ],
+    };
+    const blocks = compileReport({
+      spec: tableSpec,
+      results: [[hostileRow], [hostileRow]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    expect(byId.s0.properties.rowData).toEqual([strippedRow]);
+    expect(byId.s2.properties.rowData).toEqual({
+      __if_none: [{ __state: "sections.s2.rows" }, [strippedRow]],
+    });
+    expect(operatorShapedKeys(blocks)).toEqual([]);
+  });
+
+  test("a KPI and a chart over the same row carry no '_' keys from it", () => {
+    const blocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          { type: "kpi", label: "Total", query: orderTotal, valueKey: "total" },
+          {
+            type: "chart",
+            chart: "bar",
+            label: "By region",
+            query: ordersByRegion,
+            x: "region",
+            y: ["total"],
+          },
+        ],
+      },
+      results: [[hostileRow], [hostileRow]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    expect(operatorShapedKeys(blocks)).toEqual([]);
+  });
+
+  test("a $group row's _id renders as a table column while other '_' keys are stripped", () => {
+    const blocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          {
+            type: "table",
+            label: "By region",
+            query: {
+              collection: "demo_orders",
+              pipeline: [
+                { $group: { _id: "$region", total: { $sum: "$total" } } },
+              ],
+            },
+            columns: [{ key: "_id" }, { key: "total" }],
+          },
+        ],
+      },
+      results: [
+        [
+          {
+            _id: "EU",
+            total: 2500,
+            __function: { __js: "injected" },
+            detail: { __state: "injected", _id: "kept" },
+          },
+        ],
+      ],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    const table = blocks.find((b) => b.id === "s0");
+    expect(table.type).toBe("AgGridBalham");
+    expect(table.properties.rowData).toEqual([
+      { _id: "EU", total: 2500, detail: { _id: "kept" } },
+    ]);
+    expect(operatorShapedKeys(blocks)).toEqual([]);
+  });
+
+  test("a declared '_' column other than _id renders the section as an Alert", () => {
+    const blocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          {
+            type: "table",
+            label: "By key",
+            query: ordersByRegion,
+            columns: [{ key: "__id" }, { key: "total" }],
+          },
+        ],
+      },
+      results: [[{ __id: "EU", total: 2500 }]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    expect(blocks.find((b) => b.id === "s0").type).toBe("Alert");
+  });
+
+  test("an options query keeps _id as its valueKey and strips '_' keys from an object label", () => {
+    const blocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          {
+            type: "filter",
+            control: "select",
+            field: "region",
+            label: "Region",
+            optionsQuery: {
+              collection: "demo_orders",
+              pipeline: [
+                { $group: { _id: "$region", label: { $first: "$region" } } },
+              ],
+              valueKey: "_id",
+              labelKey: "label",
+            },
+          },
+          {
+            type: "table",
+            label: "Orders",
+            query: ordersByRegion,
+            columns: [{ key: "region" }, { key: "total" }],
+            filterBy: ["region"],
+          },
+        ],
+      },
+      results: [
+        [
+          {
+            _id: "north",
+            label: { name: "North", __function: { __js: "injected" } },
+          },
+        ],
+        [{ region: "EU", total: 1 }],
+      ],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    expect(operatorShapedKeys(blocks)).toEqual([]);
+    const control = JSON.stringify(blocks);
+    expect(control).toContain('"value":"north"');
+    expect(control).toContain('"label":{"name":"North"}');
+  });
+});

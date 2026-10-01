@@ -7,10 +7,10 @@
 #               (TOKEN_EXPIRED / INVALID_TOKEN / ...).
 #
 # The verification callbackURL is set to this page with `?verified=1&email=<addr>`
-# (see the resend below and signup.yaml), so the success landing is
-# distinguishable from the resting check prompt, and, because BetterAuth appends
-# `&error=` to the callbackURL on failure, the email survives onto the expired
-# landing for the resend.
+# plus any inbound `?callbackUrl=` (components/verify_email_callback.yaml), so the
+# success landing is distinguishable from the resting check prompt, and, because
+# BetterAuth appends `&error=` to the callbackURL on failure, the email and the
+# callbackUrl survive onto the expired landing for the resend.
 _ref:
   module: layout
   component: auth-page
@@ -73,12 +73,11 @@ _ref:
                 email:
                   _state: verify_email
                 callbackUrl:
-                  pageId:
-                    _module.pageId: verify-email
-                  urlQuery:
-                    verified: "1"
-                    email:
-                      _state: verify_email
+                  _ref:
+                    path: components/verify_email_callback.yaml
+                    vars:
+                      email:
+                        _state: verify_email
 
       # ---- Verified (callback success) ----
       - id: verify_success
@@ -105,11 +104,24 @@ _ref:
           variant: solid
         events:
           onClick:
+            # The `?callbackUrl=` the verification email carried (see
+            # components/verify_email_callback.yaml) returns the user to where
+            # they started, the accept page for an invitee.
             - id: verify_go_login
               type: Link
               params:
                 pageId:
                   _module.pageId: login
+                urlQuery:
+                  _if:
+                    test:
+                      _ne:
+                        - _url_query: callbackUrl
+                        - null
+                    then:
+                      callbackUrl:
+                        _url_query: callbackUrl
+                    else: null
 
       # ---- Expired (callback error) ----
       - id: verify_expired
@@ -145,9 +157,8 @@ _ref:
                 email:
                   _state: verify_email
                 callbackUrl:
-                  pageId:
-                    _module.pageId: verify-email
-                  urlQuery:
-                    verified: "1"
-                    email:
-                      _state: verify_email
+                  _ref:
+                    path: components/verify_email_callback.yaml
+                    vars:
+                      email:
+                        _state: verify_email
