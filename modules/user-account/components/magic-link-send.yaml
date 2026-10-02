@@ -5,11 +5,13 @@
 # stored target email) to show that page's "check your email" state. The send
 # carries the two verify-callback targets the module owns as structured targets:
 # `callbackUrl` -> the inbound `?callbackUrl=` or app home, `newUserCallbackUrl`
-# -> the onboarding page, or the inbound `?callbackUrl=` when it is the accept
-# page. Under `policy: tenant` an invitee who has not accepted yet holds no
-# membership and is refused every protected page, onboarding included; the
-# accept page is public, and after accepting it enters the app, whose router
-# sends a first-time user on to onboarding. `errorCallbackUrl` is deliberately
+# -> the app home, or the inbound `?callbackUrl=` when it is the accept page.
+# A new user is sent home, not to onboarding, because the module cannot tell at
+# send time whether they will hold an organization: under `policy: tenant` an
+# invitee who has not accepted yet holds none and is refused every protected
+# page, onboarding included, which the engine renders as a 404. The app's
+# router reads the caller and sends a first-time member on to onboarding and an
+# invitee on to the public accept page. `errorCallbackUrl` is deliberately
 # unset. The engine
 # defaults it to authPages.error (the login page), so an expired/consumed link
 # lands there with `?error=INVALID_TOKEN`.
@@ -82,12 +84,9 @@ events:
                   _url_query: callbackUrl
               else:
                 home: true
-          # A new user whose inbound `?callbackUrl=` is the accept page keeps it —
-          # the accept page sends invitees here with the accept URL, and
-          # dropping it lands a brand-new invitee on the PROTECTED onboarding
-          # page, which the existence-hiding bounce renders as a 404 for an
-          # awaiting (org-less) caller. Onboarding is still reached afterwards
-          # via the router (profile_created is false until the profile save).
+          # A new user whose inbound `?callbackUrl=` is the accept page keeps it,
+          # so an invitee signing in from their invitation lands back on it.
+          # Every other new user goes home for the app's router to place.
           newUserCallbackUrl:
             _if:
               test:
@@ -107,8 +106,7 @@ events:
                 url:
                   _url_query: callbackUrl
               else:
-                pageId:
-                  _module.pageId: onboarding
+                home: true
       - id: show_link_sent
         type: SetState
         params:
