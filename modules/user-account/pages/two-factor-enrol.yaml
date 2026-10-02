@@ -109,6 +109,9 @@ _ref:
             title: Account password
             span: 24
             colon: false
+        events:
+          onPressEnter:
+            _ref: actions/start_enrol_totp.yaml
       - id: enrol_generate
         type: Button
         visible:
@@ -127,34 +130,7 @@ _ref:
           variant: solid
         events:
           onClick:
-            try:
-              # Password-gated enable. Returns totpURI + backup codes on
-              # _actions, stashed for the QR and the done-state code list.
-              # `error: false` suppresses the raw toast; the catch phrases it.
-              - id: enrol_enable
-                type: TwoFactorEnable
-                messages:
-                  error: false
-                params:
-                  password:
-                    _if_none:
-                      - _state: enrol.password
-                      - ""
-              - id: stash_enrol_totp
-                type: SetState
-                params:
-                  enrol.phase: scan
-                  enrol.uri:
-                    _actions: enrol_enable.response.totpURI
-                  enrol.backup_codes:
-                    _actions: enrol_enable.response.backupCodes
-                  enrol.password: null
-            catch:
-              - id: enrol_enable_error
-                type: DisplayMessage
-                params:
-                  status: error
-                  content: Couldn't start two-factor setup. Check your password and try again.
+            _ref: actions/start_enrol_totp.yaml
 
       # Passkey. Offered alongside TOTP as an alternative any caller may prefer,
       # not a passwordless-only fallback.

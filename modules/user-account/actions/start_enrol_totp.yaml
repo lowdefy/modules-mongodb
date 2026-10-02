@@ -1,0 +1,30 @@
+# The password-gated TOTP enable chain, `_ref`'d by the "Generate QR code"
+# button's onClick and the account-password field's onPressEnter so click and
+# Enter run the identical sequence. Returns totpURI + backup codes on _actions,
+# stashed for the QR and the done-state code list. `error: false` suppresses the
+# raw toast; the catch phrases it.
+try:
+  - id: enrol_enable
+    type: TwoFactorEnable
+    messages:
+      error: false
+    params:
+      password:
+        _if_none:
+          - _state: enrol.password
+          - ""
+  - id: stash_enrol_totp
+    type: SetState
+    params:
+      enrol.phase: scan
+      enrol.uri:
+        _actions: enrol_enable.response.totpURI
+      enrol.backup_codes:
+        _actions: enrol_enable.response.backupCodes
+      enrol.password: null
+catch:
+  - id: enrol_enable_error
+    type: DisplayMessage
+    params:
+      status: error
+      content: Couldn't start two-factor setup. Check your password and try again.
