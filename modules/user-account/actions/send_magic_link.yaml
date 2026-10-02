@@ -1,0 +1,102 @@
+# The magic-link send chain, `_ref`'d by the shared send button
+# (components/magic-link-send.yaml) and by the email field's onPressEnter where
+# the send is the email's primary action, so click and Enter run the identical
+# sequence. Dispatches the one `Login` action with `magicLink: true` off the
+# canonical `id: email` input the page owns; on success it applies the
+# caller-supplied `on_sent` SetState (the page's own view flip + stored target
+# email). Callback targets and the cooldown are documented on the component.
+try:
+  # The button is disabled through the cooldown, but Enter in the email field
+  # is not, so the chain itself refuses a send while a cooldown is running.
+  - :if:
+      _state: magic_link_cooldown
+    :then:
+      - :return: null
+  # Block a blank/omitted email before dispatch. Without this, an empty
+  # email reaches the Login action, whose single-provider auto-fill selects
+  # the sole configured OAuth provider and redirects off-app instead of
+  # sending a link. `email` is the canonical id the login/signup pages own.
+  # `messages.error: false` suppresses the break-condition toast so a blank
+  # email surfaces only as the inline field error, not a toast.
+  - id: validate_email
+    type: Validate
+    messages:
+      error: false
+    params: email
+  - id: begin_cooldown
+    type: SetState
+    params:
+      magic_link_cooldown: true
+  - id: magic_link_send
+    type: Login
+    messages:
+      error: false
+    params:
+      email:
+        _state: email
+      magicLink: true
+      callbackUrl:
+        _if:
+          test:
+            _ne:
+              - _url_query: callbackUrl
+              - null
+          then:
+            url:
+              _url_query: callbackUrl
+          else:
+            home: true
+      # A new user whose inbound `?callbackUrl=` is the accept page keeps it,
+      # so an invitee signing in from their invitation lands back on it.
+      # Every other new user goes home for the app's router to place.
+      newUserCallbackUrl:
+        _if:
+          test:
+            _string.endsWith:
+              - _get:
+                  from:
+                    _string.split:
+                      - _if_none:
+                          - _url_query: callbackUrl
+                          - ""
+                      - "?"
+                  key: "0"
+              - _string.concat:
+                  - /
+                  - _module.pageId: accept
+          then:
+            url:
+              _url_query: callbackUrl
+          else:
+            home: true
+  - id: show_link_sent
+    type: SetState
+    params:
+      _var: on_sent
+  - id: hold_cooldown
+    type: Wait
+    params:
+      ms: 30000
+  - id: clear_cooldown
+    type: SetState
+    params:
+      magic_link_cooldown: false
+catch:
+  # This catch also receives the Validate break condition. Only a genuinely
+  # failed send should toast: `magic_link_cooldown` is true only once
+  # `begin_cooldown` ran, i.e. validation passed and a send was attempted. A
+  # validation break arrives here with the cooldown still unset, so the
+  # toast is skipped and the inline field error stands alone. The toast must
+  # read the cooldown before `clear_cooldown_on_error` resets it.
+  - id: toast_magic_link_error
+    type: DisplayMessage
+    skip:
+      _not:
+        _state: magic_link_cooldown
+    params:
+      status: error
+      content: We couldn't send your sign-in link. Wait a moment and try again.
+  - id: clear_cooldown_on_error
+    type: SetState
+    params:
+      magic_link_cooldown: false
