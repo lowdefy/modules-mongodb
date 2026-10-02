@@ -2,8 +2,29 @@ id: router
 type: Box
 events:
   onMount:
+    # A signed-in caller with no organization yet is an invitee who has not
+    # accepted. Every protected page refuses them, so they go to the public
+    # accept page, carrying their pending invitation.
+    - id: router_accept
+      type: Link
+      skip:
+        _ne:
+          - _user: awaiting_organization
+          - true
+      params:
+        pageId:
+          _module.pageId:
+            module: user-account
+            id: accept
+        urlQuery:
+          invitationId:
+            _user: pending_invitation_id
     - id: router
       type: Link
+      skip:
+        _eq:
+          - _user: awaiting_organization
+          - true
       params:
         pageId:
           _switch:
