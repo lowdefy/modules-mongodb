@@ -303,6 +303,25 @@ _ref:
                         then: Your invitation was sent to this address.
                         else: null
                   placeholder: you@example.com
+                events:
+                  # Enter runs the email's primary action: the password
+                  # sign-in when password is enabled (which first opens the
+                  # form from the chooser), else the magic-link send.
+                  onPressEnter:
+                    _build.if:
+                      test:
+                        _build.authConfig: emailAndPassword.enabled
+                      then:
+                        _ref: actions/sign_in_password.yaml
+                      else:
+                        _ref:
+                          path: actions/send_magic_link.yaml
+                          vars:
+                            on_sent:
+                              login_view: link-sent
+                              magic_link_sent_email:
+                                _state: email
+                              otp: null
             else: []
 
         # --- "Check your email" result + code entry. The magic-link send returns
@@ -572,13 +591,12 @@ _ref:
                   size: large
                   label:
                     disabled: true
+                events:
+                  onPressEnter:
+                    _ref: actions/sign_in_password.yaml
 
-              # Primary submit. Email/password via the one `Login` action.
-              # On session success `Login` resolves its own destination, the
-              # `?callbackUrl=` set by the unauthenticated-page redirect, else
-              # the app home, so no `callbackUrl` param is passed. A
-              # 2FA-enrolled user gets no session but a `twoFactorRedirect`
-              # outcome, routed to the two-factor page.
+              # Primary submit. Email/password via the one `Login` action; the
+              # chain is shared with the inputs' Enter key.
               - id: login_submit
                 type: Button
                 visible:
@@ -595,143 +613,7 @@ _ref:
                   variant: solid
                 events:
                   onClick:
-                    try:
-                      - id: login_do
-                        type: Login
-                        messages:
-                          error: false
-                        params:
-                          email:
-                            _state: email
-                          password:
-                            _state: password
-                      - :if:
-                          _eq:
-                            - _actions: login_do.response.twoFactorRedirect
-                            - true
-                        :then:
-                          - id: go_two_factor
-                            type: Link
-                            params:
-                              pageId:
-                                _module.pageId: two-factor
-                              urlQuery:
-                                callbackUrl:
-                                  _url_query: callbackUrl
-                    catch:
-                      - id: map_login_error
-                        type: SetState
-                        params:
-                          login_view:
-                            _switch:
-                              branches:
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - MEMBERSHIP_REQUIRED
-                                  then: noaccess
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - EMAIL_NOT_VERIFIED
-                                  then: noaccess
-                              default: signin
-                          login_error_title:
-                            _switch:
-                              branches:
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - EMAIL_NOT_VERIFIED
-                                  then: Verify your email to continue
-                              default: You don't have access to this app
-                          login_error_desc:
-                            _switch:
-                              branches:
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - EMAIL_NOT_VERIFIED
-                                  then: Your email address hasn't been verified yet. Check your inbox for the verification link, or resend it below.
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - MEMBERSHIP_REQUIRED
-                                  then: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
-                              default: Something went wrong while signing you in. Try again.
-                          # The typed address, captured for the resend affordance
-                          # before the noaccess flip hides the email input (an
-                          # invisible input's value is dropped from state). Set only
-                          # for EMAIL_NOT_VERIFIED, so its presence both gates the
-                          # button's visibility and carries the address to
-                          # verify-email; null for every other code so a prior
-                          # attempt can't leave it stale.
-                          login_resend_email:
-                            _switch:
-                              branches:
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - EMAIL_NOT_VERIFIED
-                                  then:
-                                    _state: email
-                              default: null
-                          # Retryable errors stay on the signin view and surface as
-                          # a persistent inline notice (error-typed, red) so the user
-                          # can read it at their own pace. Nulled for the terminal
-                          # (noaccess) codes so the notice can't linger over the wall.
-                          login_notice_title:
-                            _switch:
-                              branches:
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - MEMBERSHIP_REQUIRED
-                                  then: null
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - EMAIL_NOT_VERIFIED
-                                  then: null
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - INVALID_EMAIL_OR_PASSWORD
-                                  then: Incorrect email or password
-                              default: Sign-in failed
-                          login_notice_desc:
-                            _switch:
-                              branches:
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - MEMBERSHIP_REQUIRED
-                                  then: null
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - EMAIL_NOT_VERIFIED
-                                  then: null
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - INVALID_EMAIL_OR_PASSWORD
-                                  then: Check your details and try again.
-                              default: Something went wrong while signing you in. Try again.
-                          login_notice_type:
-                            _switch:
-                              branches:
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - MEMBERSHIP_REQUIRED
-                                  then: null
-                                - if:
-                                    _eq:
-                                      - _actions: login_do.error.cause.code
-                                      - EMAIL_NOT_VERIFIED
-                                  then: null
-                              default: error
+                    _ref: actions/sign_in_password.yaml
             else: []
 
         # --- "Other options" back link. Returns from the revealed password form
