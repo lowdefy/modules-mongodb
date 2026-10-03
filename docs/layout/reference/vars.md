@@ -23,6 +23,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `global_requests` | array | `[]` |  | Requests declared on every page for `global_blocks` to use. Unlike `header_extra.requests` these are NOT auto-fired on mount — they are on-demand (e.g. upload/download policies a block calls itself). |
 | `title_block` | object |  |  | Custom title block override (replaces default title bar) |
 | `footer` | array | `[]` |  | Footer blocks appended after page content |
+| `content_style` | object | `{}` |  | Content area style applied to every page that uses the `page` component, merged over the page block's default `padding: 0 40px 40px 40px`. A page's `full_bleed` and its own `content_style` var are applied over it, key by key. |
 | `card` | object |  |  | Custom card component override (replaces default Card layout) |
 | `dark_mode_toggle` | boolean | `true` |  | Enable dark mode toggle in the page block (rendered in the header for sider-menu, in the sider for sidebar) |
 | `profile_menu_id` | string | `profile` |  | Id of the app-level menu used for the profile dropdown. Menu links are filtered server-side by page access (auth.pages.roles). The app must register a menu with this id in its menus list.  |

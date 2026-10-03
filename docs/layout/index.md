@@ -92,6 +92,20 @@ The header blocks themselves (`header_extra.blocks`) are module-wide, but a page
 
 See `apps/demo/modules/layout/vars.yaml` for a floating "What's new" launcher wired through `global_events.onInit` + `global_blocks`, and `apps/demo/pages/user-components-demo.yaml` for a page that clears its header blocks.
 
+## Content area style
+
+The page block pads its content area `0 40px 40px 40px`. Set the `content_style` module var to change it on every page that uses the `page` component:
+
+```yaml
+- id: layout
+  source: "github:lowdefy/modules-mongodb/modules/layout@v0.36.0"
+  vars:
+    content_style:
+      padding: 0 24px 24px 24px
+```
+
+A page's own `content_style` `_ref` var is merged over the module value key by key: a page that sets `padding` replaces it, and a page that sets only `background` keeps the module padding. A `full_bleed: true` page has zero padding whatever the module value.
+
 ## Auth page
 
 The `auth-page` component is the centered card shell the auth pages render on. Its
