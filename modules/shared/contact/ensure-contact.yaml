@@ -12,7 +12,8 @@
 #   - reconcile to the existing row on a duplicate-key error (the partial-unique
 #     `user-contacts.{organization_id,lowercase_email}` index — see
 #     docs/user-account/reference/indexes.md — is the guard that closes the race
-#     between a first login and an invite).
+#     between a first login and an invite). When no row holds the address after
+#     the error, the error was something else and the routine fails with it.
 #
 # Idempotent by construction: `$setOnInsert` writes nothing when the row already
 # exists, so a caller may run this on every login without touching the change
@@ -38,8 +39,8 @@
 #                     only when the address is already a user). Stamped on insert
 #                     so the contact is born linked. When absent — or when a
 #                     runtime operator resolves to nothing — the contact is minted
-#                     unlinked and resolve-own-contact claims it on that person's
-#                     first own-contact resolution.
+#                     without a `user_id` field and resolve-own-contact claims it
+#                     on that person's first own-contact resolution.
 #   actor_id        — optional; the acting user's id, for SYSTEM-context callers
 #                     whose stamp would otherwise record no actor (T2: the
 #                     merge-on-signup hook knows exactly whose verified session
@@ -95,7 +96,7 @@
           # Document-style update: $setOnInsert only, so a matched (invited)
           # contact is never overwritten — only a brand-new one is minted bare.
           $setOnInsert:
-            _build.object.assign:
+            _object.assign:
               - _id:
                   _uuid: true
                 email:
@@ -163,11 +164,13 @@
                       _ref:
                         module: events
                         component: change_stamp
-              # The auth-user link, when the caller knows it — merged at build
-              # time only when `user_id` is passed. A caller passing a runtime
-              # operator that resolves to nothing writes `user_id: null`, which
-              # resolve-own-contact treats as unlinked and claimable, so both
-              # shapes are safe.
+              # The auth-user link, when the caller knows it. Merged at build
+              # time only when `user_id` is passed; at runtime the field is
+              # omitted, not written as null, when the value resolves to nothing
+              # (an invitee who is not yet a user). The `user_id` index is
+              # partial on `$exists`, so a stored null is indexed and a second
+              # unlinked contact in the organization would collide with the
+              # first. resolve-own-contact claims an absent `user_id`.
               - _build.if:
                   test:
                     _build.not:
@@ -177,10 +180,21 @@
                             default: null
                         - null
                   then:
-                    user_id:
-                      _var:
-                        key: user_id
-                        default: null
+                    _if:
+                      test:
+                        _eq:
+                          - _if_none:
+                              - _var:
+                                  key: user_id
+                                  default: null
+                              - null
+                          - null
+                      then: {}
+                      else:
+                        user_id:
+                          _var:
+                            key: user_id
+                            default: null
                   else: {}
               # The organization is written onto the new row explicitly, not
               # left to the upsert copying the filter's equality clause: a
@@ -203,7 +217,47 @@
                   else: {}
         options:
           upsert: true
+  # A duplicate key on lowercase_email means another first-touch inserted the
+  # row, so a row holds the address. With none, the error came from somewhere
+  # else (another index, the connection) and is raised as it was.
   :catch:
+    - id: reconcile_contact
+      type: MongoDBFindOne
+      connectionId:
+        _var: connection_id
+      properties:
+        query:
+          _build.object.assign:
+            - lowercase_email:
+                _string.toLowerCase:
+                  _string.trim:
+                    _var: email
+            - _build.if:
+                test:
+                  _build.not:
+                    _build.eq:
+                      - _var:
+                          key: organization_id
+                          default: null
+                      - null
+                then:
+                  organization_id:
+                    _var:
+                      key: organization_id
+                      default: null
+                else: {}
+        options:
+          projection:
+            _id: 1
+    - :if:
+        _eq:
+          - _if_none:
+              - _step: reconcile_contact
+              - null
+          - null
+      :then:
+        - :throw:
+            _error: true
     - :log: ensure-contact — reconciling on duplicate lowercase_email (concurrent first-touch)
 
 # Read the canonical contact row (inserted, matched, or reconciled) — same
