@@ -50,6 +50,8 @@ This index carries the read path. Every flow answering "which contact is this pe
 
 Partial on `$exists` because a CRM contact is a real person record with no auth user at all, and many such contacts must coexist.
 
+**Constraint — omit `user_id` when there is no auth user.** A contact with no auth user must **omit** `user_id`, not store `null`, for the same reason as `lowercase_email` above: a stored `null` satisfies `$exists: true`, so a second unlinked contact in the organization would collide with the first. An invite to an address that is not yet a user mints such a contact, so `ensure-contact` sets `user_id` only when the value it is given resolves to an id. `resolve-own-contact` claims a contact whose `user_id` is absent or `null`.
+
 | Query site                                | Operation                                                                                                             |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `resolve-own-contact`                     | Match the caller's own contact by `{ organization_id, user_id }`; on a miss, claim the unlinked row for their address |
