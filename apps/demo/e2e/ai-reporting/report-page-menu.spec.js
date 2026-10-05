@@ -37,7 +37,7 @@ test("the ⋯ opens as a dropdown, and the owner sees every item they may use", 
   // is why this is asserted on the icon's own accessible name and not on the
   // click below succeeding.
   await expect(
-    page.locator("#report_menu_trigger").getByRole("img", { name: "ellipsis" }),
+    page.locator("#report_menu_trigger").getByRole("img", { name: "More" }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "My report" })).toBeVisible();
 
