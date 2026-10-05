@@ -225,16 +225,18 @@ async function GetEventsTimeline(lowdefyContext) {
 
     // ── Resolve the event author's avatar from the contacts collection ──
     // Events store created.user.{id,name} only; the timeline avatar wants a
-    // picture src. Join the contact by _id === created.user.id and project
+    // picture src. Join the contact by user_id === created.user.id and project
     // profile.picture onto created.user.picture. The EventsTimeline block
     // reads user.picture and falls back to initials when it is absent, so an
     // unmatched join (system events, deleted contacts) degrades gracefully.
-    // A user IS a contact — shared collection, shared _id space.
+    // A contact links to its auth user through user_id, not _id: a person
+    // holds one contact per organization, each with its own _id. The tenant
+    // $match keeps the join to this organization's contact.
     {
       $lookup: {
         from: contactsCollection,
         localField: "created.user.id",
-        foreignField: "_id",
+        foreignField: "user_id",
         as: "author_contact",
         pipeline: [
           // Tenant-wall: joined contacts must sit inside the same org.

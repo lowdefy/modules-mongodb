@@ -18,8 +18,9 @@
 # is seeded state, wired in task 17.
 #
 # The Check button resolves the email via check-invite-email (actions/
-# resolve_email.yaml), branching invite_state; submit runs the invite routine;
-# the pending panel offers resend / cancel.
+# resolve_email.yaml), branching invite_state; onInit runs the same resolve for an
+# `?email=` in the URL. Submit runs the invite routine; the pending panel offers
+# resend / cancel.
 _ref:
   module: layout
   component: page
@@ -45,12 +46,37 @@ _ref:
           _module.pageId: all
       - label: Invite
     events:
+      # With `?email=` in the URL (the invitations table's Re-invite), the email
+      # is checked on load, so the page opens on the resolved outcome. Without
+      # it, the page opens on the resting (pre-check) layer.
       onInit:
-        # Default the resolution slot to the resting (pre-check) layer.
-        - id: init_invite_state
-          type: SetState
-          params:
-            invite_state: resting
+        try:
+          _build.array.concat:
+            - - id: init_invite_state
+                type: SetState
+                params:
+                  invite_state:
+                    _if:
+                      test:
+                        _not:
+                          _url_query: email
+                      then: resting
+                      else: checking
+                  email_input:
+                    _url_query: email
+                  email:
+                    _url_query: email
+            - _ref:
+                path: actions/resolve_email.yaml
+                vars:
+                  skip:
+                    _not:
+                      _url_query: email
+        catch:
+          - id: init_check_failed
+            type: SetState
+            params:
+              invite_state: resting
     blocks:
       # ── Area 1: email entry card ("Who are you inviting?") ──
       - _ref: components/invite_email.yaml

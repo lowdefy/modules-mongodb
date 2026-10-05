@@ -107,11 +107,15 @@ style:
   # is a no-op. Dot-prefixed to target the `content` CSS slot key (a bare
   # `content:` reads as a raw CSS property).
   #
-  # `full_bleed` is applied UNDER content_style, so a page can still add its own
-  # background or override an offset, and the two are independent: a page may set
-  # content_style without asking for full bleed.
+  # Assigned in order: the module-level content_style, then full_bleed, then the
+  # page's own content_style. The module value goes first so a full-bleed page
+  # keeps its zero padding under an app-wide padding. full_bleed sits under the
+  # page's content_style, so a page can still add its own background or override
+  # an offset, and the two are independent: a page may set content_style without
+  # asking for full bleed.
   .content:
     _build.object.assign:
+      - _module.var: content_style
       - _build.if:
           test:
             _var:

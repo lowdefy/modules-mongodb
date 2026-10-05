@@ -1,0 +1,8 @@
+# The id of the dynamic blocks policy the report page renders under. Derived
+# from the module entry id so two entries of this module export two policies
+# rather than a duplicate. Read by the policy itself, the report page's Dynamic
+# block and resolve-report's ValidateDynamic step, which must all name the same
+# policy.
+_build.string.concat:
+  - _module.id: true
+  - /report

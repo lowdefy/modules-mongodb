@@ -1,0 +1,17 @@
+# Callback target for every verification email the module sends: the
+# verify-email success render, with the address (BetterAuth appends `&error=` on
+# failure, so the expired render still has it for a resend) and the inbound
+# `?callbackUrl=` when the page has one. verify-email hands that value on to
+# sign-in, so an invitee who registers from the accept page returns to it after
+# verifying.
+#
+# Vars:
+#   email: operator resolving the address the email is sent to.
+pageId:
+  _module.pageId: verify-email
+urlQuery:
+  _object.assign:
+    - verified: "1"
+      email:
+        _var: email
+    - _ref: components/callback_url_query.yaml

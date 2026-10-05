@@ -105,13 +105,21 @@ Placement follows how many methods are enabled — the login `signin` view adapt
 The send carries the two verify-callback targets the module owns:
 
 - a **new** user — an unknown-but-admittable email, created at verify time — lands
-  on the module's **`onboarding`** page as a first-time user, except when the
-  inbound `?callbackUrl=` is the **`accept`** page: an invitee signing in from
-  their invitation lands back on it. Under `policy: tenant` an invitee who has not
-  accepted holds no membership and is refused every protected page, onboarding
-  included, so they must accept first; the accept page then enters the app, and
-  the app's router sends them on to onboarding;
+  on the app home, except when the inbound `?callbackUrl=` is the **`accept`**
+  page: an invitee signing in from their invitation lands back on it. The app's
+  router places them from there: a first-time member goes on to the module's
+  **`onboarding`** page;
 - a returning user lands on the inbound `?callbackUrl=` (or the app home).
+
+The new user goes home rather than straight to onboarding because the module
+cannot tell at send time whether they will hold an organization. Under
+`policy: tenant` an invitee who has not accepted holds no membership and is
+refused every protected page, onboarding included, which renders as a 404. An
+invitee who signs in from the login page rather than from their invitation is
+one: the engine marks them `_user.awaiting_organization: true` and carries their
+invitation as `_user.pending_invitation_id`, so a tenant app's router sends them
+to the public `accept` page with that id (see `apps/tenant-demo/pages/router.yaml`).
+Accepting enters the app, and the router then sends them on to onboarding.
 
 The error callback is left to the engine default — `authPages.error`, i.e. the
 login page — so an **expired or already-used link** returns to login with

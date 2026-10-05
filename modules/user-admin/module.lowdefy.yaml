@@ -79,7 +79,9 @@ vars:
       through this module by a caller who reaches the endpoint directly. The
       endpoint stays registered either way. The rejection is the routine's first
       step, not an absence. When true the write is floored by the engine against
-      the caller's member row in the administered organization.
+      the caller's member row in the administered organization. When false
+      `invite` also mints every invitation with `member` and `resend-invitation`
+      keeps the invitation's stored tier, whatever the payload carries.
   suspension:
     type: boolean
     default: true
@@ -87,7 +89,27 @@ vars:
       Gates the suspend/reinstate surface (design Decision 4). Suspend issues a
       permanent, user-level (suite-wide) ban via BanUser. Default true rests on
       the deployment premise that the pinned suite is administered by one trusted
-      operator group; set false to limit app-admins to app-scoped RemoveMember.
+      operator group; set false to limit app-admins to app-scoped RemoveMember,
+      which `remove_member: false` switches off in turn.
+  remove_member:
+    type: boolean
+    default: true
+    description: >-
+      Gates Remove from app on the view page. RemoveMember deletes this app's
+      member row, and with it the person's roles and member attributes, so a
+      re-invite starts them with none. When false the button and its confirm
+      modal do not render AND `remove-member` rejects. The endpoint stays
+      registered; the rejection is the routine's first step.
+  delete_user:
+    type: boolean
+    default: true
+    description: >-
+      Gates Delete login on the view page. DeleteUser hard-deletes the user row
+      and its member, invitation, session and account rows; the contact
+      survives. Records keyed on the user id lose their link to the person, and
+      a re-invite creates a new id. When false the button and its confirm modal
+      do not render AND `delete-user` rejects. The endpoint stays registered;
+      the rejection is the routine's first step.
   download:
     type: boolean
     default: false
@@ -273,9 +295,9 @@ exports:
     - id: revoke-passkeys
       description: RevokeUserPasskeys → revoke sessions → audit → notify; optional passkey_id
     - id: remove-member
-      description: RemoveMember, delete this app's member row
+      description: RemoveMember, delete this app's member row (behind the `remove_member` var)
     - id: delete-user
-      description: DeleteUser, hard-delete the login identity (guarded on no other memberships)
+      description: DeleteUser, hard-delete the login identity (guarded on no other memberships; behind the `delete_user` var)
   menus:
     - id: default
       description: User admin navigation link

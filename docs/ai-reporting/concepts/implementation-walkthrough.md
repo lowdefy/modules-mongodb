@@ -258,12 +258,16 @@ spec. `api/generate-report.yaml`:
 
 ## 8. Report render
 
-`pages/report.yaml:12-79` is a single `Dynamic` block resolved by
-`resolve-report`. `properties.types` (L30-69) is a bundling declaration — the
-compiled output's block/action/operator types must be listed so they ship to the
-client. Among them the `Link` action and the `_url_query` operator, which the
-owner-only chat links and the drop-and-reload recovery need; the `Box` type the
-old pooled filter row required is gone.
+`pages/report.yaml` is a single `Dynamic` block resolved by `resolve-report`,
+under the module's dynamic blocks policy (`components/report_policy.yaml`). The
+compiled blocks are data built from a stored spec, and Lowdefy renders data as
+blocks only under a policy: it lists every block, action and operator type the
+compiled output may use (and bundles them into the client), the endpoints its
+`CallAPI` actions may call and the pages its `Link` actions may open. Among them
+the `Link` action and the `_url_query` operator, which the owner-only chat links
+and the drop-and-reload recovery need. The app lists the policy under
+`policies.dynamicBlocks`, because Lowdefy reads policies only from
+`lowdefy.yaml`.
 
 `api/resolve-report.yaml`:
 
@@ -277,9 +281,20 @@ old pooled filter row required is gone.
   connection-bound catalog with the **viewing** user's roles, on every single
   resolve. A section the viewer cannot reach, or that drifted out of the catalog,
   fails as one entry — not the whole report.
-- L53-67 — `_analytics.compileReport`. The catalog is passed here for exactly one
-  thing (L60-61): resolving select-filter options from a field's enum values. A
-  display convenience, explicitly not a gate.
+- `_analytics.compileReport`, inside a `ValidateDynamic` step that checks its
+  blocks against the report policy; `:return` hands back that step's blocks,
+  the only data a Dynamic endpoint may return as blocks. The policy checks every
+  string the blocks carry, row values included, and refuses HTML tag syntax and
+  URLs on origins it does not list. So the first check runs with
+  `throwOnInvalid: false`: when it refuses anything, the compiler runs again with
+  those errors (`policyErrors`), maps each error's path back to the section whose
+  blocks it falls in, renders that section as an Alert, and a second, throwing
+  `ValidateDynamic` checks the result. A refusal in the header (the report title
+  or description) still fails the report. The compiler also reads the policy's
+  `limits.bytes` (`maxBytes`) and renders a section that would take the report
+  over it as an Alert beside its ⤓. The catalog is passed to the compiler for
+  exactly one thing: resolving select-filter options from a field's enum values.
+  A display convenience, explicitly not a gate.
 
 `compileReport.js:727-1090` turns spec + rows into blocks:
 
@@ -507,7 +522,13 @@ old pooled filter row required is gone.
   is a wide-viewport behaviour only.
 
 **Filters** are the clever bit. `requeryActions` (L91-114) emits a
-`CallAPI`/`SetState` pair per bound section. The payload's filter values are
+`CallAPI`/`SetState` pair per bound section. The payload names the section
+(`report_id` from the page URL, `section_id`) rather than carrying its query;
+`query-data` and `chart-data` load the stored section
+(`api/steps/load_report_section.yaml`, readable on the same terms as the report)
+and run its query. The query is AI-authored data, and compiled actions are config
+the client runs, so an operator-shaped key inside it never reaches the browser.
+The ⤓ and download sections send the same reference. The payload's filter values are
 `{ __state: ... }` — deferred client operators (double underscore; the Dynamic
 block's server resolution leaves them alone and the client unescapes them,
 L41-44). `dataBinding` makes a filtered kpi/table section read

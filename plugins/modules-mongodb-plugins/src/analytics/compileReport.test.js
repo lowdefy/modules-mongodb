@@ -259,7 +259,8 @@ test("compiles the full report to blocks", () => {
   const [call, set] = filter.events.onChange;
   expect(call.type).toBe("CallAPI");
   expect(call.params.endpointId).toBe(endpointId);
-  expect(call.params.payload.query).toEqual(ordersByRegion);
+  expect(call.params.payload.report_id).toEqual({ __url_query: "report_id" });
+  expect(call.params.payload.section_id).toBe("s3");
   expect(call.params.payload.filters).toEqual([
     { field: "status", op: "eq", value: { __state: "filter_status" } },
   ]);
@@ -268,11 +269,14 @@ test("compiles the full report to blocks", () => {
     __api: `${endpointId}.response`,
   });
 
-  // Download: CallAPI (pipeline-only payload) then DownloadCsv.
+  // Download: CallAPI naming the section, then DownloadCsv.
   const download = byId.s4;
   expect(download.type).toBe("Button");
   const [dlCall, dl] = download.events.onClick;
-  expect(dlCall.params.payload).toEqual({ query: ordersByRegion });
+  expect(dlCall.params.payload).toEqual({
+    report_id: { __url_query: "report_id" },
+    section_id: "s4",
+  });
   expect(dl.type).toBe("DownloadCsv");
   expect(dl.params.filename).toBe("download-csv.csv");
   expect(dl.params.data).toEqual({ __api: `${endpointId}.response` });
@@ -624,14 +628,12 @@ describe("a filter driving a chart and a table", () => {
     expect(typeof chart.properties.height.__if_none[1]).toBe("number");
   });
 
-  test("the chart re-queries chart-data with its whole presentation contract", () => {
+  test("the chart re-queries chart-data naming its section", () => {
     const [call, set] = onChange;
     expect(call.params.endpointId).toBe(chartEndpointId);
     expect(call.params.payload).toEqual({
-      chart: "bar",
-      title: "Revenue by Region",
-      x: "region",
-      y: ["total"],
+      report_id: { __url_query: "report_id" },
+      section_id: "s1",
       // Assembly decides legend orientation and label rotation from the width,
       // so the re-query carries the width of the span the section is actually
       // laid out at — otherwise a filtered chart re-renders for another canvas
@@ -641,7 +643,6 @@ describe("a filter driving a chart and a table", () => {
       // report-scoped hue (its series name is a measure, not an entity), and
       // this report holds nothing else that would claim one.
       colors: {},
-      query: ordersByRegion,
       filters: [
         { field: "status", op: "eq", value: { __state: "filter_status" } },
       ],
@@ -652,7 +653,7 @@ describe("a filter driving a chart and a table", () => {
     });
   });
 
-  test("a stacked chart section assembles stacked and carries stacked into its re-query", () => {
+  test("a stacked chart section assembles stacked", () => {
     const stackedBlocks = compileReport({
       spec: {
         title: "T",
@@ -681,15 +682,14 @@ describe("a filter driving a chart and a table", () => {
     const stacks = new Set(option.series.map((series) => series.stack));
     expect(stacks.size).toBe(1);
     expect([...stacks][0]).toBeTruthy();
-    const [call] = stackedById.filter_status.events.onChange;
-    expect(call.params.payload.stacked).toBe(true);
   });
 
   test("the table on the same filter still re-queries query-data for rows", () => {
     const [call, set] = onChange.slice(2);
     expect(call.params.endpointId).toBe(endpointId);
     expect(call.params.payload).toEqual({
-      query: ordersByRegion,
+      report_id: { __url_query: "report_id" },
+      section_id: "s2",
       filters: [
         { field: "status", op: "eq", value: { __state: "filter_status" } },
       ],
@@ -1215,7 +1215,10 @@ describe("provenance line", () => {
       const [call, download] = dl.events.onClick;
       expect(call.type).toBe("CallAPI");
       expect(call.params.endpointId).toBe(endpointId);
-      expect(call.params.payload).toEqual({ query: ordersByRegion });
+      expect(call.params.payload).toEqual({
+        report_id: { __url_query: "report_id" },
+        section_id: id,
+      });
       expect(download.type).toBe("DownloadCsv");
       expect(download.params.data).toEqual({ __api: `${endpointId}.response` });
       expect(download.params.filename).toMatch(/\.csv$/);
@@ -3364,7 +3367,10 @@ describe("layout derivation", () => {
         const [call, dl] = button.events.onClick;
         expect(call.type).toBe("CallAPI");
         expect(call.params.endpointId).toBe(endpointId);
-        expect(call.params.payload).toEqual({ query: ordersByRegion });
+        expect(call.params.payload).toEqual({
+          report_id: { __url_query: "report_id" },
+          section_id: `s${index}`,
+        });
         expect(dl.type).toBe("DownloadCsv");
         expect(dl.params.data).toEqual({ __api: `${endpointId}.response` });
         expect(dl.params.filename).toBe(`download-${index}.csv`);
@@ -3655,5 +3661,423 @@ describe("AI summary", () => {
     expect(button.events.onClick[0].params).toEqual({
       "summary.filter_values": {},
     });
+  });
+});
+
+describe("query rows inlined into the compiled blocks", () => {
+  // An AI-authored pipeline can project any legal field name, including ones
+  // the client would run as operators once the Dynamic block unescapes them.
+  const hostileRow = {
+    region: "EU",
+    total: 2500,
+    __function: { __js: "injected" },
+    _state: "injected",
+    detail: { label: "kept", __state: "injected", _api: "injected" },
+  };
+  const strippedRow = { region: "EU", total: 2500, detail: { label: "kept" } };
+
+  function operatorShapedKeys(value, path = "") {
+    if (Array.isArray(value)) {
+      return value.flatMap((item, i) =>
+        operatorShapedKeys(item, `${path}.${i}`),
+      );
+    }
+    if (value === null || typeof value !== "object") return [];
+    return Object.entries(value).flatMap(([key, child]) => [
+      ...(key.startsWith("_") && child === "injected"
+        ? [`${path}.${key}`]
+        : []),
+      ...(key === "__js" ? [`${path}.${key}`] : []),
+      ...operatorShapedKeys(child, `${path}.${key}`),
+    ]);
+  }
+
+  test("a row with __function and a nested __state keeps no '_' keys in a table, filtered or not", () => {
+    const tableSpec = {
+      title: "T",
+      sections: [
+        {
+          type: "table",
+          label: "Plain",
+          query: ordersByRegion,
+          columns: [{ key: "region" }, { key: "total" }],
+        },
+        {
+          type: "filter",
+          control: "select",
+          field: "status",
+          label: "Status",
+          options: ["paid"],
+        },
+        {
+          type: "table",
+          label: "Filtered",
+          query: ordersByRegion,
+          columns: [{ key: "region" }, { key: "total" }],
+          filterBy: ["status"],
+        },
+      ],
+    };
+    const blocks = compileReport({
+      spec: tableSpec,
+      results: [[hostileRow], [hostileRow]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    const byId = Object.fromEntries(blocks.map((b) => [b.id, b]));
+    expect(byId.s0.properties.rowData).toEqual([strippedRow]);
+    expect(byId.s2.properties.rowData).toEqual({
+      __if_none: [{ __state: "sections.s2.rows" }, [strippedRow]],
+    });
+    expect(operatorShapedKeys(blocks)).toEqual([]);
+  });
+
+  test("a KPI and a chart over the same row carry no '_' keys from it", () => {
+    const blocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          { type: "kpi", label: "Total", query: orderTotal, valueKey: "total" },
+          {
+            type: "chart",
+            chart: "bar",
+            label: "By region",
+            query: ordersByRegion,
+            x: "region",
+            y: ["total"],
+          },
+        ],
+      },
+      results: [[hostileRow], [hostileRow]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    expect(operatorShapedKeys(blocks)).toEqual([]);
+  });
+
+  test("a $group row's _id renders as a table column while other '_' keys are stripped", () => {
+    const blocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          {
+            type: "table",
+            label: "By region",
+            query: {
+              collection: "demo_orders",
+              pipeline: [
+                { $group: { _id: "$region", total: { $sum: "$total" } } },
+              ],
+            },
+            columns: [{ key: "_id" }, { key: "total" }],
+          },
+        ],
+      },
+      results: [
+        [
+          {
+            _id: "EU",
+            total: 2500,
+            __function: { __js: "injected" },
+            detail: { __state: "injected", _id: "kept" },
+          },
+        ],
+      ],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    const table = blocks.find((b) => b.id === "s0");
+    expect(table.type).toBe("AgGridBalham");
+    expect(table.properties.rowData).toEqual([
+      { _id: "EU", total: 2500, detail: { _id: "kept" } },
+    ]);
+    expect(operatorShapedKeys(blocks)).toEqual([]);
+  });
+
+  test("a declared '_' column other than _id renders the section as an Alert", () => {
+    const blocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          {
+            type: "table",
+            label: "By key",
+            query: ordersByRegion,
+            columns: [{ key: "__id" }, { key: "total" }],
+          },
+        ],
+      },
+      results: [[{ __id: "EU", total: 2500 }]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    expect(blocks.find((b) => b.id === "s0").type).toBe("Alert");
+  });
+
+  test("an options query keeps _id as its valueKey and strips '_' keys from an object label", () => {
+    const blocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          {
+            type: "filter",
+            control: "select",
+            field: "region",
+            label: "Region",
+            optionsQuery: {
+              collection: "demo_orders",
+              pipeline: [
+                { $group: { _id: "$region", label: { $first: "$region" } } },
+              ],
+              valueKey: "_id",
+              labelKey: "label",
+            },
+          },
+          {
+            type: "table",
+            label: "Orders",
+            query: ordersByRegion,
+            columns: [{ key: "region" }, { key: "total" }],
+            filterBy: ["region"],
+          },
+        ],
+      },
+      results: [
+        [
+          {
+            _id: "north",
+            label: { name: "North", __function: { __js: "injected" } },
+          },
+        ],
+        [{ region: "EU", total: 1 }],
+      ],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    expect(operatorShapedKeys(blocks)).toEqual([]);
+    const control = JSON.stringify(blocks);
+    expect(control).toContain('"value":"north"');
+    expect(control).toContain('"label":{"name":"North"}');
+  });
+});
+
+describe("stored queries stay out of the compiled blocks", () => {
+  test("a pipeline with an operator-shaped key inside $literal is never inlined", () => {
+    const injected = {
+      collection: "demo_orders",
+      pipeline: [
+        { $addFields: { probe: { $literal: { __api: "injected.response" } } } },
+        { $group: { _id: "$region", total: { $sum: "$total" } } },
+        { $project: { _id: 0, region: "$_id", total: 1 } },
+      ],
+    };
+    const blocks = compileReport({
+      spec: {
+        title: "T",
+        sections: [
+          { type: "filter", control: "select", field: "status", label: "S" },
+          {
+            type: "chart",
+            chart: "bar",
+            label: "By region",
+            query: injected,
+            x: "region",
+            y: ["total"],
+            filterBy: ["status"],
+          },
+          {
+            type: "table",
+            label: "Orders",
+            query: injected,
+            columns: [{ key: "region" }, { key: "total" }],
+            filterBy: ["status"],
+          },
+          { type: "download", label: "Download", query: injected },
+        ],
+      },
+      results: [[{ region: "EU", total: 1 }], [{ region: "EU", total: 1 }]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    });
+    expect(JSON.stringify(blocks)).not.toContain("injected.response");
+  });
+});
+
+describe("policy refusals", () => {
+  const refusalSpec = {
+    title: "T",
+    sections: [
+      { type: "kpi", label: "Total", query: orderTotal, valueKey: "total" },
+      {
+        type: "table",
+        label: "Contacts",
+        query: ordersByRegion,
+        columns: [{ key: "region" }, { key: "total" }],
+      },
+    ],
+  };
+  const refusalResults = [
+    [{ total: 4200 }],
+    [{ region: "Jane <jane@example.com>", total: 1 }],
+  ];
+  const compile = (extra = {}) =>
+    compileReport({
+      spec: refusalSpec,
+      results: refusalResults,
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+      ...extra,
+    });
+  const indexOf = (blocks, id) => blocks.findIndex((b) => b.id === id);
+
+  test("an error inside a section's blocks renders that section as an Alert", () => {
+    const first = compile();
+    const tableIndex = indexOf(first, "s1");
+    const blocks = compile({
+      policyErrors: [
+        {
+          path: `blocks.${tableIndex}.properties.rowData.0.region`,
+          rule: "policy.html",
+          message: "String contains HTML tag syntax.",
+        },
+      ],
+    });
+    const byId = byIdOf(blocks);
+    expect(byId.s1.type).toBe("Alert");
+    expect(byId.s1.properties.description).toMatch(/cannot display/);
+    expect(JSON.stringify(blocks)).not.toContain("jane@example.com");
+    expect(byId.s0.type).toBe("Statistic");
+  });
+
+  test("an error in the header or on the whole content changes nothing", () => {
+    const first = compile();
+    const blocks = compile({
+      policyErrors: [
+        {
+          path: "blocks.0.properties.content",
+          rule: "policy.html",
+          message: "x",
+        },
+        { path: "blocks", rule: "limits.bytes", message: "x" },
+      ],
+    });
+    expect(blocks).toEqual(first);
+  });
+
+  test("an error in a filter control replaces the control with an Alert", () => {
+    const filterSpec = {
+      title: "T",
+      sections: [
+        {
+          type: "filter",
+          control: "select",
+          field: "region",
+          label: "Region",
+          options: ["<b>North</b>", "South"],
+        },
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region" }, { key: "total" }],
+          filterBy: ["region"],
+        },
+      ],
+    };
+    const args = {
+      spec: filterSpec,
+      results: [[{ region: "EU", total: 1 }]],
+      catalog: testCatalog,
+      roles,
+      endpointId,
+      chartEndpointId,
+    };
+    const first = compileReport(args);
+    const controlIndex = indexOf(first, "filter_region");
+    const blocks = compileReport({
+      ...args,
+      policyErrors: [
+        {
+          path: `blocks.${controlIndex}.properties.options.0`,
+          message: "x",
+        },
+      ],
+    });
+    expect(blocks.find((b) => b.id === "filter_region")).toBeUndefined();
+    const alert = blocks.find((b) => b.id === "s0");
+    expect(alert.type).toBe("Alert");
+    expect(blocks.find((b) => b.id === "s1").type).toBe("AgGridBalham");
+  });
+});
+
+describe("size budget", () => {
+  const manyRows = Array.from({ length: 1000 }, (_, i) => ({
+    region: `region-${i}-${"x".repeat(40)}`,
+    total: i,
+  }));
+  const budgetSpec = {
+    title: "T",
+    sections: [
+      {
+        type: "table",
+        label: "Big",
+        query: ordersByRegion,
+        columns: [{ key: "region" }, { key: "total" }],
+      },
+      { type: "kpi", label: "Total", query: orderTotal, valueKey: "total" },
+    ],
+  };
+  const budgetArgs = {
+    spec: budgetSpec,
+    results: [manyRows, [{ total: 4200 }]],
+    catalog: testCatalog,
+    roles,
+    endpointId,
+    chartEndpointId,
+  };
+
+  test("a section that would take the report over maxBytes renders as an Alert beside its export", () => {
+    const blocks = compileReport({ ...budgetArgs, maxBytes: 20000 });
+    const byId = byIdOf(blocks);
+    expect(byId.s0.type).toBe("Alert");
+    expect(byId.s0.properties.description).toMatch(/too large/);
+    expect(byId.s0_download.type).toBe("Button");
+    expect(byId.s1.type).toBe("Statistic");
+    expect(JSON.stringify(blocks).length).toBeLessThan(20000);
+  });
+
+  test("without maxBytes every section renders", () => {
+    const blocks = compileReport(budgetArgs);
+    expect(blocks.find((b) => b.id === "s0").type).toBe("AgGridBalham");
+  });
+
+  test("a section left out for size stays out when a policy refusal recompiles", () => {
+    const first = compileReport({ ...budgetArgs, maxBytes: 20000 });
+    // A kpi compiles into a Card, so its own block sits one level down.
+    const kpiIndex = first.findIndex((b) => b.id === "s1_card");
+    const blocks = compileReport({
+      ...budgetArgs,
+      maxBytes: 20000,
+      policyErrors: [
+        { path: `blocks.${kpiIndex}.blocks.0.properties.title`, message: "x" },
+      ],
+    });
+    const byId = byIdOf(blocks);
+    expect(byId.s0.properties.description).toMatch(/too large/);
+    expect(byId.s1.type).toBe("Alert");
   });
 });

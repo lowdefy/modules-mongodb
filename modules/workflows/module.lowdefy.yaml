@@ -160,10 +160,11 @@ vars:
     type: string
     default: user-contacts
     description: >
-      Collection name the workflow-api connection's contact lookups join to
-      resolve each contact's avatar (the action-page read GetWorkflowAction
-      joins it to project profile.picture). Defaults to `user-contacts` — the
-      shared collection where a user IS a contact (same _id space). Set this to
+      Collection name the workflow-api connection's contact lookups read.
+      GetWorkflowAction reads each action assignee's contact by `_id`
+      (projecting `profile.name` and `profile.picture`); GetEventsTimeline
+      joins each event author's contact on `user_id` against
+      `created.user.id`. Defaults to `user-contacts`. Set this to
       match your contacts collection name if the host app points the contacts
       module at a custom collection. Tenant wall: under
       `auth.organizations.policy: tenant` the workflow-api connection is

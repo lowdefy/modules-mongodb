@@ -152,9 +152,10 @@ events:
             _event: row._id
           email:
             _event: row.email
-    # Re-invite (Expired): route to the invite flow with the email prefilled.
-    # The invite routine cancels the stale pending row before creating a fresh
-    # one (cancel-then-invite), so no duplicate is created.
+    # Re-invite (Expired): route to the invite page, which checks the email on
+    # load and prefills the form with the expired row's app roles, org tier and
+    # attributes. The invite routine cancels the stale pending row before
+    # creating a fresh one (cancel-then-invite), so no duplicate is created.
     - id: reinvite_expired
       type: Link
       skip:

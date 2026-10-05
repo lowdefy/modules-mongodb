@@ -19,69 +19,95 @@
 # above: the guard is the stricter rule that the identity holds no other
 # membership anywhere.
 #
+# Behind the `delete_user` var (default true): when false, the routine is a bare
+# reject, ahead of the membership guard.
+#
+# The audit event records the member row's `{ roles, attributes }` in this
+# organization as `before`, read after the guard and before the delete.
+#
 # Payload: { user_id, target_name?, target_email? }
 id: delete-user
 type: Api
 routine:
-  - id: other_memberships
-    type: MongoDBAggregation
-    connectionId:
-      _module.connectionId: user-members
-    properties:
-      pipeline:
-        - $match:
-            user_id:
-              _payload: user_id
-            organization_id:
-              $ne:
-                _module.var: org_slug
-        - $count: count
-  - :if:
-      _gt:
-        - _if_none:
-            - _step: other_memberships.0.count
+  _build.array.concat:
+    - _build.if:
+        test:
+          _build.not:
+            _module.var: delete_user
+        then:
+          - - :reject: Deleting logins is disabled for this deployment (the "delete_user" var is false).
+        else: []
+    - - id: other_memberships
+        type: MongoDBAggregation
+        connectionId:
+          _module.connectionId: user-members
+        properties:
+          pipeline:
+            - $match:
+                user_id:
+                  _payload: user_id
+                organization_id:
+                  $ne:
+                    _module.var: org_slug
+            - $count: count
+      - :if:
+          _gt:
+            - _if_none:
+                - _step: other_memberships.0.count
+                - 0
             - 0
-        - 0
-    :then:
-      - :reject: This user belongs to other apps; their login can't be deleted from here. Remove them from this app instead.
-  - id: delete
-    type: DeleteUser
-    properties:
-      userId:
-        _payload: user_id
-      organizationId:
-        _module.var: org_slug
-  - id: audit
-    type: CallApi
-    properties:
-      endpointId:
-        _module.endpointId:
-          id: new-event
-          module: events
-      payload:
-        type: user-deleted
-        display:
-          _build.object.fromEntries:
-            - - _build.app: slug
-              - title:
-                  _nunjucks:
-                    template:
-                      _build.if_none:
-                        - _module.var: event_display.user-deleted
-                        - _ref:
-                            path: defaults/event_display.yaml
-                            key: user-deleted
-                    on:
-                      user:
-                        _user: true
-                      target:
-                        name:
-                          _payload: target_name
-                        email:
-                          _payload: target_email
-                description: null
-        references:
-          user_ids:
-            - _payload: user_id
-  - :return:
-      success: true
+        :then:
+          - :reject: This user belongs to other apps; their login can't be deleted from here. Remove them from this app instead.
+      - _ref:
+          path: api/steps/read_member_access.yaml
+          vars:
+            id: access_before
+            match:
+              user_id:
+                _payload: user_id
+      - id: delete
+        type: DeleteUser
+        properties:
+          userId:
+            _payload: user_id
+          organizationId:
+            _module.var: org_slug
+      - id: audit
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type: user-deleted
+            display:
+              _build.object.fromEntries:
+                - - _build.app: slug
+                  - title:
+                      _nunjucks:
+                        template:
+                          _build.if_none:
+                            - _module.var: event_display.user-deleted
+                            - _ref:
+                                path: defaults/event_display.yaml
+                                key: user-deleted
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            name:
+                              _payload: target_name
+                            email:
+                              _payload: target_email
+                    description: null
+            references:
+              user_ids:
+                - _payload: user_id
+            metadata:
+              before:
+                _if_none:
+                  - _step: access_before.0
+                  - null
+      - :return:
+          success: true

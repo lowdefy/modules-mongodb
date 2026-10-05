@@ -138,9 +138,10 @@ routine:
           _module.var: org_slug
 
   # 4) Invite the member. `appRoles` is the app-role id array the member row is
-  #    minted with; `orgRole` is the unrelated organization-authority tier, which
-  #    the step defaults to `member` (no authority) when the form omits it. Member
-  #    attributes ride the invitation (applied to the minted member at accept by
+  #    minted with; `orgRole` is the unrelated organization-authority tier
+  #    (values/invite_org_role.yaml: `member`, no authority, when the form omits
+  #    it or the `org_authority` var is false). Member attributes ride the
+  #    invitation (applied to the minted member at accept by
   #    afterAcceptInvitation). The contact is linked from the contact side (its
   #    own user_id at claim time), so no contactId rides the invitation.
   - id: invite_member
@@ -155,7 +156,7 @@ routine:
           - _payload: roles
           - []
       orgRole:
-        _payload: org_role
+        _ref: api/values/invite_org_role.yaml
       attributes:
         _if_none:
           - _payload: member_attributes
@@ -192,6 +193,21 @@ routine:
         references:
           contact_ids:
             - _step: read_contact._id
+        # The access the invitation carries, as the invite_member step sent it:
+        # app roles, member attributes and the organization-authority tier.
+        # There is no member row until the invitee accepts, so no `before`.
+        metadata:
+          after:
+            roles:
+              _if_none:
+                - _payload: roles
+                - []
+            attributes:
+              _if_none:
+                - _payload: member_attributes
+                - {}
+            org_role:
+              _ref: api/values/invite_org_role.yaml
 
   - :return:
       success: true
