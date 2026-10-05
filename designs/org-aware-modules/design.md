@@ -108,6 +108,8 @@ The wall fails closed for system-context callers — hook routines and scheduled
 
 Known surfaces today: notification sends from scheduled or hook-driven routines (provenance: the recipient contact's `organizationId`), and the merge-on-signup contact mint — which additionally cannot know its org at its current binding point under `tenant` (the org is minted lazily at first session, after `email.verified` / `user.create.before` fire). Relocating that mint to an org-knowing binding point is [upstream ask 4](upstream-asks.md).
 
+> **Note (implementation):** Lowdefy made `tenant: none` read-only, and a `CallApi` step can now bind its target to one organization from a trusted system run. System-context writes no longer opt out: the notifications drain reads across organizations with `tenant: none` and retries each record through a `CallApi` bound to the record's `organization_id`, so the retry's writes keep the wall. The dispatch path's writes keep the wall as the signed-in caller, and the demo send routines insert their docs with `MongoDBInsertMany` under the wall instead of a `tenant: none` `$merge`. See `docs/shared/org-scoping.md`.
+
 ---
 
 ## Collection inventory

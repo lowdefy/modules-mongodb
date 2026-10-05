@@ -1,18 +1,18 @@
 # Demo dispatch routine for the notifications module's send-notification endpoint.
-# Two aggregation branches on the events collection, each $merge-ing production-shaped
-# notification docs (minus email fields) into the notifications collection.
-# An empty $match merges nothing, so every other event type is a silent no-op.
+# One aggregation per handled event type on the events collection shapes
+# production-shaped notification docs (minus email fields); the step after it
+# inserts them into the notifications collection. An empty $match shapes
+# nothing and the insert is skipped, so every other event type is a no-op.
 # See designs/demo-notifications/design.md.
 #
-# Tenant wall (org-aware-modules Decision 7): both steps opt out with
-# `tenant: none` — $merge is rejected on walled connections, and this routine
-# writes another org axis anyway (notification docs). The opt-out is paired
-# with an EXPLICIT organization_id on every merged doc, read from the source
-# event's wall-stamped organization_id (provenance: the triggering record) —
-# a bare tenant: none with no explicit org is forbidden.
+# Tenant wall: send-notification runs as the signed-in caller whose action
+# emitted the events, so both halves keep the wall. Under policy: tenant the
+# aggregation reads the caller's organization's events and the insert stamps
+# each doc with that organization. The docs are written by a separate insert
+# rather than a $merge stage, because the wall can not stamp or check the rows
+# a $merge writes and refuses it on a walled connection.
 - id: notify_quote_approved
   type: MongoDBAggregation
-  tenant: none
   connectionId:
     _module.connectionId:
       id: events-collection
@@ -86,8 +86,6 @@
           popup:
             $literal: true
           contact_id: $recipient_id
-          # Explicit org (Decision 7): the source event's wall-stamped org.
-          organization_id: $organization_id
           title: Quote approved
           description:
             $concat:
@@ -111,16 +109,25 @@
             $literal: false
           priority:
             $literal: 50
-      - $merge:
-          into: notifications
-          on: _id
-          whenMatched: keepExisting # uuids never collide; defensive
-          whenNotMatched: insert
+- :if:
+    _gt:
+      - _array.length:
+          _step: notify_quote_approved
+      - 0
+  :then:
+    - id: insert_quote_approved
+      type: MongoDBInsertMany
+      connectionId:
+        _module.connectionId:
+          id: notifications-collection
+          module: notifications
+      properties:
+        docs:
+          _step: notify_quote_approved
 
 # Invite mock — the inbox notification stands in for the production invite email.
 - id: notify_invite
   type: MongoDBAggregation
-  tenant: none
   connectionId:
     _module.connectionId:
       id: events-collection
@@ -158,8 +165,6 @@
           popup:
             $literal: false
           contact_id: $recipient_id
-          # Explicit org (Decision 7): the source event's wall-stamped org.
-          organization_id: $organization_id
           title:
             $cond:
               - $eq:
@@ -186,11 +191,21 @@
             $literal: false
           priority:
             $literal: 50
-      - $merge:
-          into: notifications
-          on: _id
-          whenMatched: keepExisting
-          whenNotMatched: insert
+- :if:
+    _gt:
+      - _array.length:
+          _step: notify_invite
+      - 0
+  :then:
+    - id: insert_invite
+      type: MongoDBInsertMany
+      connectionId:
+        _module.connectionId:
+          id: notifications-collection
+          module: notifications
+      properties:
+        docs:
+          _step: notify_invite
 
 # Two-factor reset — recovery notification to the affected user after an admin
 # clears their authenticator and revokes their sessions.
@@ -250,11 +265,21 @@
             $literal: false
           priority:
             $literal: 50
-      - $merge:
-          into: notifications
-          on: _id
-          whenMatched: keepExisting
-          whenNotMatched: insert
+- :if:
+    _gt:
+      - _array.length:
+          _step: notify_two_factor_reset
+      - 0
+  :then:
+    - id: insert_two_factor_reset
+      type: MongoDBInsertMany
+      connectionId:
+        _module.connectionId:
+          id: notifications-collection
+          module: notifications
+      properties:
+        docs:
+          _step: notify_two_factor_reset
 
 # Passkeys revoked — recovery notification to the affected user after an admin
 # revokes their passkeys and revokes their sessions.
@@ -314,8 +339,18 @@
             $literal: false
           priority:
             $literal: 50
-      - $merge:
-          into: notifications
-          on: _id
-          whenMatched: keepExisting
-          whenNotMatched: insert
+- :if:
+    _gt:
+      - _array.length:
+          _step: notify_passkeys_revoked
+      - 0
+  :then:
+    - id: insert_passkeys_revoked
+      type: MongoDBInsertMany
+      connectionId:
+        _module.connectionId:
+          id: notifications-collection
+          module: notifications
+      properties:
+        docs:
+          _step: notify_passkeys_revoked
