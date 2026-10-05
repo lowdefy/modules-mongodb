@@ -46,7 +46,7 @@ routine:
 
   # Render subject/title/preview/html/text from the app's notifications:
   # config. Page links in the item resolve to landing URLs:
-  # <server_url><basePath><link page>?_id=<record_id>&option=<dotpath>
+  # <server_url><basePath>/<link page path>?_id=<record_id>&option=<dotpath>
   - id: render
     type: RenderNotification
     properties:
@@ -57,9 +57,7 @@ routine:
       serverUrl:
         _module.var: server_url
       landingPage:
-        _string.concat:
-          - "/"
-          - _module.pageId: link
+        _module.pageId: link
       recordId:
         _state: record_id
 
