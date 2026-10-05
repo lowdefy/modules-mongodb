@@ -66,6 +66,7 @@ The `page` component renders a shared title bar above the content. Key per-page 
 | Prop               | Type    | Default | Purpose                                                                                                                                        |
 | ------------------ | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `title`            | string  | `null`  | Entity name/identifier — the `<h2>` heading. Never concatenate type + name here.                                                               |
+| `page_title`       | string  | `title` | Browser-tab title. Pass a static string when `title` is a `_request` read: the tab title resolves before request data exists.                  |
 | `type`             | string  | `null`  | Entity-type "eyebrow" rendered uppercase above the title. Convention: view → entity type; edit → `Edit {type}`; create → `New {type}`.         |
 | `avatar_src`       | string  | `null`  | Image src for a 48px subject avatar left of the status pill. Wire it on pages about a person; falls back to a user icon when the src is empty. |
 | `status`           | string  | `null`  | Status slug looked up in `status_enum`.                                                                                                        |

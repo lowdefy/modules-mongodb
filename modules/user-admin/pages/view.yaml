@@ -14,6 +14,11 @@ _ref:
     type: User
     title:
       _request: get_user_detail.0.name
+    page_title:
+      _build.string.trim:
+        _build.string.concat:
+          - _module.var: app_title
+          - " User"
     avatar_src:
       _request: get_user_detail.0.picture
     status:
