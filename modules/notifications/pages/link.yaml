@@ -12,7 +12,7 @@ events:
     # Pre-auth types (public_link_types var) navigate directly to the
     # notification's link (e.g. the login page with an invite hint). Legacy
     # records store the resolved target at top-level links.button; pipeline
-    # records keep the original { pageId, urlQuery } in data.links.button.
+    # records keep the original { pageId, pathParams, urlQuery } in data.links.button.
     - id: link_invite
       type: Link
       skip:
@@ -31,6 +31,12 @@ events:
             - _if_none:
                 - _request: get_notification_for_link.0.links.button.pageId
                 - _module.pageId: all
+        pathParams:
+          _if_none:
+            - _request: get_notification_for_link.0.data.links.button.pathParams
+            - _if_none:
+                - _request: get_notification_for_link.0.links.button.pathParams
+                - {}
         urlQuery:
           _if_none:
             - _request: get_notification_for_link.0.data.links.button.urlQuery
@@ -157,6 +163,10 @@ events:
           _if_none:
             - _state: link_target.pageId
             - _module.pageId: all
+        pathParams:
+          _if_none:
+            - _state: link_target.pathParams
+            - {}
         urlQuery:
           _if_none:
             - _state: link_target.urlQuery

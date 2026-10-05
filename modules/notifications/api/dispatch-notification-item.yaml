@@ -7,7 +7,7 @@
 #   key: string                    optional — deduplication key
 #   send_email: boolean            optional — default true; false = inbox only
 #   cc, bcc: [string]              optional
-#   links.*, <template dataKeys>   optional — { pageId, urlQuery } page links
+#   links.*, <template dataKeys>   optional — { pageId, pathParams?, urlQuery?, input? } page links
 #   ...everything else is template data
 id: dispatch-notification-item
 type: InternalApi
@@ -113,7 +113,7 @@ routine:
               _step: render.html
             text:
               _step: render.text
-            # Store the ORIGINAL item — the link page reads { pageId, urlQuery }
+            # Store the ORIGINAL item — the link page reads { pageId, pathParams, urlQuery }
             # targets back out of data at the ?option dot-path. Never store the
             # render result's data (its links point back at the landing page).
             data:
