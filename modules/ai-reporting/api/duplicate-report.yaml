@@ -82,15 +82,9 @@ routine:
           _ref: defaults/change_stamp.yaml
         updated:
           _ref: defaults/change_stamp.yaml
-  # Same shape generate-report returns, so a caller can navigate straight to the
-  # copy without knowing which endpoint produced it.
+  # Same shape generate-report returns, so a caller can open the copy by its id
+  # without knowing which endpoint produced it.
   - :return:
       ok: true
       report_id:
         _step: insert_copy.insertedId
-      url:
-        _string.concat:
-          - "/"
-          - _module.id: true
-          - "/report?report_id="
-          - _step: insert_copy.insertedId

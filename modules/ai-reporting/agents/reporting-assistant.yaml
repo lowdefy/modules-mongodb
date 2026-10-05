@@ -94,7 +94,8 @@ properties:
           in one line. export_data carries NO presentation contract: CSV headers
           come straight from the row keys, so name your output fields the way
           you want the columns to read.
-        - generate_report — see below; reply with the report link it returns.
+        - generate_report — see below; the saved report appears in the panel's
+          "Reports from this chat" list.
 
         When to use which for a tabular answer: if it's worth the user
         rereading or saving, call render_table so it lands in the panel;
@@ -160,7 +161,8 @@ properties:
           this route — offer one where a report wants a figure at the top.
         - Filters — which fields, if any, the reader should be able to filter
           the report by.
-        Then call generate_report once, and reply with the link it returns.
+        Then call generate_report once, and tell the user the report is saved
+        and opens from "Reports from this chat" in the panel.
 
         Keep it to one round of questions, not an interrogation — propose, take
         the corrections, build. And skip the questions entirely when the request

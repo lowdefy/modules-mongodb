@@ -87,7 +87,7 @@ blocks:
               _request: get_selected_deal.0.company_id
             type: deal-note
             title_template: |
-              <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> added a note.
+              {{ user.profile.name }} added a note.
             on_saved:
               - id: refetch_after_note
                 type: Request
@@ -123,15 +123,15 @@ blocks:
               created:
                 type: deal-task-created
                 title_template: |
-                  <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> created task — {{ title }}.
+                  {{ user.profile.name }} created task — {{ title }}.
               completed:
                 type: deal-task-completed
                 title_template: |
-                  <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> completed task — {{ title }}.
+                  {{ user.profile.name }} completed task — {{ title }}.
               reopened:
                 type: deal-task-reopened
                 title_template: |
-                  <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> reopened task — {{ title }}.
+                  {{ user.profile.name }} reopened task — {{ title }}.
             event_references:
               deal_ids:
                 - _state: selected_deal_id

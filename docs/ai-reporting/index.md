@@ -42,7 +42,7 @@ Surfaces exported as pages:
 | `reports-deleted` | Recovery — [soft-deleted](../shared/soft-delete.md) reports with their delete stamp and one-click restore to private; reached from the reports-list footer                                                                                                                                                                                                                                                                                                                                                                                              |
 | `report`          | Report renderer (`Dynamic` block over `resolve-report`) — a provenance header (who made it, last edited, data-as-of, and the publisher when shared), per-section CSV export on chart and table sections, filters co-located inline above their first bound section, owner-only Continue-in-chat and broken-section recoveries (Fix in chat / Drop this section), a distinct withheld Alert for role-denied sections, and, with `ai_summary: true`, an on-demand [AI summary](concepts/ai-summary.md) drawer that reads the report as currently filtered |
 
-Reports are created from the chat surface two ways: the agent's `generate_report` tool persists a spec and returns its URL, or the user ticks result cards and confirms a sheet — see [Save as report](how-to/save-as-report.md).
+Reports are created from the chat surface two ways: the agent's `generate_report` tool persists a spec, which then shows in the panel's "Reports from this chat" list, or the user ticks result cards and confirms a sheet — see [Save as report](how-to/save-as-report.md).
 
 ## Quickstart
 

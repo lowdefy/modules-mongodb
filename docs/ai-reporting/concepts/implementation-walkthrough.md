@@ -254,7 +254,8 @@ spec. `api/generate-report.yaml`:
 - L65-88 — insert the spec **raw**. The comment at L2-7 is the key decision: the
   reconstructed pipeline is discarded and the AI's verbatim pipeline is stored,
   because _resolve-time revalidation is the guarantee_, not sanitization-at-write.
-- L89-98 — return the report URL, which the agent hands back in chat.
+- L102-105 — return the report id. The `emit-data-parts` hook streams the saved
+  report into the panel's "Reports from this chat" list, which opens it.
 
 ## 8. Report render
 
@@ -458,12 +459,9 @@ and the drop-and-reload recovery need. The app lists the policy under
   "refresh what you are looking at" re-renders the original and leaves the copy
   invisible. The list refetches its scope (the copy lands in Mine); the report
   page opens the copy in a new tab, navigating by `pageId` + `urlQuery` on
-  `duplicate-report`'s returned `report_id`. **Not** the `url` the same response
-  carries: `Link`'s `url` param means an _external_ address and gets an `https://`
-  prefix whenever the value has no scheme, so a root-relative
-  `/{entry}/report?report_id=…` resolves to a host named after the entry. That
-  returned url is for the assistant to hand a person in chat; every in-app
-  navigation in this module goes through `pageId`/`urlQuery`.
+  `duplicate-report`'s returned `report_id`. Every navigation in this module goes
+  through `pageId`/`urlQuery`, so it follows the report page's path and the
+  app's `basePath`.
 - Vertical rhythm comes from two distances, not one. `report.yaml`'s
   `layout.gap` y value is small — it spaces a heading off the chart or table it
   names — and `SECTION_TOP_GAP` adds the larger distance ahead of each section

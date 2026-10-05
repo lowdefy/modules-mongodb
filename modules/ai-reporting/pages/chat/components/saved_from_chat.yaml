@@ -115,9 +115,7 @@ blocks:
                         fontSize: 12px
                         color: var(--ant-color-text-secondary)
                         marginBottom: 0
-          # A Link, never the raw `url` string create-report returns (that is
-          # treated as external) — the same in-app navigation the reports-list row
-          # and the save sheet use.
+          # The same in-app navigation the reports-list row and the save sheet use.
           - id: saved_reports.$.open
             type: Button
             layout:

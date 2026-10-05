@@ -115,7 +115,7 @@ routine:
                   - title:
                       _nunjucks:
                         template: |
-                          <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> created deal {{ deal_id }}.
+                          {{ user.profile.name }} created deal {{ deal_id }}.
                         on:
                           user:
                             _user: true
